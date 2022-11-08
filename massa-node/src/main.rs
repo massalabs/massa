@@ -497,7 +497,10 @@ async fn launch(
         api_config.clone(),
         node_wallet,
     );
-    let api_private_handle = api_private.serve(&SETTINGS.api.bind_private);
+    let api_private_handle = api_private
+        .serve(&SETTINGS.api.bind_private)
+        .await
+        .expect("failed to start PRIVATE API");
 
     // spawn public API
     let api_public = API::<Public>::new(
@@ -514,7 +517,10 @@ async fn launch(
         node_id,
         shared_storage.clone(),
     );
-    let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
+    let api_public_handle = api_public
+        .serve(&SETTINGS.api.bind_public)
+        .await
+        .expect("failed to start PUBLIC API");
 
     #[cfg(feature = "deadlock_detection")]
     {

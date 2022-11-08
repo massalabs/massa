@@ -4,8 +4,9 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 
-use jsonrpc_core_client::transports::http;
-use jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
+use jsonrpsee::core::client::ClientT;
+use jsonrpsee::http_client::HttpClient;
+use jsonrpsee::rpc_params;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
@@ -21,8 +22,7 @@ use massa_models::{
     address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
 };
 
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
 use std::net::{IpAddr, SocketAddr};
 
 /// Client
@@ -47,111 +47,100 @@ impl Client {
     }
 }
 
-/// TODO ask @yvan-sraka
+/// TODO add ws client
 pub struct RpcClient {
-    client: TypedClient,
-    timeout: u64,
-}
-
-/// This is required by `jsonrpc_core_client::transports::http::connect`
-impl From<RpcChannel> for RpcClient {
-    fn from(channel: RpcChannel) -> Self {
-        RpcClient {
-            client: channel.into(),
-            timeout: 10000,
-        }
-    }
+    client: HttpClient,
 }
 
 impl RpcClient {
     /// Default constructor
     pub async fn from_url(url: &str) -> RpcClient {
-        match http::connect::<RpcClient>(url).await {
-            Ok(client) => client,
+        match HttpClientBuilder::default().build(url) {
+            Ok(client) => RpcClient { client: client },
             Err(_) => panic!("unable to connect to Node."),
         }
     }
 
-    /// Typed wrapper to API calls based on the method given by `jsonrpc_core_client`
-    async fn call_method<T: Serialize, R: DeserializeOwned>(
-        &self,
-        method: &str,
-        returns: &str,
-        args: T,
-    ) -> RpcResult<R> {
-        tokio::time::timeout(
-            tokio::time::Duration::from_millis(self.timeout),
-            self.client.call_method(method, returns, args),
-        )
-        .await
-        .map_err(|e| RpcError::Client(format!("timeout during {}: {}", method, e)))?
-    }
-
     /// Gracefully stop the node.
     pub async fn stop_node(&self) -> RpcResult<()> {
-        self.call_method("stop_node", "()", ()).await
+        self.client.request("stop_node", rpc_params![]).await
     }
 
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
     pub async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
-        self.call_method("node_sign_message", "PubkeySig", vec![message])
+        self.client
+            .request("node_sign_message", rpc_params![message])
             .await
     }
 
     /// Add a vector of new secret keys for the node to use to stake.
     /// No confirmation to expect.
     pub async fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> RpcResult<()> {
-        self.call_method("add_staking_secret_keys", "()", vec![secret_keys])
+        self.client
+            .request("add_staking_secret_keys", rpc_params![secret_keys])
             .await
     }
 
     /// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
     pub async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
-        self.call_method("remove_staking_addresses", "()", vec![addresses])
+        self.client
+            .request("remove_staking_addresses", rpc_params![addresses])
             .await
     }
 
     /// Return hash-set of staking addresses.
     pub async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
-        self.call_method("get_staking_addresses", "Set<Address>", ())
+        self.client
+            .request("get_staking_addresses", rpc_params![])
             .await
     }
 
     /// Bans given ip address(es)
     /// No confirmation to expect.
     pub async fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        self.call_method("node_ban_by_ip", "()", vec![ips]).await
+        self.client
+            .request("node_ban_by_ip", rpc_params![ips])
+            .await
     }
 
     /// Bans given node id(s)
     /// No confirmation to expect.
     pub async fn node_ban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
-        self.call_method("node_ban_by_id", "()", vec![ids]).await
+        self.client
+            .request("node_ban_by_id", rpc_params![ids])
+            .await
     }
 
     /// Unban given ip address(es)
     /// No confirmation to expect.
     pub async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        self.call_method("node_unban_by_ip", "()", vec![ips]).await
+        self.client
+            .request("node_unban_by_ip", rpc_params![ips])
+            .await
     }
 
     /// Unban given node id(s)
     /// No confirmation to expect.
     pub async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
-        self.call_method("node_unban_by_id", "()", vec![ids]).await
+        self.client
+            .request("node_unban_by_id", rpc_params![ids])
+            .await
     }
 
     /// add ips to whitelist
     /// create peer if it was unknown
     pub async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        self.call_method("node_whitelist", "()", vec![ips]).await
+        self.client
+            .request("node_whitelist", rpc_params![ips])
+            .await
     }
 
     /// remove IPs from whitelist
     pub async fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        self.call_method("node_remove_from_whitelist", "()", vec![ips])
+        self.client
+            .request("node_remove_from_whitelist", rpc_params![ips])
             .await
     }
 
@@ -163,19 +152,18 @@ impl RpcClient {
 
     /// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
     pub async fn get_status(&self) -> RpcResult<NodeStatus> {
-        self.call_method("get_status", "NodeStatus", ()).await
+        self.client.request("get_status", rpc_params![]).await
     }
 
     pub(crate) async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
-        self.call_method("get_cliques", "Vec<Clique>", ()).await
+        self.client.request("get_cliques", rpc_params![]).await
     }
 
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
     pub(crate) async fn _get_stakers(&self) -> RpcResult<PreHashMap<Address, u64>> {
-        self.call_method("get_stakers", "Map<Address, u64>", ())
-            .await
+        self.client.request("get_stakers", rpc_params![]).await
     }
 
     /// Returns operations information associated to a given list of operations' IDs.
@@ -183,7 +171,8 @@ impl RpcClient {
         &self,
         operation_ids: Vec<OperationId>,
     ) -> RpcResult<Vec<OperationInfo>> {
-        self.call_method("get_operations", "Vec<OperationInfo>", vec![operation_ids])
+        self.client
+            .request("get_operations", rpc_params![operation_ids])
             .await
     }
 
@@ -192,17 +181,15 @@ impl RpcClient {
         &self,
         endorsement_ids: Vec<EndorsementId>,
     ) -> RpcResult<Vec<EndorsementInfo>> {
-        self.call_method(
-            "get_endorsements",
-            "Vec<EndorsementInfo>",
-            vec![endorsement_ids],
-        )
-        .await
+        self.client
+            .request("get_endorsements", rpc_params![endorsement_ids])
+            .await
     }
 
     /// Get information on a block given its `BlockId`
     pub async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
-        self.call_method("get_block", "BlockInfo", vec![block_id])
+        self.client
+            .request("get_block", rpc_params![block_id])
             .await
     }
 
@@ -211,12 +198,9 @@ impl RpcClient {
         &self,
         filter: EventFilter,
     ) -> RpcResult<Vec<SCOutputEvent>> {
-        self.call_method(
-            "get_filtered_sc_output_event",
-            "Vec<SCOutputEvent>",
-            vec![filter],
-        )
-        .await
+        self.client
+            .request("get_filtered_sc_output_event", rpc_params![filter])
+            .await
     }
 
     /// Get the block graph within the specified time interval.
@@ -225,13 +209,15 @@ impl RpcClient {
         &self,
         time_interval: TimeInterval,
     ) -> RpcResult<Vec<BlockSummary>> {
-        self.call_method("get_graph_interval", "Vec<BlockSummary>", time_interval)
+        self.client
+            .request("get_graph_interval", rpc_params![time_interval])
             .await
     }
 
     /// Get info by addresses
     pub async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
-        self.call_method("get_addresses", "Vec<AddressInfo>", vec![addresses])
+        self.client
+            .request("get_addresses", rpc_params![addresses])
             .await
     }
 
@@ -240,12 +226,9 @@ impl RpcClient {
         &self,
         input: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
-        self.call_method(
-            "get_datastore_entries",
-            "Vec<DatastoreEntryOutput>",
-            vec![input],
-        )
-        .await
+        self.client
+            .request("get_datastore_entries", rpc_params![input])
+            .await
     }
 
     // User (interaction with the node)
@@ -255,7 +238,8 @@ impl RpcClient {
         &self,
         operations: Vec<OperationInput>,
     ) -> RpcResult<Vec<OperationId>> {
-        self.call_method("send_operations", "Vec<OperationId>", vec![operations])
+        self.client
+            .request("send_operations", rpc_params![operations])
             .await
     }
 
@@ -264,16 +248,16 @@ impl RpcClient {
         &self,
         read_only_execution: ReadOnlyBytecodeExecution,
     ) -> RpcResult<ExecuteReadOnlyResponse> {
-        self.call_method::<Vec<Vec<ReadOnlyBytecodeExecution>>, Vec<ExecuteReadOnlyResponse>>(
-            "execute_read_only_bytecode",
-            "Vec<ExecuteReadOnlyResponse>",
-            vec![vec![read_only_execution]],
-        )
-        .await?
-        .pop()
-        .ok_or_else(|| {
-            RpcError::Client("missing return value on execute_read_only_bytecode".into())
-        })
+        self.client
+            .request::<Vec<ExecuteReadOnlyResponse>, Vec<Vec<ReadOnlyBytecodeExecution>>>(
+                "execute_read_only_bytecode",
+                vec![vec![read_only_execution]],
+            )
+            .await?
+            .pop()
+            .ok_or_else(|| {
+                JsonRpseeError::Custom("missing return value on execute_read_only_bytecode".into())
+            })
     }
 
     /// execute read only SC call
@@ -281,13 +265,15 @@ impl RpcClient {
         &self,
         read_only_execution: ReadOnlyCall,
     ) -> RpcResult<ExecuteReadOnlyResponse> {
-        self.call_method::<Vec<Vec<ReadOnlyCall>>, Vec<ExecuteReadOnlyResponse>>(
-            "execute_read_only_call",
-            "Vec<ExecuteReadOnlyResponse>",
-            vec![vec![read_only_execution]],
-        )
-        .await?
-        .pop()
-        .ok_or_else(|| RpcError::Client("missing return value on execute_read_only_call".into()))
+        self.client
+            .request::<Vec<ExecuteReadOnlyResponse>, Vec<Vec<ReadOnlyCall>>>(
+                "execute_read_only_call",
+                vec![vec![read_only_execution]],
+            )
+            .await?
+            .pop()
+            .ok_or_else(|| {
+                JsonRpseeError::Custom("missing return value on execute_read_only_call".into())
+            })
     }
 }

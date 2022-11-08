@@ -3,10 +3,9 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{serde_json, Endpoints, Public, RpcServer, StopHandle, Value, API};
-use jsonrpc_core::BoxFuture;
-use massa_consensus_exports::block_status::DiscardReason;
-use massa_consensus_exports::ConsensusController;
+use crate::{EndpointsServer, Public, RpcServer, StopHandle, Value, API};
+use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
@@ -87,33 +86,34 @@ impl API<Public> {
     }
 }
 
+#[async_trait::async_trait]
 impl RpcServer for API<Public> {
-    fn serve(self, url: &SocketAddr) -> StopHandle {
-        crate::serve(self, url)
+    async fn serve(self, url: &SocketAddr) -> Result<StopHandle, JsonRpseeError> {
+        crate::serve(self, url).await
     }
 }
 
 #[doc(hidden)]
-impl Endpoints for API<Public> {
-    fn stop_node(&self) -> BoxFuture<Result<(), ApiError>> {
+#[async_trait::async_trait]
+impl EndpointsServer for API<Public> {
+    async fn stop_node(&self) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>> {
+    async fn node_sign_message(&self, _: Vec<u8>) -> RpcResult<PubkeySig> {
         crate::wrong_api::<PubkeySig>()
     }
 
-    fn add_staking_secret_keys(&self, _: Vec<String>) -> BoxFuture<Result<(), ApiError>> {
+    async fn add_staking_secret_keys(&self, _: Vec<String>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn execute_read_only_bytecode(
+    async fn execute_read_only_bytecode(
         &self,
         reqs: Vec<ReadOnlyBytecodeExecution>,
-    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+    ) -> RpcResult<Vec<ExecuteReadOnlyResponse>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
-            return Box::pin(closure());
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
 
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
@@ -141,8 +141,7 @@ impl Endpoints for API<Public> {
                         Ok((_, deserialized)) => Some(deserialized),
                         Err(e) => {
                             let err_str = format!("Operation datastore error: {}", e);
-                            let closure = async move || Err(ApiError::InconsistencyError(err_str));
-                            return Box::pin(closure());
+                            return Err(ApiError::InconsistencyError(err_str).into());
                         }
                     }
                 }
@@ -188,17 +187,15 @@ impl Endpoints for API<Public> {
         }
 
         // return result
-        let closure = async move || Ok(res);
-        Box::pin(closure())
+        Ok(res)
     }
 
-    fn execute_read_only_call(
+    async fn execute_read_only_call(
         &self,
         reqs: Vec<ReadOnlyCall>,
-    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+    ) -> RpcResult<Vec<ExecuteReadOnlyResponse>> {
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
-            let closure = async move || Err(ApiError::BadRequest("too many arguments".into()));
-            return Box::pin(closure());
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
 
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
@@ -267,35 +264,34 @@ impl Endpoints for API<Public> {
         }
 
         // return result
-        let closure = async move || Ok(res);
-        Box::pin(closure())
+        Ok(res)
     }
 
-    fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {
+    async fn remove_staking_addresses(&self, _: Vec<Address>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>> {
+    async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
         crate::wrong_api::<PreHashSet<Address>>()
     }
 
-    fn node_ban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    async fn node_ban_by_ip(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn node_ban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+    async fn node_ban_by_id(&self, _: Vec<NodeId>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn node_unban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    async fn node_unban_by_ip(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn node_unban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+    async fn node_unban_by_id(&self, _: Vec<NodeId>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
+    async fn get_status(&self) -> RpcResult<NodeStatus> {
         let execution_controller = self.0.execution_controller.clone();
         let consensus_controller = self.0.consensus_controller.clone();
         let network_command_sender = self.0.network_command_sender.clone();
@@ -305,28 +301,29 @@ impl Endpoints for API<Public> {
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
-        let api_config = self.0.api_settings.clone();
         let closure = async move || {
             let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
-                api_config.thread_count,
-                api_config.t0,
-                api_config.genesis_timestamp,
+                consensus_settings.thread_count,
+                consensus_settings.t0,
+                consensus_settings.genesis_timestamp,
                 now,
             )?;
 
             let execution_stats = execution_controller.get_stats();
-            let consensus_stats = consensus_controller.get_stats()?;
 
-            let (network_stats, peers) = tokio::join!(
+            let (consensus_stats, network_stats, peers) = tokio::join!(
+                consensus_command_sender.get_stats(),
                 network_command_sender.get_network_stats(),
                 network_command_sender.get_peers()
             );
 
-            let pool_stats = (
-                pool_command_sender.get_operation_count(),
-                pool_command_sender.get_endorsement_count(),
-            );
+        let last_slot = match last_slot_result {
+            Ok(last_slot) => last_slot,
+            Err(e) => {
+                return Err(ApiError::from(e).into());
+            }
+        };
 
             Ok(NodeStatus {
                 node_id,
@@ -345,40 +342,91 @@ impl Endpoints for API<Public> {
                 last_slot,
                 next_slot: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_next_slot(api_config.thread_count)?,
+                    .get_next_slot(consensus_settings.thread_count)?,
                 execution_stats,
-                consensus_stats,
+                consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
                 pool_stats,
                 config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_cycle(api_config.periods_per_cycle),
+                    .get_cycle(consensus_settings.periods_per_cycle),
             })
         };
-        Box::pin(closure())
+
+        let network_stats = match network_stats_resultat {
+            Ok(network_stats) => network_stats,
+            Err(e) => {
+                return Err(ApiError::from(e).into());
+            }
+        };
+
+        let pool_stats = (
+            pool_command_sender.get_operation_count(),
+            pool_command_sender.get_endorsement_count(),
+        );
+
+        let peers = match peers_result {
+            Ok(peers) => peers,
+            Err(e) => return Err(ApiError::from(e).into()),
+        };
+
+        let next_slot_result = last_slot
+            .unwrap_or_else(|| Slot::new(0, 0))
+            .get_next_slot(consensus_settings.thread_count);
+
+        let next_slot = match next_slot_result {
+            Ok(next_slot) => next_slot,
+            Err(e) => return Err(ApiError::from(e).into()),
+        };
+
+        Ok(NodeStatus {
+            node_id,
+            node_ip: network_config.routable_ip,
+            version,
+            current_time: now,
+            connected_nodes: peers
+                .peers
+                .iter()
+                .flat_map(|(ip, peer)| {
+                    peer.active_nodes
+                        .iter()
+                        .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
+                })
+                .collect(),
+            last_slot,
+            next_slot: next_slot,
+            execution_stats,
+            consensus_stats: consensus_stats,
+            network_stats: network_stats,
+            pool_stats,
+            config,
+            current_cycle: last_slot
+                .unwrap_or_else(|| Slot::new(0, 0))
+                .get_cycle(consensus_settings.periods_per_cycle),
+        })
     }
 
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>> {
-        let consensus_controller = self.0.consensus_controller.clone();
-        let closure = async move || Ok(consensus_controller.get_cliques());
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let closure = async move || Ok(consensus_command_sender.get_cliques().await?);
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
+    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let api_config = self.0.api_settings.clone();
         let compensation_millis = self.0.compensation_millis;
 
         let closure = async move || {
             let curr_cycle = get_latest_block_slot_at_timestamp(
-                api_config.thread_count,
-                api_config.t0,
-                api_config.genesis_timestamp,
+                cfg.thread_count,
+                cfg.t0,
+                cfg.genesis_timestamp,
                 MassaTime::now(compensation_millis)?,
             )?
             .unwrap_or_else(|| Slot::new(0, 0))
-            .get_cycle(api_config.periods_per_cycle);
+            .get_cycle(cfg.periods_per_cycle);
             let mut staker_vec = execution_controller
                 .get_cycle_active_rolls(curr_cycle)
                 .into_iter()
@@ -388,13 +436,33 @@ impl Endpoints for API<Public> {
             });
             Ok(staker_vec)
         };
-        Box::pin(closure())
+
+        let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            now,
+        );
+
+        let curr_cycle = match latest_block_slot_at_timestamp_result {
+            Ok(curr_cycle) => curr_cycle
+                .unwrap_or_else(|| Slot::new(0, 0))
+                .get_cycle(cfg.periods_per_cycle),
+            Err(e) => {
+                return Err(ApiError::from(e).into());
+            }
+        };
+
+        let mut staker_vec = execution_controller
+            .get_cycle_active_rolls(curr_cycle)
+            .into_iter()
+            .collect::<Vec<(Address, u64)>>();
+        staker_vec
+            .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
+        Ok(staker_vec)
     }
 
-    fn get_operations(
-        &self,
-        ops: Vec<OperationId>,
-    ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
+    async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
         // get the operations and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
@@ -421,7 +489,7 @@ impl Endpoints for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
         let api_cfg = self.0.api_settings.clone();
-        let consensus_controller = self.0.consensus_controller.clone();
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::BadRequest("too many arguments".into()));
@@ -435,8 +503,9 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses =
-                    consensus_controller.get_block_statuses(&involved_blocks);
+                let involved_block_statuses = consensus_command_sender
+                    .get_block_statuses(&involved_blocks)
+                    .await?;
                 let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())
@@ -450,34 +519,42 @@ impl Endpoints for API<Public> {
                     .collect()
             };
 
-            // gather all values into a vector of OperationInfo instances
-            let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());
-            let zipped_iterator = izip!(
-                ops.into_iter(),
-                storage_info.into_iter(),
-                in_pool.into_iter(),
-                is_final.into_iter()
-            );
-            for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
-                res.push(OperationInfo {
-                    id,
-                    operation,
-                    in_pool,
-                    is_final,
-                    in_blocks: in_blocks.into_iter().collect(),
-                });
-            }
-
-            // return values in the right order
-            Ok(res)
+            let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
+                .into_iter()
+                .zip(involved_block_statuses.into_iter())
+                .collect();
+            storage_info
+                .iter()
+                .map(|(_op, bs)| {
+                    bs.iter()
+                        .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
+                })
+                .collect()
         };
-        Box::pin(closure())
+
+        // gather all values into a vector of OperationInfo instances
+        let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());
+        let zipped_iterator = izip!(
+            ops.into_iter(),
+            storage_info.into_iter(),
+            in_pool.into_iter(),
+            is_final.into_iter()
+        );
+        for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
+            res.push(OperationInfo {
+                id,
+                operation,
+                in_pool,
+                is_final,
+                in_blocks: in_blocks.into_iter().collect(),
+            });
+        }
+
+        // return values in the right order
+        Ok(res)
     }
 
-    fn get_endorsements(
-        &self,
-        eds: Vec<EndorsementId>,
-    ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
+    async fn get_endorsements(&self, eds: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>> {
         // get the endorsements and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
@@ -505,10 +582,6 @@ impl Endpoints for API<Public> {
 
         let consensus_controller = self.0.consensus_controller.clone();
         let api_cfg = self.0.api_settings.clone();
-        let closure = async move || {
-            if eds.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::BadRequest("too many arguments".into()));
-            }
 
             // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
             let is_final: Vec<bool> = {
@@ -518,8 +591,9 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses =
-                    consensus_controller.get_block_statuses(&involved_blocks);
+                let involved_block_statuses = consensus_command_sender
+                    .get_block_statuses(&involved_blocks)
+                    .await?;
                 let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                     .into_iter()
                     .zip(involved_block_statuses.into_iter())
@@ -532,78 +606,93 @@ impl Endpoints for API<Public> {
                     })
                     .collect()
             };
-
-            // gather all values into a vector of EndorsementInfo instances
-            let mut res: Vec<EndorsementInfo> = Vec::with_capacity(eds.len());
-            let zipped_iterator = izip!(
-                eds.into_iter(),
-                storage_info.into_iter(),
-                in_pool.into_iter(),
-                is_final.into_iter()
-            );
-            for (id, (endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
-                res.push(EndorsementInfo {
-                    id,
-                    endorsement,
-                    in_pool,
-                    is_final,
-                    in_blocks: in_blocks.into_iter().collect(),
-                });
-            }
-
-            // return values in the right order
-            Ok(res)
+            let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
+                .into_iter()
+                .zip(involved_block_statuses.into_iter())
+                .collect();
+            storage_info
+                .iter()
+                .map(|(_ed, bs)| {
+                    bs.iter()
+                        .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
+                })
+                .collect()
         };
-        Box::pin(closure())
+
+        // gather all values into a vector of EndorsementInfo instances
+        let mut res: Vec<EndorsementInfo> = Vec::with_capacity(eds.len());
+        let zipped_iterator = izip!(
+            eds.into_iter(),
+            storage_info.into_iter(),
+            in_pool.into_iter(),
+            is_final.into_iter()
+        );
+        for (id, (endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
+            res.push(EndorsementInfo {
+                id,
+                endorsement,
+                in_pool,
+                is_final,
+                in_blocks: in_blocks.into_iter().collect(),
+            });
+        }
+
+        // return values in the right order
+        Ok(res)
     }
 
     /// gets a block. Returns None if not found
     /// only active blocks are returned
     fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
-        let consensus_controller = self.0.consensus_controller.clone();
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
         let storage = self.0.storage.clone_without_refs();
-        let closure = async move || {
-            let block = match storage.read_blocks().get(&id).cloned() {
-                Some(b) => b.content,
-                None => {
-                    return Ok(BlockInfo { id, content: None });
-                }
-            };
+        let block = match storage.read_blocks().get(&id).cloned() {
+            Some(b) => b.content,
+            None => {
+                return Ok(BlockInfo { id, content: None });
+            }
+        };
 
-            let graph_status = consensus_controller
+            let graph_status = consensus_command_sender
                 .get_block_statuses(&[id])
+                .await?
                 .into_iter()
                 .next()
-                .expect("expected get_block_statuses to return one element");
-
-            let is_final = graph_status == BlockGraphStatus::Final;
-            let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-            let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-            let is_discarded = graph_status == BlockGraphStatus::Discarded;
-
-            Ok(BlockInfo {
-                id,
-                content: Some(BlockInfoContent {
-                    is_final,
-                    is_in_blockclique,
-                    is_candidate,
-                    is_discarded,
-                    block,
-                }),
-            })
+                .expect("expected get_block_statuses to return one element"),
+            Err(e) => {
+                return Err(ApiError::from(e).into());
+            }
         };
-        Box::pin(closure())
+
+        let is_final = graph_status == BlockGraphStatus::Final;
+        let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+        let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+        let is_discarded = graph_status == BlockGraphStatus::Discarded;
+
+        Ok(BlockInfo {
+            id,
+            content: Some(BlockInfoContent {
+                is_final,
+                is_in_blockclique,
+                is_candidate,
+                is_discarded,
+                block,
+            }),
+        })
     }
 
     fn get_blockclique_block_by_slot(
         &self,
         slot: Slot,
     ) -> BoxFuture<Result<Option<Block>, ApiError>> {
-        let consensus_controller = self.0.consensus_controller.clone();
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
         let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
-            let block_id = match consensus_controller.get_blockclique_block_at_slot(slot) {
+            let block_id_result = consensus_command_sender
+                .get_blockclique_block_at_slot(slot)
+                .await;
+            let block_id = match block_id_result? {
                 Some(id) => id,
                 None => return Ok(None),
             };
@@ -613,7 +702,17 @@ impl Endpoints for API<Public> {
                 .map(|b| b.content.clone());
             Ok(res)
         };
-        Box::pin(closure())
+
+        let block_id = match block_id_option {
+            Some(id) => id,
+            None => return Ok(None),
+        };
+
+        let res = storage
+            .read_blocks()
+            .get(&block_id)
+            .map(|b| b.content.clone());
+        Ok(res)
     }
 
     /// gets an interval of the block graph from consensus, with time filtering
@@ -622,18 +721,20 @@ impl Endpoints for API<Public> {
         &self,
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
-        let consensus_controller = self.0.consensus_controller.clone();
-        let api_config = self.0.api_settings.clone();
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let consensus_settings = self.0.consensus_config.clone();
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
-                api_config.thread_count,
-                api_config.t0,
-                api_config.genesis_timestamp,
+                consensus_settings.thread_count,
+                consensus_settings.t0,
+                consensus_settings.genesis_timestamp,
                 time.start,
                 time.end,
             )?;
-            let graph = consensus_controller.get_block_graph_status(start_slot, end_slot)?;
+            let graph = consensus_command_sender
+                .get_block_graph_status(start_slot, end_slot)
+                .await?;
             let mut res = Vec::with_capacity(graph.active_blocks.len());
             let blockclique = graph
                 .max_cliques
@@ -643,59 +744,39 @@ impl Endpoints for API<Public> {
             for (id, exported_block) in graph.active_blocks.into_iter() {
                 res.push(BlockSummary {
                     id,
-                    is_final: exported_block.is_final,
-                    is_stale: false,
-                    is_in_blockclique: blockclique.block_ids.contains(&id),
-                    slot: exported_block.header.content.slot,
-                    creator: exported_block.header.creator_address,
-                    parents: exported_block.header.content.parents,
+                    is_final: false,
+                    is_stale: true,
+                    is_in_blockclique: false,
+                    slot,
+                    creator,
+                    parents,
                 });
             }
-            for (id, (reason, (slot, creator, parents))) in graph.discarded_blocks.into_iter() {
-                if reason == DiscardReason::Stale {
-                    res.push(BlockSummary {
-                        id,
-                        is_final: false,
-                        is_stale: true,
-                        is_in_blockclique: false,
-                        slot,
-                        creator,
-                        parents,
-                    });
-                }
-            }
-            Ok(res)
-        };
-        Box::pin(closure())
+        }
+        Ok(res)
     }
 
-    fn get_datastore_entries(
+    async fn get_datastore_entries(
         &self,
         entries: Vec<DatastoreEntryInput>,
-    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>> {
+    ) -> RpcResult<Vec<DatastoreEntryOutput>> {
         let execution_controller = self.0.execution_controller.clone();
-        let closure = async move || {
-            Ok(execution_controller
-                .get_final_and_active_data_entry(
-                    entries
-                        .into_iter()
-                        .map(|input| (input.address, input.key))
-                        .collect::<Vec<_>>(),
-                )
-                .into_iter()
-                .map(|output| DatastoreEntryOutput {
-                    final_value: output.0,
-                    candidate_value: output.1,
-                })
-                .collect())
-        };
-        Box::pin(closure())
+        Ok(execution_controller
+            .get_final_and_active_data_entry(
+                entries
+                    .into_iter()
+                    .map(|input| (input.address, input.key))
+                    .collect::<Vec<_>>(),
+            )
+            .into_iter()
+            .map(|output| DatastoreEntryOutput {
+                final_value: output.0,
+                candidate_value: output.1,
+            })
+            .collect())
     }
 
-    fn get_addresses(
-        &self,
-        addresses: Vec<Address>,
-    ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
+    async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         // get info from storage about which blocks the addresses have created
         let created_blocks: Vec<PreHashSet<BlockId>> = {
             let lck = self.0.storage.read_blocks();
@@ -826,14 +907,10 @@ impl Endpoints for API<Public> {
             });
         }
 
-        let closure = async move || Ok(res);
-        Box::pin(closure())
+        Ok(res)
     }
 
-    fn send_operations(
-        &self,
-        ops: Vec<OperationInput>,
-    ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
+    async fn send_operations(&self, ops: Vec<OperationInput>) -> RpcResult<Vec<OperationId>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let mut protocol_sender = self.0.protocol_command_sender.clone();
         let api_cfg = self.0.api_settings.clone();
@@ -881,10 +958,10 @@ impl Endpoints for API<Public> {
             to_send.store_operations(verified_ops.clone());
             let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
             cmd_sender.add_operations(to_send.clone());
-            protocol_sender.propagate_operations(to_send)?;
+            protocol_sender.propagate_operations(to_send).await?;
             Ok(ids)
         };
-        Box::pin(closure())
+        Ok(ids)
     }
 
     /// Get events optionally filtered by:
@@ -893,48 +970,47 @@ impl Endpoints for API<Public> {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    fn get_filtered_sc_output_event(
+    async fn get_filtered_sc_output_event(
         &self,
         filter: EventFilter,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+    ) -> RpcResult<Vec<SCOutputEvent>> {
         let events = self
             .0
             .execution_controller
             .get_filtered_sc_output_event(filter);
 
         // TODO: get rid of the async part
-        let closure = async move || Ok(events);
-        Box::pin(closure())
+        Ok(events)
     }
 
-    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    async fn node_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    async fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>> {
+    async fn get_openrpc_spec(&self) -> RpcResult<Value> {
         let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
-        let closure = async move || {
-            std::fs::read_to_string(openrpc_spec_path)
-                .map_err(|e| {
+        let openrpc: RpcResult<Value> = std::fs::read_to_string(openrpc_spec_path)
+            .map_err(|e| {
+                ApiError::InternalServerError(format!(
+                    "failed to read OpenRPC specification: {}",
+                    e
+                ))
+                .into()
+            })
+            .and_then(|openrpc_str| {
+                serde_json::from_str(&openrpc_str).map_err(|e| {
                     ApiError::InternalServerError(format!(
-                        "failed to read OpenRPC specification: {}",
+                        "failed to parse OpenRPC specification: {}",
                         e
                     ))
+                    .into()
                 })
-                .and_then(|openrpc_str| {
-                    serde_json::from_str(&openrpc_str).map_err(|e| {
-                        ApiError::InternalServerError(format!(
-                            "failed to parse OpenRPC specification: {}",
-                            e
-                        ))
-                    })
-                })
-        };
+            });
 
-        Box::pin(closure())
+        openrpc
     }
 }

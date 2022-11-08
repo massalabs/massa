@@ -4,7 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-jsonrpc-core-client = { git = "https://github.com/massalabs/jsonrpc", features = ["http", "tls"] }
-tokio = { version = "1.21", features = ["full"] }
+jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee", branch = "master", features = ["client"] }
 massa_models = { path = "../massa-models" }
-serde = { version = "1.0", features = ["derive"] }
