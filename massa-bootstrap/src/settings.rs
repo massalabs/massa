@@ -98,4 +98,6 @@ pub struct BootstrapConfig {
     pub max_executed_ops_length: u64,
     /// max executed ops changes
     pub max_ops_changes_length: u64,
+    /// consensus bootstrap part size
+    pub consensus_bootstrap_part_size: u64,
 }

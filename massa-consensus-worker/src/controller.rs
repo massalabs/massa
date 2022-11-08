@@ -30,16 +30,19 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 pub struct ConsensusControllerImpl {
     command_sender: SyncSender<ConsensusCommand>,
     shared_state: Arc<RwLock<ConsensusState>>,
+    bootstrap_part_size: u64,
 }
 
 impl ConsensusControllerImpl {
     pub fn new(
         command_sender: SyncSender<ConsensusCommand>,
         shared_state: Arc<RwLock<ConsensusState>>,
+        bootstrap_part_size: u64,
     ) -> Self {
         Self {
             command_sender,
             shared_state,
+            bootstrap_part_size,
         }
     }
 }
@@ -118,8 +121,7 @@ impl ConsensusController for ConsensusControllerImpl {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
             {
-                // IMPORTANT TODO: use a config parameter for this raw value
-                if final_blocks.len() >= 100 {
+                if final_blocks.len() as u64 >= self.bootstrap_part_size {
                     break;
                 }
                 if let StreamingStep::Finished(Some(slot)) = execution_cursor {

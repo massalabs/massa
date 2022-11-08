@@ -1,6 +1,9 @@
-use massa_models::config::constants::{
-    CHANNEL_SIZE, DELTA_F0, ENDORSEMENT_COUNT, GENESIS_KEY, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK,
-    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, T0, THREAD_COUNT,
+use massa_models::config::{
+    constants::{
+        CHANNEL_SIZE, DELTA_F0, ENDORSEMENT_COUNT, GENESIS_KEY, GENESIS_TIMESTAMP,
+        MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, T0, THREAD_COUNT,
+    },
+    CONSENSUS_BOOTSTRAP_PART_SIZE,
 };
 use massa_time::MassaTime;
 
@@ -30,6 +33,7 @@ impl Default for ConsensusConfig {
             end_timestamp: None,
             stats_timespan: MassaTime::from_millis(60000),
             channel_size: CHANNEL_SIZE,
+            bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         }
     }
 }

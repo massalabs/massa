@@ -677,7 +677,11 @@ pub struct BootstrapClientMessageDeserializer {
 
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
-    pub fn new(thread_count: u8, max_datastore_key_length: u8) -> Self {
+    pub fn new(
+        thread_count: u8,
+        max_datastore_key_length: u8,
+        consensus_bootstrap_part_size: u64,
+    ) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
@@ -699,12 +703,11 @@ impl BootstrapClientMessageDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             )),
-            // IMPORTANT TODO: take max_length from config
             block_ids_step_deserializer: StreamingStepDeserializer::new(
                 PreHashSetDeserializer::new(
                     BlockIdDeserializer::new(),
                     Included(0),
-                    Included(42_000),
+                    Included(consensus_bootstrap_part_size),
                 ),
             ),
         }
@@ -721,7 +724,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
-    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 255);
+    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 255, 50);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();

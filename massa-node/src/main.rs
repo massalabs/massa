@@ -44,6 +44,7 @@ use massa_models::config::constants::{
     POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
     PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
+use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolConfig, PoolManager};
@@ -213,6 +214,7 @@ async fn launch(
         max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
         max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
+        consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
     };
 
     // bootstrap
@@ -374,6 +376,7 @@ async fn launch(
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         clock_compensation_millis: bootstrap_state.compensation_millis,
+        bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =

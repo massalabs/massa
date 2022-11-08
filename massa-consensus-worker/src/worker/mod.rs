@@ -56,6 +56,7 @@ pub fn start_consensus_worker(
 ) -> (Box<dyn ConsensusController>, Box<dyn ConsensusManager>) {
     let (tx, rx) = mpsc::sync_channel(10);
     // desync detection timespan
+    let bootstrap_part_size = config.bootstrap_part_size;
     let stats_desync_detection_timespan =
         config.t0.checked_mul(config.periods_per_cycle * 2).unwrap();
     let shared_state = Arc::new(RwLock::new(ConsensusState {
@@ -110,7 +111,7 @@ pub fn start_consensus_worker(
         consensus_thread: Some((tx.clone(), consensus_thread)),
     };
 
-    let controller = ConsensusControllerImpl::new(tx, shared_state);
+    let controller = ConsensusControllerImpl::new(tx, shared_state, bootstrap_part_size);
 
     (Box::new(controller), Box::new(manager))
 }
