@@ -68,7 +68,7 @@ impl InterfaceImpl {
             operation_datastore,
         }];
         execution_context.speculative_ledger.added_changes.0.insert(sender_addr, SetUpdateOrDelete::Set(LedgerEntry {
-            balance: Amount::from_mantissa_scale(1000, 0),
+            balance: Amount::from_mantissa_scale(10000000, 0),
             ..Default::default()
         }));
         let context = Arc::new(Mutex::new(execution_context));
