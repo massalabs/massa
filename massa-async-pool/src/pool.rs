@@ -9,6 +9,7 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncMessageSerializer,
 };
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -22,16 +23,24 @@ use nom::{
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
+const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
 /// Nodes must bootstrap the final message pool when they join the network.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AsyncPool {
     /// Asynchronous pool configuration
     config: AsyncPoolConfig,
 
     /// Messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+
+    /// Hash of the asynchronous pool
+    hash: Hash,
+
+    /// Async message ID serializer for hash computations
+    message_id_ser: AsyncMessageIdSerializer,
 }
 
 impl AsyncPool {
@@ -40,7 +49,19 @@ impl AsyncPool {
         AsyncPool {
             config,
             messages: Default::default(),
+            hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+            message_id_ser: AsyncMessageIdSerializer::new(),
         }
+    }
+
+    /// Internal function used to compute and xor the hash of a message id
+    fn xor_message_id(&mut self, message_id: &AsyncMessageId) {
+        let mut buffer = Vec::new();
+        self.message_id_ser
+            .serialize(message_id, &mut buffer)
+            .expect("this serialization should never be allowed to fail");
+        let message_id_hash = Hash::compute_from(&buffer);
+        self.hash ^= message_id_hash;
     }
 
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
@@ -54,11 +75,13 @@ impl AsyncPool {
                 // add a new message to the pool
                 Change::Add(msg_id, msg) => {
                     self.messages.insert(*msg_id, msg.clone());
+                    self.xor_message_id(msg_id);
                 }
 
                 // delete a message from the pool
                 Change::Delete(msg_id) => {
                     self.messages.remove(msg_id);
+                    self.xor_message_id(msg_id);
                 }
             }
         }
@@ -187,7 +210,11 @@ impl AsyncPool {
         &mut self,
         part: BTreeMap<AsyncMessageId, AsyncMessage>,
     ) -> StreamingStep<AsyncMessageId> {
-        self.messages.extend(part);
+        for (message_id, message) in part {
+            if self.messages.insert(message_id, message).is_none() {
+                self.xor_message_id(&message_id);
+            }
+        }
         if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
             StreamingStep::Ongoing(message_id)
         } else {
