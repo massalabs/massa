@@ -923,7 +923,7 @@
                 "type": "object",
                 "properties": {
                     "header": {
-                        "$ref": "#/components/schemas/Header",
+                        "$ref": "#/components/schemas/WrappedHeader",
                         "description": "signed header"
                     },
                     "operations": {
@@ -1265,7 +1265,8 @@
                         "$ref": "#/components/schemas/EndorsementContent"
                     },
                     "creator_public_key": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
                     },
                     "creator_address": {
                         "type": "string"
@@ -1746,7 +1747,7 @@
                         "type": "boolean"
                     },
                     "operation": {
-                        "$ref": "#/components/schemas/SignedOperation",
+                        "$ref": "#/components/schemas/WrappedOperation",
                         "description": "The operation itself"
                     }
                 },
@@ -1762,8 +1763,8 @@
                 "type": "object",
                 "properties": {
                     "creator_public_key": {
-                        "description": "The public key of the creator of the TX",
-                        "type": "string"
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
                     },
                     "signature": {
                         "$ref": "#/components/schemas/Signature",
@@ -1779,6 +1780,32 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "OperationType": {
+                "description": "Type specific operation content.",
+                "type": "object",
+                "properties": {
+                    "Transaction": {
+                        "$ref": "#/components/schemas/Transaction",
+                        "description": "transfer coins from sender to recipient"
+                    },
+                    "ExecutSC": {
+                        "$ref": "#/components/schemas/ExecuteSC",
+                        "description": "Execute a smart contract."
+                    },
+                    "CallSC": {
+                        "$ref": "#/components/schemas/CallSC",
+                        "description": "Calls an exported function from a stored smart contract"
+                    },
+                    "RollBuy": {
+                        "$ref": "#/components/schemas/RollBuy",
+                        "description": "the sender buys `roll_count` rolls. Roll price is defined in configuration"
+                    },
+                    "RollSell": {
+                        "$ref": "#/components/schemas/RollSell",
+                        "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration"
+                    }
+                }
             },
             "OutputEvent": {
                 "title": "OutputEvent",
@@ -1843,6 +1870,10 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "PublicKey": {
+                "description": "Public key used to check if a message was encoded by the corresponding `PublicKey`.\nGenerated from the `KeyPair` using `SignatureEngine`",
+                "type": "string"
             },
             "PubkeySig": {
                 "description": "Public key and a signature it has produced used for serialization/deserialization purpose",
@@ -1948,6 +1979,19 @@
                 },
                 "additionalProperties": false
             },
+            "RollBuy": {
+                "description": "the sender buys `roll_count` rolls. Roll price is defined in configuration",
+                "required": [
+                    "roll_count"
+                ],
+                "type": "object",
+                "properties": {
+                    "roll_count": {
+                        "description": "roll count",
+                        "type": "number"
+                    }
+                }
+            },
             "RollsInfo": {
                 "title": "Rolls",
                 "required": [
@@ -1968,6 +2012,19 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "RollSell": {
+                "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration",
+                "required": [
+                    "roll_count"
+                ],
+                "type": "object",
+                "properties": {
+                    "roll_count": {
+                        "description": "roll count",
+                        "type": "number"
+                    }
+                }
             },
             "SCContext": {
                 "title": "Context",
@@ -2070,28 +2127,6 @@
                 "description": "Signature generated from a message and a `KeyPair`.",
                 "type": "string"
             },
-            "SignedOperation": {
-                "title": "SignedOperation",
-                "description": "Signed Operation",
-                "required": [
-                    "creator_public_key",
-                    "serialized_content",
-                    "signature"
-                ],
-                "type": "object",
-                "properties": {
-                    "creator_public_key": {
-                        "type": "string"
-                    },
-                    "content": {
-                        "type": "string"
-                    },
-                    "signature": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": false
-            },
             "Slot": {
                 "title": "TSlot",
                 "description": "Slot",
@@ -2169,6 +2204,62 @@
                     "minor": {
                         "description": "",
                         "type": "number"
+                    }
+                }
+            },
+            "WrappedHeader": {
+                "description": "signed operation",
+                "required": [
+                    "content",
+                    "signature",
+                    "creator_public_key",
+                    "creator_address"
+                ],
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "$ref": "#/components/schemas/Header",
+                        "description": "header type"
+                    },
+                    "signature": {
+                        "$ref": "#/components/schemas/Signature",
+                        "description": "signature"
+                    },
+                    "creator_public_key": {
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
+                    },
+                    "creator_address": {
+                        "$ref": "#/components/schemas/Address",
+                        "description": "the content creator address"
+                    }
+                }
+            },
+            "WrappedOperation": {
+                "description": "signed operation",
+                "required": [
+                    "content",
+                    "signature",
+                    "creator_public_key",
+                    "creator_address"
+                ],
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "$ref": "#/components/schemas/OperationType",
+                        "description": "operation type"
+                    },
+                    "signature": {
+                        "$ref": "#/components/schemas/Signature",
+                        "description": "signature"
+                    },
+                    "creator_public_key": {
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
+                    },
+                    "creator_address": {
+                        "$ref": "#/components/schemas/Address",
+                        "description": "the content creator address"
                     }
                 }
             }
@@ -2278,6 +2369,14 @@
                     "$ref": "#/components/schemas/OperationInfo"
                 }
             },
+            "OperationType": {
+                "name": "OperationType",
+                "summary": "OperationType",
+                "description": "A OperationType object",
+                "schema": {
+                    "$ref": "#/components/schemas/OperationType"
+                }
+            },
             "PubkeySig": {
                 "name": "PubkeySig",
                 "summary": "PubkeySig",
@@ -2308,14 +2407,6 @@
                 "description": "A SCOutputEvent object",
                 "schema": {
                     "$ref": "#/components/schemas/SCOutputEvent"
-                }
-            },
-            "SignedOperation": {
-                "name": "SignedOperation",
-                "summary": "Signed operation",
-                "description": "A SignedOperation object",
-                "schema": {
-                    "$ref": "#/components/schemas/SignedOperation"
                 }
             },
             "Staker": {
