@@ -24,6 +24,8 @@ use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
 const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const MISSING_HASH_ERROR: &str =
+    "critical: asynchronous message hash is missing, it should not be the case here";
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -38,9 +40,6 @@ pub struct AsyncPool {
 
     /// Hash of the asynchronous pool
     hash: Hash,
-
-    /// Async message ID serializer for hash computations
-    message_id_ser: AsyncMessageIdSerializer,
 }
 
 impl AsyncPool {
@@ -50,18 +49,7 @@ impl AsyncPool {
             config,
             messages: Default::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
-            message_id_ser: AsyncMessageIdSerializer::new(),
         }
-    }
-
-    /// Internal function used to compute and xor the hash of a message id
-    fn xor_message_id(&mut self, message_id: &AsyncMessageId) {
-        let mut buffer = Vec::new();
-        self.message_id_ser
-            .serialize(message_id, &mut buffer)
-            .expect("this serialization should never be allowed to fail");
-        let message_id_hash = Hash::compute_from(&buffer);
-        self.hash ^= message_id_hash;
     }
 
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
@@ -73,15 +61,16 @@ impl AsyncPool {
         for change in changes.0.iter() {
             match change {
                 // add a new message to the pool
-                Change::Add(msg_id, msg) => {
-                    self.messages.insert(*msg_id, msg.clone());
-                    self.xor_message_id(msg_id);
+                Change::Add(message_id, message) => {
+                    self.messages.insert(*message_id, message.clone());
+                    self.hash ^= message.hash.expect(MISSING_HASH_ERROR);
                 }
 
                 // delete a message from the pool
-                Change::Delete(msg_id) => {
-                    self.messages.remove(msg_id);
-                    self.xor_message_id(msg_id);
+                Change::Delete(message_id) => {
+                    if let Some(removed_message) = self.messages.remove(message_id) {
+                        self.hash ^= removed_message.hash.expect(MISSING_HASH_ERROR);
+                    }
                 }
             }
         }
@@ -146,13 +135,13 @@ impl AsyncPool {
         // gather all selected items and remove them from self.messages
         // iterate in decreasing priority order
         self.messages
-            .drain_filter(|_, msg| {
+            .drain_filter(|_, message| {
                 // check available gas and validity period
-                if available_gas >= msg.max_gas
-                    && slot >= msg.validity_start
-                    && slot < msg.validity_end
+                if available_gas >= message.max_gas
+                    && slot >= message.validity_start
+                    && slot < message.validity_end
                 {
-                    available_gas -= msg.max_gas;
+                    available_gas -= message.max_gas;
                     true
                 } else {
                     false
@@ -211,8 +200,8 @@ impl AsyncPool {
         part: BTreeMap<AsyncMessageId, AsyncMessage>,
     ) -> StreamingStep<AsyncMessageId> {
         for (message_id, message) in part {
-            if self.messages.insert(message_id, message).is_none() {
-                self.xor_message_id(&message_id);
+            if self.messages.insert(message_id, message.clone()).is_none() {
+                self.hash ^= message.hash.expect(MISSING_HASH_ERROR);
             }
         }
         if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
