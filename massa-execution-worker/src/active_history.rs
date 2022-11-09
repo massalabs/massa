@@ -161,7 +161,7 @@ impl ActiveHistory {
                     .state_changes
                     .pos_changes
                     .deferred_credits
-                    .0
+                    .credits
                     .range(slot..)
                     .filter_map(|(&slot, credits)| credits.get(addr).map(|&amount| (slot, amount)))
             })
@@ -180,7 +180,7 @@ impl ActiveHistory {
                     .state_changes
                     .pos_changes
                     .deferred_credits
-                    .0
+                    .credits
                     .get(slot)
                     .cloned()
             })

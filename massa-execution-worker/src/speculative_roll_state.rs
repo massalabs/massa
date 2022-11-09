@@ -142,7 +142,7 @@ impl SpeculativeRollState {
         let credit = self
             .added_changes
             .deferred_credits
-            .0
+            .credits
             .entry(target_slot)
             .or_insert_with(PreHashMap::default);
         credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
@@ -228,7 +228,7 @@ impl SpeculativeRollState {
         }
         if !target_credits.is_empty() {
             let mut credits = DeferredCredits::default();
-            credits.0.insert(target_slot, target_credits);
+            credits.credits.insert(target_slot, target_credits);
             self.added_changes.deferred_credits.nested_extend(credits);
         }
     }
@@ -242,7 +242,12 @@ impl SpeculativeRollState {
         let mut res: HashMap<Slot, Amount> = HashMap::default();
 
         // get added values
-        for (slot, addr_amount) in self.added_changes.deferred_credits.0.range(min_slot..) {
+        for (slot, addr_amount) in self
+            .added_changes
+            .deferred_credits
+            .credits
+            .range(min_slot..)
+        {
             if let Some(amount) = addr_amount.get(address) {
                 let _ = res.try_insert(*slot, *amount);
             };
@@ -256,7 +261,7 @@ impl SpeculativeRollState {
                     .state_changes
                     .pos_changes
                     .deferred_credits
-                    .0
+                    .credits
                     .range(min_slot..)
                 {
                     if let Some(amount) = addr_amount.get(address) {
@@ -269,7 +274,12 @@ impl SpeculativeRollState {
         // get values from final state
         {
             let final_state = self.final_state.read();
-            for (slot, addr_amount) in final_state.pos_state.deferred_credits.0.range(min_slot..) {
+            for (slot, addr_amount) in final_state
+                .pos_state
+                .deferred_credits
+                .credits
+                .range(min_slot..)
+            {
                 if let Some(amount) = addr_amount.get(address) {
                     let _ = res.try_insert(*slot, *amount);
                 };
@@ -470,7 +480,7 @@ impl SpeculativeRollState {
         );
 
         // added deferred credits
-        if let Some(creds) = self.added_changes.deferred_credits.0.get(slot) {
+        if let Some(creds) = self.added_changes.deferred_credits.credits.get(slot) {
             credits.extend(creds.clone());
         }
 

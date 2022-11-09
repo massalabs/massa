@@ -23,7 +23,7 @@ use nom::{
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
-const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const ASYNC_POOL_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 const MISSING_HASH_ERROR: &str =
     "critical: asynchronous message hash is missing, it should not be the case here";
 
@@ -48,7 +48,7 @@ impl AsyncPool {
         AsyncPool {
             config,
             messages: Default::default(),
-            hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+            hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
         }
     }
 

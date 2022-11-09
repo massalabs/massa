@@ -350,7 +350,7 @@ impl PoSFinalState {
     /// Retrieves every deferred credit of the given slot
     pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.deferred_credits
-            .0
+            .credits
             .get(slot)
             .cloned()
             .unwrap_or_default()
@@ -439,9 +439,9 @@ impl PoSFinalState {
             StreamingStep::Finished => return (credits_part, cursor),
         };
         let mut credit_part_last_slot: Option<Slot> = None;
-        for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
-            if credits_part.0.len() < self.config.credits_bootstrap_part_size as usize {
-                credits_part.0.insert(*slot, credits.clone());
+        for (slot, credits) in self.deferred_credits.credits.range((left_bound, Unbounded)) {
+            if credits_part.credits.len() < self.config.credits_bootstrap_part_size as usize {
+                credits_part.credits.insert(*slot, credits.clone());
                 credit_part_last_slot = Some(*slot);
             } else {
                 break;
@@ -483,7 +483,7 @@ impl PoSFinalState {
         self.deferred_credits.nested_extend(part);
         if let Some(slot) = self
             .deferred_credits
-            .0
+            .credits
             .last_key_value()
             .map(|(&slot, _)| slot)
         {

@@ -26,7 +26,7 @@ use std::{
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
-const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone)]
@@ -48,7 +48,7 @@ impl ExecutedOps {
             config,
             sorted_ops: BTreeMap::new(),
             ops: PreHashSet::default(),
-            hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+            hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
         }
     }
 
@@ -215,7 +215,7 @@ fn test_executed_ops_xor_computing() {
     // at this point the hash should have been XORed with itself
     assert_eq!(
         a.hash,
-        Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+        Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
         "'a' was not reset to its initial value"
     );
 }

@@ -139,7 +139,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
         for j in 0u64..r_limit {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
-        deferred_credits.0.insert(
+        deferred_credits.credits.insert(
             Slot {
                 period: i,
                 thread: 0,
