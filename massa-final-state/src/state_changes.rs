@@ -79,8 +79,9 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///     data: vec![1, 2, 3, 4],
+    ///     hash: None,
+    /// }.with_hash();
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
@@ -186,8 +187,9 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///     data: vec![1, 2, 3, 4],
+    ///     hash: None,
+    /// }.with_hash();
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///

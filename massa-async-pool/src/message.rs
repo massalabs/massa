@@ -2,6 +2,7 @@
 
 //! This file defines the structure representing an asynchronous message
 
+use massa_hash::Hash;
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
@@ -69,8 +70,9 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///     data: vec![1, 2, 3, 4],
+    ///     hash: None,
+    /// }.with_hash();
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
@@ -134,8 +136,9 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///     data: vec![1, 2, 3, 4],
+    ///     hash: None,
+    /// }.with_hash();
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
@@ -208,9 +211,24 @@ pub struct AsyncMessage {
 
     /// Raw payload data of the message
     pub data: Vec<u8>,
+
+    /// Hash of the message
+    pub hash: Option<Hash>,
 }
 
 impl AsyncMessage {
+    /// Take an `AsyncMessage` and return it with its hash computed
+    pub fn with_hash(mut self) -> Self {
+        let async_message_ser = AsyncMessageSerializer::new();
+        let mut buffer = Vec::new();
+        async_message_ser
+            .serialize(&self, &mut buffer)
+            .expect("this asynchronous message serialization should not be able to fail");
+        let hash = Hash::compute_from(&buffer);
+        self.hash = Some(hash);
+        self
+    }
+
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
     /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
     pub fn compute_id(&self) -> AsyncMessageId {
@@ -264,8 +282,9 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///     data: vec![1, 2, 3, 4],
+    ///     hash: None,
+    /// }.with_hash();
     /// let mut buffer = Vec::new();
     /// let message_serializer = AsyncMessageSerializer::new();
     /// message_serializer.serialize(&message, &mut buffer).unwrap();
@@ -353,8 +372,9 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///     data: vec![1, 2, 3, 4],
+    ///     hash: None,
+    /// }.with_hash();
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&message, &mut serialized).unwrap();
@@ -433,18 +453,22 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 validity_start,
                 validity_end,
                 data,
-            )| AsyncMessage {
-                emission_slot,
-                emission_index,
-                sender,
-                destination,
-                handler,
-                max_gas,
-                gas_price,
-                coins,
-                validity_start,
-                validity_end,
-                data,
+            )| {
+                AsyncMessage {
+                    emission_slot,
+                    emission_index,
+                    sender,
+                    destination,
+                    handler,
+                    max_gas,
+                    gas_price,
+                    coins,
+                    validity_start,
+                    validity_end,
+                    data,
+                    hash: None,
+                }
+                .with_hash()
             },
         )
         .parse(buffer)
@@ -480,7 +504,9 @@ mod tests {
             validity_start: Slot::new(2, 0),
             validity_end: Slot::new(3, 0),
             data: vec![1, 2, 3, 4],
-        };
+            hash: None,
+        }
+        .with_hash();
         let message_serializer = AsyncMessageSerializer::new();
         let mut serialized = Vec::new();
         message_serializer

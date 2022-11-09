@@ -353,7 +353,9 @@ fn test_take_batch() {
                 gas_price: Amount::from_str("0.1").unwrap(),
                 coins: Amount::from_str("0.3").unwrap(),
                 data: Vec::new(),
-            },
+                hash: None,
+            }
+            .with_hash(),
         );
     }
     assert_eq!(pool.messages.len(), 9);

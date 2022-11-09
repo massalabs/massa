@@ -38,7 +38,9 @@ pub fn get_random_message() -> AsyncMessage {
         validity_start: Slot::new(2, 0),
         validity_end: Slot::new(4, 0),
         data: vec![1, 2, 3],
+        hash: None,
     }
+    .with_hash()
 }
 
 /// Asserts that two instances of `AsyncMessage` are the same
