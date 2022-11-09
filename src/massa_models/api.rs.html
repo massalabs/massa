@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/api.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>api.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/api.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>api.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ef244fc9943488f7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-c11f492748536797.css"><link rel="stylesheet" disabled href="../../static.files/dark-a78f946771c40031.css"><link rel="stylesheet" disabled href="../../static.files/ayu-70b683d68cb31790.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-74087aa2e88f4475.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -593,7 +593,7 @@
 <span class="kw">use </span>std::net::IpAddr;
 
 <span class="doccomment">/// operation input
-</span><span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>OperationInput {
     <span class="doccomment">/// The public key of the creator of the TX
     </span><span class="kw">pub </span>creator_public_key: PublicKey,
@@ -604,7 +604,7 @@
 }
 
 <span class="doccomment">/// node status
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>NodeStatus {
     <span class="doccomment">/// our node id
     </span><span class="kw">pub </span>node_id: NodeId,
@@ -677,7 +677,7 @@
 }
 
 <span class="doccomment">/// Operation and contextual info about it
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>OperationInfo {
     <span class="doccomment">/// id
     </span><span class="kw">pub </span>id: OperationId,
@@ -711,7 +711,7 @@
 }
 
 <span class="doccomment">/// Block status within the graph
-</span><span class="attribute">#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
 </span><span class="kw">pub enum </span>BlockGraphStatus {
     <span class="doccomment">/// received but not yet graph-processed
     </span>Incoming,
@@ -732,7 +732,7 @@
 }
 
 <span class="doccomment">/// Current balance ledger info
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 </span><span class="kw">pub struct </span>LedgerInfo {
     <span class="doccomment">/// final data
     </span><span class="kw">pub </span>final_ledger_info: LedgerData,
@@ -756,7 +756,7 @@
 }
 
 <span class="doccomment">/// Roll counts
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 </span><span class="kw">pub struct </span>RollsInfo {
     <span class="doccomment">/// count taken into account for the current cycle
     </span><span class="kw">pub </span>active_rolls: u64,
@@ -776,7 +776,7 @@
 }
 
 <span class="doccomment">/// All you ever dream to know about an address
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>AddressInfo {
     <span class="doccomment">/// the address
     </span><span class="kw">pub </span>address: Address,
@@ -878,7 +878,7 @@
 }
 
 <span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>IndexedSlot {
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,
@@ -893,7 +893,7 @@
 }
 
 <span class="doccomment">/// Less information about an address
-</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>CompactAddressInfo {
     <span class="doccomment">/// the address
     </span><span class="kw">pub </span>address: Address,
@@ -929,7 +929,7 @@
 }
 
 <span class="doccomment">/// All you wanna know about an endorsement
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize, Clone)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize, Clone)]
 </span><span class="kw">pub struct </span>EndorsementInfo {
     <span class="doccomment">/// id
     </span><span class="kw">pub </span>id: EndorsementId,
@@ -963,7 +963,7 @@
 }
 
 <span class="doccomment">/// slot / amount pair
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>SlotAmount {
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,
@@ -972,7 +972,7 @@
 }
 
 <span class="doccomment">/// refactor to delete
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>BlockInfo {
     <span class="doccomment">/// block id
     </span><span class="kw">pub </span>id: BlockId,
@@ -981,7 +981,7 @@
 }
 
 <span class="doccomment">/// Block content
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>BlockInfoContent {
     <span class="doccomment">/// true if final
     </span><span class="kw">pub </span>is_final: bool,
@@ -1016,7 +1016,7 @@
 }
 
 <span class="doccomment">/// A block resume (without the block itself)
-</span><span class="attribute">#[derive(Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>BlockSummary {
     <span class="doccomment">/// id
     </span><span class="kw">pub </span>id: BlockId,
@@ -1064,7 +1064,7 @@
 }
 
 <span class="doccomment">/// Just a wrapper with a optional beginning and end
-</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Copy, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Clone, Copy, Serialize)]
 </span><span class="kw">pub struct </span>TimeInterval {
     <span class="doccomment">/// optional start slot
     </span><span class="kw">pub </span>start: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
@@ -1073,7 +1073,7 @@
 }
 
 <span class="doccomment">/// Datastore entry query input structure
-</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Clone, Serialize)]
 </span><span class="kw">pub struct </span>DatastoreEntryInput {
     <span class="doccomment">/// associated address of the entry
     </span><span class="kw">pub </span>address: Address,
@@ -1082,7 +1082,7 @@
 }
 
 <span class="doccomment">/// Datastore entry query output structure
-</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Clone, Serialize)]
 </span><span class="kw">pub struct </span>DatastoreEntryOutput {
     <span class="doccomment">/// final datastore entry value
     </span><span class="kw">pub </span>final_value: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
@@ -1099,7 +1099,7 @@
 }
 
 <span class="doccomment">/// filter used when retrieving SC output events
-</span><span class="attribute">#[derive(Default, Debug, Deserialize, Clone, Serialize)]
+</span><span class="attr">#[derive(Default, Debug, Deserialize, Clone, Serialize)]
 </span><span class="kw">pub struct </span>EventFilter {
     <span class="doccomment">/// optional start slot
     </span><span class="kw">pub </span>start: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
@@ -1120,7 +1120,7 @@
 }
 
 <span class="doccomment">/// read only bytecode execution request
-</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Clone, Serialize)]
 </span><span class="kw">pub struct </span>ReadOnlyBytecodeExecution {
     <span class="doccomment">/// max available gas
     </span><span class="kw">pub </span>max_gas: u64,
@@ -1135,7 +1135,7 @@
 }
 
 <span class="doccomment">/// read SC call request
-</span><span class="attribute">#[derive(Debug, Deserialize, Clone, Serialize)]
+</span><span class="attr">#[derive(Debug, Deserialize, Clone, Serialize)]
 </span><span class="kw">pub struct </span>ReadOnlyCall {
     <span class="doccomment">/// max available gas
     </span><span class="kw">pub </span>max_gas: u64,
@@ -1151,4 +1151,4 @@
     </span><span class="kw">pub </span>caller_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (85f4f41de 2022-11-08)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>
