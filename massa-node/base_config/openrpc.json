@@ -1391,7 +1391,8 @@
                 "required": [
                     "executed_at",
                     "output_events",
-                    "result"
+                    "result",
+                    "gas_cost"
                 ],
                 "type": "object",
                 "properties": {
@@ -1405,8 +1406,12 @@
                     "output_events": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/OutputEvent"
+                            "$ref": "#/components/schemas/SCOutputEvent"
                         }
+                    },
+                    "gas_cost": {
+                        "description": "The gas cost for the execution",
+                        "type": "number"
                     }
                 },
                 "additionalProperties": false
@@ -1860,23 +1865,6 @@
                         "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration"
                     }
                 }
-            },
-            "OutputEvent": {
-                "title": "OutputEvent",
-                "required": [
-                    "context",
-                    "data"
-                ],
-                "type": "object",
-                "properties": {
-                    "context": {
-                        "$ref": "#/components/schemas/SCOEContext"
-                    },
-                    "data": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": false
             },
             "PoolStats": {
                 "title": "PoolStats",
@@ -2349,6 +2337,14 @@
                 "description": "A ExecuteReadOnlyResponse object",
                 "schema": {
                     "$ref": "#/components/schemas/ExecuteReadOnlyResponse"
+                }
+            },
+            "EventFilter": {
+                "name": "EventFilter",
+                "summary": "EventFilter",
+                "description": "A EventFilter object",
+                "schema": {
+                    "$ref": "#/components/schemas/EventFilter"
                 }
             },
             "GraphInterval": {
