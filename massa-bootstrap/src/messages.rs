@@ -78,6 +78,8 @@ pub enum BootstrapServerMessage {
         final_state_changes: Vec<(Slot, StateChanges)>,
         /// Part of the consensus graph
         consensus_part: BootstrapableGraph,
+        /// Outdated block ids in the current consensus graph bootstrap
+        consensus_outdated_ids: PreHashSet<BlockId>,
     },
     /// Message sent when the final state and consensus bootstrap are finished
     BootstrapFinished,
@@ -110,6 +112,7 @@ pub struct BootstrapServerMessageSerializer {
     peers_serializer: BootstrapPeersSerializer,
     state_changes_serializer: StateChangesSerializer,
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
+    block_id_set_serializer: PreHashSetSerializer<BlockId, BlockIdSerializer>,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
     async_pool_serializer: AsyncPoolSerializer,
@@ -135,6 +138,7 @@ impl BootstrapServerMessageSerializer {
             peers_serializer: BootstrapPeersSerializer::new(),
             state_changes_serializer: StateChangesSerializer::new(),
             bootstrapable_graph_serializer: BootstrapableGraphSerializer::new(),
+            block_id_set_serializer: PreHashSetSerializer::new(BlockIdSerializer::new()),
             vec_u8_serializer: VecU8Serializer::new(),
             slot_serializer: SlotSerializer::new(),
             async_pool_serializer: AsyncPoolSerializer::new(),
@@ -191,6 +195,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 exec_ops_part,
                 final_state_changes,
                 consensus_part,
+                consensus_outdated_ids,
             } => {
                 // message type
                 self.u32_serializer
@@ -219,9 +224,12 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     self.state_changes_serializer
                         .serialize(state_changes, buffer)?;
                 }
-                // consensus
+                // consensus graph
                 self.bootstrapable_graph_serializer
                     .serialize(consensus_part, buffer)?;
+                // consensus outdated ids
+                self.block_id_set_serializer
+                    .serialize(&consensus_outdated_ids, buffer)?;
             }
             BootstrapServerMessage::BootstrapFinished => {
                 self.u32_serializer
@@ -256,6 +264,7 @@ pub struct BootstrapServerMessageDeserializer {
     length_state_changes: U64VarIntDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
+    block_id_set_deserializer: PreHashSetDeserializer<BlockId, BlockIdDeserializer>,
     ledger_bytes_deserializer: VecU8Deserializer,
     length_bootstrap_error: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
@@ -331,6 +340,11 @@ impl BootstrapServerMessageDeserializer {
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+            ),
+            block_id_set_deserializer: PreHashSetDeserializer::new(
+                BlockIdDeserializer::new(),
+                Included(0),
+                Included(max_bootstrap_blocks as u64),
             ),
             ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(0),
@@ -468,6 +482,9 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed consensus_part deserialization", |input| {
                         self.bootstrapable_graph_deserializer.deserialize(input)
                     }),
+                    context("Failed consensus_outdated_ids deserialization", |input| {
+                        self.block_id_set_deserializer.deserialize(input)
+                    }),
                 ))
                 .map(
                     |(
@@ -479,6 +496,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         exec_ops_part,
                         final_state_changes,
                         consensus_part,
+                        consensus_outdated_ids,
                     )| {
                         BootstrapServerMessage::BootstrapPart {
                             slot,
@@ -489,6 +507,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             exec_ops_part,
                             final_state_changes,
                             consensus_part,
+                            consensus_outdated_ids,
                         }
                     },
                 )

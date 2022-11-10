@@ -462,6 +462,7 @@ pub async fn stream_bootstrap_information(
                 exec_ops_part,
                 final_state_changes,
                 consensus_part,
+                consensus_outdated_ids,
             }),
         )
         .await
