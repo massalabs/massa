@@ -130,17 +130,10 @@ impl SpeculativeRollState {
         .expect("unexpected slot overflow in try_sell_rolls");
 
         // Note 1: Deferred credits are stored as absolute value
-        // Note 2: Deferred credits are credited at the beginning of the slot execution
-        // (before the block is executed)
-        // So we retrieve deferred credits from the next slot
-        let next_slot = slot.get_next_slot(slot.thread)
-            .expect("Unable to compute next slot");
-        let deferred_credits = self.get_address_deferred_credits(&seller_addr, next_slot);
-        let deferred_credits_amount = deferred_credits
-            .into_iter()
-            .last()
-            .map(|(_slot, amount)| amount)
-            .unwrap_or_default();
+        let new_deferred_credits = self
+            .get_address_deferred_credit_for_slot(&seller_addr, &target_slot)
+            .unwrap_or_default()
+            .saturating_add(roll_price.saturating_mul_u64(roll_count));
 
         // Remove the rolls
         self
@@ -150,16 +143,9 @@ impl SpeculativeRollState {
             .insert_entry(owned_count.saturating_sub(roll_count));
 
         // Add deferred credits (reimbursement) corresponding to the sold rolls value
-        let credit = self
-            .added_changes
-            .deferred_credits
-            .0
-            .entry(target_slot)
-            .or_insert_with(PreHashMap::default);
-
-        credit.insert(*seller_addr, deferred_credits_amount.saturating_add(
-            roll_price.saturating_mul_u64(roll_count)
-        ));
+        self.added_changes
+             .deferred_credits
+             .insert(*seller_addr, target_slot,  new_deferred_credits);
 
         Ok(())
     }
@@ -291,6 +277,34 @@ impl SpeculativeRollState {
         }
 
         res.into_iter().filter(|(_s, v)| !v.is_zero()).collect()
+    }
+
+    /// Gets the deferred credits for a given address that will be credited at a given slot
+    fn get_address_deferred_credit_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
+
+        // search in the added changes
+        if let Some(v) = self.added_changes
+            .deferred_credits
+            .get_address_deferred_credit_for_slot(addr, slot) {
+            return Some(v);
+        }
+
+        // search in the history
+        if let Some(v) = self.active_history
+            .read()
+            .get_deferred_credit_for(addr, slot) {
+            return Some(v);
+        }
+
+        // search in the final state
+        if let Some(v) = self.final_state
+            .read()
+            .pos_state.deferred_credits
+            .get_address_deferred_credit_for_slot(addr, slot) {
+            return Some(v);
+        }
+
+        None
     }
 
     /// Get the production statistics for a given address at a given cycle.
@@ -480,7 +494,7 @@ impl SpeculativeRollState {
         credits.extend(
             self.active_history
                 .read()
-                .fetch_all_deferred_credits_at(slot),
+                .get_all_deferred_credits_for(slot)
         );
 
         // added deferred credits

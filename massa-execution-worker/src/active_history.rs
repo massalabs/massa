@@ -143,38 +143,8 @@ impl ActiveHistory {
         })
     }
 
-    /*
-    /// Traverse the whole history and return every deferred credit of `addr` _after_ `slot` (included).
-    ///
-    /// # Arguments
-    /// * `slot`: slot _after_ which we fetch the credits
-    /// * `addr`: address to fetch the credits from
-    #[allow(dead_code)]
-    pub fn fetch_deferred_credits_after(
-        &self,
-        slot: &Slot,
-        addr: &Address,
-    ) -> BTreeMap<Slot, Amount> {
-        self.0
-            .iter()
-            .flat_map(|output| {
-                output
-                    .state_changes
-                    .pos_changes
-                    .deferred_credits
-                    .0
-                    .range(slot..)
-                    .filter_map(|(&slot, credits)| credits.get(addr).map(|&amount| (slot, amount)))
-            })
-            .collect()
-    }
-    */
-
-    /// Return deferred credits in active history _at_ `slot`
-    ///
-    /// # Arguments
-    /// * `slot`: slot _at_ which we fetch the credits
-    pub fn fetch_all_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
+    /// Gets all the deferred credits that will be credited at a given slot
+    pub fn get_all_deferred_credits_for(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.0
             .iter()
             .filter_map(|output| {
@@ -188,6 +158,22 @@ impl ActiveHistory {
             })
             .flatten()
             .collect()
+    }
+
+    /// Gets the deferred credits for a given address that will be credited at a given slot
+    pub(crate) fn get_deferred_credit_for(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
+        for hist_item in self.0
+            .iter()
+            .rev() {
+            if let Some(v) = hist_item
+                    .state_changes
+                    .pos_changes
+                    .deferred_credits
+                    .get_address_deferred_credit_for_slot(addr, slot) {
+                return Some(v);
+            }
+        }
+        None
     }
 
     /// Gets the index of a slot in history
