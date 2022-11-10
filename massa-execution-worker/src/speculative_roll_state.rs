@@ -139,8 +139,7 @@ impl SpeculativeRollState {
         self
             .added_changes
             .roll_changes
-            .entry(*seller_addr)
-            .insert_entry(owned_count.saturating_sub(roll_count));
+            .insert(*seller_addr, owned_count.saturating_sub(roll_count));
 
         // Add deferred credits (reimbursement) corresponding to the sold rolls value
         self.added_changes
@@ -218,10 +217,7 @@ impl SpeculativeRollState {
                 if owned_count != 0 {
                     if let Some(amount) = roll_price.checked_mul_u64(owned_count) {
                         target_credits.insert(addr, amount);
-                        self.added_changes
-                            .roll_changes
-                            .entry(addr)
-                            .insert_entry(0);
+                        self.added_changes.roll_changes.insert(addr, 0);
                     }
                 }
             }
@@ -292,7 +288,7 @@ impl SpeculativeRollState {
         // search in the history
         if let Some(v) = self.active_history
             .read()
-            .get_deferred_credit_for(addr, slot) {
+            .get_adress_deferred_credit_for(addr, slot) {
             return Some(v);
         }
 

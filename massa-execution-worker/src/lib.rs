@@ -81,7 +81,6 @@
 #![feature(is_sorted)]
 #![feature(map_try_insert)]
 #![feature(let_chains)]
-#![feature(entry_insert)]
 
 mod active_history;
 mod context;
