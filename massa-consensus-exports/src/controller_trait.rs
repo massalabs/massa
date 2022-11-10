@@ -49,6 +49,7 @@ pub trait ConsensusController: Send + Sync {
     /// * a part of the graph
     /// * outdated block ids
     /// * the updated streaming step
+    #[allow(clippy::type_complexity)]
     fn get_bootstrap_part(
         &self,
         cursor: StreamingStep<PreHashSet<BlockId>>,

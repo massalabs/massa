@@ -229,7 +229,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(consensus_part, buffer)?;
                 // consensus outdated ids
                 self.block_id_set_serializer
-                    .serialize(&consensus_outdated_ids, buffer)?;
+                    .serialize(consensus_outdated_ids, buffer)?;
             }
             BootstrapServerMessage::BootstrapFinished => {
                 self.u32_serializer
