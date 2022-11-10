@@ -3,7 +3,8 @@
 
 use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::{EndpointsServer, Public, RpcServer, StopHandle, Value, API};
+use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
+use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
@@ -86,7 +87,7 @@ impl API<Public> {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl RpcServer for API<Public> {
     async fn serve(self, url: &SocketAddr) -> Result<StopHandle, JsonRpseeError> {
         crate::serve(self, url).await
@@ -94,8 +95,8 @@ impl RpcServer for API<Public> {
 }
 
 #[doc(hidden)]
-#[async_trait::async_trait]
-impl EndpointsServer for API<Public> {
+#[async_trait]
+impl MassaRpcServer for API<Public> {
     async fn stop_node(&self) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
@@ -140,8 +141,11 @@ impl EndpointsServer for API<Public> {
                     match deserializer.deserialize::<DeserializeError>(&v) {
                         Ok((_, deserialized)) => Some(deserialized),
                         Err(e) => {
-                            let err_str = format!("Operation datastore error: {}", e);
-                            return Err(ApiError::InconsistencyError(err_str).into());
+                            return Err(ApiError::InconsistencyError(format!(
+                                "Operation datastore error: {}",
+                                e
+                            ))
+                            .into())
                         }
                     }
                 }
@@ -301,75 +305,49 @@ impl EndpointsServer for API<Public> {
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
-        let closure = async move || {
-            let now = MassaTime::now(compensation_millis)?;
-            let last_slot = get_latest_block_slot_at_timestamp(
-                consensus_settings.thread_count,
-                consensus_settings.t0,
-                consensus_settings.genesis_timestamp,
-                now,
-            )?;
-
-            let execution_stats = execution_controller.get_stats();
-
-            let (consensus_stats, network_stats, peers) = tokio::join!(
-                consensus_command_sender.get_stats(),
-                network_command_sender.get_network_stats(),
-                network_command_sender.get_peers()
-            );
-
-        let last_slot = match last_slot_result {
-            Ok(last_slot) => last_slot,
-            Err(e) => {
-                return Err(ApiError::from(e).into());
-            }
+        let now = match MassaTime::now(compensation_millis) {
+            Ok(now) => now,
+            Err(e) => return Err(ApiError::from(e).into()),
         };
 
-            Ok(NodeStatus {
-                node_id,
-                node_ip: network_config.routable_ip,
-                version,
-                current_time: now,
-                connected_nodes: peers?
-                    .peers
-                    .iter()
-                    .flat_map(|(ip, peer)| {
-                        peer.active_nodes
-                            .iter()
-                            .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
-                    })
-                    .collect(),
-                last_slot,
-                next_slot: last_slot
-                    .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_next_slot(consensus_settings.thread_count)?,
-                execution_stats,
-                consensus_stats: consensus_stats?,
-                network_stats: network_stats?,
-                pool_stats,
-                config,
-                current_cycle: last_slot
-                    .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_cycle(consensus_settings.periods_per_cycle),
-            })
+        let last_slot_result = get_latest_block_slot_at_timestamp(
+            consensus_settings.thread_count,
+            consensus_settings.t0,
+            consensus_settings.genesis_timestamp,
+            now,
+        );
+        let last_slot = match last_slot_result {
+            Ok(last_slot) => last_slot,
+            Err(e) => return Err(ApiError::from(e).into()),
+        };
+
+        let execution_stats = execution_controller.get_stats();
+
+        let (consensus_stats_result, network_stats_resultat, peers_result) = tokio::join!(
+            consensus_command_sender.get_stats(),
+            network_command_sender.get_network_stats(),
+            network_command_sender.get_peers()
+        );
+
+        let consensus_stats = match consensus_stats_result {
+            Ok(consensus_stats) => consensus_stats,
+            Err(e) => return Err(ApiError::from(e).into()),
         };
 
         let network_stats = match network_stats_resultat {
             Ok(network_stats) => network_stats,
-            Err(e) => {
-                return Err(ApiError::from(e).into());
-            }
+            Err(e) => return Err(ApiError::from(e).into()),
+        };
+
+        let peers = match peers_result {
+            Ok(peers) => peers,
+            Err(e) => return Err(ApiError::from(e).into()),
         };
 
         let pool_stats = (
             pool_command_sender.get_operation_count(),
             pool_command_sender.get_endorsement_count(),
         );
-
-        let peers = match peers_result {
-            Ok(peers) => peers,
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
 
         let next_slot_result = last_slot
             .unwrap_or_else(|| Slot::new(0, 0))
@@ -409,8 +387,11 @@ impl EndpointsServer for API<Public> {
 
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || Ok(consensus_command_sender.get_cliques().await?);
-        Box::pin(closure())
+        let clicques_result = consensus_command_sender.get_cliques().await;
+        match clicques_result {
+            Ok(cliques) => Ok(cliques),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
@@ -418,23 +399,9 @@ impl EndpointsServer for API<Public> {
         let api_config = self.0.api_settings.clone();
         let compensation_millis = self.0.compensation_millis;
 
-        let closure = async move || {
-            let curr_cycle = get_latest_block_slot_at_timestamp(
-                cfg.thread_count,
-                cfg.t0,
-                cfg.genesis_timestamp,
-                MassaTime::now(compensation_millis)?,
-            )?
-            .unwrap_or_else(|| Slot::new(0, 0))
-            .get_cycle(cfg.periods_per_cycle);
-            let mut staker_vec = execution_controller
-                .get_cycle_active_rolls(curr_cycle)
-                .into_iter()
-                .collect::<Vec<(Address, u64)>>();
-            staker_vec.sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| {
-                roll_counts_b.cmp(&roll_counts_a)
-            });
-            Ok(staker_vec)
+        let now = match MassaTime::now(compensation_millis) {
+            Ok(now) => now,
+            Err(e) => return Err(ApiError::from(e).into()),
         };
 
         let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
@@ -448,9 +415,7 @@ impl EndpointsServer for API<Public> {
             Ok(curr_cycle) => curr_cycle
                 .unwrap_or_else(|| Slot::new(0, 0))
                 .get_cycle(cfg.periods_per_cycle),
-            Err(e) => {
-                return Err(ApiError::from(e).into());
-            }
+            Err(e) => return Err(ApiError::from(e).into()),
         };
 
         let mut staker_vec = execution_controller
@@ -495,28 +460,23 @@ impl EndpointsServer for API<Public> {
                 return Err(ApiError::BadRequest("too many arguments".into()));
             }
 
-            // check finality by cross-referencing Consensus and looking for final blocks that contain the op
-            let is_final: Vec<bool> = {
-                let involved_blocks: Vec<BlockId> = storage_info
-                    .iter()
-                    .flat_map(|(_op, bs)| bs.iter())
-                    .unique()
-                    .cloned()
-                    .collect();
-                let involved_block_statuses = consensus_command_sender
-                    .get_block_statuses(&involved_blocks)
-                    .await?;
-                let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
-                    .into_iter()
-                    .zip(involved_block_statuses.into_iter())
-                    .collect();
-                storage_info
-                    .iter()
-                    .map(|(_op, bs)| {
-                        bs.iter()
-                            .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
-                    })
-                    .collect()
+        // check finality by cross-referencing Consensus and looking for final blocks that contain the op
+        let is_final: Vec<bool> = {
+            let involved_blocks: Vec<BlockId> = storage_info
+                .iter()
+                .flat_map(|(_op, bs)| bs.iter())
+                .unique()
+                .cloned()
+                .collect();
+
+            let involved_block_statuses = match consensus_command_sender
+                .get_block_statuses(&involved_blocks)
+                .await
+            {
+                Ok(block_statues) => block_statues,
+                Err(e) => {
+                    return Err(ApiError::from(e).into());
+                }
             };
 
             let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
@@ -606,6 +566,7 @@ impl EndpointsServer for API<Public> {
                     })
                     .collect()
             };
+
             let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                 .into_iter()
                 .zip(involved_block_statuses.into_iter())
@@ -653,15 +614,12 @@ impl EndpointsServer for API<Public> {
             }
         };
 
-            let graph_status = consensus_command_sender
-                .get_block_statuses(&[id])
-                .await?
+        let graph_status = match consensus_command_sender.get_block_statuses(&[id]).await {
+            Ok(block_status) => block_status
                 .into_iter()
                 .next()
                 .expect("expected get_block_statuses to return one element"),
-            Err(e) => {
-                return Err(ApiError::from(e).into());
-            }
+            Err(e) => return Err(ApiError::from(e).into()),
         };
 
         let is_final = graph_status == BlockGraphStatus::Final;
@@ -688,19 +646,13 @@ impl EndpointsServer for API<Public> {
     ) -> BoxFuture<Result<Option<Block>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let storage = self.0.storage.clone_without_refs();
-        let closure = async move || {
-            let block_id_result = consensus_command_sender
-                .get_blockclique_block_at_slot(slot)
-                .await;
-            let block_id = match block_id_result? {
-                Some(id) => id,
-                None => return Ok(None),
-            };
-            let res = storage
-                .read_blocks()
-                .get(&block_id)
-                .map(|b| b.content.clone());
-            Ok(res)
+
+        let block_id_option = match consensus_command_sender
+            .get_blockclique_block_at_slot(slot)
+            .await
+        {
+            Ok(graph) => graph,
+            Err(e) => return Err(ApiError::from(e).into()),
         };
 
         let block_id = match block_id_option {
@@ -723,25 +675,48 @@ impl EndpointsServer for API<Public> {
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let consensus_settings = self.0.consensus_config.clone();
-        let closure = async move || {
-            // filter blocks from graph_export
-            let (start_slot, end_slot) = time_range_to_slot_range(
-                consensus_settings.thread_count,
-                consensus_settings.t0,
-                consensus_settings.genesis_timestamp,
-                time.start,
-                time.end,
-            )?;
-            let graph = consensus_command_sender
-                .get_block_graph_status(start_slot, end_slot)
-                .await?;
-            let mut res = Vec::with_capacity(graph.active_blocks.len());
-            let blockclique = graph
-                .max_cliques
-                .iter()
-                .find(|clique| clique.is_blockclique)
-                .ok_or_else(|| ApiError::InconsistencyError("missing blockclique".to_string()))?;
-            for (id, exported_block) in graph.active_blocks.into_iter() {
+
+        // filter blocks from graph_export
+        let time_range_to_slot_range_result = time_range_to_slot_range(
+            consensus_settings.thread_count,
+            consensus_settings.t0,
+            consensus_settings.genesis_timestamp,
+            time.start,
+            time.end,
+        );
+
+        let (start_slot, end_slot) = match time_range_to_slot_range_result {
+            Ok(time_range_to_slot_range) => time_range_to_slot_range,
+            Err(e) => return Err(ApiError::from(e).into()),
+        };
+
+        let graph = match consensus_command_sender
+            .get_block_graph_status(start_slot, end_slot)
+            .await
+        {
+            Ok(graph) => graph,
+            Err(e) => return Err(ApiError::from(e).into()),
+        };
+
+        let mut res = Vec::with_capacity(graph.active_blocks.len());
+        let blockclique = graph
+            .max_cliques
+            .iter()
+            .find(|clique| clique.is_blockclique)
+            .ok_or_else(|| ApiError::InconsistencyError("missing blockclique".to_string()))?;
+        for (id, exported_block) in graph.active_blocks.into_iter() {
+            res.push(BlockSummary {
+                id,
+                is_final: exported_block.is_final,
+                is_stale: false,
+                is_in_blockclique: blockclique.block_ids.contains(&id),
+                slot: exported_block.header.content.slot,
+                creator: exported_block.header.creator_address,
+                parents: exported_block.header.content.parents,
+            });
+        }
+        for (id, (reason, (slot, creator, parents))) in graph.discarded_blocks.into_iter() {
+            if reason == DiscardReason::Stale {
                 res.push(BlockSummary {
                     id,
                     is_final: false,
@@ -915,51 +890,57 @@ impl EndpointsServer for API<Public> {
         let mut protocol_sender = self.0.protocol_command_sender.clone();
         let api_cfg = self.0.api_settings.clone();
         let mut to_send = self.0.storage.clone_without_refs();
-        let closure = async move || {
-            if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::BadRequest("too many arguments".into()));
-            }
-            let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
-                api_cfg.max_datastore_value_length,
-                api_cfg.max_function_name_length,
-                api_cfg.max_parameter_size,
-                api_cfg.max_op_datastore_entry_count,
-                api_cfg.max_op_datastore_key_length,
-                api_cfg.max_op_datastore_value_length,
-            ));
-            let verified_ops = ops
-                .into_iter()
-                .map(|op_input| {
-                    let mut op_serialized = Vec::new();
-                    op_serialized.extend(op_input.signature.to_bytes());
-                    op_serialized.extend(op_input.creator_public_key.to_bytes());
-                    op_serialized.extend(op_input.serialized_content);
-                    let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
-                        .deserialize::<DeserializeError>(&op_serialized)
-                        .map_err(|err| {
-                            ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
-                        })?;
-                    if rest.is_empty() {
-                        Ok(op)
-                    } else {
-                        Err(ApiError::ModelsError(ModelsError::DeserializeError(
-                            "There is data left after operation deserialization".to_owned(),
-                        )))
-                    }
-                })
-                .map(|op| match op {
-                    Ok(operation) => {
-                        operation.verify_signature()?;
-                        Ok(operation)
-                    }
-                    Err(e) => Err(e),
-                })
-                .collect::<Result<Vec<WrappedOperation>, ApiError>>()?;
-            to_send.store_operations(verified_ops.clone());
-            let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
-            cmd_sender.add_operations(to_send.clone());
-            protocol_sender.propagate_operations(to_send).await?;
-            Ok(ids)
+
+        if ops.len() as u64 > api_cfg.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+        let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
+            api_cfg.max_datastore_value_length,
+            api_cfg.max_function_name_length,
+            api_cfg.max_parameter_size,
+            api_cfg.max_op_datastore_entry_count,
+            api_cfg.max_op_datastore_key_length,
+            api_cfg.max_op_datastore_value_length,
+        ));
+        let verified_ops = ops
+            .into_iter()
+            .map(|op_input| {
+                let mut op_serialized = Vec::new();
+                op_serialized.extend(op_input.signature.to_bytes());
+                op_serialized.extend(op_input.creator_public_key.to_bytes());
+                op_serialized.extend(op_input.serialized_content);
+                let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
+                    .deserialize::<DeserializeError>(&op_serialized)
+                    .map_err(|err| {
+                        ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+                    })?;
+                if rest.is_empty() {
+                    Ok(op)
+                } else {
+                    Err(ApiError::ModelsError(ModelsError::DeserializeError(
+                        "There is data left after operation deserialization".to_owned(),
+                    ))
+                    .into())
+                }
+            })
+            .map(|op| match op {
+                Ok(operation) => {
+                    let _verify_signature = match operation.verify_signature() {
+                        Ok(()) => (),
+                        Err(e) => return Err(ApiError::from(e).into()),
+                    };
+                    Ok(operation)
+                }
+                Err(e) => Err(e),
+            })
+            .collect::<RpcResult<Vec<WrappedOperation>>>()?;
+        to_send.store_operations(verified_ops.clone());
+        let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
+        cmd_sender.add_operations(to_send.clone());
+
+        let _propagate_operation = match protocol_sender.propagate_operations(to_send).await {
+            Ok(()) => (),
+            Err(e) => return Err(ApiError::from(e).into()),
         };
         Ok(ids)
     }
