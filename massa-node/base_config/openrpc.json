@@ -155,7 +155,7 @@
                     "description": "Slot of the block",
                     "schema": {
                         "type": "object",
-                        "$ref": "#/components/schemas/ExecutedAt"
+                        "$ref": "#/components/schemas/Slot"
                     },
                     "required": true
                 }
@@ -1535,7 +1535,7 @@
                 "type": "object",
                 "properties": {
                     "slot": {
-                        "$ref": "#/components/schemas/ExecutedAt",
+                        "$ref": "#/components/schemas/Slot",
                         "description": "When was it generated"
                     },
                     "block": {
@@ -2079,7 +2079,7 @@
                 "type": "object",
                 "properties": {
                     "slot": {
-                        "$ref": "#/components/schemas/ExecutedAt"
+                        "$ref": "#/components/schemas/Slot"
                     },
                     "block": {
                         "description": "Block Id",
