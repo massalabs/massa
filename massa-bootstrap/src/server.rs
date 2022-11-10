@@ -1,7 +1,7 @@
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
-use massa_consensus_exports::ConsensusController;
+use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
 use massa_models::{
@@ -389,17 +389,29 @@ pub async fn stream_bootstrap_information(
             && last_cycle_step.finished()
             && last_credits_step.finished()
             && last_ops_step.finished()
-            && final_state_changes.is_empty()
         {
             StreamingStep::Finished(Some(current_slot))
         } else {
             StreamingStep::Ongoing(current_slot)
         };
 
-        // Stream consensus blocks
-        let (consensus_part, new_consensus_step) = consensus_controller
-            .get_bootstrap_part(last_consensus_step, final_state_global_step)?;
-        last_consensus_step = new_consensus_step.clone();
+        // Setup final state changes cursor
+        let final_state_changes_step = if final_state_changes.is_empty() {
+            StreamingStep::Finished(Some(current_slot))
+        } else {
+            StreamingStep::Ongoing(current_slot)
+        };
+
+        // Stream consensus blocks if final state base bootstrap is finished
+        let mut consensus_part = BootstrapableGraph {
+            final_blocks: Default::default(),
+        };
+        if final_state_global_step.finished() {
+            let (part, new_consensus_step) = consensus_controller
+                .get_bootstrap_part(last_consensus_step, final_state_changes_step)?;
+            consensus_part = part;
+            last_consensus_step = new_consensus_step;
+        }
 
         // Logs for an easier diagnostic if needed
         debug!(
@@ -408,14 +420,17 @@ pub async fn stream_bootstrap_information(
         );
         debug!(
             "Consensus blocks bootstrap cursor: {:?}",
-            new_consensus_step
+            last_consensus_step
         );
-        if let StreamingStep::Ongoing(ids) = &new_consensus_step {
+        if let StreamingStep::Ongoing(ids) = &last_consensus_step {
             debug!("Consensus bootstrap cursor length: {}", ids.len());
         }
 
         // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
-        if final_state_global_step.finished() && new_consensus_step.finished() {
+        if final_state_global_step.finished()
+            && final_state_changes_step.finished()
+            && last_consensus_step.finished()
+        {
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::BootstrapFinished),
@@ -434,34 +449,29 @@ pub async fn stream_bootstrap_information(
         }
 
         // At this point we know that consensus, final state or both are not finished
-        match final_state_global_step {
-            StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
-                match tokio::time::timeout(
-                    write_timeout,
-                    server.send(BootstrapServerMessage::BootstrapPart {
-                        slot,
-                        ledger_part,
-                        async_pool_part,
-                        pos_cycle_part,
-                        pos_credits_part,
-                        exec_ops_part,
-                        final_state_changes,
-                        consensus_part,
-                    }),
-                )
-                .await
-                {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "bootstrap ask ledger part send timed out",
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                }?;
-            }
-            _ => (),
-        };
+        match tokio::time::timeout(
+            write_timeout,
+            server.send(BootstrapServerMessage::BootstrapPart {
+                slot: current_slot,
+                ledger_part,
+                async_pool_part,
+                pos_cycle_part,
+                pos_credits_part,
+                exec_ops_part,
+                final_state_changes,
+                consensus_part,
+            }),
+        )
+        .await
+        {
+            Err(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap ask ledger part send timed out",
+            )
+            .into()),
+            Ok(Err(e)) => Err(e),
+            Ok(Ok(_)) => Ok(()),
+        }?;
     }
     Ok(())
 }

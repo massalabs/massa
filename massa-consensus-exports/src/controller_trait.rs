@@ -50,7 +50,7 @@ pub trait ConsensusController: Send + Sync {
     fn get_bootstrap_part(
         &self,
         cursor: StreamingStep<PreHashSet<BlockId>>,
-        _execution_cursor: StreamingStep<Slot>,
+        execution_cursor: StreamingStep<Slot>,
     ) -> Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError>;
 
     /// Get the stats of the consensus
