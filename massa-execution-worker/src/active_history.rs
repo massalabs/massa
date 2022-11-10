@@ -177,9 +177,8 @@ impl ActiveHistory {
     pub fn fetch_all_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.0
             .iter()
-            .rev()
-            .find_map(|exc_out| {
-                exc_out
+            .filter_map(|output| {
+                output
                     .state_changes
                     .pos_changes
                     .deferred_credits
@@ -187,7 +186,8 @@ impl ActiveHistory {
                     .get(slot)
                     .cloned()
             })
-            .unwrap_or_default()
+            .flatten()
+            .collect()
     }
 
     /// Gets the index of a slot in history
