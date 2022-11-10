@@ -17,8 +17,7 @@ impl ConsensusState {
     /// prune active blocks and return final blocks, return discarded final blocks
     fn prune_active(&mut self) -> Result<PreHashMap<BlockId, ActiveBlock>, ConsensusError> {
         // list required active blocks
-        let mut retain_active: PreHashSet<BlockId> =
-            self.list_required_active_blocks()?.into_iter().collect();
+        let mut retain_active: PreHashSet<BlockId> = self.list_required_active_blocks()?;
 
         // retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss

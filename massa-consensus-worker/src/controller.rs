@@ -145,10 +145,13 @@ impl ConsensusController for ConsensusControllerImpl {
                 if final_blocks.len() as u64 >= self.bootstrap_part_size {
                     break;
                 }
-                if let StreamingStep::Finished(Some(slot)) = execution_cursor {
-                    if a_block.slot > slot {
-                        continue;
+                match execution_cursor {
+                    StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
+                        if a_block.slot > slot {
+                            continue;
+                        }
                     }
+                    _ => (),
                 }
                 if a_block.is_final {
                     let mut export = ExportActiveBlock::from_active_block(a_block, storage);
