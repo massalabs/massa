@@ -101,23 +101,44 @@ impl ConsensusController for ConsensusControllerImpl {
         &self,
         mut cursor: StreamingStep<PreHashSet<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError> {
+    ) -> Result<
+        (
+            BootstrapableGraph,
+            PreHashSet<BlockId>,
+            StreamingStep<PreHashSet<BlockId>>,
+        ),
+        ConsensusError,
+    > {
         let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
         let mut retrieved_ids: PreHashSet<BlockId> = PreHashSet::default();
         let read_shared_state = self.shared_state.read();
         let required_blocks: PreHashSet<BlockId> =
             read_shared_state.list_required_active_blocks()?;
 
-        let (difference, previous_ids) = match cursor {
-            StreamingStep::Started => (required_blocks, PreHashSet::default()),
-            StreamingStep::Ongoing(ref cursor_ids) => (
-                required_blocks.difference(cursor_ids).cloned().collect(),
-                cursor_ids.clone(),
+        let (current_ids, previous_ids, outdated_ids) = match cursor {
+            StreamingStep::Started => (
+                required_blocks,
+                PreHashSet::default(),
+                PreHashSet::default(),
             ),
-            StreamingStep::Finished(_) => return Ok((BootstrapableGraph { final_blocks }, cursor)),
+            StreamingStep::Ongoing(ref cursor_ids) => (
+                // ids that are contained in required_blocks but not in the download cursor => current_ids
+                required_blocks.difference(cursor_ids).cloned().collect(),
+                // ids previously downloaded => previous_ids
+                cursor_ids.clone(),
+                // ids previously downloaded but not contained in required_blocks anymore => outdated_ids
+                cursor_ids.difference(&required_blocks).cloned().collect(),
+            ),
+            StreamingStep::Finished(_) => {
+                return Ok((
+                    BootstrapableGraph { final_blocks },
+                    PreHashSet::default(),
+                    cursor,
+                ))
+            }
         };
 
-        for b_id in &difference {
+        for b_id in &current_ids {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
             {
@@ -145,7 +166,7 @@ impl ConsensusController for ConsensusControllerImpl {
             cursor = StreamingStep::Ongoing(retrieved_ids);
         }
 
-        Ok((BootstrapableGraph { final_blocks }, cursor))
+        Ok((BootstrapableGraph { final_blocks }, outdated_ids, cursor))
     }
     /// Get the stats of the consensus
     fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {

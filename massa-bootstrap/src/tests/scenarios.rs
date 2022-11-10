@@ -25,10 +25,13 @@ use massa_final_state::{
     test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
 };
 use massa_ledger_exports::LedgerConfig;
-use massa_models::config::{
-    MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
-};
 use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{
+    config::{
+        MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+    },
+    prehash::PreHashSet,
+};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
@@ -229,12 +232,16 @@ async fn test_bootstrap_server() {
                 // give an empty answer for the following ones
                 if execution_cursor
                     == &StreamingStep::Ongoing(Slot {
-                        period: 0,
-                        thread: 1,
+                        period: 1,
+                        thread: 0,
                     })
                 {
                     response_tx
-                        .send(Ok((sent_graph_clone.clone(), StreamingStep::Started)))
+                        .send(Ok((
+                            sent_graph_clone.clone(),
+                            PreHashSet::default(),
+                            StreamingStep::Started,
+                        )))
                         .unwrap();
                 } else {
                     response_tx
@@ -242,6 +249,7 @@ async fn test_bootstrap_server() {
                             BootstrapableGraph {
                                 final_blocks: Vec::new(),
                             },
+                            PreHashSet::default(),
                             StreamingStep::Finished(None),
                         )))
                         .unwrap();

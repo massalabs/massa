@@ -48,7 +48,14 @@ pub enum MockConsensusControllerMessage {
         cursor: StreamingStep<PreHashSet<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
         response_tx: mpsc::Sender<
-            Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError>,
+            Result<
+                (
+                    BootstrapableGraph,
+                    PreHashSet<BlockId>,
+                    StreamingStep<PreHashSet<BlockId>>,
+                ),
+                ConsensusError,
+            >,
         >,
     },
     GetStats {
@@ -164,7 +171,14 @@ impl ConsensusController for MockConsensusController {
         &self,
         cursor: StreamingStep<PreHashSet<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError> {
+    ) -> Result<
+        (
+            BootstrapableGraph,
+            PreHashSet<BlockId>,
+            StreamingStep<PreHashSet<BlockId>>,
+        ),
+        ConsensusError,
+    > {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()

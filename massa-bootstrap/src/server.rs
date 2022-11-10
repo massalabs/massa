@@ -406,10 +406,12 @@ pub async fn stream_bootstrap_information(
         let mut consensus_part = BootstrapableGraph {
             final_blocks: Default::default(),
         };
+        let mut consensus_outdated_ids: PreHashSet<BlockId> = PreHashSet::default();
         if final_state_global_step.finished() {
-            let (part, new_consensus_step) = consensus_controller
+            let (part, outdated_ids, new_consensus_step) = consensus_controller
                 .get_bootstrap_part(last_consensus_step, final_state_changes_step)?;
             consensus_part = part;
+            consensus_outdated_ids = outdated_ids;
             last_consensus_step = new_consensus_step;
         }
 

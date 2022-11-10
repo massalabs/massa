@@ -46,12 +46,21 @@ pub trait ConsensusController: Send + Sync {
     /// Get a graph to bootstrap from
     ///
     /// # Returns
-    /// The graph to bootstrap from
+    /// * a part of the graph
+    /// * outdated block ids
+    /// * the updated streaming step
     fn get_bootstrap_part(
         &self,
         cursor: StreamingStep<PreHashSet<BlockId>>,
         execution_cursor: StreamingStep<Slot>,
-    ) -> Result<(BootstrapableGraph, StreamingStep<PreHashSet<BlockId>>), ConsensusError>;
+    ) -> Result<
+        (
+            BootstrapableGraph,
+            PreHashSet<BlockId>,
+            StreamingStep<PreHashSet<BlockId>>,
+        ),
+        ConsensusError,
+    >;
 
     /// Get the stats of the consensus
     ///
