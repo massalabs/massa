@@ -61,7 +61,7 @@ impl DeferredCredits {
             .and_then(|slot_credits|
                 slot_credits.get(addr)
             ) {
-            return Some(v.clone());
+            return Some(*v);
         }
         None
     }

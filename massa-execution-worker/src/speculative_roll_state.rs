@@ -131,7 +131,7 @@ impl SpeculativeRollState {
 
         // Note 1: Deferred credits are stored as absolute value
         let new_deferred_credits = self
-            .get_address_deferred_credit_for_slot(&seller_addr, &target_slot)
+            .get_address_deferred_credit_for_slot(seller_addr, &target_slot)
             .unwrap_or_default()
             .saturating_add(roll_price.saturating_mul_u64(roll_count));
 
