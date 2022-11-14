@@ -3,7 +3,7 @@ use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
     block::{Block, BlockDeserializer, BlockId, WrappedBlock},
-    prehash::{PreHashMap, PreHashSet},
+    prehash::PreHashMap,
     wrapped::{WrappedDeserializer, WrappedSerializer},
 };
 use massa_serialization::{
@@ -60,21 +60,6 @@ impl ExportActiveBlock {
     ) -> Result<(ActiveBlock, Storage), ConsensusError> {
         // create resulting storage
         let mut storage = ref_storage.clone_without_refs();
-
-        // check that the block operations match the stored ones
-        if storage.get_op_refs()
-            != &self
-                .block
-                .content
-                .operations
-                .iter()
-                .cloned()
-                .collect::<PreHashSet<_>>()
-        {
-            return Err(ConsensusError::MissingOperation(
-                "operation list mismatch on active block conversion".into(),
-            ));
-        }
 
         // add endorsements to storage and claim refs
         // TODO change if we decide that endorsements are stored separately
