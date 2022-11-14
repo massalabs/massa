@@ -170,6 +170,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
         Ok((BootstrapableGraph { final_blocks }, outdated_ids, cursor))
     }
+
     /// Get the stats of the consensus
     fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
         self.shared_state.read().get_stats()
