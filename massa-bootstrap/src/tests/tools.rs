@@ -417,7 +417,6 @@ pub fn get_boot_state() -> BootstrapableGraph {
         block,
         parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
         is_final: true,
-        operations: Default::default(),
     };
 
     let boot_graph = BootstrapableGraph {

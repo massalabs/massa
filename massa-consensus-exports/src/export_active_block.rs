@@ -3,13 +3,11 @@ use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
     block::{Block, BlockDeserializer, BlockId, WrappedBlock},
-    operation::{Operation, OperationDeserializer, WrappedOperation},
     prehash::{PreHashMap, PreHashSet},
     wrapped::{WrappedDeserializer, WrappedSerializer},
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_storage::Storage;
 use nom::branch::alt;
@@ -17,7 +15,7 @@ use nom::{
     bytes::complete::tag,
     combinator::value,
     error::{ContextError, ParseError},
-    multi::{count, length_count},
+    multi::count,
     sequence::{preceded, tuple},
 };
 use nom::{error::context, IResult, Parser};
@@ -30,8 +28,6 @@ use std::ops::Bound::Included;
 pub struct ExportActiveBlock {
     /// The block.
     pub block: WrappedBlock,
-    /// The operations.
-    pub operations: Vec<WrappedOperation>,
     /// one `(block id, period)` per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// for example has its fitness reached the given threshold
@@ -47,26 +43,9 @@ impl ExportActiveBlock {
             .get(&a_block.block_id)
             .expect("active block missing in storage")
             .clone();
-        // get ops
-        let operations = {
-            let read_ops = storage.read_operations();
-            block
-                .content
-                .operations
-                .iter()
-                .map(|op_id| {
-                    read_ops
-                        .get(op_id)
-                        .expect("active block operation missing in storage")
-                        .clone()
-                })
-                .collect()
-        };
 
-        // TODO if we deciede that endorsements are separate, also gather endorsements here
-
+        // TODO: if we decide that endorsements are separate, also gather endorsements here
         ExportActiveBlock {
-            operations,
             parents: a_block.parents.clone(),
             is_final: a_block.is_final,
             block,
@@ -81,9 +60,6 @@ impl ExportActiveBlock {
     ) -> Result<(ActiveBlock, Storage), ConsensusError> {
         // create resulting storage
         let mut storage = ref_storage.clone_without_refs();
-
-        // add operations to storage and claim refs
-        storage.store_operations(self.operations);
 
         // check that the block operations match the stored ones
         if storage.get_op_refs()
@@ -130,7 +106,6 @@ impl ExportActiveBlock {
 pub struct ExportActiveBlockSerializer {
     wrapped_serializer: WrappedSerializer,
     period_serializer: U64VarIntSerializer,
-    operation_count_serializer: U32VarIntSerializer,
 }
 
 impl ExportActiveBlockSerializer {
@@ -139,7 +114,6 @@ impl ExportActiveBlockSerializer {
         ExportActiveBlockSerializer {
             wrapped_serializer: WrappedSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
-            operation_count_serializer: U32VarIntSerializer::new(),
         }
     }
 }
@@ -152,19 +126,6 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
     ) -> Result<(), SerializeError> {
         // block
         self.wrapped_serializer.serialize(&value.block, buffer)?;
-
-        // operations
-        self.operation_count_serializer.serialize(
-            &value
-                .operations
-                .len()
-                .try_into()
-                .map_err(|_| SerializeError::NumberTooBig("Too many operations".to_string()))?,
-            buffer,
-        )?;
-        for op in &value.operations {
-            self.wrapped_serializer.serialize(op, buffer)?;
-        }
 
         // parents with periods
         // note: there should be no parents for genesis blocks
@@ -184,10 +145,8 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 /// Basic deserializer of `ExportActiveBlock`
 pub struct ExportActiveBlockDeserializer {
     wrapped_block_deserializer: WrappedDeserializer<Block, BlockDeserializer>,
-    wrapped_operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
-    operation_count_serializer: U32VarIntDeserializer,
     thread_count: u8,
 }
 
@@ -198,12 +157,13 @@ impl ExportActiveBlockDeserializer {
         thread_count: u8,
         endorsement_count: u32,
         max_operations_per_block: u32,
-        max_datastore_value_length: u64,
-        max_function_name_length: u16,
-        max_parameters_size: u32,
-        max_op_datastore_entry_count: u64,
-        max_op_datastore_key_length: u8,
-        max_op_datastore_value_length: u64,
+        // IMPORTANT TODO: remove unused args
+        _max_datastore_value_length: u64,
+        _max_function_name_length: u16,
+        _max_parameters_size: u32,
+        _max_op_datastore_entry_count: u64,
+        _max_op_datastore_key_length: u8,
+        _max_op_datastore_value_length: u64,
     ) -> Self {
         ExportActiveBlockDeserializer {
             wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
@@ -211,18 +171,6 @@ impl ExportActiveBlockDeserializer {
                 max_operations_per_block,
                 endorsement_count,
             )),
-            wrapped_operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new(
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
-                max_op_datastore_entry_count,
-                max_op_datastore_key_length,
-                max_op_datastore_value_length,
-            )),
-            operation_count_serializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(max_operations_per_block),
-            ),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             thread_count,
@@ -289,7 +237,6 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
     ///    parents: vec![],
-    ///    operations: vec![],
     ///    is_final: false,
     /// };
     ///
@@ -311,18 +258,6 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                 context("Failed block deserialization", |input| {
                     self.wrapped_block_deserializer.deserialize(input)
                 }),
-                // operations
-                context(
-                    "Failed operations deserialization",
-                    length_count(
-                        context("Failed operation count deserialization", |input| {
-                            self.operation_count_serializer.deserialize(input)
-                        }),
-                        context("Failed operation deserialization", |input| {
-                            self.wrapped_operation_deserializer.deserialize(input)
-                        }),
-                    ),
-                ),
                 // parents
                 context(
                     "Failed parents deserialization",
@@ -353,9 +288,8 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                 ),
             )),
         )
-        .map(|(block, operations, parents, is_final)| ExportActiveBlock {
+        .map(|(block, parents, is_final)| ExportActiveBlock {
             block,
-            operations,
             parents,
             is_final,
         })

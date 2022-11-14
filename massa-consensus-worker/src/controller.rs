@@ -154,8 +154,7 @@ impl ConsensusController for ConsensusControllerImpl {
                     _ => (),
                 }
                 if a_block.is_final {
-                    let mut export = ExportActiveBlock::from_active_block(a_block, storage);
-                    export.operations = Vec::new();
+                    let export = ExportActiveBlock::from_active_block(a_block, storage);
                     final_blocks.push(export);
                     retrieved_ids.insert(*b_id);
                 }
