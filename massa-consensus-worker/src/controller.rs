@@ -96,7 +96,9 @@ impl ConsensusController for ConsensusControllerImpl {
     /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info corresponds
     ///
     /// # Returns:
-    /// A portion of the graph
+    /// * A portion of the graph
+    /// * The list of outdated block ids
+    /// * The streaming step value after the current iteration
     fn get_bootstrap_part(
         &self,
         mut cursor: StreamingStep<PreHashSet<BlockId>>,
