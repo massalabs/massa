@@ -428,13 +428,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
         THREAD_COUNT,
         ENDORSEMENT_COUNT,
         MAX_BOOTSTRAP_BLOCKS,
-        MAX_DATASTORE_VALUE_LENGTH,
-        MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE,
         MAX_OPERATIONS_PER_BLOCK,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
     );
 
     let mut bootstrapable_graph_serialized = Vec::new();

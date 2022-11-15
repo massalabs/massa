@@ -291,12 +291,7 @@ impl BootstrapServerMessageDeserializer {
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
-        max_function_name_length: u16,
-        max_parameters_size: u32,
         max_bootstrap_error_length: u64,
-        max_op_datastore_entry_count: u64,
-        max_op_datastore_key_length: u8,
-        max_op_datastore_value_length: u64,
         max_changes_slot_count: u64,
         max_rolls_length: u64,
         max_production_stats_length: u64,
@@ -333,13 +328,7 @@ impl BootstrapServerMessageDeserializer {
                 thread_count,
                 endorsement_count,
                 max_bootstrap_blocks,
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
                 max_operations_per_block,
-                max_op_datastore_entry_count,
-                max_op_datastore_key_length,
-                max_op_datastore_value_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
                 BlockIdDeserializer::new(),
@@ -390,7 +379,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(32, 16, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 255, 1000, 1000, 1000, 1000, 1000, 10, 255, 1000, 1000, 10_000, 10_000, 10_000, 10, 10_000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(32, 16, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 255, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),

@@ -138,18 +138,7 @@ pub struct ExportActiveBlockDeserializer {
 impl ExportActiveBlockDeserializer {
     /// Create a new `ExportActiveBlockDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_operations_per_block: u32,
-        // IMPORTANT TODO: remove unused args
-        _max_datastore_value_length: u64,
-        _max_function_name_length: u16,
-        _max_parameters_size: u32,
-        _max_op_datastore_entry_count: u64,
-        _max_op_datastore_key_length: u8,
-        _max_op_datastore_value_length: u64,
-    ) -> Self {
+    pub fn new(thread_count: u8, endorsement_count: u32, max_operations_per_block: u32) -> Self {
         ExportActiveBlockDeserializer {
             wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
                 thread_count,
@@ -227,7 +216,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, 10, 255, 10_000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 16, 1000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(rest.len(), 0);
