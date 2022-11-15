@@ -173,14 +173,19 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             .unwrap();
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(block.id, Some(block.content.header))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(block.id, Some(block.content.header))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             tools::assert_hash_asked_to_node(block.id, to_ban_node.id, &mut network_controller)
                 .await;
@@ -307,14 +312,19 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
             // 5. Ask for block.
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(expected_hash, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .expect("Failed to ask for block.");
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(expected_hash, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .expect("Failed to ask for block.");
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Make sure protocol did not ask for the block from the banned node.
             let got_more_commands = network_controller
@@ -489,9 +499,14 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             tokio::time::sleep(Duration::from_millis(250)).await;
 
             // Simulate consensus notifying an attack attempt.
-            protocol_command_sender
-                .notify_block_attack(expected_hash)
-                .expect("Failed to ask for block.");
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .notify_block_attack(expected_hash)
+                    .expect("Failed to ask for block.");
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // Make sure all initial nodes are banned.
             let node_ids = nodes.into_iter().map(|node_info| node_info.id).collect();

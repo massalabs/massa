@@ -155,14 +155,19 @@ pub async fn send_and_propagate_block(
         .send_header(source_node_id, block.content.header.clone())
         .await;
 
-    protocol_command_sender
-        .send_wishlist_delta(
-            vec![(block.id, Some(block.content.header.clone()))]
-                .into_iter()
-                .collect(),
-            PreHashSet::<BlockId>::default(),
-        )
-        .unwrap();
+    let mut protocol_sender = protocol_command_sender.clone();
+    tokio::task::spawn_blocking(move || {
+        protocol_sender
+            .send_wishlist_delta(
+                vec![(block.id, Some(block.content.header.clone()))]
+                    .into_iter()
+                    .collect(),
+                PreHashSet::<BlockId>::default(),
+            )
+            .unwrap();
+    })
+    .await
+    .unwrap();
 
     // Send block info to protocol.
     let info = vec![(

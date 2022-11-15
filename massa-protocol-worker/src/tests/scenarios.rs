@@ -69,14 +69,19 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             assert_eq!(expected_hash, received_hash);
 
             // 5. Ask for block.
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(expected_hash, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .expect("Failed to ask for block.");
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(expected_hash, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .expect("Failed to ask for block.");
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Check that protocol asks the node for the full block.
             match network_controller
@@ -144,9 +149,14 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
             // Add to storage, integrate.
             storage.store_block(block.clone());
-            protocol_command_sender
-                .integrated_block(expected_hash, storage.clone())
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .integrated_block(expected_hash, storage.clone())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 3. Simulate two nodes asking for a block.
             for node in nodes.iter().take(2) {
@@ -262,9 +272,14 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
 
             // 5. Propagate header.
             let _op_ids = ref_block.content.operations.clone();
-            protocol_command_sender
-                .integrated_block(ref_hash, storage)
-                .expect("Failed to ask for block.");
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .integrated_block(ref_hash, storage.clone())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Check that protocol propagates the header to the right nodes.
             // node_a created the block and should receive nothing
@@ -372,9 +387,14 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             storage.store_block(ref_block.clone());
             // 5. Propagate header.
             let _op_ids = ref_block.content.operations.clone();
-            protocol_command_sender
-                .integrated_block(ref_hash, storage)
-                .expect("Failed to ask for block.");
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .integrated_block(ref_hash, storage.clone())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Check that protocol propagates the header to the right nodes.
             // node_a created the block and should receive nothing

@@ -55,14 +55,18 @@ async fn test_full_ask_block_workflow() {
                 .await;
 
             // Send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(block.id, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            let header = block.content.header.clone();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(block.id, Some(header))].into_iter().collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A, then B
             assert_hash_asked_to_node(block.id, node_a.id, &mut network_controller).await;
@@ -192,14 +196,18 @@ async fn test_empty_block() {
                 .await;
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            let header = block.content.header.clone();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(header))].into_iter().collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A, then B
             assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
@@ -332,14 +340,19 @@ async fn test_someone_knows_it() {
             .unwrap();
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
@@ -417,22 +430,32 @@ async fn test_dont_want_it_anymore() {
             // end set up
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A
             assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
 
             // we don't want it anymore
-            protocol_command_sender
-                .send_wishlist_delta(Default::default(), vec![hash_1].into_iter().collect())
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(Default::default(), vec![hash_1].into_iter().collect())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {
@@ -492,14 +515,19 @@ async fn test_no_one_has_it() {
             // end set up
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A
             assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
@@ -579,17 +607,22 @@ async fn test_multiple_blocks_without_a_priori() {
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![
-                        (hash_1, Some(block_1.content.header.clone())),
-                        (hash_2, Some(block_2.content.header.clone())),
-                    ]
-                    .into_iter()
-                    .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![
+                            (hash_1, Some(block_1.content.header.clone())),
+                            (hash_2, Some(block_2.content.header.clone())),
+                        ]
+                        .into_iter()
+                        .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             let list = asked_list(&mut network_controller).await;
             for (node_id, set) in list.into_iter() {

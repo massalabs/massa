@@ -164,9 +164,14 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             let expected_operation_id = operation.id;
 
             storage.store_operations(vec![operation.clone()]);
-            protocol_command_sender
-                .propagate_operations(storage)
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .propagate_operations(storage)
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             loop {
                 match network_controller
@@ -237,9 +242,14 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // send endorsement to protocol
             // it should be propagated only to the node that doesn't know about it
             storage.store_operations(vec![operation.clone()]);
-            protocol_command_sender
-                .propagate_operations(storage)
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .propagate_operations(storage)
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             loop {
                 match network_controller
@@ -369,9 +379,14 @@ async fn test_protocol_batches_propagation_of_operations_received_over_the_netwo
 
             // Send it via the API.
             storage.store_operations(vec![operation.clone()]);
-            protocol_command_sender
-                .propagate_operations(storage)
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .propagate_operations(storage)
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             let expected_operation_id_2 = operation.id;
 
@@ -454,14 +469,19 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             .unwrap();
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(block.id, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(block.id, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             assert_hash_asked_to_node(block.id, nodes[0].id, &mut network_controller).await;
 
@@ -483,9 +503,14 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // it should not propagate to the node that already knows about it
             // because of the previously received header.
             storage.store_operations(vec![operation.clone()]);
-            protocol_command_sender
-                .propagate_operations(storage)
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .propagate_operations(storage)
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
