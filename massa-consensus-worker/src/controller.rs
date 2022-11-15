@@ -15,6 +15,7 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
+use tracing::log::warn;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -162,26 +163,35 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
-        let _ = self
+        if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlock(
                 block_id,
                 slot,
                 block_storage,
                 created,
-            ));
+            ))
+        {
+            warn!("error trying to register a block: {}", err);
+        }
     }
 
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
-        let _ = self
+        if let Err(err) = self
             .command_sender
-            .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header));
+            .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))
+        {
+            warn!("error trying to register a block header: {}", err);
+        }
     }
 
     fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
-        let _ = self
+        if let Err(err) = self
             .command_sender
-            .try_send(ConsensusCommand::MarkInvalidBlock(block_id, header));
+            .try_send(ConsensusCommand::MarkInvalidBlock(block_id, header))
+        {
+            warn!("error trying to mark block as invalid: {}", err);
+        }
     }
 
     fn clone_box(&self) -> Box<dyn ConsensusController> {

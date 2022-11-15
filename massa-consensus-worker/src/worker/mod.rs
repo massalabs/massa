@@ -4,6 +4,7 @@ use massa_consensus_exports::{
 };
 use massa_models::block::BlockId;
 use massa_models::clique::Clique;
+use massa_models::config::CHANNEL_SIZE;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_storage::Storage;
@@ -54,7 +55,7 @@ pub fn start_consensus_worker(
     init_graph: Option<BootstrapableGraph>,
     storage: Storage,
 ) -> (Box<dyn ConsensusController>, Box<dyn ConsensusManager>) {
-    let (tx, rx) = mpsc::sync_channel(10);
+    let (tx, rx) = mpsc::sync_channel(CHANNEL_SIZE);
     // desync detection timespan
     let stats_desync_detection_timespan =
         config.t0.checked_mul(config.periods_per_cycle * 2).unwrap();
