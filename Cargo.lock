@@ -704,6 +704,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dialoguer"
+version = "0.10.2"
+source = "git+https://github.com/AurelienFT/dialoguer#6a8e0ee5811860329626b79ba9ee6013d1fb45f0"
+dependencies = [
+ "console",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1549,7 +1559,7 @@ dependencies = [
  "anyhow",
  "atty",
  "console",
- "dialoguer",
+ "dialoguer 0.10.2 (git+https://github.com/AurelienFT/dialoguer)",
  "erased-serde",
  "glob",
  "lazy_static",
@@ -1575,7 +1585,7 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "dialoguer",
+ "dialoguer 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "enum-map",
  "lazy_static",
  "massa_api",

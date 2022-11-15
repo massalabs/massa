@@ -9,7 +9,7 @@ edition = "2021"
 anyhow = "1.0"
 atty = "0.2"
 console = "0.15"
-dialoguer = { version = "0.10", features = ["history", "completion"] }
+dialoguer = { git = "https://github.com/AurelienFT/dialoguer", features = ["history", "completion"] }
 erased-serde = "0.3"
 glob = "0.3"
 lazy_static = "1.4"

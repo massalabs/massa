@@ -81,8 +81,11 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "{}", self.consensus_stats)?;
-        //TODO: https://github.com/massalabs/massa/issues/2870
-        //writeln!(f, "{}", self.pool_stats)?;
+
+        writeln!(f, "Pool stats:")?;
+        writeln!(f, "\tOperations count: {}", self.pool_stats.0)?;
+        writeln!(f, "\tEndorsements count: {}", self.pool_stats.1)?;
+        writeln!(f)?;
 
         writeln!(f, "{}", self.network_stats)?;
 
