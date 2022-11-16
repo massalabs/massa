@@ -20,6 +20,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
+    consensus_bootstrap_part_size: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
@@ -38,6 +39,7 @@ impl BootstrapServerBinder {
     /// * `duplex`: duplex stream.
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         duplex: Duplex,
         local_keypair: KeyPair,
@@ -46,10 +48,12 @@ impl BootstrapServerBinder {
         thread_count: u8,
         max_datastore_key_length: u8,
         randomness_size_bytes: usize,
+        consensus_bootstrap_part_size: u64,
     ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
+            consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
             duplex: <Limiter>::new(limit).limit(duplex),
@@ -182,6 +186,7 @@ impl BootstrapServerBinder {
         let (_, msg) = BootstrapClientMessageDeserializer::new(
             self.thread_count,
             self.max_datastore_key_length,
+            self.consensus_bootstrap_part_size,
         )
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;

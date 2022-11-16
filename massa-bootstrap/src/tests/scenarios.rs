@@ -16,18 +16,22 @@ use crate::{
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use massa_async_pool::AsyncPoolConfig;
-use massa_consensus_exports::test_exports::{
-    MockConsensusController, MockConsensusControllerMessage,
+use massa_consensus_exports::{
+    bootstrapable_graph::BootstrapableGraph,
+    test_exports::{MockConsensusController, MockConsensusControllerMessage},
 };
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{
     test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
 };
 use massa_ledger_exports::LedgerConfig;
-use massa_models::config::{
-    MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{
+    config::{
+        MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+    },
+    prehash::PreHashSet,
 };
-use massa_models::{address::Address, slot::Slot, version::Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
@@ -214,6 +218,48 @@ async fn test_bootstrap_server() {
         sent_peers
     };
 
+    // intercept consensus parts being asked
+    let sent_graph = get_boot_state();
+    let sent_graph_clone = sent_graph.clone();
+    std::thread::spawn(move || loop {
+        consensus_event_receiver.wait_command(MassaTime::from_millis(10_000), |cmd| match &cmd {
+            MockConsensusControllerMessage::GetBootstrapableGraph {
+                execution_cursor,
+                response_tx,
+                ..
+            } => {
+                // send the consensus blocks only on the first call
+                // give an empty answer for the following ones
+                if execution_cursor
+                    == &StreamingStep::Ongoing(Slot {
+                        period: 1,
+                        thread: 0,
+                    })
+                {
+                    response_tx
+                        .send(Ok((
+                            sent_graph_clone.clone(),
+                            PreHashSet::default(),
+                            StreamingStep::Started,
+                        )))
+                        .unwrap();
+                } else {
+                    response_tx
+                        .send(Ok((
+                            BootstrapableGraph {
+                                final_blocks: Vec::new(),
+                            },
+                            PreHashSet::default(),
+                            StreamingStep::Finished(None),
+                        )))
+                        .unwrap();
+                }
+                Some(())
+            }
+            _ => None,
+        });
+    });
+
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
@@ -238,25 +284,6 @@ async fn test_bootstrap_server() {
     });
 
     let sent_peers = wait_peers().await;
-
-    // wait for peers and graph
-    let sent_graph = tokio::task::spawn_blocking(move || {
-        let response =
-            consensus_event_receiver.wait_command(MassaTime::from_millis(10000), |cmd| match cmd {
-                MockConsensusControllerMessage::GetBootstrapableGraph { response_tx } => {
-                    let sent_graph = get_boot_state();
-                    response_tx.send(Ok(sent_graph.clone())).unwrap();
-                    Some(sent_graph)
-                }
-                _ => panic!("bad command for get boot graph consensus command"),
-            });
-        match response {
-            Some(graph) => graph,
-            None => panic!("error waiting for get boot graph consensus command"),
-        }
-    })
-    .await
-    .unwrap();
 
     // wait for get_state
     let bootstrap_res = get_state_h
@@ -307,7 +334,7 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
-    // check states
+    // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
     // stop bootstrap server

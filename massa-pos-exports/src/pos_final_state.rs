@@ -402,14 +402,14 @@ impl PoSFinalState {
             StreamingStep::Ongoing(last_cycle) => {
                 if let Some(index) = self.get_cycle_index(last_cycle) {
                     if index == self.cycle_history.len() - 1 {
-                        return Ok((None, StreamingStep::Finished));
+                        return Ok((None, StreamingStep::Finished(None)));
                     }
                     index.saturating_add(1)
                 } else {
                     return Err(ModelsError::OutdatedBootstrapCursor);
                 }
             }
-            StreamingStep::Finished => return Ok((None, cursor)),
+            StreamingStep::Finished(_) => return Ok((None, cursor)),
         };
         let cycle_info = self
             .cycle_history
@@ -436,7 +436,7 @@ impl PoSFinalState {
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
-            StreamingStep::Finished => return (credits_part, cursor),
+            StreamingStep::Finished(_) => return (credits_part, cursor),
         };
         let mut credit_part_last_slot: Option<Slot> = None;
         for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
@@ -450,7 +450,7 @@ impl PoSFinalState {
         if let Some(last_slot) = credit_part_last_slot {
             (credits_part, StreamingStep::Ongoing(last_slot))
         } else {
-            (credits_part, StreamingStep::Finished)
+            (credits_part, StreamingStep::Finished(None))
         }
     }
 
@@ -471,7 +471,7 @@ impl PoSFinalState {
             self.cycle_history.push_back(cycle_info);
             StreamingStep::Ongoing(current_cycle)
         } else {
-            StreamingStep::Finished
+            StreamingStep::Finished(None)
         }
     }
 
@@ -489,7 +489,7 @@ impl PoSFinalState {
         {
             StreamingStep::Ongoing(slot)
         } else {
-            StreamingStep::Finished
+            StreamingStep::Finished(None)
         }
     }
 }

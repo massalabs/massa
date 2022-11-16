@@ -46,4 +46,6 @@ pub struct ConsensusConfig {
     pub stats_timespan: MassaTime,
     /// channel size
     pub channel_size: usize,
+    /// size of a consensus bootstrap streaming part
+    pub bootstrap_part_size: u64,
 }

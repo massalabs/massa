@@ -123,7 +123,7 @@ impl ExecutedOps {
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(slot) => Excluded(slot),
-            StreamingStep::Finished => return (ops_part, cursor),
+            StreamingStep::Finished(_) => return (ops_part, cursor),
         };
         let mut ops_part_last_slot: Option<Slot> = None;
         for (slot, ids) in self.sorted_ops.range((left_bound, Unbounded)) {
@@ -137,7 +137,7 @@ impl ExecutedOps {
         if let Some(last_slot) = ops_part_last_slot {
             (ops_part, StreamingStep::Ongoing(last_slot))
         } else {
-            (ops_part, StreamingStep::Finished)
+            (ops_part, StreamingStep::Finished(None))
         }
     }
 
@@ -156,7 +156,7 @@ impl ExecutedOps {
         if let Some(slot) = self.sorted_ops.last_key_value().map(|(slot, _)| slot) {
             StreamingStep::Ongoing(*slot)
         } else {
-            StreamingStep::Finished
+            StreamingStep::Finished(None)
         }
     }
 }

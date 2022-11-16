@@ -10,6 +10,7 @@ use massa_models::{
     prehash::PreHashSet,
     slot::Slot,
     stats::ConsensusStats,
+    streaming_step::StreamingStep,
     wrapped::Wrapped,
 };
 use massa_storage::Storage;
@@ -30,16 +31,19 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 pub struct ConsensusControllerImpl {
     command_sender: SyncSender<ConsensusCommand>,
     shared_state: Arc<RwLock<ConsensusState>>,
+    bootstrap_part_size: u64,
 }
 
 impl ConsensusControllerImpl {
     pub fn new(
         command_sender: SyncSender<ConsensusCommand>,
         shared_state: Arc<RwLock<ConsensusState>>,
+        bootstrap_part_size: u64,
     ) -> Self {
         Self {
             command_sender,
             shared_state,
+            bootstrap_part_size,
         }
     }
 }
@@ -88,39 +92,87 @@ impl ConsensusController for ConsensusControllerImpl {
     /// Get a part of the graph to send to a node so that he can setup his graph.
     /// Used for bootstrap.
     ///
+    /// # Arguments:
+    /// * `cursor`: streaming cursor containing the current state of bootstrap and what blocks have been to the client already
+    /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info corresponds
+    ///
     /// # Returns:
-    /// A portion of the graph
-    fn get_bootstrap_graph(&self) -> Result<BootstrapableGraph, ConsensusError> {
+    /// * A portion of the graph
+    /// * The list of outdated block ids
+    /// * The streaming step value after the current iteration
+    fn get_bootstrap_part(
+        &self,
+        mut cursor: StreamingStep<PreHashSet<BlockId>>,
+        execution_cursor: StreamingStep<Slot>,
+    ) -> Result<
+        (
+            BootstrapableGraph,
+            PreHashSet<BlockId>,
+            StreamingStep<PreHashSet<BlockId>>,
+        ),
+        ConsensusError,
+    > {
+        let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
+        let mut retrieved_ids: PreHashSet<BlockId> = PreHashSet::default();
         let read_shared_state = self.shared_state.read();
-        let mut required_final_blocks: PreHashSet<_> =
+        let required_blocks: PreHashSet<BlockId> =
             read_shared_state.list_required_active_blocks()?;
-        required_final_blocks.retain(|b_id| {
-            if let Some(BlockStatus::Active { a_block, .. }) =
-                read_shared_state.block_statuses.get(b_id)
-            {
-                if a_block.is_final {
-                    // filter only final actives
-                    return true;
-                }
+
+        let (current_ids, previous_ids, outdated_ids) = match cursor {
+            StreamingStep::Started => (
+                required_blocks,
+                PreHashSet::default(),
+                PreHashSet::default(),
+            ),
+            StreamingStep::Ongoing(ref cursor_ids) => (
+                // ids that are contained in required_blocks but not in the download cursor => current_ids
+                required_blocks.difference(cursor_ids).cloned().collect(),
+                // ids previously downloaded => previous_ids
+                cursor_ids.clone(),
+                // ids previously downloaded but not contained in required_blocks anymore => outdated_ids
+                cursor_ids.difference(&required_blocks).cloned().collect(),
+            ),
+            StreamingStep::Finished(_) => {
+                return Ok((
+                    BootstrapableGraph { final_blocks },
+                    PreHashSet::default(),
+                    cursor,
+                ))
             }
-            false
-        });
-        let mut final_blocks: Vec<ExportActiveBlock> =
-            Vec::with_capacity(required_final_blocks.len());
-        for b_id in &required_final_blocks {
+        };
+
+        for b_id in &current_ids {
             if let Some(BlockStatus::Active { a_block, storage }) =
                 read_shared_state.block_statuses.get(b_id)
             {
-                final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
-            } else {
-                return Err(ConsensusError::ContainerInconsistency(format!(
-                    "block {} was expected to be active but wasn't on bootstrap graph export",
-                    b_id
-                )));
+                if final_blocks.len() as u64 >= self.bootstrap_part_size {
+                    break;
+                }
+                match execution_cursor {
+                    StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
+                        if a_block.slot > slot {
+                            continue;
+                        }
+                    }
+                    _ => (),
+                }
+                if a_block.is_final {
+                    let export = ExportActiveBlock::from_active_block(a_block, storage);
+                    final_blocks.push(export);
+                    retrieved_ids.insert(*b_id);
+                }
             }
         }
 
-        Ok(BootstrapableGraph { final_blocks })
+        if final_blocks.is_empty() {
+            cursor = StreamingStep::Finished(None);
+        } else {
+            let pruned_previous_ids = previous_ids.difference(&outdated_ids);
+            retrieved_ids.extend(pruned_previous_ids);
+            cursor = StreamingStep::Ongoing(retrieved_ids);
+        }
+
+        Ok((BootstrapableGraph { final_blocks }, outdated_ids, cursor))
     }
 
     /// Get the stats of the consensus

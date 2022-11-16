@@ -84,13 +84,7 @@ impl BootstrapableGraphDeserializer {
         thread_count: u8,
         endorsement_count: u32,
         max_bootstrap_blocks: u32,
-        max_datastore_value_length: u64,
-        max_function_name_length: u16,
-        max_parameters_size: u32,
         max_operations_per_block: u32,
-        max_op_datastore_entry_count: u64,
-        max_op_datastore_key_length: u8,
-        max_op_datastore_value_length: u64,
     ) -> Self {
         Self {
             block_count_deserializer: U32VarIntDeserializer::new(
@@ -101,12 +95,6 @@ impl BootstrapableGraphDeserializer {
                 thread_count,
                 endorsement_count,
                 max_operations_per_block,
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
-                max_op_datastore_entry_count,
-                max_op_datastore_key_length,
-                max_op_datastore_value_length,
             ),
         }
     }
@@ -124,7 +112,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// };
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
-    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(32, 9, 10, 10, 100, 1000, 1000, 10, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(32, 16, 10, 10).deserialize::<DeserializeError>(&buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph_deserialized, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);

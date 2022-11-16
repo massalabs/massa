@@ -1,5 +1,7 @@
 use crate::block_graph_export::BlockGraphExport;
 use crate::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
+use massa_models::prehash::PreHashSet;
+use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
@@ -44,8 +46,22 @@ pub trait ConsensusController: Send + Sync {
     /// Get a graph to bootstrap from
     ///
     /// # Returns
-    /// The graph to bootstrap from
-    fn get_bootstrap_graph(&self) -> Result<BootstrapableGraph, ConsensusError>;
+    /// * a part of the graph
+    /// * outdated block ids
+    /// * the updated streaming step
+    #[allow(clippy::type_complexity)]
+    fn get_bootstrap_part(
+        &self,
+        cursor: StreamingStep<PreHashSet<BlockId>>,
+        execution_cursor: StreamingStep<Slot>,
+    ) -> Result<
+        (
+            BootstrapableGraph,
+            PreHashSet<BlockId>,
+            StreamingStep<PreHashSet<BlockId>>,
+        ),
+        ConsensusError,
+    >;
 
     /// Get the stats of the consensus
     ///
