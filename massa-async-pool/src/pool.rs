@@ -309,19 +309,22 @@ fn test_take_batch() {
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
         let message = AsyncMessage {
-            emission_slot: Slot::new(0, 0),
-            emission_index: 0,
-            sender: address,
-            destination: address,
-            handler: "function".to_string(),
-            validity_start: Slot::new(1, 0),
-            validity_end: Slot::new(3, 0),
-            max_gas: i,
-            fee: Amount::from_str("0.1").unwrap(),
-            coins: Amount::from_str("0.3").unwrap(),
-            data: Vec::new(),
-        };
-        pool.messages.insert(message.compute_id(), message);
+                    emission_slot: Slot::new(0, 0),
+                    emission_index: 0,
+                    sender: address,
+                    destination: address,
+                    handler: "function".to_string(),
+                    validity_start: Slot::new(1, 0),
+                    validity_end: Slot::new(3, 0),
+                    max_gas: i,
+                    fee: Amount::from_str("0.1").unwrap(),
+                    coins: Amount::from_str("0.3").unwrap(),
+                    data: Vec::new(),
+                };
+        pool.messages.insert(
+            message.compute_id(),
+            message,
+        );
     }
     assert_eq!(pool.messages.len(), 9);
     pool.take_batch_to_execute(Slot::new(2, 0), 19);

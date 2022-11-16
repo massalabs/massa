@@ -262,7 +262,6 @@ async fn test_bootstrap_server() {
 
     // wait for peers and graph
     let sent_peers = wait_peers().await;
-    let sent_graph = wait_graph().await;
 
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
