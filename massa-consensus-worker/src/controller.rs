@@ -166,7 +166,8 @@ impl ConsensusController for ConsensusControllerImpl {
         if final_blocks.is_empty() {
             cursor = StreamingStep::Finished(None);
         } else {
-            retrieved_ids.extend(previous_ids);
+            let pruned_previous_ids = previous_ids.difference(&outdated_ids);
+            retrieved_ids.extend(pruned_previous_ids);
             cursor = StreamingStep::Ongoing(retrieved_ids);
         }
 

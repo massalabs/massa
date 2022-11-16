@@ -164,6 +164,7 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         list: Vec<(BlockId, AskForBlocksInfo)>,
     ) -> Result<(), ProtocolError> {
+        // IMPORTANT TODO: double check post bootstrap behaviour here
         let node_info = match self.active_nodes.get_mut(&from_node_id) {
             Some(node_info) => node_info,
             _ => return Ok(()),
@@ -413,6 +414,7 @@ impl ProtocolWorker {
         mut operations: Vec<WrappedOperation>,
         op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
+        // IMPORTANT TODO: double check post bootstrap behaviour here
         if let Err(err) = self
             .note_operations_from_node(operations.clone(), &from_node_id, op_timer)
             .await
