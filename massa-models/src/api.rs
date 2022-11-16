@@ -89,6 +89,8 @@ impl std::fmt::Display for NodeStatus {
 
         writeln!(f, "{}", self.network_stats)?;
 
+        writeln!(f, "{}", self.execution_stats)?;
+
         writeln!(f, "Connected nodes:")?;
         for (node_id, (ip_addr, is_outgoing)) in &self.connected_nodes {
             writeln!(
@@ -251,13 +253,22 @@ impl std::fmt::Display for AddressInfo {
             "\tBalance: final={}, candidate={}",
             self.final_balance, self.candidate_balance
         )?;
-        writeln!(f, "\tLocked coins:")?;
-        for slot_amount in &self.deferred_credits {
-            writeln!(
-                f,
-                "\t\t{} locked coins will be unlocked at slot {}",
-                slot_amount.amount, slot_amount.slot
-            )?;
+        writeln!(
+            f,
+            "\tRolls: final={}, candidate={}",
+            self.final_roll_count, self.candidate_roll_count
+        )?;
+        write!(f, "\tLocked coins:")?;
+        if self.deferred_credits.is_empty() {
+            writeln!(f, "0")?;
+        } else {
+            for slot_amount in &self.deferred_credits {
+                writeln!(
+                    f,
+                    "\t\t{} locked coins will be unlocked at slot {}",
+                    slot_amount.amount, slot_amount.slot
+                )?;
+            }
         }
         writeln!(f, "\tCycle infos:")?;
         for cycle_info in &self.cycle_infos {
