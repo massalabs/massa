@@ -1,4 +1,4 @@
-use massa_consensus_exports::ConsensusCommandSender;
+use massa_consensus_exports::ConsensusController;
 use massa_models::block::Block;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
@@ -15,7 +15,7 @@ pub struct FactoryChannels {
     /// selector controller to get draws
     pub selector: Box<dyn SelectorController>,
     /// consensus controller
-    pub consensus: ConsensusCommandSender,
+    pub consensus: Box<dyn ConsensusController>,
     /// pool controller
     pub pool: Box<dyn PoolController>,
     /// protocol controller

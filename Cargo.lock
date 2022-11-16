@@ -909,6 +909,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "fix-hidden-lifetime-bug"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4ae9c2016a663983d4e40a9ff967d6dcac59819672f0b47f2b17574e99c33c8"
+dependencies = [
+ "fix-hidden-lifetime-bug-proc_macros",
+]
+
+[[package]]
+name = "fix-hidden-lifetime-bug-proc_macros"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4c81935e123ab0741c4c4f0d9b8377e5fb21d3de7e062fa4b1263b1fbcba1ea"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "fixedbitset"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1575,6 +1595,7 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "dialoguer",
  "enum-map",
  "lazy_static",
@@ -1648,7 +1669,6 @@ dependencies = [
  "jsonrpc-http-server",
  "massa_consensus_exports",
  "massa_execution_exports",
- "massa_graph",
  "massa_hash",
  "massa_models",
  "massa_network_exports",
@@ -1698,13 +1718,13 @@ dependencies = [
  "async-speed-limit",
  "bitvec",
  "displaydoc",
+ "fix-hidden-lifetime-bug",
  "futures 0.3.24",
  "lazy_static",
  "massa_async_pool",
  "massa_consensus_exports",
  "massa_executed_ops",
  "massa_final_state",
- "massa_graph",
  "massa_hash",
  "massa_ledger_exports",
  "massa_ledger_worker",
@@ -1749,46 +1769,40 @@ dependencies = [
 name = "massa_consensus_exports"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "displaydoc",
- "massa_cipher",
  "massa_execution_exports",
- "massa_graph",
+ "massa_hash",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
+ "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "nom 7.1.1",
+ "serde 1.0.145",
  "serde_json",
- "tempfile",
  "thiserror",
- "tokio",
 ]
 
 [[package]]
 name = "massa_consensus_worker"
 version = "0.1.0"
 dependencies = [
- "massa_cipher",
+ "displaydoc",
  "massa_consensus_exports",
- "massa_execution_exports",
- "massa_graph",
  "massa_hash",
  "massa_logging",
  "massa_models",
- "massa_pool_exports",
- "massa_pos_exports",
- "massa_pos_worker",
- "massa_protocol_exports",
- "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "num",
  "parking_lot",
+ "serde 1.0.145",
  "serde_json",
- "serial_test 0.9.0",
- "tokio",
  "tracing",
 ]
 
@@ -1911,27 +1925,6 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "nom 7.1.1",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "massa_graph"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "massa_execution_exports",
- "massa_hash",
- "massa_logging",
- "massa_models",
- "massa_pos_exports",
- "massa_serialization",
- "massa_signature",
- "massa_storage",
- "nom 7.1.1",
- "num",
- "serde 1.0.145",
- "serde_json",
  "thiserror",
  "tracing",
 ]
@@ -2155,6 +2148,7 @@ version = "0.1.0"
 dependencies = [
  "futures 0.3.24",
  "lazy_static",
+ "massa_consensus_exports",
  "massa_hash",
  "massa_logging",
  "massa_models",

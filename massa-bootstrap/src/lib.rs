@@ -13,9 +13,12 @@
 #![feature(ip)]
 #![feature(let_chains)]
 
+#[macro_use]
+extern crate fix_hidden_lifetime_bug;
+
 pub use establisher::types::Establisher;
+use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
-use massa_graph::BootstrapableGraph;
 use massa_network_exports::BootstrapPeers;
 use parking_lot::RwLock;
 use std::sync::Arc;

@@ -1,4 +1,4 @@
-use crate::error::{GraphError, GraphResult as Result};
+use crate::error::ConsensusError;
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
@@ -78,7 +78,7 @@ impl ExportActiveBlock {
         self,
         ref_storage: &Storage,
         thread_count: u8,
-    ) -> Result<(ActiveBlock, Storage), GraphError> {
+    ) -> Result<(ActiveBlock, Storage), ConsensusError> {
         // create resulting storage
         let mut storage = ref_storage.clone_without_refs();
 
@@ -95,7 +95,7 @@ impl ExportActiveBlock {
                 .cloned()
                 .collect::<PreHashSet<_>>()
         {
-            return Err(GraphError::MissingOperation(
+            return Err(ConsensusError::MissingOperation(
                 "operation list mismatch on active block conversion".into(),
             ));
         }
@@ -233,7 +233,7 @@ impl ExportActiveBlockDeserializer {
 impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_graph::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
+    /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
     /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, wrapped::WrappedContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;

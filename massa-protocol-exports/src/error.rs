@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::ProtocolEvent;
 use displaydoc::Display;
 use massa_models::error::ModelsError;
 use massa_network_exports::ConnectionId;
@@ -22,8 +21,6 @@ pub enum ProtocolError {
     TokioTaskJoinError(#[from] tokio::task::JoinError),
     /// error receiving one shot response : {0}
     TokioRecvError(#[from] tokio::sync::oneshot::error::RecvError),
-    /// error sending protocol event: {0}
-    TokioSendError(#[from] Box<tokio::sync::mpsc::error::SendError<ProtocolEvent>>),
     /// Error during network connection:`{0:?}`
     PeerConnectionError(NetworkConnectionErrorType),
     /// The ip:`{0}` address is not valid

@@ -1,7 +1,7 @@
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
-use massa_consensus_exports::ConsensusCommandSender;
+use massa_consensus_exports::ConsensusController;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
 use massa_models::{slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -50,7 +50,7 @@ impl BootstrapManager {
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.
 pub async fn start_bootstrap_server(
-    consensus_command_sender: ConsensusCommandSender,
+    consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     bootstrap_config: BootstrapConfig,
@@ -101,7 +101,7 @@ pub async fn start_bootstrap_server(
 
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
-                consensus_command_sender,
+                consensus_controller,
                 network_command_sender,
                 final_state,
                 establisher,
@@ -128,7 +128,7 @@ pub async fn start_bootstrap_server(
 }
 
 struct BootstrapServer {
-    consensus_command_sender: ConsensusCommandSender,
+    consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     establisher: Establisher,
@@ -253,7 +253,7 @@ impl BootstrapServer {
                         let compensation_millis = self.compensation_millis;
                         let version = self.version;
                         let data_execution = self.final_state.clone();
-                        let consensus_command_sender = self.consensus_command_sender.clone();
+                        let consensus_command_sender = self.consensus_controller.clone();
                         let network_command_sender = self.network_command_sender.clone();
                         let keypair = self.keypair.clone();
                         let config = self.bootstrap_config.clone();
@@ -429,14 +429,16 @@ pub async fn send_final_state_stream(
     Ok(())
 }
 
+#[allow(clippy::manual_async_fn)]
 #[allow(clippy::too_many_arguments)]
+#[fix_hidden_lifetime_bug]
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
     version: Version,
-    consensus_command_sender: ConsensusCommandSender,
+    consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
@@ -539,7 +541,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            graph: consensus_command_sender.get_bootstrap_state().await?,
+                            graph: consensus_controller.get_bootstrap_graph()?,
                         }),
                     )
                     .await

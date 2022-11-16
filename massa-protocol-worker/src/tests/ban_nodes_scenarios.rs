@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
+use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_hash::Hash;
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
@@ -9,8 +10,8 @@ use massa_models::{block::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::ProtocolEvent;
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -22,9 +23,9 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -46,23 +47,31 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
             // Check protocol does not send block to consensus.
-            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    evt @ ProtocolEvent::InvalidBlock { .. } => Some(evt),
-                }
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_consensus_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockConsensusControllerMessage::RegisterBlock { .. } => {
+                            panic!("Protocol unexpectedly sent block.")
+                        }
+                        MockConsensusControllerMessage::RegisterBlockHeader { .. } => {
+                            panic!("Protocol unexpectedly sent header.")
+                        }
+                        MockConsensusControllerMessage::MarkInvalidBlock { .. } => {
+                            panic!("Protocol unexpectedly sent invalid block.")
+                        }
+                        _ => Some(()),
+                    },
+                );
+                protocol_consensus_event_receiver
             })
             .await
-            {
-                None => {}
-                _ => panic!("Protocol unexpectedly sent block or header."),
-            }
+            .unwrap();
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -125,9 +134,9 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -150,21 +159,33 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 .send_header(to_ban_node.id, block.content.header.clone())
                 .await;
 
-            match protocol_event_receiver.wait_event().await.unwrap() {
-                ProtocolEvent::ReceivedBlockHeader { .. } => {}
-                _ => panic!("unexpected protocol event"),
-            };
+            let mut protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_consensus_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockConsensusControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        _ => panic!("unexpected protocol event"),
+                    },
+                );
+                protocol_consensus_event_receiver
+            })
+            .await
+            .unwrap();
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(block.id, Some(block.content.header))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(block.id, Some(block.content.header))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             tools::assert_hash_asked_to_node(block.id, to_ban_node.id, &mut network_controller)
                 .await;
@@ -198,23 +219,31 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 .await;
 
             // Check protocol does not send block to consensus.
-            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    evt @ ProtocolEvent::InvalidBlock { .. } => Some(evt),
-                }
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_consensus_event_receiver.wait_command(
+                    MassaTime::from_millis(1000),
+                    |command| match command {
+                        MockConsensusControllerMessage::RegisterBlock { .. } => {
+                            panic!("Protocol unexpectedly sent block.")
+                        }
+                        MockConsensusControllerMessage::RegisterBlockHeader { .. } => {
+                            panic!("Protocol unexpectedly sent header.")
+                        }
+                        MockConsensusControllerMessage::MarkInvalidBlock { .. } => {
+                            panic!("Protocol unexpectedly sent invalid block.")
+                        }
+                        _ => Some(()),
+                    },
+                );
+                protocol_consensus_event_receiver
             })
             .await
-            {
-                None => {}
-                _ => panic!("Protocol unexpectedly sent header coming from banned node."),
-            }
+            .unwrap();
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -229,9 +258,9 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let ask_for_block_cmd_filter = |cmd| match cmd {
                 cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
@@ -251,18 +280,21 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash =
-                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                    match evt {
-                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                        _ => None,
-                    }
+            let (protocol_consensus_event_receiver, received_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_consensus_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockConsensusControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_consensus_event_receiver, id)
                 })
                 .await
-                {
-                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                    _ => panic!("Unexpected or no protocol event."),
-                };
+                .unwrap();
 
             // 3. Check that protocol sent the right header to consensus.
             let expected_hash = block.id;
@@ -280,15 +312,19 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
             // 5. Ask for block.
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(expected_hash, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .expect("Failed to ask for block.");
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(expected_hash, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .expect("Failed to ask for block.");
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Make sure protocol did not ask for the block from the banned node.
             let got_more_commands = network_controller
@@ -301,9 +337,9 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             );
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -318,9 +354,9 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let send_block_or_header_cmd_filter = |cmd| match cmd {
                 cmd @ NetworkCommand::SendBlockInfo { .. } => Some(cmd),
@@ -389,9 +425,9 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -406,9 +442,9 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 4 nodes.
             let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
@@ -425,38 +461,30 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                     .send_header(creator_node.id, block.content.header.clone())
                     .await;
 
+                let (old_protocol_consensus_event_receiver, optional_block_id) =
+                    tokio::task::spawn_blocking(move || {
+                        let id = protocol_consensus_event_receiver.wait_command(
+                            MassaTime::from_millis(1000),
+                            |command| match command {
+                                MockConsensusControllerMessage::RegisterBlockHeader {
+                                    block_id,
+                                    header: _,
+                                } => Some(block_id),
+                                _ => panic!("unexpected protocol event"),
+                            },
+                        );
+                        (protocol_consensus_event_receiver, id)
+                    })
+                    .await
+                    .unwrap();
+                protocol_consensus_event_receiver = old_protocol_consensus_event_receiver;
                 // Check protocol sends header to consensus (only the 1st time: later, there is caching).
                 if idx == 0 {
-                    let received_hash = match tools::wait_protocol_event(
-                        &mut protocol_event_receiver,
-                        1000.into(),
-                        |evt| match evt {
-                            evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                            _ => None,
-                        },
-                    )
-                    .await
-                    {
-                        Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                        Some(evt) => panic!("Unexpected protocol event {:?}", evt),
-                        None => panic!("no protocol event"),
-                    };
+                    let received_hash = optional_block_id.unwrap();
                     // Check that protocol sent the right header to consensus.
                     assert_eq!(expected_hash, received_hash);
                 } else {
-                    assert!(
-                        tools::wait_protocol_event(
-                            &mut protocol_event_receiver,
-                            150.into(),
-                            |evt| match evt {
-                                evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                                _ => None,
-                            },
-                        )
-                        .await
-                        .is_none(),
-                        "caching was ignored"
-                    );
+                    assert!(optional_block_id.is_none(), "caching was ignored");
                 }
             }
 
@@ -471,10 +499,14 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             tokio::time::sleep(Duration::from_millis(250)).await;
 
             // Simulate consensus notifying an attack attempt.
-            protocol_command_sender
-                .notify_block_attack(expected_hash)
-                .await
-                .expect("Failed to ask for block.");
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .notify_block_attack(expected_hash)
+                    .expect("Failed to ask for block.");
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // Make sure all initial nodes are banned.
             let node_ids = nodes.into_iter().map(|node_info| node_info.id).collect();
@@ -496,9 +528,9 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -513,9 +545,9 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -542,27 +574,30 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash =
-                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                    match evt {
-                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                        _ => None,
-                    }
+            let (protocol_consensus_event_receiver, received_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_consensus_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockConsensusControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_consensus_event_receiver, id)
                 })
                 .await
-                {
-                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                    _ => panic!("Unexpected or no protocol event."),
-                };
+                .unwrap();
 
             // Check that protocol sent the right header to consensus.
             let expected_hash = block.id;
             assert_eq!(expected_hash, received_hash);
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
