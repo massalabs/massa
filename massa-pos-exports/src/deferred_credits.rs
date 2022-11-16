@@ -53,6 +53,27 @@ impl DeferredCredits {
             self.0.remove(&slot);
         }
     }
+
+    /// Gets the deferred credits for a given address that will be credited at a given slot
+    pub fn get_address_deferred_credit_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
+        if let Some(v) = self.0
+            .get(slot)
+            .and_then(|slot_credits|
+                slot_credits.get(addr)
+            ) {
+            return Some(*v);
+        }
+        None
+    }
+
+    /// Insert/overwrite a deferred credit
+    pub fn insert(&mut self, addr: Address, slot: Slot, amount: Amount) {
+        let entry = self.0
+            .entry(slot)
+            .or_default();
+        entry.insert(addr, amount);
+    }
+
 }
 
 /// Serializer for `DeferredCredits`
