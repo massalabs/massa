@@ -6,7 +6,8 @@ use crate::error::ApiError;
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
-use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
+use massa_consensus_exports::block_status::DiscardReason;
+use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
@@ -301,6 +302,7 @@ impl MassaRpcServer for API<Public> {
         let network_command_sender = self.0.network_command_sender.clone();
         let network_config = self.0.network_settings.clone();
         let version = self.0.version;
+        let api_settings = self.0.api_settings.clone();
         let compensation_millis = self.0.compensation_millis;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
@@ -311,9 +313,9 @@ impl MassaRpcServer for API<Public> {
         };
 
         let last_slot_result = get_latest_block_slot_at_timestamp(
-            consensus_settings.thread_count,
-            consensus_settings.t0,
-            consensus_settings.genesis_timestamp,
+            api_settings.thread_count,
+            api_settings.t0,
+            api_settings.genesis_timestamp,
             now,
         );
         let last_slot = match last_slot_result {
@@ -322,19 +324,18 @@ impl MassaRpcServer for API<Public> {
         };
 
         let execution_stats = execution_controller.get_stats();
-
-        let (consensus_stats_result, network_stats_resultat, peers_result) = tokio::join!(
-            consensus_command_sender.get_stats(),
-            network_command_sender.get_network_stats(),
-            network_command_sender.get_peers()
-        );
-
+        let consensus_stats_result = consensus_controller.get_stats();
         let consensus_stats = match consensus_stats_result {
             Ok(consensus_stats) => consensus_stats,
             Err(e) => return Err(ApiError::from(e).into()),
         };
 
-        let network_stats = match network_stats_resultat {
+        let (network_stats_result, peers_result) = tokio::join!(
+            network_command_sender.get_network_stats(),
+            network_command_sender.get_peers()
+        );
+
+        let network_stats = match network_stats_result {
             Ok(network_stats) => network_stats,
             Err(e) => return Err(ApiError::from(e).into()),
         };
@@ -351,7 +352,7 @@ impl MassaRpcServer for API<Public> {
 
         let next_slot_result = last_slot
             .unwrap_or_else(|| Slot::new(0, 0))
-            .get_next_slot(consensus_settings.thread_count);
+            .get_next_slot(api_settings.thread_count);
 
         let next_slot = match next_slot_result {
             Ok(next_slot) => next_slot,
@@ -373,30 +374,26 @@ impl MassaRpcServer for API<Public> {
                 })
                 .collect(),
             last_slot,
-            next_slot: next_slot,
+            next_slot,
             execution_stats,
-            consensus_stats: consensus_stats,
-            network_stats: network_stats,
+            consensus_stats,
+           network_stats,
             pool_stats,
             config,
             current_cycle: last_slot
                 .unwrap_or_else(|| Slot::new(0, 0))
-                .get_cycle(consensus_settings.periods_per_cycle),
+                .get_cycle(api_settings.periods_per_cycle),
         })
     }
 
-    fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let clicques_result = consensus_command_sender.get_cliques().await;
-        match clicques_result {
-            Ok(cliques) => Ok(cliques),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+    async fn get_cliques(&self) -> RpcResult<Vec<Clique>> {
+        let consensus_controller = self.0.consensus_controller.clone();
+        Ok(consensus_controller.get_cliques())
     }
 
     async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
-        let api_config = self.0.api_settings.clone();
+        let cfg = self.0.api_settings.clone();
         let compensation_millis = self.0.compensation_millis;
 
         let now = match MassaTime::now(compensation_millis) {
@@ -454,11 +451,10 @@ impl MassaRpcServer for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
         let api_cfg = self.0.api_settings.clone();
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || {
-            if ops.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::BadRequest("too many arguments".into()));
-            }
+        let consensus_controller = self.0.consensus_controller.clone();
+        if ops.len() as u64 > api_cfg.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
 
         // check finality by cross-referencing Consensus and looking for final blocks that contain the op
         let is_final: Vec<bool> = {
@@ -469,15 +465,7 @@ impl MassaRpcServer for API<Public> {
                 .cloned()
                 .collect();
 
-            let involved_block_statuses = match consensus_command_sender
-                .get_block_statuses(&involved_blocks)
-                .await
-            {
-                Ok(block_statues) => block_statues,
-                Err(e) => {
-                    return Err(ApiError::from(e).into());
-                }
-            };
+            let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
 
             let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                 .into_iter()
@@ -543,29 +531,20 @@ impl MassaRpcServer for API<Public> {
         let consensus_controller = self.0.consensus_controller.clone();
         let api_cfg = self.0.api_settings.clone();
 
-            // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
-            let is_final: Vec<bool> = {
-                let involved_blocks: Vec<BlockId> = storage_info
-                    .iter()
-                    .flat_map(|(_ed, bs)| bs.iter())
-                    .unique()
-                    .cloned()
-                    .collect();
-                let involved_block_statuses = consensus_command_sender
-                    .get_block_statuses(&involved_blocks)
-                    .await?;
-                let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
-                    .into_iter()
-                    .zip(involved_block_statuses.into_iter())
-                    .collect();
-                storage_info
-                    .iter()
-                    .map(|(_ed, bs)| {
-                        bs.iter()
-                            .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
-                    })
-                    .collect()
-            };
+        if eds.len() as u64 > api_cfg.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
+        // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
+        let is_final: Vec<bool> = {
+            let involved_blocks: Vec<BlockId> = storage_info
+                .iter()
+                .flat_map(|(_ed, bs)| bs.iter())
+                .unique()
+                .cloned()
+                .collect();
+
+            let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
 
             let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                 .into_iter()
@@ -604,8 +583,8 @@ impl MassaRpcServer for API<Public> {
 
     /// gets a block. Returns None if not found
     /// only active blocks are returned
-    fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
+    async fn get_block(&self, id: BlockId) -> RpcResult<BlockInfo> {
+        let consensus_controller = self.0.consensus_controller.clone();
         let storage = self.0.storage.clone_without_refs();
         let block = match storage.read_blocks().get(&id).cloned() {
             Some(b) => b.content,
@@ -614,13 +593,11 @@ impl MassaRpcServer for API<Public> {
             }
         };
 
-        let graph_status = match consensus_command_sender.get_block_statuses(&[id]).await {
-            Ok(block_status) => block_status
-                .into_iter()
-                .next()
-                .expect("expected get_block_statuses to return one element"),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+        let graph_status = consensus_controller
+            .get_block_statuses(&[id])
+            .into_iter()
+            .next()
+            .expect("expected get_block_statuses to return one element");
 
         let is_final = graph_status == BlockGraphStatus::Final;
         let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
@@ -640,20 +617,11 @@ impl MassaRpcServer for API<Public> {
         })
     }
 
-    fn get_blockclique_block_by_slot(
-        &self,
-        slot: Slot,
-    ) -> BoxFuture<Result<Option<Block>, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
+    async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
+        let consensus_controller = self.0.consensus_controller.clone();
         let storage = self.0.storage.clone_without_refs();
 
-        let block_id_option = match consensus_command_sender
-            .get_blockclique_block_at_slot(slot)
-            .await
-        {
-            Ok(graph) => graph,
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+        let block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
 
         let block_id = match block_id_option {
             Some(id) => id,
@@ -669,18 +637,15 @@ impl MassaRpcServer for API<Public> {
 
     /// gets an interval of the block graph from consensus, with time filtering
     /// time filtering is done consensus-side to prevent communication overhead
-    fn get_graph_interval(
-        &self,
-        time: TimeInterval,
-    ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let consensus_settings = self.0.consensus_config.clone();
+    async fn get_graph_interval(&self, time: TimeInterval) -> RpcResult<Vec<BlockSummary>> {
+        let consensus_controller = self.0.consensus_controller.clone();
+        let api_settings = self.0.api_settings.clone();
 
         // filter blocks from graph_export
         let time_range_to_slot_range_result = time_range_to_slot_range(
-            consensus_settings.thread_count,
-            consensus_settings.t0,
-            consensus_settings.genesis_timestamp,
+            api_settings.thread_count,
+            api_settings.t0,
+            api_settings.genesis_timestamp,
             time.start,
             time.end,
         );
@@ -690,10 +655,7 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::from(e).into()),
         };
 
-        let graph = match consensus_command_sender
-            .get_block_graph_status(start_slot, end_slot)
-            .await
-        {
+        let graph = match consensus_controller.get_block_graph_status(start_slot, end_slot) {
             Ok(graph) => graph,
             Err(e) => return Err(ApiError::from(e).into()),
         };
@@ -938,10 +900,8 @@ impl MassaRpcServer for API<Public> {
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());
 
-        let _propagate_operation = match protocol_sender.propagate_operations(to_send).await {
-            Ok(()) => (),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+        let _propagate_operation = protocol_sender.propagate_operations(to_send);
+
         Ok(ids)
     }
 

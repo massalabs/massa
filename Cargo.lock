@@ -1396,8 +1396,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0ee76536f6a303b67c13a99ecae0002bb388674dbf416094dde808263ea229c"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -1412,8 +1413,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-client-transport"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74c8f8f21b684623d23be8b6fcb101594f4e95d8a505ffd0568de863d93668f4"
 dependencies = [
  "anyhow",
  "futures-channel",
@@ -1436,8 +1438,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-core"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f57020f4c98b6c6e8848fb115e61227fba6993517bee0faa38e4db627a9f7254"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -1464,8 +1467,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-http-client"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ca71086fd13ad0991cd4a0e50c9f4c59488b1acfac4a528c448c2e10020aa1e"
 dependencies = [
  "async-trait",
  "hyper",
@@ -1482,8 +1486,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-proc-macros"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d335519bfe970511318f2780b7716f91d99d67fbf32ac3ea94b5f2f6c9818a4d"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-crate",
@@ -1494,8 +1499,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-server"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff5de9e3d6280c5354882e001494bc6ffb3ea31ac7dd81440f997aa380039e39"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -1515,8 +1521,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-types"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88c88c764104fef883eb8a832d0d77688a63f67d75b385f5cdae7b3db8925288"
 dependencies = [
  "anyhow",
  "beef",
@@ -1528,8 +1535,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-wasm-client"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d11a058951524f3f6e02e94c26d5c189a5df0f2dea81339147c603b9eb7c511d"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
@@ -1538,8 +1546,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-ws-client"
-version = "0.15.1"
-source = "git+https://github.com/paritytech/jsonrpsee?branch=master#425b1b6eb75ecdc5a1ebab10d22cbd41b68399ec"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea609539b5062f856a43652fd01d8ed8df40cd4d7067be6f6b7ce81d8bbd03be"
 dependencies = [
  "http",
  "jsonrpsee-client-transport",
@@ -1830,7 +1839,8 @@ dependencies = [
  "async-speed-limit",
  "bitvec",
  "displaydoc",
- "futures 0.3.24",
+ "fix-hidden-lifetime-bug",
+ "futures",
  "lazy_static",
  "massa_async_pool",
  "massa_consensus_exports",
@@ -2036,27 +2046,6 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "nom",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "massa_graph"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "massa_execution_exports",
- "massa_hash",
- "massa_logging",
- "massa_models",
- "massa_pos_exports",
- "massa_serialization",
- "massa_signature",
- "massa_storage",
- "nom 7.1.1",
- "num",
- "serde 1.0.145",
- "serde_json",
  "thiserror",
  "tracing",
 ]

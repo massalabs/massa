@@ -57,7 +57,7 @@ impl RpcClient {
     pub async fn from_url(url: &str) -> RpcClient {
         match HttpClientBuilder::default().build(url) {
             Ok(http_client) => RpcClient {
-                http_client: http_client,
+                http_client,
             },
             Err(_) => panic!("unable to connect to Node."),
         }

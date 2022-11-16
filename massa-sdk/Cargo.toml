@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee", branch = "master", features = ["client"] }
+jsonrpsee = { version = "0.16.0", features = ["client"] }
 massa_models = { path = "../massa-models" }

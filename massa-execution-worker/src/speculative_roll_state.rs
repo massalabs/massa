@@ -136,15 +136,14 @@ impl SpeculativeRollState {
             .saturating_add(roll_price.saturating_mul_u64(roll_count));
 
         // Remove the rolls
-        self
-            .added_changes
+        self.added_changes
             .roll_changes
             .insert(*seller_addr, owned_count.saturating_sub(roll_count));
 
         // Add deferred credits (reimbursement) corresponding to the sold rolls value
         self.added_changes
-             .deferred_credits
-             .insert(*seller_addr, target_slot,  new_deferred_credits);
+            .deferred_credits
+            .insert(*seller_addr, target_slot, new_deferred_credits);
 
         Ok(())
     }
@@ -277,26 +276,32 @@ impl SpeculativeRollState {
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
     fn get_address_deferred_credit_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
-
         // search in the added changes
-        if let Some(v) = self.added_changes
+        if let Some(v) = self
+            .added_changes
             .deferred_credits
-            .get_address_deferred_credit_for_slot(addr, slot) {
+            .get_address_deferred_credit_for_slot(addr, slot)
+        {
             return Some(v);
         }
 
         // search in the history
-        if let Some(v) = self.active_history
+        if let Some(v) = self
+            .active_history
             .read()
-            .get_adress_deferred_credit_for(addr, slot) {
+            .get_adress_deferred_credit_for(addr, slot)
+        {
             return Some(v);
         }
 
         // search in the final state
-        if let Some(v) = self.final_state
+        if let Some(v) = self
+            .final_state
             .read()
-            .pos_state.deferred_credits
-            .get_address_deferred_credit_for_slot(addr, slot) {
+            .pos_state
+            .deferred_credits
+            .get_address_deferred_credit_for_slot(addr, slot)
+        {
             return Some(v);
         }
 
@@ -490,7 +495,7 @@ impl SpeculativeRollState {
         credits.extend(
             self.active_history
                 .read()
-                .get_all_deferred_credits_for(slot)
+                .get_all_deferred_credits_for(slot),
         );
 
         // added deferred credits
