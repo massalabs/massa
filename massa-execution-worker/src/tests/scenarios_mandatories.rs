@@ -198,8 +198,8 @@ fn test_nested_call_gas_usage() {
         10000000,
         Amount::from_str("0").unwrap(),
         Address::from_str(&address).unwrap(),
-        String::from("test"),
         address,
+        b"test".to_vec(),
     )
     .unwrap();
     // Init new storage for this block
@@ -985,7 +985,7 @@ fn create_call_sc_operation(
     gas_price: Amount,
     target_addr: Address,
     target_func: String,
-    param: String,
+    param: Vec<u8>,
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::CallSC {
         max_gas,

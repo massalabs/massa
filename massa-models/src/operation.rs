@@ -483,7 +483,6 @@ pub struct OperationTypeSerializer {
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
-    parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
     datastore_serializer: DatastoreSerializer,
 }
 
@@ -496,7 +495,6 @@ impl OperationTypeSerializer {
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
-            parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -590,10 +588,10 @@ pub struct OperationTypeDeserializer {
     rolls_number_deserializer: U64VarIntDeserializer,
     max_gas_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    data_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
-    parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
+    parameter_deserializer: VecU8Deserializer,
     datastore_deserializer: DatastoreDeserializer,
 }
 
@@ -612,7 +610,7 @@ impl OperationTypeDeserializer {
             rolls_number_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            vec_u8_deserializer: VecU8Deserializer::new(
+            data_deserializer: VecU8Deserializer::new(
                 Included(0),
                 Included(max_datastore_value_length),
             ),
@@ -624,10 +622,10 @@ impl OperationTypeDeserializer {
                 Included(0),
                 Included(max_function_name_length),
             )),
-            parameter_deserializer: StringDeserializer::new(U32VarIntDeserializer::new(
+            parameter_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(max_parameters_size),
-            )),
+                Included(max_parameters_size as u64),
+            ),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
@@ -721,7 +719,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                             self.amount_deserializer.deserialize(input)
                         }),
                         context("Failed data deserialization", |input| {
-                            self.vec_u8_deserializer.deserialize(input)
+                            self.data_deserializer.deserialize(input)
                         }),
                         context("Failed datastore deserialization", |input| {
                             self.datastore_deserializer.deserialize(input)
@@ -756,7 +754,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                             self.function_name_deserializer.deserialize(input)
                         }),
                         context("Failed param deserialization", |input| {
-                            self.vec_u8_deserializer.deserialize(input)
+                            self.parameter_deserializer.deserialize(input)
                         }),
                     )),
                 )
@@ -1462,7 +1460,7 @@ mod tests {
             coins: Amount::from_str("456.789").unwrap(),
             gas_price: Amount::from_str("772.122").unwrap(),
             target_func: "target function".to_string(),
-            param: "parameter".to_string(),
+            param: b"parameter".to_vec(),
         };
         let mut ser_type = Vec::new();
         OperationTypeSerializer::new()
