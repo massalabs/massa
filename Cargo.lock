@@ -1839,7 +1839,6 @@ dependencies = [
  "async-speed-limit",
  "bitvec",
  "displaydoc",
- "fix-hidden-lifetime-bug",
  "futures",
  "lazy_static",
  "massa_async_pool",
@@ -2610,16 +2609,6 @@ name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
-
-[[package]]
-name = "ordered-multimap"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccd746e37177e1711c20dd619a1620f34f5c8b569c53590a72dedd5344d8924a"
-dependencies = [
- "dlv-list",
- "hashbrown 0.12.3",
-]
 
 [[package]]
 name = "ordered-multimap"

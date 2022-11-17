@@ -90,8 +90,12 @@ impl API<Public> {
 
 #[async_trait]
 impl RpcServer for API<Public> {
-    async fn serve(self, url: &SocketAddr) -> Result<StopHandle, JsonRpseeError> {
-        crate::serve(self, url).await
+    async fn serve(
+        self,
+        url: &SocketAddr,
+        api_config: &APIConfig,
+    ) -> Result<StopHandle, JsonRpseeError> {
+        crate::serve(self, url, api_config).await
     }
 }
 
@@ -377,7 +381,7 @@ impl MassaRpcServer for API<Public> {
             next_slot,
             execution_stats,
             consensus_stats,
-           network_stats,
+            network_stats,
             pool_stats,
             config,
             current_cycle: last_slot

@@ -479,6 +479,14 @@ async fn launch(
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
         openrpc_spec_path: SETTINGS.api.openrpc_spec_path.clone(),
+        max_request_body_size: SETTINGS.api.max_request_body_size,
+        max_response_body_size: SETTINGS.api.max_response_body_size,
+        max_connections: SETTINGS.api.max_connections,
+        max_subscriptions_per_connection: SETTINGS.api.max_subscriptions_per_connection,
+        max_log_length: SETTINGS.api.max_log_length,
+        allow_hosts: SETTINGS.api.allow_hosts.clone(),
+        batch_requests_supported: SETTINGS.api.batch_requests_supported,
+        ping_interval: SETTINGS.api.ping_interval,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
@@ -498,7 +506,7 @@ async fn launch(
         node_wallet,
     );
     let api_private_handle = api_private
-        .serve(&SETTINGS.api.bind_private)
+        .serve(&SETTINGS.api.bind_private, &api_config)
         .await
         .expect("failed to start PRIVATE API");
 
@@ -506,7 +514,7 @@ async fn launch(
     let api_public = API::<Public>::new(
         consensus_controller.clone(),
         execution_controller.clone(),
-        api_config,
+        api_config.clone(),
         selector_controller.clone(),
         pool_controller.clone(),
         ProtocolCommandSender(protocol_command_sender.clone()),
@@ -518,7 +526,7 @@ async fn launch(
         shared_storage.clone(),
     );
     let api_public_handle = api_public
-        .serve(&SETTINGS.api.bind_public)
+        .serve(&SETTINGS.api.bind_public, &api_config)
         .await
         .expect("failed to start PUBLIC API");
 

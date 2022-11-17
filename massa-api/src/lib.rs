@@ -6,7 +6,7 @@
 use crate::error::ApiError::WrongAPI;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::server::{ServerBuilder, ServerHandle};
+use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
@@ -97,12 +97,36 @@ pub struct API<T>(T);
 #[async_trait::async_trait]
 pub trait RpcServer: MassaRpcServer {
     /// Start the API
-    async fn serve(self, url: &SocketAddr) -> Result<StopHandle, JsonRpseeError>;
+    async fn serve(
+        self,
+        url: &SocketAddr,
+        api_config: &APIConfig,
+    ) -> Result<StopHandle, JsonRpseeError>;
 }
 
-async fn serve(api: impl MassaRpcServer, url: &SocketAddr) -> Result<StopHandle, JsonRpseeError> {
+async fn serve(
+    api: impl MassaRpcServer,
+    url: &SocketAddr,
+    api_config: &APIConfig,
+) -> Result<StopHandle, JsonRpseeError> {
+    let allowed_hosts = if api_config.allow_hosts.is_empty() {
+        AllowHosts::Any
+    } else {
+        let hosts = api_config
+            .allow_hosts
+            .iter()
+            .map(|hostname| hostname.into())
+            .collect();
+        AllowHosts::Only(hosts)
+    };
+
     let server = ServerBuilder::new()
-        .max_request_body_size(50 * 1024 * 1024)
+        .max_request_body_size(api_config.max_request_body_size)
+        .max_response_body_size(api_config.max_response_body_size)
+        .max_connections(api_config.max_connections)
+        .set_host_filtering(allowed_hosts)
+        .batch_requests_supported(api_config.batch_requests_supported)
+        .ping_interval(api_config.ping_interval.to_duration())
         .build(url)
         .await
         .expect("server builder failed");

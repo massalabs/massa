@@ -13,8 +13,24 @@
     bind_public = "0.0.0.0:33035"
     # max number of arguments per RPC call
     max_arguments = 128
-    # Path to the openrpc specification file used in `rpc.discover` method.
+    # path to the openrpc specification file used in `rpc.discover` method.
     openrpc_spec_path = "base_config/openrpc.json"
+    # maximum size in bytes of a request.
+	max_request_body_size = 52428800 
+	# maximum size in bytes of a response.
+	max_response_body_size = 52428800
+	# maximum number of incoming connections allowed.
+	max_connections = 100
+	# maximum number of subscriptions per connection.
+	max_subscriptions_per_connection = 1024
+	# max length for logging for requests and responses. Logs bigger than this limit will be truncated.
+	max_log_length = 4096
+	# host filtering.
+	allow_hosts = []
+	# whether batch requests are supported by this server or not.
+	batch_requests_supported = true
+	# the interval at which `Ping` frames are submitted in milliseconds.
+	ping_interval = 60000
 
 [execution]
     # max number of generated events kept in RAM
@@ -80,22 +96,22 @@
     max_known_endorsements_size = 2048
     # max cache size for which endorsements a foreign node knows about
     max_node_known_endorsements_size = 2048
-    # Maximum number of batches in the memory buffer.
-    # Dismiss the new batches if overflow
+    # maximum number of batches in the memory buffer.
+    # dismiss the new batches if overflow
     operation_batch_buffer_capacity = 10024
-    # Immediately announce ops if overflow
+    # immediately announce ops if overflow
     operation_announcement_buffer_capacity = 2000
-    # Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
+    # start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     operation_batch_proc_period = 500
-    # All operations asked are prune each `operation_asked_pruning_period` millisecond
+    # all operations asked are prune each `operation_asked_pruning_period` millisecond
     asked_operations_pruning_period = 100000
-    # Interval at which operations are announced in batches.
+    # interval at which operations are announced in batches.
     operation_announcement_interval = 300
-    # Max number of operation per message, same as network param but can be smaller
+    # max number of operation per message, same as network param but can be smaller
     max_operations_per_message = 1024
-    # Time threshold after which operation are not propagated
+    # time threshold after which operation are not propagated
     max_operations_propagation_time = 32000
-    # Time threshold after which operation are not propagated
+    # time threshold after which operation are not propagated
     max_endorsements_propagation_time = 48000
 
 [network]
@@ -141,15 +157,15 @@
     max_send_wait_network_event = 0
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
-    # Timeout duration when in handshake we respond with a PeerList
+    # timeout duration when in handshake we respond with a PeerList
     # (on max in connection reached we send a list of peers)
     peer_list_send_timeout = 100
-    # Max number of in connection overflowed managed by the handshake
+    # max number of in connection overflowed managed by the handshake
     # that send a list of peers
     max_in_connection_overflow = 100
-    # Read limitation for a connection in bytes per seconds
+    # read limitation for a connection in bytes per seconds
     max_bytes_read = 20_000_000.0
-    # Write limitation for a connection in bytes per seconds
+    # write limitation for a connection in bytes per seconds
     max_bytes_write = 20_000_000.0
 
     [network.peer_types_config]
@@ -169,9 +185,9 @@
         ["54.36.174.177:31245", "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
         ["51.75.60.228:31245", "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
     ]
-    # Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
+    # path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
     bootstrap_whitelist_file = "base_config/bootstrap_whitelist.json"
-    # Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
+    # path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
     bootstrap_blacklist_file = "base_config/bootstrap_blacklist.json"
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
@@ -199,7 +215,7 @@
     ip_list_max_size = 10000
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
     per_ip_min_interval = 180000
-    # Read-Write limitation for a connection in bytes per seconds (about the bootstrap specifically)
+    # read-write limitation for a connection in bytes per seconds (about the bootstrap specifically)
     max_bytes_read_write = 20_000_000.0
 
 [pool]
@@ -213,9 +229,9 @@
     max_item_return_count = 100
 
 [selector]
-    # Maximum number of computed cycle's draws we keep in cache
+    # maximum number of computed cycle's draws we keep in cache
     max_draw_cache = 10
-    # Path to the initial roll distribution
+    # path to the initial roll distribution
     initial_rolls_path = "base_config/initial_rolls.json"
 
 [factory]

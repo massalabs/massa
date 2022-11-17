@@ -59,8 +59,12 @@ impl API<Private> {
 
 #[async_trait]
 impl RpcServer for API<Private> {
-    async fn serve(self, url: &SocketAddr) -> Result<StopHandle, JsonRpseeError> {
-        crate::serve(self, url).await
+    async fn serve(
+        self,
+        url: &SocketAddr,
+        settings: &APIConfig,
+    ) -> Result<StopHandle, JsonRpseeError> {
+        crate::serve(self, url, settings).await
     }
 }
 

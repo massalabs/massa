@@ -109,7 +109,7 @@ pub struct PoolSettings {
     pub max_item_return_count: usize,
 }
 
-/// API configuration, read from a file configuration
+/// API and server configuration, read from a file configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct APISettings {
     pub draw_lookahead_period_count: u64,
@@ -117,6 +117,14 @@ pub struct APISettings {
     pub bind_public: SocketAddr,
     pub max_arguments: u64,
     pub openrpc_spec_path: PathBuf,
+    pub max_request_body_size: u32,
+    pub max_response_body_size: u32,
+    pub max_connections: u32,
+    pub max_subscriptions_per_connection: u32,
+    pub max_log_length: u32,
+    pub allow_hosts: Vec<String>,
+    pub batch_requests_supported: bool,
+    pub ping_interval: MassaTime,
 }
 
 #[derive(Debug, Deserialize, Clone)]
