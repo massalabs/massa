@@ -84,7 +84,7 @@ pub enum ReadOnlyExecutionTarget {
         /// Target function
         target_func: String,
         /// Parameter to pass to the target function
-        parameter: String,
+        parameter: Vec<u8>,
     },
 }
 

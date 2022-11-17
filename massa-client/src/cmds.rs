@@ -896,7 +896,7 @@ impl Command {
                 let addr = parameters[0].parse::<Address>()?;
                 let target_addr = parameters[1].parse::<Address>()?;
                 let target_func = parameters[2].clone();
-                let param = parameters[3].clone();
+                let param = parameters[3].clone().into_bytes();
                 let max_gas = parameters[4].parse::<u64>()?;
                 let gas_price = parameters[5].parse::<Amount>()?;
                 let coins = parameters[6].parse::<Amount>()?;
@@ -995,7 +995,7 @@ impl Command {
 
                 let target_address = parameters[0].parse::<Address>()?;
                 let target_function = parameters[1].parse::<String>()?;
-                let parameter = parameters[2].parse::<String>()?;
+                let parameter = parameters[2].parse::<String>()?.into_bytes();
                 let max_gas = parameters[3].parse::<u64>()?;
                 let simulated_gas_price = parameters[4].parse::<Amount>()?;
                 let caller_address = if let Some(addr) = parameters.get(5) {

@@ -416,7 +416,7 @@ pub enum OperationType {
         /// Target function name. No function is called if empty.
         target_func: String,
         /// Parameter to pass to the target function
-        param: String,
+        param: Vec<u8>,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
         /// Extra coins that are spent from the caller's balance and transferred to the target
@@ -466,7 +466,7 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "CallSC:")?;
                 writeln!(f, "\t- target address:{}", target_addr)?;
                 writeln!(f, "\t- target function:{}", target_func)?;
-                writeln!(f, "\t- target parameter:{}", param)?;
+                writeln!(f, "\t- target parameter:{:?}", param)?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
                 writeln!(f, "\t- gas_price:{}", gas_price)?;
                 writeln!(f, "\t- coins:{}", coins)?;
@@ -577,7 +577,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 buffer.extend(target_addr.to_bytes());
                 self.function_name_serializer
                     .serialize(target_func, buffer)?;
-                self.parameter_serializer.serialize(param, buffer)?;
+                self.vec_u8_serializer.serialize(param, buffer)?;
             }
         }
         Ok(())
@@ -590,7 +590,7 @@ pub struct OperationTypeDeserializer {
     rolls_number_deserializer: U64VarIntDeserializer,
     max_gas_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
-    data_deserializer: VecU8Deserializer,
+    vec_u8_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
@@ -612,7 +612,7 @@ impl OperationTypeDeserializer {
             rolls_number_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            data_deserializer: VecU8Deserializer::new(
+            vec_u8_deserializer: VecU8Deserializer::new(
                 Included(0),
                 Included(max_datastore_value_length),
             ),
@@ -721,7 +721,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                             self.amount_deserializer.deserialize(input)
                         }),
                         context("Failed data deserialization", |input| {
-                            self.data_deserializer.deserialize(input)
+                            self.vec_u8_deserializer.deserialize(input)
                         }),
                         context("Failed datastore deserialization", |input| {
                             self.datastore_deserializer.deserialize(input)
@@ -756,7 +756,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                             self.function_name_deserializer.deserialize(input)
                         }),
                         context("Failed param deserialization", |input| {
-                            self.parameter_deserializer.deserialize(input)
+                            self.vec_u8_deserializer.deserialize(input)
                         }),
                     )),
                 )
