@@ -182,10 +182,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
+    fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
         let addr = &massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_data_entry(addr, key.as_bytes()) {
+        match context.get_data_entry(addr, &key) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -199,10 +199,10 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_set_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address)?;
         let mut context = context_guard!(self);
-        context.set_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -213,9 +213,9 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    fn raw_append_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_append_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address)?;
-        context_guard!(self).append_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context_guard!(self).append_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -225,9 +225,9 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to delete
-    fn raw_delete_data_for(&self, address: &str, key: &str) -> Result<()> {
+    fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
         let addr = &massa_models::address::Address::from_str(address)?;
-        context_guard!(self).delete_data_entry(addr, key.as_bytes())?;
+        context_guard!(self).delete_data_entry(addr, &key)?;
         Ok(())
     }
 
@@ -239,10 +239,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
+    fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
         let addr = massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
-        Ok(context.has_data_entry(&addr, key.as_bytes()))
+        Ok(context.has_data_entry(&addr, &key))
     }
 
     /// Gets a datastore value by key for the current address (top of the call stack).
@@ -252,10 +252,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
+    fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_data_entry(&addr, key.as_bytes()) {
+        match context.get_data_entry(&addr, &key) {
             Some(data) => Ok(data),
             _ => bail!("data entry not found"),
         }
@@ -269,10 +269,10 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.set_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -283,10 +283,10 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    fn raw_append_data(&self, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.append_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -295,10 +295,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * key: string key of the datastore entry to delete
-    fn raw_delete_data(&self, key: &str) -> Result<()> {
+    fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.delete_data_entry(&addr, key.as_bytes())?;
+        context.delete_data_entry(&addr, &key)?;
         Ok(())
     }
 
@@ -309,10 +309,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn has_data(&self, key: &str) -> Result<bool> {
+    fn has_data(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        Ok(context.has_data_entry(&addr, key.as_bytes()))
+        Ok(context.has_data_entry(&addr, &key))
     }
 
     /// Get the operation datastore keys (aka entries).
