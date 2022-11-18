@@ -142,7 +142,8 @@ fn test_nested_call_gas_usage() {
     let datastore_bytecode = include_bytes!("./wasm/test.wasm").to_vec();
 
     // create the block containing the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
+    let operation =
+        create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -283,7 +284,8 @@ fn send_and_receive_async_message() {
     let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
 
     // create the block contaning the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
+    let operation =
+        create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -746,7 +748,8 @@ fn set_bytecode_error() {
     let datastore_bytecode = include_bytes!("./wasm/smart-contract.wasm").to_vec();
 
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
+    let operation =
+        create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
