@@ -136,11 +136,13 @@ fn test_nested_call_gas_usage() {
 
     // get random keypair
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load bytecode
+    // load bytecodes
     // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/test.wasm").to_vec();
+
     // create the block containing the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -275,12 +277,13 @@ fn send_and_receive_async_message() {
     init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load send_message bytecode
+    // load bytecodes
     // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
 
     // create the block contaning the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -310,7 +313,7 @@ fn send_and_receive_async_message() {
 
     // match the events
     assert!(events.len() == 1, "One event was expected");
-    assert_eq!(events[0].data, "message received: hello my good friend!");
+    assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
     // stop the execution controller
     manager.stop();
 }
@@ -737,11 +740,13 @@ fn set_bytecode_error() {
     init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load bytecode
+    // load bytecodes
     // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/smart-contract.wasm").to_vec();
+
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode, None).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, Some(datastore_bytecode)).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
