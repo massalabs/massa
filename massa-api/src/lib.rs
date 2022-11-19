@@ -120,16 +120,26 @@ async fn serve(
         AllowHosts::Only(hosts)
     };
 
-    let server = ServerBuilder::new()
+    let mut server_builder = ServerBuilder::new()
         .max_request_body_size(api_config.max_request_body_size)
         .max_response_body_size(api_config.max_response_body_size)
         .max_connections(api_config.max_connections)
         .set_host_filtering(allowed_hosts)
         .batch_requests_supported(api_config.batch_requests_supported)
-        .ping_interval(api_config.ping_interval.to_duration())
+        .ping_interval(api_config.ping_interval.to_duration());
+
+    if api_config.enable_http && !api_config.enable_ws {
+        server_builder = server_builder.http_only();
+    } else if api_config.enable_ws && !api_config.enable_http {
+        server_builder = server_builder.ws_only()
+    } else {
+        panic!("wrong server configuration, you can't disable both http and ws")
+    }
+
+    let server = server_builder
         .build(url)
         .await
-        .expect("server builder failed");
+        .expect("failed to build server");
 
     let server_handler = server.start(api.into_rpc()).expect("server start failed");
 

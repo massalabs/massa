@@ -4,9 +4,11 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 
-use jsonrpsee::core::client::ClientT;
+use http::header::HeaderName;
+use jsonrpsee::core::client::{CertificateStore, ClientT, IdKind};
 use jsonrpsee::http_client::HttpClient;
 use jsonrpsee::rpc_params;
+use jsonrpsee::ws_client::{HeaderMap, HeaderValue};
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
@@ -24,6 +26,10 @@ use massa_models::{
 
 use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
 use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
+
+mod config;
+pub use config::HttpConfig;
 
 /// Client
 pub struct Client {
@@ -35,14 +41,19 @@ pub struct Client {
 
 impl Client {
     /// creates a new client
-    pub async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
+    pub async fn new(
+        ip: IpAddr,
+        public_port: u16,
+        private_port: u16,
+        http_config: &HttpConfig,
+    ) -> Client {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
         let public_url = format!("http://{}", public_socket_addr);
         let private_url = format!("http://{}", private_socket_addr);
         Client {
-            public: RpcClient::from_url(&public_url).await,
-            private: RpcClient::from_url(&private_url).await,
+            public: RpcClient::from_url(&public_url, http_config).await,
+            private: RpcClient::from_url(&private_url, http_config).await,
         }
     }
 }
@@ -54,8 +65,40 @@ pub struct RpcClient {
 
 impl RpcClient {
     /// Default constructor
-    pub async fn from_url(url: &str) -> RpcClient {
-        match HttpClientBuilder::default().build(url) {
+    pub async fn from_url(url: &str, http_config: &HttpConfig) -> RpcClient {
+        let certificate_store = match http_config.certificate_store.as_str() {
+            "Native" => CertificateStore::Native,
+            "WebPki" => CertificateStore::WebPki,
+            _ => CertificateStore::Native,
+        };
+        let id_kind = match http_config.id_kind.as_str() {
+            "Number" => IdKind::Number,
+            "String" => IdKind::String,
+            _ => IdKind::Number,
+        };
+
+        let mut headers = HeaderMap::new();
+        http_config.headers.iter().for_each(|(key, value)| {
+            let header_name = match HeaderName::from_str(key.as_str()) {
+                Ok(header_name) => header_name,
+                Err(_) => panic!("invalid header name: {:?}", key),
+            };
+            let header_value = match HeaderValue::from_str(value.as_str()) {
+                Ok(header_name) => header_name,
+                Err(_) => panic!("invalid header value: {:?}", value),
+            };
+            headers.insert(header_name, header_value);
+        });
+
+        match HttpClientBuilder::default()
+            .max_request_body_size(http_config.max_request_body_size)
+            .request_timeout(http_config.request_timeout.to_duration())
+            .max_concurrent_requests(http_config.max_concurrent_requests)
+            .certificate_store(certificate_store)
+            .id_format(id_kind)
+            .set_headers(headers)
+            .build(url)
+        {
             Ok(http_client) => RpcClient { http_client },
             Err(_) => panic!("unable to connect to Node."),
         }

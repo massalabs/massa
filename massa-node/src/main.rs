@@ -487,6 +487,8 @@ async fn launch(
         allow_hosts: SETTINGS.api.allow_hosts.clone(),
         batch_requests_supported: SETTINGS.api.batch_requests_supported,
         ping_interval: SETTINGS.api.ping_interval,
+        enable_http: SETTINGS.api.enable_http,
+        enable_ws: SETTINGS.api.enable_ws,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,

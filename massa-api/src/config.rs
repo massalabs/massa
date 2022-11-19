@@ -36,6 +36,10 @@ pub struct APIConfig {
     pub batch_requests_supported: bool,
     /// the interval at which `Ping` frames are submitted.
     pub ping_interval: MassaTime,
+    /// whether to enable HTTP.
+    pub enable_http: bool,
+    /// whether to enable WS.
+    pub enable_ws: bool,
     /// max datastore value length
     pub max_datastore_value_length: u64,
     /// max op datastore entry

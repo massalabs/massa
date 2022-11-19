@@ -125,6 +125,8 @@ pub struct APISettings {
     pub allow_hosts: Vec<String>,
     pub batch_requests_supported: bool,
     pub ping_interval: MassaTime,
+    pub enable_http: bool,
+    pub enable_ws: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
