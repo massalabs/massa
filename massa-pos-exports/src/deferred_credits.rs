@@ -50,13 +50,13 @@ impl DeferredCredits {
             self.credits
                 .entry(slot)
                 .and_modify(|current_credits| {
-                    for (address, new_amount) in new_credits.iter() {
+                    for (address, other_amount) in new_credits.iter() {
                         current_credits
                             .entry(*address)
                             .and_modify(|current_amount| {
-                                *current_amount = current_amount.saturating_add(*new_amount);
+                                *current_amount = current_amount.saturating_add(*other_amount);
                             })
-                            .or_insert(*new_amount);
+                            .or_insert(*other_amount);
                     }
                 })
                 .or_insert(new_credits);
@@ -72,29 +72,36 @@ impl DeferredCredits {
             self.credits
                 .entry(slot)
                 .and_modify(|current_credits| {
-                    for (address, new_amount) in new_credits.iter() {
+                    for (address, other_amount) in new_credits.iter() {
                         current_credits
                             .entry(*address)
                             .and_modify(|current_amount| {
+                                // compute the current amount hash and XOR it
                                 let mut buffer = Vec::new();
                                 amount_ser
                                     .serialize(current_amount, &mut buffer)
                                     .expect(DC_AMOUNT_SER_ERROR);
-                                self.hash = Hash::compute_from(&buffer);
+                                self.hash ^= Hash::compute_from(&buffer);
+                                // compute the sum of both amounts
+                                let sum = current_amount.saturating_add(*other_amount);
+                                // compute the sum hash and XOR it
                                 buffer.clear();
                                 amount_ser
-                                    .serialize(new_amount, &mut buffer)
+                                    .serialize(&sum, &mut buffer)
                                     .expect(DC_AMOUNT_SER_ERROR);
-                                self.hash = Hash::compute_from(&buffer);
-                                *current_amount = current_amount.saturating_add(*new_amount);
+                                self.hash ^= Hash::compute_from(&buffer);
+                                // set sum as the new amount
+                                *current_amount = sum;
                             })
                             .or_insert_with(|| {
+                                // compute other amount and XOR it
                                 let mut buffer = Vec::new();
                                 amount_ser
-                                    .serialize(new_amount, &mut buffer)
+                                    .serialize(other_amount, &mut buffer)
                                     .expect(DC_AMOUNT_SER_ERROR);
-                                self.hash = Hash::compute_from(&buffer);
-                                *new_amount
+                                self.hash ^= Hash::compute_from(&buffer);
+                                // set other amount as the new amount
+                                *other_amount
                             });
                     }
                 })
