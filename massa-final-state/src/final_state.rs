@@ -246,7 +246,7 @@ impl FinalState {
                                 }
                             })
                             .collect(),
-                        hash: None,
+                        ..Default::default()
                     };
                     slot_changes.pos_changes.deferred_credits = deferred_credits;
                 }
