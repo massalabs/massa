@@ -19,11 +19,11 @@ use massa_models::{
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use num::rational::Ratio;
 use serial_test::serial;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
 };
+use num::rational::Ratio;
 
 #[test]
 #[serial]
@@ -459,6 +459,7 @@ pub fn roll_buy() {
 #[test]
 #[serial]
 pub fn roll_sell() {
+
     // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
     // Check for resulting roll count + resulting deferred credits
 
@@ -493,7 +494,11 @@ pub fn roll_sell() {
     let address = Address::from_public_key(&keypair.get_public_key());
 
     // get initial balance
-    let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
+    let balance_initial = sample_state
+        .read()
+        .ledger
+        .get_balance(&address)
+        .unwrap();
 
     // get initial roll count
     let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
@@ -505,9 +510,7 @@ pub fn roll_sell() {
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
-            op: OperationType::RollSell {
-                roll_count: roll_sell_1,
-            },
+            op: OperationType::RollSell { roll_count: roll_sell_1 },
         },
         OperationSerializer::new(),
         &keypair,
@@ -517,22 +520,15 @@ pub fn roll_sell() {
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
-            op: OperationType::RollSell {
-                roll_count: roll_sell_2,
-            },
+            op: OperationType::RollSell { roll_count: roll_sell_2 },
         },
         OperationSerializer::new(),
         &keypair,
     )
-    .unwrap();
+        .unwrap();
     // create the block containing the roll buy operation
     storage.store_operations(vec![operation1.clone(), operation2.clone()]);
-    let block = create_block(
-        KeyPair::generate(),
-        vec![operation1, operation2],
-        Slot::new(1, 0),
-    )
-    .unwrap();
+    let block = create_block(KeyPair::generate(), vec![operation1, operation2], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
@@ -551,15 +547,12 @@ pub fn roll_sell() {
     let mut credits = PreHashMap::default();
     let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
     let roll_sold = roll_sell_1 + roll_sell_2;
-    credits.insert(
-        address,
-        exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
+    credits.insert(address, exec_cfg.roll_price
+        .checked_mul_u64(roll_sold)
+        .unwrap()
     );
 
-    assert_eq!(
-        sample_read.pos_state.get_rolls_for(&address),
-        roll_remaining
-    );
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), roll_remaining);
     assert_eq!(
         sample_read
             .pos_state
@@ -577,18 +570,15 @@ pub fn roll_sell() {
     );
 
     // Now check balance
-    let balances = controller.get_final_and_candidate_balance(&[address]);
+    let balances = controller
+        .get_final_and_candidate_balance(&[address]);
     let candidate_balance = balances.get(0).unwrap().1.unwrap();
 
-    assert_eq!(
-        candidate_balance,
-        exec_cfg
-            .roll_price
-            .checked_mul_u64(roll_sell_1 + roll_sell_2)
-            .unwrap()
-            .checked_add(balance_initial)
-            .unwrap()
-    );
+    assert_eq!(candidate_balance, exec_cfg.roll_price
+        .checked_mul_u64(roll_sell_1 + roll_sell_2)
+        .unwrap()
+        .checked_add(balance_initial)
+        .unwrap());
 
     // stop the execution controller
     manager.stop();
