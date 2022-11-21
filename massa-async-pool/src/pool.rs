@@ -252,6 +252,7 @@ impl AsyncPoolDeserializer {
         thread_count: u8,
         max_async_pool_length: u64,
         max_async_message_data: u64,
+        max_key_length: u32,
     ) -> AsyncPoolDeserializer {
         AsyncPoolDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
@@ -262,6 +263,7 @@ impl AsyncPoolDeserializer {
             async_message_deserializer: AsyncMessageDeserializer::new(
                 thread_count,
                 max_async_message_data,
+                max_key_length,
             ),
         }
     }
@@ -295,6 +297,7 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
 
 #[test]
 fn test_take_batch() {
+    use super::AsyncMessageFilter;
     use massa_hash::Hash;
     use massa_models::{address::Address, amount::Amount, slot::Slot};
     use std::str::FromStr;
@@ -326,6 +329,10 @@ fn test_take_batch() {
                 gas_price: Amount::from_str("0.1").unwrap(),
                 coins: Amount::from_str("0.3").unwrap(),
                 data: Vec::new(),
+                filter: AsyncMessageFilter {
+                    address: Some(address),
+                    datastore_key: None,
+                },
             },
         );
     }

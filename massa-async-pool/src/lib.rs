@@ -99,8 +99,8 @@ pub use changes::{
 };
 pub use config::AsyncPoolConfig;
 pub use message::{
-    AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageSerializer,
+    AsyncMessage, AsyncMessageDeserializer, AsyncMessageFilter, AsyncMessageId,
+    AsyncMessageIdDeserializer, AsyncMessageIdSerializer, AsyncMessageSerializer,
 };
 pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 

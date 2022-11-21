@@ -7,7 +7,7 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
-use massa_async_pool::AsyncMessage;
+use massa_async_pool::{AsyncMessage, AsyncMessageFilter};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::{
@@ -559,6 +559,7 @@ impl Interface for InterfaceImpl {
         gas_price: u64,
         raw_coins: u64,
         data: &[u8],
+        filter: (Option<&str>, Option<&str>),
     ) -> Result<()> {
         if validity_start.1 >= self.config.thread_count {
             bail!("validity start thread exceeds the configuration thread count")
@@ -584,6 +585,17 @@ impl Interface for InterfaceImpl {
             gas_price: Amount::from_raw(gas_price),
             coins,
             data: data.to_vec(),
+            filter: AsyncMessageFilter {
+                address: match filter
+                    .0
+                    .map(|addr| Address::from_bs58_check(addr))
+                    .transpose()
+                {
+                    Ok(addr) => addr,
+                    Err(e) => bail!("invalid address in filter: {}", e),
+                },
+                datastore_key: filter.1.map(|str| str.to_string()),
+            },
         });
         execution_context.created_message_index += 1;
         Ok(())

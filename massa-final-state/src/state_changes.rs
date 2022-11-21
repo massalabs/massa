@@ -148,6 +148,7 @@ impl StateChangesDeserializer {
                 thread_count,
                 max_async_pool_changes,
                 max_async_message_data,
+                max_datastore_key_length as u32,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
                 thread_count,

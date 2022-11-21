@@ -2,7 +2,7 @@
 
 use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
 
-use crate::{AsyncMessage, AsyncPool, AsyncPoolConfig};
+use crate::{AsyncMessage, AsyncMessageFilter, AsyncPool, AsyncPoolConfig};
 use massa_models::{address::Address, amount::Amount, config::THREAD_COUNT, slot::Slot};
 use massa_signature::KeyPair;
 use rand::Rng;
@@ -38,6 +38,10 @@ pub fn get_random_message() -> AsyncMessage {
         validity_start: Slot::new(2, 0),
         validity_end: Slot::new(4, 0),
         data: vec![1, 2, 3],
+        filter: AsyncMessageFilter {
+            address: None,
+            datastore_key: None,
+        },
     }
 }
 

@@ -117,7 +117,12 @@ pub struct AsyncPoolChangesDeserializer {
 }
 
 impl AsyncPoolChangesDeserializer {
-    pub fn new(thread_count: u8, max_async_pool_changes: u64, max_async_message_data: u64) -> Self {
+    pub fn new(
+        thread_count: u8,
+        max_async_pool_changes: u64,
+        max_async_message_data: u64,
+        max_key_length: u32,
+    ) -> Self {
         Self {
             async_pool_changes_length: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -127,6 +132,7 @@ impl AsyncPoolChangesDeserializer {
             message_deserializer: AsyncMessageDeserializer::new(
                 thread_count,
                 max_async_message_data,
+                max_key_length,
             ),
         }
     }
@@ -152,7 +158,11 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
+    ///     data: vec![1, 2, 3, 4],
+    ///     filter: AsyncMessageFilter {
+    ///        address: Some(Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()),
+    ///        datastore_key: Some(String::from("test")),
+    ///     }
     /// };
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
