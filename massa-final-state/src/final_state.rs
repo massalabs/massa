@@ -10,7 +10,7 @@ use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
-use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 use tracing::debug;
 
@@ -134,8 +134,10 @@ impl FinalState {
     /// * ledger change that is after `slot` and before or equal to `ledger_step` key
     /// * ledger change if main bootstrap process is finished
     /// * async pool change that is after `slot` and before or equal to `pool_step` message id
-    /// * proof-of-stake change if main bootstrap process is finished
-    /// * proof-of-stake change if main bootstrap process is finished
+    /// * async pool change if main bootstrap process is finished
+    /// * proof-of-stake deferred credits change if main bootstrap process is finished
+    /// * proof-of-stake deferred credits change that is after `slot` and before or equal to `credits_step` slot
+    /// * proof-of-stake cycle history change if main bootstrap process is finished
     /// * executed ops change if main bootstrap process is finished
     ///
     /// Produces an error when the `slot` is too old for `self.changes_history`
@@ -227,12 +229,42 @@ impl FinalState {
                 _ => (),
             }
 
-            // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if cycle_step.finished() && credits_step.finished() {
-                slot_changes.pos_changes = changes.pos_changes.clone();
+            // Get PoS deferred credits changes that concern credits <= credits_step
+            match credits_step {
+                StreamingStep::Ongoing(cursor_slot) => {
+                    let deferred_credits = DeferredCredits(
+                        changes
+                            .pos_changes
+                            .deferred_credits
+                            .0
+                            .iter()
+                            .filter_map(|(credits_slot, credits)| {
+                                if *credits_slot <= cursor_slot {
+                                    Some((*credits_slot, credits.clone()))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
+                    );
+                    slot_changes.pos_changes.deferred_credits = deferred_credits;
+                }
+                StreamingStep::Finished(_) => {
+                    slot_changes.pos_changes.deferred_credits =
+                        changes.pos_changes.deferred_credits.clone();
+                }
+                _ => (),
             }
 
-            // Get executed operations changes if classic bootstrap finished
+            // Get PoS cycle changes if cycle history main bootstrap finished
+            if cycle_step.finished() {
+                slot_changes.pos_changes.seed_bits = changes.pos_changes.seed_bits.clone();
+                slot_changes.pos_changes.roll_changes = changes.pos_changes.roll_changes.clone();
+                slot_changes.pos_changes.production_stats =
+                    changes.pos_changes.production_stats.clone();
+            }
+
+            // Get executed operations changes if executed ops main bootstrap finished
             if ops_step.finished() {
                 slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }
