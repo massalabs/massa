@@ -1,6 +1,6 @@
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
-    address::{Address, AddressDeserializer},
+    address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -43,14 +43,39 @@ impl Default for DeferredCredits {
     }
 }
 
+struct DeferredCreditsHashComputer {
+    address_ser: AddressSerializer,
+    amount_ser: AmountSerializer,
+}
+
+impl DeferredCreditsHashComputer {
+    fn new() -> Self {
+        Self {
+            address_ser: AddressSerializer::new(),
+            amount_ser: AmountSerializer::new(),
+        }
+    }
+
+    fn compute_hash(&self, address: &Address, amount: &Amount) -> Hash {
+        let mut buffer = Vec::new();
+        self.address_ser
+            .serialize(address, &mut buffer)
+            .expect(DC_ADDRESS_SER_ERROR);
+        self.amount_ser
+            .serialize(current_amount, &mut buffer)
+            .expect(DC_AMOUNT_SER_ERROR);
+        Hash::compute_from(&buffer)
+    }
+}
+
 impl DeferredCredits {
     /// Extends the current `DeferredCredits` with another and accumulates the addresses and amounts
     pub fn nested_extend(&mut self, other: Self) {
-        for (slot, new_credits) in other.credits {
+        for (slot, other_credits) in other.credits {
             self.credits
                 .entry(slot)
                 .and_modify(|current_credits| {
-                    for (address, other_amount) in new_credits.iter() {
+                    for (address, other_amount) in other_credits.iter() {
                         current_credits
                             .entry(*address)
                             .and_modify(|current_amount| {
@@ -59,55 +84,52 @@ impl DeferredCredits {
                             .or_insert(*other_amount);
                     }
                 })
-                .or_insert(new_credits);
+                .or_insert(other_credits);
         }
     }
 
     /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the hash changes
-    pub fn nested_extend_and_hash_compute(&mut self, other: Self) {
+    pub fn nested_extend_with_hash_computation(&mut self, other: Self) {
         let slot_ser = SlotSerializer::new();
-        let amount_ser = AmountSerializer::new();
+        let hash_computer = DeferredCreditsHashComputer::new();
 
-        for (slot, new_credits) in other.credits {
+        for (slot, other_credits) in other.credits {
             self.credits
                 .entry(slot)
                 .and_modify(|current_credits| {
-                    for (address, other_amount) in new_credits.iter() {
+                    for (address, other_amount) in other_credits.iter() {
                         current_credits
                             .entry(*address)
                             .and_modify(|current_amount| {
-                                // compute the current amount hash and XOR it
-                                let mut buffer = Vec::new();
-                                amount_ser
-                                    .serialize(current_amount, &mut buffer)
-                                    .expect(DC_AMOUNT_SER_ERROR);
-                                self.hash ^= Hash::compute_from(&buffer);
+                                // compute the current hash and XOR it
+                                self.hash ^= hash_computer.compute_hash(address, current_amount);
                                 // compute the sum of both amounts
                                 let sum = current_amount.saturating_add(*other_amount);
-                                // compute the sum hash and XOR it
-                                buffer.clear();
-                                amount_ser
-                                    .serialize(&sum, &mut buffer)
-                                    .expect(DC_AMOUNT_SER_ERROR);
-                                self.hash ^= Hash::compute_from(&buffer);
+                                // compute the new hash and XOR it
+                                self.hash ^= hash_computer.compute_hash(address, &sum);
                                 // set sum as the new amount
                                 *current_amount = sum;
                             })
                             .or_insert_with(|| {
                                 // compute other amount and XOR it
-                                let mut buffer = Vec::new();
-                                amount_ser
-                                    .serialize(other_amount, &mut buffer)
-                                    .expect(DC_AMOUNT_SER_ERROR);
-                                self.hash ^= Hash::compute_from(&buffer);
+                                self.hash ^= hash_computer.compute_hash(address, other_amount);
                                 // set other amount as the new amount
                                 *other_amount
                             });
                     }
                 })
                 .or_insert_with(|| {
-                    for (adress, amount) in &new_credits {}
-                    new_credits
+                    // compute the slot hash and XOR it
+                    let mut buffer = Vec::new();
+                    slot_ser
+                        .serialize(&slot, &mut buffer)
+                        .expect(DC_AMOUNT_SER_ERROR);
+                    // compute every hash and XOR them
+                    for (adress, amount) in &other_credits {
+                        self.hash ^= hash_computer.compute_hash(address, amount);
+                    }
+                    // set other credits as the new credits
+                    other_credits
                 });
         }
     }

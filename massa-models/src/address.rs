@@ -245,6 +245,28 @@ impl Address {
     }
 }
 
+/// Serializer for `Address`
+#[derive(Default, Clone)]
+pub struct AddressSerializer;
+
+impl AddressSerializer {
+    /// Serializes an `Address` into a `Vec<u8>`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<Address> for AddressSerializer {
+    fn serialize(
+        &self,
+        value: &Address,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        buffer.extend_from_slice(value.to_bytes());
+        Ok(())
+    }
+}
+
 /// Deserializer for `Address`
 #[derive(Default, Clone)]
 pub struct AddressDeserializer {

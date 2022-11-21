@@ -161,15 +161,18 @@ impl ActiveHistory {
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
-    pub(crate) fn get_adress_deferred_credit_for(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
-        for hist_item in self.0
-            .iter()
-            .rev() {
+    pub(crate) fn get_adress_deferred_credit_for(
+        &self,
+        addr: &Address,
+        slot: &Slot,
+    ) -> Option<Amount> {
+        for hist_item in self.0.iter().rev() {
             if let Some(v) = hist_item
-                    .state_changes
-                    .pos_changes
-                    .deferred_credits
-                    .get_address_deferred_credit_for_slot(addr, slot) {
+                .state_changes
+                .pos_changes
+                .deferred_credits
+                .get_address_deferred_credit_for_slot(addr, slot)
+            {
                 return Some(v);
             }
         }
