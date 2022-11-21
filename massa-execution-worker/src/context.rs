@@ -658,12 +658,21 @@ impl ExecutionContext {
     /// * `slot`: associated slot of the deferred credits to be executed
     /// * `credits`: deferred to be executed
     pub fn execute_deferred_credits(&mut self, slot: &Slot) {
-        let credits = self.speculative_roll_state.get_deferred_credits(slot);
-        for (addr, amount) in credits {
-            if let Err(e) = self.transfer_coins(None, Some(addr), amount, false) {
+        let executed_credits = self.speculative_roll_state.get_deferred_credits(slot);
+        for (address, amount) in executed_credits {
+            self.speculative_roll_state
+                .added_changes
+                .deferred_credits
+                .0
+                .entry(*slot)
+                .or_default()
+                .entry(address)
+                .and_modify(|credit_amount| *credit_amount = Amount::from_raw(0))
+                .or_insert(amount);
+            if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
-                    amount, addr, slot, e
+                    amount, address, slot, e
                 );
             }
         }
