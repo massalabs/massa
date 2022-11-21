@@ -44,6 +44,7 @@ impl Default for DeferredCredits {
 }
 
 struct DeferredCreditsHashComputer {
+    slot_ser: SlotSerializer,
     address_ser: AddressSerializer,
     amount_ser: AmountSerializer,
 }
@@ -51,20 +52,29 @@ struct DeferredCreditsHashComputer {
 impl DeferredCreditsHashComputer {
     fn new() -> Self {
         Self {
+            slot_ser: SlotSerializer::new(),
             address_ser: AddressSerializer::new(),
             amount_ser: AmountSerializer::new(),
         }
     }
 
-    fn compute_hash(&self, address: &Address, amount: &Amount) -> Hash {
+    fn compute_hash(&self, slot: &Slot, credits: &PreHashMap<Address, Amount>) -> Hash {
         let mut buffer = Vec::new();
-        self.address_ser
-            .serialize(address, &mut buffer)
-            .expect(DC_ADDRESS_SER_ERROR);
-        self.amount_ser
-            .serialize(current_amount, &mut buffer)
-            .expect(DC_AMOUNT_SER_ERROR);
-        Hash::compute_from(&buffer)
+        self.slot_ser
+            .serialize(&slot, &mut buffer)
+            .expect(DC_SLOT_SER_ERROR);
+        let mut hash = Hash::compute_from(&buffer);
+        for (address, amount) in credits {
+            buffer.clear();
+            self.address_ser
+                .serialize(address, &mut buffer)
+                .expect(DC_ADDRESS_SER_ERROR);
+            self.amount_ser
+                .serialize(amount, &mut buffer)
+                .expect(DC_AMOUNT_SER_ERROR);
+            hash ^= Hash::compute_from(&buffer);
+        }
+        hash
     }
 }
 
@@ -88,59 +98,35 @@ impl DeferredCredits {
         }
     }
 
-    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the hash changes
-    pub fn nested_extend_with_hash_computation(&mut self, other: Self) {
-        let slot_ser = SlotSerializer::new();
+    /// Extends the current `DeferredCredits` with another and computes the hash changes
+    pub fn final_extend(&mut self, other: Self) {
         let hash_computer = DeferredCreditsHashComputer::new();
-
-        for (slot, other_credits) in other.credits {
-            self.credits
-                .entry(slot)
-                .and_modify(|current_credits| {
-                    for (address, other_amount) in other_credits.iter() {
-                        current_credits
-                            .entry(*address)
-                            .and_modify(|current_amount| {
-                                // compute the current hash and XOR it
-                                self.hash ^= hash_computer.compute_hash(address, current_amount);
-                                // compute the sum of both amounts
-                                let sum = current_amount.saturating_add(*other_amount);
-                                // compute the new hash and XOR it
-                                self.hash ^= hash_computer.compute_hash(address, &sum);
-                                // set sum as the new amount
-                                *current_amount = sum;
-                            })
-                            .or_insert_with(|| {
-                                // compute other amount and XOR it
-                                self.hash ^= hash_computer.compute_hash(address, other_amount);
-                                // set other amount as the new amount
-                                *other_amount
-                            });
-                    }
-                })
-                .or_insert_with(|| {
-                    // compute the slot hash and XOR it
-                    let mut buffer = Vec::new();
-                    slot_ser
-                        .serialize(&slot, &mut buffer)
-                        .expect(DC_AMOUNT_SER_ERROR);
-                    // compute every hash and XOR them
-                    for (adress, amount) in &other_credits {
-                        self.hash ^= hash_computer.compute_hash(address, amount);
-                    }
-                    // set other credits as the new credits
-                    other_credits
-                });
+        for (slot, credits) in other.credits {
+            self.hash ^= hash_computer.compute_hash(&slot, &credits);
+            self.credits.insert(slot, credits);
         }
+    }
+
+    /// Remove credits that have their reimbursement slot before the given one and compute the hash
+    pub fn remove_executed(&mut self, slot: Slot) {
+        let hash_computer = DeferredCreditsHashComputer::new();
+        let kept_credits = self.credits.split_off(&slot);
+        // XOR the hash of every slot credits to be removed
+        for (slot, credits) in &self.credits {
+            self.hash ^= hash_computer.compute_hash(slot, credits);
+        }
+        self.credits = kept_credits;
     }
 
     /// Remove zero credits
     pub fn remove_zeros(&mut self) {
+        let hash_computer = DeferredCreditsHashComputer::new();
         let mut delete_slots = Vec::new();
         for (slot, credits) in &mut self.credits {
             credits.retain(|_addr, amount| !amount.is_zero());
             if credits.is_empty() {
                 delete_slots.push(*slot);
+                self.hash ^= hash_computer.compute_hash(slot, credits);
             }
         }
         for slot in delete_slots {

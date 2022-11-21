@@ -254,8 +254,7 @@ impl PoSFinalState {
 
         // extent deferred_credits with changes.deferred_credits
         // remove zero-valued credits
-        self.deferred_credits
-            .nested_extend(changes.deferred_credits);
+        self.deferred_credits.final_extend(changes.deferred_credits);
         self.deferred_credits.remove_zeros();
 
         // feed the cycle if it is complete
@@ -480,7 +479,7 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
     pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
-        self.deferred_credits.nested_extend(part);
+        self.deferred_credits.final_extend(part);
         if let Some(slot) = self
             .deferred_credits
             .credits
