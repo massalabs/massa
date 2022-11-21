@@ -79,8 +79,8 @@ impl DeferredCreditsHashComputer {
 }
 
 impl DeferredCredits {
-    /// Extends the current `DeferredCredits` with another and accumulates the addresses and amounts
-    pub fn nested_extend(&mut self, other: Self) {
+    /// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
+    pub fn nested_replace(&mut self, other: Self) {
         for (slot, other_credits) in other.credits {
             self.credits
                 .entry(slot)
@@ -88,9 +88,7 @@ impl DeferredCredits {
                     for (address, other_amount) in other_credits.iter() {
                         current_credits
                             .entry(*address)
-                            .and_modify(|current_amount| {
-                                *current_amount = current_amount.saturating_add(*other_amount);
-                            })
+                            .and_modify(|current_amount| *current_amount = *other_amount)
                             .or_insert(*other_amount);
                     }
                 })

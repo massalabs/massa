@@ -24,7 +24,7 @@ pub(crate) struct SpeculativeRollState {
     active_history: Arc<RwLock<ActiveHistory>>,
 
     /// List of changes to the state after settling roll sell/buy
-    added_changes: PoSChanges,
+    pub(crate) added_changes: PoSChanges,
 }
 
 impl SpeculativeRollState {
@@ -224,7 +224,7 @@ impl SpeculativeRollState {
         if !target_credits.is_empty() {
             let mut credits = DeferredCredits::default();
             credits.credits.insert(target_slot, target_credits);
-            self.added_changes.deferred_credits.nested_extend(credits);
+            self.added_changes.deferred_credits.nested_replace(credits);
         }
     }
 

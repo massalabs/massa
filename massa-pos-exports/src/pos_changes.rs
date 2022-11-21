@@ -57,7 +57,7 @@ impl PoSChanges {
         }
 
         // extend deferred credits
-        self.deferred_credits.nested_extend(other.deferred_credits);
+        self.deferred_credits.nested_replace(other.deferred_credits);
     }
 }
 

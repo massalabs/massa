@@ -48,6 +48,9 @@ massa_ledger_worker = { path = "../massa-ledger-worker", features = [
 ] }
 massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
+massa_consensus_exports = { path = "../massa-consensus-exports", features = [
+    "testing",
+] }
 lazy_static = "1.4"
 tempfile = "3.3"
 
