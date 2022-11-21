@@ -18,6 +18,12 @@ use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included};
 
 const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const DC_SLOT_SER_ERROR: &str =
+    "critical: deferred credits slot serialization should never fail here";
+const DC_ADDRESS_SER_ERROR: &str =
+    "critical: deferred credits address serialization should never fail here";
+const DC_AMOUNT_SER_ERROR: &str =
+    "critical: deferred credits amount serialization should never fail here";
 
 #[derive(Debug, Clone)]
 /// Structure containing all the PoS deferred credits information
@@ -38,7 +44,7 @@ impl Default for DeferredCredits {
 }
 
 impl DeferredCredits {
-    /// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
+    /// Extends the current `DeferredCredits` with another and accumulates the addresses and amounts
     pub fn nested_extend(&mut self, other: Self) {
         for (slot, new_credits) in other.credits {
             self.credits
@@ -57,6 +63,48 @@ impl DeferredCredits {
         }
     }
 
+    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the hash changes
+    pub fn nested_extend_and_hash_compute(&mut self, other: Self) {
+        let slot_ser = SlotSerializer::new();
+        let amount_ser = AmountSerializer::new();
+
+        for (slot, new_credits) in other.credits {
+            self.credits
+                .entry(slot)
+                .and_modify(|current_credits| {
+                    for (address, new_amount) in new_credits.iter() {
+                        current_credits
+                            .entry(*address)
+                            .and_modify(|current_amount| {
+                                let mut buffer = Vec::new();
+                                amount_ser
+                                    .serialize(current_amount, &mut buffer)
+                                    .expect(DC_AMOUNT_SER_ERROR);
+                                self.hash = Hash::compute_from(&buffer);
+                                buffer.clear();
+                                amount_ser
+                                    .serialize(new_amount, &mut buffer)
+                                    .expect(DC_AMOUNT_SER_ERROR);
+                                self.hash = Hash::compute_from(&buffer);
+                                *current_amount = current_amount.saturating_add(*new_amount);
+                            })
+                            .or_insert_with(|| {
+                                let mut buffer = Vec::new();
+                                amount_ser
+                                    .serialize(new_amount, &mut buffer)
+                                    .expect(DC_AMOUNT_SER_ERROR);
+                                self.hash = Hash::compute_from(&buffer);
+                                *new_amount
+                            });
+                    }
+                })
+                .or_insert_with(|| {
+                    for (adress, amount) in &new_credits {}
+                    new_credits
+                });
+        }
+    }
+
     /// Remove zero credits
     pub fn remove_zeros(&mut self) {
         let mut delete_slots = Vec::new();
@@ -72,12 +120,16 @@ impl DeferredCredits {
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
-    pub fn get_address_deferred_credit_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
-        if let Some(v) = self.credits
+    pub fn get_address_deferred_credit_for_slot(
+        &self,
+        addr: &Address,
+        slot: &Slot,
+    ) -> Option<Amount> {
+        if let Some(v) = self
+            .credits
             .get(slot)
-            .and_then(|slot_credits|
-                slot_credits.get(addr)
-            ) {
+            .and_then(|slot_credits| slot_credits.get(addr))
+        {
             return Some(*v);
         }
         None
@@ -85,12 +137,9 @@ impl DeferredCredits {
 
     /// Insert/overwrite a deferred credit
     pub fn insert(&mut self, addr: Address, slot: Slot, amount: Amount) {
-        let entry = self.credits
-            .entry(slot)
-            .or_default();
+        let entry = self.credits.entry(slot).or_default();
         entry.insert(addr, amount);
     }
-
 }
 
 /// Serializer for `DeferredCredits`

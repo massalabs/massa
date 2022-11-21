@@ -223,7 +223,7 @@ impl AsyncMessage {
         let mut buffer = Vec::new();
         async_message_ser
             .serialize(&self, &mut buffer)
-            .expect("this asynchronous message serialization should not be able to fail");
+            .expect("critical: asynchronous message serialization should never fail here");
         let hash = Hash::compute_from(&buffer);
         self.hash = Some(hash);
         self

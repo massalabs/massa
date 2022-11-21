@@ -25,7 +25,7 @@ use std::ops::Bound::{Excluded, Included, Unbounded};
 
 const ASYNC_POOL_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 const MISSING_HASH_ERROR: &str =
-    "critical: asynchronous message hash is missing, it should not be the case here";
+    "critical: asynchronous message hash is missing, it should never be the case here";
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
