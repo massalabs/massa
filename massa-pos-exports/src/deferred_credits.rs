@@ -24,6 +24,8 @@ const DC_ADDRESS_SER_ERROR: &str =
     "critical: deferred credits address serialization should never fail here";
 const DC_AMOUNT_SER_ERROR: &str =
     "critical: deferred credits amount serialization should never fail here";
+const MISSING_HASH_ERROR: &str =
+    "critical: deferred credits hash is missing, it should never be the case here";
 
 #[derive(Debug, Clone)]
 /// Structure containing all the PoS deferred credits information
@@ -31,14 +33,14 @@ pub struct DeferredCredits {
     /// Deferred credits
     pub credits: BTreeMap<Slot, PreHashMap<Address, Amount>>,
     /// Hash of the current deferred credits state
-    hash: Hash,
+    pub hash: Option<Hash>,
 }
 
 impl Default for DeferredCredits {
     fn default() -> Self {
         Self {
             credits: Default::default(),
-            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+            hash: None,
         }
     }
 }
@@ -58,23 +60,31 @@ impl DeferredCreditsHashComputer {
         }
     }
 
-    fn compute_hash(&self, slot: &Slot, credits: &PreHashMap<Address, Amount>) -> Hash {
+    fn compute_slot_credits_hash(
+        &self,
+        slot: &Slot,
+        credits: &PreHashMap<Address, Amount>,
+    ) -> Hash {
         let mut buffer = Vec::new();
         self.slot_ser
             .serialize(&slot, &mut buffer)
             .expect(DC_SLOT_SER_ERROR);
-        let mut hash = Hash::compute_from(&buffer);
+        let mut hash = Hash::compute_from(&mut buffer);
         for (address, amount) in credits {
-            buffer.clear();
-            self.address_ser
-                .serialize(address, &mut buffer)
-                .expect(DC_ADDRESS_SER_ERROR);
-            self.amount_ser
-                .serialize(amount, &mut buffer)
-                .expect(DC_AMOUNT_SER_ERROR);
-            hash ^= Hash::compute_from(&buffer);
+            hash ^= self.compute_single_credit_hash(address, amount);
         }
         hash
+    }
+
+    fn compute_single_credit_hash(&self, address: &Address, amount: &Amount) -> Hash {
+        let mut buffer = Vec::new();
+        self.address_ser
+            .serialize(address, &mut buffer)
+            .expect(DC_ADDRESS_SER_ERROR);
+        self.amount_ser
+            .serialize(amount, &mut buffer)
+            .expect(DC_AMOUNT_SER_ERROR);
+        Hash::compute_from(&buffer)
     }
 }
 
@@ -96,24 +106,51 @@ impl DeferredCredits {
         }
     }
 
-    /// Extends the current `DeferredCredits` with another and computes the hash changes
-    pub fn final_extend(&mut self, other: Self) {
-        let hash_computer = DeferredCreditsHashComputer::new();
-        for (slot, credits) in other.credits {
-            self.hash ^= hash_computer.compute_hash(&slot, &credits);
-            self.credits.insert(slot, credits);
+    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the object hash
+    pub fn final_nested_replace(&mut self, other: Self) {
+        if self.hash.is_none() {
+            self.hash = Some(Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES));
         }
-    }
-
-    /// Remove credits that have their reimbursement slot before the given one and compute the hash
-    pub fn remove_executed(&mut self, slot: Slot) {
         let hash_computer = DeferredCreditsHashComputer::new();
-        let kept_credits = self.credits.split_off(&slot);
-        // XOR the hash of every slot credits to be removed
-        for (slot, credits) in &self.credits {
-            self.hash ^= hash_computer.compute_hash(slot, credits);
+        for (slot, other_credits) in other.credits {
+            self.credits
+                .entry(slot)
+                // if has given slot entry update it
+                .and_modify(|current_credits| {
+                    for (address, other_amount) in other_credits.iter() {
+                        current_credits
+                            .entry(*address)
+                            .and_modify(|current_amount| {
+                                // get the hash
+                                let hash = self.hash.as_mut().expect(MISSING_HASH_ERROR);
+                                // compute the current credit hash and XOR it
+                                *hash ^= hash_computer
+                                    .compute_single_credit_hash(address, &current_amount);
+                                // compute the replacement credit hash and XOR it
+                                *hash ^= hash_computer
+                                    .compute_single_credit_hash(address, &other_amount);
+                                // set the new credit amount
+                                *current_amount = *other_amount
+                            })
+                            .or_insert({
+                                // get the hash
+                                let hash = self.hash.as_mut().expect(MISSING_HASH_ERROR);
+                                // compute the credit hash and XOR it
+                                *hash ^= hash_computer
+                                    .compute_single_credit_hash(address, &other_amount);
+                                // set the credit amount
+                                *other_amount
+                            });
+                    }
+                })
+                // if misses the given slot entry insert
+                .or_insert({
+                    // compute every slot credits hash and XOR them
+                    hash_computer.compute_slot_credits_hash(&slot, &other_credits);
+                    // set the slot credits
+                    other_credits
+                });
         }
-        self.credits = kept_credits;
     }
 
     /// Remove zero credits
@@ -124,7 +161,8 @@ impl DeferredCredits {
             credits.retain(|_addr, amount| !amount.is_zero());
             if credits.is_empty() {
                 delete_slots.push(*slot);
-                self.hash ^= hash_computer.compute_hash(slot, credits);
+                let hash = self.hash.as_mut().expect(MISSING_HASH_ERROR);
+                *hash ^= hash_computer.compute_slot_credits_hash(slot, credits);
             }
         }
         for slot in delete_slots {
@@ -246,8 +284,7 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
         )
         .map(|elements| DeferredCredits {
             credits: elements.into_iter().collect(),
-            // IMPORTANT TODO: compute this
-            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+            hash: None,
         })
         .parse(buffer)
     }

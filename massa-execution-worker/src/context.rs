@@ -663,7 +663,7 @@ impl ExecutionContext {
             self.speculative_roll_state
                 .added_changes
                 .deferred_credits
-                .0
+                .credits
                 .entry(*slot)
                 .or_default()
                 .entry(address)

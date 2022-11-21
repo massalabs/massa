@@ -232,8 +232,8 @@ impl FinalState {
             // Get PoS deferred credits changes that concern credits <= credits_step
             match credits_step {
                 StreamingStep::Ongoing(cursor_slot) => {
-                    let deferred_credits = DeferredCredits(
-                        changes
+                    let deferred_credits = DeferredCredits {
+                        credits: changes
                             .pos_changes
                             .deferred_credits
                             .credits
@@ -246,7 +246,8 @@ impl FinalState {
                                 }
                             })
                             .collect(),
-                    );
+                        hash: None,
+                    };
                     slot_changes.pos_changes.deferred_credits = deferred_credits;
                 }
                 StreamingStep::Finished(_) => {
