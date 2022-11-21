@@ -18,7 +18,6 @@ itertools = "0.10"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_graph = { path = "../massa-graph" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }

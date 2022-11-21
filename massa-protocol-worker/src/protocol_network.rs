@@ -17,7 +17,7 @@ use massa_models::{
     wrapped::{Id, Wrapped},
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
-use massa_protocol_exports::{ProtocolError, ProtocolEvent};
+use massa_protocol_exports::ProtocolError;
 use massa_serialization::Serializer;
 use massa_storage::Storage;
 use std::pin::Pin;
@@ -98,11 +98,8 @@ impl ProtocolWorker {
                     self.note_header_from_node(&header, &source_node_id).await?
                 {
                     if is_new {
-                        self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
-                            block_id,
-                            header,
-                        })
-                        .await;
+                        self.consensus_controller
+                            .register_block_header(block_id, header);
                     }
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
@@ -284,7 +281,7 @@ impl ProtocolWorker {
     /// # Ban
     /// Start compute the operations serialized total size with the operation we know.
     /// Ban the node if the operations contained in the block overflow the max size. We don't
-    /// forward the block to the graph in that case.
+    /// forward the block to the consensus in that case.
     ///
     /// # Parameters:
     /// - `from_node_id`: Node which sent us the information.
@@ -428,7 +425,7 @@ impl ProtocolWorker {
             return Ok(());
         }
 
-        let protocol_event_full_block = match self.block_wishlist.entry(block_id) {
+        match self.block_wishlist.entry(block_id) {
             Entry::Occupied(mut entry) => {
                 let info = entry.get_mut();
                 let header = if let Some(header) = &info.header {
@@ -471,7 +468,8 @@ impl ProtocolWorker {
                     warn!("Node id {} sent us full operations for block id {} but they exceed max size.", from_node_id, block_id);
                     let _ = self.ban_node(&from_node_id).await;
                     self.block_wishlist.remove(&block_id);
-                    ProtocolEvent::InvalidBlock { block_id, header }
+                    self.consensus_controller
+                        .mark_invalid_block(block_id, header);
                 } else {
                     if known_operations != block_ids_set {
                         warn!(
@@ -516,11 +514,11 @@ impl ProtocolWorker {
                     let slot = wrapped_block.content.header.content.slot;
                     // add block to local storage and claim ref
                     block_storage.store_block(wrapped_block);
-                    ProtocolEvent::ReceivedBlock {
-                        slot,
-                        block_id,
-                        storage: block_storage,
-                    }
+
+                    // Send to consensus
+                    info!("Send to consensus block for slot: {}", slot);
+                    self.consensus_controller
+                        .register_block(block_id, slot, block_storage, false);
                 }
             }
             Entry::Vacant(_) => {
@@ -532,8 +530,6 @@ impl ProtocolWorker {
                 return Ok(());
             }
         };
-        // Send to graph
-        self.send_protocol_event(protocol_event_full_block).await;
 
         // Update ask block
         let remove_hashes = vec![block_id].into_iter().collect();

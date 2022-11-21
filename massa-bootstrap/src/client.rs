@@ -23,13 +23,13 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state(
+async fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
-    if let BootstrapClientMessage::AskFinalStatePart { .. } = &next_bootstrap_message {
+    if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
         match tokio::time::timeout(
             cfg.write_timeout.into(),
             client.send(next_bootstrap_message),
@@ -57,7 +57,7 @@ async fn stream_final_state(
                 Ok(Ok(msg)) => msg,
             };
             match msg {
-                BootstrapServerMessage::FinalStatePart {
+                BootstrapServerMessage::BootstrapPart {
                     slot,
                     ledger_part,
                     async_pool_part,
@@ -65,7 +65,10 @@ async fn stream_final_state(
                     pos_credits_part,
                     exec_ops_part,
                     final_state_changes,
+                    consensus_part,
+                    consensus_outdated_ids,
                 } => {
+                    // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
                     let last_pool_step =
@@ -100,15 +103,42 @@ async fn stream_final_state(
                         }
                     }
                     write_final_state.slot = slot;
+
+                    // Set consensus blocks
+                    if let Some(graph) = global_bootstrap_state.graph.as_mut() {
+                        // Extend the final blocks with the received part
+                        graph.final_blocks.extend(consensus_part.final_blocks);
+                        // Remove every outdated block
+                        graph.final_blocks.retain(|block_export| {
+                            !consensus_outdated_ids.contains(&block_export.block.id)
+                        });
+                    } else {
+                        global_bootstrap_state.graph = Some(consensus_part);
+                    }
+                    let last_consensus_step = StreamingStep::Ongoing(
+                        // Note that this unwrap call is safe because of the above conditional statement
+                        global_bootstrap_state
+                            .graph
+                            .as_ref()
+                            .unwrap()
+                            .final_blocks
+                            .iter()
+                            .map(|b_export| b_export.block.id)
+                            .collect(),
+                    );
+
                     // Set new message in case of disconnection
-                    *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: Some(slot),
                         last_ledger_step,
                         last_pool_step,
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_consensus_step,
                     };
+
+                    // Logs for an easier diagnostic if needed
                     debug!(
                         "client final state bootstrap cursors: {:?}",
                         next_bootstrap_message
@@ -118,7 +148,7 @@ async fn stream_final_state(
                         final_state_changes.len()
                     );
                 }
-                BootstrapServerMessage::FinalStateFinished => {
+                BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
                     // Set next bootstrap message
                     *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
@@ -126,13 +156,14 @@ async fn stream_final_state(
                 }
                 BootstrapServerMessage::SlotTooOld => {
                     info!("Slot is too old retry bootstrap from scratch");
-                    *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: None,
                         last_ledger_step: StreamingStep::Started,
                         last_pool_step: StreamingStep::Started,
                         last_cycle_step: StreamingStep::Started,
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
+                        last_consensus_step: StreamingStep::Started,
                     };
                     panic!("Bootstrap failed, try to bootstrap again.");
                 }
@@ -268,9 +299,14 @@ async fn bootstrap_from_server(
     // Loop to ask data to the server depending on the last message we sent
     loop {
         match next_bootstrap_message {
-            BootstrapClientMessage::AskFinalStatePart { .. } => {
-                stream_final_state(cfg, client, next_bootstrap_message, global_bootstrap_state)
-                    .await?;
+            BootstrapClientMessage::AskBootstrapPart { .. } => {
+                stream_final_state_and_consensus(
+                    cfg,
+                    client,
+                    next_bootstrap_message,
+                    global_bootstrap_state,
+                )
+                .await?;
             }
             BootstrapClientMessage::AskBootstrapPeers => {
                 let peers = match send_client_message(
@@ -289,36 +325,9 @@ async fn bootstrap_from_server(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
-                *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
-            }
-            BootstrapClientMessage::AskConsensusState => {
-                let state = match send_client_message(
-                    next_bootstrap_message,
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                    "ask consensus state timed out",
-                )
-                .await?
-                {
-                    BootstrapServerMessage::ConsensusState { graph } => graph,
-                    BootstrapServerMessage::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
-                };
-                global_bootstrap_state.graph = Some(state);
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                if global_bootstrap_state.graph.is_none() {
-                    *next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
-                    continue;
-                }
-                if global_bootstrap_state.peers.is_none() {
-                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
-                    continue;
-                }
                 match tokio::time::timeout(write_timeout, client.send(next_bootstrap_message)).await
                 {
                     Err(_) => Err(std::io::Error::new(
@@ -389,12 +398,7 @@ async fn connect_to_server(
         bootstrap_config.max_async_pool_changes,
         bootstrap_config.max_async_pool_length,
         bootstrap_config.max_async_message_data,
-        bootstrap_config.max_function_name_length,
-        bootstrap_config.max_parameters_size,
         bootstrap_config.max_ledger_changes_count,
-        bootstrap_config.max_op_datastore_entry_count,
-        bootstrap_config.max_op_datastore_key_length,
-        bootstrap_config.max_op_datastore_value_length,
         bootstrap_config.max_changes_slot_count,
         bootstrap_config.max_rolls_length,
         bootstrap_config.max_production_stats_length,
@@ -444,13 +448,14 @@ pub async fn get_state(
     let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     let mut next_bootstrap_message: BootstrapClientMessage =
-        BootstrapClientMessage::AskFinalStatePart {
+        BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
             last_ledger_step: StreamingStep::Started,
             last_pool_step: StreamingStep::Started,
             last_cycle_step: StreamingStep::Started,
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
+            last_consensus_step: StreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {

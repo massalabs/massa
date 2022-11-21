@@ -20,9 +20,9 @@ pub enum ApiError {
     ReceiveChannelError(String),
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
-    /// Consensus error: {0}
-    ConsensusError(#[from] Box<ConsensusError>),
-    /// Execution error: {0}
+    /// consensus error: {0}
+    ConsensusError(#[from] ConsensusError),
+    /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
     /// Network error: {0}
     NetworkError(#[from] NetworkError),
@@ -77,11 +77,5 @@ impl From<ApiError> for jsonrpc_core::Error {
             message: err.to_string(),
             data: None,
         }
-    }
-}
-
-impl std::convert::From<ConsensusError> for ApiError {
-    fn from(err: ConsensusError) -> Self {
-        ApiError::ConsensusError(Box::new(err))
     }
 }

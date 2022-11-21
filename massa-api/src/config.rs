@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use jsonrpc_core::serde::Deserialize;
+use massa_time::MassaTime;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
@@ -30,4 +31,12 @@ pub struct APIConfig {
     pub max_function_name_length: u16,
     /// max parameter size
     pub max_parameter_size: u32,
+    /// thread count
+    pub thread_count: u8,
+    /// `genesis_timestamp`
+    pub genesis_timestamp: MassaTime,
+    /// t0
+    pub t0: MassaTime,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
 }

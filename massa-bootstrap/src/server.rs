@@ -1,10 +1,13 @@
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
-use massa_consensus_exports::ConsensusCommandSender;
+use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{
+    block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
+    version::Version,
+};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -50,7 +53,7 @@ impl BootstrapManager {
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.
 pub async fn start_bootstrap_server(
-    consensus_command_sender: ConsensusCommandSender,
+    consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     bootstrap_config: BootstrapConfig,
@@ -101,7 +104,7 @@ pub async fn start_bootstrap_server(
 
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
-                consensus_command_sender,
+                consensus_controller,
                 network_command_sender,
                 final_state,
                 establisher,
@@ -128,7 +131,7 @@ pub async fn start_bootstrap_server(
 }
 
 struct BootstrapServer {
-    consensus_command_sender: ConsensusCommandSender,
+    consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     establisher: Establisher,
@@ -213,7 +216,7 @@ impl BootstrapServer {
                         match self.ip_hist_map.entry(remote_addr.ip()) {
                             hash_map::Entry::Occupied(mut occ) => {
                                 if now.duration_since(*occ.get()) <= per_ip_min_interval {
-                                    let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size, self.bootstrap_config.thread_count, self.bootstrap_config.max_datastore_key_length, self.bootstrap_config.randomness_size_bytes);
+                                    let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size, self.bootstrap_config.thread_count, self.bootstrap_config.max_datastore_key_length, self.bootstrap_config.randomness_size_bytes, self.bootstrap_config.consensus_bootstrap_part_size);
                                     let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                         error:
                                         format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
@@ -253,13 +256,13 @@ impl BootstrapServer {
                         let compensation_millis = self.compensation_millis;
                         let version = self.version;
                         let data_execution = self.final_state.clone();
-                        let consensus_command_sender = self.consensus_command_sender.clone();
+                        let consensus_command_sender = self.consensus_controller.clone();
                         let network_command_sender = self.network_command_sender.clone();
                         let keypair = self.keypair.clone();
                         let config = self.bootstrap_config.clone();
 
                         bootstrap_sessions.push(async move {
-                            let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
+                            let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
                             match manage_bootstrap(&config, &mut server, data_execution, compensation_millis, version, consensus_command_sender, network_command_sender).await {
                                 Ok(_) => {
                                     info!("bootstrapped peer {}", remote_addr)
@@ -276,7 +279,7 @@ impl BootstrapServer {
                         massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                     } else {
                         let config = self.bootstrap_config.clone();
-                        let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes);
+                        let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
                         let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                             error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
                         })).await {
@@ -297,15 +300,17 @@ impl BootstrapServer {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn send_final_state_stream(
+pub async fn stream_bootstrap_information(
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
+    consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
     mut last_ledger_step: StreamingStep<Vec<u8>>,
     mut last_pool_step: StreamingStep<AsyncMessageId>,
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,
     mut last_ops_step: StreamingStep<Slot>,
+    mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -378,40 +383,59 @@ pub async fn send_final_state_stream(
             current_slot = final_state_read.slot;
         }
 
-        if !last_ledger_step.finished()
-            || !last_pool_step.finished()
-            || !last_cycle_step.finished()
-            || !last_credits_step.finished()
-            || !last_ops_step.finished()
-            || !final_state_changes.is_empty()
+        // Setup final state global cursor
+        let final_state_global_step = if last_ledger_step.finished()
+            && last_pool_step.finished()
+            && last_cycle_step.finished()
+            && last_credits_step.finished()
+            && last_ops_step.finished()
+        {
+            StreamingStep::Finished(Some(current_slot))
+        } else {
+            StreamingStep::Ongoing(current_slot)
+        };
+
+        // Setup final state changes cursor
+        let final_state_changes_step = if final_state_changes.is_empty() {
+            StreamingStep::Finished(Some(current_slot))
+        } else {
+            StreamingStep::Ongoing(current_slot)
+        };
+
+        // Stream consensus blocks if final state base bootstrap is finished
+        let mut consensus_part = BootstrapableGraph {
+            final_blocks: Default::default(),
+        };
+        let mut consensus_outdated_ids: PreHashSet<BlockId> = PreHashSet::default();
+        if final_state_global_step.finished() {
+            let (part, outdated_ids, new_consensus_step) = consensus_controller
+                .get_bootstrap_part(last_consensus_step, final_state_changes_step)?;
+            consensus_part = part;
+            consensus_outdated_ids = outdated_ids;
+            last_consensus_step = new_consensus_step;
+        }
+
+        // Logs for an easier diagnostic if needed
+        debug!(
+            "Final state bootstrap cursor: {:?}",
+            final_state_global_step
+        );
+        debug!(
+            "Consensus blocks bootstrap cursor: {:?}",
+            last_consensus_step
+        );
+        if let StreamingStep::Ongoing(ids) = &last_consensus_step {
+            debug!("Consensus bootstrap cursor length: {}", ids.len());
+        }
+
+        // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
+        if final_state_global_step.finished()
+            && final_state_changes_step.finished()
+            && last_consensus_step.finished()
         {
             match tokio::time::timeout(
                 write_timeout,
-                server.send(BootstrapServerMessage::FinalStatePart {
-                    slot: current_slot,
-                    ledger_part,
-                    async_pool_part,
-                    pos_cycle_part,
-                    pos_credits_part,
-                    exec_ops_part,
-                    final_state_changes,
-                }),
-            )
-            .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
-                )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
-            }?;
-        } else {
-            // There is no ledger data nor async pool data.
-            match tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::FinalStateFinished),
+                server.send(BootstrapServerMessage::BootstrapFinished),
             )
             .await
             {
@@ -425,10 +449,37 @@ pub async fn send_final_state_stream(
             }?;
             break;
         }
+
+        // At this point we know that consensus, final state or both are not finished
+        match tokio::time::timeout(
+            write_timeout,
+            server.send(BootstrapServerMessage::BootstrapPart {
+                slot: current_slot,
+                ledger_part,
+                async_pool_part,
+                pos_cycle_part,
+                pos_credits_part,
+                exec_ops_part,
+                final_state_changes,
+                consensus_part,
+                consensus_outdated_ids,
+            }),
+        )
+        .await
+        {
+            Err(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap ask ledger part send timed out",
+            )
+            .into()),
+            Ok(Err(e)) => Err(e),
+            Ok(Ok(_)) => Ok(()),
+        }?;
     }
     Ok(())
 }
 
+#[allow(clippy::manual_async_fn)]
 #[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
@@ -436,7 +487,7 @@ async fn manage_bootstrap(
     final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
     version: Version,
-    consensus_command_sender: ConsensusCommandSender,
+    consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
@@ -514,44 +565,29 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapClientMessage::AskFinalStatePart {
+                BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
                     last_ledger_step,
                     last_pool_step,
                     last_cycle_step,
                     last_credits_step,
                     last_ops_step,
+                    last_consensus_step,
                 } => {
-                    send_final_state_stream(
+                    stream_bootstrap_information(
                         server,
                         final_state.clone(),
+                        consensus_controller.clone(),
                         last_slot,
                         last_ledger_step,
                         last_pool_step,
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_consensus_step,
                         write_timeout,
                     )
                     .await?;
-                }
-                BootstrapClientMessage::AskConsensusState => {
-                    match tokio::time::timeout(
-                        write_timeout,
-                        server.send(BootstrapServerMessage::ConsensusState {
-                            graph: consensus_command_sender.get_bootstrap_state().await?,
-                        }),
-                    )
-                    .await
-                    {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap consensus state send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
-                    }?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {

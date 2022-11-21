@@ -23,6 +23,7 @@ use serial_test::serial;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
 };
+use num::rational::Ratio;
 
 #[test]
 #[serial]
@@ -458,14 +459,23 @@ pub fn roll_buy() {
 #[test]
 #[serial]
 pub fn roll_sell() {
+
+    // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
+    // Check for resulting roll count + resulting deferred credits
+
     // setup the period duration
-    let exec_cfg = ExecutionConfig {
+    let mut exec_cfg = ExecutionConfig {
         t0: 100.into(),
         periods_per_cycle: 2,
         thread_count: 2,
         cursor_delay: 0.into(),
         ..Default::default()
     };
+    // turn off roll selling on missed block opportunities
+    // otherwise balance will be credited with those sold roll (and we need to check the balance for
+    // if the deferred credits are reimbursed
+    exec_cfg.max_miss_ratio = Ratio::new(1, 1);
+
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
@@ -482,20 +492,43 @@ pub fn roll_sell() {
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
-    // create the operation
-    let operation = Operation::new_wrapped(
+
+    // get initial balance
+    let balance_initial = sample_state
+        .read()
+        .ledger
+        .get_balance(&address)
+        .unwrap();
+
+    // get initial roll count
+    let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
+    let roll_sell_1 = 10;
+    let roll_sell_2 = 1;
+
+    // create operation 1
+    let operation1 = Operation::new_wrapped(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
-            op: OperationType::RollSell { roll_count: 10 },
+            op: OperationType::RollSell { roll_count: roll_sell_1 },
         },
         OperationSerializer::new(),
         &keypair,
     )
     .unwrap();
+    let operation2 = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollSell { roll_count: roll_sell_2 },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+        .unwrap();
     // create the block containing the roll buy operation
-    storage.store_operations(vec![operation.clone()]);
-    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    storage.store_operations(vec![operation1.clone(), operation2.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation1, operation2], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
@@ -508,18 +541,45 @@ pub fn roll_sell() {
         Default::default(),
         block_storage.clone(),
     );
-    std::thread::sleep(Duration::from_millis(350));
+    std::thread::sleep(Duration::from_millis(1000));
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
-    credits.insert(address, Amount::from_str("1000").unwrap());
-    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 90);
+    let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
+    let roll_sold = roll_sell_1 + roll_sell_2;
+    credits.insert(address, exec_cfg.roll_price
+        .checked_mul_u64(roll_sold)
+        .unwrap()
+    );
+
+    assert_eq!(sample_read.pos_state.get_rolls_for(&address), roll_remaining);
     assert_eq!(
         sample_read
             .pos_state
             .get_deferred_credits_at(&Slot::new(7, 1)),
         credits
     );
+
+    // Check that deferred credit are reimbursed
+    let credits = PreHashMap::default();
+    assert_eq!(
+        sample_read
+            .pos_state
+            .get_deferred_credits_at(&Slot::new(8, 1)),
+        credits
+    );
+
+    // Now check balance
+    let balances = controller
+        .get_final_and_candidate_balance(&[address]);
+    let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+    assert_eq!(candidate_balance, exec_cfg.roll_price
+        .checked_mul_u64(roll_sell_1 + roll_sell_2)
+        .unwrap()
+        .checked_add(balance_initial)
+        .unwrap());
+
     // stop the execution controller
     manager.stop();
 }

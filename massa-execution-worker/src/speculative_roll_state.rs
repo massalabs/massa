@@ -118,17 +118,8 @@ impl SpeculativeRollState {
             )));
         }
 
-        let cur_cycle = slot.get_cycle(periods_per_cycle);
-
-        // remove the rolls
-        let current_rolls = self
-            .added_changes
-            .roll_changes
-            .entry(*seller_addr)
-            .or_insert_with(|| owned_count);
-        *current_rolls = owned_count.saturating_sub(roll_count);
-
         // compute deferred credit slot
+        let cur_cycle = slot.get_cycle(periods_per_cycle);
         let target_slot = Slot::new_last_of_cycle(
             cur_cycle
                 .checked_add(3)
@@ -136,16 +127,24 @@ impl SpeculativeRollState {
             periods_per_cycle,
             thread_count,
         )
-        .expect("unexepected slot overflot in try_sell_rolls");
+        .expect("unexpected slot overflow in try_sell_rolls");
 
-        // add deferred reimbursement corresponding to the sold rolls value
-        let credit = self
+        // Note 1: Deferred credits are stored as absolute value
+        let new_deferred_credits = self
+            .get_address_deferred_credit_for_slot(seller_addr, &target_slot)
+            .unwrap_or_default()
+            .saturating_add(roll_price.saturating_mul_u64(roll_count));
+
+        // Remove the rolls
+        self
             .added_changes
-            .deferred_credits
-            .credits
-            .entry(target_slot)
-            .or_insert_with(PreHashMap::default);
-        credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
+            .roll_changes
+            .insert(*seller_addr, owned_count.saturating_sub(roll_count));
+
+        // Add deferred credits (reimbursement) corresponding to the sold rolls value
+        self.added_changes
+             .deferred_credits
+             .insert(*seller_addr, target_slot,  new_deferred_credits);
 
         Ok(())
     }
@@ -218,10 +217,7 @@ impl SpeculativeRollState {
                 if owned_count != 0 {
                     if let Some(amount) = roll_price.checked_mul_u64(owned_count) {
                         target_credits.insert(addr, amount);
-                        self.added_changes
-                            .roll_changes
-                            .entry(addr)
-                            .or_insert_with(|| 0);
+                        self.added_changes.roll_changes.insert(addr, 0);
                     }
                 }
             }
@@ -287,6 +283,34 @@ impl SpeculativeRollState {
         }
 
         res.into_iter().filter(|(_s, v)| !v.is_zero()).collect()
+    }
+
+    /// Gets the deferred credits for a given address that will be credited at a given slot
+    fn get_address_deferred_credit_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
+
+        // search in the added changes
+        if let Some(v) = self.added_changes
+            .deferred_credits
+            .get_address_deferred_credit_for_slot(addr, slot) {
+            return Some(v);
+        }
+
+        // search in the history
+        if let Some(v) = self.active_history
+            .read()
+            .get_adress_deferred_credit_for(addr, slot) {
+            return Some(v);
+        }
+
+        // search in the final state
+        if let Some(v) = self.final_state
+            .read()
+            .pos_state.deferred_credits
+            .get_address_deferred_credit_for_slot(addr, slot) {
+            return Some(v);
+        }
+
+        None
     }
 
     /// Get the production statistics for a given address at a given cycle.
@@ -476,7 +500,7 @@ impl SpeculativeRollState {
         credits.extend(
             self.active_history
                 .read()
-                .fetch_all_deferred_credits_at(slot),
+                .get_all_deferred_credits_for(slot)
         );
 
         // added deferred credits

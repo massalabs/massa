@@ -169,7 +169,7 @@ impl AsyncPool {
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_id) => Excluded(last_id),
-            StreamingStep::Finished => return (pool_part, cursor),
+            StreamingStep::Finished(_) => return (pool_part, cursor),
         };
         let mut pool_part_last_id: Option<AsyncMessageId> = None;
         for (id, message) in self.messages.range((left_bound, Unbounded)) {
@@ -183,7 +183,7 @@ impl AsyncPool {
         if let Some(last_id) = pool_part_last_id {
             (pool_part, StreamingStep::Ongoing(last_id))
         } else {
-            (pool_part, StreamingStep::Finished)
+            (pool_part, StreamingStep::Finished(None))
         }
     }
 
@@ -207,7 +207,7 @@ impl AsyncPool {
         if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
             StreamingStep::Ongoing(message_id)
         } else {
-            StreamingStep::Finished
+            StreamingStep::Finished(None)
         }
     }
 }
