@@ -673,7 +673,7 @@ impl ExecutionContext {
                 .entry(*slot)
                 .or_default()
                 .entry(address)
-                .and_modify(|credit_amount| *credit_amount = Amount::from_raw(0))
+                .and_modify(|credit_amount| *credit_amount = Amount::default())
                 .or_default();
             if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
                 debug!(
