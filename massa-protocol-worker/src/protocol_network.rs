@@ -114,19 +114,8 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!(OPS, { "node": node, "operations": operations});
-                if operations.iter().any(|operation| {
-                    operation.serialized_size()
-                        > self.config.max_serialized_operations_size_per_block
-                }) {
-                    warn!(
-                        "Node id {} sent us an operation which exceed max block size.",
-                        node
-                    );
-                    let _ = self.ban_node(&node).await;
-                } else {
-                    self.on_operations_received(node, operations, op_timer)
-                        .await;
-                }
+                self.on_operations_received(node, operations, op_timer)
+                    .await;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
