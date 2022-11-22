@@ -142,7 +142,6 @@ async fn serve(
         .expect("failed to build server");
 
     let server_handler = server.start(api.into_rpc()).expect("server start failed");
-
     let stop_handler = StopHandle { server_handler };
 
     Ok(stop_handler)

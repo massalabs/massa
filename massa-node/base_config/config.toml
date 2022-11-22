@@ -16,25 +16,25 @@
     # path to the openrpc specification file used in `rpc.discover` method
     openrpc_spec_path = "base_config/openrpc.json"
     # maximum size in bytes of a request
-	max_request_body_size = 52428800 
-	# maximum size in bytes of a response
-	max_response_body_size = 52428800
-	# maximum number of incoming connections allowed
-	max_connections = 100
-	# maximum number of subscriptions per connection
-	max_subscriptions_per_connection = 1024
-	# max length for logging for requests and responses. Logs bigger than this limit will be truncated
-	max_log_length = 4096
-	# host filtering
-	allow_hosts = []
-	# whether batch requests are supported by this server or not
-	batch_requests_supported = true
-	# the interval at which `Ping` frames are submitted in milliseconds
-	ping_interval = 60000
+    max_request_body_size = 52428800 
+    # maximum size in bytes of a response
+    max_response_body_size = 52428800
+    # maximum number of incoming connections allowed
+    max_connections = 100
+    # maximum number of subscriptions per connection
+    max_subscriptions_per_connection = 1024
+    # max length for logging for requests and responses. Logs bigger than this limit will be truncated
+    max_log_length = 4096
+    # host filtering
+    allow_hosts = []
+    # whether batch requests are supported by this server or not
+    batch_requests_supported = true
+    # the interval at which `Ping` frames are submitted in milliseconds
+    ping_interval = 60000
     # whether to enable HTTP.
-	enable_http = true
-	# whether to enable WS.
-	enable_ws = false
+    enable_http = true
+    # whether to enable WS.
+    enable_ws = false
 
 [execution]
     # max number of generated events kept in RAM
