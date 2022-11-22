@@ -63,35 +63,35 @@ fn dl_file(url: &str, to_file: &str, max_size: u64) -> Result<(), DlFileError> {
 
 fn main() -> Result<(), std::io::Error> {
 
-    // println!("Using tag: {} for release of massa-unit-tests-src repo...", TAG);
+    println!("Using tag: {} for release of massa-unit-tests-src repo...", TAG);
 
-    // let path = format!("massa_unit_tests_{}.tar.gz", TAG);
-    // let url = format!("https://github.com/massalabs/massa-unit-tests-src/releases/download/{}/{}", TAG, path);
+    let path = format!("massa_unit_tests_{}.tar.gz", TAG);
+    let url = format!("https://github.com/massalabs/massa-unit-tests-src/releases/download/{}/{}", TAG, path);
 
-    let extract_folder = format!("extract_massa_unit_tests_src_LOCAL");
+    let extract_folder = format!("extract_massa_unit_tests_src_{}", TAG);
 
     if Path::new(&extract_folder).exists() {
         println!("Please remove the folder: {} before runnning this script", extract_folder);
         std::process::exit(1);
     }
 
-    // println!("Downloading: {}...", url);
-    // let res = dl_file(&url, &path, ARCHIVE_MAX_SIZE);
+    println!("Downloading: {}...", url);
+    let res = dl_file(&url, &path, ARCHIVE_MAX_SIZE);
 
-    // if res.is_err() {
-    //     println!("Unable to download release archive from github: {:?}", res);
-    //     std::process::exit(2);
-    // } else {
-    //     println!("Download done.")
-    // }
+    if res.is_err() {
+        println!("Unable to download release archive from github: {:?}", res);
+        std::process::exit(2);
+    } else {
+        println!("Download done.")
+    }
 
-    // let tar_gz = File::open(path)?;
-    // let tar = GzDecoder::new(tar_gz);
-    // let mut archive = Archive::new(tar);
-    // archive.unpack(extract_folder.clone())?;
+    let tar_gz = File::open(path)?;
+    let tar = GzDecoder::new(tar_gz);
+    let mut archive = Archive::new(tar);
+    archive.unpack(extract_folder.clone())?;
 
     // Copy wasm files
-    let pattern_src_1 = format!("../massa-unit-tests-src/build/massa/*.wasm");
+    let pattern_src_1 = format!("{}/massa_unit_tests/*.wasm", extract_folder.clone());
     let path_dst_base = Path::new(PATH_DST_BASE_1);
 
     for entry in glob(&pattern_src_1).expect("Failed to read glob pattern (wasm)") {
