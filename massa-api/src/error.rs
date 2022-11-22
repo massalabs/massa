@@ -1,6 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
+use jsonrpsee::{
+    core::Error as JsonRpseeError,
+    types::error::{CallError, ErrorObject},
+};
 use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
@@ -50,7 +54,7 @@ pub enum ApiError {
     InternalServerError(String),
 }
 
-impl From<ApiError> for jsonrpc_core::Error {
+impl From<ApiError> for JsonRpseeError {
     fn from(err: ApiError) -> Self {
         // JSON-RPC Server errors codes must be between -32099 to -32000
         let code = match err {
@@ -72,10 +76,7 @@ impl From<ApiError> for jsonrpc_core::Error {
             ApiError::MissingConfig(_) => -32018,
             ApiError::WrongAPI => -32019,
         };
-        jsonrpc_core::Error {
-            code: jsonrpc_core::ErrorCode::ServerError(code),
-            message: err.to_string(),
-            data: None,
-        }
+
+        CallError::Custom(ErrorObject::owned(code, err.to_string(), None::<()>)).into()
     }
 }

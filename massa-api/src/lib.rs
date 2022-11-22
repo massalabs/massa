@@ -4,10 +4,9 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 use crate::error::ApiError::WrongAPI;
-use error::ApiError;
-use jsonrpc_core::{serde_json, BoxFuture, IoHandler, Value};
-use jsonrpc_derive::rpc;
-use jsonrpc_http_server::{CloseHandle, ServerBuilder};
+use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
@@ -36,10 +35,10 @@ use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
+use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
-use std::thread;
-use std::thread::JoinHandle;
+
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
@@ -95,181 +94,196 @@ pub struct Private {
 pub struct API<T>(T);
 
 /// Used to manage the API
-pub trait RpcServer: Endpoints {
+#[async_trait::async_trait]
+pub trait RpcServer: MassaRpcServer {
     /// Start the API
-    fn serve(self, _: &SocketAddr) -> StopHandle;
+    async fn serve(
+        self,
+        url: &SocketAddr,
+        api_config: &APIConfig,
+    ) -> Result<StopHandle, JsonRpseeError>;
 }
 
-fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
-    let mut io = IoHandler::new();
-    io.extend_with(api.to_delegate());
+async fn serve(
+    api: impl MassaRpcServer,
+    url: &SocketAddr,
+    api_config: &APIConfig,
+) -> Result<StopHandle, JsonRpseeError> {
+    let allowed_hosts = if api_config.allow_hosts.is_empty() {
+        AllowHosts::Any
+    } else {
+        let hosts = api_config
+            .allow_hosts
+            .iter()
+            .map(|hostname| hostname.into())
+            .collect();
+        AllowHosts::Only(hosts)
+    };
 
-    let server = ServerBuilder::new(io)
-        .event_loop_executor(tokio::runtime::Handle::current())
-        .max_request_body_size(50 * 1024 * 1024)
-        .start_http(url)
-        .expect("Unable to start RPC server");
+    let mut server_builder = ServerBuilder::new()
+        .max_request_body_size(api_config.max_request_body_size)
+        .max_response_body_size(api_config.max_response_body_size)
+        .max_connections(api_config.max_connections)
+        .set_host_filtering(allowed_hosts)
+        .batch_requests_supported(api_config.batch_requests_supported)
+        .ping_interval(api_config.ping_interval.to_duration());
 
-    let close_handle = server.close_handle();
-    let thread_builder = thread::Builder::new().name("rpc-server".into());
-    let join_handle = thread_builder
-        .spawn(|| server.wait())
-        .expect("failed to spawn thread : rpc-server");
-
-    StopHandle {
-        close_handle,
-        join_handle,
+    if api_config.enable_http && !api_config.enable_ws {
+        server_builder = server_builder.http_only();
+    } else if api_config.enable_ws && !api_config.enable_http {
+        server_builder = server_builder.ws_only()
+    } else {
+        panic!("wrong server configuration, you can't disable both http and ws")
     }
+
+    let server = server_builder
+        .build(url)
+        .await
+        .expect("failed to build server");
+
+    let server_handler = server.start(api.into_rpc()).expect("server start failed");
+    let stop_handler = StopHandle { server_handler };
+
+    Ok(stop_handler)
 }
 
 /// Used to be able to stop the API
 pub struct StopHandle {
-    close_handle: CloseHandle,
-    join_handle: JoinHandle<()>,
+    server_handler: ServerHandle,
 }
 
 impl StopHandle {
     /// stop the API gracefully
     pub fn stop(self) {
-        self.close_handle.close();
-        if let Err(err) = self.join_handle.join() {
-            warn!("API thread panicked: {:?}", err);
-        } else {
-            info!("API finished cleanly");
+        match self.server_handler.stop() {
+            Ok(_) => {
+                info!("API finished cleanly");
+            }
+            Err(err) => warn!("API thread panicked: {:?}", err),
         }
     }
 }
 
-/// Exposed API endpoints
+/// Exposed API methods
 #[rpc(server)]
-pub trait Endpoints {
+pub trait MassaRpc {
     /// Gracefully stop the node.
-    #[rpc(name = "stop_node")]
-    fn stop_node(&self) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "stop_node")]
+    async fn stop_node(&self) -> RpcResult<()>;
 
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
-    #[rpc(name = "node_sign_message")]
-    fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>>;
+    #[method(name = "node_sign_message")]
+    async fn node_sign_message(&self, arg: Vec<u8>) -> RpcResult<PubkeySig>;
 
     /// Add a vector of new secret(private) keys for the node to use to stake.
     /// No confirmation to expect.
-    #[rpc(name = "add_staking_secret_keys")]
-    fn add_staking_secret_keys(&self, _: Vec<String>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "add_staking_secret_keys")]
+    async fn add_staking_secret_keys(&self, arg: Vec<String>) -> RpcResult<()>;
 
     /// Execute bytecode in read-only mode.
-    #[rpc(name = "execute_read_only_bytecode")]
-    fn execute_read_only_bytecode(
+    #[method(name = "execute_read_only_bytecode")]
+    async fn execute_read_only_bytecode(
         &self,
-        _: Vec<ReadOnlyBytecodeExecution>,
-    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
+        arg: Vec<ReadOnlyBytecodeExecution>,
+    ) -> RpcResult<Vec<ExecuteReadOnlyResponse>>;
 
     /// Execute an SC function in read-only mode.
-    #[rpc(name = "execute_read_only_call")]
-    fn execute_read_only_call(
+    #[method(name = "execute_read_only_call")]
+    async fn execute_read_only_call(
         &self,
-        _: Vec<ReadOnlyCall>,
-    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
+        arg: Vec<ReadOnlyCall>,
+    ) -> RpcResult<Vec<ExecuteReadOnlyResponse>>;
 
     /// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
-    #[rpc(name = "remove_staking_addresses")]
-    fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "remove_staking_addresses")]
+    async fn remove_staking_addresses(&self, arg: Vec<Address>) -> RpcResult<()>;
 
     /// Return hash set of staking addresses.
-    #[rpc(name = "get_staking_addresses")]
-    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>>;
+    #[method(name = "get_staking_addresses")]
+    async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>>;
 
     /// Bans given IP address(es).
     /// No confirmation to expect.
-    #[rpc(name = "node_ban_by_ip")]
-    fn node_ban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "node_ban_by_ip")]
+    async fn node_ban_by_ip(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
     /// Bans given node id.
     /// No confirmation to expect.
-    #[rpc(name = "node_ban_by_id")]
-    fn node_ban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "node_ban_by_id")]
+    async fn node_ban_by_id(&self, arg: Vec<NodeId>) -> RpcResult<()>;
 
     /// whitelist given IP address.
     /// No confirmation to expect.
     /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
-    #[rpc(name = "node_whitelist")]
-    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "node_whitelist")]
+    async fn node_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
     /// remove from whitelist given IP address.
     /// keep it as standard
     /// No confirmation to expect.
-    #[rpc(name = "node_remove_from_whitelist")]
-    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "node_remove_from_whitelist")]
+    async fn node_remove_from_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
     /// Unban given IP address(es).
     /// No confirmation to expect.
-    #[rpc(name = "node_unban_by_ip")]
-    fn node_unban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "node_unban_by_ip")]
+    async fn node_unban_by_ip(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
     /// Unban given node id.
     /// No confirmation to expect.
-    #[rpc(name = "node_unban_by_id")]
-    fn node_unban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>>;
+    #[method(name = "node_unban_by_id")]
+    async fn node_unban_by_id(&self, arg: Vec<NodeId>) -> RpcResult<()>;
 
     /// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.
-    #[rpc(name = "get_status")]
-    fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>>;
+    #[method(name = "get_status")]
+    async fn get_status(&self) -> RpcResult<NodeStatus>;
 
     /// Get cliques.
-    #[rpc(name = "get_cliques")]
-    fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>>;
+    #[method(name = "get_cliques")]
+    async fn get_cliques(&self) -> RpcResult<Vec<Clique>>;
 
     /// Returns the active stakers and their active roll counts for the current cycle.
-    #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>>;
+    #[method(name = "get_stakers")]
+    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
-    #[rpc(name = "get_operations")]
-    fn get_operations(
-        &self,
-        _: Vec<OperationId>,
-    ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>>;
+    #[method(name = "get_operations")]
+    async fn get_operations(&self, arg: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>>;
 
     /// Get endorsements (not yet implemented).
-    #[rpc(name = "get_endorsements")]
-    fn get_endorsements(
-        &self,
-        _: Vec<EndorsementId>,
-    ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>>;
+    #[method(name = "get_endorsements")]
+    async fn get_endorsements(&self, arg: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>>;
 
     /// Get information on a block given its hash.
-    #[rpc(name = "get_block")]
-    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>>;
+    #[method(name = "get_block")]
+    async fn get_block(&self, arg: BlockId) -> RpcResult<BlockInfo>;
 
     /// Get information on the block at a slot in the blockclique.
     /// If there is no block at this slot a `None` is returned.
-    #[rpc(name = "get_blockclique_block_by_slot")]
-    fn get_blockclique_block_by_slot(&self, _: Slot) -> BoxFuture<Result<Option<Block>, ApiError>>;
+    #[method(name = "get_blockclique_block_by_slot")]
+    async fn get_blockclique_block_by_slot(&self, arg: Slot) -> RpcResult<Option<Block>>;
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp
-    #[rpc(name = "get_graph_interval")]
-    fn get_graph_interval(&self, _: TimeInterval)
-        -> BoxFuture<Result<Vec<BlockSummary>, ApiError>>;
+    #[method(name = "get_graph_interval")]
+    async fn get_graph_interval(&self, arg: TimeInterval) -> RpcResult<Vec<BlockSummary>>;
 
     /// Get multiple datastore entries.
-    #[rpc(name = "get_datastore_entries")]
-    fn get_datastore_entries(
+    #[method(name = "get_datastore_entries")]
+    async fn get_datastore_entries(
         &self,
-        _: Vec<DatastoreEntryInput>,
-    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>>;
+        arg: Vec<DatastoreEntryInput>,
+    ) -> RpcResult<Vec<DatastoreEntryOutput>>;
 
     /// Get addresses.
-    #[rpc(name = "get_addresses")]
-    fn get_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>>;
+    #[method(name = "get_addresses")]
+    async fn get_addresses(&self, arg: Vec<Address>) -> RpcResult<Vec<AddressInfo>>;
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    #[rpc(name = "send_operations")]
-    fn send_operations(
-        &self,
-        _: Vec<OperationInput>,
-    ) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
+    #[method(name = "send_operations")]
+    async fn send_operations(&self, arg: Vec<OperationInput>) -> RpcResult<Vec<OperationId>>;
 
     /// Get events optionally filtered by:
     /// * start slot
@@ -277,22 +291,19 @@ pub trait Endpoints {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    #[rpc(name = "get_filtered_sc_output_event")]
-    fn get_filtered_sc_output_event(
-        &self,
-        _: EventFilter,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
+    #[method(name = "get_filtered_sc_output_event")]
+    async fn get_filtered_sc_output_event(&self, arg: EventFilter)
+        -> RpcResult<Vec<SCOutputEvent>>;
 
     /// Get OpenRPC specification.
-    #[rpc(name = "rpc.discover")]
-    fn get_openrpc_spec(&self) -> BoxFuture<Result<Value, ApiError>>;
+    #[method(name = "rpc.discover")]
+    async fn get_openrpc_spec(&self) -> RpcResult<Value>;
 }
 
-fn wrong_api<T>() -> BoxFuture<Result<T, ApiError>> {
-    let closure = async move || Err(WrongAPI);
-    Box::pin(closure())
+fn wrong_api<T>() -> RpcResult<T> {
+    Err((WrongAPI).into())
 }
 
-fn _jsonrpc_assert(_method: &str, _request: Value, _response: Value) {
-    // TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182
+fn _jsonrpsee_assert(_method: &str, _request: Value, _response: Value) {
+    // TODO: jsonrpsee_client_transports::RawClient::call_method ... see #1182
 }

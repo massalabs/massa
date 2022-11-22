@@ -16,6 +16,7 @@ pub struct Settings {
     pub history: usize,
     pub history_file_path: PathBuf,
     pub timeout: MassaTime,
+    pub http: HttpSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -23,6 +24,19 @@ pub struct DefaultNode {
     pub ip: IpAddr,
     pub private_port: u16,
     pub public_port: u16,
+}
+
+/// Http Client settings.
+/// the Http Client settings
+#[derive(Debug, Deserialize, Clone)]
+pub struct HttpSettings {
+    pub max_request_body_size: u32,
+    pub request_timeout: MassaTime,
+    pub max_concurrent_requests: usize,
+    pub certificate_store: String,
+    pub id_kind: String,
+    pub max_log_length: u32,
+    pub headers: Vec<(String, String)>,
 }
 
 #[cfg(test)]
