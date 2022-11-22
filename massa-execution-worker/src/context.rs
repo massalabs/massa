@@ -659,7 +659,13 @@ impl ExecutionContext {
     /// * `credits`: deferred to be executed
     pub fn execute_deferred_credits(&mut self, slot: &Slot) {
         let executed_credits = self.speculative_roll_state.get_deferred_credits(slot);
+
         for (address, amount) in executed_credits {
+            // REVIEW NOTE: not sure which one is the best option here:
+            // * option 1: current one, requires to find the deferred_credits slot entry on every iteration even though the slot is always the same one
+            // * option 2: find the entry once but iterate twice because of the mutable reference incompatibility coming later from transfer_coins
+            // * option 3: get a copy of the slot credits first, modify the copy and replace the value in the deferred_credits after the iteration, but if transfer_coins fails no updates will be applied
+
             self.speculative_roll_state
                 .added_changes
                 .deferred_credits
@@ -668,7 +674,7 @@ impl ExecutionContext {
                 .or_default()
                 .entry(address)
                 .and_modify(|credit_amount| *credit_amount = Amount::from_raw(0))
-                .or_insert(amount);
+                .or_default();
             if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
