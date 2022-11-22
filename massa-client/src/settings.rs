@@ -37,8 +37,6 @@ pub struct HttpSettings {
     pub id_kind: String,
     pub max_log_length: u32,
     pub headers: Vec<(String, String)>,
-    pub enable_http: bool,
-    pub enable_ws: bool,
 }
 
 #[cfg(test)]

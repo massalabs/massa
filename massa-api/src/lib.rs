@@ -152,7 +152,7 @@ async fn serve(
 pub struct StopHandle {
     server_handler: ServerHandle,
 }
-/// TODO to be checked
+
 impl StopHandle {
     /// stop the API gracefully
     pub fn stop(self) {

@@ -18,7 +18,7 @@ public_port = 33035
     certificate_store = "Native"
     # JSON-RPC request object id data type, `String` or `Number` 
     id_kind = "Number"
-	# max length for logging for requests and responses. Logs bigger than this limit will be truncated
+    # max length for logging for requests and responses. Logs bigger than this limit will be truncated
     max_log_length = 4096
     # custom headers passed to the server with every request (default is empty).
     headers = []
