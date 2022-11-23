@@ -6,20 +6,23 @@
 //! fs_extra="1"
 //! ureq="2"
 //! thiserror="1"
+//! clap={ version = "4", features= ["derive"] }
 //! ```
 use std::fs::File;
+use std::io::Error;
 use std::io::{Cursor, Read};
 use std::num::ParseIntError;
 use std::path::Path;
 
+extern crate clap;
 extern crate flate2;
 extern crate fs_extra;
 extern crate glob;
 extern crate tar;
 extern crate ureq;
+use clap::Parser;
 use flate2::read::GzDecoder;
 use glob::glob;
-use std::io::{Error, ErrorKind};
 use tar::Archive;
 
 // git tag
@@ -104,18 +107,19 @@ fn download_src() -> Result<String, Error> {
     ))
 }
 
-fn main() -> Result<(), Error> {
-    let args: Vec<String> = std::env::args().collect();
-    let local: Option<String> = match args.get(1) {
-        Some(flag) if *flag == "--local".to_string() => Some(
-            args.get(2)
-                .expect("missing pattern after `local` flag")
-                .to_string(),
-        ),
-        _ => None,
-    };
+/// Script input arguments
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Optional local pattern of the WASM files to copy
+    #[arg(short, long)]
+    local: Option<String>,
+}
 
-    let pattern_src = if let Some(local_src) = local {
+fn main() -> Result<(), Error> {
+    let args = Args::parse();
+
+    let pattern_src = if let Some(local_src) = args.local {
         println!("Using local sources");
         local_src
     } else {
