@@ -103,13 +103,13 @@ impl PoSFinalState {
             // assume genesis blocks have a "False" seed bit to avoid passing them around
             rng_seed.push(false);
         }
-        self.cycle_history.push_back(CycleInfo {
-            cycle: 0,
+        self.cycle_history.push_back(CycleInfo::new_with_hash(
+            0,
+            false,
+            self.initial_rolls.clone(),
             rng_seed,
-            production_stats: Default::default(),
-            roll_counts: self.initial_rolls.clone(),
-            complete: false,
-        });
+            PreHashMap::default(),
+        ));
     }
 
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
@@ -199,13 +199,13 @@ impl PoSFinalState {
                 // extend the last incomplete cycle
             } else if info.cycle.checked_add(1) == Some(cycle) && info.complete {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
-                self.cycle_history.push_back(CycleInfo {
+                self.cycle_history.push_back(CycleInfo::new_with_hash(
                     cycle,
-                    roll_counts: info.roll_counts.clone(),
-                    rng_seed: BitVec::with_capacity(slots_per_cycle),
-                    production_stats: Default::default(),
-                    complete: false,
-                });
+                    false,
+                    info.roll_counts.clone(),
+                    BitVec::with_capacity(slots_per_cycle),
+                    PreHashMap::default(),
+                ));
                 while self.cycle_history.len() > self.config.cycle_history_length {
                     self.cycle_history.pop_front();
                 }

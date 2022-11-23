@@ -18,12 +18,6 @@ use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included};
 
 const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
-const DC_SLOT_SER_ERROR: &str =
-    "critical: deferred credits slot serialization should never fail here";
-const DC_ADDRESS_SER_ERROR: &str =
-    "critical: deferred credits address serialization should never fail here";
-const DC_AMOUNT_SER_ERROR: &str =
-    "critical: deferred credits amount serialization should never fail here";
 const MISSING_HASH_ERROR: &str =
     "critical: deferred credits hash is missing, it should never be the case here";
 
@@ -68,7 +62,7 @@ impl DeferredCreditsHashComputer {
         let mut buffer = Vec::new();
         self.slot_ser
             .serialize(&slot, &mut buffer)
-            .expect(DC_SLOT_SER_ERROR);
+            .expect("critical: deferred credits slot serialization should never fail here");
         let mut hash = Hash::compute_from(&mut buffer);
         for (address, amount) in credits {
             hash ^= self.compute_single_credit_hash(address, amount);
@@ -80,10 +74,10 @@ impl DeferredCreditsHashComputer {
         let mut buffer = Vec::new();
         self.address_ser
             .serialize(address, &mut buffer)
-            .expect(DC_ADDRESS_SER_ERROR);
+            .expect("critical: deferred credits address serialization should never fail here");
         self.amount_ser
             .serialize(amount, &mut buffer)
-            .expect(DC_AMOUNT_SER_ERROR);
+            .expect("critical: deferred credits amount serialization should never fail here");
         Hash::compute_from(&buffer)
     }
 }

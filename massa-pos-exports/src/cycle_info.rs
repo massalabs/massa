@@ -1,4 +1,5 @@
 use bitvec::vec::BitVec;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     address::{Address, AddressDeserializer},
     prehash::PreHashMap,
@@ -20,8 +21,12 @@ use num::rational::Ratio;
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
+use crate::PoSChanges;
+
+const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
 /// State of a cycle for all threads
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleInfo {
     /// cycle number
     pub cycle: u64,
@@ -33,6 +38,33 @@ pub struct CycleInfo {
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
+    /// Hash of the current cycle state
+    pub hash: Hash,
+}
+
+impl CycleInfo {
+    /// Create a new `CycleInfo` and compute its hash
+    pub(crate) fn new_with_hash(
+        cycle: u64,
+        complete: bool,
+        roll_counts: BTreeMap<Address, u64>,
+        rng_seed: BitVec<u8>,
+        production_stats: PreHashMap<Address, ProductionStats>,
+    ) -> Self {
+        let hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        // IMPORTANT TODO: compute hash here
+        CycleInfo {
+            cycle,
+            complete,
+            roll_counts,
+            rng_seed,
+            production_stats,
+            hash,
+        }
+    }
+
+    /// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
+    pub(crate) fn apply_changes(&mut self, _changes: PoSChanges) {}
 }
 
 /// Serializer for `CycleInfo`
@@ -134,12 +166,14 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
                 Vec<(Address, u64)>,                  // roll_counts
                 BitVec<u8>,                           // rng_seed
                 PreHashMap<Address, ProductionStats>, // production_stats (address, n_success, n_fail)
-            )| CycleInfo {
-                cycle,
-                complete,
-                roll_counts: roll_counts.into_iter().collect(),
-                rng_seed,
-                production_stats,
+            )| {
+                CycleInfo::new_with_hash(
+                    cycle,
+                    complete,
+                    roll_counts.into_iter().collect(),
+                    rng_seed,
+                    production_stats,
+                )
             },
         )
         .parse(buffer)
