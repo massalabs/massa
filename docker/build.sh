@@ -6,7 +6,7 @@ set -e
 
 if [ ! $1 ]
 then 
-    echo "Error. Tag not specified" 
+    echo "Error. Tag not specified"
     exit 1
 fi
 
@@ -30,4 +30,4 @@ docker build -f "$DOCKERFILE" "$DIR" \
      --build-arg IMAGE_TAG="$IMAGE_TAG" \
      --build-arg GIT_REPOSITORY="$GIT_REPOSITORY" \
      --build-arg BUILD_DATE="$BUILD_DATE" \
-     --tag massa-node:$IMAGE_TAG  
+     --tag massa-node-test:$IMAGE_TAG
