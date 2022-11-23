@@ -416,7 +416,7 @@ pub enum OperationType {
         /// Target function name. No function is called if empty.
         target_func: String,
         /// Parameter to pass to the target function
-        param: String,
+        param: Vec<u8>,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
         /// Extra coins that are spent from the caller's balance and transferred to the target
@@ -466,7 +466,7 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "CallSC:")?;
                 writeln!(f, "\t- target address:{}", target_addr)?;
                 writeln!(f, "\t- target function:{}", target_func)?;
-                writeln!(f, "\t- target parameter:{}", param)?;
+                writeln!(f, "\t- target parameter:{:?}", param)?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
                 writeln!(f, "\t- gas_price:{}", gas_price)?;
                 writeln!(f, "\t- coins:{}", coins)?;
@@ -483,7 +483,6 @@ pub struct OperationTypeSerializer {
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
-    parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
     datastore_serializer: DatastoreSerializer,
 }
 
@@ -496,7 +495,6 @@ impl OperationTypeSerializer {
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
-            parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -577,7 +575,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 buffer.extend(target_addr.to_bytes());
                 self.function_name_serializer
                     .serialize(target_func, buffer)?;
-                self.parameter_serializer.serialize(param, buffer)?;
+                self.vec_u8_serializer.serialize(param, buffer)?;
             }
         }
         Ok(())
@@ -593,7 +591,7 @@ pub struct OperationTypeDeserializer {
     data_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
-    parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
+    parameter_deserializer: VecU8Deserializer,
     datastore_deserializer: DatastoreDeserializer,
 }
 
@@ -624,10 +622,10 @@ impl OperationTypeDeserializer {
                 Included(0),
                 Included(max_function_name_length),
             )),
-            parameter_deserializer: StringDeserializer::new(U32VarIntDeserializer::new(
+            parameter_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(max_parameters_size),
-            )),
+                Included(max_parameters_size as u64),
+            ),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
@@ -1462,7 +1460,7 @@ mod tests {
             coins: Amount::from_str("456.789").unwrap(),
             gas_price: Amount::from_str("772.122").unwrap(),
             target_func: "target function".to_string(),
-            param: "parameter".to_string(),
+            param: b"parameter".to_vec(),
         };
         let mut ser_type = Vec::new();
         OperationTypeSerializer::new()

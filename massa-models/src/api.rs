@@ -570,7 +570,7 @@ pub struct ReadOnlyCall {
     /// target function
     pub target_function: String,
     /// function parameter
-    pub parameter: String,
+    pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
 }

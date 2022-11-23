@@ -601,7 +601,7 @@ impl ExecutionState {
             &bytecode,
             max_gas,
             target_func,
-            param,
+            &param,
             &*self.execution_interface,
         ) {
             Ok(_reamining_gas) => {}
@@ -630,7 +630,7 @@ impl ExecutionState {
     ) -> Result<(), ExecutionError> {
         // prepare execution context
         let context_snapshot;
-        let (bytecode, data): (Vec<u8>, &str) = {
+        let bytecode: Vec<u8> = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -653,9 +653,9 @@ impl ExecutionState {
 
             // If there is no target bytecode or if message data is invalid,
             // reimburse sender with coins and quit
-            let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
-                (Some(bc), Ok(d)) => (bc, d),
-                (bc, _d) => {
+            let bytecode = match bytecode {
+                Some(bc) => bc,
+                bc => {
                     let err = if bc.is_none() {
                         ExecutionError::RuntimeError("no target bytecode found".into())
                     } else {
@@ -683,7 +683,7 @@ impl ExecutionState {
                 return Err(err);
             }
 
-            (bytecode, data)
+            bytecode
         };
 
         // run the target function
@@ -691,7 +691,7 @@ impl ExecutionState {
             &bytecode,
             message.max_gas,
             &message.handler,
-            data,
+            &message.data,
             &*self.execution_interface,
         ) {
             // execution failed: reset context to snapshot and reimburse sender

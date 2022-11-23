@@ -136,11 +136,15 @@ fn test_nested_call_gas_usage() {
 
     // get random keypair
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // load bytecodes
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/test.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
     // create the block containing the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -160,7 +164,7 @@ fn test_nested_call_gas_usage() {
     std::thread::sleep(Duration::from_millis(10));
 
     // length of the sub contract test.wasm
-    let bytecode_sub_contract_len = 3715;
+    let bytecode_sub_contract_len = 4374;
 
     let balance = sample_state
         .read()
@@ -198,8 +202,8 @@ fn test_nested_call_gas_usage() {
         10000000,
         Amount::from_str("0").unwrap(),
         Address::from_str(&address).unwrap(),
-        String::from("test"),
         address,
+        b"test".to_vec(),
     )
     .unwrap();
     // Init new storage for this block
@@ -275,12 +279,15 @@ fn send_and_receive_async_message() {
     init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load send_message bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // load bytecodes
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/send_message.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
 
     // create the block contaning the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -310,7 +317,7 @@ fn send_and_receive_async_message() {
 
     // match the events
     assert!(events.len() == 1, "One event was expected");
-    assert_eq!(events[0].data, "message received: hello my good friend!");
+    assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
     // stop the execution controller
     manager.stop();
 }
@@ -620,10 +627,10 @@ fn sc_execution_error() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/execution_error.wasm");
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -679,14 +686,12 @@ fn sc_datastore() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/datastore.wasm");
-
     let datastore = BTreeMap::from([(vec![65, 66], vec![255]), (vec![9], vec![10, 11])]);
 
     // create the block contaning the erroneous smart contract execution operation
-    let operation =
-        create_execute_sc_operation_with_datastore(&keypair, bytecode, datastore).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -737,11 +742,15 @@ fn set_bytecode_error() {
     init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // load bytecodes
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/smart-contract.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -796,10 +805,10 @@ fn datastore_manipulations() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -817,7 +826,7 @@ fn datastore_manipulations() {
     );
 
     // Length of the value left in the datastore. See sources for more context.
-    let value_len = 10;
+    let value_len = 4;
     assert_eq!(
         sample_state
             .read()
@@ -878,7 +887,8 @@ fn events_from_switching_blockclique() {
         let keypair =
             KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
-        let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
+        let operation =
+            create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default()).unwrap();
         let blockclique_block =
             create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
@@ -904,7 +914,8 @@ fn events_from_switching_blockclique() {
         let keypair =
             KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
-        let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
+        let operation =
+            create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default()).unwrap();
         let blockclique_block =
             create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
@@ -931,30 +942,6 @@ fn events_from_switching_blockclique() {
 /// Create an operation for the given sender with `data` as bytecode.
 /// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_execute_sc_operation(
-    sender_keypair: &KeyPair,
-    data: &[u8],
-) -> Result<WrappedOperation, ExecutionError> {
-    let op = OperationType::ExecuteSC {
-        data: data.to_vec(),
-        max_gas: 100_000,
-        gas_price: Amount::from_mantissa_scale(1, 0),
-        datastore: BTreeMap::new(),
-    };
-    let op = Operation::new_wrapped(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op,
-        },
-        OperationSerializer::new(),
-        sender_keypair,
-    )?;
-    Ok(op)
-}
-
-/// Create an operation for the given sender with `data` as bytecode.
-/// Return a result that should be unwrapped in the root `#[test]` routine.
-fn create_execute_sc_operation_with_datastore(
     sender_keypair: &KeyPair,
     data: &[u8],
     datastore: Datastore,
@@ -985,7 +972,7 @@ fn create_call_sc_operation(
     gas_price: Amount,
     target_addr: Address,
     target_func: String,
-    param: String,
+    param: Vec<u8>,
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::CallSC {
         max_gas,
@@ -1033,10 +1020,10 @@ fn sc_builtins() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/use_builtins.wasm");
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
