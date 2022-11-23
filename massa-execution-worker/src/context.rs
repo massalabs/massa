@@ -661,11 +661,6 @@ impl ExecutionContext {
         let executed_credits = self.speculative_roll_state.get_deferred_credits(slot);
 
         for (address, amount) in executed_credits {
-            // REVIEW NOTE: not sure which one is the best option here:
-            // * option 1: current one, requires to find the deferred_credits slot entry on every iteration even though the slot is always the same one
-            // * option 2: find the entry once but iterate twice because of the mutable reference incompatibility coming later from transfer_coins
-            // * option 3: get a copy of the slot credits first, modify the copy and replace the value in the deferred_credits after the iteration, but if transfer_coins fails no updates will be applied
-
             self.speculative_roll_state
                 .added_changes
                 .deferred_credits
