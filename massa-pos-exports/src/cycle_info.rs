@@ -64,7 +64,12 @@ impl CycleInfo {
     }
 
     /// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
-    pub(crate) fn apply_changes(&mut self, _changes: PoSChanges) {}
+    pub(crate) fn apply_changes(&mut self, _changes: PoSChanges) {
+        // IMPORTANT TODOS:
+        // * move cycle history code from pos apply_changes here
+        // * implement a hash computer structure
+        // * add the hashes computations to the moved code
+    }
 }
 
 /// Serializer for `CycleInfo`
