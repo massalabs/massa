@@ -135,9 +135,12 @@ async fn launch(
 
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    if SETTINGS.ledger.disk_ledger_path.exists() {
+    let now = MassaTime::now(0).expect("could not get now time");
+    if *GENESIS_TIMESTAMP > now && SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
             .expect("disk ledger delete failed");
+    } else {
+        info!("Loading old ledger for next episode");
     }
 
     // Create final ledger
