@@ -109,7 +109,7 @@ fn main() -> Result<(), Error> {
     let local: Option<String> = match args.get(1) {
         Some(flag) if *flag == "--local".to_string() => Some(
             args.get(2)
-                .expect("missing folder path after `local` flag")
+                .expect("missing pattern after `local` flag")
                 .to_string(),
         ),
         _ => None,
