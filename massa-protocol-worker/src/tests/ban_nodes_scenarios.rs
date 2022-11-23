@@ -129,6 +129,54 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
 
 #[tokio::test]
 #[serial]
+async fn test_protocol_bans_node_sending_operation_with_size_bigger_than_max_block_size() {
+    let protocol_config = &tools::PROTOCOL_CONFIG;
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    mut pool_event_receiver| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+            let creator_node = nodes.pop().expect("Failed to get node info.");
+
+            // 1. Create an operation
+            let mut operation =
+                tools::create_operation_with_expire_period(&creator_node.keypair, 1);
+
+            // 2. Change the serialized data
+            operation.serialized_data = vec![1; 500_001];
+
+            // 3. Send block to protocol.
+            network_controller
+                .send_operations(creator_node.id, vec![operation])
+                .await;
+
+            // The node is banned.
+            tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
+
+            // Check protocol does not send operation to pool.
+            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+                evt @ MockPoolControllerMessage::AddOperations { .. } => Some(evt),
+                _ => None,
+            });
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(

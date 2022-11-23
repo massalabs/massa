@@ -896,6 +896,14 @@ impl ProtocolWorker {
         let mut received_ids = PreHashSet::with_capacity(length);
         for operation in operations {
             let operation_id = operation.id;
+            if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
+                return Err(ProtocolError::InvalidOperationError(format!(
+                    "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
+                    operation_id,
+                    operation.serialized_size(),
+                    self.config.max_serialized_operations_size_per_block
+                )));
+            };
             received_ids.insert(operation_id);
 
             // Check operation signature only if not already checked.
