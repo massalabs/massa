@@ -24,7 +24,7 @@ echo "build date: \t$BUILD_DATE"
 echo "image tag: \t$IMAGE_TAG"
 echo
 
-sed -i "s/^TAG=.*$/TAG=${IMAGE_TAG}/" "$DIR/.env"
+sed -i"" "s/^TAG=.*$/TAG=${IMAGE_TAG}/" "$DIR/.env"
 
 docker build -f "$DOCKERFILE" "$DIR" \
      --build-arg IMAGE_TAG="$IMAGE_TAG" \

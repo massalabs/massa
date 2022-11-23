@@ -44,12 +44,12 @@ then
         cp -f $SOURCE_DIR/version $BASEDIR
     else
         echo "Node and client update"
-        ver_old=$(cat $BASEDIR/version 2>/dev/null | jq -r .version) 
-        ver=${ver_old:="unknown"}
+        ver_old=$(cat $BASEDIR/version 2>/dev/null | jq -r .version)
+        ver=${ver_old:="unknown.bak"}
         cp -f $SOURCE_DIR/massa-client/massa-client $MC_WORKDIR
         cp -f $SOURCE_DIR/massa-node/massa-node $MN_WORKDIR
-        cp -fbr -S "-$ver" $SOURCE_DIR/massa-client/{config,base_config} $MC_WORKDIR
-        cp -fbr -S "-$ver" $SOURCE_DIR/massa-node/{config,base_config} $MN_WORKDIR
+        cp -fbr -S "-$ver.bak" $SOURCE_DIR/massa-client/{config,base_config} $MC_WORKDIR
+        cp -fbr -S "-$ver.bak" $SOURCE_DIR/massa-node/{config,base_config} $MN_WORKDIR
         cp -f $SOURCE_DIR/version $BASEDIR
     fi
     echo -e "[network]\nroutable_ip = \"`wget -qO- eth0.me`\"" > $MN_WORKDIR/config/config.toml
