@@ -22,21 +22,19 @@ pub struct DeferredCredits(pub BTreeMap<Slot, PreHashMap<Address, Amount>>);
 
 impl DeferredCredits {
     /// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
-    pub fn nested_extend(&mut self, other: Self) {
-        for (slot, new_credits) in other.0 {
+    pub fn nested_replace(&mut self, other: Self) {
+        for (slot, other_credits) in other.0 {
             self.0
                 .entry(slot)
                 .and_modify(|current_credits| {
-                    for (address, new_amount) in new_credits.iter() {
+                    for (address, other_amount) in other_credits.iter() {
                         current_credits
                             .entry(*address)
-                            .and_modify(|current_amount| {
-                                *current_amount = current_amount.saturating_add(*new_amount);
-                            })
-                            .or_insert(*new_amount);
+                            .and_modify(|current_amount| *current_amount = *other_amount)
+                            .or_insert(*other_amount);
                     }
                 })
-                .or_insert(new_credits);
+                .or_insert(other_credits);
         }
     }
 
