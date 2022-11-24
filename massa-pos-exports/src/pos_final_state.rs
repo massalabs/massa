@@ -218,39 +218,19 @@ impl PoSFinalState {
             panic!("PoS History shouldn't be empty here.");
         }
 
-        // update cycle data
-        let cycle_completed: bool;
-        {
-            let current = self
-                .cycle_history
-                .back_mut()
-                .expect("cycle history should be non-empty"); // because if was filled above
+        // get the last history cycle, should always be present because it was filled above
+        let current = self
+            .cycle_history
+            .back_mut()
+            .expect("cycle history should be non-empty");
 
-            // extend seed_bits with changes.seed_bits
-            current.rng_seed.extend(changes.seed_bits);
-
-            // extend roll counts
-            current.roll_counts.extend(changes.roll_changes);
-            current.roll_counts.retain(|_, &mut count| count != 0);
-
-            // extend production stats
-            for (addr, stats) in changes.production_stats {
-                current
-                    .production_stats
-                    .entry(addr)
-                    .and_modify(|cur| cur.extend(&stats))
-                    .or_insert(stats);
-            }
-
-            // check for completion
-            current.complete =
-                slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
-            // if the cycle just completed, check that it has the right number of seed bits
-            if current.complete && current.rng_seed.len() != slots_per_cycle {
-                panic!("cycle completed with incorrect number of seed bits");
-            }
-            cycle_completed = current.complete;
-        }
+        // apply changes to the current cycle
+        let cycle_completed = current.apply_changes(
+            changes.clone(),
+            slot,
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+        );
 
         // extent deferred_credits with changes.deferred_credits
         // remove zero-valued credits

@@ -4,6 +4,7 @@ use massa_models::{
     address::{Address, AddressDeserializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
+    slot::Slot,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -38,7 +39,7 @@ pub struct CycleInfo {
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
-    /// Hash of the current cycle state
+    /// Hash of the self cycle state
     pub hash: Hash,
 }
 
@@ -64,11 +65,41 @@ impl CycleInfo {
     }
 
     /// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
-    pub(crate) fn apply_changes(&mut self, _changes: PoSChanges) {
+    pub(crate) fn apply_changes(
+        &mut self,
+        changes: PoSChanges,
+        slot: Slot,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) -> bool {
         // IMPORTANT TODOS:
         // * move cycle history code from pos apply_changes here
         // * implement a hash computer structure
         // * add the hashes computations to the moved code
+        let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
+
+        // extend seed_bits with changes.seed_bits
+        self.rng_seed.extend(changes.seed_bits);
+
+        // extend roll counts
+        self.roll_counts.extend(changes.roll_changes);
+        self.roll_counts.retain(|_, &mut count| count != 0);
+
+        // extend production stats
+        for (addr, stats) in changes.production_stats {
+            self.production_stats
+                .entry(addr)
+                .and_modify(|cur| cur.extend(&stats))
+                .or_insert(stats);
+        }
+
+        // check for completion
+        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        // if the cycle just completed, check that it has the right number of seed bits
+        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
+            panic!("cycle completed with incorrect number of seed bits");
+        }
+        self.complete
     }
 }
 
