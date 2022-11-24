@@ -1,7 +1,7 @@
 use bitvec::vec::BitVec;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
-    address::{Address, AddressDeserializer},
+    address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
     slot::Slot,
@@ -25,6 +25,67 @@ use std::ops::Bound::Included;
 use crate::PoSChanges;
 
 const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
+struct CycleInfoHashComputer {
+    u64_ser: U64VarIntSerializer,
+    address_ser: AddressSerializer,
+    bitvec_ser: BitVecSerializer,
+    prod_stats_ser: ProductionStatsSerializer,
+}
+
+impl CycleInfoHashComputer {
+    fn new() -> Self {
+        Self {
+            u64_ser: U64VarIntSerializer::new(),
+            address_ser: AddressSerializer::new(),
+            bitvec_ser: BitVecSerializer::new(),
+            prod_stats_ser: ProductionStatsSerializer::new(),
+        }
+    }
+
+    fn compute_cycle_hash(&self, cycle: u64) -> Hash {
+        let mut buffer = Vec::new();
+        self.u64_ser.serialize(&cycle, &mut buffer).unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_complete_hash(&self, complete: bool) -> Hash {
+        let mut buffer = Vec::new();
+        self.u64_ser
+            .serialize(&(complete as u64), &mut buffer)
+            .unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_seed_hash(&self, seed: &BitVec<u8>) -> Hash {
+        let mut buffer = Vec::new();
+        self.bitvec_ser.serialize(&seed, &mut buffer).unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_roll_entry_hash(&self, address: &Address, roll_count: u64) -> Hash {
+        let mut buffer = Vec::new();
+        self.address_ser.serialize(address, &mut buffer).unwrap();
+        self.u64_ser.serialize(&roll_count, &mut buffer).unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_prod_stats_entry_hash(
+        &self,
+        address: &Address,
+        prod_stats: &ProductionStats,
+    ) -> Hash {
+        let mut buffer = Vec::new();
+        self.address_ser.serialize(address, &mut buffer).unwrap();
+        self.u64_ser
+            .serialize(&prod_stats.block_success_count, &mut buffer)
+            .unwrap();
+        self.u64_ser
+            .serialize(&prod_stats.block_failure_count, &mut buffer)
+            .unwrap();
+        Hash::compute_from(&buffer)
+    }
+}
 
 /// State of a cycle for all threads
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,10 +134,14 @@ impl CycleInfo {
         thread_count: u8,
     ) -> bool {
         // IMPORTANT TODOS:
-        // * move cycle history code from pos apply_changes here
-        // * implement a hash computer structure
+        // * move cycle history code from pos apply_changes here (done)
+        // * implement a hash computer structure (done)
         // * add the hashes computations to the moved code
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
+
+        // IMPORTANT TODOs
+        // * compute the hash from whole seed bits but relative for the rest
+        // * use same function for extend and hash compute here and in new_with_hash
 
         // extend seed_bits with changes.seed_bits
         self.rng_seed.extend(changes.seed_bits);
