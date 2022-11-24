@@ -24,7 +24,12 @@ echo "build date: \t$BUILD_DATE"
 echo "image tag: \t$IMAGE_TAG"
 echo
 
-sed -i"" "s/^TAG=.*$/TAG=${IMAGE_TAG}/" "$DIR/.env"
+if [ "$(uname)" == "Darwin" ]
+then
+    sed -i "" "s/^TAG=.*$/TAG=${IMAGE_TAG}/" "$DIR/.env"
+else
+    sed -i "s/^TAG=.*$/TAG=${IMAGE_TAG}/" "$DIR/.env"
+fi
 
 docker build -f "$DOCKERFILE" "$DIR" \
      --build-arg IMAGE_TAG="$IMAGE_TAG" \
