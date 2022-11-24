@@ -439,6 +439,11 @@ impl ExecutionContext {
         self.speculative_ledger.get_bytecode(address)
     }
 
+    /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
+    pub fn get_keys(&self, address: &Address) -> Option<Vec<Vec<u8>>> {
+        self.speculative_ledger.get_keys(address)
+    }
+
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
     pub fn get_data_entry(&self, address: &Address, key: &[u8]) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)

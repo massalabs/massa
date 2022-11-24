@@ -750,6 +750,46 @@ impl LedgerChanges {
         }
     }
 
+    pub fn get_keys_or_else<F: FnOnce() -> Option<Vec<Vec<u8>>>>(
+        &self,
+        addr: &Address,
+        f: F,
+    ) -> Option<Vec<Vec<u8>>> {
+        // Get the current changes being applied to the ledger entry associated to that address
+        match self.0.get(addr) {
+            // This ledger entry is being replaced by a new one:
+            // get the datastore keys from the new ledger entry
+            Some(SetUpdateOrDelete::Set(v)) => Some(v.datastore.keys().cloned().collect()),
+
+            // This ledger entry is being updated
+            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                Some(datastore
+                    .iter()
+                    .filter_map(|(key, set_or_del)| {
+                        match set_or_del {
+                            // A new datastore value is being set: return key
+                            SetOrDelete::Set(_) => { Some(key) }
+                            // This datastore entry is being deleted: return None
+                            SetOrDelete::Delete => { None }
+                        }
+                    })
+                    .cloned()
+                    .collect()
+                )
+            }
+
+            // This ledger entry is being deleted: return None
+            Some(SetUpdateOrDelete::Delete) => {
+                None
+            },
+
+            // This ledger entry is not being changed.
+            // We therefore have no info on the absolute contents of its datastore entry.
+            // We call the fallback function and return its output.
+            None => f(),
+        }
+    }
+
     /// Tries to return a datastore entry for a given address,
     /// or gets it from a function if the value's status is unknown.
     ///

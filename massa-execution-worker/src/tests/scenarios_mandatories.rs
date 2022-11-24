@@ -803,6 +803,9 @@ fn datastore_manipulations() {
 
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    println!("address: {}", address);
+
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
@@ -823,6 +826,14 @@ fn datastore_manipulations() {
             .saturating_add(MassaTime::from_millis(50))
             .into(),
     );
+
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert!(!events.is_empty(), "One event was expected");
+    println!("event data: {}", events[0].data);
+    // TODO: do not hardcode but rather "TEST".to_string().encode_utf16()...
+    // println!("{:?}", "TEST".as_bytes())
+    assert!(events[0].data.contains("keys: 84,0,69,0,83,0,84,0"));
 
     // Length of the value left in the datastore. See sources for more context.
     let value_len = 4;

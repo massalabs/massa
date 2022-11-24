@@ -360,6 +360,24 @@ impl SpeculativeLedger {
         Ok(())
     }
 
+    /// Gets a copy of a datastore keys for a given address
+    ///
+    /// # Arguments
+    /// * `addr`: address to query
+    ///
+    /// # Returns
+    /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
+    pub fn get_keys(&self, addr: &Address) -> Option<Vec<Vec<u8>>> {
+        self.added_changes.get_keys_or_else(addr, || {
+            // TODO
+            // self.active_history.read().fetch_active_history_keys()
+            // FIXME: rm placeholder
+            let key1 = vec![1, 2, 3];
+            let key2 = vec![9, 8, 7];
+            Some(vec![key1, key2])
+        })
+    }
+
     /// Gets a copy of a datastore value for a given address and datastore key
     ///
     /// # Arguments
