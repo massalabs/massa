@@ -91,9 +91,6 @@ pub(crate) struct ExecutionContext {
     /// max gas for this execution
     pub max_gas: u64,
 
-    /// gas price of the execution
-    pub gas_price: Amount,
-
     /// slot at which the execution happens
     pub slot: Slot,
 
@@ -163,7 +160,6 @@ impl ExecutionContext {
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
-            gas_price: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -250,7 +246,6 @@ impl ExecutionContext {
         config: ExecutionConfig,
         slot: Slot,
         max_gas: u64,
-        gas_price: Amount,
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
@@ -273,7 +268,6 @@ impl ExecutionContext {
         // return readonly context
         ExecutionContext {
             max_gas,
-            gas_price,
             slot,
             stack: call_stack,
             read_only: true,

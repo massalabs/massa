@@ -546,7 +546,7 @@ impl Interface for InterfaceImpl {
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
     /// * `max_gas`: Maximum gas for the message execution
-    /// * `gas_price`: Price of one gas unit
+    /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
     fn send_message(
@@ -556,7 +556,7 @@ impl Interface for InterfaceImpl {
         validity_start: (u64, u8),
         validity_end: (u64, u8),
         max_gas: u64,
-        gas_price: u64,
+        raw_fee: u64,
         raw_coins: u64,
         data: &[u8],
     ) -> Result<()> {
@@ -581,7 +581,7 @@ impl Interface for InterfaceImpl {
             validity_start: Slot::new(validity_start.0, validity_start.1),
             validity_end: Slot::new(validity_end.0, validity_end.1),
             max_gas,
-            gas_price: Amount::from_raw(gas_price),
+            fee: Amount::from_raw(raw_fee),
             coins,
             data: data.to_vec(),
         });
