@@ -187,12 +187,12 @@ pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     let mut changes = AsyncPoolChanges::default();
     for _ in 0..(r_limit / 2) {
         let mut message = get_random_message();
-        message.gas_price = Amount::from_str("10").unwrap();
+        message.fee = Amount::from_str("10").unwrap();
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in (r_limit / 2)..r_limit {
         let mut message = get_random_message();
-        message.gas_price = Amount::from_str("1000").unwrap();
+        message.fee = Amount::from_str("1_000_000").unwrap();
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     changes

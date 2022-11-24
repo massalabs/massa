@@ -283,6 +283,7 @@ async fn test_bootstrap_server() {
         }
     });
 
+    // wait for peers and graph
     let sent_peers = wait_peers().await;
 
     // wait for get_state

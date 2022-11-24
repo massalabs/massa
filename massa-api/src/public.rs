@@ -126,7 +126,6 @@ impl MassaRpcServer for API<Public> {
         for ReadOnlyBytecodeExecution {
             max_gas,
             address,
-            simulated_gas_price,
             bytecode,
             operation_datastore,
         } in reqs
@@ -165,7 +164,6 @@ impl MassaRpcServer for API<Public> {
             // translate request
             let req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::BytecodeExecution(bytecode),
                 call_stack: vec![ExecutionStackElement {
                     address,
@@ -210,7 +208,6 @@ impl MassaRpcServer for API<Public> {
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
         for ReadOnlyCall {
             max_gas,
-            simulated_gas_price,
             target_address,
             target_function,
             parameter,
@@ -230,7 +227,6 @@ impl MassaRpcServer for API<Public> {
             // translate request
             let req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::FunctionCall {
                     target_func: target_function,
                     target_addr: target_address,
@@ -904,8 +900,12 @@ impl MassaRpcServer for API<Public> {
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());
 
-        let _propagate_operation = protocol_sender.propagate_operations(to_send);
-
+        tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_send))
+            .await
+            .map_err(|err| ApiError::InternalServerError(err.to_string()))?
+            .map_err(|err| {
+                ApiError::InternalServerError(format!("Failed to propagate operations: {}", err))
+            })?;
         Ok(ids)
     }
 

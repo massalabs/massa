@@ -19,17 +19,17 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
+use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
-/// `(rev(max_gas*gas_price), emission_slot, emission_index)`
-pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
+/// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
+pub type AsyncMessageId = (std::cmp::Reverse<Ratio<u64>>, Slot, u64);
 
 #[derive(Clone)]
 pub struct AsyncMessageIdSerializer {
-    amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
 }
@@ -37,7 +37,6 @@ pub struct AsyncMessageIdSerializer {
 impl AsyncMessageIdSerializer {
     pub fn new() -> Self {
         Self {
-            amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
         }
@@ -66,7 +65,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     fee: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -83,7 +82,8 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
         value: &AsyncMessageId,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.amount_serializer.serialize(&value.0 .0, buffer)?;
+        self.u64_serializer.serialize(value.0 .0.numer(), buffer)?;
+        self.u64_serializer.serialize(value.0 .0.denom(), buffer)?;
         self.slot_serializer.serialize(&value.1, buffer)?;
         self.u64_serializer.serialize(&value.2, buffer)?;
         Ok(())
@@ -92,26 +92,18 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 
 #[derive(Clone)]
 pub struct AsyncMessageIdDeserializer {
-    amount_deserializer: AmountDeserializer,
     slot_deserializer: SlotDeserializer,
-    emission_index_deserializer: U64VarIntDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
 }
 
 impl AsyncMessageIdDeserializer {
     pub fn new(thread_count: u8) -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
-            ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            emission_index_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(u64::MAX),
-            ),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
@@ -132,7 +124,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     fee: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -155,18 +147,21 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
         context(
             "Failed AsyncMessageId deserialization",
             tuple((
-                context("Failed gas_price deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
+                context("Failed fee deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed denum deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
                 }),
                 context("Failed emission_slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
                 }),
                 context("Failed emission_index deserialization", |input| {
-                    self.emission_index_deserializer.deserialize(input)
+                    self.u64_deserializer.deserialize(input)
                 }),
             )),
         )
-        .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
+        .map(|(fee, denom, slot, index)| (std::cmp::Reverse(Ratio::new(fee, denom)), slot, index))
         .parse(buffer)
     }
 }
@@ -193,9 +188,8 @@ pub struct AsyncMessage {
     /// Maximum gas to use when processing the message
     pub max_gas: u64,
 
-    /// Gas price to take into account when executing the message.
-    /// `max_gas * gas_price` are burned by the sender when the message is sent.
-    pub gas_price: Amount,
+    /// Fee paid by the sender when the message is processed.
+    pub fee: Amount,
 
     /// Coins sent from the sender to the target address of the message.
     /// Those coins are spent by the sender address when the message is sent,
@@ -230,10 +224,10 @@ impl AsyncMessage {
     }
 
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
     pub fn compute_id(&self) -> AsyncMessageId {
+        let denom = if self.max_gas > 0 { self.max_gas } else { 1 };
         (
-            std::cmp::Reverse(self.gas_price.saturating_mul_u64(self.max_gas)),
+            std::cmp::Reverse(Ratio::new(self.fee.to_raw(), denom)),
             self.emission_slot,
             self.emission_index,
         )
@@ -278,7 +272,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     fee: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -309,7 +303,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
         buffer.extend(handler_bytes);
 
         self.u64_serializer.serialize(&value.max_gas, buffer)?;
-        self.amount_serializer.serialize(&value.gas_price, buffer)?;
+        self.amount_serializer.serialize(&value.fee, buffer)?;
         self.amount_serializer.serialize(&value.coins, buffer)?;
         self.slot_serializer
             .serialize(&value.validity_start, buffer)?;
@@ -368,7 +362,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     handler: String::from("test"),
     ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     fee: Amount::from_str("1").unwrap(),
     ///     coins: Amount::from_str("1").unwrap(),
     ///     validity_start: Slot::new(2, 0),
     ///     validity_end: Slot::new(3, 0),
@@ -423,7 +417,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 context("Failed max_gas deserialization", |input| {
                     self.max_gas_deserializer.deserialize(input)
                 }),
-                context("Failed gas_price deserialization", |input| {
+                context("Failed fee deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed coins deserialization", |input| {
@@ -448,7 +442,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 destination,
                 handler,
                 max_gas,
-                gas_price,
+                fee,
                 coins,
                 validity_start,
                 validity_end,
@@ -461,7 +455,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     destination,
                     handler,
                     max_gas,
-                    gas_price,
+                    fee,
                     coins,
                     validity_start,
                     validity_end,
@@ -499,7 +493,7 @@ mod tests {
                 .unwrap(),
             handler: String::from("test"),
             max_gas: 10000000,
-            gas_price: Amount::from_str("1").unwrap(),
+            fee: Amount::from_str("1").unwrap(),
             coins: Amount::from_str("1").unwrap(),
             validity_start: Slot::new(2, 0),
             validity_end: Slot::new(3, 0),

@@ -339,15 +339,16 @@ fn test_take_batch() {
                 validity_start: Slot::new(1, 0),
                 validity_end: Slot::new(3, 0),
                 max_gas: i,
-                gas_price: Amount::from_str("0.1").unwrap(),
+                fee: Amount::from_str("0.1").unwrap(),
                 coins: Amount::from_str("0.3").unwrap(),
                 data: Vec::new(),
                 hash: None,
             }
             .with_hash(),
         );
+        pool.messages.insert(message.compute_id(), message);
     }
     assert_eq!(pool.messages.len(), 9);
     pool.take_batch_to_execute(Slot::new(2, 0), 19);
-    assert_eq!(pool.messages.len(), 6);
+    assert_eq!(pool.messages.len(), 4);
 }

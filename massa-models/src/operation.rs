@@ -404,8 +404,6 @@ pub enum OperationType {
         data: Vec<u8>,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
-        /// The price per unit of gas that the caller is willing to pay for the execution.
-        gas_price: Amount,
         /// A key-value store associating a hash to arbitrary bytes
         datastore: Datastore,
     },
@@ -416,13 +414,11 @@ pub enum OperationType {
         /// Target function name. No function is called if empty.
         target_func: String,
         /// Parameter to pass to the target function
-        param: String,
+        param: Vec<u8>,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
         /// Extra coins that are spent from the caller's balance and transferred to the target
         coins: Amount,
-        /// The price per unit of gas that the caller is willing to pay for the execution.
-        gas_price: Amount,
     },
 }
 
@@ -447,18 +443,15 @@ impl std::fmt::Display for OperationType {
             }
             OperationType::ExecuteSC {
                 max_gas,
-                gas_price,
                 ..
                 // data & datastore, // these fields are ignored because bytes eh
             } => {
                 writeln!(f, "ExecuteSC: ")?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
-                writeln!(f, "\t- gas_price:{}", gas_price)?;
             },
             OperationType::CallSC {
                 max_gas,
                 coins,
-                gas_price,
                 target_addr,
                 target_func,
                 param
@@ -466,9 +459,8 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "CallSC:")?;
                 writeln!(f, "\t- target address:{}", target_addr)?;
                 writeln!(f, "\t- target function:{}", target_func)?;
-                writeln!(f, "\t- target parameter:{}", param)?;
+                writeln!(f, "\t- target parameter:{:?}", param)?;
                 writeln!(f, "\t- max_gas:{}", max_gas)?;
-                writeln!(f, "\t- gas_price:{}", gas_price)?;
                 writeln!(f, "\t- coins:{}", coins)?;
             }
         }
@@ -483,7 +475,6 @@ pub struct OperationTypeSerializer {
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
-    parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
     datastore_serializer: DatastoreSerializer,
 }
 
@@ -496,7 +487,6 @@ impl OperationTypeSerializer {
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
-            parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -521,7 +511,6 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    gas_price: Amount::from_str("1").unwrap(),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
@@ -551,13 +540,11 @@ impl Serializer<OperationType> for OperationTypeSerializer {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
-                gas_price,
                 datastore,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::ExecuteSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
-                self.amount_serializer.serialize(gas_price, buffer)?;
                 self.vec_u8_serializer.serialize(data, buffer)?;
                 self.datastore_serializer.serialize(datastore, buffer)?;
             }
@@ -567,17 +554,15 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 param,
                 max_gas,
                 coins,
-                gas_price,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::CallSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
                 self.amount_serializer.serialize(coins, buffer)?;
-                self.amount_serializer.serialize(gas_price, buffer)?;
                 buffer.extend(target_addr.to_bytes());
                 self.function_name_serializer
                     .serialize(target_func, buffer)?;
-                self.parameter_serializer.serialize(param, buffer)?;
+                self.vec_u8_serializer.serialize(param, buffer)?;
             }
         }
         Ok(())
@@ -593,7 +578,7 @@ pub struct OperationTypeDeserializer {
     data_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
-    parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
+    parameter_deserializer: VecU8Deserializer,
     datastore_deserializer: DatastoreDeserializer,
 }
 
@@ -624,10 +609,10 @@ impl OperationTypeDeserializer {
                 Included(0),
                 Included(max_function_name_length),
             )),
-            parameter_deserializer: StringDeserializer::new(U32VarIntDeserializer::new(
+            parameter_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(max_parameters_size),
-            )),
+                Included(max_parameters_size as u64),
+            ),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
@@ -650,7 +635,6 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    gas_price: Amount::from_str("1").unwrap(),
     ///    datastore: BTreeMap::from([(vec![1, 2], vec![254, 255])])
     /// };
     /// let mut buffer = Vec::new();
@@ -661,12 +645,10 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     ///    OperationType::ExecuteSC {
     ///      data,
     ///      max_gas,
-    ///      gas_price,
     ///      datastore
     ///   } => {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
-    ///     assert_eq!(gas_price, Amount::from_str("1").unwrap());
     ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
     ///   }
     ///   _ => panic!("Unexpected operation type"),
@@ -717,9 +699,6 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         context("Failed max_gas deserialization", |input| {
                             self.max_gas_deserializer.deserialize(input)
                         }),
-                        context("Failed gas_price deserialization", |input| {
-                            self.amount_deserializer.deserialize(input)
-                        }),
                         context("Failed data deserialization", |input| {
                             self.data_deserializer.deserialize(input)
                         }),
@@ -728,14 +707,11 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                         }),
                     )),
                 )
-                .map(
-                    |(max_gas, gas_price, data, datastore)| OperationType::ExecuteSC {
-                        data,
-                        max_gas,
-                        gas_price,
-                        datastore,
-                    },
-                )
+                .map(|(max_gas, data, datastore)| OperationType::ExecuteSC {
+                    data,
+                    max_gas,
+                    datastore,
+                })
                 .parse(input),
                 OperationTypeId::CallSC => context(
                     "Failed CallSC deserialization",
@@ -744,9 +720,6 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                             self.max_gas_deserializer.deserialize(input)
                         }),
                         context("Failed coins deserialization", |input| {
-                            self.amount_deserializer.deserialize(input)
-                        }),
-                        context("Failed gas_price deserialization", |input| {
                             self.amount_deserializer.deserialize(input)
                         }),
                         context("Failed target_addr deserialization", |input| {
@@ -761,15 +734,12 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     )),
                 )
                 .map(
-                    |(max_gas, coins, gas_price, target_addr, target_func, param)| {
-                        OperationType::CallSC {
-                            target_addr,
-                            target_func,
-                            param,
-                            max_gas,
-                            coins,
-                            gas_price,
-                        }
+                    |(max_gas, coins, target_addr, target_func, param)| OperationType::CallSC {
+                        target_addr,
+                        target_func,
+                        param,
+                        max_gas,
+                        coins,
                     },
                 )
                 .parse(input),
@@ -801,28 +771,6 @@ impl WrappedOperation {
         }
     }
 
-    /// Get the gas price set by the operation
-    pub fn get_gas_price(&self) -> Amount {
-        match &self.content.op {
-            OperationType::ExecuteSC { gas_price, .. } => *gas_price,
-            OperationType::CallSC { gas_price, .. } => *gas_price,
-            OperationType::RollBuy { .. } => Amount::default(),
-            OperationType::RollSell { .. } => Amount::default(),
-            OperationType::Transaction { .. } => Amount::default(),
-        }
-    }
-
-    /// Get the amount of coins used by the operation to pay for gas
-    pub fn get_gas_coins(&self) -> Amount {
-        self.get_gas_price()
-            .saturating_mul_u64(self.get_gas_usage())
-    }
-
-    /// Get the total fee paid by the creator
-    pub fn get_total_fee(&self) -> Amount {
-        self.get_gas_coins().saturating_add(self.content.fee)
-    }
-
     /// get the addresses that are involved in this operation from a ledger point of view
     pub fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
         let mut res = PreHashSet::<Address>::default();
@@ -851,21 +799,12 @@ impl WrappedOperation {
             OperationType::Transaction { amount, .. } => *amount,
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
-            OperationType::ExecuteSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
-            OperationType::CallSC {
-                max_gas,
-                gas_price,
-                coins,
-                ..
-            } => gas_price
-                .saturating_mul_u64(*max_gas)
-                .saturating_add(*coins),
+            OperationType::ExecuteSC { .. } => Amount::zero(),
+            OperationType::CallSC { coins, .. } => *coins,
         };
 
         // add all fees and return
-        max_non_fee_seq_spending.saturating_add(self.get_total_fee())
+        max_non_fee_seq_spending.saturating_add(self.content.fee)
     }
 
     /// get the addresses that are involved in this operation from a rolls point of view
@@ -1380,7 +1319,6 @@ mod tests {
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
-            gas_price: Amount::from_str("772.122").unwrap(),
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
@@ -1460,9 +1398,8 @@ mod tests {
             max_gas: 123,
             target_addr,
             coins: Amount::from_str("456.789").unwrap(),
-            gas_price: Amount::from_str("772.122").unwrap(),
             target_func: "target function".to_string(),
-            param: "parameter".to_string(),
+            param: b"parameter".to_vec(),
         };
         let mut ser_type = Vec::new();
         OperationTypeSerializer::new()
