@@ -44,6 +44,7 @@ impl CycleInfoHashComputer {
     }
 
     fn compute_cycle_hash(&self, cycle: u64) -> Hash {
+        // serialization can never fail in the following computation, unwrap is justified
         let mut buffer = Vec::new();
         self.u64_ser.serialize(&cycle, &mut buffer).unwrap();
         Hash::compute_from(&buffer)
@@ -133,23 +134,29 @@ impl CycleInfo {
         periods_per_cycle: u64,
         thread_count: u8,
     ) -> bool {
-        // IMPORTANT TODOS:
-        // * move cycle history code from pos apply_changes here (done)
-        // * implement a hash computer structure (done)
-        // * add the hashes computations to the moved code
+        let hash_computer = CycleInfoHashComputer::new();
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
 
-        // IMPORTANT TODOs
-        // * compute the hash from whole seed bits but relative for the rest
-        // * use same function for extend and hash compute here and in new_with_hash
-
         // extend seed_bits with changes.seed_bits
+        self.hash ^= hash_computer.compute_seed_hash(&self.rng_seed);
         self.rng_seed.extend(changes.seed_bits);
+        self.hash ^= hash_computer.compute_seed_hash(&self.rng_seed);
 
         // extend roll counts
-        self.roll_counts.extend(changes.roll_changes);
-        self.roll_counts.retain(|_, &mut count| count != 0);
+        for (address, roll_count) in changes.roll_changes {
+            if roll_count == 0 {
+                if let Some(current_roll_count) = self.roll_counts.get(&address) {
+                    self.hash ^=
+                        hash_computer.compute_roll_entry_hash(&address, current_roll_count);
+                    self.roll_counts.remove(&address);
+                }
+            } else {
+                self.hash ^= hash_computer.compute_roll_entry_hash(&address, roll_count);
+                self.roll_counts.insert(address, roll_count);
+            }
+        }
 
+        // TODO: compute hash
         // extend production stats
         for (addr, stats) in changes.production_stats {
             self.production_stats
@@ -158,6 +165,7 @@ impl CycleInfo {
                 .or_insert(stats);
         }
 
+        // TODO: compute hash
         // check for completion
         self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
         // if the cycle just completed, check that it has the right number of seed bits

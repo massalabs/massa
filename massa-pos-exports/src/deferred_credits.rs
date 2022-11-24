@@ -59,10 +59,9 @@ impl DeferredCreditsHashComputer {
         slot: &Slot,
         credits: &PreHashMap<Address, Amount>,
     ) -> Hash {
+        // serialization can never fail in the following computation, unwrap is justified
         let mut buffer = Vec::new();
-        self.slot_ser
-            .serialize(&slot, &mut buffer)
-            .expect("critical: deferred credits slot serialization should never fail here");
+        self.slot_ser.serialize(&slot, &mut buffer).unwrap();
         let mut hash = Hash::compute_from(&mut buffer);
         for (address, amount) in credits {
             hash ^= self.compute_single_credit_hash(address, amount);
@@ -72,12 +71,8 @@ impl DeferredCreditsHashComputer {
 
     fn compute_single_credit_hash(&self, address: &Address, amount: &Amount) -> Hash {
         let mut buffer = Vec::new();
-        self.address_ser
-            .serialize(address, &mut buffer)
-            .expect("critical: deferred credits address serialization should never fail here");
-        self.amount_ser
-            .serialize(amount, &mut buffer)
-            .expect("critical: deferred credits amount serialization should never fail here");
+        self.address_ser.serialize(address, &mut buffer).unwrap();
+        self.amount_ser.serialize(amount, &mut buffer).unwrap();
         Hash::compute_from(&buffer)
     }
 }
@@ -100,7 +95,7 @@ impl DeferredCredits {
         }
     }
 
-    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the object hash
+    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the object hash, use only on finality
     pub fn final_nested_replace(&mut self, other: Self) {
         if self.hash.is_none() {
             self.hash = Some(Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES));
@@ -147,7 +142,7 @@ impl DeferredCredits {
         }
     }
 
-    /// Remove zero credits
+    /// Remove zero credits, use only on finality
     pub fn remove_zeros(&mut self) {
         let hash_computer = DeferredCreditsHashComputer::new();
         let mut delete_slots = Vec::new();
