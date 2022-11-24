@@ -322,22 +322,19 @@ fn test_take_batch() {
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
-        let message = AsyncMessage {
-            emission_slot: Slot::new(0, 0),
-            emission_index: 0,
-            sender: address,
-            destination: address,
-            handler: "function".to_string(),
-            validity_start: Slot::new(1, 0),
-            validity_end: Slot::new(3, 0),
-            max_gas: i,
-            fee: Amount::from_str("0.1").unwrap(),
-            coins: Amount::from_str("0.3").unwrap(),
-            data: Vec::new(),
-            // placeholder hash, not used in this test case
-            // in a real case scenario use new_with_hash
-            hash: Hash::from_bytes(&[0; 32]),
-        };
+        let message = AsyncMessage::new_with_hash(
+            Slot::new(0, 0),
+            0,
+            address,
+            address,
+            "function".to_string(),
+            i,
+            Amount::from_str("0.1").unwrap(),
+            Amount::from_str("0.3").unwrap(),
+            Slot::new(1, 0),
+            Slot::new(3, 0),
+            Vec::new(),
+        );
         pool.messages.insert(message.compute_id(), message);
     }
     assert_eq!(pool.messages.len(), 9);

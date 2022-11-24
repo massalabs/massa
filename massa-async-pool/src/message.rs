@@ -507,24 +507,19 @@ mod tests {
 
     #[test]
     fn bad_serialization_version() {
-        let message = AsyncMessage {
-            emission_slot: Slot::new(1, 2),
-            emission_index: 0,
-            sender: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
-                .unwrap(),
-            destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
-                .unwrap(),
-            handler: String::from("test"),
-            max_gas: 10000000,
-            fee: Amount::from_str("1").unwrap(),
-            coins: Amount::from_str("1").unwrap(),
-            validity_start: Slot::new(2, 0),
-            validity_end: Slot::new(3, 0),
-            data: vec![1, 2, 3, 4],
-            // placeholder hash, not used in this test case
-            // in a real case scenario use new_with_hash
-            hash: Hash::from_bytes(&[0; 32]),
-        };
+        let message = AsyncMessage::new_with_hash(
+            Slot::new(1, 2),
+            0,
+            Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            String::from("test"),
+            10000000,
+            Amount::from_str("1").unwrap(),
+            Amount::from_str("1").unwrap(),
+            Slot::new(2, 0),
+            Slot::new(3, 0),
+            vec![1, 2, 3, 4],
+        );
         let message_serializer = AsyncMessageSerializer::new();
         let mut serialized = Vec::new();
         message_serializer
