@@ -39,7 +39,7 @@ pub struct AsyncPool {
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 
     /// Hash of the asynchronous pool
-    hash: Hash,
+    pub hash: Hash,
 }
 
 impl AsyncPool {
