@@ -24,8 +24,6 @@ use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
 const ASYNC_POOL_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
-const MISSING_HASH_ERROR: &str =
-    "critical: asynchronous message hash is missing, it should never be the case here";
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -63,13 +61,13 @@ impl AsyncPool {
                 // add a new message to the pool
                 Change::Add(message_id, message) => {
                     self.messages.insert(*message_id, message.clone());
-                    self.hash ^= message.hash.expect(MISSING_HASH_ERROR);
+                    self.hash ^= message.hash;
                 }
 
                 // delete a message from the pool
                 Change::Delete(message_id) => {
                     if let Some(removed_message) = self.messages.remove(message_id) {
-                        self.hash ^= removed_message.hash.expect(MISSING_HASH_ERROR);
+                        self.hash ^= removed_message.hash;
                     }
                 }
             }
@@ -201,7 +199,7 @@ impl AsyncPool {
     ) -> StreamingStep<AsyncMessageId> {
         for (message_id, message) in part {
             if self.messages.insert(message_id, message.clone()).is_none() {
-                self.hash ^= message.hash.expect(MISSING_HASH_ERROR);
+                self.hash ^= message.hash;
             }
         }
         if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
@@ -324,28 +322,22 @@ fn test_take_batch() {
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
-        pool.messages.insert(
-            (
-                std::cmp::Reverse(Amount::from_mantissa_scale(i, 0)),
-                Slot::new(0, 0),
-                0,
-            ),
-            AsyncMessage {
-                emission_slot: Slot::new(0, 0),
-                emission_index: 0,
-                sender: address,
-                destination: address,
-                handler: "function".to_string(),
-                validity_start: Slot::new(1, 0),
-                validity_end: Slot::new(3, 0),
-                max_gas: i,
-                fee: Amount::from_str("0.1").unwrap(),
-                coins: Amount::from_str("0.3").unwrap(),
-                data: Vec::new(),
-                hash: None,
-            }
-            .with_hash(),
-        );
+        let message = AsyncMessage {
+            emission_slot: Slot::new(0, 0),
+            emission_index: 0,
+            sender: address,
+            destination: address,
+            handler: "function".to_string(),
+            validity_start: Slot::new(1, 0),
+            validity_end: Slot::new(3, 0),
+            max_gas: i,
+            fee: Amount::from_str("0.1").unwrap(),
+            coins: Amount::from_str("0.3").unwrap(),
+            data: Vec::new(),
+            // placeholder hash, not used in this test case
+            // in a real case scenario use new_with_hash
+            hash: Hash::from_bytes(&[0; 32]),
+        };
         pool.messages.insert(message.compute_id(), message);
     }
     assert_eq!(pool.messages.len(), 9);

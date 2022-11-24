@@ -32,10 +32,8 @@ fn test_active_history_deferred_credits() {
     ph2.insert(addr1, amount_a1_s2);
     ph2.insert(addr2, amount_a2_s2);
 
-    let credits = DeferredCredits {
-        credits: BTreeMap::from([(slot1, ph1), (slot2, ph2)]),
-        hash: None,
-    };
+    let mut credits = DeferredCredits::default();
+    credits.credits = BTreeMap::from([(slot1, ph1), (slot2, ph2)]);
 
     let exec_output_1 = ExecutionOutput {
         slot: Slot::new(1, 0),

@@ -572,23 +572,19 @@ impl Interface for InterfaceImpl {
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
         execution_context.transfer_coins(Some(sender), None, coins, true)?;
-        execution_context.push_new_message(
-            AsyncMessage {
-                emission_slot,
-                emission_index,
-                sender,
-                destination: Address::from_str(target_address)?,
-                handler: target_handler.to_string(),
-                validity_start: Slot::new(validity_start.0, validity_start.1),
-                validity_end: Slot::new(validity_end.0, validity_end.1),
-                max_gas,
-                fee: Amount::from_raw(raw_fee),
-                coins,
-                data: data.to_vec(),
-                hash: None,
-            }
-            .with_hash(),
-        );
+        execution_context.push_new_message(AsyncMessage::new_with_hash(
+            emission_slot,
+            emission_index,
+            sender,
+            Address::from_str(target_address)?,
+            target_handler.to_string(),
+            max_gas,
+            Amount::from_raw(raw_fee),
+            coins,
+            Slot::new(validity_start.0, validity_start.1),
+            Slot::new(validity_end.0, validity_end.1),
+            data.to_vec(),
+        ));
         execution_context.created_message_index += 1;
         Ok(())
     }
