@@ -30,7 +30,6 @@ struct CycleInfoHashComputer {
     u64_ser: U64VarIntSerializer,
     address_ser: AddressSerializer,
     bitvec_ser: BitVecSerializer,
-    prod_stats_ser: ProductionStatsSerializer,
 }
 
 impl CycleInfoHashComputer {
@@ -39,7 +38,6 @@ impl CycleInfoHashComputer {
             u64_ser: U64VarIntSerializer::new(),
             address_ser: AddressSerializer::new(),
             bitvec_ser: BitVecSerializer::new(),
-            prod_stats_ser: ProductionStatsSerializer::new(),
         }
     }
 
@@ -107,15 +105,28 @@ pub struct CycleInfo {
 
 impl CycleInfo {
     /// Create a new `CycleInfo` and compute its hash
-    pub(crate) fn new_with_hash(
+    pub fn new_with_hash(
         cycle: u64,
         complete: bool,
         roll_counts: BTreeMap<Address, u64>,
         rng_seed: BitVec<u8>,
         production_stats: PreHashMap<Address, ProductionStats>,
     ) -> Self {
-        let hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
-        // IMPORTANT TODO: compute hash here
+        let hash_computer = CycleInfoHashComputer::new();
+        let mut hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+
+        // compute the cycle hash
+        hash ^= hash_computer.compute_cycle_hash(cycle);
+        hash ^= hash_computer.compute_complete_hash(complete);
+        hash ^= hash_computer.compute_seed_hash(&rng_seed);
+        for (addr, &count) in &roll_counts {
+            hash ^= hash_computer.compute_roll_entry_hash(addr, count);
+        }
+        for (addr, prod_stats) in &production_stats {
+            hash ^= hash_computer.compute_prod_stats_entry_hash(addr, prod_stats);
+        }
+
+        // create the new cycle
         CycleInfo {
             cycle,
             complete,
@@ -143,31 +154,39 @@ impl CycleInfo {
         self.hash ^= hash_computer.compute_seed_hash(&self.rng_seed);
 
         // extend roll counts
-        for (address, roll_count) in changes.roll_changes {
+        for (addr, roll_count) in changes.roll_changes {
             if roll_count == 0 {
-                if let Some(current_roll_count) = self.roll_counts.get(&address) {
-                    self.hash ^=
-                        hash_computer.compute_roll_entry_hash(&address, current_roll_count);
-                    self.roll_counts.remove(&address);
+                if let Some(&current_roll_count) = self.roll_counts.get(&addr) {
+                    self.hash ^= hash_computer.compute_roll_entry_hash(&addr, current_roll_count);
+                    self.roll_counts.remove(&addr);
                 }
             } else {
-                self.hash ^= hash_computer.compute_roll_entry_hash(&address, roll_count);
-                self.roll_counts.insert(address, roll_count);
+                self.hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
+                self.roll_counts.insert(addr, roll_count);
             }
         }
 
-        // TODO: compute hash
         // extend production stats
         for (addr, stats) in changes.production_stats {
             self.production_stats
                 .entry(addr)
-                .and_modify(|cur| cur.extend(&stats))
-                .or_insert(stats);
+                .and_modify(|current_stats| {
+                    self.hash ^= hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
+                    current_stats.extend(&stats);
+                    self.hash ^= hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                })
+                .or_insert({
+                    self.hash ^= hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                    stats
+                });
         }
 
-        // TODO: compute hash
         // check for completion
-        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        let current_complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        if self.complete != current_complete {
+            self.complete = current_complete;
+            self.hash ^= hash_computer.compute_complete_hash(self.complete);
+        }
         // if the cycle just completed, check that it has the right number of seed bits
         if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
             panic!("cycle completed with incorrect number of seed bits");

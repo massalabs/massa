@@ -156,13 +156,13 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
     let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-    cycle_history.push_back(CycleInfo {
-        cycle: 0,
+    cycle_history.push_back(CycleInfo::new_with_hash(
+        0,
+        false,
         roll_counts,
-        complete: false,
         rng_seed,
         production_stats,
-    });
+    ));
     let deferred_credits = get_random_deferred_credits(r_limit);
     PoSFinalState {
         cycle_history,

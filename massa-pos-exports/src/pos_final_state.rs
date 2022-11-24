@@ -4,17 +4,11 @@ use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
-use massa_models::{
-    address::{Address, AddressDeserializer},
-    amount::{Amount, AmountDeserializer},
-    prehash::PreHashMap,
-    slot::{Slot, SlotDeserializer},
-};
-use massa_serialization::U64VarIntDeserializer;
+use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
 use std::collections::VecDeque;
 use std::{
     collections::BTreeMap,
-    ops::Bound::{Excluded, Included, Unbounded},
+    ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
 use tracing::debug;
@@ -33,14 +27,6 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
-    /// amount deserializer
-    pub amount_deserializer: AmountDeserializer,
-    /// slot deserializer
-    pub slot_deserializer: SlotDeserializer,
-    /// deserializer
-    pub deferred_credit_length_deserializer: U64VarIntDeserializer,
-    /// address deserializer
-    pub address_deserializer: AddressDeserializer,
 }
 
 impl PoSFinalState {
@@ -63,17 +49,6 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        // Deserializers
-        let amount_deserializer =
-            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
-        let slot_deserializer = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(config.thread_count)),
-        );
-        let deferred_credit_length_deserializer =
-            U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)); // TODO define a max here
-        let address_deserializer = AddressDeserializer::new();
-
         Ok(Self {
             config,
             cycle_history: Default::default(),
@@ -81,10 +56,6 @@ impl PoSFinalState {
             selector,
             initial_rolls,
             initial_seeds,
-            amount_deserializer,
-            slot_deserializer,
-            deferred_credit_length_deserializer,
-            address_deserializer,
         })
     }
 
