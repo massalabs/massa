@@ -20,7 +20,6 @@ use structopt::StructOpt;
 mod cmds;
 mod repl;
 mod settings;
-mod utils;
 
 #[cfg(test)]
 pub mod tests;
