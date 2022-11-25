@@ -60,8 +60,9 @@ impl AsyncPool {
             match change {
                 // add a new message to the pool
                 Change::Add(message_id, message) => {
-                    self.messages.insert(*message_id, message.clone());
-                    self.hash ^= message.hash;
+                    if self.messages.insert(*message_id, message.clone()).is_none() {
+                        self.hash ^= message.hash;
+                    }
                 }
 
                 // delete a message from the pool

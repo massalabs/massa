@@ -44,6 +44,8 @@ impl CycleInfoHashComputer {
     fn compute_cycle_hash(&self, cycle: u64) -> Hash {
         // serialization can never fail in the following computations, unwrap is justified
         let mut buffer = Vec::new();
+        // this byte is used to avoid collision with compute_complete_hash
+        buffer.push(1);
         self.u64_ser.serialize(&cycle, &mut buffer).unwrap();
         Hash::compute_from(&buffer)
     }

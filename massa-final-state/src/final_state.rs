@@ -13,7 +13,7 @@ use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
-use tracing::debug;
+use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
@@ -148,7 +148,7 @@ impl FinalState {
         );
         // 6. final state hash
         let final_state_hash = Hash::compute_from(&hash_concat);
-        debug!("final_state hash at slot {}: {}", slot, final_state_hash);
+        info!("final_state hash at slot {}: {}", slot, final_state_hash);
     }
 
     /// Used for bootstrap.
