@@ -571,7 +571,9 @@ impl Interface for InterfaceImpl {
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
+        let fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(Some(sender), None, coins, true)?;
+        execution_context.transfer_coins(Some(sender), None, fee, true)?;
         execution_context.push_new_message(AsyncMessage {
             emission_slot,
             emission_index,
@@ -581,7 +583,7 @@ impl Interface for InterfaceImpl {
             validity_start: Slot::new(validity_start.0, validity_start.1),
             validity_end: Slot::new(validity_end.0, validity_end.1),
             max_gas,
-            fee: Amount::from_raw(raw_fee),
+            fee,
             coins,
             data: data.to_vec(),
         });
