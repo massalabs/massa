@@ -222,7 +222,7 @@ impl Address {
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Address, ModelsError> {
+    fn _from_bs58_check(data: &str) -> Result<Address, ModelsError> {
         Ok(Address(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
         ))
@@ -240,7 +240,7 @@ impl Address {
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn to_bs58_check(&self) -> String {
+    fn _to_bs58_check(&self) -> String {
         self.0.to_bs58_check()
     }
 }
