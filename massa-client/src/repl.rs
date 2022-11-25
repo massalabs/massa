@@ -2,6 +2,7 @@
 
 use crate::cmds::{Command, ExtendedWallet};
 use crate::settings::SETTINGS;
+use anyhow::Result;
 use console::style;
 use erased_serde::{Serialize, Serializer};
 use massa_models::api::{
@@ -94,7 +95,7 @@ struct MyHelper {
     validator: MatchingBracketValidator,
 }
 
-pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
+pub(crate) async fn run(client: &Client, wallet: &mut Wallet) -> Result<()> {
     massa_fancy_ascii_art_logo!();
     println!("Use 'CTRL+D or CTRL+C' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
@@ -111,7 +112,7 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
         .completion_type(CompletionType::List)
         .max_history_size(10000)
         .build();
-    let mut rl: Editor<MyHelper> = Editor::with_config(config).unwrap();
+    let mut rl: Editor<MyHelper> = Editor::with_config(config)?;
     rl.set_helper(Some(h));
     if rl.load_history(&SETTINGS.history_file_path).is_err() {
         println!("No previous history.");
@@ -152,6 +153,7 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
         }
     }
     rl.append_history(&SETTINGS.history_file_path).unwrap();
+    Ok(())
 }
 
 struct MassaCompleter {
