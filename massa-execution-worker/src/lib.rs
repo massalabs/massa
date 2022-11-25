@@ -95,6 +95,7 @@ mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
 mod worker;
+mod common;
 
 pub use worker::start_execution_worker;
 

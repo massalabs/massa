@@ -19,7 +19,7 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
-use std::collections::{hash_map, BTreeMap};
+use std::collections::{hash_map, BTreeMap, BTreeSet};
 use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
@@ -750,20 +750,19 @@ impl LedgerChanges {
         }
     }
 
-    pub fn get_keys_or_else<F: FnOnce() -> Option<Vec<Vec<u8>>>>(
+    pub fn get_keys(
         &self,
         addr: &Address,
-        f: F,
-    ) -> Option<Vec<Vec<u8>>> {
+    ) -> BTreeSet<Vec<u8>> {
         // Get the current changes being applied to the ledger entry associated to that address
         match self.0.get(addr) {
             // This ledger entry is being replaced by a new one:
             // get the datastore keys from the new ledger entry
-            Some(SetUpdateOrDelete::Set(v)) => Some(v.datastore.keys().cloned().collect()),
+            Some(SetUpdateOrDelete::Set(v)) => v.datastore.keys().cloned().collect(),
 
             // This ledger entry is being updated
             Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
-                Some(datastore
+                datastore
                     .iter()
                     .filter_map(|(key, set_or_del)| {
                         match set_or_del {
@@ -775,18 +774,17 @@ impl LedgerChanges {
                     })
                     .cloned()
                     .collect()
-                )
             }
 
             // This ledger entry is being deleted: return None
             Some(SetUpdateOrDelete::Delete) => {
-                None
+                Default::default()
             },
 
             // This ledger entry is not being changed.
             // We therefore have no info on the absolute contents of its datastore entry.
             // We call the fallback function and return its output.
-            None => f(),
+            None => Default::default(),
         }
     }
 

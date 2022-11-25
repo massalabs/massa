@@ -14,6 +14,7 @@ use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::debug;
+use crate::common::get_final_and_candidate_datastore_keys;
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -368,14 +369,19 @@ impl SpeculativeLedger {
     /// # Returns
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
     pub fn get_keys(&self, addr: &Address) -> Option<Vec<Vec<u8>>> {
-        self.added_changes.get_keys_or_else(addr, || {
-            // TODO
-            // self.active_history.read().fetch_active_history_keys()
-            // FIXME: rm placeholder
-            let key1 = vec![1, 2, 3];
-            let key2 = vec![9, 8, 7];
-            Some(vec![key1, key2])
-        })
+
+        let mut added_keys = self.added_changes.get_keys(addr);
+        let (mut final_keys, mut candidate_keys) = get_final_and_candidate_datastore_keys(
+            &self.final_state.read().ledger,
+            &self.active_history.read().0,
+            addr);
+
+        final_keys.append(&mut candidate_keys);
+        added_keys.append(&mut final_keys);
+        Some(added_keys
+            .iter()
+            .cloned()
+            .collect())
     }
 
     /// Gets a copy of a datastore value for a given address and datastore key
