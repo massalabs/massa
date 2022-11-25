@@ -134,10 +134,10 @@ impl FinalState {
         );
         // 4. pos cycle history hashes
         for cycle_info in &self.pos_state.cycle_history {
-            hash_concat.extend(cycle_info.hash.to_bytes());
+            hash_concat.extend(cycle_info.global_hash.to_bytes());
             debug!(
                 "cycle ({}) hash at slot {}: {}",
-                cycle_info.cycle, slot, cycle_info.hash
+                cycle_info.cycle, slot, cycle_info.global_hash
             );
         }
         // 5. executed operations hash

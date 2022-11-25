@@ -101,8 +101,12 @@ pub struct CycleInfo {
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
-    /// Hash of the self cycle state
-    pub hash: Hash,
+    /// Hash of the roll counts
+    roll_counts_hash: Hash,
+    /// Hash of the production statistics
+    production_stats_hash: Hash,
+    /// Hash of the cycle state
+    pub global_hash: Hash,
 }
 
 impl CycleInfo {
@@ -115,18 +119,25 @@ impl CycleInfo {
         production_stats: PreHashMap<Address, ProductionStats>,
     ) -> Self {
         let hash_computer = CycleInfoHashComputer::new();
-        let mut hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        let mut roll_counts_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        let mut production_stats_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
 
         // compute the cycle hash
-        hash ^= hash_computer.compute_cycle_hash(cycle);
-        hash ^= hash_computer.compute_complete_hash(complete);
-        hash ^= hash_computer.compute_seed_hash(&rng_seed);
+        let mut hash_concat: Vec<u8> = Vec::new();
+        hash_concat.extend(hash_computer.compute_cycle_hash(cycle).to_bytes());
+        hash_concat.extend(hash_computer.compute_complete_hash(complete).to_bytes());
+        hash_concat.extend(hash_computer.compute_seed_hash(&rng_seed).to_bytes());
         for (addr, &count) in &roll_counts {
-            hash ^= hash_computer.compute_roll_entry_hash(addr, count);
+            roll_counts_hash ^= hash_computer.compute_roll_entry_hash(addr, count);
         }
+        hash_concat.extend(roll_counts_hash.to_bytes());
         for (addr, prod_stats) in &production_stats {
-            hash ^= hash_computer.compute_prod_stats_entry_hash(addr, prod_stats);
+            production_stats_hash ^= hash_computer.compute_prod_stats_entry_hash(addr, prod_stats);
         }
+        hash_concat.extend(production_stats_hash.to_bytes());
+
+        // compute the global hash
+        let global_hash = Hash::compute_from(&hash_concat);
 
         // create the new cycle
         CycleInfo {
@@ -135,7 +146,9 @@ impl CycleInfo {
             roll_counts,
             rng_seed,
             production_stats,
-            hash,
+            roll_counts_hash,
+            production_stats_hash,
+            global_hash,
         }
     }
 
@@ -149,50 +162,61 @@ impl CycleInfo {
     ) -> bool {
         let hash_computer = CycleInfoHashComputer::new();
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
+        let mut hash_concat: Vec<u8> = Vec::new();
 
         // extend seed_bits with changes.seed_bits
-        self.hash ^= hash_computer.compute_seed_hash(&self.rng_seed);
         self.rng_seed.extend(changes.seed_bits);
-        self.hash ^= hash_computer.compute_seed_hash(&self.rng_seed);
+        let rng_seed_hash = hash_computer.compute_seed_hash(&self.rng_seed);
+        hash_concat.extend(rng_seed_hash.to_bytes());
 
         // extend roll counts
         for (addr, roll_count) in changes.roll_changes {
             if roll_count == 0 {
                 if let Some(&current_roll_count) = self.roll_counts.get(&addr) {
-                    self.hash ^= hash_computer.compute_roll_entry_hash(&addr, current_roll_count);
+                    self.roll_counts_hash ^=
+                        hash_computer.compute_roll_entry_hash(&addr, current_roll_count);
                     self.roll_counts.remove(&addr);
                 }
             } else {
-                self.hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
+                self.roll_counts_hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
                 self.roll_counts.insert(addr, roll_count);
             }
         }
+        hash_concat.extend(self.roll_counts_hash.to_bytes());
 
         // extend production stats
         for (addr, stats) in changes.production_stats {
             self.production_stats
                 .entry(addr)
                 .and_modify(|current_stats| {
-                    self.hash ^= hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
+                    self.production_stats_hash ^=
+                        hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
                     current_stats.extend(&stats);
-                    self.hash ^= hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                    self.production_stats_hash ^=
+                        hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
                 })
                 .or_insert({
-                    self.hash ^= hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                    self.production_stats_hash ^=
+                        hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
                     stats
                 });
         }
+        hash_concat.extend(self.production_stats_hash.to_bytes());
 
         // check for completion
-        let current_complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
-        if self.complete != current_complete {
-            self.complete = current_complete;
-            self.hash ^= hash_computer.compute_complete_hash(self.complete);
-        }
+        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        let complete_hash = hash_computer.compute_complete_hash(self.complete);
+        hash_concat.extend(complete_hash.to_bytes());
+
         // if the cycle just completed, check that it has the right number of seed bits
         if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
             panic!("cycle completed with incorrect number of seed bits");
         }
+
+        // compute the global hash
+        self.global_hash = Hash::compute_from(&hash_concat);
+
+        // return the completion status
         self.complete
     }
 }
