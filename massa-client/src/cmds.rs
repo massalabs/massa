@@ -28,7 +28,6 @@ use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
-use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 
@@ -38,9 +37,6 @@ use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
-    #[strum(ascii_case_insensitive, message = "exit the client gracefully")]
-    exit,
-
     #[strum(ascii_case_insensitive, message = "display this help")]
     help,
 
@@ -374,8 +370,6 @@ impl Command {
         json: bool,
     ) -> Result<Box<dyn Output>> {
         match self {
-            Command::exit => process::exit(0),
-
             Command::help => {
                 if !json {
                     if !parameters.is_empty() {

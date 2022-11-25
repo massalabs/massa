@@ -185,7 +185,7 @@ impl Interface for InterfaceImpl {
     fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
         let addr = &massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_data_entry(addr, &key) {
+        match context.get_data_entry(addr, key) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -227,7 +227,7 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to delete
     fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
         let addr = &massa_models::address::Address::from_str(address)?;
-        context_guard!(self).delete_data_entry(addr, &key)?;
+        context_guard!(self).delete_data_entry(addr, key)?;
         Ok(())
     }
 
@@ -242,7 +242,7 @@ impl Interface for InterfaceImpl {
     fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
         let addr = massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
-        Ok(context.has_data_entry(&addr, &key))
+        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Gets a datastore value by key for the current address (top of the call stack).
@@ -255,7 +255,7 @@ impl Interface for InterfaceImpl {
     fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_data_entry(&addr, &key) {
+        match context.get_data_entry(&addr, key) {
             Some(data) => Ok(data),
             _ => bail!("data entry not found"),
         }
@@ -298,7 +298,7 @@ impl Interface for InterfaceImpl {
     fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.delete_data_entry(&addr, &key)?;
+        context.delete_data_entry(&addr, key)?;
         Ok(())
     }
 
@@ -312,7 +312,7 @@ impl Interface for InterfaceImpl {
     fn has_data(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        Ok(context.has_data_entry(&addr, &key))
+        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Get the operation datastore keys (aka entries).

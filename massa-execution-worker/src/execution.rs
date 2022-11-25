@@ -599,7 +599,7 @@ impl ExecutionState {
             &bytecode,
             max_gas,
             target_func,
-            &param,
+            param,
             &*self.execution_interface,
         ) {
             Ok(_reamining_gas) => {}

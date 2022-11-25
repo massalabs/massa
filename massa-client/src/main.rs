@@ -20,7 +20,6 @@ use structopt::StructOpt;
 mod cmds;
 mod repl;
 mod settings;
-mod utils;
 
 #[cfg(test)]
 pub mod tests;
@@ -138,7 +137,7 @@ async fn run(args: Args) -> Result<()> {
     let client = Client::new(address, public_port, private_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &mut wallet).await;
+        repl::run(&client, &mut wallet).await?;
     } else {
         // Non-Interactive mode
         match args
