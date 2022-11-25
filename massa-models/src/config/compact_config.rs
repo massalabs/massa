@@ -67,6 +67,7 @@ impl Display for CompactConfig {
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
         writeln!(f, "    Block reward: {}", self.block_reward)?;
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
+        writeln!(f, "    Roll price: {}", self.roll_price)?;
         writeln!(f, "    Max block size (in bytes): {}", self.max_block_size)?;
         Ok(())
     }

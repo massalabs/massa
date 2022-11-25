@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.16.0"
+            "TEST.16.1"
         }
         .parse()
         .unwrap()
@@ -136,7 +136,7 @@ pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
 /// Maximum length of a datastore value
 pub const MAX_BYTECODE_LENGTH: u64 = 10_000_000;
 /// Maximum length of an operation datastore value
-pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 1_000;
+pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 500_000;
 /// Maximum ledger changes in a block
 pub const MAX_LEDGER_CHANGES_PER_SLOT: u32 = u32::MAX;
 /// Maximum production events in a block

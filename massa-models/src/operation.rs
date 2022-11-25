@@ -405,6 +405,7 @@ pub enum OperationType {
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
         /// A key-value store associating a hash to arbitrary bytes
+        #[serde(skip)]
         datastore: Datastore,
     },
     /// Calls an exported function from a stored smart contract
