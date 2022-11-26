@@ -1031,7 +1031,7 @@ impl ExecutionState {
             self.final_state.clone(),
             self.active_history.clone(),
         );
-
+        // TODO release massa-sc-runtime and use
         // run the intepreter according to the target type
         let remaining_gas = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
@@ -1072,6 +1072,8 @@ impl ExecutionState {
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
             gas_cost: req.max_gas.saturating_sub(remaining_gas),
+            // TODO release massa-sc-runtime and bind it
+            call_result: Vec::new()
         })
     }
 
