@@ -830,14 +830,24 @@ fn datastore_manipulations() {
 
     let events = controller.get_filtered_sc_output_event(EventFilter::default());
     // match the events
-    // assert!(!events.is_empty(), "One event was expected");
-    // println!("event data: {}", events[0].data);
-    // TODO: do not hardcode but rather "TEST".to_string().encode_utf16()...
-    // println!("{:?}", "TEST".as_bytes())
-    // assert!(events[0].data.contains("keys: 84,0,69,0,83,0,84,0"));
+    assert!(!events.is_empty(), "One event was expected");
+    let key = "TEST".to_string();
+    // in ASC, string are utf16 encoded
+    let s16 = key.encode_utf16();
+    let s16_as_bytes: Vec<u8> = s16
+        .map(|item| item.to_ne_bytes())
+        .flatten()
+        .collect();
+    // in SC, we use the builtin string formatting (using `keys: ${keys}`) & replicate it in Rust
+    let keys_str: String = s16_as_bytes
+        .iter()
+        .map(|b| format!("{}", b))
+        .collect::<Vec<String>>()
+        .join(",");
+    assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
 
     // Length of the value left in the datastore. See sources for more context.
-    let value_len = 4;
+    let value_len = "TEST_VALUE".to_string().encode_utf16().size_hint().1.unwrap() as u64;
     assert_eq!(
         sample_state
             .read()
@@ -862,15 +872,6 @@ fn datastore_manipulations() {
                     .ledger_cost_per_byte
                     .saturating_mul_u64(value_len)
             )
-            // cost
-            /*
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(value_len * 2)
-            )
-            */
     );
 
     // stop the execution controller
