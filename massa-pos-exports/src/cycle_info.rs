@@ -145,8 +145,16 @@ fn test_cycle_info_hash_computation() {
         cycle_a.production_stats,
     );
     assert_eq!(
+        cycle_a.roll_counts_hash, cycle_b.roll_counts_hash,
+        "roll_counts_hash mismatch"
+    );
+    assert_eq!(
+        cycle_a.production_stats_hash, cycle_b.production_stats_hash,
+        "production_stats_hash mismatch"
+    );
+    assert_eq!(
         cycle_a.global_hash, cycle_b.global_hash,
-        "global hash mismatch"
+        "global_hash mismatch"
     );
 }
 
@@ -205,6 +213,20 @@ impl CycleInfo {
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
         let mut hash_concat: Vec<u8> = Vec::new();
 
+        // compute cycle hash and concat
+        let cycle_hash = hash_computer.compute_cycle_hash(self.cycle);
+        hash_concat.extend(cycle_hash.to_bytes());
+
+        // check for completion
+        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        let complete_hash = hash_computer.compute_complete_hash(self.complete);
+        hash_concat.extend(complete_hash.to_bytes());
+
+        // if the cycle just completed, check that it has the right number of seed bits
+        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
+            panic!("cycle completed with incorrect number of seed bits");
+        }
+
         // extend seed_bits with changes.seed_bits
         self.rng_seed.extend(changes.seed_bits);
         let rng_seed_hash = hash_computer.compute_seed_hash(&self.rng_seed);
@@ -243,16 +265,6 @@ impl CycleInfo {
                 });
         }
         hash_concat.extend(self.production_stats_hash.to_bytes());
-
-        // check for completion
-        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
-        let complete_hash = hash_computer.compute_complete_hash(self.complete);
-        hash_concat.extend(complete_hash.to_bytes());
-
-        // if the cycle just completed, check that it has the right number of seed bits
-        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
-            panic!("cycle completed with incorrect number of seed bits");
-        }
 
         // compute the global hash
         self.global_hash = Hash::compute_from(&hash_concat);
