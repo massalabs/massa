@@ -1,8 +1,10 @@
 use bitvec::vec::BitVec;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
-    address::{Address, AddressDeserializer},
+    address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
+    slot::Slot,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -20,8 +22,72 @@ use num::rational::Ratio;
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
+use crate::PoSChanges;
+
+const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
+struct CycleInfoHashComputer {
+    u64_ser: U64VarIntSerializer,
+    address_ser: AddressSerializer,
+    bitvec_ser: BitVecSerializer,
+}
+
+impl CycleInfoHashComputer {
+    fn new() -> Self {
+        Self {
+            u64_ser: U64VarIntSerializer::new(),
+            address_ser: AddressSerializer::new(),
+            bitvec_ser: BitVecSerializer::new(),
+        }
+    }
+
+    fn compute_cycle_hash(&self, cycle: u64) -> Hash {
+        // serialization can never fail in the following computations, unwrap is justified
+        let mut buffer = Vec::new();
+        self.u64_ser.serialize(&cycle, &mut buffer).unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_complete_hash(&self, complete: bool) -> Hash {
+        let mut buffer = Vec::new();
+        self.u64_ser
+            .serialize(&(complete as u64), &mut buffer)
+            .unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_seed_hash(&self, seed: &BitVec<u8>) -> Hash {
+        let mut buffer = Vec::new();
+        self.bitvec_ser.serialize(&seed, &mut buffer).unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_roll_entry_hash(&self, address: &Address, roll_count: u64) -> Hash {
+        let mut buffer = Vec::new();
+        self.address_ser.serialize(address, &mut buffer).unwrap();
+        self.u64_ser.serialize(&roll_count, &mut buffer).unwrap();
+        Hash::compute_from(&buffer)
+    }
+
+    fn compute_prod_stats_entry_hash(
+        &self,
+        address: &Address,
+        prod_stats: &ProductionStats,
+    ) -> Hash {
+        let mut buffer = Vec::new();
+        self.address_ser.serialize(address, &mut buffer).unwrap();
+        self.u64_ser
+            .serialize(&prod_stats.block_success_count, &mut buffer)
+            .unwrap();
+        self.u64_ser
+            .serialize(&prod_stats.block_failure_count, &mut buffer)
+            .unwrap();
+        Hash::compute_from(&buffer)
+    }
+}
+
 /// State of a cycle for all threads
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleInfo {
     /// cycle number
     pub cycle: u64,
@@ -33,6 +99,124 @@ pub struct CycleInfo {
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
+    /// Hash of the roll counts
+    roll_counts_hash: Hash,
+    /// Hash of the production statistics
+    production_stats_hash: Hash,
+    /// Hash of the cycle state
+    pub global_hash: Hash,
+}
+
+impl CycleInfo {
+    /// Create a new `CycleInfo` and compute its hash
+    pub fn new_with_hash(
+        cycle: u64,
+        complete: bool,
+        roll_counts: BTreeMap<Address, u64>,
+        rng_seed: BitVec<u8>,
+        production_stats: PreHashMap<Address, ProductionStats>,
+    ) -> Self {
+        let hash_computer = CycleInfoHashComputer::new();
+        let mut roll_counts_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        let mut production_stats_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+
+        // compute the cycle hash
+        let mut hash_concat: Vec<u8> = Vec::new();
+        hash_concat.extend(hash_computer.compute_cycle_hash(cycle).to_bytes());
+        hash_concat.extend(hash_computer.compute_complete_hash(complete).to_bytes());
+        hash_concat.extend(hash_computer.compute_seed_hash(&rng_seed).to_bytes());
+        for (addr, &count) in &roll_counts {
+            roll_counts_hash ^= hash_computer.compute_roll_entry_hash(addr, count);
+        }
+        hash_concat.extend(roll_counts_hash.to_bytes());
+        for (addr, prod_stats) in &production_stats {
+            production_stats_hash ^= hash_computer.compute_prod_stats_entry_hash(addr, prod_stats);
+        }
+        hash_concat.extend(production_stats_hash.to_bytes());
+
+        // compute the global hash
+        let global_hash = Hash::compute_from(&hash_concat);
+
+        // create the new cycle
+        CycleInfo {
+            cycle,
+            complete,
+            roll_counts,
+            rng_seed,
+            production_stats,
+            roll_counts_hash,
+            production_stats_hash,
+            global_hash,
+        }
+    }
+
+    /// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
+    pub(crate) fn apply_changes(
+        &mut self,
+        changes: PoSChanges,
+        slot: Slot,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) -> bool {
+        let hash_computer = CycleInfoHashComputer::new();
+        let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
+        let mut hash_concat: Vec<u8> = Vec::new();
+
+        // extend seed_bits with changes.seed_bits
+        self.rng_seed.extend(changes.seed_bits);
+        let rng_seed_hash = hash_computer.compute_seed_hash(&self.rng_seed);
+        hash_concat.extend(rng_seed_hash.to_bytes());
+
+        // extend roll counts
+        for (addr, roll_count) in changes.roll_changes {
+            if roll_count == 0 {
+                if let Some(&current_roll_count) = self.roll_counts.get(&addr) {
+                    self.roll_counts_hash ^=
+                        hash_computer.compute_roll_entry_hash(&addr, current_roll_count);
+                    self.roll_counts.remove(&addr);
+                }
+            } else {
+                self.roll_counts_hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
+                self.roll_counts.insert(addr, roll_count);
+            }
+        }
+        hash_concat.extend(self.roll_counts_hash.to_bytes());
+
+        // extend production stats
+        for (addr, stats) in changes.production_stats {
+            self.production_stats
+                .entry(addr)
+                .and_modify(|current_stats| {
+                    self.production_stats_hash ^=
+                        hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
+                    current_stats.extend(&stats);
+                    self.production_stats_hash ^=
+                        hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                })
+                .or_insert({
+                    self.production_stats_hash ^=
+                        hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                    stats
+                });
+        }
+        hash_concat.extend(self.production_stats_hash.to_bytes());
+
+        // check for completion
+        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        let complete_hash = hash_computer.compute_complete_hash(self.complete);
+        hash_concat.extend(complete_hash.to_bytes());
+
+        // if the cycle just completed, check that it has the right number of seed bits
+        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
+            panic!("cycle completed with incorrect number of seed bits");
+        }
+
+        // compute the global hash
+        self.global_hash = Hash::compute_from(&hash_concat);
+
+        // return the completion status
+        self.complete
+    }
 }
 
 /// Serializer for `CycleInfo`
@@ -134,12 +318,14 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
                 Vec<(Address, u64)>,                  // roll_counts
                 BitVec<u8>,                           // rng_seed
                 PreHashMap<Address, ProductionStats>, // production_stats (address, n_success, n_fail)
-            )| CycleInfo {
-                cycle,
-                complete,
-                roll_counts: roll_counts.into_iter().collect(),
-                rng_seed,
-                production_stats,
+            )| {
+                CycleInfo::new_with_hash(
+                    cycle,
+                    complete,
+                    roll_counts.into_iter().collect(),
+                    rng_seed,
+                    production_stats,
+                )
             },
         )
         .parse(buffer)

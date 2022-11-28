@@ -1,5 +1,6 @@
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
-    address::{Address, AddressDeserializer},
+    address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -16,15 +17,69 @@ use nom::{
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included};
 
-#[derive(Debug, Default, Clone)]
+const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
+#[derive(Debug, Clone)]
 /// Structure containing all the PoS deferred credits information
-pub struct DeferredCredits(pub BTreeMap<Slot, PreHashMap<Address, Amount>>);
+pub struct DeferredCredits {
+    /// Deferred credits
+    pub credits: BTreeMap<Slot, PreHashMap<Address, Amount>>,
+    /// Hash of the current deferred credits state
+    pub hash: Hash,
+}
+
+impl Default for DeferredCredits {
+    fn default() -> Self {
+        Self {
+            credits: Default::default(),
+            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+        }
+    }
+}
+
+struct DeferredCreditsHashComputer {
+    slot_ser: SlotSerializer,
+    address_ser: AddressSerializer,
+    amount_ser: AmountSerializer,
+}
+
+impl DeferredCreditsHashComputer {
+    fn new() -> Self {
+        Self {
+            slot_ser: SlotSerializer::new(),
+            address_ser: AddressSerializer::new(),
+            amount_ser: AmountSerializer::new(),
+        }
+    }
+
+    fn compute_slot_credits_hash(
+        &self,
+        slot: &Slot,
+        credits: &PreHashMap<Address, Amount>,
+    ) -> Hash {
+        // serialization can never fail in the following computations, unwrap is justified
+        let mut buffer = Vec::new();
+        self.slot_ser.serialize(&slot, &mut buffer).unwrap();
+        let mut hash = Hash::compute_from(&mut buffer);
+        for (address, amount) in credits {
+            hash ^= self.compute_single_credit_hash(address, amount);
+        }
+        hash
+    }
+
+    fn compute_single_credit_hash(&self, address: &Address, amount: &Amount) -> Hash {
+        let mut buffer = Vec::new();
+        self.address_ser.serialize(address, &mut buffer).unwrap();
+        self.amount_ser.serialize(amount, &mut buffer).unwrap();
+        Hash::compute_from(&buffer)
+    }
+}
 
 impl DeferredCredits {
     /// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
     pub fn nested_replace(&mut self, other: Self) {
-        for (slot, other_credits) in other.0 {
-            self.0
+        for (slot, other_credits) in other.credits {
+            self.credits
                 .entry(slot)
                 .and_modify(|current_credits| {
                     for (address, other_amount) in other_credits.iter() {
@@ -38,17 +93,59 @@ impl DeferredCredits {
         }
     }
 
-    /// Remove zero credits
+    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the object hash, use only on finality
+    pub fn final_nested_replace(&mut self, other: Self) {
+        let hash_computer = DeferredCreditsHashComputer::new();
+        for (slot, other_credits) in other.credits {
+            self.credits
+                .entry(slot)
+                // if has given slot entry update it
+                .and_modify(|current_credits| {
+                    for (address, other_amount) in other_credits.iter() {
+                        current_credits
+                            .entry(*address)
+                            .and_modify(|current_amount| {
+                                // compute the current credit hash and XOR it
+                                self.hash ^= hash_computer
+                                    .compute_single_credit_hash(address, &current_amount);
+                                // compute the replacement credit hash and XOR it
+                                self.hash ^= hash_computer
+                                    .compute_single_credit_hash(address, &other_amount);
+                                // set the new credit amount
+                                *current_amount = *other_amount
+                            })
+                            .or_insert({
+                                // compute the credit hash and XOR it
+                                self.hash ^= hash_computer
+                                    .compute_single_credit_hash(address, &other_amount);
+                                // set the credit amount
+                                *other_amount
+                            });
+                    }
+                })
+                // if misses the given slot entry insert
+                .or_insert({
+                    // compute every slot credits hash and XOR them
+                    hash_computer.compute_slot_credits_hash(&slot, &other_credits);
+                    // set the slot credits
+                    other_credits
+                });
+        }
+    }
+
+    /// Remove zero credits, use only on finality
     pub fn remove_zeros(&mut self) {
+        let hash_computer = DeferredCreditsHashComputer::new();
         let mut delete_slots = Vec::new();
-        for (slot, credits) in &mut self.0 {
+        for (slot, credits) in &mut self.credits {
             credits.retain(|_addr, amount| !amount.is_zero());
             if credits.is_empty() {
                 delete_slots.push(*slot);
+                self.hash ^= hash_computer.compute_slot_credits_hash(slot, credits);
             }
         }
         for slot in delete_slots {
-            self.0.remove(&slot);
+            self.credits.remove(&slot);
         }
     }
 
@@ -59,7 +156,7 @@ impl DeferredCredits {
         slot: &Slot,
     ) -> Option<Amount> {
         if let Some(v) = self
-            .0
+            .credits
             .get(slot)
             .and_then(|slot_credits| slot_credits.get(addr))
         {
@@ -70,7 +167,7 @@ impl DeferredCredits {
 
     /// Insert/overwrite a deferred credit
     pub fn insert(&mut self, addr: Address, slot: Slot, amount: Amount) {
-        let entry = self.0.entry(slot).or_default();
+        let entry = self.credits.entry(slot).or_default();
         entry.insert(addr, amount);
     }
 }
@@ -106,9 +203,10 @@ impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         // deferred credits length
-        self.u64_ser.serialize(&(value.0.len() as u64), buffer)?;
+        self.u64_ser
+            .serialize(&(value.credits.len() as u64), buffer)?;
         // deferred credits
-        for (slot, credits) in &value.0 {
+        for (slot, credits) in &value.credits {
             // slot
             self.slot_ser.serialize(slot, buffer)?;
             // credits
@@ -163,7 +261,10 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
                 )),
             ),
         )
-        .map(|elements| DeferredCredits(elements.into_iter().collect()))
+        .map(|elements| DeferredCredits {
+            credits: elements.into_iter().collect(),
+            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+        })
         .parse(buffer)
     }
 }

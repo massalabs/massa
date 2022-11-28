@@ -574,19 +574,19 @@ impl Interface for InterfaceImpl {
         let fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(Some(sender), None, coins, true)?;
         execution_context.transfer_coins(Some(sender), None, fee, true)?;
-        execution_context.push_new_message(AsyncMessage {
+        execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
             sender,
-            destination: Address::from_str(target_address)?,
-            handler: target_handler.to_string(),
-            validity_start: Slot::new(validity_start.0, validity_start.1),
-            validity_end: Slot::new(validity_end.0, validity_end.1),
+            Address::from_str(target_address)?,
+            target_handler.to_string(),
             max_gas,
             fee,
             coins,
-            data: data.to_vec(),
-        });
+            Slot::new(validity_start.0, validity_start.1),
+            Slot::new(validity_end.0, validity_end.1),
+            data.to_vec(),
+        ));
         execution_context.created_message_index += 1;
         Ok(())
     }

@@ -26,19 +26,19 @@ fn get_random_address() -> Address {
 
 pub fn get_random_message() -> AsyncMessage {
     let mut rng = rand::thread_rng();
-    AsyncMessage {
-        emission_slot: Slot::new(rng.gen_range(0..100_000), rng.gen_range(0..THREAD_COUNT)),
-        emission_index: 0,
-        sender: get_random_address(),
-        destination: get_random_address(),
-        handler: String::from("test"),
-        max_gas: 10_000,
-        fee: Amount::from_str("100").unwrap(),
-        coins: Amount::from_str("100").unwrap(),
-        validity_start: Slot::new(2, 0),
-        validity_end: Slot::new(4, 0),
-        data: vec![1, 2, 3],
-    }
+    AsyncMessage::new_with_hash(
+        Slot::new(rng.gen_range(0..100_000), rng.gen_range(0..THREAD_COUNT)),
+        0,
+        get_random_address(),
+        get_random_address(),
+        String::from("test"),
+        10_000,
+        Amount::from_str("100").unwrap(),
+        Amount::from_str("100").unwrap(),
+        Slot::new(2, 0),
+        Slot::new(4, 0),
+        vec![1, 2, 3],
+    )
 }
 
 /// Asserts that two instances of `AsyncMessage` are the same
