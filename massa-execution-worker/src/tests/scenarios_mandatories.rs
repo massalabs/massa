@@ -828,7 +828,7 @@ fn datastore_manipulations() {
 
     let events = controller.get_filtered_sc_output_event(EventFilter::default());
     // match the events
-    assert!(!events.is_empty(), "One event was expected");
+    assert!(!events.is_empty(), "2 events were expected");
     let key = "TEST".to_string();
     // in ASC, string are utf16 encoded
     let s16 = key.encode_utf16();
@@ -843,6 +843,7 @@ fn datastore_manipulations() {
         .collect::<Vec<String>>()
         .join(",");
     assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
+    assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
 
     // Length of the value left in the datastore. See sources for more context.
     let value_len = "TEST_VALUE".to_string().encode_utf16().size_hint().1.unwrap() as u64;

@@ -174,11 +174,24 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    /// Get the datastore keys (aka entries).
+    /// Get the datastore keys (aka entries) for a given address
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys(&self, address: &str) -> Result<Vec<Vec<u8>>> {
+    fn get_keys(&self) -> Result<Vec<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        match context.get_keys(&addr) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys_for(&self, address: &str) -> Result<Vec<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
         match context.get_keys(addr) {
