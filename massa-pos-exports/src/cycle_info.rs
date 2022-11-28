@@ -100,9 +100,9 @@ pub struct CycleInfo {
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
     /// Hash of the roll counts
-    roll_counts_hash: Hash,
+    pub roll_counts_hash: Hash,
     /// Hash of the production statistics
-    production_stats_hash: Hash,
+    pub production_stats_hash: Hash,
     /// Hash of the cycle state
     pub global_hash: Hash,
 }
