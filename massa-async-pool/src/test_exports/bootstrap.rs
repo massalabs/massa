@@ -24,7 +24,7 @@ fn get_random_address() -> Address {
     Address::from_public_key(&keypair.get_public_key())
 }
 
-pub fn get_random_message() -> AsyncMessage {
+pub fn get_random_message(fee: Option<Amount>) -> AsyncMessage {
     let mut rng = rand::thread_rng();
     AsyncMessage::new_with_hash(
         Slot::new(rng.gen_range(0..100_000), rng.gen_range(0..THREAD_COUNT)),
@@ -33,7 +33,7 @@ pub fn get_random_message() -> AsyncMessage {
         get_random_address(),
         String::from("test"),
         10_000,
-        Amount::from_str("100").unwrap(),
+        fee.unwrap_or_default(),
         Amount::from_str("100").unwrap(),
         Slot::new(2, 0),
         Slot::new(4, 0),
