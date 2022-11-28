@@ -81,6 +81,7 @@
 #![feature(is_sorted)]
 #![feature(map_try_insert)]
 #![feature(let_chains)]
+#![feature(option_get_or_insert_default)]
 
 mod active_history;
 mod context;
@@ -95,7 +96,6 @@ mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
 mod worker;
-mod common;
 
 pub use worker::start_execution_worker;
 

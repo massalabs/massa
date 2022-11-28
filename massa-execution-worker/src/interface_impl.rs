@@ -5,6 +5,7 @@
 //! for example to interact with the ledger.
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
+use std::collections::BTreeSet;
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
 use massa_async_pool::AsyncMessage;
@@ -178,7 +179,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys(&self) -> Result<Vec<Vec<u8>>> {
+    fn get_keys(&self) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         match context.get_keys(&addr) {
@@ -191,7 +192,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys_for(&self, address: &str) -> Result<Vec<Vec<u8>>> {
+    fn get_keys_for(&self, address: &str) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
         match context.get_keys(addr) {

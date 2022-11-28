@@ -5,16 +5,16 @@
 //! It never actually writes to the consensus state
 //! but keeps track of the changes that were applied to it since its creation.
 
+use std::collections::BTreeSet;
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalState;
-use massa_ledger_exports::{Applicable, LedgerChanges};
+use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::debug;
-use crate::common::get_final_and_candidate_datastore_keys;
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -368,20 +368,45 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
-    pub fn get_keys(&self, addr: &Address) -> Option<Vec<Vec<u8>>> {
+    pub fn get_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+        // here, get the final keys from the final ledger
+        let mut keys: Option<BTreeSet<Vec<u8>>> = self.final_state
+            .read()
+            .ledger
+            .get_datastore_keys(addr);
 
-        let mut added_keys = self.added_changes.get_keys(addr);
-        let (mut final_keys, mut candidate_keys) = get_final_and_candidate_datastore_keys(
-            &self.final_state.read().ledger,
-            &self.active_history.read().0,
-            addr);
+        // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
+        let active_history = self.active_history.read();
+        let changes_iterator = active_history.0.iter().map(|item| &item.state_changes.ledger_changes).chain(std::iter::once(&self.added_changes));
+        for ledger_changes in changes_iterator {
+            match ledger_changes.get(addr) {
+                // address absent from the changes
+                None => (),
 
-        final_keys.append(&mut candidate_keys);
-        added_keys.append(&mut final_keys);
-        Some(added_keys
-            .iter()
-            .cloned()
-            .collect())
+                // address ledger entry being reset to an absolute new list of keys
+                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
+                    keys = Some(new_ledger_entry.datastore.keys().cloned().collect());
+                }
+
+                // address ledger entry being updated
+                Some(SetUpdateOrDelete::Update(entry_updates)) => {
+                    let ref_keys = keys.get_or_insert_default();
+                    for (ds_key, ds_update) in &entry_updates.datastore {
+                        match ds_update {
+                            SetOrDelete::Set(_) => ref_keys.insert(ds_key.clone()),
+                            SetOrDelete::Delete => ref_keys.remove(ds_key),
+                        };
+                    }
+                }
+
+                // address ledger entry being deleted
+                Some(SetUpdateOrDelete::Delete) => {
+                    keys = None;
+                }
+            }
+        }
+
+        keys
     }
 
     /// Gets a copy of a datastore value for a given address and datastore key

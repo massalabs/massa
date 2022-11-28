@@ -31,7 +31,7 @@ use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::debug;
 
@@ -440,7 +440,7 @@ impl ExecutionContext {
     }
 
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    pub fn get_keys(&self, address: &Address) -> Option<Vec<Vec<u8>>> {
+    pub fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
         self.speculative_ledger.get_keys(address)
     }
 
