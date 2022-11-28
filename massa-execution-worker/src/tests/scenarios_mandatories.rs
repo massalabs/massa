@@ -24,7 +24,6 @@ use serial_test::serial;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
 };
-use tracing::warn;
 
 #[test]
 #[serial]
@@ -804,8 +803,7 @@ fn datastore_manipulations() {
 
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    let address = Address::from_public_key(&keypair.get_public_key());
-    println!("address: {}", address);
+    // let address = Address::from_public_key(&keypair.get_public_key());
 
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
