@@ -222,11 +222,6 @@ impl CycleInfo {
         let complete_hash = hash_computer.compute_complete_hash(self.complete);
         hash_concat.extend(complete_hash.to_bytes());
 
-        // if the cycle just completed, check that it has the right number of seed bits
-        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
-            panic!("cycle completed with incorrect number of seed bits");
-        }
-
         // extend seed_bits with changes.seed_bits
         self.rng_seed.extend(changes.seed_bits);
         let rng_seed_hash = hash_computer.compute_seed_hash(&self.rng_seed);
@@ -265,6 +260,11 @@ impl CycleInfo {
                 });
         }
         hash_concat.extend(self.production_stats_hash.to_bytes());
+
+        // if the cycle just completed, check that it has the right number of seed bits
+        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
+            panic!("cycle completed with incorrect number of seed bits");
+        }
 
         // compute the global hash
         self.global_hash = Hash::compute_from(&hash_concat);
