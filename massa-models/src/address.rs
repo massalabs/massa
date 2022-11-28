@@ -113,6 +113,19 @@ impl<'de> ::serde::Deserialize<'de> for Address {
 
 impl FromStr for Address {
     type Err = ModelsError;
+    /// ## Example
+    /// ```rust
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use std::str::FromStr;
+    /// # use massa_models::address::Address;
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let ser = address.to_string();
+    /// let res_addr = Address::from_str(&ser).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
         match chars.next() {
@@ -208,40 +221,6 @@ impl Address {
     /// ```
     pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Address {
         Address(Hash::from_bytes(data))
-    }
-
-    /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let ser = address.to_bs58_check();
-    /// let res_addr = Address::from_bs58_check(&ser).unwrap();
-    /// assert_eq!(address, res_addr);
-    /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Address, ModelsError> {
-        Ok(Address(
-            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
-        ))
-    }
-
-    /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let ser = address.to_bs58_check();
-    /// let res_addr = Address::from_bs58_check(&ser).unwrap();
-    /// assert_eq!(address, res_addr);
-    /// ```
-    pub fn to_bs58_check(&self) -> String {
-        self.0.to_bs58_check()
     }
 }
 
