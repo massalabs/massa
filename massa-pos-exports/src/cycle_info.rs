@@ -107,6 +107,49 @@ pub struct CycleInfo {
     pub global_hash: Hash,
 }
 
+#[test]
+fn test_cycle_info_hash_computation() {
+    use crate::DeferredCredits;
+    use bitvec::prelude::*;
+
+    let mut cycle_a = CycleInfo::new_with_hash(
+        0,
+        false,
+        BTreeMap::default(),
+        BitVec::default(),
+        PreHashMap::default(),
+    );
+    let addr = Address::from_bytes(&[0u8; 32]);
+    let mut roll_changes = PreHashMap::default();
+    roll_changes.insert(addr, 42);
+    let mut production_stats = PreHashMap::default();
+    production_stats.insert(
+        addr,
+        ProductionStats {
+            block_success_count: 4,
+            block_failure_count: 0,
+        },
+    );
+    let changes = PoSChanges {
+        seed_bits: bitvec![u8, Lsb0; 0, 42],
+        roll_changes,
+        production_stats,
+        deferred_credits: DeferredCredits::default(),
+    };
+    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
+    let cycle_b = CycleInfo::new_with_hash(
+        0,
+        cycle_a.complete,
+        cycle_a.roll_counts,
+        cycle_a.rng_seed,
+        cycle_a.production_stats,
+    );
+    assert_eq!(
+        cycle_a.global_hash, cycle_b.global_hash,
+        "global hash mismatch"
+    );
+}
+
 impl CycleInfo {
     /// Create a new `CycleInfo` and compute its hash
     pub fn new_with_hash(
