@@ -100,11 +100,62 @@ pub struct CycleInfo {
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
     /// Hash of the roll counts
-    roll_counts_hash: Hash,
+    pub roll_counts_hash: Hash,
     /// Hash of the production statistics
-    production_stats_hash: Hash,
+    pub production_stats_hash: Hash,
     /// Hash of the cycle state
     pub global_hash: Hash,
+}
+
+#[test]
+fn test_cycle_info_hash_computation() {
+    use crate::DeferredCredits;
+    use bitvec::prelude::*;
+
+    let mut cycle_a = CycleInfo::new_with_hash(
+        0,
+        false,
+        BTreeMap::default(),
+        BitVec::default(),
+        PreHashMap::default(),
+    );
+    let addr = Address::from_bytes(&[0u8; 32]);
+    let mut roll_changes = PreHashMap::default();
+    roll_changes.insert(addr, 42);
+    let mut production_stats = PreHashMap::default();
+    production_stats.insert(
+        addr,
+        ProductionStats {
+            block_success_count: 4,
+            block_failure_count: 0,
+        },
+    );
+    let changes = PoSChanges {
+        seed_bits: bitvec![u8, Lsb0; 0, 42],
+        roll_changes,
+        production_stats,
+        deferred_credits: DeferredCredits::default(),
+    };
+    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
+    let cycle_b = CycleInfo::new_with_hash(
+        0,
+        cycle_a.complete,
+        cycle_a.roll_counts,
+        cycle_a.rng_seed,
+        cycle_a.production_stats,
+    );
+    assert_eq!(
+        cycle_a.roll_counts_hash, cycle_b.roll_counts_hash,
+        "roll_counts_hash mismatch"
+    );
+    assert_eq!(
+        cycle_a.production_stats_hash, cycle_b.production_stats_hash,
+        "production_stats_hash mismatch"
+    );
+    assert_eq!(
+        cycle_a.global_hash, cycle_b.global_hash,
+        "global_hash mismatch"
+    );
 }
 
 impl CycleInfo {
@@ -162,6 +213,15 @@ impl CycleInfo {
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
         let mut hash_concat: Vec<u8> = Vec::new();
 
+        // compute cycle hash and concat
+        let cycle_hash = hash_computer.compute_cycle_hash(self.cycle);
+        hash_concat.extend(cycle_hash.to_bytes());
+
+        // check for completion
+        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        let complete_hash = hash_computer.compute_complete_hash(self.complete);
+        hash_concat.extend(complete_hash.to_bytes());
+
         // extend seed_bits with changes.seed_bits
         self.rng_seed.extend(changes.seed_bits);
         let rng_seed_hash = hash_computer.compute_seed_hash(&self.rng_seed);
@@ -200,11 +260,6 @@ impl CycleInfo {
                 });
         }
         hash_concat.extend(self.production_stats_hash.to_bytes());
-
-        // check for completion
-        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
-        let complete_hash = hash_computer.compute_complete_hash(self.complete);
-        hash_concat.extend(complete_hash.to_bytes());
 
         // if the cycle just completed, check that it has the right number of seed bits
         if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {

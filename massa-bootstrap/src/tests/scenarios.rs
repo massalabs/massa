@@ -22,7 +22,8 @@ use massa_consensus_exports::{
 };
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{
-    test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
+    test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
+    FinalState, FinalStateConfig, StateChanges,
 };
 use massa_ledger_exports::LedgerConfig;
 use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -318,6 +319,7 @@ async fn test_bootstrap_server() {
 
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());
+    assert_eq_final_state_hash(&final_state_server.read(), &final_state_client.read());
 
     // compute initial draws
     final_state_server.write().compute_initial_draws().unwrap();

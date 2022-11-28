@@ -401,6 +401,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
+    /// assert_eq!(message.hash, message_deserialized.hash);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
