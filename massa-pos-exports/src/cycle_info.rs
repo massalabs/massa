@@ -58,7 +58,7 @@ impl CycleInfoHashComputer {
 
     fn compute_seed_hash(&self, seed: &BitVec<u8>) -> Hash {
         let mut buffer = Vec::new();
-        self.bitvec_ser.serialize(&seed, &mut buffer).unwrap();
+        self.bitvec_ser.serialize(seed, &mut buffer).unwrap();
         Hash::compute_from(&buffer)
     }
 

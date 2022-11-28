@@ -59,8 +59,8 @@ impl DeferredCreditsHashComputer {
     ) -> Hash {
         // serialization can never fail in the following computations, unwrap is justified
         let mut buffer = Vec::new();
-        self.slot_ser.serialize(&slot, &mut buffer).unwrap();
-        let mut hash = Hash::compute_from(&mut buffer);
+        self.slot_ser.serialize(slot, &mut buffer).unwrap();
+        let mut hash = Hash::compute_from(&buffer);
         for (address, amount) in credits {
             hash ^= self.compute_single_credit_hash(address, amount);
         }
@@ -107,17 +107,17 @@ impl DeferredCredits {
                             .and_modify(|current_amount| {
                                 // compute the current credit hash and XOR it
                                 self.hash ^= hash_computer
-                                    .compute_single_credit_hash(address, &current_amount);
+                                    .compute_single_credit_hash(address, current_amount);
                                 // compute the replacement credit hash and XOR it
-                                self.hash ^= hash_computer
-                                    .compute_single_credit_hash(address, &other_amount);
+                                self.hash ^=
+                                    hash_computer.compute_single_credit_hash(address, other_amount);
                                 // set the new credit amount
                                 *current_amount = *other_amount
                             })
                             .or_insert({
                                 // compute the credit hash and XOR it
-                                self.hash ^= hash_computer
-                                    .compute_single_credit_hash(address, &other_amount);
+                                self.hash ^=
+                                    hash_computer.compute_single_credit_hash(address, other_amount);
                                 // set the credit amount
                                 *other_amount
                             });
