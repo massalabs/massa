@@ -370,12 +370,9 @@ impl SpeculativeLedger {
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
     pub fn get_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
 
-        let mut keys: Option<BTreeSet<Vec<u8>>> = match self.final_state.read().ledger.entry_exists(addr) {
-            // here, get the final keys from the final ledger
-            true => self.final_state
-                    .read()
-                    .ledger
-                    .get_datastore_keys(addr),
+        let read_guard = self.final_state.read();
+        let mut keys: Option<BTreeSet<Vec<u8>>> = match read_guard.ledger.entry_exists(addr) {
+            true => read_guard.ledger.get_datastore_keys(addr),
             false => None,
         };
 
