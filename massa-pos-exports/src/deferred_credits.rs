@@ -63,7 +63,7 @@ impl DeferredCreditsHashComputer {
 }
 
 impl DeferredCredits {
-    /// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
+    /// Extends the current `DeferredCredits` with another and replace the amounts for existing addresses
     pub fn nested_extend(&mut self, other: Self) {
         for (slot, other_credits) in other.credits {
             let self_credits = self.credits.entry(slot).or_default();
@@ -73,7 +73,7 @@ impl DeferredCredits {
         }
     }
 
-    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the object hash, use only on finality
+    /// Extends the current `DeferredCredits` with another, replace the amounts for existing addresses and compute the object hash, use only on finality
     pub fn final_nested_extend(&mut self, other: Self) {
         let hash_computer = DeferredCreditsHashComputer::new();
         for (slot, other_credits) in other.credits {
@@ -87,7 +87,7 @@ impl DeferredCredits {
         }
     }
 
-    /// Remove zero credits, use only on finality
+    /// Remove credits set to zero, use only on finality
     pub fn remove_zeros(&mut self) {
         let hash_computer = DeferredCreditsHashComputer::new();
         let mut empty_slots = Vec::new();
