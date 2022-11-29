@@ -9,6 +9,7 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncMessageSerializer,
 };
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -22,16 +23,21 @@ use nom::{
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
+const ASYNC_POOL_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
 /// Nodes must bootstrap the final message pool when they join the network.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AsyncPool {
     /// Asynchronous pool configuration
     config: AsyncPoolConfig,
 
     /// Messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+
+    /// Hash of the asynchronous pool
+    pub hash: Hash,
 }
 
 impl AsyncPool {
@@ -40,6 +46,7 @@ impl AsyncPool {
         AsyncPool {
             config,
             messages: Default::default(),
+            hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
         }
     }
 
@@ -52,13 +59,17 @@ impl AsyncPool {
         for change in changes.0.iter() {
             match change {
                 // add a new message to the pool
-                Change::Add(msg_id, msg) => {
-                    self.messages.insert(*msg_id, msg.clone());
+                Change::Add(message_id, message) => {
+                    if self.messages.insert(*message_id, message.clone()).is_none() {
+                        self.hash ^= message.hash;
+                    }
                 }
 
                 // delete a message from the pool
-                Change::Delete(msg_id) => {
-                    self.messages.remove(msg_id);
+                Change::Delete(message_id) => {
+                    if let Some(removed_message) = self.messages.remove(message_id) {
+                        self.hash ^= removed_message.hash;
+                    }
                 }
             }
         }
@@ -123,13 +134,13 @@ impl AsyncPool {
         // gather all selected items and remove them from self.messages
         // iterate in decreasing priority order
         self.messages
-            .drain_filter(|_, msg| {
+            .drain_filter(|_, message| {
                 // check available gas and validity period
-                if available_gas >= msg.max_gas
-                    && slot >= msg.validity_start
-                    && slot < msg.validity_end
+                if available_gas >= message.max_gas
+                    && slot >= message.validity_start
+                    && slot < message.validity_end
                 {
-                    available_gas -= msg.max_gas;
+                    available_gas -= message.max_gas;
                     true
                 } else {
                     false
@@ -187,7 +198,11 @@ impl AsyncPool {
         &mut self,
         part: BTreeMap<AsyncMessageId, AsyncMessage>,
     ) -> StreamingStep<AsyncMessageId> {
-        self.messages.extend(part);
+        for (message_id, message) in part {
+            if self.messages.insert(message_id, message.clone()).is_none() {
+                self.hash ^= message.hash;
+            }
+        }
         if let Some(message_id) = self.messages.last_key_value().map(|(&id, _)| id) {
             StreamingStep::Ongoing(message_id)
         } else {
@@ -311,32 +326,26 @@ fn test_take_batch() {
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
-        pool.messages.insert(
-            (
-                std::cmp::Reverse(Amount::from_mantissa_scale(i, 0)),
-                Slot::new(0, 0),
-                0,
-            ),
-            AsyncMessage {
-                emission_slot: Slot::new(0, 0),
-                emission_index: 0,
-                sender: address,
-                destination: address,
-                handler: "function".to_string(),
-                validity_start: Slot::new(1, 0),
-                validity_end: Slot::new(3, 0),
-                max_gas: i,
-                gas_price: Amount::from_str("0.1").unwrap(),
-                coins: Amount::from_str("0.3").unwrap(),
-                data: Vec::new(),
-                filter: AsyncMessageFilter {
-                    address: Some(address),
-                    datastore_key: None,
-                },
+        let message = AsyncMessage::new_with_hash(
+            Slot::new(0, 0),
+            0,
+            address,
+            address,
+            "function".to_string(),
+            i,
+            Amount::from_str("0.1").unwrap(),
+            Amount::from_str("0.3").unwrap(),
+            Slot::new(1, 0),
+            Slot::new(3, 0),
+            Vec::new(),
+            AsyncMessageFilter {
+                address: Some(address),
+                datastore_key: None,
             },
         );
+        pool.messages.insert(message.compute_id(), message);
     }
     assert_eq!(pool.messages.len(), 9);
     pool.take_batch_to_execute(Slot::new(2, 0), 19);
-    assert_eq!(pool.messages.len(), 6);
+    assert_eq!(pool.messages.len(), 4);
 }

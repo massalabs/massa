@@ -8,11 +8,12 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
+use massa_hash::Hash;
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
-use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
-use tracing::debug;
+use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
@@ -117,15 +118,37 @@ impl FinalState {
             self.changes_history.push_back((slot, changes));
         }
 
+        // final hash computing and sub hashes logging
+        // 1. init hash concatenation with the ledger hash
+        let ledger_hash = self.ledger.get_ledger_hash();
+        let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
+        debug!("ledger hash at slot {}: {}", slot, ledger_hash);
+        // 2. async_pool hash
+        hash_concat.extend(self.async_pool.hash.to_bytes());
+        debug!("async_pool hash at slot {}: {}", slot, self.async_pool.hash);
+        // 3. pos deferred_credit hash
+        hash_concat.extend(self.pos_state.deferred_credits.hash.to_bytes());
         debug!(
-            "ledger hash at slot {}: {}",
-            slot,
-            self.ledger.get_ledger_hash()
+            "deferred_credit hash at slot {}: {}",
+            slot, self.pos_state.deferred_credits.hash
         );
+        // 4. pos cycle history hashes
+        for cycle_info in &self.pos_state.cycle_history {
+            hash_concat.extend(cycle_info.global_hash.to_bytes());
+            debug!(
+                "cycle ({}) hash at slot {}: {}",
+                cycle_info.cycle, slot, cycle_info.global_hash
+            );
+        }
+        // 5. executed operations hash
+        hash_concat.extend(self.executed_ops.hash.to_bytes());
         debug!(
-            "executed_ops hash at slot {}: {:?}",
+            "executed_ops hash at slot {}: {}",
             slot, self.executed_ops.hash
         );
+        // 6. final state hash
+        let final_state_hash = Hash::compute_from(&hash_concat);
+        info!("final_state hash at slot {}: {}", slot, final_state_hash);
     }
 
     /// Used for bootstrap.
@@ -134,8 +157,10 @@ impl FinalState {
     /// * ledger change that is after `slot` and before or equal to `ledger_step` key
     /// * ledger change if main bootstrap process is finished
     /// * async pool change that is after `slot` and before or equal to `pool_step` message id
-    /// * proof-of-stake change if main bootstrap process is finished
-    /// * proof-of-stake change if main bootstrap process is finished
+    /// * async pool change if main bootstrap process is finished
+    /// * proof-of-stake deferred credits change if main bootstrap process is finished
+    /// * proof-of-stake deferred credits change that is after `slot` and before or equal to `credits_step` slot
+    /// * proof-of-stake cycle history change if main bootstrap process is finished
     /// * executed ops change if main bootstrap process is finished
     ///
     /// Produces an error when the `slot` is too old for `self.changes_history`
@@ -227,12 +252,43 @@ impl FinalState {
                 _ => (),
             }
 
-            // Get Proof of Stake state changes if current bootstrap cycle is incomplete (so last)
-            if cycle_step.finished() && credits_step.finished() {
-                slot_changes.pos_changes = changes.pos_changes.clone();
+            // Get PoS deferred credits changes that concern credits <= credits_step
+            match credits_step {
+                StreamingStep::Ongoing(cursor_slot) => {
+                    let deferred_credits = DeferredCredits {
+                        credits: changes
+                            .pos_changes
+                            .deferred_credits
+                            .credits
+                            .iter()
+                            .filter_map(|(credits_slot, credits)| {
+                                if *credits_slot <= cursor_slot {
+                                    Some((*credits_slot, credits.clone()))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect(),
+                        ..Default::default()
+                    };
+                    slot_changes.pos_changes.deferred_credits = deferred_credits;
+                }
+                StreamingStep::Finished(_) => {
+                    slot_changes.pos_changes.deferred_credits =
+                        changes.pos_changes.deferred_credits.clone();
+                }
+                _ => (),
             }
 
-            // Get executed operations changes if classic bootstrap finished
+            // Get PoS cycle changes if cycle history main bootstrap finished
+            if cycle_step.finished() {
+                slot_changes.pos_changes.seed_bits = changes.pos_changes.seed_bits.clone();
+                slot_changes.pos_changes.roll_changes = changes.pos_changes.roll_changes.clone();
+                slot_changes.pos_changes.production_stats =
+                    changes.pos_changes.production_stats.clone();
+            }
+
+            // Get executed operations changes if executed ops main bootstrap finished
             if ops_step.finished() {
                 slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
             }

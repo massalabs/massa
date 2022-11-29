@@ -232,9 +232,8 @@ impl ExecutionState {
         // get operation ID
         let operation_id = operation.id;
 
-        // compute fee from (op.max_gas * op.gas_price + op.fee)
-        let op_fees = operation.get_total_fee();
-        let new_block_credits = block_credits.saturating_add(op_fees);
+        // Add fee from operation.
+        let new_block_credits = block_credits.saturating_add(operation.content.fee);
 
         let context_snapshot;
         {
@@ -248,9 +247,11 @@ impl ExecutionState {
                 ));
             }
 
-            // debit the fee and coins from the operation sender
+            // debit the fee from the operation sender
             // fail execution if there are not enough coins
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, op_fees, false) {
+            if let Err(err) =
+                context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
+            {
                 return Err(ExecutionError::IncludeOperationError(format!(
                     "could not spend fees: {}",
                     err
@@ -267,9 +268,6 @@ impl ExecutionState {
 
             // save a snapshot of the context to revert any further changes on error
             context_snapshot = context.get_snapshot();
-
-            // set the context gas price to match the one defined in the operation
-            context.gas_price = operation.get_gas_price();
 
             // set the context max gas to match the one defined in the operation
             context.max_gas = operation.get_gas_usage();
@@ -630,11 +628,10 @@ impl ExecutionState {
     ) -> Result<(), ExecutionError> {
         // prepare execution context
         let context_snapshot;
-        let (bytecode, data): (Vec<u8>, &str) = {
+        let bytecode: Vec<u8> = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
-            context.gas_price = message.gas_price;
             context.creator_address = None;
             context.stack = vec![
                 ExecutionStackElement {
@@ -653,9 +650,9 @@ impl ExecutionState {
 
             // If there is no target bytecode or if message data is invalid,
             // reimburse sender with coins and quit
-            let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
-                (Some(bc), Ok(d)) => (bc, d),
-                (bc, _d) => {
+            let bytecode = match bytecode {
+                Some(bc) => bc,
+                bc => {
                     let err = if bc.is_none() {
                         ExecutionError::RuntimeError("no target bytecode found".into())
                     } else {
@@ -683,7 +680,7 @@ impl ExecutionState {
                 return Err(err);
             }
 
-            (bytecode, data)
+            bytecode
         };
 
         // run the target function
@@ -691,7 +688,7 @@ impl ExecutionState {
             &bytecode,
             message.max_gas,
             &message.handler,
-            data,
+            &message.data,
             &*self.execution_interface,
         ) {
             // execution failed: reset context to snapshot and reimburse sender
@@ -1025,7 +1022,6 @@ impl ExecutionState {
             self.config.clone(),
             slot,
             req.max_gas,
-            req.simulated_gas_price,
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),

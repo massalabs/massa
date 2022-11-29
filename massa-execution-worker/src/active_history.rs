@@ -152,7 +152,7 @@ impl ActiveHistory {
                     .state_changes
                     .pos_changes
                     .deferred_credits
-                    .0
+                    .credits
                     .get(slot)
                     .cloned()
             })

@@ -141,7 +141,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
         for j in 0u64..r_limit {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
-        deferred_credits.0.insert(
+        deferred_credits.credits.insert(
             Slot {
                 period: i,
                 thread: 0,
@@ -156,13 +156,13 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
     let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-    cycle_history.push_back(CycleInfo {
-        cycle: 0,
+    cycle_history.push_back(CycleInfo::new_with_hash(
+        0,
+        false,
         roll_counts,
-        complete: false,
         rng_seed,
         production_stats,
-    });
+    ));
     let deferred_credits = get_random_deferred_credits(r_limit);
     PoSFinalState {
         cycle_history,
@@ -186,13 +186,11 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     let mut changes = AsyncPoolChanges::default();
     for _ in 0..(r_limit / 2) {
-        let mut message = get_random_message();
-        message.gas_price = Amount::from_str("10").unwrap();
+        let message = get_random_message(Some(Amount::from_str("10").unwrap()));
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in (r_limit / 2)..r_limit {
-        let mut message = get_random_message();
-        message.gas_price = Amount::from_str("1000").unwrap();
+        let message = get_random_message(Some(Amount::from_str("1_000_000").unwrap()));
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     changes
@@ -230,10 +228,10 @@ pub fn get_random_final_state_bootstrap(
     let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
-    let mut messages = BTreeMap::new();
+    let mut messages = AsyncPoolChanges::default();
     for _ in 0..r_limit {
-        let message = get_random_message();
-        messages.insert(message.compute_id(), message);
+        let message = get_random_message(None);
+        messages.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
@@ -243,7 +241,8 @@ pub fn get_random_final_state_bootstrap(
 
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);
-    let async_pool = create_async_pool(config.async_pool_config.clone(), messages);
+    let mut async_pool = create_async_pool(config.async_pool_config.clone(), BTreeMap::new());
+    async_pool.apply_changes_unchecked(&messages);
 
     create_final_state(
         config.clone(),
