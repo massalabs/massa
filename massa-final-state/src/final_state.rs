@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn get_state_changes_part() {
-        let message = get_random_message();
+        let message = get_random_message(None);
         // Building the state changes
         let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
         let (low_address, high_address) = {
