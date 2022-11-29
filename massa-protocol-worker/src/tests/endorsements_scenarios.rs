@@ -69,6 +69,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(

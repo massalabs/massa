@@ -2391,6 +2391,7 @@ version = "0.1.0"
 dependencies = [
  "async-speed-limit",
  "bitvec",
+ "crossbeam-channel",
  "displaydoc",
  "futures",
  "humantime",
@@ -2698,6 +2699,7 @@ dependencies = [
 name = "massa_network_exports"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "displaydoc",
  "enum-map",
  "massa_hash",
@@ -2718,6 +2720,7 @@ dependencies = [
 name = "massa_network_worker"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "enum-map",
  "futures",
  "itertools",
@@ -2813,8 +2816,8 @@ dependencies = [
 name = "massa_protocol_exports"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "displaydoc",
- "futures",
  "lazy_static",
  "massa_hash",
  "massa_logging",
@@ -2834,6 +2837,7 @@ dependencies = [
 name = "massa_protocol_worker"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "futures",
  "lazy_static",
  "massa_consensus_exports",

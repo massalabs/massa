@@ -21,8 +21,7 @@ use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
 use massa_protocol_exports::ProtocolError;
 use massa_serialization::Serializer;
 use massa_storage::Storage;
-use std::pin::Pin;
-use tokio::time::{Instant, Sleep};
+use std::time::Instant;
 use tracing::{info, warn};
 
 // static tracing messages
@@ -44,19 +43,14 @@ impl ProtocolWorker {
     /// # Argument
     /// `evt`: event to process
     /// `block_ask_timer`: Timer to update to the next time we are able to ask a block
-    pub(crate) async fn on_network_event(
-        &mut self,
-        evt: NetworkEvent,
-        block_ask_timer: &mut Pin<&mut Sleep>,
-        op_timer: &mut Pin<&mut Sleep>,
-    ) -> Result<(), ProtocolError> {
+    pub(crate) fn on_network_event(&mut self, evt: NetworkEvent) -> Result<(), ProtocolError> {
         match evt {
             NetworkEvent::NewConnection(node_id) => {
                 info!("Connected to node {}", node_id);
                 massa_trace!(NEW_CONN, { "node": node_id });
                 self.active_nodes
                     .insert(node_id, NodeInfo::new(&self.config));
-                self.update_ask_block(block_ask_timer).await?;
+                self.update_ask_block()?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
                 massa_trace!(CONN_CLOSED, { "node": node_id });
@@ -67,7 +61,7 @@ impl ProtocolWorker {
                         // if no more active nodes, print
                         info!("Not connected to any peers.");
                     }
-                    self.update_ask_block(block_ask_timer).await?;
+                    self.update_ask_block()?;
                 }
             }
             NetworkEvent::ReceivedBlockInfo {
@@ -76,19 +70,17 @@ impl ProtocolWorker {
             } => {
                 massa_trace!(BLOCKS_INFO, { "node": from_node_id, "info": info });
                 for (block_id, block_info) in info.into_iter() {
-                    self.on_block_info_received(from_node_id, block_id, block_info, op_timer)
-                        .await?;
+                    self.on_block_info_received(from_node_id, block_id, block_info)?;
                 }
                 // Re-run the ask block algorithm.
-                self.update_ask_block(block_ask_timer).await?;
+                self.update_ask_block()?;
             }
             NetworkEvent::AskedForBlocks {
                 node: from_node_id,
                 list,
             } => {
                 massa_trace!(ASKED_BLOCKS, { "node": from_node_id, "hashlist": list});
-                self.on_asked_for_blocks_received(from_node_id, list)
-                    .await?;
+                self.on_asked_for_blocks_received(from_node_id, list)?;
             }
             NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
@@ -96,13 +88,13 @@ impl ProtocolWorker {
             } => {
                 massa_trace!(BLOCK_HEADER, { "node": source_node_id, "header": header});
                 if let Some((block_id, is_new)) =
-                    self.note_header_from_node(&header, &source_node_id).await?
+                    self.note_header_from_node(&header, &source_node_id)?
                 {
                     if is_new {
                         self.consensus_controller
                             .register_block_header(block_id, header);
                     }
-                    self.update_ask_block(block_ask_timer).await?;
+                    self.update_ask_block()?;
                 } else {
                     warn!(
                         "node {} sent us critically incorrect header, \
@@ -110,27 +102,23 @@ impl ProtocolWorker {
                         or a loss of sync between us and the remote node",
                         source_node_id,
                     );
-                    let _ = self.ban_node(&source_node_id).await;
+                    let _ = self.ban_node(&source_node_id);
                 }
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!(OPS, { "node": node, "operations": operations});
-                self.on_operations_received(node, operations, op_timer)
-                    .await;
+                self.on_operations_received(node, operations);
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!(ENDORSEMENTS, { "node": node, "endorsements": endorsements});
-                if let Err(err) = self
-                    .note_endorsements_from_node(endorsements, &node, true)
-                    .await
-                {
+                if let Err(err) = self.note_endorsements_from_node(endorsements, &node, true) {
                     warn!(
                         "node {} sent us critically incorrect endorsements, \
                         which may be an attack attempt by the remote node or a \
                         loss of sync between us and the remote node. Err = {}",
                         node, err
                     );
-                    let _ = self.ban_node(&node).await;
+                    let _ = self.ban_node(&node);
                 }
             }
             NetworkEvent::ReceivedOperationAnnouncements {
@@ -138,16 +126,14 @@ impl ProtocolWorker {
                 operation_prefix_ids,
             } => {
                 massa_trace!(OPS_BATCH, { "node": node, "operation_ids": operation_prefix_ids});
-                self.on_operations_announcements_received(operation_prefix_ids, node)
-                    .await?;
+                self.on_operations_announcements_received(operation_prefix_ids, node)?;
             }
             NetworkEvent::ReceiveAskForOperations {
                 node,
                 operation_prefix_ids,
             } => {
                 massa_trace!(ASKED_OPS, { "node": node, "operation_ids": operation_prefix_ids});
-                self.on_asked_operations_received(node, operation_prefix_ids)
-                    .await?;
+                self.on_asked_operations_received(node, operation_prefix_ids)?;
             }
         }
         Ok(())
@@ -160,7 +146,7 @@ impl ProtocolWorker {
     /// the missing operations in his storage with `AskForBlocksInfo::Operations`
     ///
     /// Forward the reply to the network.
-    async fn on_asked_for_blocks_received(
+    fn on_asked_for_blocks_received(
         &mut self,
         from_node_id: NodeId,
         list: Vec<(BlockId, AskForBlocksInfo)>,
@@ -211,7 +197,6 @@ impl ProtocolWorker {
         }
         self.network_command_sender
             .send_block_info(from_node_id, all_blocks_info)
-            .await
             .map_err(|_| {
                 ProtocolError::ChannelError("send block info network command send failed".into())
             })
@@ -235,7 +220,7 @@ impl ProtocolWorker {
     /// On block header received from a node.
     /// If the header is new, we propagate it to the consensus.
     /// We pass the state of `block_wishlist` to ask for information about the block.
-    async fn on_block_header_received(
+    fn on_block_header_received(
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
@@ -255,14 +240,14 @@ impl ProtocolWorker {
                 return Ok(());
             }
         }
-        if let Err(err) = self.note_header_from_node(&header, &from_node_id).await {
+        if let Err(err) = self.note_header_from_node(&header, &from_node_id) {
             warn!(
                 "node {} sent us critically incorrect header through protocol, \
                 which may be an attack attempt by the remote node \
                 or a loss of sync between us and the remote node. Err = {}",
                 from_node_id, err
             );
-            let _ = self.ban_node(&from_node_id).await;
+            let _ = self.ban_node(&from_node_id);
             return Ok(());
         };
         if let Some(info) = self.block_wishlist.get_mut(&block_id) {
@@ -292,12 +277,11 @@ impl ProtocolWorker {
     /// # Result
     /// return an error if stopping asking block failed. The error should be forwarded at the
     /// root. todo: check if if make panic.
-    async fn on_block_operation_list_received(
+    fn on_block_operation_list_received(
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
         operation_ids: Vec<OperationId>,
-        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         // All operation ids sent into a set
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
@@ -367,7 +351,7 @@ impl ProtocolWorker {
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 warn!("Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max size.", from_node_id, block_id);
-                let _ = self.ban_node(&from_node_id).await;
+                let _ = self.ban_node(&from_node_id);
                 return Ok(());
             }
 
@@ -378,18 +362,15 @@ impl ProtocolWorker {
 
             // If the block is empty, go straight to processing the full block info.
             if operation_ids.is_empty() {
-                return self
-                    .on_block_full_operations_received(
-                        from_node_id,
-                        block_id,
-                        Default::default(),
-                        op_timer,
-                    )
-                    .await;
+                return self.on_block_full_operations_received(
+                    from_node_id,
+                    block_id,
+                    Default::default(),
+                );
             }
         } else {
             warn!("Node id {} sent us a operation list for block id {} but the hash in header doesn't match.", from_node_id, block_id);
-            let _ = self.ban_node(&from_node_id).await;
+            let _ = self.ban_node(&from_node_id);
         }
         Ok(())
     }
@@ -407,22 +388,18 @@ impl ProtocolWorker {
     /// - full operations serialized size overflow
     ///
     /// We received these operation because we asked for the missing operation
-    async fn on_block_full_operations_received(
+    fn on_block_full_operations_received(
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
         mut operations: Vec<SecureShareOperation>,
-        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
-        if let Err(err) = self
-            .note_operations_from_node(operations.clone(), &from_node_id, op_timer)
-            .await
-        {
+        if let Err(err) = self.note_operations_from_node(operations.clone(), &from_node_id) {
             warn!(
                 "Node id {} sent us operations for block id {} but they failed at verifications. Err = {}",
                 from_node_id, block_id, err
             );
-            let _ = self.ban_node(&from_node_id).await;
+            let _ = self.ban_node(&from_node_id);
             return Ok(());
         }
 
@@ -467,7 +444,7 @@ impl ProtocolWorker {
                 };
                 if full_op_size > self.config.max_serialized_operations_size_per_block {
                     warn!("Node id {} sent us full operations for block id {} but they exceed max size.", from_node_id, block_id);
-                    let _ = self.ban_node(&from_node_id).await;
+                    let _ = self.ban_node(&from_node_id);
                     self.block_wishlist.remove(&block_id);
                     self.consensus_controller
                         .mark_invalid_block(block_id, header);
@@ -536,38 +513,29 @@ impl ProtocolWorker {
         self.remove_asked_blocks_of_node(&remove_hashes)
     }
 
-    async fn on_block_info_received(
+    fn on_block_info_received(
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
         info: BlockInfoReply,
-        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match info {
             BlockInfoReply::Header(header) => {
                 // Verify and Send it consensus
                 self.on_block_header_received(from_node_id, block_id, header)
-                    .await
             }
             BlockInfoReply::Info(operation_list) => {
                 // Ask for missing operations ids and print a warning if there is no header for
                 // that block.
                 // Ban the node if the operation ids hash doesn't match with the hash contained in
                 // the block_header.
-                self.on_block_operation_list_received(
-                    from_node_id,
-                    block_id,
-                    operation_list,
-                    op_timer,
-                )
-                .await
+                self.on_block_operation_list_received(from_node_id, block_id, operation_list)
             }
             BlockInfoReply::Operations(operations) => {
                 // Send operations to pool,
                 // before performing the below checks,
                 // and wait for them to have been procesed(i.e. added to storage).
-                self.on_block_full_operations_received(from_node_id, block_id, operations, op_timer)
-                    .await
+                self.on_block_full_operations_received(from_node_id, block_id, operations)
             }
             BlockInfoReply::NotFound => {
                 if let Some(info) = self.active_nodes.get_mut(&from_node_id) {

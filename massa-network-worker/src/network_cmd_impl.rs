@@ -20,7 +20,7 @@
 //!         ...
 //! ```
 use crate::network_worker::NetworkWorker;
-use futures::{stream::FuturesUnordered, StreamExt};
+use crossbeam_channel::Sender;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
@@ -40,22 +40,19 @@ use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
 };
-use tokio::sync::oneshot;
 use tracing::warn;
 
 /// Remove the `ids` from the `worker`
 /// - clean `worker.running_handshakes`
 /// - send `NodeCommand::Close` to the active nodes
-async fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionId>) {
+fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionId>) {
     for ban_conn_id in ids.iter() {
         // remove the connectionId entry in running_handshakes
         worker.running_handshakes.remove(ban_conn_id);
     }
-    for (conn_id, node_command_tx) in worker.active_nodes.values() {
+    for (conn_id, node_command_tx, _) in worker.active_nodes.values() {
         if ids.contains(conn_id) {
-            let res = node_command_tx
-                .send(NodeCommand::Close(ConnectionClosureReason::Banned))
-                .await;
+            let res = node_command_tx.send(NodeCommand::Close(ConnectionClosureReason::Banned));
             if res.is_err() {
                 massa_trace!(
                     "network.network_worker.manage_network_command", {"err": NetworkError::ChannelError(
@@ -69,7 +66,7 @@ async fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionI
 
 /// Ban the connections corresponding to `ips` from the `worker`
 /// See also `ban_connection_ids`
-async fn node_ban_by_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+fn node_ban_by_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
     for ip in ips.iter() {
         worker.peer_info_db.peer_banned(ip)?;
     }
@@ -85,13 +82,13 @@ async fn node_ban_by_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result
         })
         .copied()
         .collect::<HashSet<_>>();
-    ban_connection_ids(worker, connexion_ids).await;
+    ban_connection_ids(worker, connexion_ids);
     Ok(())
 }
 
 /// Ban the connections corresponding to node `ids` from the `worker`
 /// See also `ban_connection_ids`
-async fn node_ban_by_ids(worker: &mut NetworkWorker, ids: Vec<NodeId>) -> Result<(), NetworkError> {
+fn node_ban_by_ids(worker: &mut NetworkWorker, ids: Vec<NodeId>) -> Result<(), NetworkError> {
     // get all connection IDs to ban
     let connection_ids_to_ban = ids
         .iter()
@@ -99,13 +96,12 @@ async fn node_ban_by_ids(worker: &mut NetworkWorker, ids: Vec<NodeId>) -> Result
         .filter(|res| res.is_ok())
         .flat_map(|res| res.unwrap())
         .collect::<HashSet<_>>();
-
-    ban_connection_ids(worker, connection_ids_to_ban).await;
+    ban_connection_ids(worker, connection_ids_to_ban);
     Ok(())
 }
 
 /// For each peer get all node id associated to this peer ip.
-async fn get_peers(worker: &mut NetworkWorker, response_tx: oneshot::Sender<Peers>) {
+fn get_peers(worker: &mut NetworkWorker, response_tx: Sender<Peers>) {
     let peers: HashMap<IpAddr, Peer> = worker
         .peer_info_db
         .get_peers()
@@ -123,7 +119,7 @@ async fn get_peers(worker: &mut NetworkWorker, response_tx: oneshot::Sender<Peer
                             worker
                                 .active_nodes
                                 .iter()
-                                .filter_map(|(node_id, (conn_id, _))| {
+                                .filter_map(|(node_id, (conn_id, _, _))| {
                                     if out_conn_id == conn_id {
                                         Some(node_id)
                                     } else {
@@ -151,7 +147,7 @@ async fn get_peers(worker: &mut NetworkWorker, response_tx: oneshot::Sender<Peer
     }
 }
 
-pub async fn on_node_ban_by_ips_cmd(
+pub fn on_node_ban_by_ips_cmd(
     worker: &mut NetworkWorker,
     ips: Vec<IpAddr>,
 ) -> Result<(), NetworkError> {
@@ -159,10 +155,10 @@ pub async fn on_node_ban_by_ips_cmd(
         "network_worker.manage_network_command receive NetworkCommand::NodeBanByIps",
         { "ips": ips }
     );
-    node_ban_by_ips(worker, ips).await
+    node_ban_by_ips(worker, ips)
 }
 
-pub async fn on_node_ban_by_ids_cmd(
+pub fn on_node_ban_by_ids_cmd(
     worker: &mut NetworkWorker,
     ids: Vec<NodeId>,
 ) -> Result<(), NetworkError> {
@@ -170,27 +166,24 @@ pub async fn on_node_ban_by_ids_cmd(
         "network_worker.manage_network_command receive NetworkCommand::NodeBanByIds",
         { "ids": ids }
     );
-    node_ban_by_ids(worker, ids).await
+    node_ban_by_ids(worker, ids)
 }
 
-pub async fn on_send_block_header_cmd(
+pub fn on_send_block_header_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
     header: SecuredHeader,
 ) -> Result<(), NetworkError> {
     massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.id, "node": node});
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::SendBlockHeader(header),
-        )
-        .await;
+    worker.event.forward(
+        node,
+        worker.active_nodes.get(&node),
+        NodeCommand::SendBlockHeader(header),
+    );
     Ok(())
 }
 
-pub async fn on_ask_for_block_cmd(
+pub fn on_ask_for_block_cmd(
     worker: &mut NetworkWorker,
     map: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
 ) {
@@ -199,18 +192,15 @@ pub async fn on_ask_for_block_cmd(
             "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
             { "hashlist": hash_list, "node": node }
         );
-        worker
-            .event
-            .forward(
-                node,
-                worker.active_nodes.get(&node),
-                NodeCommand::AskForBlocks(hash_list),
-            )
-            .await;
+        worker.event.forward(
+            node,
+            worker.active_nodes.get(&node),
+            NodeCommand::AskForBlocks(hash_list),
+        );
     }
 }
 
-pub async fn on_send_block_info_cmd(
+pub fn on_send_block_info_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
     info: Vec<(BlockId, BlockInfoReply)>,
@@ -219,29 +209,24 @@ pub async fn on_send_block_info_cmd(
         "network_worker.manage_network_command receive NetworkCommand::SendBlockInfo",
         { "node": node }
     );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::ReplyForBlocks(info),
-        )
-        .await;
+    worker.event.forward(
+        node,
+        worker.active_nodes.get(&node),
+        NodeCommand::ReplyForBlocks(info),
+    );
+
     Ok(())
 }
 
-pub async fn on_get_peers_cmd(worker: &mut NetworkWorker, response_tx: oneshot::Sender<Peers>) {
+pub fn on_get_peers_cmd(worker: &mut NetworkWorker, response_tx: Sender<Peers>) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::GetPeers",
         {}
     );
-    get_peers(worker, response_tx).await;
+    get_peers(worker, response_tx);
 }
 
-pub async fn on_get_bootstrap_peers_cmd(
-    worker: &mut NetworkWorker,
-    response_tx: oneshot::Sender<BootstrapPeers>,
-) {
+pub fn on_get_bootstrap_peers_cmd(worker: &mut NetworkWorker, response_tx: Sender<BootstrapPeers>) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::GetBootstrapPeers",
         {}
@@ -252,7 +237,7 @@ pub async fn on_get_bootstrap_peers_cmd(
     }
 }
 
-pub async fn on_send_endorsements_cmd(
+pub fn on_send_endorsements_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
     endorsements: Vec<SecureShareEndorsement>,
@@ -261,20 +246,17 @@ pub async fn on_send_endorsements_cmd(
         "network_worker.manage_network_command receive NetworkCommand::SendEndorsements",
         { "node": node, "endorsements": endorsements }
     );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::SendEndorsements(endorsements),
-        )
-        .await;
+    worker.event.forward(
+        node,
+        worker.active_nodes.get(&node),
+        NodeCommand::SendEndorsements(endorsements),
+    );
 }
 
-pub async fn on_node_sign_message_cmd(
+pub fn on_node_sign_message_cmd(
     worker: &mut NetworkWorker,
     msg: Vec<u8>,
-    response_tx: oneshot::Sender<PubkeySig>,
+    response_tx: Sender<PubkeySig>,
 ) -> Result<(), NetworkError> {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
@@ -293,7 +275,7 @@ pub async fn on_node_sign_message_cmd(
     Ok(())
 }
 
-pub async fn on_node_unban_by_ids_cmd(
+pub fn on_node_unban_by_ids_cmd(
     worker: &mut NetworkWorker,
     ids: Vec<NodeId>,
 ) -> Result<(), NetworkError> {
@@ -304,31 +286,25 @@ pub async fn on_node_unban_by_ids_cmd(
     worker.peer_info_db.unban(ips_to_unban)
 }
 
-pub async fn on_node_unban_by_ips_cmd(
+pub fn on_node_unban_by_ips_cmd(
     worker: &mut NetworkWorker,
     ips: Vec<IpAddr>,
 ) -> Result<(), NetworkError> {
     worker.peer_info_db.unban(ips)
 }
 
-pub async fn on_whitelist_cmd(
+pub fn on_whitelist_cmd(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    worker.peer_info_db.whitelist(ips)
+}
+
+pub fn on_remove_from_whitelist_cmd(
     worker: &mut NetworkWorker,
     ips: Vec<IpAddr>,
 ) -> Result<(), NetworkError> {
-    worker.peer_info_db.whitelist(ips).await
+    worker.peer_info_db.remove_from_whitelist(ips)
 }
 
-pub async fn on_remove_from_whitelist_cmd(
-    worker: &mut NetworkWorker,
-    ips: Vec<IpAddr>,
-) -> Result<(), NetworkError> {
-    worker.peer_info_db.remove_from_whitelist(ips).await
-}
-
-pub async fn on_get_stats_cmd(
-    worker: &mut NetworkWorker,
-    response_tx: oneshot::Sender<NetworkStats>,
-) {
+pub fn on_get_stats_cmd(worker: &mut NetworkWorker, response_tx: Sender<NetworkStats>) {
     let res = NetworkStats {
         in_connection_count: worker.peer_info_db.get_in_connection_count(),
         out_connection_count: worker.peer_info_db.get_out_connection_count(),
@@ -353,7 +329,7 @@ pub async fn on_get_stats_cmd(
 /// todo: precise the documentation in followup
 ///
 /// Forward to the node worker to be propagate in the network.
-pub async fn on_send_operations_cmd(
+pub fn on_send_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
     operations: Vec<SecureShareOperation>,
@@ -362,19 +338,16 @@ pub async fn on_send_operations_cmd(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",
         { "node": to_node, "operations": operations }
     );
-    worker
-        .event
-        .forward(
-            to_node,
-            worker.active_nodes.get(&to_node),
-            NodeCommand::SendOperations(operations),
-        )
-        .await;
+    worker.event.forward(
+        to_node,
+        worker.active_nodes.get(&to_node),
+        NodeCommand::SendOperations(operations),
+    );
 }
 
 /// On the command `[massa_network_exports::NetworkCommand::SendOperationAnnouncements]` is called,
 /// Forward (and split) the command to the `NodeWorker` and propagate to the network
-pub async fn on_send_operation_batches_cmd(
+pub fn on_send_operation_batches_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
     batch: OperationPrefixIds,
@@ -383,14 +356,11 @@ pub async fn on_send_operation_batches_cmd(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",
         { "batch": batch }
     );
-    let mut futs = FuturesUnordered::new();
-    let fut = worker.event.forward(
+    worker.event.forward(
         to_node,
         worker.active_nodes.get(&to_node),
         NodeCommand::SendOperationAnnouncements(batch),
     );
-    futs.push(fut);
-    while futs.next().await.is_some() {}
 }
 
 /// Network worker received the command `NetworkCommand::AskForOperations` from
@@ -405,7 +375,7 @@ pub async fn on_send_operation_batches_cmd(
 /// # What it does
 /// When the command `[massa_network_exports::NetworkCommand::AskForOperations]` is called,
 /// Forward the command to the `NodeWorker` and propagate to the network
-pub async fn on_ask_for_operations_cmd(
+pub fn on_ask_for_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
     wishlist: OperationPrefixIds,
@@ -414,14 +384,11 @@ pub async fn on_ask_for_operations_cmd(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",
         { "wishlist": wishlist }
     );
-    worker
-        .event
-        .forward(
-            to_node,
-            worker.active_nodes.get(&to_node),
-            NodeCommand::AskForOperations(wishlist),
-        )
-        .await;
+    worker.event.forward(
+        to_node,
+        worker.active_nodes.get(&to_node),
+        NodeCommand::AskForOperations(wishlist),
+    );
 }
 
 fn get_connection_ids(
@@ -429,7 +396,7 @@ fn get_connection_ids(
     node: &NodeId,
 ) -> Result<HashSet<ConnectionId>, NetworkError> {
     let mut ids: HashSet<ConnectionId> = HashSet::new();
-    if let Some((orig_conn_id, _)) = worker.active_nodes.get(node) {
+    if let Some((orig_conn_id, _, _)) = worker.active_nodes.get(node) {
         if let Some((orig_ip, _)) = worker.active_connections.get(orig_conn_id) {
             worker.peer_info_db.peer_banned(orig_ip)?;
             for (target_conn_id, (target_ip, _)) in worker.active_connections.iter() {
@@ -444,7 +411,7 @@ fn get_connection_ids(
 }
 
 fn get_ip(worker: &mut NetworkWorker, node: &NodeId) -> Option<IpAddr> {
-    if let Some((orig_conn_id, _)) = worker.active_nodes.get(node) {
+    if let Some((orig_conn_id, _, _)) = worker.active_nodes.get(node) {
         if let Some((orig_ip, _)) = worker.active_connections.get(orig_conn_id) {
             for (_, (target_ip, _)) in worker.active_connections.iter() {
                 if target_ip == orig_ip {

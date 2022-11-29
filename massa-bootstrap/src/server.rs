@@ -651,7 +651,7 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.get_bootstrap_peers().await?,
+                            peers: network_command_sender.get_bootstrap_peers()?,
                         }),
                     )
                     .await

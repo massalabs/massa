@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crossbeam_channel::{after, bounded, select, Receiver, Sender};
 use massa_models::{
     block_header::SecuredHeader, block_id::BlockId, endorsement::SecureShareEndorsement,
 };
@@ -8,32 +9,27 @@ use massa_models::{
     node::NodeId,
     operation::{OperationId, SecureShareOperation},
 };
-use massa_network_exports::{
-    AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkCommandSender, NetworkEvent,
-    NetworkEventReceiver,
-};
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkEvent};
 use massa_time::MassaTime;
-use tokio::{sync::mpsc, time::sleep};
 
 /// mock network controller
 pub struct MockNetworkController {
-    network_command_rx: mpsc::Receiver<NetworkCommand>,
-    network_event_tx: mpsc::Sender<NetworkEvent>,
+    network_command_rx: Receiver<NetworkCommand>,
+    network_event_tx: Sender<NetworkEvent>,
 }
 
 impl MockNetworkController {
     /// new mock network controller
-    pub fn new() -> (Self, NetworkCommandSender, NetworkEventReceiver) {
-        let (network_command_tx, network_command_rx) =
-            mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
-        let (network_event_tx, network_event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
+    pub fn new() -> (Self, Sender<NetworkCommand>, Receiver<NetworkEvent>) {
+        let (network_command_tx, network_command_rx) = bounded::<NetworkCommand>(CHANNEL_SIZE);
+        let (network_event_tx, network_event_rx) = bounded::<NetworkEvent>(CHANNEL_SIZE);
         (
             MockNetworkController {
                 network_event_tx,
                 network_command_rx,
             },
-            NetworkCommandSender(network_command_tx),
-            NetworkEventReceiver(network_event_rx),
+            network_command_tx,
+            network_event_rx,
         )
     }
 
@@ -42,15 +38,14 @@ impl MockNetworkController {
     where
         F: Fn(NetworkCommand) -> Option<T>,
     {
-        let timer = sleep(timeout.into());
-        tokio::pin!(timer);
+        let timer = after(timeout.into());
         loop {
-            tokio::select! {
-                cmd_opt = self.network_command_rx.recv() => match cmd_opt {
-                    Some(orig_cmd) => if let Some(res_cmd) = filter_map(orig_cmd) { return Some(res_cmd); },
-                    None => panic!("Unexpected closure of network command channel."),
+            select! {
+                recv(self.network_command_rx) -> cmd_opt => match cmd_opt {
+                    Ok(orig_cmd) => if let Some(res_cmd) = filter_map(orig_cmd) { return Some(res_cmd); },
+                    Err(_) => panic!("Unexpected closure of network command channel."),
                 },
-                _ = &mut timer => return None
+                recv(timer) -> _ => return None
             }
         }
     }
@@ -59,7 +54,6 @@ impl MockNetworkController {
     pub async fn new_connection(&mut self, new_node_id: NodeId) {
         self.network_event_tx
             .send(NetworkEvent::NewConnection(new_node_id))
-            .await
             .expect("Couldn't connect node to protocol.");
     }
 
@@ -67,7 +61,6 @@ impl MockNetworkController {
     pub async fn close_connection(&mut self, node_id: NodeId) {
         self.network_event_tx
             .send(NetworkEvent::ConnectionClosed(node_id))
-            .await
             .expect("Couldn't connect node to protocol.");
     }
 
@@ -79,7 +72,6 @@ impl MockNetworkController {
                 source_node_id,
                 header,
             })
-            .await
             .expect("Couldn't send header to protocol.");
     }
 
@@ -95,7 +87,6 @@ impl MockNetworkController {
                 node: source_node_id,
                 operations,
             })
-            .await
             .expect("Couldn't send operations to protocol.");
     }
 
@@ -111,7 +102,6 @@ impl MockNetworkController {
                 node: source_node_id,
                 operation_prefix_ids: operation_ids.iter().map(|id| id.into_prefix()).collect(),
             })
-            .await
             .expect("Couldn't send operations to protocol.");
     }
 
@@ -127,7 +117,6 @@ impl MockNetworkController {
                 node: source_node_id,
                 operation_prefix_ids: operation_ids.iter().map(|id| id.into_prefix()).collect(),
             })
-            .await
             .expect("Couldn't send operations to protocol.");
     }
 
@@ -143,7 +132,6 @@ impl MockNetworkController {
                 node: source_node_id,
                 endorsements,
             })
-            .await
             .expect("Couldn't send endorsements to protocol.");
     }
 
@@ -158,7 +146,6 @@ impl MockNetworkController {
                 node: source_node_id,
                 list,
             })
-            .await
             .expect("Couldn't send ask for block to protocol.");
     }
 
@@ -173,7 +160,6 @@ impl MockNetworkController {
                 node: source_node_id,
                 info: list,
             })
-            .await
             .expect("Couldn't send ask for block to protocol.");
     }
 }

@@ -3,6 +3,7 @@
 use super::mock_establisher::Duplex;
 use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
+use crossbeam_channel::{after, select, Receiver};
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_async_pool::{AsyncPoolChanges, Change};
 use massa_consensus_exports::{
@@ -60,7 +61,6 @@ use std::{
 };
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
-use tokio::{sync::mpsc::Receiver, time::sleep};
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -348,15 +348,14 @@ pub async fn wait_network_command<F, T>(
 where
     F: Fn(NetworkCommand) -> Option<T>,
 {
-    let timer = sleep(timeout.into());
-    tokio::pin!(timer);
+    let timer = after(timeout.into());
     loop {
-        tokio::select! {
-            cmd = network_command_receiver.recv() => match cmd {
-                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
+        select! {
+            recv(network_command_receiver) -> cmd => match cmd {
+                Ok(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
                 _ => panic!("network event channel died")
             },
-            _ = &mut timer => return None
+            recv(timer) -> _ => return None
         }
     }
 }

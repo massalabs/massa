@@ -1,5 +1,5 @@
+use crossbeam_channel::Receiver;
 use massa_network_exports::{NetworkCommandSender, NetworkEventReceiver};
-use tokio::sync::mpsc;
 
 use crate::ProtocolCommand;
 
@@ -16,5 +16,5 @@ pub struct ProtocolReceivers {
     /// network event receiver
     pub network_event_receiver: NetworkEventReceiver,
     /// protocol command receiver
-    pub protocol_command_receiver: mpsc::Receiver<ProtocolCommand>,
+    pub protocol_command_receiver: Receiver<ProtocolCommand>,
 }

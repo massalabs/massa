@@ -89,7 +89,6 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         network_command_sender
             .node_sign_message(message)
-            .await
             .map_err(|e| ApiError::NetworkError(e).into())
     }
 
@@ -139,7 +138,6 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         network_command_sender
             .node_ban_by_ips(ips)
-            .await
             .map_err(|e| ApiError::NetworkError(e).into())
     }
 
@@ -147,7 +145,6 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         network_command_sender
             .node_ban_by_ids(ids)
-            .await
             .map_err(|e| ApiError::NetworkError(e).into())
     }
 
@@ -155,7 +152,6 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         network_command_sender
             .node_unban_by_ids(ids)
-            .await
             .map_err(|e| ApiError::NetworkError(e).into())
     }
 
@@ -163,7 +159,6 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         network_command_sender
             .node_unban_ips(ips)
-            .await
             .map_err(|e| ApiError::NetworkError(e).into())
     }
 
@@ -220,7 +215,7 @@ impl MassaRpcServer for API<Private> {
 
     async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.get_peers().await {
+        match network_command_sender.get_peers() {
             Ok(peers) => Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
             Err(e) => Err(ApiError::NetworkError(e).into()),
         }
@@ -230,7 +225,6 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         network_command_sender
             .add_to_whitelist(ips)
-            .await
             .map_err(|e| ApiError::NetworkError(e).into())
     }
 
@@ -238,7 +232,6 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         network_command_sender
             .remove_from_whitelist(ips)
-            .await
             .map_err(|e| ApiError::NetworkError(e).into())
     }
 

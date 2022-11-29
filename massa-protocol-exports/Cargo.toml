@@ -7,6 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+crossbeam-channel = "0.5.3"
 displaydoc = "0.2"
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -14,7 +15,6 @@ serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.23", features = ["full"] }
 tracing = "0.1"
-futures = {version = "0.3", optional = true }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
@@ -28,4 +28,4 @@ massa_storage = { path = "../massa-storage" }
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 sandbox = ["massa_models/sandbox"]
-testing = ["futures"]
+testing = []

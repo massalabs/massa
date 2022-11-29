@@ -11,6 +11,7 @@ use crate::{
     binders::{ReadBinder, WriteBinder},
     NetworkConfig,
 };
+use crossbeam_channel::bounded;
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
@@ -30,18 +31,19 @@ use massa_models::{
 };
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
-    AskForBlocksInfo, BlockInfoReply, ConnectionClosureReason, ConnectionId, HandshakeErrorType,
-    PeerInfo, PeerType,
+    AskForBlocksInfo, BlockInfoReply, ConnectionClosureReason, HandshakeErrorType, PeerInfo,
+    PeerType,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
+use std::thread;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     time::{Duration, Instant},
 };
-use tokio::sync::mpsc;
+use tokio::runtime::Handle;
 use tokio::time::sleep;
 use tracing::trace;
 
@@ -98,50 +100,43 @@ async fn test_node_worker_shutdown() {
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
 
     // Note: both channels have size 1.
-    let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
-    let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
+    let (node_command_tx, node_command_rx) = bounded::<NodeCommand>(1);
+    let (node_event_tx, _node_event_rx) = bounded::<NodeEvent>(1);
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId::new(keypair.get_public_key());
 
-    let node_worker_command_tx = node_command_tx.clone();
-    let node_fn_handle = tokio::spawn(async move {
-        NodeWorker::new(
+    let (node_result_tx, node_result_rx) =
+        bounded::<(NodeId, Result<ConnectionClosureReason, NetworkError>)>(1);
+    let handle = Handle::current().clone();
+    let node_fn_handle = thread::spawn(move || {
+        let res = NodeWorker::new(
             network_conf,
-            mock_node_id,
+            mock_node_id.clone(),
             reader,
             writer,
-            node_worker_command_tx,
             node_command_rx,
             node_event_tx,
+            handle,
         )
-        .run_loop()
-        .await
+        .run_loop();
+        node_result_tx
+            .send((mock_node_id, res))
+            .expect("Failed to send node run result back to network worker. ");
     });
 
     // Shutdown the worker.
     node_command_tx
         .send(NodeCommand::Close(ConnectionClosureReason::Normal))
-        .await
         .unwrap();
 
-    // Send a bunch of additional commands until the channel is closed,
-    // which would deadlock if not properly handled by the worker.
-    loop {
-        if node_command_tx
-            .send(NodeCommand::Close(ConnectionClosureReason::Normal))
-            .await
-            .is_err()
-        {
-            break;
-        }
-    }
-
-    node_fn_handle.await.unwrap().unwrap();
+    let (_, res) = node_result_rx.recv().unwrap();
+    res.unwrap();
+    node_fn_handle.join().unwrap();
 }
 
 /// Test that a node worker can send an operations message.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_node_worker_operations_message() {
     let bind_port: u16 = 50_000;
@@ -172,8 +167,8 @@ async fn test_node_worker_operations_message() {
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
 
     // Note: both channels have size 1.
-    let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
-    let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
+    let (node_command_tx, node_command_rx) = bounded::<NodeCommand>(1);
+    let (node_event_tx, _node_event_rx) = bounded::<NodeEvent>(1);
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId::new(keypair.get_public_key());
@@ -181,19 +176,23 @@ async fn test_node_worker_operations_message() {
     // Create transaction.
     let transaction = get_transaction(50, 10);
 
-    let node_worker_command_tx = node_command_tx.clone();
-    let node_fn_handle = tokio::spawn(async move {
-        NodeWorker::new(
+    let (node_result_tx, node_result_rx) =
+        bounded::<(NodeId, Result<ConnectionClosureReason, NetworkError>)>(1);
+    let handle = Handle::current().clone();
+    let node_fn_handle = thread::spawn(move || {
+        let res = NodeWorker::new(
             network_conf,
-            mock_node_id,
+            mock_node_id.clone(),
             reader,
             writer,
-            node_worker_command_tx,
             node_command_rx,
             node_event_tx,
+            handle,
         )
-        .run_loop()
-        .await
+        .run_loop();
+        node_result_tx
+            .send((mock_node_id, res))
+            .expect("Failed to send node run result back to network worker. ");
     });
 
     // Send operations message.
@@ -201,24 +200,13 @@ async fn test_node_worker_operations_message() {
         .send(NodeCommand::SendOperations(
             vec![transaction].into_iter().collect(),
         ))
-        .await
         .unwrap();
 
     // TODO: add some infra to receive the message via the duplex mock, and assert it is what is expected.
 
-    // Send a bunch of additional commands until the channel is closed,
-    // which would deadlock if not properly handled by the worker.
-    loop {
-        if node_command_tx
-            .send(NodeCommand::Close(ConnectionClosureReason::Normal))
-            .await
-            .is_err()
-        {
-            break;
-        }
-    }
-
-    node_fn_handle.await.unwrap().unwrap();
+    let (_, res) = node_result_rx.recv().unwrap();
+    res.unwrap();
+    node_fn_handle.join().unwrap();
 }
 
 // test connecting two different peers simultaneously to the controller
@@ -264,7 +252,6 @@ async fn test_multiple_connections_to_controller() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(0),
             )
             .await;
             let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l110
@@ -277,7 +264,6 @@ async fn test_multiple_connections_to_controller() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(3),
             )
             .await;
             assert_ne!(
@@ -294,7 +280,6 @@ async fn test_multiple_connections_to_controller() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(2),
             )
             .await;
 
@@ -316,7 +301,6 @@ async fn test_multiple_connections_to_controller() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(3),
             )
             .await;
             (
@@ -376,7 +360,6 @@ async fn test_peer_ban() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(0),
             )
             .await;
             let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
@@ -391,7 +374,6 @@ async fn test_peer_ban() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(1),
             )
             .await;
             let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
@@ -400,7 +382,6 @@ async fn test_peer_ban() {
             // ban connection1.
             network_command_sender
                 .node_ban_by_ids(vec![conn1_id])
-                .await
                 .expect("error during send ban command.");
 
             // make sure the ban message was processed
@@ -427,14 +408,12 @@ async fn test_peer_ban() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(2),
             )
             .await;
 
             // unban connection1.
             network_command_sender
                 .node_unban_ips(vec![mock_addr.ip()])
-                .await
                 .expect("error during send unban command.");
 
             // wait for new connection attempt
@@ -448,7 +427,6 @@ async fn test_peer_ban() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(3),
             )
             .await;
             let conn1_drain_bis = tools::incoming_message_drain_start(conn1_r).await;
@@ -511,7 +489,6 @@ async fn test_peer_ban_by_ip() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(0),
             )
             .await;
             let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
@@ -526,7 +503,6 @@ async fn test_peer_ban_by_ip() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(1),
             )
             .await;
             let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
@@ -535,7 +511,6 @@ async fn test_peer_ban_by_ip() {
             // ban connection1.
             network_command_sender
                 .node_ban_by_ips(vec![mock_addr.ip()])
-                .await
                 .expect("error during send ban command.");
 
             // make sure the ban message was processed
@@ -562,14 +537,12 @@ async fn test_peer_ban_by_ip() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(2),
             )
             .await;
 
             // unban connection1.
             network_command_sender
                 .node_unban_ips(vec![mock_addr.ip()])
-                .await
                 .expect("error during send unban command.");
 
             // wait for new connection attempt
@@ -583,7 +556,6 @@ async fn test_peer_ban_by_ip() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(3),
             )
             .await;
             let conn1_drain_bis = tools::incoming_message_drain_start(conn1_r).await;
@@ -655,7 +627,6 @@ async fn test_advertised_and_wakeup_interval() {
                     1_000u64,
                     1_000u64,
                     1_000u64,
-                    ConnectionId(0),
                 )
                 .await;
                 tools::advertise_peers_in_connection(&mut conn2_w, vec![mock_addr.ip()]).await;
@@ -707,7 +678,6 @@ async fn test_advertised_and_wakeup_interval() {
                         .unwrap(),
                     1_000u64,
                     1_000u64,
-                    ConnectionId(1),
                 )
                 .await;
                 if start_instant.elapsed() < network_conf.wakeup_interval.to_duration() {
@@ -789,7 +759,6 @@ async fn test_block_not_found() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(0),
             )
             .await;
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
@@ -816,7 +785,6 @@ async fn test_block_not_found() {
             // reply with block not found
             network_command_sender
                 .send_block_info(conn1_id, vec![(wanted_hash,  BlockInfoReply::NotFound)])
-                .await
                 .unwrap();
 
             // let mut  conn1_r = conn1_drain.0.await.unwrap();
@@ -852,7 +820,6 @@ async fn test_block_not_found() {
 
             network_command_sender
                 .ask_for_block_list(block_list)
-                .await
                 .unwrap();
             // receive 2 list
             let timer = sleep(Duration::from_millis(100));
@@ -969,14 +936,12 @@ async fn test_retry_connection_closed() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(0),
             )
             .await;
 
             // Ban the node.
             network_command_sender
                 .node_ban_by_ids(vec![node_id])
-                .await
                 .expect("error during send ban command.");
 
             // Make sure network sends a dis-connect event.
@@ -996,7 +961,6 @@ async fn test_retry_connection_closed() {
             // Send a command for a node not found in active.
             network_command_sender
                 .send_block_info(node_id, vec![])
-                .await
                 .unwrap();
 
             // Make sure network re-sends a dis-connect event.
@@ -1070,7 +1034,6 @@ async fn test_operation_messages() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(0),
             )
             .await;
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
@@ -1105,7 +1068,6 @@ async fn test_operation_messages() {
             // reply with another transaction
             network_command_sender
                 .send_operations(conn1_id, vec![transaction2].into_iter().collect())
-                .await
                 .unwrap();
 
             // let mut  conn1_r = conn1_drain.0.await.unwrap();
@@ -1185,7 +1147,6 @@ async fn test_endorsements_messages() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(0),
             )
             .await;
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
@@ -1244,7 +1205,6 @@ async fn test_endorsements_messages() {
             // reply with another endorsement
             network_command_sender
                 .send_endorsements(conn1_id, vec![endorsement.clone()])
-                .await
                 .unwrap();
 
             let timer = sleep(Duration::from_millis(500));

@@ -3,6 +3,7 @@
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
+use crossbeam_channel::Sender;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
     block_header::SecuredHeader, block_id::BlockId, endorsement::EndorsementId,
@@ -11,7 +12,7 @@ use massa_models::{
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;
-use tokio::{sync::mpsc, task::JoinHandle};
+use std::thread::JoinHandle;
 use tracing::info;
 
 /// block result: map block id to
@@ -57,7 +58,7 @@ pub enum ProtocolManagementCommand {}
 
 /// protocol command sender
 #[derive(Clone)]
-pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
+pub struct ProtocolCommandSender(pub Sender<ProtocolCommand>);
 
 impl ProtocolCommandSender {
     /// Sends the order to propagate the header of a block
@@ -74,7 +75,7 @@ impl ProtocolCommandSender {
             "block_id": block_id
         });
         self.0
-            .blocking_send(ProtocolCommand::IntegratedBlock { block_id, storage })
+            .send(ProtocolCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }
 
@@ -84,7 +85,7 @@ impl ProtocolCommandSender {
             "block_id": block_id
         });
         self.0
-            .blocking_send(ProtocolCommand::AttackBlockDetected(block_id))
+            .send(ProtocolCommand::AttackBlockDetected(block_id))
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
             })
@@ -98,7 +99,7 @@ impl ProtocolCommandSender {
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         self.0
-            .blocking_send(ProtocolCommand::WishlistDelta { new, remove })
+            .send(ProtocolCommand::WishlistDelta { new, remove })
             .map_err(|_| {
                 ProtocolError::ChannelError("send_wishlist_delta command send error".into())
             })
@@ -112,7 +113,7 @@ impl ProtocolCommandSender {
             "operations": operations.get_op_refs()
         });
         self.0
-            .blocking_send(ProtocolCommand::PropagateOperations(operations))
+            .send(ProtocolCommand::PropagateOperations(operations))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
             })
@@ -124,7 +125,7 @@ impl ProtocolCommandSender {
             "endorsements": endorsements.get_endorsement_refs()
         });
         self.0
-            .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .send(ProtocolCommand::PropagateEndorsements(endorsements))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
             })
@@ -134,14 +135,14 @@ impl ProtocolCommandSender {
 /// protocol manager used to stop the protocol
 pub struct ProtocolManager {
     join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
-    manager_tx: mpsc::Sender<ProtocolManagementCommand>,
+    manager_tx: Sender<ProtocolManagementCommand>,
 }
 
 impl ProtocolManager {
     /// new protocol manager
     pub fn new(
         join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
-        manager_tx: mpsc::Sender<ProtocolManagementCommand>,
+        manager_tx: Sender<ProtocolManagementCommand>,
     ) -> Self {
         ProtocolManager {
             join_handle,
@@ -153,7 +154,7 @@ impl ProtocolManager {
     pub async fn stop(self) -> Result<NetworkEventReceiver, ProtocolError> {
         info!("stopping protocol controller...");
         drop(self.manager_tx);
-        let network_event_receiver = self.join_handle.await??;
+        let network_event_receiver = self.join_handle.join().unwrap()?;
         info!("protocol controller stopped");
         Ok(network_event_receiver)
     }

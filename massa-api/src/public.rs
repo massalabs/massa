@@ -342,9 +342,9 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };
 
-        let (network_stats_result, peers_result) = tokio::join!(
+        let (network_stats_result, peers_result) = (
             network_command_sender.get_network_stats(),
-            network_command_sender.get_peers()
+            network_command_sender.get_peers(),
         );
 
         let network_stats = match network_stats_result {

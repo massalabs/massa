@@ -227,9 +227,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await;
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddOperations { .. } => {
-                    panic!("Unexpected or no protocol event.")
+                    Some(MockPoolControllerMessage::Any)
                 }
-                _ => Some(MockPoolControllerMessage::Any),
+                _ => panic!("Unexpected or no protocol event."),
             });
             // create and connect a node that does not know about the endorsement
             let new_nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
@@ -303,11 +303,11 @@ async fn test_protocol_propagates_operations_received_over_the_network_only_to_n
             network_controller
                 .send_operations(nodes[0].id, vec![operation.clone()])
                 .await;
-            pool_event_receiver.wait_command(1000.into(), |evt| match evt {
+            pool_event_receiver.wait_command(000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddOperations { .. } => {
-                    panic!("Unexpected or no protocol event.")
+                    Some(MockPoolControllerMessage::Any)
                 }
-                _ => Some(MockPoolControllerMessage::Any),
+                _ => panic!("Unexpected or no protocol event."),
             });
 
             let expected_operation_id = operation.id;
@@ -367,9 +367,9 @@ async fn test_protocol_batches_propagation_of_operations_received_over_the_netwo
                 .await;
             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
                 MockPoolControllerMessage::AddOperations { .. } => {
-                    panic!("Unexpected or no protocol event.")
+                    Some(MockPoolControllerMessage::Any)
                 }
-                _ => Some(MockPoolControllerMessage::Any),
+                _ => panic!("Unexpected or no protocol event."),
             });
 
             let expected_operation_id_1 = operation.id;

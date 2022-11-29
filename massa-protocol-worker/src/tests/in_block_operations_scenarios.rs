@@ -124,7 +124,7 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
     .await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     //         // setup logging

@@ -76,6 +76,8 @@ pub enum HandshakeErrorType {
     IncompatibleVersion,
     /// Outgoing connection returned a bootstrapable peer list: {0:?}
     PeerListReceived(Vec<IpAddr>),
+    /// Failed to manage a succesful connection.
+    ManagementFailed,
 }
 
 /// return handshake error

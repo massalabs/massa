@@ -43,6 +43,7 @@ massa_time = { path = "../massa-time" }
 [dev-dependencies]
 bitvec = { version = "1.0", features = ["serde"] }
 serial_test = "1.0"
+crossbeam-channel = "0.5.6"
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [

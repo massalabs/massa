@@ -26,15 +26,14 @@ use massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
     ProtocolReceivers, ProtocolSenders,
 };
+
+use crossbeam_channel::{after, bounded, select, Receiver};
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};
 use std::mem;
-use std::pin::Pin;
-use tokio::{
-    sync::mpsc,
-    time::{sleep, sleep_until, Instant, Sleep},
-};
+use std::thread;
+use std::time::Instant;
 use tracing::{debug, error, info, warn};
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
@@ -48,7 +47,7 @@ use tracing::{debug, error, info, warn};
 /// * `receivers`: receiver(s) channel(s) to communicate with other modules
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
-pub async fn start_protocol_controller(
+pub fn start_protocol_controller(
     config: ProtocolConfig,
     receivers: ProtocolReceivers,
     senders: ProtocolSenders,
@@ -59,9 +58,9 @@ pub async fn start_protocol_controller(
     debug!("starting protocol controller");
 
     // launch worker
-    let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
+    let (manager_tx, controller_manager_rx) = bounded::<ProtocolManagementCommand>(1);
     let pool_controller = pool_controller.clone();
-    let join_handle = tokio::spawn(async move {
+    let join_handle = thread::spawn(move || {
         let res = ProtocolWorker::new(
             config,
             ProtocolWorkerChannels {
@@ -74,8 +73,7 @@ pub async fn start_protocol_controller(
             pool_controller,
             storage,
         )
-        .run_loop()
-        .await;
+        .run_loop();
         match res {
             Err(err) => {
                 error!("protocol worker crashed: {}", err);
@@ -129,9 +127,9 @@ pub struct ProtocolWorker {
     /// Channel to send protocol pool events to the controller.
     pool_controller: Box<dyn PoolController>,
     /// Channel receiving commands from the controller.
-    controller_command_rx: mpsc::Receiver<ProtocolCommand>,
+    controller_command_rx: Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
-    controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+    controller_manager_rx: Receiver<ProtocolManagementCommand>,
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
@@ -151,6 +149,14 @@ pub struct ProtocolWorker {
     pub(crate) storage: Storage,
     /// Operations to announce at the next interval.
     operations_to_announce: Vec<OperationId>,
+    /// Block timer
+    block_ask_timer: Receiver<Instant>,
+    /// Operation pruning timer.
+    pub(crate) operation_prune_timer: Receiver<Instant>,
+    /// Operation announcement timer.
+    operation_announcement_interval: Receiver<Instant>,
+    /// Operation batch proc period timer.
+    pub(crate) operation_batch_proc_period_timer: Receiver<Instant>,
 }
 
 /// channels used by the protocol worker
@@ -160,9 +166,9 @@ pub struct ProtocolWorkerChannels {
     /// network event receiver
     pub network_event_receiver: NetworkEventReceiver,
     /// protocol command receiver
-    pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
+    pub controller_command_rx: Receiver<ProtocolCommand>,
     /// protocol management command receiver
-    pub controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+    pub controller_manager_rx: Receiver<ProtocolManagementCommand>,
 }
 
 impl ProtocolWorker {
@@ -186,6 +192,11 @@ impl ProtocolWorker {
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
     ) -> ProtocolWorker {
+        // TODO: Config variable for the moment 10000 (prune) (100 seconds)
+        let block_ask_timer = after(config.ask_block_timeout.into());
+        let operation_prune_timer = after(config.asked_operations_pruning_period.into());
+        let operation_announcement_interval = after(config.operation_announcement_interval.into());
+        let operation_batch_proc_period_timer = after(config.operation_batch_proc_period.into());
         ProtocolWorker {
             config,
             network_command_sender,
@@ -207,6 +218,10 @@ impl ProtocolWorker {
             operations_to_announce: Vec::with_capacity(
                 config.operation_announcement_buffer_capacity,
             ),
+            block_ask_timer,
+            operation_prune_timer,
+            operation_announcement_interval,
+            operation_batch_proc_period_timer,
         }
     }
 
@@ -219,81 +234,62 @@ impl ProtocolWorker {
     /// - `node_event_rx`
     /// And at the end every thing is closed properly
     /// Consensus work is managed here.
-    /// It's mostly a `tokio::select!` within a loop.
-    pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
-        // TODO: Config variable for the moment 10000 (prune) (100 seconds)
-        let operation_prune_timer = sleep(self.config.asked_operations_pruning_period.into());
-        tokio::pin!(operation_prune_timer);
-        let block_ask_timer = sleep(self.config.ask_block_timeout.into());
-        tokio::pin!(block_ask_timer);
-        let operation_batch_proc_period_timer =
-            sleep(self.config.operation_batch_proc_period.into());
-        tokio::pin!(operation_batch_proc_period_timer);
-        let operation_announcement_interval =
-            sleep(self.config.operation_announcement_interval.into());
-        tokio::pin!(operation_announcement_interval);
+    /// It's mostly a `crossbeam::select!` within a loop.
+    pub fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
-            /*
-                select! without the "biased" modifier will randomly select the 1st branch to check,
-                then will check the next ones in the order they are written.
-                We choose this order:
-                    * manager commands: low freq, avoid having to wait to stop
-                    * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
-                    * network events (high frequency): process incoming events
-                    * ask for blocks (timing not important)
-            */
-            tokio::select! {
+            select! {
                 // listen to management commands
-                cmd = self.controller_manager_rx.recv() => {
-                    massa_trace!("protocol.protocol_worker.run_loop.controller_manager_rx", { "cmd": cmd });
-                    match cmd {
-                        None => break,
-                        Some(_) => {}
-                    };
+                recv(self.controller_manager_rx) -> cmd => {
+                    massa_trace!("protocol.protocol_worker.run_loop.controller_manager_rx", { });
+                    if cmd.is_err() {
+                        break
+                    }
                 }
 
                 // listen to incoming commands
-                Some(cmd) = self.controller_command_rx.recv() => {
-                    self.process_command(cmd, &mut
-                        block_ask_timer,
-                        &mut operation_announcement_interval).await?;
+                recv(self.controller_command_rx) -> msg => {
+                    match msg {
+                        Err(_) => break,
+                        Ok(cmd) => self.process_command(cmd)?
+                    };
                 }
 
                 // listen to network controller events
-                evt = self.network_event_receiver.wait_event() => {
-                    massa_trace!("protocol.protocol_worker.run_loop.network_event_rx", {});
-                    self.on_network_event(evt?, &mut block_ask_timer, &mut operation_announcement_interval).await?;
+                recv(self.network_event_receiver.0) -> msg => {
+                    match msg {
+                        Err(_) => break,
+                        Ok(evt) => self.on_network_event(evt)?
+                    };
                 }
 
                 // block ask timer
-                _ = &mut block_ask_timer => {
+                recv(self.block_ask_timer) -> _ => {
                     massa_trace!("protocol.protocol_worker.run_loop.block_ask_timer", { });
-                    self.update_ask_block(&mut block_ask_timer).await?;
+                    self.update_ask_block()?;
                 }
 
                 // Operation announcement interval.
-                _ = &mut operation_announcement_interval => {
+                recv(self.operation_announcement_interval) -> _ => {
                     // Announce operations.
-                    self.announce_ops(&mut operation_announcement_interval).await;
+                    self.announce_ops();
                 }
 
                 // operation ask timer
-                _ = &mut operation_batch_proc_period_timer => {
+                recv(self.operation_batch_proc_period_timer) -> _ => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_ask_and_announce_timer", { });
 
                     // Update operations to ask.
-                    self.update_ask_operation(&mut operation_batch_proc_period_timer).await?;
+                    self.update_ask_operation()?;
                 }
                 // operation prune timer
-                _ = &mut operation_prune_timer => {
+                recv(self.operation_prune_timer) -> _ => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_prune_timer", { });
-                    self.prune_asked_operations(&mut operation_prune_timer)?;
+                    self.prune_asked_operations()?;
                 }
             }
-            massa_trace!("protocol.protocol_worker.run_loop.end", {});
         }
-
+        massa_trace!("protocol.protocol_worker.run_loop.end", {});
         Ok(self.network_event_receiver)
     }
 
@@ -301,7 +297,7 @@ impl ProtocolWorker {
     /// Side effects:
     /// - notes nodes as knowing about those operations from now on.
     /// - empties the buffer of operations to announce.
-    async fn announce_ops(&mut self, timer: &mut Pin<&mut Sleep>) {
+    fn announce_ops(&mut self) {
         // Quit if empty  to avoid iterating on nodes
         if self.operations_to_announce.is_empty() {
             // Reset timer.
@@ -309,7 +305,7 @@ impl ProtocolWorker {
             let next_tick = now
                 .checked_add(self.config.operation_announcement_interval.into())
                 .expect("time overflow");
-            timer.set(sleep_until(next_tick));
+            self.operation_announcement_interval = after(next_tick.elapsed());
             return;
         }
         let operation_ids = mem::take(&mut self.operations_to_announce);
@@ -325,10 +321,10 @@ impl ProtocolWorker {
             if !new_ops.is_empty() {
                 node_info.insert_known_ops(new_ops.iter().map(|id| id.prefix()));
 
-                let res = self
-                    .network_command_sender
-                    .announce_operations(*node, new_ops.iter().map(|id| id.into_prefix()).collect())
-                    .await;
+                let res = self.network_command_sender.announce_operations(
+                    *node,
+                    new_ops.iter().map(|id| id.into_prefix()).collect(),
+                );
                 if let Err(err) = res {
                     debug!("could not send operation batch to node {}: {}", node, err);
                 }
@@ -340,16 +336,12 @@ impl ProtocolWorker {
         let next_tick = now
             .checked_add(self.config.operation_announcement_interval.into())
             .expect("time overflow");
-        timer.set(sleep_until(next_tick));
+        self.operation_announcement_interval = after(next_tick.elapsed());
     }
 
     /// Add an list of operations to a buffer for announcement at the next interval,
     /// or immediately if the buffer is full.
-    async fn note_operations_to_announce(
-        &mut self,
-        operations: &[OperationId],
-        timer: &mut Pin<&mut Sleep>,
-    ) {
+    fn note_operations_to_announce(&mut self, operations: &[OperationId]) {
         massa_trace!(
             "protocol.protocol_worker.note_operations_to_announce.begin",
             { "operations": operations }
@@ -361,11 +353,11 @@ impl ProtocolWorker {
         // announce operations immediately,
         // clearing the data at the same time.
         if self.operations_to_announce.len() > self.config.operation_announcement_buffer_capacity {
-            self.announce_ops(timer).await;
+            self.announce_ops();
         }
     }
 
-    async fn propagate_endorsements(&mut self, storage: &Storage) {
+    fn propagate_endorsements(&mut self, storage: &Storage) {
         massa_trace!(
             "protocol.protocol_worker.process_command.propagate_endorsements.begin",
             { "endorsements": storage.get_endorsement_refs() }
@@ -389,8 +381,7 @@ impl ProtocolWorker {
             if !to_send.is_empty() {
                 let res = self
                     .network_command_sender
-                    .send_endorsements(*node, to_send)
-                    .await;
+                    .send_endorsements(*node, to_send);
                 if let Err(err) = res {
                     debug!(
                         "could not send endorsements batch to node {}: {}",
@@ -401,12 +392,7 @@ impl ProtocolWorker {
         }
     }
 
-    async fn process_command(
-        &mut self,
-        cmd: ProtocolCommand,
-        block_timer: &mut Pin<&mut Sleep>,
-        op_timer: &mut Pin<&mut Sleep>,
-    ) -> Result<(), ProtocolError> {
+    fn process_command(&mut self, cmd: ProtocolCommand) -> Result<(), ProtocolError> {
         match cmd {
             ProtocolCommand::IntegratedBlock { block_id, storage } => {
                 massa_trace!(
@@ -433,7 +419,6 @@ impl ProtocolWorker {
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
                         self.network_command_sender
                             .send_block_header(*node_id, header.clone())
-                            .await
                             .map_err(|_| {
                                 ProtocolError::ChannelError(
                                     "send block header network command send failed".into(),
@@ -464,7 +449,7 @@ impl ProtocolWorker {
                     .collect();
                 for id in to_ban.iter() {
                     massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "block_id": block_id });
-                    self.ban_node(id).await?;
+                    self.ban_node(id)?;
                 }
                 massa_trace!(
                     "protocol.protocol_worker.process_command.attack_block_detected.end",
@@ -486,7 +471,7 @@ impl ProtocolWorker {
                 for block_id in remove.iter() {
                     self.block_wishlist.remove(block_id);
                 }
-                self.update_ask_block(block_timer).await?;
+                self.update_ask_block()?;
                 massa_trace!(
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
                     {}
@@ -506,11 +491,10 @@ impl ProtocolWorker {
 
                 // Announce operations to active nodes not knowing about it.
                 let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
-                self.note_operations_to_announce(&to_announce, op_timer)
-                    .await;
+                self.note_operations_to_announce(&to_announce);
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
-                self.propagate_endorsements(&endorsements).await;
+                self.propagate_endorsements(&endorsements);
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
@@ -533,12 +517,9 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    pub(crate) async fn update_ask_block(
-        &mut self,
-        ask_block_timer: &mut Pin<&mut Sleep>,
-    ) -> Result<(), ProtocolError> {
+    pub(crate) fn update_ask_block(&mut self) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
-        let now = Instant::now();
+        let now = std::time::Instant::now();
 
         // init timer
         let mut next_tick = now
@@ -727,20 +708,19 @@ impl ProtocolWorker {
             //});
             self.network_command_sender
                 .ask_for_block_list(ask_block_list)
-                .await
                 .map_err(|_| {
                     ProtocolError::ChannelError("ask for block node command send failed".into())
                 })?;
         }
 
-        // reset timer
-        ask_block_timer.set(sleep_until(next_tick));
+        // Update timer.
+        self.block_ask_timer = after(next_tick.elapsed());
 
         Ok(())
     }
 
     /// Ban a node.
-    pub(crate) async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), ProtocolError> {
+    pub(crate) fn ban_node(&mut self, node_id: &NodeId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
         if self.active_nodes.is_empty() {
@@ -748,7 +728,6 @@ impl ProtocolWorker {
         }
         self.network_command_sender
             .node_ban_by_ids(vec![*node_id])
-            .await
             .map_err(|_| ProtocolError::ChannelError("Ban node command send failed".into()))?;
         Ok(())
     }
@@ -770,7 +749,7 @@ impl ProtocolWorker {
     /// - Unique indices.
     /// - Slot matches that of the block.
     /// - Block matches that of the block.
-    pub(crate) async fn note_header_from_node(
+    pub(crate) fn note_header_from_node(
         &mut self,
         header: &SecuredHeader,
         source_node_id: &NodeId,
@@ -817,10 +796,11 @@ impl ProtocolWorker {
             return Ok(Some((block_id, false)));
         }
 
-        if let Err(err) = self
-            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
-            .await
-        {
+        if let Err(err) = self.note_endorsements_from_node(
+            header.content.endorsements.clone(),
+            source_node_id,
+            false,
+        ) {
             warn!(
                 "node {} sent us a header containing critically incorrect endorsements: {}",
                 source_node_id, err
@@ -885,11 +865,10 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature
-    pub(crate) async fn note_operations_from_node(
+    pub(crate) fn note_operations_from_node(
         &mut self,
         operations: Vec<SecureShareOperation>,
         source_node_id: &NodeId,
-        op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
@@ -968,8 +947,7 @@ impl ProtocolWorker {
             ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
             let to_announce: Vec<OperationId> =
                 ops_to_propagate.get_op_refs().iter().copied().collect();
-            self.note_operations_to_announce(&to_announce, op_timer)
-                .await;
+            self.note_operations_to_announce(&to_announce);
 
             // Add to pool
             self.pool_controller.add_operations(ops);
@@ -987,7 +965,7 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature.
-    pub(crate) async fn note_endorsements_from_node(
+    pub(crate) fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<SecureShareEndorsement>,
         source_node_id: &NodeId,
@@ -1071,8 +1049,7 @@ impl ProtocolWorker {
                         .collect()
                 };
                 endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
-                self.propagate_endorsements(&endorsements_to_propagate)
-                    .await;
+                self.propagate_endorsements(&endorsements_to_propagate);
             }
 
             // Add to pool

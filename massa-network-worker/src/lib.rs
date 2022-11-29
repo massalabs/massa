@@ -11,6 +11,7 @@ use crate::{
     network_worker::{NetworkWorker, NetworkWorkerChannels},
     peer_info_database::PeerInfoDatabase,
 };
+use crossbeam_channel::bounded;
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, version::Version};
 use massa_network_exports::{
@@ -18,7 +19,8 @@ use massa_network_exports::{
     NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,
 };
 use massa_signature::KeyPair;
-use tokio::sync::mpsc;
+use std::thread;
+use tokio::runtime::Runtime;
 use tracing::{debug, error, info, warn};
 
 //pub use establisher::Establisher;
@@ -92,9 +94,11 @@ pub async fn start_network_controller(
     // create listener
     let listener = establisher.get_listener(network_settings.bind).await?;
 
+    let runtime = Runtime::new().expect("Failed to initialize networking runtime.");
+
     debug!("Loading peer database");
     // load peer info database
-    let mut peer_info_db = PeerInfoDatabase::new(network_settings).await?;
+    let mut peer_info_db = PeerInfoDatabase::new(network_settings, runtime.handle().clone())?;
 
     // add bootstrap peers
     if let Some(peers) = initial_peers {
@@ -103,13 +107,13 @@ pub async fn start_network_controller(
 
     // launch controller
     let (command_tx, controller_command_rx) =
-        mpsc::channel::<NetworkCommand>(network_settings.controller_channel_size);
+        bounded::<NetworkCommand>(network_settings.controller_channel_size);
     let (controller_event_tx, event_rx) =
-        mpsc::channel::<NetworkEvent>(network_settings.event_channel_size);
-    let (manager_tx, controller_manager_rx) = mpsc::channel::<NetworkManagementCommand>(1);
+        bounded::<NetworkEvent>(network_settings.event_channel_size);
+    let (manager_tx, controller_manager_rx) = bounded::<NetworkManagementCommand>(1);
     let cfg_copy = network_settings.clone();
     let keypair_cloned = keypair.clone();
-    let join_handle = tokio::spawn(async move {
+    let join_handle = thread::spawn(move || {
         let res = NetworkWorker::new(
             cfg_copy,
             keypair_cloned,
@@ -122,9 +126,9 @@ pub async fn start_network_controller(
                 controller_manager_rx,
             },
             version,
+            runtime,
         )
-        .run_loop()
-        .await;
+        .run_loop();
         match res {
             Err(err) => {
                 error!("network worker crashed: {}", err);
