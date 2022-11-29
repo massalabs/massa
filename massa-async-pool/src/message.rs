@@ -170,7 +170,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AsyncMessageFilter {
     /// Filter on the address
-    pub address: Option<Address>,
+    pub address: Address,
 
     /// Filter on the datastore key
     pub datastore_key: Option<String>,
@@ -178,14 +178,14 @@ pub struct AsyncMessageFilter {
 
 /// Serializer for a filter for an asynchronous message
 struct AsyncMessageFilterSerializer {
-    address_serializer: OptionSerializer<Address, AddressSerializer>,
+    address_serializer: AddressSerializer,
     string_serializer: OptionSerializer<String, StringSerializer<U32VarIntSerializer, u32>>,
 }
 
 impl AsyncMessageFilterSerializer {
     pub fn new() -> Self {
         Self {
-            address_serializer: OptionSerializer::new(AddressSerializer::new()),
+            address_serializer: AddressSerializer::new(),
             string_serializer: OptionSerializer::new(StringSerializer::new(
                 U32VarIntSerializer::new(),
             )),
@@ -208,14 +208,14 @@ impl Serializer<AsyncMessageFilter> for AsyncMessageFilterSerializer {
 
 /// Deserializer for a filter for an asynchronous message
 struct AsyncMessageFilterDeserializer {
-    address_deserializer: OptionDeserializer<Address, AddressDeserializer>,
+    address_deserializer: AddressDeserializer,
     string_deserializer: OptionDeserializer<String, StringDeserializer<U32VarIntDeserializer, u32>>,
 }
 
 impl AsyncMessageFilterDeserializer {
     pub fn new(max_key_length: u32) -> Self {
         Self {
-            address_deserializer: OptionDeserializer::new(AddressDeserializer::new()),
+            address_deserializer: AddressDeserializer::new(),
             string_deserializer: OptionDeserializer::new(StringDeserializer::new(
                 U32VarIntDeserializer::new(Included(0), Excluded(max_key_length)),
             )),
@@ -288,7 +288,12 @@ pub struct AsyncMessage {
     pub data: Vec<u8>,
 
     /// Filter for executing the message
-    pub filter: AsyncMessageFilter,
+    pub filter: Option<AsyncMessageFilter>,
+
+    /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+    pub can_be_executed: bool,
+
     /// Hash of the message
     pub hash: Hash,
 }
@@ -308,7 +313,7 @@ impl AsyncMessage {
         validity_start: Slot,
         validity_end: Slot,
         data: Vec<u8>,
-        filter: AsyncMessageFilter,
+        filter: Option<AsyncMessageFilter>,
     ) -> Self {
         let async_message_ser = AsyncMessageSerializer::new();
         let mut buffer = Vec::new();
@@ -324,6 +329,7 @@ impl AsyncMessage {
             validity_start,
             validity_end,
             data,
+            can_be_executed: filter.is_none(),
             filter,
             // placeholder hash to serialize the message, replaced below
             hash: Hash::from_bytes(&[0; 32]),
@@ -351,7 +357,7 @@ pub struct AsyncMessageSerializer {
     amount_serializer: AmountSerializer,
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
-    filter_serializer: AsyncMessageFilterSerializer,
+    filter_serializer: OptionSerializer<AsyncMessageFilter, AsyncMessageFilterSerializer>,
 }
 
 impl AsyncMessageSerializer {
@@ -361,7 +367,7 @@ impl AsyncMessageSerializer {
             amount_serializer: AmountSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
-            filter_serializer: AsyncMessageFilterSerializer::new(),
+            filter_serializer: OptionSerializer::new(AsyncMessageFilterSerializer::new()),
         }
     }
 }
@@ -436,7 +442,7 @@ pub struct AsyncMessageDeserializer {
     max_gas_deserializer: U64VarIntDeserializer,
     data_deserializer: VecU8Deserializer,
     address_deserializer: AddressDeserializer,
-    filter_deserializer: AsyncMessageFilterDeserializer,
+    filter_deserializer: OptionDeserializer<AsyncMessageFilter, AsyncMessageFilterDeserializer>,
 }
 
 impl AsyncMessageDeserializer {
@@ -460,7 +466,9 @@ impl AsyncMessageDeserializer {
                 Included(max_async_message_data),
             ),
             address_deserializer: AddressDeserializer::new(),
-            filter_deserializer: AsyncMessageFilterDeserializer::new(max_key_length),
+            filter_deserializer: OptionDeserializer::new(AsyncMessageFilterDeserializer::new(
+                max_key_length,
+            )),
         }
     }
 }
@@ -623,13 +631,11 @@ mod tests {
             Slot::new(2, 0),
             Slot::new(3, 0),
             vec![1, 2, 3, 4],
-            AsyncMessageFilter {
-                address: Some(
-                    Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
-                        .unwrap(),
-                ),
+            Some(AsyncMessageFilter {
+                address: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                    .unwrap(),
                 datastore_key: None,
-            },
+            }),
         );
         let message_serializer = AsyncMessageSerializer::new();
         let mut serialized = Vec::new();

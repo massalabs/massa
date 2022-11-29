@@ -338,10 +338,10 @@ fn test_take_batch() {
             Slot::new(1, 0),
             Slot::new(3, 0),
             Vec::new(),
-            AsyncMessageFilter {
-                address: Some(address),
+            Some(AsyncMessageFilter {
+                address: address,
                 datastore_key: None,
-            },
+            }),
         );
         pool.messages.insert(message.compute_id(), message);
     }
