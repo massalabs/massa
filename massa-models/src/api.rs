@@ -415,7 +415,7 @@ pub struct BlockInfo {
     /// block id
     pub id: BlockId,
     /// optional block info content
-    pub content: Option<BlockInfoContent>,
+    pub content: BlockInfoContent,
 }
 
 /// Block content
@@ -435,20 +435,17 @@ pub struct BlockInfoContent {
 
 impl std::fmt::Display for BlockInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(content) = &self.content {
-            writeln!(
-                f,
-                "Block ID: {}{}{}{}{}",
-                self.id,
-                display_if_true(content.is_final, " (final)"),
-                display_if_true(content.is_candidate, " (candidate)"),
-                display_if_true(content.is_in_blockclique, " (blockclique)"),
-                display_if_true(content.is_discarded, " (discarded)"),
-            )?;
-            writeln!(f, "Block: {}", content.block)?;
-        } else {
-            writeln!(f, "Block {} not found", self.id)?;
-        }
+        writeln!(
+            f,
+            "Block ID: {}{}{}{}{}",
+            self.id,
+            display_if_true(self.content.is_final, " (final)"),
+            display_if_true(self.content.is_candidate, " (candidate)"),
+            display_if_true(self.content.is_in_blockclique, " (blockclique)"),
+            display_if_true(self.content.is_discarded, " (discarded)"),
+        )?;
+        writeln!(f, "Block: {}", self.content.block)?;
+
         Ok(())
     }
 }

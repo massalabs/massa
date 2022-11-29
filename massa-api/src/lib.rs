@@ -258,7 +258,7 @@ pub trait MassaRpc {
 
     /// Get information on a block given its hash.
     #[method(name = "get_block")]
-    async fn get_block(&self, arg: BlockId) -> RpcResult<BlockInfo>;
+    async fn get_block(&self, arg: BlockId) -> RpcResult<Option<BlockInfo>>;
 
     /// Get information on the block at a slot in the blockclique.
     /// If there is no block at this slot a `None` is returned.

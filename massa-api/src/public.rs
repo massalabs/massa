@@ -583,13 +583,13 @@ impl MassaRpcServer for API<Public> {
 
     /// gets a block. Returns None if not found
     /// only active blocks are returned
-    async fn get_block(&self, id: BlockId) -> RpcResult<BlockInfo> {
+    async fn get_block(&self, id: BlockId) -> RpcResult<Option<BlockInfo>> {
         let consensus_controller = self.0.consensus_controller.clone();
         let storage = self.0.storage.clone_without_refs();
         let block = match storage.read_blocks().get(&id).cloned() {
             Some(b) => b.content,
             None => {
-                return Ok(BlockInfo { id, content: None });
+                return Ok(None);
             }
         };
 
@@ -605,16 +605,16 @@ impl MassaRpcServer for API<Public> {
             || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
         let is_discarded = graph_status == BlockGraphStatus::Discarded;
 
-        Ok(BlockInfo {
+        Ok(Some(BlockInfo {
             id,
-            content: Some(BlockInfoContent {
+            content: BlockInfoContent {
                 is_final,
                 is_in_blockclique,
                 is_candidate,
                 is_discarded,
                 block,
-            }),
-        })
+            }}),
+        )
     }
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
