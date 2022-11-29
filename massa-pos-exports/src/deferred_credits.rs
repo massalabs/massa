@@ -126,7 +126,7 @@ impl DeferredCredits {
                 // if misses the given slot entry insert
                 .or_insert({
                     // compute every slot credits hash and XOR them
-                    hash_computer.compute_slot_credits_hash(&slot, &other_credits);
+                    self.hash ^= hash_computer.compute_slot_credits_hash(&slot, &other_credits);
                     // set the slot credits
                     other_credits
                 });
