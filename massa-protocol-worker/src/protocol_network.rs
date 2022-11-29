@@ -516,7 +516,6 @@ impl ProtocolWorker {
                     block_storage.store_block(wrapped_block);
 
                     // Send to consensus
-                    info!("Send to consensus block for slot: {}", slot);
                     self.consensus_controller
                         .register_block(block_id, slot, block_storage, false);
                 }

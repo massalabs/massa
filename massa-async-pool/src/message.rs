@@ -209,6 +209,7 @@ pub struct AsyncMessage {
 }
 
 impl AsyncMessage {
+    #[allow(clippy::too_many_arguments)]
     /// Take an `AsyncMessage` and return it with its hash computed
     pub fn new_with_hash(
         emission_slot: Slot,
@@ -494,7 +495,6 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use massa_hash::Hash;
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
     use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
