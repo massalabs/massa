@@ -6,6 +6,7 @@
 use crate::active_history::ActiveHistory;
 use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges};
 use massa_final_state::FinalState;
+use massa_ledger_exports::LedgerChanges;
 use massa_models::slot::Slot;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -21,7 +22,7 @@ pub(crate) struct SpeculativeAsyncPool {
     /// List of newly emitted asynchronous messages
     emitted: Vec<(AsyncMessageId, AsyncMessage)>,
 
-    /// List of changes (additions/deletions) to the pool after settling emitted messages
+    /// List of changes (additions/deletions/activation) to the pool after settling emitted messages
     settled_changes: AsyncPoolChanges,
 }
 
@@ -98,11 +99,18 @@ impl SpeculativeAsyncPool {
     ///
     /// # Arguments
     /// * slot: slot that is being settled
+    /// * ledger_changes: ledger changes for that slot, used to see if we can activate some messages
     ///
     /// # Returns
     /// the list of deleted `(message_id, message)`, used for reimbursement
-    pub fn settle_slot(&mut self, slot: &Slot) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        let deleted_messages = self.async_pool.settle_slot(slot, &mut self.emitted);
+    pub fn settle_slot(
+        &mut self,
+        slot: &Slot,
+        ledger_changes: &LedgerChanges,
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        let deleted_messages = self
+            .async_pool
+            .settle_slot(slot, &mut self.emitted, ledger_changes);
         for (msg_id, msg) in std::mem::take(&mut self.emitted) {
             self.settled_changes.push_add(msg_id, msg);
         }

@@ -6,10 +6,11 @@ use crate::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
-    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-    AsyncMessageSerializer,
+    AsyncMessageDeserializer, AsyncMessageFilter, AsyncMessageIdDeserializer,
+    AsyncMessageIdSerializer, AsyncMessageSerializer,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_ledger_exports::LedgerChanges;
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -65,6 +66,13 @@ impl AsyncPool {
                     }
                 }
 
+                Change::Activate(message_id) => {
+                    if let Some(message) = self.messages.get_mut(message_id) {
+                        message.can_be_executed = true;
+                        // TODO: Add hash calculation
+                    }
+                }
+
                 // delete a message from the pool
                 Change::Delete(message_id) => {
                     if let Some(removed_message) = self.messages.remove(message_id) {
@@ -92,6 +100,7 @@ impl AsyncPool {
         &mut self,
         slot: &Slot,
         new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
+        ledger_changes: &LedgerChanges,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
@@ -112,6 +121,13 @@ impl AsyncPool {
         eliminated.reserve_exact(excess_count);
         for _ in 0..excess_count {
             eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
+        }
+        for (_, message) in self.messages.iter_mut() {
+            if let Some(filter) = &message.filter && !message.can_be_executed && filter_triggered(filter, ledger_changes)
+            {
+                //TODO: Recompute hash
+                message.can_be_executed = true;
+            }
         }
         eliminated
     }
@@ -139,6 +155,7 @@ impl AsyncPool {
                 if available_gas >= message.max_gas
                     && slot >= message.validity_start
                     && slot < message.validity_end
+                    && message.can_be_executed
                 {
                     available_gas -= message.max_gas;
                     true
@@ -209,6 +226,12 @@ impl AsyncPool {
             StreamingStep::Finished(None)
         }
     }
+}
+
+/// Check in the ledger changes if a message filter has been trigger
+fn filter_triggered(filter: &AsyncMessageFilter, ledger_changes: &LedgerChanges) -> bool {
+    //TODO
+    false
 }
 
 /// Serializer for `AsyncPool`

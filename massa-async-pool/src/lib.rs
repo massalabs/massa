@@ -86,6 +86,7 @@
 //! See `test_exports/mod.rs` for details.
 
 #![feature(btree_drain_filter)]
+#![feature(let_chains)]
 #![feature(drain_filter)]
 
 mod changes;
