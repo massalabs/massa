@@ -200,9 +200,9 @@ impl CycleInfo {
                         hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
                     current_stats.extend(&stats);
                     self.production_stats_hash ^=
-                        hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                        hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
                 })
-                .or_insert({
+                .or_insert_with(|| {
                     self.production_stats_hash ^=
                         hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
                     stats
@@ -274,7 +274,7 @@ fn test_cycle_info_hash_computation() {
         production_stats,
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
+    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
 
     // create a seconde cycle from same value and match hash
     let cycle_b = CycleInfo::new_with_hash(
