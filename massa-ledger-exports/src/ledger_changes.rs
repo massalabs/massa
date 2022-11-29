@@ -19,7 +19,7 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
-use std::collections::{hash_map, BTreeMap, BTreeSet};
+use std::collections::{hash_map, BTreeMap};
 use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
@@ -747,44 +747,6 @@ impl LedgerChanges {
                     ..Default::default()
                 }));
             }
-        }
-    }
-
-    pub fn get_keys(
-        &self,
-        addr: &Address,
-    ) -> BTreeSet<Vec<u8>> {
-        // Get the current changes being applied to the ledger entry associated to that address
-        match self.0.get(addr) {
-            // This ledger entry is being replaced by a new one:
-            // get the datastore keys from the new ledger entry
-            Some(SetUpdateOrDelete::Set(v)) => v.datastore.keys().cloned().collect(),
-
-            // This ledger entry is being updated
-            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
-                datastore
-                    .iter()
-                    .filter_map(|(key, set_or_del)| {
-                        match set_or_del {
-                            // A new datastore value is being set: return key
-                            SetOrDelete::Set(_) => { Some(key) }
-                            // This datastore entry is being deleted: return None
-                            SetOrDelete::Delete => { None }
-                        }
-                    })
-                    .cloned()
-                    .collect()
-            }
-
-            // This ledger entry is being deleted: return None
-            Some(SetUpdateOrDelete::Delete) => {
-                Default::default()
-            },
-
-            // This ledger entry is not being changed.
-            // We therefore have no info on the absolute contents of its datastore entry.
-            // We call the fallback function and return its output.
-            None => Default::default(),
         }
     }
 
