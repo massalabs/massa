@@ -251,9 +251,9 @@ impl CycleInfo {
                         hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
                     current_stats.extend(&stats);
                     self.production_stats_hash ^=
-                        hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
+                        hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
                 })
-                .or_insert({
+                .or_insert_with(|| {
                     self.production_stats_hash ^=
                         hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
                     stats
@@ -272,6 +272,81 @@ impl CycleInfo {
         // return the completion status
         self.complete
     }
+}
+
+#[test]
+fn test_cycle_info_hash_computation() {
+    use crate::DeferredCredits;
+    use bitvec::prelude::*;
+
+    // cycle and address
+    let mut cycle_a = CycleInfo::new_with_hash(
+        0,
+        false,
+        BTreeMap::default(),
+        BitVec::default(),
+        PreHashMap::default(),
+    );
+    let addr = Address::from_bytes(&[0u8; 32]);
+
+    // add changes
+    let mut roll_changes = PreHashMap::default();
+    roll_changes.insert(addr, 42);
+    let mut production_stats = PreHashMap::default();
+    production_stats.insert(
+        addr,
+        ProductionStats {
+            block_success_count: 4,
+            block_failure_count: 0,
+        },
+    );
+    let changes = PoSChanges {
+        seed_bits: bitvec![u8, Lsb0; 0, 42],
+        roll_changes: roll_changes.clone(),
+        production_stats: production_stats.clone(),
+        deferred_credits: DeferredCredits::default(),
+    };
+    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
+
+    // update changes
+    roll_changes.clear();
+    roll_changes.insert(addr, 0);
+    production_stats.clear();
+    production_stats.insert(
+        addr,
+        ProductionStats {
+            block_success_count: 4,
+            block_failure_count: 6,
+        },
+    );
+    let changes = PoSChanges {
+        seed_bits: bitvec![u8, Lsb0; 0, 68],
+        roll_changes,
+        production_stats,
+        deferred_credits: DeferredCredits::default(),
+    };
+    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
+
+    // create a seconde cycle from same value and match hash
+    let cycle_b = CycleInfo::new_with_hash(
+        0,
+        cycle_a.complete,
+        cycle_a.roll_counts,
+        cycle_a.rng_seed,
+        cycle_a.production_stats,
+    );
+    assert_eq!(
+        cycle_a.roll_counts_hash, cycle_b.roll_counts_hash,
+        "roll_counts_hash mismatch"
+    );
+    assert_eq!(
+        cycle_a.production_stats_hash, cycle_b.production_stats_hash,
+        "production_stats_hash mismatch"
+    );
+    assert_eq!(
+        cycle_a.global_hash, cycle_b.global_hash,
+        "global_hash mismatch"
+    );
 }
 
 /// Serializer for `CycleInfo`
