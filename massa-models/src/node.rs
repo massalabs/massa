@@ -74,16 +74,16 @@ impl std::str::FromStr for NodeId {
                 let decoded_bs58_check = bs58::decode(data)
                     .with_check(None)
                     .into_vec()
-                    .map_err(|_| ModelsError::NodeIDParseError)?;
+                    .map_err(|_| ModelsError::NodeIdParseError)?;
                 let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
                 let (rest, _version) = u64_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-                    .map_err(|_| ModelsError::NodeIDParseError)?;
+                    .map_err(|_| ModelsError::NodeIdParseError)?;
                 Ok(NodeId(PublicKey::from_bytes(
-                    rest.try_into().map_err(|_| ModelsError::NodeIDParseError)?,
+                    rest.try_into().map_err(|_| ModelsError::NodeIdParseError)?,
                 )?))
             }
-            _ => Err(ModelsError::AddressParseError),
+            _ => Err(ModelsError::NodeIdParseError),
         }
     }
 }

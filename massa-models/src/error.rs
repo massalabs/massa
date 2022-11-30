@@ -33,7 +33,9 @@ pub enum ModelsError {
     /// address parsing error
     AddressParseError,
     /// node id parsing error
-    NodeIDParseError,
+    NodeIdParseError,
+    /// block id parsing error
+    BlockIdParseError,
     /// checked operation error
     CheckedOperationError(String),
     /// invalid version identifier: {0}

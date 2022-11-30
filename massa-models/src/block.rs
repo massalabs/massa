@@ -11,7 +11,8 @@ use crate::{
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
+    U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_signature::{KeyPair, PublicKey, Signature};
 use nom::branch::alt;
@@ -49,22 +50,68 @@ impl Id for BlockId {
     }
 }
 
+const BLOCKID_PREFIX: char = 'B';
+const BLOCKID_VERSION: u64 = 0;
+
 impl std::fmt::Display for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        let u64_serializer = U64VarIntSerializer::new();
+        // might want to allocate the vector with capacity in order to avoid re-allocation
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&BLOCKID_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.to_bytes());
+        write!(
+            f,
+            "{}{}",
+            BLOCKID_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
     }
 }
 
 impl std::fmt::Debug for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        write!(f, "{}", self)
     }
 }
 
 impl FromStr for BlockId {
     type Err = ModelsError;
+    /// ## Example
+    /// ```rust
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use std::str::FromStr;
+    /// # use massa_models::address::Address;
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let ser = address.to_string();
+    /// let res_addr = Address::from_str(&ser).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(BlockId(Hash::from_str(s)?))
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(prefix) if prefix == BLOCKID_PREFIX => {
+                let data = chars.collect::<String>();
+                let decoded_bs58_check = bs58::decode(data)
+                    .with_check(None)
+                    .into_vec()
+                    .map_err(|_| ModelsError::BlockIdParseError)?;
+                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+                let (rest, _version) = u64_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+                    .map_err(|_| ModelsError::BlockIdParseError)?;
+                Ok(BlockId(Hash::from_bytes(
+                    rest.try_into()
+                        .map_err(|_| ModelsError::BlockIdParseError)?,
+                )))
+            }
+            _ => Err(ModelsError::BlockIdParseError),
+        }
     }
 }
 
@@ -82,13 +129,6 @@ impl BlockId {
     /// block id from bytes
     pub fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> BlockId {
         BlockId(Hash::from_bytes(data))
-    }
-
-    /// block id fro `bs58` check
-    pub fn from_bs58_check(data: &str) -> Result<BlockId, ModelsError> {
-        Ok(BlockId(
-            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
-        ))
     }
 
     /// first bit of the hashed block id
