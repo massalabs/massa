@@ -370,11 +370,11 @@ impl SpeculativeLedger {
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
     pub fn get_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
 
-        let read_guard = self.final_state.read();
-        let mut keys: Option<BTreeSet<Vec<u8>>> = match read_guard.ledger.entry_exists(addr) {
-            true => read_guard.ledger.get_datastore_keys(addr),
-            false => None,
-        };
+        let mut keys: Option<BTreeSet<Vec<u8>>> = self
+            .final_state
+            .read()
+            .ledger
+            .get_datastore_keys(addr);
 
         // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
         let active_history = self.active_history.read();

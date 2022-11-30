@@ -330,13 +330,13 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    pub fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+    pub fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
-        Some(self.db
+        self.db
             .iterator_cf_opt(
                 handle,
                 opt,
@@ -345,7 +345,6 @@ impl LedgerDB {
             .flatten()
             .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
             .collect()
-        )
     }
 
     /// Internal function to update a key & value and perform the ledger hash XORs
