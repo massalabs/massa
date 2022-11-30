@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Client","Client"],["RpcClient","TODO ask @yvan-sraka"]]};
+window.SIDEBAR_ITEMS = {"struct":[["Client","Client"],["HttpConfig","Http client settings. the Http client settings"],["RpcClient","TODO add ws client"]]};

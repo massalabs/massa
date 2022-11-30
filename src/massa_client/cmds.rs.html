@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cmds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cmds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1089,38 +1089,6 @@
 <a href="#1089" id="1089">1089</a>
 <a href="#1090" id="1090">1090</a>
 <a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1151,7 +1119,6 @@
 <span class="kw">use </span>std::fmt::{Debug, Display};
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::path::PathBuf;
-<span class="kw">use </span>std::process;
 <span class="kw">use </span>strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 <span class="kw">use </span>strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 
@@ -1161,9 +1128,6 @@
 </span><span class="attr">#[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 </span><span class="kw">pub enum </span>Command {
-    <span class="attr">#[strum(ascii_case_insensitive, message = <span class="string">&quot;exit the client gracefully&quot;</span>)]
-    </span>exit,
-
     <span class="attr">#[strum(ascii_case_insensitive, message = <span class="string">&quot;display this help&quot;</span>)]
     </span>help,
 
@@ -1342,30 +1306,28 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas GasPrice Fee&quot;</span>,),
+        props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas Fee&quot;</span>,),
         message = <span class="string">&quot;create and send an operation containing byte code&quot;
     </span>)]
     </span>send_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(
-            args = <span class="string">&quot;SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee&quot;</span>,
-        ),
+        props(args = <span class="string">&quot;SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee&quot;</span>,),
         message = <span class="string">&quot;create and send an operation to call a function of a smart contract&quot;
     </span>)]
     </span>call_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;PathToBytecode MaxGas GasPrice Address&quot;</span>,),
+        props(args = <span class="string">&quot;PathToBytecode MaxGas Address&quot;</span>,),
         message = <span class="string">&quot;execute byte code, address is optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress&quot;</span>,),
+        props(args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress&quot;</span>,),
         message = <span class="string">&quot;call a smart contract function, sender address is optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_call,
@@ -1499,8 +1461,6 @@
         json: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            Command::exit =&gt; process::exit(<span class="number">0</span>),
-
             Command::help =&gt; {
                 <span class="kw">if </span>!json {
                     <span class="kw">if </span>!parameters.is_empty() {
@@ -1950,38 +1910,24 @@
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
             Command::send_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">5 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">4 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>path = parameters[<span class="number">1</span>].parse::&lt;PathBuf&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>max_gas = parameters[<span class="number">2</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>gas_price = parameters[<span class="number">3</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>fee = parameters[<span class="number">4</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-
+                <span class="kw">let </span>fee = parameters[<span class="number">3</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
                 <span class="kw">if </span>!json {
-                    <span class="kw">match </span>gas_price
-                        .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(fee))
-                    {
-                        <span class="prelude-val">Some</span>(total) =&gt; {
-                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
-                                client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await
-                            </span>{
-                                <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
-                                    <span class="prelude-val">Some</span>(info) =&gt; {
-                                        <span class="kw">if </span>info.candidate_balance &lt; total {
-                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
-                                        }
-                                    }
-                                    <span class="prelude-val">None </span>=&gt; {
-                                        <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr));
-                                    }
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
+                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                            <span class="prelude-val">Some</span>(info) =&gt; {
+                                <span class="kw">if </span>info.candidate_balance &lt; fee {
+                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                 }
                             }
-                        }
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr));
+                            }
                         }
                     }
                 };
@@ -2003,7 +1949,6 @@
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
-                        gas_price,
                         datastore,
                     },
                     fee,
@@ -2013,22 +1958,18 @@
                 .<span class="kw">await
             </span>}
             Command::call_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">8 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">7 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>target_addr = parameters[<span class="number">1</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>target_func = parameters[<span class="number">2</span>].clone();
-                <span class="kw">let </span>param = parameters[<span class="number">3</span>].clone();
+                <span class="kw">let </span>param = parameters[<span class="number">3</span>].clone().into_bytes();
                 <span class="kw">let </span>max_gas = parameters[<span class="number">4</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>gas_price = parameters[<span class="number">5</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>coins = parameters[<span class="number">6</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>fee = parameters[<span class="number">7</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
+                <span class="kw">let </span>coins = parameters[<span class="number">5</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
+                <span class="kw">let </span>fee = parameters[<span class="number">6</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
                 <span class="kw">if </span>!json {
-                    <span class="kw">match </span>gas_price
-                        .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(fee))
-                    {
+                    <span class="kw">match </span>coins.checked_add(fee) {
                         <span class="prelude-val">Some</span>(total) =&gt; {
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
                                 client.public.get_addresses(<span class="macro">vec!</span>[target_addr]).<span class="kw">await
@@ -2062,7 +2003,6 @@
                         param,
                         max_gas,
                         coins,
-                        gas_price,
                     },
                     fee,
                     addr,
@@ -2083,14 +2023,13 @@
                 }
             }
             Command::read_only_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">3 </span>&amp;&amp; parameters.len() != <span class="number">4 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">2 </span>&amp;&amp; parameters.len() != <span class="number">3 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
                 <span class="kw">let </span>path = parameters[<span class="number">0</span>].parse::&lt;PathBuf&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>max_gas = parameters[<span class="number">1</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>simulated_gas_price = parameters[<span class="number">2</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">3</span>) {
+                <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">2</span>) {
                     <span class="prelude-val">Some</span>(adr.parse::&lt;Address&gt;()<span class="question-mark">?</span>)
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
@@ -2100,7 +2039,6 @@
                     .public
                     .execute_read_only_bytecode(ReadOnlyBytecodeExecution {
                         max_gas,
-                        simulated_gas_price,
                         bytecode,
                         address,
                         operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// TODO - #3072
@@ -2112,16 +2050,15 @@
                 }
             }
             Command::read_only_call =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">5 </span>&amp;&amp; parameters.len() != <span class="number">6 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">4 </span>&amp;&amp; parameters.len() != <span class="number">5 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
                 <span class="kw">let </span>target_address = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>target_function = parameters[<span class="number">1</span>].parse::&lt;String&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>parameter = parameters[<span class="number">2</span>].parse::&lt;String&gt;()<span class="question-mark">?</span>;
+                <span class="kw">let </span>parameter = parameters[<span class="number">2</span>].parse::&lt;String&gt;()<span class="question-mark">?</span>.into_bytes();
                 <span class="kw">let </span>max_gas = parameters[<span class="number">3</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>simulated_gas_price = parameters[<span class="number">4</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = parameters.get(<span class="number">5</span>) {
+                <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = parameters.get(<span class="number">4</span>) {
                     <span class="prelude-val">Some</span>(addr.parse::&lt;Address&gt;()<span class="question-mark">?</span>)
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
@@ -2134,7 +2071,6 @@
                         target_function,
                         parameter,
                         max_gas,
-                        simulated_gas_price,
                     })
                     .<span class="kw">await
                 </span>{
@@ -2245,4 +2181,4 @@
     })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

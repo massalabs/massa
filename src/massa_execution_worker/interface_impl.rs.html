@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/interface_impl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>interface_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/interface_impl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>interface_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -622,6 +622,35 @@
 <a href="#622" id="622">622</a>
 <a href="#623" id="623">623</a>
 <a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -640,6 +669,7 @@
 <span class="kw">use </span>massa_sc_runtime::{Interface, InterfaceClone};
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rand::Rng;
+<span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::debug;
@@ -798,6 +828,32 @@
         }
     }
 
+    <span class="doccomment">/// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    </span><span class="kw">fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>addr) {
+            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+        }
+    }
+
+    <span class="doccomment">/// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    </span><span class="kw">fn </span>get_keys_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+        <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">match </span>context.get_keys(addr) {
+            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+        }
+    }
+
     <span class="doccomment">/// Gets a datastore value by key for a given address.
     ///
     /// # Arguments
@@ -806,10 +862,10 @@
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    </span><span class="kw">fn </span>raw_get_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+    </span><span class="kw">fn </span>raw_get_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">match </span>context.get_data_entry(addr, key.as_bytes()) {
+        <span class="kw">match </span>context.get_data_entry(addr, key) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
         }
@@ -823,10 +879,10 @@
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    </span><span class="kw">fn </span>raw_set_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>str, value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="kw">fn </span>raw_set_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>addr = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        context.set_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes().to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        context.set_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -837,9 +893,9 @@
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    </span><span class="kw">fn </span>raw_append_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>str, value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="kw">fn </span>raw_append_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>addr = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).append_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes().to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        <span class="macro">context_guard!</span>(<span class="self">self</span>).append_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -849,9 +905,9 @@
     /// # Arguments
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to delete
-    </span><span class="kw">fn </span>raw_delete_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="kw">fn </span>raw_delete_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).delete_data_entry(addr, key.as_bytes())<span class="question-mark">?</span>;
+        <span class="macro">context_guard!</span>(<span class="self">self</span>).delete_data_entry(addr, key)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -863,10 +919,10 @@
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    </span><span class="kw">fn </span>has_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+    </span><span class="kw">fn </span>has_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="kw">let </span>addr = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="prelude-val">Ok</span>(context.has_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes()))
+        <span class="prelude-val">Ok</span>(context.has_data_entry(<span class="kw-2">&amp;</span>addr, key))
     }
 
     <span class="doccomment">/// Gets a datastore value by key for the current address (top of the call stack).
@@ -876,10 +932,10 @@
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    </span><span class="kw">fn </span>raw_get_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+    </span><span class="kw">fn </span>raw_get_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        <span class="kw">match </span>context.get_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes()) {
+        <span class="kw">match </span>context.get_data_entry(<span class="kw-2">&amp;</span>addr, key) {
             <span class="prelude-val">Some</span>(data) =&gt; <span class="prelude-val">Ok</span>(data),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
         }
@@ -893,10 +949,10 @@
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    </span><span class="kw">fn </span>raw_set_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>str, value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="kw">fn </span>raw_set_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        context.set_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes().to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        context.set_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -907,10 +963,10 @@
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    </span><span class="kw">fn </span>raw_append_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>str, value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="kw">fn </span>raw_append_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        context.append_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes().to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        context.append_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -919,10 +975,10 @@
     ///
     /// # Arguments
     /// * key: string key of the datastore entry to delete
-    </span><span class="kw">fn </span>raw_delete_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="kw">fn </span>raw_delete_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        context.delete_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes())<span class="question-mark">?</span>;
+        context.delete_data_entry(<span class="kw-2">&amp;</span>addr, key)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -933,10 +989,10 @@
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    </span><span class="kw">fn </span>has_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+    </span><span class="kw">fn </span>has_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(context.has_data_entry(<span class="kw-2">&amp;</span>addr, key.as_bytes()))
+        <span class="prelude-val">Ok</span>(context.has_data_entry(<span class="kw-2">&amp;</span>addr, key))
     }
 
     <span class="doccomment">/// Get the operation datastore keys (aka entries).
@@ -1170,7 +1226,7 @@
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
     /// * `max_gas`: Maximum gas for the message execution
-    /// * `gas_price`: Price of one gas unit
+    /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
     </span><span class="kw">fn </span>send_message(
@@ -1180,7 +1236,7 @@
         validity_start: (u64, u8),
         validity_end: (u64, u8),
         max_gas: u64,
-        gas_price: u64,
+        raw_fee: u64,
         raw_coins: u64,
         data: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1195,20 +1251,22 @@
         <span class="kw">let </span>emission_index = execution_context.created_message_index;
         <span class="kw">let </span>sender = execution_context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">let </span>coins = Amount::from_raw(raw_coins);
+        <span class="kw">let </span>fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, coins, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-        execution_context.push_new_message(AsyncMessage {
+        execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, fee, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
             sender,
-            destination: Address::from_str(target_address)<span class="question-mark">?</span>,
-            handler: target_handler.to_string(),
-            validity_start: Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>),
-            validity_end: Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>),
+            Address::from_str(target_address)<span class="question-mark">?</span>,
+            target_handler.to_string(),
             max_gas,
-            gas_price: Amount::from_raw(gas_price),
+            fee,
             coins,
-            data: data.to_vec(),
-        });
+            Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>),
+            Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>),
+            data.to_vec(),
+        ));
         execution_context.created_message_index += <span class="number">1</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -1247,4 +1305,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

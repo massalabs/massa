@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -333,6 +333,15 @@
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -344,6 +353,7 @@
     AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncMessageSerializer,
 };
+<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -357,16 +367,21 @@
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
 
+<span class="kw">const </span>ASYNC_POOL_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+
 <span class="doccomment">/// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
 /// Nodes must bootstrap the final message pool when they join the network.
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>AsyncPool {
     <span class="doccomment">/// Asynchronous pool configuration
     </span>config: AsyncPoolConfig,
 
     <span class="doccomment">/// Messages sorted by decreasing ID (decreasing priority)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) messages: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
+
+    <span class="doccomment">/// Hash of the asynchronous pool
+    </span><span class="kw">pub </span>hash: Hash,
 }
 
 <span class="kw">impl </span>AsyncPool {
@@ -375,6 +390,7 @@
         AsyncPool {
             config,
             messages: Default::default(),
+            hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
         }
     }
 
@@ -387,13 +403,17 @@
         <span class="kw">for </span>change <span class="kw">in </span>changes.<span class="number">0</span>.iter() {
             <span class="kw">match </span>change {
                 <span class="comment">// add a new message to the pool
-                </span>Change::Add(msg_id, msg) =&gt; {
-                    <span class="self">self</span>.messages.insert(<span class="kw-2">*</span>msg_id, msg.clone());
+                </span>Change::Add(message_id, message) =&gt; {
+                    <span class="kw">if </span><span class="self">self</span>.messages.insert(<span class="kw-2">*</span>message_id, message.clone()).is_none() {
+                        <span class="self">self</span>.hash ^= message.hash;
+                    }
                 }
 
                 <span class="comment">// delete a message from the pool
-                </span>Change::Delete(msg_id) =&gt; {
-                    <span class="self">self</span>.messages.remove(msg_id);
+                </span>Change::Delete(message_id) =&gt; {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(removed_message) = <span class="self">self</span>.messages.remove(message_id) {
+                        <span class="self">self</span>.hash ^= removed_message.hash;
+                    }
                 }
             }
         }
@@ -458,13 +478,13 @@
         <span class="comment">// gather all selected items and remove them from self.messages
         // iterate in decreasing priority order
         </span><span class="self">self</span>.messages
-            .drain_filter(|<span class="kw">_</span>, msg| {
+            .drain_filter(|<span class="kw">_</span>, message| {
                 <span class="comment">// check available gas and validity period
-                </span><span class="kw">if </span>available_gas &gt;= msg.max_gas
-                    &amp;&amp; slot &gt;= msg.validity_start
-                    &amp;&amp; slot &lt; msg.validity_end
+                </span><span class="kw">if </span>available_gas &gt;= message.max_gas
+                    &amp;&amp; slot &gt;= message.validity_start
+                    &amp;&amp; slot &lt; message.validity_end
                 {
-                    available_gas -= msg.max_gas;
+                    available_gas -= message.max_gas;
                     <span class="bool-val">true
                 </span>} <span class="kw">else </span>{
                     <span class="bool-val">false
@@ -492,7 +512,7 @@
         <span class="kw">let </span>left_bound = <span class="kw">match </span>cursor {
             StreamingStep::Started =&gt; Unbounded,
             StreamingStep::Ongoing(last_id) =&gt; Excluded(last_id),
-            StreamingStep::Finished =&gt; <span class="kw">return </span>(pool_part, cursor),
+            StreamingStep::Finished(<span class="kw">_</span>) =&gt; <span class="kw">return </span>(pool_part, cursor),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>pool_part_last_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt; = <span class="prelude-val">None</span>;
         <span class="kw">for </span>(id, message) <span class="kw">in </span><span class="self">self</span>.messages.range((left_bound, Unbounded)) {
@@ -506,7 +526,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(last_id) = pool_part_last_id {
             (pool_part, StreamingStep::Ongoing(last_id))
         } <span class="kw">else </span>{
-            (pool_part, StreamingStep::Finished)
+            (pool_part, StreamingStep::Finished(<span class="prelude-val">None</span>))
         }
     }
 
@@ -522,11 +542,15 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         part: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
     ) -&gt; StreamingStep&lt;AsyncMessageId&gt; {
-        <span class="self">self</span>.messages.extend(part);
+        <span class="kw">for </span>(message_id, message) <span class="kw">in </span>part {
+            <span class="kw">if </span><span class="self">self</span>.messages.insert(message_id, message.clone()).is_none() {
+                <span class="self">self</span>.hash ^= message.hash;
+            }
+        }
         <span class="kw">if let </span><span class="prelude-val">Some</span>(message_id) = <span class="self">self</span>.messages.last_key_value().map(|(<span class="kw-2">&amp;</span>id, <span class="kw">_</span>)| id) {
             StreamingStep::Ongoing(message_id)
         } <span class="kw">else </span>{
-            StreamingStep::Finished
+            StreamingStep::Finished(<span class="prelude-val">None</span>)
         }
     }
 }
@@ -643,30 +667,24 @@
     <span class="kw">let </span><span class="kw-2">mut </span>pool = AsyncPool::new(config);
     <span class="kw">let </span>address = Address(Hash::compute_from(<span class="string">b&quot;abc&quot;</span>));
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..<span class="number">10 </span>{
-        pool.messages.insert(
-            (
-                std::cmp::Reverse(Amount::from_mantissa_scale(i, <span class="number">0</span>)),
-                Slot::new(<span class="number">0</span>, <span class="number">0</span>),
-                <span class="number">0</span>,
-            ),
-            AsyncMessage {
-                emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
-                emission_index: <span class="number">0</span>,
-                sender: address,
-                destination: address,
-                handler: <span class="string">&quot;function&quot;</span>.to_string(),
-                validity_start: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
-                validity_end: Slot::new(<span class="number">3</span>, <span class="number">0</span>),
-                max_gas: i,
-                gas_price: Amount::from_str(<span class="string">&quot;0.1&quot;</span>).unwrap(),
-                coins: Amount::from_str(<span class="string">&quot;0.3&quot;</span>).unwrap(),
-                data: Vec::new(),
-            },
+        <span class="kw">let </span>message = AsyncMessage::new_with_hash(
+            Slot::new(<span class="number">0</span>, <span class="number">0</span>),
+            <span class="number">0</span>,
+            address,
+            address,
+            <span class="string">&quot;function&quot;</span>.to_string(),
+            i,
+            Amount::from_str(<span class="string">&quot;0.1&quot;</span>).unwrap(),
+            Amount::from_str(<span class="string">&quot;0.3&quot;</span>).unwrap(),
+            Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+            Slot::new(<span class="number">3</span>, <span class="number">0</span>),
+            Vec::new(),
         );
+        pool.messages.insert(message.compute_id(), message);
     }
     <span class="macro">assert_eq!</span>(pool.messages.len(), <span class="number">9</span>);
     pool.take_batch_to_execute(Slot::new(<span class="number">2</span>, <span class="number">0</span>), <span class="number">19</span>);
-    <span class="macro">assert_eq!</span>(pool.messages.len(), <span class="number">6</span>);
+    <span class="macro">assert_eq!</span>(pool.messages.len(), <span class="number">4</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

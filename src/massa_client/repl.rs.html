@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/repl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>repl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/repl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>repl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -323,75 +323,13 @@
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cmds::{Command, ExtendedWallet};
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
-<span class="kw">use </span><span class="kw">crate</span>::utils::longest_common_prefix;
+<span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>console::style;
-<span class="kw">use </span>dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 <span class="kw">use </span>erased_serde::{Serialize, Serializer};
-<span class="kw">use </span>glob::glob;
 <span class="kw">use </span>massa_models::api::{
     AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, NodeStatus, OperationInfo,
 };
@@ -402,19 +340,14 @@
 <span class="kw">use </span>massa_models::{address::Address, operation::OperationId};
 <span class="kw">use </span>massa_sdk::Client;
 <span class="kw">use </span>massa_wallet::Wallet;
-<span class="kw">use </span>rev_lines::RevLines;
-<span class="kw">use </span>std::collections::VecDeque;
-<span class="kw">use </span>std::io::Error;
+<span class="kw">use </span>rustyline::completion::{Completer, FilenameCompleter, Pair};
+<span class="kw">use </span>rustyline::error::ReadlineError;
+<span class="kw">use </span>rustyline::validate::MatchingBracketValidator;
+<span class="kw">use </span>rustyline::{CompletionType, Config, Editor};
+<span class="kw">use </span>rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
 <span class="kw">use </span>std::str;
-<span class="kw">use </span>std::{
-    fs::File,
-    fs::OpenOptions,
-    io::{BufReader, Write},
-};
 <span class="kw">use </span>strum::IntoEnumIterator;
 <span class="kw">use </span>strum::ParseError;
-<span class="attr">#[cfg(not(windows))]
-</span><span class="kw">use </span>tilde_expand::tilde_expand;
 
 <span class="macro">macro_rules! </span>massa_fancy_ascii_art_logo {
     () =&gt; {
@@ -479,161 +412,108 @@
     new_parameters
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(client: <span class="kw-2">&amp;</span>Client, wallet: <span class="kw-2">&amp;mut </span>Wallet) {
+<span class="attr">#[derive(Helper, Completer, Hinter, Validator, Highlighter)]
+</span><span class="kw">struct </span>MyHelper {
+    <span class="attr">#[rustyline(Completer)]
+    </span>completer: MassaCompleter,
+    <span class="attr">#[rustyline(Validator)]
+    </span>validator: MatchingBracketValidator,
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(client: <span class="kw-2">&amp;</span>Client, wallet: <span class="kw-2">&amp;mut </span>Wallet) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="macro">massa_fancy_ascii_art_logo!</span>();
-    <span class="macro">println!</span>(<span class="string">&quot;Use &#39;exit&#39; to quit the prompt&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;Use &#39;CTRL+D or CTRL+C&#39; to quit the prompt&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Use the Up/Down arrows to scroll through history&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Use the Right arrow or Tab to complete your command&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Use the Enter key to execute your command&quot;</span>);
     <span class="kw">crate</span>::cmds::help();
-    <span class="kw">let </span><span class="kw-2">mut </span>history = CommandHistory::default();
-    <span class="kw">let </span>completion = CommandCompletion::default();
+    <span class="kw">let </span>h = MyHelper {
+        completer: MassaCompleter::new(),
+        validator: MatchingBracketValidator::new(),
+    };
+    <span class="kw">let </span>config = Config::builder()
+        .auto_add_history(<span class="bool-val">true</span>)
+        .completion_prompt_limit(<span class="number">100</span>)
+        .completion_type(CompletionType::List)
+        .max_history_size(<span class="number">10000</span>)
+        .build();
+    <span class="kw">let </span><span class="kw-2">mut </span>rl: Editor&lt;MyHelper&gt; = Editor::with_config(config)<span class="question-mark">?</span>;
+    rl.set_helper(<span class="prelude-val">Some</span>(h));
+    <span class="kw">if </span>rl.load_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path).is_err() {
+        <span class="macro">println!</span>(<span class="string">&quot;No previous history.&quot;</span>);
+    }
     <span class="kw">loop </span>{
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(input) = Input::&lt;String&gt;::with_theme(<span class="kw-2">&amp;</span>ColorfulTheme::default())
-            .with_prompt(<span class="string">&quot;command&quot;</span>)
-            .history_with(<span class="kw-2">&amp;mut </span>history)
-            .completion_with(<span class="kw-2">&amp;</span>completion)
-            .interact_text()
-        {
-            <span class="comment">// User input parsing
-            </span><span class="kw">let </span>input: Vec&lt;String&gt; =
-                group_parameters(input.split_whitespace().map(|x| x.to_string()).collect());
-            <span class="kw">let </span>cmd: <span class="prelude-ty">Result</span>&lt;Command, ParseError&gt; = input[<span class="number">0</span>].parse();
-            <span class="kw">let </span>parameters = input[<span class="number">1</span>..].to_vec();
-            <span class="comment">// Print result of evaluated command
-            </span><span class="kw">match </span>cmd {
-                <span class="prelude-val">Ok</span>(command) =&gt; <span class="kw">match </span>command.run(client, wallet, <span class="kw-2">&amp;</span>parameters, <span class="bool-val">false</span>).<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(output) =&gt; output.pretty_print(),
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, e)).red()),
-                },
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Command not found!\ntype \&quot;help\&quot; to get the list of commands&quot;</span>),
-            }
-        }
-    }
-}
-
-<span class="kw">struct </span>CommandHistory {
-    max: usize,
-    history: VecDeque&lt;String&gt;,
-}
-
-<span class="kw">impl </span>CommandHistory {
-    <span class="kw">fn </span>get_saved_history() -&gt; <span class="prelude-ty">Result</span>&lt;VecDeque&lt;String&gt;, Error&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(file) = File::open(<span class="kw-2">&amp;</span>SETTINGS.history_file_path) {
-            <span class="kw">let </span>lines = RevLines::new(BufReader::new(file))<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(lines.collect())
-        } <span class="kw">else </span>{
-            File::create(<span class="kw-2">&amp;</span>SETTINGS.history_file_path)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(VecDeque::new())
-        }
-    }
-
-    <span class="kw">fn </span>write_to_saved_history(command: <span class="kw-2">&amp;</span>str) {
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>file) = OpenOptions::new()
-            .write(<span class="bool-val">true</span>)
-            .append(<span class="bool-val">true</span>)
-            .open(<span class="kw-2">&amp;</span>SETTINGS.history_file_path)
-        {
-            <span class="macro">writeln!</span>(file, <span class="string">&quot;{}&quot;</span>, command).ok();
-        }
-    }
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>CommandHistory {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        CommandHistory {
-            max: SETTINGS.history,
-            history: CommandHistory::get_saved_history().unwrap_or_default(),
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;T: ToString&gt; History&lt;T&gt; <span class="kw">for </span>CommandHistory {
-    <span class="kw">fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: usize) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="self">self</span>.history.get(pos).cloned()
-    }
-
-    <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, val: <span class="kw-2">&amp;</span>T) {
-        <span class="kw">if </span><span class="self">self</span>.history.len() == <span class="self">self</span>.max {
-            <span class="self">self</span>.history.pop_back();
-        }
-        <span class="kw">let </span>string_value = val.to_string();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_command) = <span class="self">self</span>.history.iter().next() {
-            <span class="kw">if </span>last_command != <span class="kw-2">&amp;</span>string_value {
-                CommandHistory::write_to_saved_history(<span class="kw-2">&amp;</span>string_value);
-                <span class="self">self</span>.history.push_front(string_value);
-            }
-        } <span class="kw">else </span>{
-            CommandHistory::write_to_saved_history(<span class="kw-2">&amp;</span>string_value);
-            <span class="self">self</span>.history.push_front(string_value);
-        }
-    }
-}
-
-<span class="kw">struct </span>CommandCompletion {
-    options: Vec&lt;String&gt;,
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>CommandCompletion {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        CommandCompletion {
-            options: Command::iter().map(|x| x.to_string()).collect(),
-        }
-    }
-}
-
-<span class="attr">#[cfg(not(windows))]
-</span><span class="kw">fn </span>expand_path(partial_path: <span class="kw-2">&amp;</span>str) -&gt; Vec&lt;u8&gt; {
-    tilde_expand(partial_path.as_bytes())
-}
-
-<span class="attr">#[cfg(windows)]
-</span><span class="kw">fn </span>expand_path(partial_path: <span class="kw-2">&amp;</span>str) -&gt; Vec&lt;u8&gt; {
-    partial_path.as_bytes().to_vec()
-}
-
-<span class="kw">impl </span>Completion <span class="kw">for </span>CommandCompletion {
-    <span class="doccomment">/// Simple completion implementation based on sub-string
-    </span><span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span>input = input.to_string();
-        <span class="kw">if </span>input.contains(<span class="string">&#39; &#39;</span>) {
-            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = input.split(<span class="string">&#39; &#39;</span>).collect();
-            <span class="kw">let </span><span class="kw-2">mut </span>default_path = <span class="string">&quot;./&quot;</span>;
-            <span class="kw">let </span>path_to_complete = args.last_mut().unwrap_or(<span class="kw-2">&amp;mut </span>default_path);
-            <span class="kw">let </span>expanded_path = expand_path(path_to_complete);
-            <span class="kw-2">*</span>path_to_complete = str::from_utf8(<span class="kw-2">&amp;</span>expanded_path).unwrap_or(path_to_complete);
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(paths) = glob(<span class="kw-2">&amp;</span>(path_to_complete.to_owned() + <span class="string">&quot;*&quot;</span>)) {
-                <span class="kw">let </span>suggestions: Vec&lt;String&gt; = paths
-                    .filter_map(|x| x.map(|path| path.display().to_string()).ok())
-                    .collect();
-                <span class="kw">if </span>!suggestions.is_empty() {
-                    <span class="macro">println!</span>();
-                    <span class="kw">for </span>path <span class="kw">in </span><span class="kw-2">&amp;</span>suggestions {
-                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(path).dim())
+        <span class="kw">let </span>readline = rl.readline(<span class="string">&quot;command &gt; &quot;</span>);
+        <span class="kw">match </span>readline {
+            <span class="prelude-val">Ok</span>(line) =&gt; {
+                <span class="kw">if </span>line.is_empty() {
+                    <span class="kw">continue</span>;
+                }
+                rl.add_history_entry(line.as_str());
+                <span class="kw">let </span>input: Vec&lt;String&gt; =
+                    group_parameters(line.split_whitespace().map(|x| x.to_string()).collect());
+                <span class="kw">let </span>cmd: <span class="prelude-ty">Result</span>&lt;Command, ParseError&gt; = input[<span class="number">0</span>].parse();
+                <span class="kw">let </span>parameters = input[<span class="number">1</span>..].to_vec();
+                <span class="comment">// Print result of evaluated command
+                </span><span class="kw">match </span>cmd {
+                    <span class="prelude-val">Ok</span>(command) =&gt; <span class="kw">match </span>command.run(client, wallet, <span class="kw-2">&amp;</span>parameters, <span class="bool-val">false</span>).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(output) =&gt; output.pretty_print(),
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, e)).red()),
+                    },
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="macro">println!</span>(<span class="string">&quot;Command not found!\ntype \&quot;help\&quot; to get the list of commands&quot;</span>)
                     }
-                    <span class="kw-2">*</span>path_to_complete =
-                        longest_common_prefix(suggestions.iter().map(|s| <span class="kw-2">&amp;</span>s[..]).collect());
                 }
-                <span class="prelude-val">Some</span>(args.join(<span class="string">&quot; &quot;</span>))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(args.join(<span class="string">&quot; &quot;</span>))
             }
+            <span class="prelude-val">Err</span>(ReadlineError::Interrupted) =&gt; {
+                <span class="kw">break</span>;
+            }
+            <span class="prelude-val">Err</span>(ReadlineError::Eof) =&gt; {
+                <span class="kw">break</span>;
+            }
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="macro">println!</span>(<span class="string">&quot;Error: {err:?}&quot;</span>);
+                <span class="kw">break</span>;
+            }
+        }
+    }
+    rl.append_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path).unwrap();
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="kw">struct </span>MassaCompleter {
+    file_completer: FilenameCompleter,
+}
+
+<span class="kw">impl </span>MassaCompleter {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            file_completer: FilenameCompleter::new(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Completer <span class="kw">for </span>MassaCompleter {
+    <span class="kw">type </span>Candidate = Pair;
+    <span class="kw">fn </span>complete(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        line: <span class="kw-2">&amp;</span>str,
+        pos: usize,
+        ctx: <span class="kw-2">&amp;</span>rustyline::Context&lt;<span class="lifetime">&#39;_</span>&gt;,
+    ) -&gt; rustyline::Result&lt;(usize, Vec&lt;<span class="self">Self</span>::Candidate&gt;)&gt; {
+        <span class="kw">if </span>line.contains(<span class="string">&#39; &#39;</span>) {
+            <span class="self">self</span>.file_completer.complete(line, pos, ctx)
         } <span class="kw">else </span>{
-            <span class="kw">let </span>suggestions: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = <span class="self">self
-                </span>.options
-                .iter()
-                .filter(|s| s.len() &gt;= input.len() &amp;&amp; input == s[..input.len()])
-                .map(|s| <span class="kw-2">&amp;</span>s[..])
-                .collect();
-            <span class="kw">if </span>!suggestions.is_empty() {
-                <span class="macro">println!</span>();
-                <span class="kw">for </span>suggestion <span class="kw">in </span><span class="kw-2">&amp;</span>suggestions {
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(suggestion).dim());
+            <span class="kw">let </span><span class="kw-2">mut </span>candidates = Vec::new();
+            <span class="kw">for </span>cmd <span class="kw">in </span>Command::iter() {
+                <span class="kw">if </span>cmd.to_string().starts_with(line) {
+                    candidates.push(Pair {
+                        display: cmd.to_string(),
+                        replacement: cmd.to_string(),
+                    });
                 }
-                <span class="prelude-val">Some</span>(String::from(longest_common_prefix(suggestions)))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
+            }
+            <span class="prelude-val">Ok</span>((<span class="number">0</span>, candidates))
         }
     }
 }
@@ -769,4 +649,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/operation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>operation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/operation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>operation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1463,68 +1463,6 @@
 <a href="#1463" id="1463">1463</a>
 <a href="#1464" id="1464">1464</a>
 <a href="#1465" id="1465">1465</a>
-<a href="#1466" id="1466">1466</a>
-<a href="#1467" id="1467">1467</a>
-<a href="#1468" id="1468">1468</a>
-<a href="#1469" id="1469">1469</a>
-<a href="#1470" id="1470">1470</a>
-<a href="#1471" id="1471">1471</a>
-<a href="#1472" id="1472">1472</a>
-<a href="#1473" id="1473">1473</a>
-<a href="#1474" id="1474">1474</a>
-<a href="#1475" id="1475">1475</a>
-<a href="#1476" id="1476">1476</a>
-<a href="#1477" id="1477">1477</a>
-<a href="#1478" id="1478">1478</a>
-<a href="#1479" id="1479">1479</a>
-<a href="#1480" id="1480">1480</a>
-<a href="#1481" id="1481">1481</a>
-<a href="#1482" id="1482">1482</a>
-<a href="#1483" id="1483">1483</a>
-<a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
-<a href="#1487" id="1487">1487</a>
-<a href="#1488" id="1488">1488</a>
-<a href="#1489" id="1489">1489</a>
-<a href="#1490" id="1490">1490</a>
-<a href="#1491" id="1491">1491</a>
-<a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
-<a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
-<a href="#1496" id="1496">1496</a>
-<a href="#1497" id="1497">1497</a>
-<a href="#1498" id="1498">1498</a>
-<a href="#1499" id="1499">1499</a>
-<a href="#1500" id="1500">1500</a>
-<a href="#1501" id="1501">1501</a>
-<a href="#1502" id="1502">1502</a>
-<a href="#1503" id="1503">1503</a>
-<a href="#1504" id="1504">1504</a>
-<a href="#1505" id="1505">1505</a>
-<a href="#1506" id="1506">1506</a>
-<a href="#1507" id="1507">1507</a>
-<a href="#1508" id="1508">1508</a>
-<a href="#1509" id="1509">1509</a>
-<a href="#1510" id="1510">1510</a>
-<a href="#1511" id="1511">1511</a>
-<a href="#1512" id="1512">1512</a>
-<a href="#1513" id="1513">1513</a>
-<a href="#1514" id="1514">1514</a>
-<a href="#1515" id="1515">1515</a>
-<a href="#1516" id="1516">1516</a>
-<a href="#1517" id="1517">1517</a>
-<a href="#1518" id="1518">1518</a>
-<a href="#1519" id="1519">1519</a>
-<a href="#1520" id="1520">1520</a>
-<a href="#1521" id="1521">1521</a>
-<a href="#1522" id="1522">1522</a>
-<a href="#1523" id="1523">1523</a>
-<a href="#1524" id="1524">1524</a>
-<a href="#1525" id="1525">1525</a>
-<a href="#1526" id="1526">1526</a>
-<a href="#1527" id="1527">1527</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
@@ -1931,9 +1869,8 @@
         </span>data: Vec&lt;u8&gt;,
         <span class="doccomment">/// The maximum amount of gas that the execution of the contract is allowed to cost.
         </span>max_gas: u64,
-        <span class="doccomment">/// The price per unit of gas that the caller is willing to pay for the execution.
-        </span>gas_price: Amount,
         <span class="doccomment">/// A key-value store associating a hash to arbitrary bytes
+        </span><span class="attr">#[serde(skip)]
         </span>datastore: Datastore,
     },
     <span class="doccomment">/// Calls an exported function from a stored smart contract
@@ -1943,13 +1880,11 @@
         <span class="doccomment">/// Target function name. No function is called if empty.
         </span>target_func: String,
         <span class="doccomment">/// Parameter to pass to the target function
-        </span>param: String,
+        </span>param: Vec&lt;u8&gt;,
         <span class="doccomment">/// The maximum amount of gas that the execution of the contract is allowed to cost.
         </span>max_gas: u64,
         <span class="doccomment">/// Extra coins that are spent from the caller&#39;s balance and transferred to the target
         </span>coins: Amount,
-        <span class="doccomment">/// The price per unit of gas that the caller is willing to pay for the execution.
-        </span>gas_price: Amount,
     },
 }
 
@@ -1974,18 +1909,15 @@
             }
             OperationType::ExecuteSC {
                 max_gas,
-                gas_price,
                 ..
                 <span class="comment">// data &amp; datastore, // these fields are ignored because bytes eh
             </span>} =&gt; {
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;ExecuteSC: &quot;</span>)<span class="question-mark">?</span>;
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- max_gas:{}&quot;</span>, max_gas)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- gas_price:{}&quot;</span>, gas_price)<span class="question-mark">?</span>;
             },
             OperationType::CallSC {
                 max_gas,
                 coins,
-                gas_price,
                 target_addr,
                 target_func,
                 param
@@ -1993,9 +1925,8 @@
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;CallSC:&quot;</span>)<span class="question-mark">?</span>;
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- target address:{}&quot;</span>, target_addr)<span class="question-mark">?</span>;
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- target function:{}&quot;</span>, target_func)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- target parameter:{}&quot;</span>, param)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- target parameter:{:?}&quot;</span>, param)<span class="question-mark">?</span>;
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- max_gas:{}&quot;</span>, max_gas)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- gas_price:{}&quot;</span>, gas_price)<span class="question-mark">?</span>;
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- coins:{}&quot;</span>, coins)<span class="question-mark">?</span>;
             }
         }
@@ -2010,7 +1941,6 @@
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
     function_name_serializer: StringSerializer&lt;U16VarIntSerializer, u16&gt;,
-    parameter_serializer: StringSerializer&lt;U32VarIntSerializer, u32&gt;,
     datastore_serializer: DatastoreSerializer,
 }
 
@@ -2023,7 +1953,6 @@
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
-            parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -2048,7 +1977,6 @@
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
@@ -2078,13 +2006,11 @@
             OperationType::ExecuteSC {
                 data,
                 max_gas,
-                gas_price,
                 datastore,
             } =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(OperationTypeId::ExecuteSC), buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.u64_serializer.serialize(max_gas, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.amount_serializer.serialize(gas_price, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.vec_u8_serializer.serialize(data, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.datastore_serializer.serialize(datastore, buffer)<span class="question-mark">?</span>;
             }
@@ -2094,17 +2020,15 @@
                 param,
                 max_gas,
                 coins,
-                gas_price,
             } =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(OperationTypeId::CallSC), buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.u64_serializer.serialize(max_gas, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.amount_serializer.serialize(coins, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.amount_serializer.serialize(gas_price, buffer)<span class="question-mark">?</span>;
                 buffer.extend(target_addr.to_bytes());
                 <span class="self">self</span>.function_name_serializer
                     .serialize(target_func, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.parameter_serializer.serialize(param, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.vec_u8_serializer.serialize(param, buffer)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -2120,7 +2044,7 @@
     data_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer&lt;U16VarIntDeserializer, u16&gt;,
-    parameter_deserializer: StringDeserializer&lt;U32VarIntDeserializer, u32&gt;,
+    parameter_deserializer: VecU8Deserializer,
     datastore_deserializer: DatastoreDeserializer,
 }
 
@@ -2151,10 +2075,10 @@
                 Included(<span class="number">0</span>),
                 Included(max_function_name_length),
             )),
-            parameter_deserializer: StringDeserializer::new(U32VarIntDeserializer::new(
+            parameter_deserializer: VecU8Deserializer::new(
                 Included(<span class="number">0</span>),
-                Included(max_parameters_size),
-            )),
+                Included(max_parameters_size <span class="kw">as </span>u64),
+            ),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
@@ -2177,7 +2101,6 @@
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
     ///    datastore: BTreeMap::from([(vec![1, 2], vec![254, 255])])
     /// };
     /// let mut buffer = Vec::new();
@@ -2188,12 +2111,10 @@
     ///    OperationType::ExecuteSC {
     ///      data,
     ///      max_gas,
-    ///      gas_price,
     ///      datastore
     ///   } =&gt; {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
-    ///     assert_eq!(gas_price, Amount::from_str(&quot;1&quot;).unwrap());
     ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
     ///   }
     ///   _ =&gt; panic!(&quot;Unexpected operation type&quot;),
@@ -2244,9 +2165,6 @@
                         context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
                             <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed gas_price deserialization&quot;</span>, |input| {
-                            <span class="self">self</span>.amount_deserializer.deserialize(input)
-                        }),
                         context(<span class="string">&quot;Failed data deserialization&quot;</span>, |input| {
                             <span class="self">self</span>.data_deserializer.deserialize(input)
                         }),
@@ -2255,14 +2173,11 @@
                         }),
                     )),
                 )
-                .map(
-                    |(max_gas, gas_price, data, datastore)| OperationType::ExecuteSC {
-                        data,
-                        max_gas,
-                        gas_price,
-                        datastore,
-                    },
-                )
+                .map(|(max_gas, data, datastore)| OperationType::ExecuteSC {
+                    data,
+                    max_gas,
+                    datastore,
+                })
                 .parse(input),
                 OperationTypeId::CallSC =&gt; context(
                     <span class="string">&quot;Failed CallSC deserialization&quot;</span>,
@@ -2271,9 +2186,6 @@
                             <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                         }),
                         context(<span class="string">&quot;Failed coins deserialization&quot;</span>, |input| {
-                            <span class="self">self</span>.amount_deserializer.deserialize(input)
-                        }),
-                        context(<span class="string">&quot;Failed gas_price deserialization&quot;</span>, |input| {
                             <span class="self">self</span>.amount_deserializer.deserialize(input)
                         }),
                         context(<span class="string">&quot;Failed target_addr deserialization&quot;</span>, |input| {
@@ -2288,15 +2200,12 @@
                     )),
                 )
                 .map(
-                    |(max_gas, coins, gas_price, target_addr, target_func, param)| {
-                        OperationType::CallSC {
-                            target_addr,
-                            target_func,
-                            param,
-                            max_gas,
-                            coins,
-                            gas_price,
-                        }
+                    |(max_gas, coins, target_addr, target_func, param)| OperationType::CallSC {
+                        target_addr,
+                        target_func,
+                        param,
+                        max_gas,
+                        coins,
                     },
                 )
                 .parse(input),
@@ -2328,28 +2237,6 @@
         }
     }
 
-    <span class="doccomment">/// Get the gas price set by the operation
-    </span><span class="kw">pub fn </span>get_gas_price(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Amount {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.content.op {
-            OperationType::ExecuteSC { gas_price, .. } =&gt; <span class="kw-2">*</span>gas_price,
-            OperationType::CallSC { gas_price, .. } =&gt; <span class="kw-2">*</span>gas_price,
-            OperationType::RollBuy { .. } =&gt; Amount::default(),
-            OperationType::RollSell { .. } =&gt; Amount::default(),
-            OperationType::Transaction { .. } =&gt; Amount::default(),
-        }
-    }
-
-    <span class="doccomment">/// Get the amount of coins used by the operation to pay for gas
-    </span><span class="kw">pub fn </span>get_gas_coins(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Amount {
-        <span class="self">self</span>.get_gas_price()
-            .saturating_mul_u64(<span class="self">self</span>.get_gas_usage())
-    }
-
-    <span class="doccomment">/// Get the total fee paid by the creator
-    </span><span class="kw">pub fn </span>get_total_fee(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Amount {
-        <span class="self">self</span>.get_gas_coins().saturating_add(<span class="self">self</span>.content.fee)
-    }
-
     <span class="doccomment">/// get the addresses that are involved in this operation from a ledger point of view
     </span><span class="kw">pub fn </span>get_ledger_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PreHashSet&lt;Address&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>res = PreHashSet::&lt;Address&gt;::default();
@@ -2378,21 +2265,12 @@
             OperationType::Transaction { amount, .. } =&gt; <span class="kw-2">*</span>amount,
             OperationType::RollBuy { roll_count } =&gt; roll_price.saturating_mul_u64(<span class="kw-2">*</span>roll_count),
             OperationType::RollSell { .. } =&gt; Amount::zero(),
-            OperationType::ExecuteSC {
-                max_gas, gas_price, ..
-            } =&gt; gas_price.saturating_mul_u64(<span class="kw-2">*</span>max_gas),
-            OperationType::CallSC {
-                max_gas,
-                gas_price,
-                coins,
-                ..
-            } =&gt; gas_price
-                .saturating_mul_u64(<span class="kw-2">*</span>max_gas)
-                .saturating_add(<span class="kw-2">*</span>coins),
+            OperationType::ExecuteSC { .. } =&gt; Amount::zero(),
+            OperationType::CallSC { coins, .. } =&gt; <span class="kw-2">*</span>coins,
         };
 
         <span class="comment">// add all fees and return
-        </span>max_non_fee_seq_spending.saturating_add(<span class="self">self</span>.get_total_fee())
+        </span>max_non_fee_seq_spending.saturating_add(<span class="self">self</span>.content.fee)
     }
 
     <span class="doccomment">/// get the addresses that are involved in this operation from a rolls point of view
@@ -2907,7 +2785,6 @@
 
         <span class="kw">let </span>op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
-            gas_price: Amount::from_str(<span class="string">&quot;772.122&quot;</span>).unwrap(),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
             datastore: BTreeMap::from([
                 (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),
@@ -2987,9 +2864,8 @@
             max_gas: <span class="number">123</span>,
             target_addr,
             coins: Amount::from_str(<span class="string">&quot;456.789&quot;</span>).unwrap(),
-            gas_price: Amount::from_str(<span class="string">&quot;772.122&quot;</span>).unwrap(),
             target_func: <span class="string">&quot;target function&quot;</span>.to_string(),
-            param: <span class="string">&quot;parameter&quot;</span>.to_string(),
+            param: <span class="string">b&quot;parameter&quot;</span>.to_vec(),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>ser_type = Vec::new();
         OperationTypeSerializer::new()
@@ -3053,4 +2929,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

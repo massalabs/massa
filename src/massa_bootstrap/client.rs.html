@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -487,6 +487,11 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{net::SocketAddr, sync::Arc, time::Duration};
 
 <span class="kw">use </span>massa_final_state::FinalState;
@@ -512,13 +517,13 @@
 <span class="doccomment">/// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-</span><span class="kw">async fn </span>stream_final_state(
+</span><span class="kw">async fn </span>stream_final_state_and_consensus(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
     client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-    <span class="kw">if let </span>BootstrapClientMessage::AskFinalStatePart { .. } = <span class="kw-2">&amp;</span>next_bootstrap_message {
+    <span class="kw">if let </span>BootstrapClientMessage::AskBootstrapPart { .. } = <span class="kw-2">&amp;</span>next_bootstrap_message {
         <span class="kw">match </span>tokio::time::timeout(
             cfg.write_timeout.into(),
             client.send(next_bootstrap_message),
@@ -546,7 +551,7 @@
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; msg,
             };
             <span class="kw">match </span>msg {
-                BootstrapServerMessage::FinalStatePart {
+                BootstrapServerMessage::BootstrapPart {
                     slot,
                     ledger_part,
                     async_pool_part,
@@ -554,8 +559,11 @@
                     pos_credits_part,
                     exec_ops_part,
                     final_state_changes,
+                    consensus_part,
+                    consensus_outdated_ids,
                 } =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
+                    <span class="comment">// Set final state
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
                     <span class="kw">let </span>last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)<span class="question-mark">?</span>;
                     <span class="kw">let </span>last_pool_step =
                         write_final_state.async_pool.set_pool_part(async_pool_part);
@@ -589,16 +597,43 @@
                         }
                     }
                     write_final_state.slot = slot;
+
+                    <span class="comment">// Set consensus blocks
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(graph) = global_bootstrap_state.graph.as_mut() {
+                        <span class="comment">// Extend the final blocks with the received part
+                        </span>graph.final_blocks.extend(consensus_part.final_blocks);
+                        <span class="comment">// Remove every outdated block
+                        </span>graph.final_blocks.retain(|block_export| {
+                            !consensus_outdated_ids.contains(<span class="kw-2">&amp;</span>block_export.block.id)
+                        });
+                    } <span class="kw">else </span>{
+                        global_bootstrap_state.graph = <span class="prelude-val">Some</span>(consensus_part);
+                    }
+                    <span class="kw">let </span>last_consensus_step = StreamingStep::Ongoing(
+                        <span class="comment">// Note that this unwrap call is safe because of the above conditional statement
+                        </span>global_bootstrap_state
+                            .graph
+                            .as_ref()
+                            .unwrap()
+                            .final_blocks
+                            .iter()
+                            .map(|b_export| b_export.block.id)
+                            .collect(),
+                    );
+
                     <span class="comment">// Set new message in case of disconnection
-                    </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                    </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: <span class="prelude-val">Some</span>(slot),
                         last_ledger_step,
                         last_pool_step,
                         last_cycle_step,
                         last_credits_step,
                         last_ops_step,
+                        last_consensus_step,
                     };
-                    <span class="macro">debug!</span>(
+
+                    <span class="comment">// Logs for an easier diagnostic if needed
+                    </span><span class="macro">debug!</span>(
                         <span class="string">&quot;client final state bootstrap cursors: {:?}&quot;</span>,
                         next_bootstrap_message
                     );
@@ -607,7 +642,7 @@
                         final_state_changes.len()
                     );
                 }
-                BootstrapServerMessage::FinalStateFinished =&gt; {
+                BootstrapServerMessage::BootstrapFinished =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;State bootstrap complete&quot;</span>);
                     <span class="comment">// Set next bootstrap message
                     </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
@@ -615,13 +650,14 @@
                 }
                 BootstrapServerMessage::SlotTooOld =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;Slot is too old retry bootstrap from scratch&quot;</span>);
-                    <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
+                    <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: <span class="prelude-val">None</span>,
                         last_ledger_step: StreamingStep::Started,
                         last_pool_step: StreamingStep::Started,
                         last_cycle_step: StreamingStep::Started,
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
+                        last_consensus_step: StreamingStep::Started,
                     };
                     <span class="macro">panic!</span>(<span class="string">&quot;Bootstrap failed, try to bootstrap again.&quot;</span>);
                 }
@@ -757,9 +793,14 @@
     <span class="comment">// Loop to ask data to the server depending on the last message we sent
     </span><span class="kw">loop </span>{
         <span class="kw">match </span>next_bootstrap_message {
-            BootstrapClientMessage::AskFinalStatePart { .. } =&gt; {
-                stream_final_state(cfg, client, next_bootstrap_message, global_bootstrap_state)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
+            BootstrapClientMessage::AskBootstrapPart { .. } =&gt; {
+                stream_final_state_and_consensus(
+                    cfg,
+                    client,
+                    next_bootstrap_message,
+                    global_bootstrap_state,
+                )
+                .<span class="kw">await</span><span class="question-mark">?</span>;
             }
             BootstrapClientMessage::AskBootstrapPeers =&gt; {
                 <span class="kw">let </span>peers = <span class="kw">match </span>send_client_message(
@@ -778,36 +819,9 @@
                     other =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = <span class="prelude-val">Some</span>(peers);
-                <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
-            }
-            BootstrapClientMessage::AskConsensusState =&gt; {
-                <span class="kw">let </span>state = <span class="kw">match </span>send_client_message(
-                    next_bootstrap_message,
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                    <span class="string">&quot;ask consensus state timed out&quot;</span>,
-                )
-                .<span class="kw">await</span><span class="question-mark">?
-                </span>{
-                    BootstrapServerMessage::ConsensusState { graph } =&gt; graph,
-                    BootstrapServerMessage::BootstrapError { error } =&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error))
-                    }
-                    other =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedServerMessage(other)),
-                };
-                global_bootstrap_state.graph = <span class="prelude-val">Some</span>(state);
                 <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess =&gt; {
-                <span class="kw">if </span>global_bootstrap_state.graph.is_none() {
-                    <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskConsensusState;
-                    <span class="kw">continue</span>;
-                }
-                <span class="kw">if </span>global_bootstrap_state.peers.is_none() {
-                    <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
-                    <span class="kw">continue</span>;
-                }
                 <span class="kw">match </span>tokio::time::timeout(write_timeout, client.send(next_bootstrap_message)).<span class="kw">await
                 </span>{
                     <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
@@ -878,12 +892,7 @@
         bootstrap_config.max_async_pool_changes,
         bootstrap_config.max_async_pool_length,
         bootstrap_config.max_async_message_data,
-        bootstrap_config.max_function_name_length,
-        bootstrap_config.max_parameters_size,
         bootstrap_config.max_ledger_changes_count,
-        bootstrap_config.max_op_datastore_entry_count,
-        bootstrap_config.max_op_datastore_key_length,
-        bootstrap_config.max_op_datastore_value_length,
         bootstrap_config.max_changes_slot_count,
         bootstrap_config.max_rolls_length,
         bootstrap_config.max_production_stats_length,
@@ -933,13 +942,14 @@
     <span class="kw">let </span><span class="kw-2">mut </span>shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(<span class="kw-2">&amp;mut </span>StdRng::from_entropy());
     <span class="kw">let </span><span class="kw-2">mut </span>next_bootstrap_message: BootstrapClientMessage =
-        BootstrapClientMessage::AskFinalStatePart {
+        BootstrapClientMessage::AskBootstrapPart {
             last_slot: <span class="prelude-val">None</span>,
             last_ledger_step: StreamingStep::Started,
             last_pool_step: StreamingStep::Started,
             last_cycle_step: StreamingStep::Started,
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
+            last_consensus_step: StreamingStep::Started,
         };
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     <span class="kw">loop </span>{
@@ -977,4 +987,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

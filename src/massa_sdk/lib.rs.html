@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-sdk/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_sdk/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-sdk/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_sdk/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -291,14 +291,46 @@
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 
-</span><span class="kw">use </span>jsonrpc_core_client::transports::http;
-<span class="kw">use </span>jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
+</span><span class="kw">use </span>http::header::HeaderName;
+<span class="kw">use </span>jsonrpsee::core::client::{CertificateStore, ClientT, IdKind};
+<span class="kw">use </span>jsonrpsee::http_client::HttpClient;
+<span class="kw">use </span>jsonrpsee::rpc_params;
+<span class="kw">use </span>jsonrpsee::ws_client::{HeaderMap, HeaderValue};
 <span class="kw">use </span>massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
@@ -314,9 +346,12 @@
     address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
 };
 
-<span class="kw">use </span>serde::de::DeserializeOwned;
-<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>jsonrpsee::{core::Error <span class="kw">as </span>JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
+<span class="kw">use </span>std::str::FromStr;
+
+<span class="kw">mod </span>config;
+<span class="kw">pub use </span>config::HttpConfig;
 
 <span class="doccomment">/// Client
 </span><span class="kw">pub struct </span>Client {
@@ -328,123 +363,149 @@
 
 <span class="kw">impl </span>Client {
     <span class="doccomment">/// creates a new client
-    </span><span class="kw">pub async fn </span>new(ip: IpAddr, public_port: u16, private_port: u16) -&gt; Client {
+    </span><span class="kw">pub async fn </span>new(
+        ip: IpAddr,
+        public_port: u16,
+        private_port: u16,
+        http_config: <span class="kw-2">&amp;</span>HttpConfig,
+    ) -&gt; Client {
         <span class="kw">let </span>public_socket_addr = SocketAddr::new(ip, public_port);
         <span class="kw">let </span>private_socket_addr = SocketAddr::new(ip, private_port);
         <span class="kw">let </span>public_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, public_socket_addr);
         <span class="kw">let </span>private_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, private_socket_addr);
         Client {
-            public: RpcClient::from_url(<span class="kw-2">&amp;</span>public_url).<span class="kw">await</span>,
-            private: RpcClient::from_url(<span class="kw-2">&amp;</span>private_url).<span class="kw">await</span>,
+            public: RpcClient::from_url(<span class="kw-2">&amp;</span>public_url, http_config).<span class="kw">await</span>,
+            private: RpcClient::from_url(<span class="kw-2">&amp;</span>private_url, http_config).<span class="kw">await</span>,
         }
     }
 }
 
-<span class="doccomment">/// TODO ask @yvan-sraka
+<span class="doccomment">/// TODO add ws client
 </span><span class="kw">pub struct </span>RpcClient {
-    client: TypedClient,
-    timeout: u64,
-}
-
-<span class="doccomment">/// This is required by `jsonrpc_core_client::transports::http::connect`
-</span><span class="kw">impl </span>From&lt;RpcChannel&gt; <span class="kw">for </span>RpcClient {
-    <span class="kw">fn </span>from(channel: RpcChannel) -&gt; <span class="self">Self </span>{
-        RpcClient {
-            client: channel.into(),
-            timeout: <span class="number">10000</span>,
-        }
-    }
+    http_client: HttpClient,
 }
 
 <span class="kw">impl </span>RpcClient {
     <span class="doccomment">/// Default constructor
-    </span><span class="kw">pub async fn </span>from_url(url: <span class="kw-2">&amp;</span>str) -&gt; RpcClient {
-        <span class="kw">match </span>http::connect::&lt;RpcClient&gt;(url).<span class="kw">await </span>{
-            <span class="prelude-val">Ok</span>(client) =&gt; client,
+    </span><span class="kw">pub async fn </span>from_url(url: <span class="kw-2">&amp;</span>str, http_config: <span class="kw-2">&amp;</span>HttpConfig) -&gt; RpcClient {
+        <span class="kw">let </span>certificate_store = <span class="kw">match </span>http_config.certificate_store.as_str() {
+            <span class="string">&quot;Native&quot; </span>=&gt; CertificateStore::Native,
+            <span class="string">&quot;WebPki&quot; </span>=&gt; CertificateStore::WebPki,
+            <span class="kw">_ </span>=&gt; CertificateStore::Native,
+        };
+        <span class="kw">let </span>id_kind = <span class="kw">match </span>http_config.id_kind.as_str() {
+            <span class="string">&quot;Number&quot; </span>=&gt; IdKind::Number,
+            <span class="string">&quot;String&quot; </span>=&gt; IdKind::String,
+            <span class="kw">_ </span>=&gt; IdKind::Number,
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>headers = HeaderMap::new();
+        http_config.headers.iter().for_each(|(key, value)| {
+            <span class="kw">let </span>header_name = <span class="kw">match </span>HeaderName::from_str(key.as_str()) {
+                <span class="prelude-val">Ok</span>(header_name) =&gt; header_name,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid header name: {:?}&quot;</span>, key),
+            };
+            <span class="kw">let </span>header_value = <span class="kw">match </span>HeaderValue::from_str(value.as_str()) {
+                <span class="prelude-val">Ok</span>(header_name) =&gt; header_name,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid header value: {:?}&quot;</span>, value),
+            };
+            headers.insert(header_name, header_value);
+        });
+
+        <span class="kw">match </span>HttpClientBuilder::default()
+            .max_request_body_size(http_config.max_request_body_size)
+            .request_timeout(http_config.request_timeout.to_duration())
+            .max_concurrent_requests(http_config.max_concurrent_requests)
+            .certificate_store(certificate_store)
+            .id_format(id_kind)
+            .set_headers(headers)
+            .build(url)
+        {
+            <span class="prelude-val">Ok</span>(http_client) =&gt; RpcClient { http_client },
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unable to connect to Node.&quot;</span>),
         }
     }
 
-    <span class="doccomment">/// Typed wrapper to API calls based on the method given by `jsonrpc_core_client`
-    </span><span class="kw">async fn </span>call_method&lt;T: Serialize, R: DeserializeOwned&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        method: <span class="kw-2">&amp;</span>str,
-        returns: <span class="kw-2">&amp;</span>str,
-        args: T,
-    ) -&gt; RpcResult&lt;R&gt; {
-        tokio::time::timeout(
-            tokio::time::Duration::from_millis(<span class="self">self</span>.timeout),
-            <span class="self">self</span>.client.call_method(method, returns, args),
-        )
-        .<span class="kw">await
-        </span>.map_err(|e| RpcError::Client(<span class="macro">format!</span>(<span class="string">&quot;timeout during {}: {}&quot;</span>, method, e)))<span class="question-mark">?
-    </span>}
-
     <span class="doccomment">/// Gracefully stop the node.
     </span><span class="kw">pub async fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;stop_node&quot;</span>, <span class="string">&quot;()&quot;</span>, ()).<span class="kw">await
+        <span class="self">self</span>.http_client.request(<span class="string">&quot;stop_node&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Sign message with node&#39;s key.
     /// Returns the public key that signed the message and the signature.
     </span><span class="kw">pub async fn </span>node_sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, message: Vec&lt;u8&gt;) -&gt; RpcResult&lt;PubkeySig&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;node_sign_message&quot;</span>, <span class="string">&quot;PubkeySig&quot;</span>, <span class="macro">vec!</span>[message])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;node_sign_message&quot;</span>, <span class="macro">rpc_params!</span>[message])
             .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Add a vector of new secret keys for the node to use to stake.
     /// No confirmation to expect.
     </span><span class="kw">pub async fn </span>add_staking_secret_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, secret_keys: Vec&lt;String&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;add_staking_secret_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[secret_keys])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;add_staking_secret_keys&quot;</span>, <span class="macro">rpc_params!</span>[secret_keys])
             .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
     </span><span class="kw">pub async fn </span>remove_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[addresses])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="macro">rpc_params!</span>[addresses])
             .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Return hash-set of staking addresses.
     </span><span class="kw">pub async fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;PreHashSet&lt;Address&gt;&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;Set&lt;Address&gt;&quot;</span>, ())
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Bans given ip address(es)
     /// No confirmation to expect.
     </span><span class="kw">pub async fn </span>node_ban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;node_ban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips]).<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;node_ban_by_ip&quot;</span>, <span class="macro">rpc_params!</span>[ips])
+            .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Bans given node id(s)
     /// No confirmation to expect.
     </span><span class="kw">pub async fn </span>node_ban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;node_ban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ids]).<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;node_ban_by_id&quot;</span>, <span class="macro">rpc_params!</span>[ids])
+            .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Unban given ip address(es)
     /// No confirmation to expect.
     </span><span class="kw">pub async fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;node_unban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips]).<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;node_unban_by_ip&quot;</span>, <span class="macro">rpc_params!</span>[ips])
+            .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Unban given node id(s)
     /// No confirmation to expect.
     </span><span class="kw">pub async fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;node_unban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ids]).<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;node_unban_by_id&quot;</span>, <span class="macro">rpc_params!</span>[ids])
+            .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// add ips to whitelist
     /// create peer if it was unknown
     </span><span class="kw">pub async fn </span>node_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;node_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips]).<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;node_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
+            .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// remove IPs from whitelist
     </span><span class="kw">pub async fn </span>node_remove_from_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;node_remove_from_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[ips])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;node_remove_from_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
     </span>}
 
@@ -456,19 +517,18 @@
 
     </span><span class="doccomment">/// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
     </span><span class="kw">pub async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_status&quot;</span>, <span class="string">&quot;NodeStatus&quot;</span>, ()).<span class="kw">await
+        <span class="self">self</span>.http_client.request(<span class="string">&quot;get_status&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
     </span>}
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>_get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_cliques&quot;</span>, <span class="string">&quot;Vec&lt;Clique&gt;&quot;</span>, ()).<span class="kw">await
+        <span class="self">self</span>.http_client.request(<span class="string">&quot;get_cliques&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
     </span>}
 
     <span class="comment">// Debug (specific information)
 
     </span><span class="doccomment">/// Returns the active stakers and their roll counts for the current cycle.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>_get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;PreHashMap&lt;Address, u64&gt;&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_stakers&quot;</span>, <span class="string">&quot;Map&lt;Address, u64&gt;&quot;</span>, ())
-            .<span class="kw">await
+        <span class="self">self</span>.http_client.request(<span class="string">&quot;get_stakers&quot;</span>, <span class="macro">rpc_params!</span>[]).<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Returns operations information associated to a given list of operations&#39; IDs.
@@ -476,7 +536,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation_ids: Vec&lt;OperationId&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationInfo&gt;&quot;</span>, <span class="macro">vec!</span>[operation_ids])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_operations&quot;</span>, <span class="macro">rpc_params!</span>[operation_ids])
             .<span class="kw">await
     </span>}
 
@@ -485,17 +546,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         endorsement_ids: Vec&lt;EndorsementId&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
-        <span class="self">self</span>.call_method(
-            <span class="string">&quot;get_endorsements&quot;</span>,
-            <span class="string">&quot;Vec&lt;EndorsementInfo&gt;&quot;</span>,
-            <span class="macro">vec!</span>[endorsement_ids],
-        )
-        .<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_endorsements&quot;</span>, <span class="macro">rpc_params!</span>[endorsement_ids])
+            .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Get information on a block given its `BlockId`
     </span><span class="kw">pub async fn </span>get_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId) -&gt; RpcResult&lt;BlockInfo&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_block&quot;</span>, <span class="string">&quot;BlockInfo&quot;</span>, <span class="macro">vec!</span>[block_id])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_block&quot;</span>, <span class="macro">rpc_params!</span>[block_id])
             .<span class="kw">await
     </span>}
 
@@ -504,12 +563,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         filter: EventFilter,
     ) -&gt; RpcResult&lt;Vec&lt;SCOutputEvent&gt;&gt; {
-        <span class="self">self</span>.call_method(
-            <span class="string">&quot;get_filtered_sc_output_event&quot;</span>,
-            <span class="string">&quot;Vec&lt;SCOutputEvent&gt;&quot;</span>,
-            <span class="macro">vec!</span>[filter],
-        )
-        .<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_filtered_sc_output_event&quot;</span>, <span class="macro">rpc_params!</span>[filter])
+            .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Get the block graph within the specified time interval.
@@ -518,13 +574,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         time_interval: TimeInterval,
     ) -&gt; RpcResult&lt;Vec&lt;BlockSummary&gt;&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_graph_interval&quot;</span>, <span class="string">&quot;Vec&lt;BlockSummary&gt;&quot;</span>, time_interval)
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_graph_interval&quot;</span>, <span class="macro">rpc_params!</span>[time_interval])
             .<span class="kw">await
     </span>}
 
     <span class="doccomment">/// Get info by addresses
     </span><span class="kw">pub async fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;Vec&lt;AddressInfo&gt;&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;get_addresses&quot;</span>, <span class="string">&quot;Vec&lt;AddressInfo&gt;&quot;</span>, <span class="macro">vec!</span>[addresses])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_addresses&quot;</span>, <span class="macro">rpc_params!</span>[addresses])
             .<span class="kw">await
     </span>}
 
@@ -533,12 +591,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         input: Vec&lt;DatastoreEntryInput&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DatastoreEntryOutput&gt;&gt; {
-        <span class="self">self</span>.call_method(
-            <span class="string">&quot;get_datastore_entries&quot;</span>,
-            <span class="string">&quot;Vec&lt;DatastoreEntryOutput&gt;&quot;</span>,
-            <span class="macro">vec!</span>[input],
-        )
-        .<span class="kw">await
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_datastore_entries&quot;</span>, <span class="macro">rpc_params!</span>[input])
+            .<span class="kw">await
     </span>}
 
     <span class="comment">// User (interaction with the node)
@@ -548,7 +603,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operations: Vec&lt;OperationInput&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;OperationId&gt;&gt; {
-        <span class="self">self</span>.call_method(<span class="string">&quot;send_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationId&gt;&quot;</span>, <span class="macro">vec!</span>[operations])
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;send_operations&quot;</span>, <span class="macro">rpc_params!</span>[operations])
             .<span class="kw">await
     </span>}
 
@@ -557,16 +613,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         read_only_execution: ReadOnlyBytecodeExecution,
     ) -&gt; RpcResult&lt;ExecuteReadOnlyResponse&gt; {
-        <span class="self">self</span>.call_method::&lt;Vec&lt;Vec&lt;ReadOnlyBytecodeExecution&gt;&gt;, Vec&lt;ExecuteReadOnlyResponse&gt;&gt;(
-            <span class="string">&quot;execute_read_only_bytecode&quot;</span>,
-            <span class="string">&quot;Vec&lt;ExecuteReadOnlyResponse&gt;&quot;</span>,
-            <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
-        )
-        .<span class="kw">await</span><span class="question-mark">?
-        </span>.pop()
-        .ok_or_else(|| {
-            RpcError::Client(<span class="string">&quot;missing return value on execute_read_only_bytecode&quot;</span>.into())
-        })
+        <span class="self">self</span>.http_client
+            .request::&lt;Vec&lt;ExecuteReadOnlyResponse&gt;, Vec&lt;Vec&lt;ReadOnlyBytecodeExecution&gt;&gt;&gt;(
+                <span class="string">&quot;execute_read_only_bytecode&quot;</span>,
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
+            )
+            .<span class="kw">await</span><span class="question-mark">?
+            </span>.pop()
+            .ok_or_else(|| {
+                JsonRpseeError::Custom(<span class="string">&quot;missing return value on execute_read_only_bytecode&quot;</span>.into())
+            })
     }
 
     <span class="doccomment">/// execute read only SC call
@@ -574,15 +630,17 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         read_only_execution: ReadOnlyCall,
     ) -&gt; RpcResult&lt;ExecuteReadOnlyResponse&gt; {
-        <span class="self">self</span>.call_method::&lt;Vec&lt;Vec&lt;ReadOnlyCall&gt;&gt;, Vec&lt;ExecuteReadOnlyResponse&gt;&gt;(
-            <span class="string">&quot;execute_read_only_call&quot;</span>,
-            <span class="string">&quot;Vec&lt;ExecuteReadOnlyResponse&gt;&quot;</span>,
-            <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
-        )
-        .<span class="kw">await</span><span class="question-mark">?
-        </span>.pop()
-        .ok_or_else(|| RpcError::Client(<span class="string">&quot;missing return value on execute_read_only_call&quot;</span>.into()))
+        <span class="self">self</span>.http_client
+            .request::&lt;Vec&lt;ExecuteReadOnlyResponse&gt;, Vec&lt;Vec&lt;ReadOnlyCall&gt;&gt;&gt;(
+                <span class="string">&quot;execute_read_only_call&quot;</span>,
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[read_only_execution]],
+            )
+            .<span class="kw">await</span><span class="question-mark">?
+            </span>.pop()
+            .ok_or_else(|| {
+                JsonRpseeError::Custom(<span class="string">&quot;missing return value on execute_read_only_call&quot;</span>.into())
+            })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_sdk" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_sdk" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/message.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/message.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -494,11 +494,52 @@
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
 <a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
 
-</span><span class="kw">use </span>massa_models::address::AddressDeserializer;
+</span><span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_models::address::AddressDeserializer;
 <span class="kw">use </span>massa_models::amount::{AmountDeserializer, AmountSerializer};
 <span class="kw">use </span>massa_models::slot::{SlotDeserializer, SlotSerializer};
 <span class="kw">use </span>massa_models::{
@@ -514,17 +555,17 @@
 <span class="kw">use </span>nom::multi::length_data;
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::{IResult, Parser};
+<span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
-/// `(rev(max_gas*gas_price), emission_slot, emission_index)`
-</span><span class="kw">pub type </span>AsyncMessageId = (std::cmp::Reverse&lt;Amount&gt;, Slot, u64);
+/// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
+</span><span class="kw">pub type </span>AsyncMessageId = (std::cmp::Reverse&lt;Ratio&lt;u64&gt;&gt;, Slot, u64);
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>AsyncMessageIdSerializer {
-    amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
 }
@@ -532,7 +573,6 @@
 <span class="kw">impl </span>AsyncMessageIdSerializer {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
         }
@@ -554,19 +594,19 @@
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
     ///
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     handler: String::from(&quot;test&quot;),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     String::from(&quot;test&quot;),
+    ///     10000000,
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
@@ -577,7 +617,8 @@
         value: <span class="kw-2">&amp;</span>AsyncMessageId,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), massa_serialization::SerializeError&gt; {
-        <span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.<span class="number">0 </span>.<span class="number">0</span>, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u64_serializer.serialize(value.<span class="number">0 </span>.<span class="number">0</span>.numer(), buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u64_serializer.serialize(value.<span class="number">0 </span>.<span class="number">0</span>.denom(), buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.slot_serializer.serialize(<span class="kw-2">&amp;</span>value.<span class="number">1</span>, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.<span class="number">2</span>, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -586,26 +627,18 @@
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>AsyncMessageIdDeserializer {
-    amount_deserializer: AmountDeserializer,
     slot_deserializer: SlotDeserializer,
-    emission_index_deserializer: U64VarIntDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
 }
 
 <span class="kw">impl </span>AsyncMessageIdDeserializer {
     <span class="kw">pub fn </span>new(thread_count: u8) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
-            ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
-            emission_index_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(u64::MAX),
-            ),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
@@ -619,19 +652,19 @@
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
     ///
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     handler: String::from(&quot;test&quot;),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     String::from(&quot;test&quot;),
+    ///     10000000,
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
@@ -648,18 +681,21 @@
         context(
             <span class="string">&quot;Failed AsyncMessageId deserialization&quot;</span>,
             tuple((
-                context(<span class="string">&quot;Failed gas_price deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.amount_deserializer.deserialize(input)
+                context(<span class="string">&quot;Failed fee deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed denum deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed emission_slot deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed emission_index deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.emission_index_deserializer.deserialize(input)
+                    <span class="self">self</span>.u64_deserializer.deserialize(input)
                 }),
             )),
         )
-        .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
+        .map(|(fee, denom, slot, index)| (std::cmp::Reverse(Ratio::new(fee, denom)), slot, index))
         .parse(buffer)
     }
 }
@@ -686,9 +722,8 @@
     <span class="doccomment">/// Maximum gas to use when processing the message
     </span><span class="kw">pub </span>max_gas: u64,
 
-    <span class="doccomment">/// Gas price to take into account when executing the message.
-    /// `max_gas * gas_price` are burned by the sender when the message is sent.
-    </span><span class="kw">pub </span>gas_price: Amount,
+    <span class="doccomment">/// Fee paid by the sender when the message is processed.
+    </span><span class="kw">pub </span>fee: Amount,
 
     <span class="doccomment">/// Coins sent from the sender to the target address of the message.
     /// Those coins are spent by the sender address when the message is sent,
@@ -704,14 +739,56 @@
 
     <span class="doccomment">/// Raw payload data of the message
     </span><span class="kw">pub </span>data: Vec&lt;u8&gt;,
+
+    <span class="doccomment">/// Hash of the message
+    </span><span class="kw">pub </span>hash: Hash,
 }
 
 <span class="kw">impl </span>AsyncMessage {
+    <span class="attr">#[allow(clippy::too_many_arguments)]
+    </span><span class="doccomment">/// Take an `AsyncMessage` and return it with its hash computed
+    </span><span class="kw">pub fn </span>new_with_hash(
+        emission_slot: Slot,
+        emission_index: u64,
+        sender: Address,
+        destination: Address,
+        handler: String,
+        max_gas: u64,
+        fee: Amount,
+        coins: Amount,
+        validity_start: Slot,
+        validity_end: Slot,
+        data: Vec&lt;u8&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>async_message_ser = AsyncMessageSerializer::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>message = AsyncMessage {
+            emission_slot,
+            emission_index,
+            sender,
+            destination,
+            handler,
+            max_gas,
+            fee,
+            coins,
+            validity_start,
+            validity_end,
+            data,
+            <span class="comment">// placeholder hash to serialize the message, replaced below
+            </span>hash: Hash::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">32</span>]),
+        };
+        async_message_ser
+            .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>buffer)
+            .expect(<span class="string">&quot;critical: asynchronous message serialization should never fail here&quot;</span>);
+        message.hash = Hash::compute_from(<span class="kw-2">&amp;</span>buffer);
+        message
+    }
+
     <span class="doccomment">/// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
     </span><span class="kw">pub fn </span>compute_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AsyncMessageId {
+        <span class="kw">let </span>denom = <span class="kw">if </span><span class="self">self</span>.max_gas &gt; <span class="number">0 </span>{ <span class="self">self</span>.max_gas } <span class="kw">else </span>{ <span class="number">1 </span>};
         (
-            std::cmp::Reverse(<span class="self">self</span>.gas_price.saturating_mul_u64(<span class="self">self</span>.max_gas)),
+            std::cmp::Reverse(Ratio::new(<span class="self">self</span>.fee.to_raw(), denom)),
             <span class="self">self</span>.emission_slot,
             <span class="self">self</span>.emission_index,
         )
@@ -749,19 +826,20 @@
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     handler: String::from(&quot;test&quot;),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     String::from(&quot;test&quot;),
+    ///     10000000,
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    /// );
     /// let mut buffer = Vec::new();
     /// let message_serializer = AsyncMessageSerializer::new();
     /// message_serializer.serialize(&amp;message, &amp;mut buffer).unwrap();
@@ -786,7 +864,7 @@
         buffer.extend(handler_bytes);
 
         <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.max_gas, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.gas_price, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.fee, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.coins, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.slot_serializer
             .serialize(<span class="kw-2">&amp;</span>value.validity_start, buffer)<span class="question-mark">?</span>;
@@ -838,19 +916,20 @@
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     destination: Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     handler: String::from(&quot;test&quot;),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     coins: Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    ///
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///     Address::from_str(&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    ///     String::from(&quot;test&quot;),
+    ///     10000000,
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    /// );
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&amp;message, &amp;mut serialized).unwrap();
@@ -858,6 +937,7 @@
     /// let (rest, message_deserialized) = message_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
+    /// assert_eq!(message.hash, message_deserialized.hash);
     /// ```
     </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -899,7 +979,7 @@
                 context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed gas_price deserialization&quot;</span>, |input| {
+                context(<span class="string">&quot;Failed fee deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed coins deserialization&quot;</span>, |input| {
@@ -924,23 +1004,25 @@
                 destination,
                 handler,
                 max_gas,
-                gas_price,
+                fee,
                 coins,
                 validity_start,
                 validity_end,
                 data,
-            )| AsyncMessage {
-                emission_slot,
-                emission_index,
-                sender,
-                destination,
-                handler,
-                max_gas,
-                gas_price,
-                coins,
-                validity_start,
-                validity_end,
-                data,
+            )| {
+                AsyncMessage::new_with_hash(
+                    emission_slot,
+                    emission_index,
+                    sender,
+                    destination,
+                    handler,
+                    max_gas,
+                    fee,
+                    coins,
+                    validity_start,
+                    validity_end,
+                    data,
+                )
             },
         )
         .parse(buffer)
@@ -962,21 +1044,19 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>bad_serialization_version() {
-        <span class="kw">let </span>message = AsyncMessage {
-            emission_slot: Slot::new(<span class="number">1</span>, <span class="number">2</span>),
-            emission_index: <span class="number">0</span>,
-            sender: Address::from_str(<span class="string">&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
-                .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
-                .unwrap(),
-            handler: String::from(<span class="string">&quot;test&quot;</span>),
-            max_gas: <span class="number">10000000</span>,
-            gas_price: Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
-            coins: Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
-            validity_start: Slot::new(<span class="number">2</span>, <span class="number">0</span>),
-            validity_end: Slot::new(<span class="number">3</span>, <span class="number">0</span>),
-            data: <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
-        };
+        <span class="kw">let </span>message = AsyncMessage::new_with_hash(
+            Slot::new(<span class="number">1</span>, <span class="number">2</span>),
+            <span class="number">0</span>,
+            Address::from_str(<span class="string">&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
+            Address::from_str(<span class="string">&quot;A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
+            String::from(<span class="string">&quot;test&quot;</span>),
+            <span class="number">10000000</span>,
+            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
+            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
+            Slot::new(<span class="number">2</span>, <span class="number">0</span>),
+            Slot::new(<span class="number">3</span>, <span class="number">0</span>),
+            <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
+        );
         <span class="kw">let </span>message_serializer = AsyncMessageSerializer::new();
         <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
         message_serializer
@@ -991,4 +1071,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

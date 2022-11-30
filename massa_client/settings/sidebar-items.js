@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["DefaultNode",""],["SETTINGS",""],["Settings",""]]};
+window.SIDEBAR_ITEMS = {"struct":[["DefaultNode",""],["HttpSettings","Http Client settings. the Http Client settings"],["SETTINGS",""],["Settings",""]]};

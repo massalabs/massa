@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-exports/src/protocol_controller.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_protocol_exports/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-exports/src/protocol_controller.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protocol_controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_protocol_exports/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -159,129 +159,22 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>std::collections::VecDeque;
-
-<span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
+</span><span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
 <span class="kw">use </span>massa_logging::massa_trace;
 
+<span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::EndorsementId,
     operation::OperationId,
 };
-<span class="kw">use </span>massa_models::{
-    prehash::{PreHashMap, PreHashSet},
-    slot::Slot,
-};
 <span class="kw">use </span>massa_network_exports::NetworkEventReceiver;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>tokio::{sync::mpsc, task::JoinHandle};
-<span class="kw">use </span>tracing::{debug, info};
-
-<span class="doccomment">/// Possible types of events that can happen.
-</span><span class="attr">#[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
-</span><span class="kw">pub enum </span>ProtocolEvent {
-    <span class="doccomment">/// A block with a valid signature has been received.
-    </span>ReceivedBlock {
-        <span class="doccomment">/// block ID
-        </span>block_id: BlockId,
-        <span class="doccomment">/// block slot
-        </span>slot: Slot,
-        <span class="doccomment">/// storage instance containing the block and its dependencies (except the parents)
-        </span>storage: Storage,
-    },
-    <span class="doccomment">/// A message to tell the consensus that a block is invalid
-    </span>InvalidBlock {
-        <span class="doccomment">/// block ID
-        </span>block_id: BlockId,
-        <span class="doccomment">/// header
-        </span>header: WrappedHeader,
-    },
-    <span class="doccomment">/// A block header with a valid signature has been received.
-    </span>ReceivedBlockHeader {
-        <span class="doccomment">/// its id
-        </span>block_id: BlockId,
-        <span class="doccomment">/// The header
-        </span>header: WrappedHeader,
-    },
-}
+<span class="kw">use </span>tracing::info;
 
 <span class="doccomment">/// block result: map block id to
 /// ```md
@@ -334,7 +227,7 @@
     /// # Arguments
     /// * `block_id`: ID of the block
     /// * `storage`: Storage instance containing references to the block and all its dependencies
-    </span><span class="kw">pub async fn </span>integrated_block(
+    </span><span class="kw">pub fn </span>integrated_block(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_id: BlockId,
         storage: Storage,
@@ -343,35 +236,32 @@
             <span class="string">&quot;block_id&quot;</span>: block_id
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::IntegratedBlock { block_id, storage })
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;block_integrated command send error&quot;</span>.into()))
+            </span>.blocking_send(ProtocolCommand::IntegratedBlock { block_id, storage })
+            .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;block_integrated command send error&quot;</span>.into()))
     }
 
     <span class="doccomment">/// Notify to protocol an attack attempt.
-    </span><span class="kw">pub async fn </span>notify_block_attack(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: BlockId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    </span><span class="kw">pub fn </span>notify_block_attack(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: BlockId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.notify_block_attack&quot;</span>, {
             <span class="string">&quot;block_id&quot;</span>: block_id
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::AttackBlockDetected(block_id))
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| {
+            </span>.blocking_send(ProtocolCommand::AttackBlockDetected(block_id))
+            .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;notify_block_attack command send error&quot;</span>.into())
             })
     }
 
     <span class="doccomment">/// update the block wish list
-    </span><span class="kw">pub async fn </span>send_wishlist_delta(
+    </span><span class="kw">pub fn </span>send_wishlist_delta(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;,
         remove: PreHashSet&lt;BlockId&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::WishlistDelta { new, remove })
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| {
+            </span>.blocking_send(ProtocolCommand::WishlistDelta { new, remove })
+            .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;send_wishlist_delta command send error&quot;</span>.into())
             })
     }
@@ -379,14 +269,13 @@
     <span class="doccomment">/// Propagate a batch of operation ids (from pool).
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
-    </span><span class="kw">pub async fn </span>propagate_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operations: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    </span><span class="kw">pub fn </span>propagate_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operations: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_operations&quot;</span>, {
             <span class="string">&quot;operations&quot;</span>: operations.get_op_refs()
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::PropagateOperations(operations))
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| {
+            </span>.blocking_send(ProtocolCommand::PropagateOperations(operations))
+            .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;propagate_operation command send error&quot;</span>.into())
             })
     }
@@ -401,36 +290,6 @@
             .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.into())
             })
-    }
-}
-
-<span class="doccomment">/// Protocol event receiver
-</span><span class="kw">pub struct </span>ProtocolEventReceiver(<span class="kw">pub </span>mpsc::Receiver&lt;ProtocolEvent&gt;);
-
-<span class="kw">impl </span>ProtocolEventReceiver {
-    <span class="doccomment">/// Receives the next `ProtocolEvent` from connected Node.
-    /// None is returned when all Sender halves have dropped,
-    /// indicating that no further values can be sent on the channel
-    </span><span class="kw">pub async fn </span>wait_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ProtocolEvent, ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.event_receiver.wait_event&quot;</span>, {});
-        <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await</span>.ok_or_else(|| {
-            ProtocolError::ChannelError(
-                <span class="string">&quot;DefaultProtocolController wait_event channel recv failed&quot;</span>.into(),
-            )
-        })
-    }
-
-    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`
-    /// note: events are sorted from oldest to newest
-    </span><span class="kw">pub async fn </span>drain(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; VecDeque&lt;ProtocolEvent&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>remaining_events: VecDeque&lt;ProtocolEvent&gt; = VecDeque::new();
-        <span class="kw">while let </span><span class="prelude-val">Some</span>(evt) = <span class="self">self</span>.<span class="number">0</span>.recv().<span class="kw">await </span>{
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;after receiving event from ProtocolEventReceiver.0 in protocol_controller drain&quot;
-            </span>);
-            remaining_events.push_back(evt);
-        }
-        remaining_events
     }
 }
 
@@ -453,18 +312,13 @@
     }
 
     <span class="doccomment">/// Stop the protocol controller
-    </span><span class="kw">pub async fn </span>stop(
-        <span class="self">self</span>,
-        protocol_event_receiver: ProtocolEventReceiver,
-        <span class="comment">//protocol_pool_event_receiver: ProtocolPoolEventReceiver,
-    </span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
+    </span><span class="kw">pub async fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
         <span class="macro">info!</span>(<span class="string">&quot;stopping protocol controller...&quot;</span>);
         drop(<span class="self">self</span>.manager_tx);
-        <span class="kw">let </span>_remaining_events = protocol_event_receiver.drain().<span class="kw">await</span>;
         <span class="kw">let </span>network_event_receiver = <span class="self">self</span>.join_handle.<span class="kw">await</span><span class="question-mark">??</span>;
         <span class="macro">info!</span>(<span class="string">&quot;protocol controller stopped&quot;</span>);
         <span class="prelude-val">Ok</span>(network_event_receiver)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

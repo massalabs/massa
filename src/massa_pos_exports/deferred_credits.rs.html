@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-pos-exports/src/deferred_credits.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>deferred_credits.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_pos_exports/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-pos-exports/src/deferred_credits.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>deferred_credits.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_pos_exports/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -237,8 +237,88 @@
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
-    address::{Address, AddressDeserializer},
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+</pre><pre class="rust"><code><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_models::{
+    address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     prehash::PreHashMap,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -255,42 +335,116 @@
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
-<span class="attr">#[derive(Debug, Default, Clone)]
-</span><span class="doccomment">/// Structure containing all the PoS deferred credits information
-</span><span class="kw">pub struct </span>DeferredCredits(<span class="kw">pub </span>BTreeMap&lt;Slot, PreHashMap&lt;Address, Amount&gt;&gt;);
+<span class="kw">const </span>DEFERRED_CREDITS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
-<span class="kw">impl </span>DeferredCredits {
-    <span class="doccomment">/// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
-    </span><span class="kw">pub fn </span>nested_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
-        <span class="kw">for </span>(slot, new_credits) <span class="kw">in </span>other.<span class="number">0 </span>{
-            <span class="self">self</span>.<span class="number">0
-                </span>.entry(slot)
-                .and_modify(|current_credits| {
-                    <span class="kw">for </span>(address, new_amount) <span class="kw">in </span>new_credits.iter() {
-                        current_credits
-                            .entry(<span class="kw-2">*</span>address)
-                            .and_modify(|current_amount| {
-                                <span class="kw-2">*</span>current_amount = current_amount.saturating_add(<span class="kw-2">*</span>new_amount);
-                            })
-                            .or_insert(<span class="kw-2">*</span>new_amount);
-                    }
-                })
-                .or_insert(new_credits);
+<span class="attr">#[derive(Debug, Clone)]
+</span><span class="doccomment">/// Structure containing all the PoS deferred credits information
+</span><span class="kw">pub struct </span>DeferredCredits {
+    <span class="doccomment">/// Deferred credits
+    </span><span class="kw">pub </span>credits: BTreeMap&lt;Slot, PreHashMap&lt;Address, Amount&gt;&gt;,
+    <span class="doccomment">/// Hash of the current deferred credits state
+    </span><span class="kw">pub </span>hash: Hash,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>DeferredCredits {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            credits: Default::default(),
+            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+        }
+    }
+}
+
+<span class="kw">struct </span>DeferredCreditsHashComputer {
+    slot_ser: SlotSerializer,
+    address_ser: AddressSerializer,
+    amount_ser: AmountSerializer,
+}
+
+<span class="kw">impl </span>DeferredCreditsHashComputer {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            slot_ser: SlotSerializer::new(),
+            address_ser: AddressSerializer::new(),
+            amount_ser: AmountSerializer::new(),
         }
     }
 
-    <span class="doccomment">/// Remove zero credits
-    </span><span class="kw">pub fn </span>remove_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>delete_slots = Vec::new();
-        <span class="kw">for </span>(slot, credits) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0 </span>{
-            credits.retain(|_addr, amount| !amount.is_zero());
-            <span class="kw">if </span>credits.is_empty() {
-                delete_slots.push(<span class="kw-2">*</span>slot);
+    <span class="kw">fn </span>compute_credit_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, address: <span class="kw-2">&amp;</span>Address, amount: <span class="kw-2">&amp;</span>Amount) -&gt; Hash {
+        <span class="comment">// serialization can never fail in the following computations, unwrap is justified
+        </span><span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="self">self</span>.slot_ser.serialize(slot, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        <span class="self">self</span>.address_ser.serialize(address, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        <span class="self">self</span>.amount_ser.serialize(amount, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
+    }
+}
+
+<span class="kw">impl </span>DeferredCredits {
+    <span class="doccomment">/// Extends the current `DeferredCredits` with another and replace the amounts for existing addresses
+    </span><span class="kw">pub fn </span>nested_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
+        <span class="kw">for </span>(slot, other_credits) <span class="kw">in </span>other.credits {
+            <span class="self">self</span>.credits.entry(slot).or_default().extend(other_credits);
+        }
+    }
+
+    <span class="doccomment">/// Extends the current `DeferredCredits` with another, replace the amounts for existing addresses and compute the object hash, use only on finality
+    </span><span class="kw">pub fn </span>final_nested_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
+        <span class="kw">let </span>hash_computer = DeferredCreditsHashComputer::new();
+        <span class="kw">for </span>(slot, other_credits) <span class="kw">in </span>other.credits {
+            <span class="kw">let </span>self_credits = <span class="self">self</span>.credits.entry(slot).or_default();
+            <span class="kw">for </span>(address, other_amount) <span class="kw">in </span>other_credits {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(cur_amount) = self_credits.insert(address, other_amount) {
+                    <span class="self">self</span>.hash ^= hash_computer.compute_credit_hash(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>cur_amount);
+                }
+                <span class="self">self</span>.hash ^= hash_computer.compute_credit_hash(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>other_amount);
             }
         }
-        <span class="kw">for </span>slot <span class="kw">in </span>delete_slots {
-            <span class="self">self</span>.<span class="number">0</span>.remove(<span class="kw-2">&amp;</span>slot);
+    }
+
+    <span class="doccomment">/// Remove credits set to zero, use only on finality
+    </span><span class="kw">pub fn </span>remove_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>hash_computer = DeferredCreditsHashComputer::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>empty_slots = Vec::new();
+        <span class="kw">for </span>(slot, credits) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.credits {
+            credits.retain(|address, amount| {
+                <span class="comment">// if amount is zero XOR the credit hash and do not retain
+                </span><span class="kw">if </span>amount.is_zero() {
+                    <span class="self">self</span>.hash ^= hash_computer.compute_credit_hash(slot, address, amount);
+                    <span class="bool-val">false
+                </span>} <span class="kw">else </span>{
+                    <span class="bool-val">true
+                </span>}
+            });
+            <span class="kw">if </span>credits.is_empty() {
+                empty_slots.push(<span class="kw-2">*</span>slot);
+            }
         }
+        <span class="kw">for </span>slot <span class="kw">in </span>empty_slots {
+            <span class="self">self</span>.credits.remove(<span class="kw-2">&amp;</span>slot);
+        }
+    }
+
+    <span class="doccomment">/// Gets the deferred credits for a given address that will be credited at a given slot
+    </span><span class="kw">pub fn </span>get_address_deferred_credit_for_slot(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        slot: <span class="kw-2">&amp;</span>Slot,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self
+            </span>.credits
+            .get(slot)
+            .and_then(|slot_credits| slot_credits.get(addr))
+        {
+            <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="kw-2">*</span>v);
+        }
+        <span class="prelude-val">None
+    </span>}
+
+    <span class="doccomment">/// Insert/overwrite a deferred credit
+    </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: Address, slot: Slot, amount: Amount) {
+        <span class="kw">let </span>entry = <span class="self">self</span>.credits.entry(slot).or_default();
+        entry.insert(addr, amount);
     }
 }
 
@@ -325,9 +479,10 @@
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="comment">// deferred credits length
-        </span><span class="self">self</span>.u64_ser.serialize(<span class="kw-2">&amp;</span>(value.<span class="number">0</span>.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.u64_ser
+            .serialize(<span class="kw-2">&amp;</span>(value.credits.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
         <span class="comment">// deferred credits
-        </span><span class="kw">for </span>(slot, credits) <span class="kw">in </span><span class="kw-2">&amp;</span>value.<span class="number">0 </span>{
+        </span><span class="kw">for </span>(slot, credits) <span class="kw">in </span><span class="kw-2">&amp;</span>value.credits {
             <span class="comment">// slot
             </span><span class="self">self</span>.slot_ser.serialize(slot, buffer)<span class="question-mark">?</span>;
             <span class="comment">// credits
@@ -382,7 +537,10 @@
                 )),
             ),
         )
-        .map(|elements| DeferredCredits(elements.into_iter().collect()))
+        .map(|elements| DeferredCredits {
+            credits: elements.into_iter().collect(),
+            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+        })
         .parse(buffer)
     }
 }
@@ -477,4 +635,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_pos_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_pos_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

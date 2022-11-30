@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/public.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>public.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ea97c800646ec4c5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-2da75ee0e1909b3a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_api/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/public.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>public.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../massa_api/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -948,18 +948,30 @@
 <a href="#948" id="948">948</a>
 <a href="#949" id="949">949</a>
 <a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::APIConfig;
 <span class="kw">use </span><span class="kw">crate</span>::error::ApiError;
-<span class="kw">use crate</span>::{serde_json, Endpoints, Public, RpcServer, StopHandle, Value, API};
-<span class="kw">use </span>jsonrpc_core::BoxFuture;
-<span class="kw">use </span>massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
+<span class="kw">use crate</span>::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
+<span class="kw">use </span>async_trait::async_trait;
+<span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
+<span class="kw">use </span>massa_consensus_exports::block_status::DiscardReason;
+<span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-<span class="kw">use </span>massa_graph::DiscardReason;
 <span class="kw">use </span>massa_models::api::{
     BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
@@ -1007,11 +1019,10 @@
 <span class="kw">impl </span>API&lt;Public&gt; {
     <span class="doccomment">/// generate a new public API
     </span><span class="kw">pub fn </span>new(
-        consensus_command_sender: ConsensusCommandSender,
+        consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
         execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
         api_settings: APIConfig,
         selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        consensus_settings: ConsensusConfig,
         pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
         protocol_command_sender: ProtocolCommandSender,
         network_settings: NetworkConfig,
@@ -1022,8 +1033,7 @@
         storage: Storage,
     ) -&gt; <span class="self">Self </span>{
         API(Public {
-            consensus_command_sender,
-            consensus_config: consensus_settings,
+            consensus_controller,
             api_settings,
             pool_command_sender,
             network_settings,
@@ -1039,40 +1049,44 @@
     }
 }
 
-<span class="kw">impl </span>RpcServer <span class="kw">for </span>API&lt;Public&gt; {
-    <span class="kw">fn </span>serve(<span class="self">self</span>, url: <span class="kw-2">&amp;</span>SocketAddr) -&gt; StopHandle {
-        <span class="kw">crate</span>::serve(<span class="self">self</span>, url)
-    }
+<span class="attr">#[async_trait]
+</span><span class="kw">impl </span>RpcServer <span class="kw">for </span>API&lt;Public&gt; {
+    <span class="kw">async fn </span>serve(
+        <span class="self">self</span>,
+        url: <span class="kw-2">&amp;</span>SocketAddr,
+        api_config: <span class="kw-2">&amp;</span>APIConfig,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, JsonRpseeError&gt; {
+        <span class="kw">crate</span>::serve(<span class="self">self</span>, url, api_config).<span class="kw">await
+    </span>}
 }
 
 <span class="attr">#[doc(hidden)]
-</span><span class="kw">impl </span>Endpoints <span class="kw">for </span>API&lt;Public&gt; {
-    <span class="kw">fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+#[async_trait]
+</span><span class="kw">impl </span>MassaRpcServer <span class="kw">for </span>API&lt;Public&gt; {
+    <span class="kw">async fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>node_sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;u8&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;PubkeySig, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>node_sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;u8&gt;) -&gt; RpcResult&lt;PubkeySig&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;PubkeySig&gt;()
     }
 
-    <span class="kw">fn </span>add_staking_secret_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;String&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>add_staking_secret_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;String&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>execute_read_only_bytecode(
+    <span class="kw">async fn </span>execute_read_only_bytecode(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         reqs: Vec&lt;ReadOnlyBytecodeExecution&gt;,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;ExecuteReadOnlyResponse&gt;, ApiError&gt;&gt; {
+    ) -&gt; RpcResult&lt;Vec&lt;ExecuteReadOnlyResponse&gt;&gt; {
         <span class="kw">if </span>reqs.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
-            <span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()));
-            <span class="kw">return </span>Box::pin(closure());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;ExecuteReadOnlyResponse&gt; = Vec::with_capacity(reqs.len());
         <span class="kw">for </span>ReadOnlyBytecodeExecution {
             max_gas,
             address,
-            simulated_gas_price,
             bytecode,
             operation_datastore,
         } <span class="kw">in </span>reqs
@@ -1092,9 +1106,11 @@
                     <span class="kw">match </span>deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>v) {
                         <span class="prelude-val">Ok</span>((<span class="kw">_</span>, deserialized)) =&gt; <span class="prelude-val">Some</span>(deserialized),
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="kw">let </span>err_str = <span class="macro">format!</span>(<span class="string">&quot;Operation datastore error: {}&quot;</span>, e);
-                            <span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_str));
-                            <span class="kw">return </span>Box::pin(closure());
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(<span class="macro">format!</span>(
+                                <span class="string">&quot;Operation datastore error: {}&quot;</span>,
+                                e
+                            ))
+                            .into())
                         }
                     }
                 }
@@ -1109,7 +1125,6 @@
             // translate request
             </span><span class="kw">let </span>req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::BytecodeExecution(bytecode),
                 call_stack: <span class="macro">vec!</span>[ExecutionStackElement {
                     address,
@@ -1140,23 +1155,20 @@
         }
 
         <span class="comment">// return result
-        </span><span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Ok</span>(res);
-        Box::pin(closure())
+        </span><span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">fn </span>execute_read_only_call(
+    <span class="kw">async fn </span>execute_read_only_call(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         reqs: Vec&lt;ReadOnlyCall&gt;,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;ExecuteReadOnlyResponse&gt;, ApiError&gt;&gt; {
+    ) -&gt; RpcResult&lt;Vec&lt;ExecuteReadOnlyResponse&gt;&gt; {
         <span class="kw">if </span>reqs.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
-            <span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()));
-            <span class="kw">return </span>Box::pin(closure());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;ExecuteReadOnlyResponse&gt; = Vec::with_capacity(reqs.len());
         <span class="kw">for </span>ReadOnlyCall {
             max_gas,
-            simulated_gas_price,
             target_address,
             target_function,
             parameter,
@@ -1176,7 +1188,6 @@
             // translate request
             </span><span class="kw">let </span>req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::FunctionCall {
                     target_func: target_function,
                     target_addr: target_address,
@@ -1219,134 +1230,162 @@
         }
 
         <span class="comment">// return result
-        </span><span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Ok</span>(res);
-        Box::pin(closure())
+        </span><span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">fn </span>remove_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;Address&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>remove_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;Address&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;PreHashSet&lt;Address&gt;, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;PreHashSet&lt;Address&gt;&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;PreHashSet&lt;Address&gt;&gt;()
     }
 
-    <span class="kw">fn </span>node_ban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>node_ban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>node_ban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;NodeId&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>node_ban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;NodeId&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;NodeStatus, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
-        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
+        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         <span class="kw">let </span>network_config = <span class="self">self</span>.<span class="number">0</span>.network_settings.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.<span class="number">0</span>.version;
-        <span class="kw">let </span>consensus_settings = <span class="self">self</span>.<span class="number">0</span>.consensus_config.clone();
+        <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
         <span class="kw">let </span>compensation_millis = <span class="self">self</span>.<span class="number">0</span>.compensation_millis;
         <span class="kw">let </span>pool_command_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
         <span class="kw">let </span>config = CompactConfig::default();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">let </span>now = MassaTime::now(compensation_millis)<span class="question-mark">?</span>;
-            <span class="kw">let </span>last_slot = get_latest_block_slot_at_timestamp(
-                consensus_settings.thread_count,
-                consensus_settings.t0,
-                consensus_settings.genesis_timestamp,
-                now,
-            )<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>execution_stats = execution_controller.get_stats();
-
-            <span class="kw">let </span>(consensus_stats, network_stats, peers) = <span class="macro">tokio::join!</span>(
-                consensus_command_sender.get_stats(),
-                network_command_sender.get_network_stats(),
-                network_command_sender.get_peers()
-            );
-
-            <span class="kw">let </span>pool_stats = (
-                pool_command_sender.get_operation_count(),
-                pool_command_sender.get_endorsement_count(),
-            );
-
-            <span class="prelude-val">Ok</span>(NodeStatus {
-                node_id,
-                node_ip: network_config.routable_ip,
-                version,
-                current_time: now,
-                connected_nodes: peers<span class="question-mark">?
-                    </span>.peers
-                    .iter()
-                    .flat_map(|(ip, peer)| {
-                        peer.active_nodes
-                            .iter()
-                            .map(<span class="kw">move </span>|(id, is_outgoing)| (<span class="kw-2">*</span>id, (<span class="kw-2">*</span>ip, <span class="kw-2">*</span>is_outgoing)))
-                    })
-                    .collect(),
-                last_slot,
-                next_slot: last_slot
-                    .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
-                    .get_next_slot(consensus_settings.thread_count)<span class="question-mark">?</span>,
-                execution_stats,
-                consensus_stats: consensus_stats<span class="question-mark">?</span>,
-                network_stats: network_stats<span class="question-mark">?</span>,
-                pool_stats,
-                config,
-                current_cycle: last_slot
-                    .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
-                    .get_cycle(consensus_settings.periods_per_cycle),
-            })
+        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now(compensation_millis) {
+            <span class="prelude-val">Ok</span>(now) =&gt; now,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
         };
-        Box::pin(closure())
+
+        <span class="kw">let </span>last_slot_result = get_latest_block_slot_at_timestamp(
+            api_settings.thread_count,
+            api_settings.t0,
+            api_settings.genesis_timestamp,
+            now,
+        );
+        <span class="kw">let </span>last_slot = <span class="kw">match </span>last_slot_result {
+            <span class="prelude-val">Ok</span>(last_slot) =&gt; last_slot,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="kw">let </span>execution_stats = execution_controller.get_stats();
+        <span class="kw">let </span>consensus_stats_result = consensus_controller.get_stats();
+        <span class="kw">let </span>consensus_stats = <span class="kw">match </span>consensus_stats_result {
+            <span class="prelude-val">Ok</span>(consensus_stats) =&gt; consensus_stats,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="kw">let </span>(network_stats_result, peers_result) = <span class="macro">tokio::join!</span>(
+            network_command_sender.get_network_stats(),
+            network_command_sender.get_peers()
+        );
+
+        <span class="kw">let </span>network_stats = <span class="kw">match </span>network_stats_result {
+            <span class="prelude-val">Ok</span>(network_stats) =&gt; network_stats,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="kw">let </span>peers = <span class="kw">match </span>peers_result {
+            <span class="prelude-val">Ok</span>(peers) =&gt; peers,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="kw">let </span>pool_stats = (
+            pool_command_sender.get_operation_count(),
+            pool_command_sender.get_endorsement_count(),
+        );
+
+        <span class="kw">let </span>next_slot_result = last_slot
+            .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
+            .get_next_slot(api_settings.thread_count);
+
+        <span class="kw">let </span>next_slot = <span class="kw">match </span>next_slot_result {
+            <span class="prelude-val">Ok</span>(next_slot) =&gt; next_slot,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="prelude-val">Ok</span>(NodeStatus {
+            node_id,
+            node_ip: network_config.routable_ip,
+            version,
+            current_time: now,
+            connected_nodes: peers
+                .peers
+                .iter()
+                .flat_map(|(ip, peer)| {
+                    peer.active_nodes
+                        .iter()
+                        .map(<span class="kw">move </span>|(id, is_outgoing)| (<span class="kw-2">*</span>id, (<span class="kw-2">*</span>ip, <span class="kw-2">*</span>is_outgoing)))
+                })
+                .collect(),
+            last_slot,
+            next_slot,
+            execution_stats,
+            consensus_stats,
+            network_stats,
+            pool_stats,
+            config,
+            current_cycle: last_slot
+                .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
+                .get_cycle(api_settings.periods_per_cycle),
+        })
     }
 
-    <span class="kw">fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;Clique&gt;, ApiError&gt;&gt; {
-        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Ok</span>(consensus_command_sender.get_cliques().<span class="kw">await</span><span class="question-mark">?</span>);
-        Box::pin(closure())
+    <span class="kw">async fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
+        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
+        <span class="prelude-val">Ok</span>(consensus_controller.get_cliques())
     }
 
-    <span class="kw">fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;(Address, u64)&gt;, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;(Address, u64)&gt;&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
-        <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.consensus_config.clone();
+        <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
         <span class="kw">let </span>compensation_millis = <span class="self">self</span>.<span class="number">0</span>.compensation_millis;
 
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">let </span>curr_cycle = get_latest_block_slot_at_timestamp(
-                cfg.thread_count,
-                cfg.t0,
-                cfg.genesis_timestamp,
-                MassaTime::now(compensation_millis)<span class="question-mark">?</span>,
-            )<span class="question-mark">?
-            </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
-            .get_cycle(cfg.periods_per_cycle);
-            <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = execution_controller
-                .get_cycle_active_rolls(curr_cycle)
-                .into_iter()
-                .collect::&lt;Vec&lt;(Address, u64)&gt;&gt;();
-            staker_vec.sort_by(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_a), <span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_b)| {
-                roll_counts_b.cmp(<span class="kw-2">&amp;</span>roll_counts_a)
-            });
-            <span class="prelude-val">Ok</span>(staker_vec)
+        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now(compensation_millis) {
+            <span class="prelude-val">Ok</span>(now) =&gt; now,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
         };
-        Box::pin(closure())
+
+        <span class="kw">let </span>latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            now,
+        );
+
+        <span class="kw">let </span>curr_cycle = <span class="kw">match </span>latest_block_slot_at_timestamp_result {
+            <span class="prelude-val">Ok</span>(curr_cycle) =&gt; curr_cycle
+                .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
+                .get_cycle(cfg.periods_per_cycle),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = execution_controller
+            .get_cycle_active_rolls(curr_cycle)
+            .into_iter()
+            .collect::&lt;Vec&lt;(Address, u64)&gt;&gt;();
+        staker_vec
+            .sort_by(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_a), <span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_b)| roll_counts_b.cmp(<span class="kw-2">&amp;</span>roll_counts_a));
+        <span class="prelude-val">Ok</span>(staker_vec)
     }
 
-    <span class="kw">fn </span>get_operations(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        ops: Vec&lt;OperationId&gt;,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;OperationInfo&gt;, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>get_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, ops: Vec&lt;OperationId&gt;) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
         <span class="comment">// get the operations and the list of blocks that contain them from storage
         </span><span class="kw">let </span>storage_info: Vec&lt;(WrappedOperation, PreHashSet&lt;BlockId&gt;)&gt; = {
             <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
@@ -1373,64 +1412,58 @@
         </span><span class="kw">let </span>in_pool = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.contains_operations(<span class="kw-2">&amp;</span>ops);
 
         <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()));
-            }
+        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
+        <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+        }
 
-            <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the op
-            </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
-                <span class="kw">let </span>involved_blocks: Vec&lt;BlockId&gt; = storage_info
-                    .iter()
-                    .flat_map(|(_op, bs)| bs.iter())
-                    .unique()
-                    .cloned()
-                    .collect();
-                <span class="kw">let </span>involved_block_statuses = consensus_command_sender
-                    .get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
-                    .into_iter()
-                    .zip(involved_block_statuses.into_iter())
-                    .collect();
-                storage_info
-                    .iter()
-                    .map(|(_op, bs)| {
-                        bs.iter()
-                            .any(|b| block_statuses.get(b) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>BlockGraphStatus::Final))
-                    })
-                    .collect()
-            };
+        <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the op
+        </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
+            <span class="kw">let </span>involved_blocks: Vec&lt;BlockId&gt; = storage_info
+                .iter()
+                .flat_map(|(_op, bs)| bs.iter())
+                .unique()
+                .cloned()
+                .collect();
 
-            <span class="comment">// gather all values into a vector of OperationInfo instances
-            </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;OperationInfo&gt; = Vec::with_capacity(ops.len());
-            <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
-                ops.into_iter(),
-                storage_info.into_iter(),
-                in_pool.into_iter(),
-                is_final.into_iter()
-            );
-            <span class="kw">for </span>(id, (operation, in_blocks), in_pool, is_final) <span class="kw">in </span>zipped_iterator {
-                res.push(OperationInfo {
-                    id,
-                    operation,
-                    in_pool,
-                    is_final,
-                    in_blocks: in_blocks.into_iter().collect(),
-                });
-            }
+            <span class="kw">let </span>involved_block_statuses = consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
 
-            <span class="comment">// return values in the right order
-            </span><span class="prelude-val">Ok</span>(res)
+            <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
+                .into_iter()
+                .zip(involved_block_statuses.into_iter())
+                .collect();
+            storage_info
+                .iter()
+                .map(|(_op, bs)| {
+                    bs.iter()
+                        .any(|b| block_statuses.get(b) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>BlockGraphStatus::Final))
+                })
+                .collect()
         };
-        Box::pin(closure())
+
+        <span class="comment">// gather all values into a vector of OperationInfo instances
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;OperationInfo&gt; = Vec::with_capacity(ops.len());
+        <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
+            ops.into_iter(),
+            storage_info.into_iter(),
+            in_pool.into_iter(),
+            is_final.into_iter()
+        );
+        <span class="kw">for </span>(id, (operation, in_blocks), in_pool, is_final) <span class="kw">in </span>zipped_iterator {
+            res.push(OperationInfo {
+                id,
+                operation,
+                in_pool,
+                is_final,
+                in_blocks: in_blocks.into_iter().collect(),
+            });
+        }
+
+        <span class="comment">// return values in the right order
+        </span><span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">fn </span>get_endorsements(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        eds: Vec&lt;EndorsementId&gt;,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;EndorsementInfo&gt;, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>get_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, eds: Vec&lt;EndorsementId&gt;) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
         <span class="comment">// get the endorsements and the list of blocks that contain them from storage
         </span><span class="kw">let </span>storage_info: Vec&lt;(WrappedEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = {
             <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
@@ -1456,206 +1489,192 @@
         <span class="comment">// ask pool whether it carries the operations
         </span><span class="kw">let </span>in_pool = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.contains_endorsements(<span class="kw-2">&amp;</span>eds);
 
-        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
+        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">if </span>eds.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()));
-            }
 
-            <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
-            </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
-                <span class="kw">let </span>involved_blocks: Vec&lt;BlockId&gt; = storage_info
-                    .iter()
-                    .flat_map(|(_ed, bs)| bs.iter())
-                    .unique()
-                    .cloned()
-                    .collect();
-                <span class="kw">let </span>involved_block_statuses = consensus_command_sender
-                    .get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
-                    .into_iter()
-                    .zip(involved_block_statuses.into_iter())
-                    .collect();
-                storage_info
-                    .iter()
-                    .map(|(_ed, bs)| {
-                        bs.iter()
-                            .any(|b| block_statuses.get(b) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>BlockGraphStatus::Final))
-                    })
-                    .collect()
-            };
+        <span class="kw">if </span>eds.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+        }
 
-            <span class="comment">// gather all values into a vector of EndorsementInfo instances
-            </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;EndorsementInfo&gt; = Vec::with_capacity(eds.len());
-            <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
-                eds.into_iter(),
-                storage_info.into_iter(),
-                in_pool.into_iter(),
-                is_final.into_iter()
-            );
-            <span class="kw">for </span>(id, (endorsement, in_blocks), in_pool, is_final) <span class="kw">in </span>zipped_iterator {
-                res.push(EndorsementInfo {
-                    id,
-                    endorsement,
-                    in_pool,
-                    is_final,
-                    in_blocks: in_blocks.into_iter().collect(),
-                });
-            }
+        <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
+        </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
+            <span class="kw">let </span>involved_blocks: Vec&lt;BlockId&gt; = storage_info
+                .iter()
+                .flat_map(|(_ed, bs)| bs.iter())
+                .unique()
+                .cloned()
+                .collect();
 
-            <span class="comment">// return values in the right order
-            </span><span class="prelude-val">Ok</span>(res)
+            <span class="kw">let </span>involved_block_statuses = consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
+
+            <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
+                .into_iter()
+                .zip(involved_block_statuses.into_iter())
+                .collect();
+            storage_info
+                .iter()
+                .map(|(_ed, bs)| {
+                    bs.iter()
+                        .any(|b| block_statuses.get(b) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>BlockGraphStatus::Final))
+                })
+                .collect()
         };
-        Box::pin(closure())
+
+        <span class="comment">// gather all values into a vector of EndorsementInfo instances
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;EndorsementInfo&gt; = Vec::with_capacity(eds.len());
+        <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
+            eds.into_iter(),
+            storage_info.into_iter(),
+            in_pool.into_iter(),
+            is_final.into_iter()
+        );
+        <span class="kw">for </span>(id, (endorsement, in_blocks), in_pool, is_final) <span class="kw">in </span>zipped_iterator {
+            res.push(EndorsementInfo {
+                id,
+                endorsement,
+                in_pool,
+                is_final,
+                in_blocks: in_blocks.into_iter().collect(),
+            });
+        }
+
+        <span class="comment">// return values in the right order
+        </span><span class="prelude-val">Ok</span>(res)
     }
 
     <span class="doccomment">/// gets a block. Returns None if not found
     /// only active blocks are returned
-    </span><span class="kw">fn </span>get_block(<span class="kw-2">&amp;</span><span class="self">self</span>, id: BlockId) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;BlockInfo, ApiError&gt;&gt; {
-        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
+    </span><span class="kw">async fn </span>get_block(<span class="kw-2">&amp;</span><span class="self">self</span>, id: BlockId) -&gt; RpcResult&lt;BlockInfo&gt; {
+        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>storage = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">let </span>block = <span class="kw">match </span>storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
-                <span class="prelude-val">Some</span>(b) =&gt; b.content,
-                <span class="prelude-val">None </span>=&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(BlockInfo { id, content: <span class="prelude-val">None </span>});
-                }
-            };
-
-            <span class="kw">let </span>graph_status = consensus_command_sender
-                .get_block_statuses(<span class="kw-2">&amp;</span>[id])
-                .<span class="kw">await</span><span class="question-mark">?
-                </span>.into_iter()
-                .next()
-                .expect(<span class="string">&quot;expected get_block_statuses to return one element&quot;</span>);
-
-            <span class="kw">let </span>is_final = graph_status == BlockGraphStatus::Final;
-            <span class="kw">let </span>is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-            <span class="kw">let </span>is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-            <span class="kw">let </span>is_discarded = graph_status == BlockGraphStatus::Discarded;
-
-            <span class="prelude-val">Ok</span>(BlockInfo {
-                id,
-                content: <span class="prelude-val">Some</span>(BlockInfoContent {
-                    is_final,
-                    is_in_blockclique,
-                    is_candidate,
-                    is_discarded,
-                    block,
-                }),
-            })
+        <span class="kw">let </span>block = <span class="kw">match </span>storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
+            <span class="prelude-val">Some</span>(b) =&gt; b.content,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(BlockInfo { id, content: <span class="prelude-val">None </span>});
+            }
         };
-        Box::pin(closure())
+
+        <span class="kw">let </span>graph_status = consensus_controller
+            .get_block_statuses(<span class="kw-2">&amp;</span>[id])
+            .into_iter()
+            .next()
+            .expect(<span class="string">&quot;expected get_block_statuses to return one element&quot;</span>);
+
+        <span class="kw">let </span>is_final = graph_status == BlockGraphStatus::Final;
+        <span class="kw">let </span>is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+        <span class="kw">let </span>is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+        <span class="kw">let </span>is_discarded = graph_status == BlockGraphStatus::Discarded;
+
+        <span class="prelude-val">Ok</span>(BlockInfo {
+            id,
+            content: <span class="prelude-val">Some</span>(BlockInfoContent {
+                is_final,
+                is_in_blockclique,
+                is_candidate,
+                is_discarded,
+                block,
+            }),
+        })
     }
 
-    <span class="kw">fn </span>get_blockclique_block_by_slot(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        slot: Slot,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;, ApiError&gt;&gt; {
-        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
+    <span class="kw">async fn </span>get_blockclique_block_by_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; RpcResult&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;&gt; {
+        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>storage = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">let </span>block_id_result = consensus_command_sender
-                .get_blockclique_block_at_slot(slot)
-                .<span class="kw">await</span>;
-            <span class="kw">let </span>block_id = <span class="kw">match </span>block_id_result<span class="question-mark">? </span>{
-                <span class="prelude-val">Some</span>(id) =&gt; id,
-                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
-            };
-            <span class="kw">let </span>res = storage
-                .read_blocks()
-                .get(<span class="kw-2">&amp;</span>block_id)
-                .map(|b| b.content.clone());
-            <span class="prelude-val">Ok</span>(res)
+
+        <span class="kw">let </span>block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
+
+        <span class="kw">let </span>block_id = <span class="kw">match </span>block_id_option {
+            <span class="prelude-val">Some</span>(id) =&gt; id,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         };
-        Box::pin(closure())
+
+        <span class="kw">let </span>res = storage
+            .read_blocks()
+            .get(<span class="kw-2">&amp;</span>block_id)
+            .map(|b| b.content.clone());
+        <span class="prelude-val">Ok</span>(res)
     }
 
     <span class="doccomment">/// gets an interval of the block graph from consensus, with time filtering
     /// time filtering is done consensus-side to prevent communication overhead
-    </span><span class="kw">fn </span>get_graph_interval(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        time: TimeInterval,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;BlockSummary&gt;, ApiError&gt;&gt; {
-        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.<span class="number">0</span>.consensus_command_sender.clone();
-        <span class="kw">let </span>consensus_settings = <span class="self">self</span>.<span class="number">0</span>.consensus_config.clone();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="comment">// filter blocks from graph_export
-            </span><span class="kw">let </span>(start_slot, end_slot) = time_range_to_slot_range(
-                consensus_settings.thread_count,
-                consensus_settings.t0,
-                consensus_settings.genesis_timestamp,
-                time.start,
-                time.end,
-            )<span class="question-mark">?</span>;
-            <span class="kw">let </span>graph = consensus_command_sender
-                .get_block_graph_status(start_slot, end_slot)
-                .<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(graph.active_blocks.len());
-            <span class="kw">let </span>blockclique = graph
-                .max_cliques
-                .iter()
-                .find(|clique| clique.is_blockclique)
-                .ok_or_else(|| ApiError::InconsistencyError(<span class="string">&quot;missing blockclique&quot;</span>.to_string()))<span class="question-mark">?</span>;
-            <span class="kw">for </span>(id, exported_block) <span class="kw">in </span>graph.active_blocks.into_iter() {
+    </span><span class="kw">async fn </span>get_graph_interval(<span class="kw-2">&amp;</span><span class="self">self</span>, time: TimeInterval) -&gt; RpcResult&lt;Vec&lt;BlockSummary&gt;&gt; {
+        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
+        <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
+
+        <span class="comment">// filter blocks from graph_export
+        </span><span class="kw">let </span>time_range_to_slot_range_result = time_range_to_slot_range(
+            api_settings.thread_count,
+            api_settings.t0,
+            api_settings.genesis_timestamp,
+            time.start,
+            time.end,
+        );
+
+        <span class="kw">let </span>(start_slot, end_slot) = <span class="kw">match </span>time_range_to_slot_range_result {
+            <span class="prelude-val">Ok</span>(time_range_to_slot_range) =&gt; time_range_to_slot_range,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="kw">let </span>graph = <span class="kw">match </span>consensus_controller.get_block_graph_status(start_slot, end_slot) {
+            <span class="prelude-val">Ok</span>(graph) =&gt; graph,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(graph.active_blocks.len());
+        <span class="kw">let </span>blockclique = graph
+            .max_cliques
+            .iter()
+            .find(|clique| clique.is_blockclique)
+            .ok_or_else(|| ApiError::InconsistencyError(<span class="string">&quot;missing blockclique&quot;</span>.to_string()))<span class="question-mark">?</span>;
+        <span class="kw">for </span>(id, exported_block) <span class="kw">in </span>graph.active_blocks.into_iter() {
+            res.push(BlockSummary {
+                id,
+                is_final: exported_block.is_final,
+                is_stale: <span class="bool-val">false</span>,
+                is_in_blockclique: blockclique.block_ids.contains(<span class="kw-2">&amp;</span>id),
+                slot: exported_block.header.content.slot,
+                creator: exported_block.header.creator_address,
+                parents: exported_block.header.content.parents,
+            });
+        }
+        <span class="kw">for </span>(id, (reason, (slot, creator, parents))) <span class="kw">in </span>graph.discarded_blocks.into_iter() {
+            <span class="kw">if </span>reason == DiscardReason::Stale {
                 res.push(BlockSummary {
                     id,
-                    is_final: exported_block.is_final,
-                    is_stale: <span class="bool-val">false</span>,
-                    is_in_blockclique: blockclique.block_ids.contains(<span class="kw-2">&amp;</span>id),
-                    slot: exported_block.header.content.slot,
-                    creator: exported_block.header.creator_address,
-                    parents: exported_block.header.content.parents,
+                    is_final: <span class="bool-val">false</span>,
+                    is_stale: <span class="bool-val">true</span>,
+                    is_in_blockclique: <span class="bool-val">false</span>,
+                    slot,
+                    creator,
+                    parents,
                 });
             }
-            <span class="kw">for </span>(id, (reason, (slot, creator, parents))) <span class="kw">in </span>graph.discarded_blocks.into_iter() {
-                <span class="kw">if </span>reason == DiscardReason::Stale {
-                    res.push(BlockSummary {
-                        id,
-                        is_final: <span class="bool-val">false</span>,
-                        is_stale: <span class="bool-val">true</span>,
-                        is_in_blockclique: <span class="bool-val">false</span>,
-                        slot,
-                        creator,
-                        parents,
-                    });
-                }
-            }
-            <span class="prelude-val">Ok</span>(res)
-        };
-        Box::pin(closure())
+        }
+        <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">fn </span>get_datastore_entries(
+    <span class="kw">async fn </span>get_datastore_entries(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         entries: Vec&lt;DatastoreEntryInput&gt;,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;DatastoreEntryOutput&gt;, ApiError&gt;&gt; {
+    ) -&gt; RpcResult&lt;Vec&lt;DatastoreEntryOutput&gt;&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="prelude-val">Ok</span>(execution_controller
-                .get_final_and_active_data_entry(
-                    entries
-                        .into_iter()
-                        .map(|input| (input.address, input.key))
-                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                )
-                .into_iter()
-                .map(|output| DatastoreEntryOutput {
-                    final_value: output.<span class="number">0</span>,
-                    candidate_value: output.<span class="number">1</span>,
-                })
-                .collect())
-        };
-        Box::pin(closure())
+        <span class="prelude-val">Ok</span>(execution_controller
+            .get_final_and_active_data_entry(
+                entries
+                    .into_iter()
+                    .map(|input| (input.address, input.key))
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+            )
+            .into_iter()
+            .map(|output| DatastoreEntryOutput {
+                final_value: output.<span class="number">0</span>,
+                candidate_value: output.<span class="number">1</span>,
+            })
+            .collect())
     }
 
-    <span class="kw">fn </span>get_addresses(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        addresses: Vec&lt;Address&gt;,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;AddressInfo&gt;, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;Vec&lt;AddressInfo&gt;&gt; {
         <span class="comment">// get info from storage about which blocks the addresses have created
         </span><span class="kw">let </span>created_blocks: Vec&lt;PreHashSet&lt;BlockId&gt;&gt; = {
             <span class="kw">let </span>lck = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
@@ -1701,9 +1720,9 @@
         <span class="comment">// get future draws from selector
         </span><span class="kw">let </span>selection_draws = {
             <span class="kw">let </span>cur_slot = timeslots::get_current_latest_block_slot(
-                <span class="self">self</span>.<span class="number">0</span>.consensus_config.thread_count,
-                <span class="self">self</span>.<span class="number">0</span>.consensus_config.t0,
-                <span class="self">self</span>.<span class="number">0</span>.consensus_config.genesis_timestamp,
+                <span class="self">self</span>.<span class="number">0</span>.api_settings.thread_count,
+                <span class="self">self</span>.<span class="number">0</span>.api_settings.t0,
+                <span class="self">self</span>.<span class="number">0</span>.api_settings.genesis_timestamp,
                 <span class="self">self</span>.<span class="number">0</span>.compensation_millis,
             )
             .expect(<span class="string">&quot;could not get latest current slot&quot;</span>)
@@ -1747,7 +1766,7 @@
             res.push(AddressInfo {
                 <span class="comment">// general address info
                 </span>address,
-                thread: address.get_thread(<span class="self">self</span>.<span class="number">0</span>.consensus_config.thread_count),
+                thread: address.get_thread(<span class="self">self</span>.<span class="number">0</span>.api_settings.thread_count),
 
                 <span class="comment">// final execution info
                 </span>final_balance: execution_infos.final_balance,
@@ -1786,65 +1805,69 @@
             });
         }
 
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Ok</span>(res);
-        Box::pin(closure())
+        <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">fn </span>send_operations(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        ops: Vec&lt;OperationInput&gt;,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;OperationId&gt;, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>send_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, ops: Vec&lt;OperationInput&gt;) -&gt; RpcResult&lt;Vec&lt;OperationId&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>cmd_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span><span class="kw-2">mut </span>protocol_sender = <span class="self">self</span>.<span class="number">0</span>.protocol_command_sender.clone();
         <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
         <span class="kw">let </span><span class="kw-2">mut </span>to_send = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()));
-            }
-            <span class="kw">let </span>operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
-                api_cfg.max_datastore_value_length,
-                api_cfg.max_function_name_length,
-                api_cfg.max_parameter_size,
-                api_cfg.max_op_datastore_entry_count,
-                api_cfg.max_op_datastore_key_length,
-                api_cfg.max_op_datastore_value_length,
-            ));
-            <span class="kw">let </span>verified_ops = ops
-                .into_iter()
-                .map(|op_input| {
-                    <span class="kw">let </span><span class="kw-2">mut </span>op_serialized = Vec::new();
-                    op_serialized.extend(op_input.signature.to_bytes());
-                    op_serialized.extend(op_input.creator_public_key.to_bytes());
-                    op_serialized.extend(op_input.serialized_content);
-                    <span class="kw">let </span>(rest, op): (<span class="kw-2">&amp;</span>[u8], WrappedOperation) = operation_deserializer
-                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized)
-                        .map_err(|err| {
-                            ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
-                        })<span class="question-mark">?</span>;
-                    <span class="kw">if </span>rest.is_empty() {
-                        <span class="prelude-val">Ok</span>(op)
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(ApiError::ModelsError(ModelsError::DeserializeError(
-                            <span class="string">&quot;There is data left after operation deserialization&quot;</span>.to_owned(),
-                        )))
-                    }
-                })
-                .map(|op| <span class="kw">match </span>op {
-                    <span class="prelude-val">Ok</span>(operation) =&gt; {
-                        operation.verify_signature()<span class="question-mark">?</span>;
-                        <span class="prelude-val">Ok</span>(operation)
-                    }
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
-                })
-                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;WrappedOperation&gt;, ApiError&gt;&gt;()<span class="question-mark">?</span>;
-            to_send.store_operations(verified_ops.clone());
-            <span class="kw">let </span>ids: Vec&lt;OperationId&gt; = verified_ops.iter().map(|op| op.id).collect();
-            cmd_sender.add_operations(to_send.clone());
-            protocol_sender.propagate_operations(to_send).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(ids)
-        };
-        Box::pin(closure())
+
+        <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+        }
+        <span class="kw">let </span>operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
+            api_cfg.max_datastore_value_length,
+            api_cfg.max_function_name_length,
+            api_cfg.max_parameter_size,
+            api_cfg.max_op_datastore_entry_count,
+            api_cfg.max_op_datastore_key_length,
+            api_cfg.max_op_datastore_value_length,
+        ));
+        <span class="kw">let </span>verified_ops = ops
+            .into_iter()
+            .map(|op_input| {
+                <span class="kw">let </span><span class="kw-2">mut </span>op_serialized = Vec::new();
+                op_serialized.extend(op_input.signature.to_bytes());
+                op_serialized.extend(op_input.creator_public_key.to_bytes());
+                op_serialized.extend(op_input.serialized_content);
+                <span class="kw">let </span>(rest, op): (<span class="kw-2">&amp;</span>[u8], WrappedOperation) = operation_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized)
+                    .map_err(|err| {
+                        ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+                    })<span class="question-mark">?</span>;
+                <span class="kw">if </span>rest.is_empty() {
+                    <span class="prelude-val">Ok</span>(op)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(ApiError::ModelsError(ModelsError::DeserializeError(
+                        <span class="string">&quot;There is data left after operation deserialization&quot;</span>.to_owned(),
+                    ))
+                    .into())
+                }
+            })
+            .map(|op| <span class="kw">match </span>op {
+                <span class="prelude-val">Ok</span>(operation) =&gt; {
+                    <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature() {
+                        <span class="prelude-val">Ok</span>(()) =&gt; (),
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+                    };
+                    <span class="prelude-val">Ok</span>(operation)
+                }
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
+            })
+            .collect::&lt;RpcResult&lt;Vec&lt;WrappedOperation&gt;&gt;&gt;()<span class="question-mark">?</span>;
+        to_send.store_operations(verified_ops.clone());
+        <span class="kw">let </span>ids: Vec&lt;OperationId&gt; = verified_ops.iter().map(|op| op.id).collect();
+        cmd_sender.add_operations(to_send.clone());
+
+        tokio::task::spawn_blocking(<span class="kw">move </span>|| protocol_sender.propagate_operations(to_send))
+            .<span class="kw">await
+            </span>.map_err(|err| ApiError::InternalServerError(err.to_string()))<span class="question-mark">?
+            </span>.map_err(|err| {
+                ApiError::InternalServerError(<span class="macro">format!</span>(<span class="string">&quot;Failed to propagate operations: {}&quot;</span>, err))
+            })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(ids)
     }
 
     <span class="doccomment">/// Get events optionally filtered by:
@@ -1853,50 +1876,49 @@
     /// * emitter address
     /// * original caller address
     /// * operation id
-    </span><span class="kw">fn </span>get_filtered_sc_output_event(
+    </span><span class="kw">async fn </span>get_filtered_sc_output_event(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         filter: EventFilter,
-    ) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;SCOutputEvent&gt;, ApiError&gt;&gt; {
+    ) -&gt; RpcResult&lt;Vec&lt;SCOutputEvent&gt;&gt; {
         <span class="kw">let </span>events = <span class="self">self
             </span>.<span class="number">0
             </span>.execution_controller
             .get_filtered_sc_output_event(filter);
 
         <span class="comment">// TODO: get rid of the async part
-        </span><span class="kw">let </span>closure = <span class="kw">async move </span>|| <span class="prelude-val">Ok</span>(events);
-        Box::pin(closure())
+        </span><span class="prelude-val">Ok</span>(events)
     }
 
-    <span class="kw">fn </span>node_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>node_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>node_remove_from_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;(), ApiError&gt;&gt; {
+    <span class="kw">async fn </span>node_remove_from_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">fn </span>get_openrpc_spec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BoxFuture&lt;<span class="prelude-ty">Result</span>&lt;Value, ApiError&gt;&gt; {
+    <span class="kw">async fn </span>get_openrpc_spec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Value&gt; {
         <span class="kw">let </span>openrpc_spec_path = <span class="self">self</span>.<span class="number">0</span>.api_settings.openrpc_spec_path.clone();
-        <span class="kw">let </span>closure = <span class="kw">async move </span>|| {
-            std::fs::read_to_string(openrpc_spec_path)
-                .map_err(|e| {
+        <span class="kw">let </span>openrpc: RpcResult&lt;Value&gt; = std::fs::read_to_string(openrpc_spec_path)
+            .map_err(|e| {
+                ApiError::InternalServerError(<span class="macro">format!</span>(
+                    <span class="string">&quot;failed to read OpenRPC specification: {}&quot;</span>,
+                    e
+                ))
+                .into()
+            })
+            .and_then(|openrpc_str| {
+                serde_json::from_str(<span class="kw-2">&amp;</span>openrpc_str).map_err(|e| {
                     ApiError::InternalServerError(<span class="macro">format!</span>(
-                        <span class="string">&quot;failed to read OpenRPC specification: {}&quot;</span>,
+                        <span class="string">&quot;failed to parse OpenRPC specification: {}&quot;</span>,
                         e
                     ))
+                    .into()
                 })
-                .and_then(|openrpc_str| {
-                    serde_json::from_str(<span class="kw-2">&amp;</span>openrpc_str).map_err(|e| {
-                        ApiError::InternalServerError(<span class="macro">format!</span>(
-                            <span class="string">&quot;failed to parse OpenRPC specification: {}&quot;</span>,
-                            e
-                        ))
-                    })
-                })
-        };
+            });
 
-        Box::pin(closure())
+        openrpc
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (83356b78c 2022-11-17)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
