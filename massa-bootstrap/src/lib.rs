@@ -14,8 +14,8 @@
 #![feature(let_chains)]
 
 pub use establisher::types::Establisher;
+use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
-use massa_graph::BootstrapableGraph;
 use massa_network_exports::BootstrapPeers;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -43,26 +43,26 @@ pub mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
 pub struct GlobalBootstrapState {
+    /// state of the final state
+    pub final_state: Arc<RwLock<FinalState>>,
+
     /// state of the consensus graph
     pub graph: Option<BootstrapableGraph>,
-
-    /// timestamp correction in milliseconds
-    pub compensation_millis: i64,
 
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
 
-    /// state of the final state
-    pub final_state: Arc<RwLock<FinalState>>,
+    /// timestamp correction in milliseconds
+    pub compensation_millis: i64,
 }
 
 impl GlobalBootstrapState {
     fn new(final_state: Arc<RwLock<FinalState>>) -> Self {
         Self {
-            graph: None,
-            compensation_millis: Default::default(),
-            peers: None,
             final_state,
+            graph: None,
+            peers: None,
+            compensation_millis: Default::default(),
         }
     }
 }

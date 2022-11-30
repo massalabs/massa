@@ -5,6 +5,7 @@ use crate::checked_operations::CheckedOperations;
 use crate::sig_verifier::verify_sigs_batch;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
+use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
 use massa_models::slot::Slot;
@@ -20,8 +21,7 @@ use massa_models::{
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError, ProtocolEvent,
-    ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager,
+    ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
 };
 
 use massa_models::wrapped::Id;
@@ -32,7 +32,6 @@ use std::mem;
 use std::pin::Pin;
 use tokio::{
     sync::mpsc,
-    sync::mpsc::error::SendTimeoutError,
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
@@ -51,22 +50,14 @@ pub async fn start_protocol_controller(
     config: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    protocol_command_receiver: mpsc::Receiver<ProtocolCommand>,
+    consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
-) -> Result<
-    (
-        ProtocolCommandSender,
-        ProtocolEventReceiver,
-        ProtocolManager,
-    ),
-    ProtocolError,
-> {
+) -> Result<ProtocolManager, ProtocolError> {
     debug!("starting protocol controller");
 
     // launch worker
-    let (controller_event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(config.event_channel_size);
-    let (command_tx, controller_command_rx) =
-        mpsc::channel::<ProtocolCommand>(config.controller_channel_size);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let pool_controller = pool_controller.clone();
     let join_handle = tokio::spawn(async move {
@@ -75,10 +66,10 @@ pub async fn start_protocol_controller(
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
-                controller_event_tx,
-                controller_command_rx,
+                controller_command_rx: protocol_command_receiver,
                 controller_manager_rx,
             },
+            consensus_controller,
             pool_controller,
             storage,
         )
@@ -96,11 +87,7 @@ pub async fn start_protocol_controller(
         }
     });
     debug!("protocol controller ready");
-    Ok((
-        ProtocolCommandSender(command_tx),
-        ProtocolEventReceiver(event_rx),
-        ProtocolManager::new(join_handle, manager_tx),
-    ))
+    Ok(ProtocolManager::new(join_handle, manager_tx))
 }
 
 /// Info about a block we've seen
@@ -132,12 +119,12 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) config: ProtocolConfig,
+    /// Consensus controller
+    pub(crate) consensus_controller: Box<dyn ConsensusController>,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
     network_event_receiver: NetworkEventReceiver,
-    /// Channel to send protocol events to the controller.
-    controller_event_tx: mpsc::Sender<ProtocolEvent>,
     /// Channel to send protocol pool events to the controller.
     pool_controller: Box<dyn PoolController>,
     /// Channel receiving commands from the controller.
@@ -171,8 +158,6 @@ pub struct ProtocolWorkerChannels {
     pub network_command_sender: NetworkCommandSender,
     /// network event receiver
     pub network_event_receiver: NetworkEventReceiver,
-    /// protocol event sender
-    pub controller_event_tx: mpsc::Sender<ProtocolEvent>,
     /// protocol command receiver
     pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// protocol management command receiver
@@ -193,10 +178,10 @@ impl ProtocolWorker {
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
-            controller_event_tx,
             controller_command_rx,
             controller_manager_rx,
         }: ProtocolWorkerChannels,
+        consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
     ) -> ProtocolWorker {
@@ -204,7 +189,7 @@ impl ProtocolWorker {
             config,
             network_command_sender,
             network_event_receiver,
-            controller_event_tx,
+            consensus_controller,
             pool_controller,
             controller_command_rx,
             controller_manager_rx,
@@ -221,25 +206,6 @@ impl ProtocolWorker {
             operations_to_announce: Vec::with_capacity(
                 config.operation_announcement_buffer_capacity,
             ),
-        }
-    }
-
-    pub(crate) async fn send_protocol_event(&self, event: ProtocolEvent) {
-        let result = self
-            .controller_event_tx
-            .send_timeout(event, self.config.max_send_wait.to_duration())
-            .await;
-        match result {
-            Ok(()) => {}
-            Err(SendTimeoutError::Closed(event)) => {
-                warn!(
-                    "Failed to send ProtocolEvent due to channel closure: {:?}.",
-                    event
-                );
-            }
-            Err(SendTimeoutError::Timeout(event)) => {
-                warn!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
-            }
         }
     }
 
@@ -930,6 +896,14 @@ impl ProtocolWorker {
         let mut received_ids = PreHashSet::with_capacity(length);
         for operation in operations {
             let operation_id = operation.id;
+            if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
+                return Err(ProtocolError::InvalidOperationError(format!(
+                    "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
+                    operation_id,
+                    operation.serialized_size(),
+                    self.config.max_serialized_operations_size_per_block
+                )));
+            };
             received_ids.insert(operation_id);
 
             // Check operation signature only if not already checked.
@@ -981,7 +955,7 @@ impl ProtocolWorker {
                         match expire_period_timestamp {
                             Ok(slot_timestamp) => {
                                 slot_timestamp
-                                    .saturating_add(self.config.max_endorsements_propagation_time)
+                                    .saturating_add(self.config.max_operations_propagation_time)
                                     < now
                             }
                             Err(_) => true,

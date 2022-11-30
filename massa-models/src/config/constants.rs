@@ -45,14 +45,14 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1667260800000.into()  // Tuesday, November 01, 2022 00:00:01 AM UTC
+        1669852801000.into()  // Thursday, December 01, 2022 00:00:01 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1669827600000.into())  // Wednesday, November 30, 2022 5:00:00 PM UTC
+        Some(1672466400000.into())  // Saturday, December 31, 2022 6:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.16.1"
+            "TEST.17.0"
         }
         .parse()
         .unwrap()
@@ -115,6 +115,8 @@ pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
 pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
 /// Maximum executed ops per slot in a bootstrap batch
 pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
+/// Maximum number of consensus blocks in a bootstrap batch
+pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
 /// Maximum size of proof-of-stake rolls
 pub const MAX_ROLLS_COUNT_LENGTH: u64 = 10_000;
 /// Maximum size of proof-of-stake production stats
@@ -134,7 +136,7 @@ pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
 /// Maximum length of a datastore value
 pub const MAX_BYTECODE_LENGTH: u64 = 10_000_000;
 /// Maximum length of an operation datastore value
-pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 1_000;
+pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 500_000;
 /// Maximum ledger changes in a block
 pub const MAX_LEDGER_CHANGES_PER_SLOT: u32 = u32::MAX;
 /// Maximum production events in a block

@@ -68,19 +68,19 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     handler: String::from("test"),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
-    ///     coins: Amount::from_str("1").unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
+    ///     10000000,
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    /// );
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
@@ -175,19 +175,19 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     handler: String::from("test"),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
-    ///     coins: Amount::from_str("1").unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
+    ///     10000000,
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    /// );
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///

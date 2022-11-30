@@ -1,8 +1,7 @@
-//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-/// Mock of the execution module
+mod config;
 mod mock;
-/// Tooling to make test using a consensus
-mod tools;
+
+pub use config::*;
 pub use mock::*;
-pub use tools::*;

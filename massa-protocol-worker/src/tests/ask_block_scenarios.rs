@@ -1,12 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
+use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
 use massa_models::{block::BlockId, slot::Slot};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};
-use massa_protocol_exports::ProtocolEvent;
+use massa_time::MassaTime;
 use serial_test::serial;
 
 #[tokio::test]
@@ -18,9 +19,9 @@ async fn test_full_ask_block_workflow() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -54,15 +55,18 @@ async fn test_full_ask_block_workflow() {
                 .await;
 
             // Send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(block.id, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
+            let header = block.content.header.clone();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(block.id, Some(header))].into_iter().collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A, then B
             assert_hash_asked_to_node(block.id, node_a.id, &mut network_controller).await;
@@ -105,28 +109,49 @@ async fn test_full_ask_block_workflow() {
                 )
                 .await;
 
-            // Protocol sends expected block to consensus.
-            loop {
-                match protocol_event_receiver.wait_event().await.unwrap() {
-                    ProtocolEvent::ReceivedBlock {
-                        slot,
-                        block_id,
-                        storage,
-                    } => {
-                        assert_eq!(slot, block.content.header.content.slot);
-                        assert_eq!(block_id, block.id);
-                        let received_block = storage.read_blocks().get(&block_id).cloned().unwrap();
-                        assert_eq!(received_block.content.operations, block.content.operations);
-                        break;
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                // Protocol sends expected block to consensus.
+                loop {
+                    match protocol_consensus_event_receiver.wait_command(
+                        MassaTime::from_millis(100),
+                        |command| match command {
+                            MockConsensusControllerMessage::RegisterBlock {
+                                slot,
+                                block_id,
+                                block_storage,
+                                created: _,
+                            } => {
+                                assert_eq!(slot, block.content.header.content.slot);
+                                assert_eq!(block_id, block.id);
+                                let received_block =
+                                    block_storage.read_blocks().get(&block_id).cloned().unwrap();
+                                assert_eq!(
+                                    received_block.content.operations,
+                                    block.content.operations
+                                );
+                                Some(())
+                            }
+                            _evt => None,
+                        },
+                    ) {
+                        Some(()) => {
+                            break;
+                        }
+                        None => {
+                            continue;
+                        }
                     }
-                    _evt => continue,
-                };
-            }
+                }
+                return protocol_consensus_event_receiver;
+            })
+            .await
+            .unwrap();
+
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -143,9 +168,9 @@ async fn test_empty_block() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -171,15 +196,18 @@ async fn test_empty_block() {
                 .await;
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
+            let header = block.content.header.clone();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(header))].into_iter().collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A, then B
             assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
@@ -209,27 +237,47 @@ async fn test_empty_block() {
             );
 
             // Protocol sends expected block to consensus.
-            loop {
-                match protocol_event_receiver.wait_event().await.unwrap() {
-                    ProtocolEvent::ReceivedBlock {
-                        slot,
-                        block_id,
-                        storage,
-                    } => {
-                        assert_eq!(slot, block.content.header.content.slot);
-                        assert_eq!(block_id, block.id);
-                        let received_block = storage.read_blocks().get(&block_id).cloned().unwrap();
-                        assert_eq!(received_block.content.operations, block.content.operations);
-                        break;
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                loop {
+                    match protocol_consensus_event_receiver.wait_command(
+                        MassaTime::from_millis(100),
+                        |command| match command {
+                            MockConsensusControllerMessage::RegisterBlock {
+                                slot,
+                                block_id,
+                                block_storage,
+                                created: _,
+                            } => {
+                                assert_eq!(slot, block.content.header.content.slot);
+                                assert_eq!(block_id, block.id);
+                                let received_block =
+                                    block_storage.read_blocks().get(&block_id).cloned().unwrap();
+                                assert_eq!(
+                                    received_block.content.operations,
+                                    block.content.operations
+                                );
+                                Some(())
+                            }
+                            _evt => None,
+                        },
+                    ) {
+                        Some(()) => {
+                            break;
+                        }
+                        None => {
+                            continue;
+                        }
                     }
-                    _evt => continue,
-                };
-            }
+                }
+                protocol_consensus_event_receiver
+            })
+            .await
+            .unwrap();
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -245,9 +293,9 @@ async fn test_someone_knows_it() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -278,21 +326,33 @@ async fn test_someone_knows_it() {
                 .send_header(node_c.id, block.content.header.clone())
                 .await;
 
-            match protocol_event_receiver.wait_event().await.unwrap() {
-                ProtocolEvent::ReceivedBlockHeader { .. } => {}
-                _ => panic!("unexpected protocol event"),
-            };
+            let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
+                protocol_consensus_event_receiver.wait_command(
+                    MassaTime::from_millis(100),
+                    |command| match command {
+                        MockConsensusControllerMessage::RegisterBlockHeader { .. } => Some(()),
+                        _ => panic!("unexpected protocol event"),
+                    },
+                );
+                protocol_consensus_event_receiver
+            })
+            .await
+            .unwrap();
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
@@ -329,9 +389,9 @@ async fn test_someone_knows_it() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -347,9 +407,9 @@ async fn test_dont_want_it_anymore() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -370,24 +430,32 @@ async fn test_dont_want_it_anymore() {
             // end set up
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A
             assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
 
             // we don't want it anymore
-            protocol_command_sender
-                .send_wishlist_delta(Default::default(), vec![hash_1].into_iter().collect())
-                .await
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(Default::default(), vec![hash_1].into_iter().collect())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {
@@ -405,9 +473,9 @@ async fn test_dont_want_it_anymore() {
             );
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -424,9 +492,9 @@ async fn test_no_one_has_it() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -447,15 +515,19 @@ async fn test_no_one_has_it() {
             // end set up
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(hash_1, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(hash_1, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // assert it was asked to node A
             assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
@@ -487,9 +559,9 @@ async fn test_no_one_has_it() {
             );
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -505,9 +577,9 @@ async fn test_multiple_blocks_without_a_priori() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
@@ -535,18 +607,22 @@ async fn test_multiple_blocks_without_a_priori() {
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
             // send wishlist
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![
-                        (hash_1, Some(block_1.content.header.clone())),
-                        (hash_2, Some(block_2.content.header.clone())),
-                    ]
-                    .into_iter()
-                    .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .unwrap();
+            let protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![
+                            (hash_1, Some(block_1.content.header.clone())),
+                            (hash_2, Some(block_2.content.header.clone())),
+                        ]
+                        .into_iter()
+                        .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             let list = asked_list(&mut network_controller).await;
             for (node_id, set) in list.into_iter() {
@@ -561,9 +637,9 @@ async fn test_multiple_blocks_without_a_priori() {
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

@@ -1,16 +1,22 @@
-//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-#![feature(async_closure)]
-#![feature(hash_drain_filter)]
-#![feature(int_roundings)]
-#![warn(missing_docs)]
-#![warn(unused_crate_dependencies)]
-#[macro_use]
-extern crate massa_logging;
+//! # General description
+//!
+//! The consensus worker launches a persistent thread that will run in the background.
+//! This thread has a `run` function that triggers the consensus algorithm each slot. It can be interrupted by commands
+//! that are managed on the fly. The consensus worker share a state with a controller. This controller can be called by the others modules.
+//! It avoid sending message to the thread just for getting informations on the consensus.
+//!
+//! Communications with execution is blocking. Communications with protocol blocks on sending information to protocol but not blocking
+//! when protocol sends informations to this module.
+//!
+//! This module doesn't use asynchronous code.
+#![feature(deadline_api)]
 
-mod consensus_worker;
-mod tools;
-pub use tools::start_consensus_controller;
+mod commands;
+mod controller;
+mod manager;
+mod state;
+mod worker;
 
-#[cfg(test)]
-mod tests;
+pub use worker::start_consensus_worker;
