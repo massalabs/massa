@@ -81,16 +81,14 @@ impl FromStr for BlockId {
     type Err = ModelsError;
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
     /// # use std::str::FromStr;
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let ser = address.to_string();
-    /// let res_addr = Address::from_str(&ser).unwrap();
-    /// assert_eq!(address, res_addr);
+    /// # use massa_models::block::BlockId;
+    /// # let hash = Hash::compute_from(b"test");
+    /// # let block_id = BlockId(hash);
+    /// let ser = block_id.to_string();
+    /// let res_block_id = BlockId::from_str(&ser).unwrap();
+    /// assert_eq!(block_id, res_block_id);
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
