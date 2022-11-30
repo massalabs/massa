@@ -5,7 +5,6 @@
 use massa_hash::Hash;
 use massa_models::address::{AddressDeserializer, AddressSerializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::serialization::{StringDeserializer, StringSerializer};
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
 use massa_models::{
     address::Address,
@@ -15,7 +14,7 @@ use massa_models::{
 };
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
-    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
@@ -173,22 +172,20 @@ pub struct AsyncMessageFilter {
     pub address: Address,
 
     /// Filter on the datastore key
-    pub datastore_key: Option<String>,
+    pub datastore_key: Option<Vec<u8>>,
 }
 
 /// Serializer for a filter for an asynchronous message
 struct AsyncMessageFilterSerializer {
     address_serializer: AddressSerializer,
-    string_serializer: OptionSerializer<String, StringSerializer<U32VarIntSerializer, u32>>,
+    key_serializer: OptionSerializer<Vec<u8>, VecU8Serializer>,
 }
 
 impl AsyncMessageFilterSerializer {
     pub fn new() -> Self {
         Self {
             address_serializer: AddressSerializer::new(),
-            string_serializer: OptionSerializer::new(StringSerializer::new(
-                U32VarIntSerializer::new(),
-            )),
+            key_serializer: OptionSerializer::new(VecU8Serializer::new()),
         }
     }
 }
@@ -200,7 +197,7 @@ impl Serializer<AsyncMessageFilter> for AsyncMessageFilterSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         self.address_serializer.serialize(&value.address, buffer)?;
-        self.string_serializer
+        self.key_serializer
             .serialize(&value.datastore_key, buffer)?;
         Ok(())
     }
@@ -209,15 +206,16 @@ impl Serializer<AsyncMessageFilter> for AsyncMessageFilterSerializer {
 /// Deserializer for a filter for an asynchronous message
 struct AsyncMessageFilterDeserializer {
     address_deserializer: AddressDeserializer,
-    string_deserializer: OptionDeserializer<String, StringDeserializer<U32VarIntDeserializer, u32>>,
+    key_serializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
 }
 
 impl AsyncMessageFilterDeserializer {
     pub fn new(max_key_length: u32) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            string_deserializer: OptionDeserializer::new(StringDeserializer::new(
-                U32VarIntDeserializer::new(Included(0), Excluded(max_key_length)),
+            key_serializer: OptionDeserializer::new(VecU8Deserializer::new(
+                Included(0),
+                Excluded(max_key_length as u64),
             )),
         }
     }
@@ -235,7 +233,7 @@ impl Deserializer<AsyncMessageFilter> for AsyncMessageFilterDeserializer {
                     self.address_deserializer.deserialize(input)
                 }),
                 context("Failed datastore_key deserialization", |input| {
-                    self.string_deserializer.deserialize(input)
+                    self.key_serializer.deserialize(input)
                 }),
             )),
         )

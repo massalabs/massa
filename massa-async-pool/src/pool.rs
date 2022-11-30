@@ -230,8 +230,7 @@ impl AsyncPool {
 
 /// Check in the ledger changes if a message filter has been trigger
 fn filter_triggered(filter: &AsyncMessageFilter, ledger_changes: &LedgerChanges) -> bool {
-    //TODO
-    false
+    ledger_changes.has_address_and_key(&filter.address, filter.datastore_key.clone())
 }
 
 /// Serializer for `AsyncPool`

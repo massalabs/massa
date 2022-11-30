@@ -1903,7 +1903,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.9.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=add_condition_send_message#7fc0eecc8abf8672f3b78832db481d11494a1c9f"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=add_condition_send_message#4784b3da33b322eae39b585133ab23f6a647cae2"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",

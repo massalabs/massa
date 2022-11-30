@@ -560,7 +560,7 @@ impl Interface for InterfaceImpl {
         raw_fee: u64,
         raw_coins: u64,
         data: &[u8],
-        filter: Option<(&str, Option<&str>)>,
+        filter: Option<(&str, Option<&[u8]>)>,
     ) -> Result<()> {
         if validity_start.1 >= self.config.thread_count {
             bail!("validity start thread exceeds the configuration thread count")
@@ -592,7 +592,7 @@ impl Interface for InterfaceImpl {
                 .map(|(addr, key)| {
                     Ok::<AsyncMessageFilter, ModelsError>(AsyncMessageFilter {
                         address: Address::from_str(addr)?,
-                        datastore_key: key.map(|k| k.to_string()),
+                        datastore_key: key.map(|k| k.to_vec()),
                     })
                 })
                 .transpose()?,

@@ -805,6 +805,36 @@ impl LedgerChanges {
         }
     }
 
+    /// Tries to return whether a given address exists in the ledger changes
+    /// and optionally if a datastore key modification also exists in the address's datastore.
+    ///
+    /// # Arguments
+    /// * `addr`: target address
+    /// * `key`: optional datastore key
+    ///
+    /// # Returns
+    /// * true if the address and, optionally the datastore key, exists in the ledger changes
+    pub fn has_address_and_key(&self, addr: &Address, key: Option<Vec<u8>>) -> bool {
+        // Get the current changes being applied to the ledger entry associated to that address
+        match self.0.get(addr) {
+            // This ledger entry is being replaced by a new one:
+            // check if the new ledger entry has a datastore entry for the provided key
+            Some(SetUpdateOrDelete::Set(v)) => key.map_or(true, |k| v.datastore.contains_key(&k)),
+
+            // This ledger entry is being updated
+            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                // Check if the update being applied to that datastore entry
+                key.map_or(true, |k| datastore.get(&k).is_some())
+            }
+
+            // This ledger entry is being deleted: return true
+            Some(SetUpdateOrDelete::Delete) => true,
+
+            // This ledger entry is not being changed.
+            None => false,
+        }
+    }
+
     /// Tries to return whether a datastore entry exists for a given address,
     /// or gets it from a function if the datastore entry's status is unknown.
     ///
