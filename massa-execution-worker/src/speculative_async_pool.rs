@@ -108,14 +108,17 @@ impl SpeculativeAsyncPool {
         slot: &Slot,
         ledger_changes: &LedgerChanges,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        let deleted_messages = self
-            .async_pool
-            .settle_slot(slot, &mut self.emitted, ledger_changes);
+        let (deleted_messages, triggered_messages) =
+            self.async_pool
+                .settle_slot(slot, &mut self.emitted, ledger_changes);
         for (msg_id, msg) in std::mem::take(&mut self.emitted) {
             self.settled_changes.push_add(msg_id, msg);
         }
         for (msg_id, _msg) in deleted_messages.iter() {
             self.settled_changes.push_delete(*msg_id);
+        }
+        for (msg_id, _msg) in triggered_messages.iter() {
+            self.settled_changes.push_activate(*msg_id);
         }
         deleted_messages
     }

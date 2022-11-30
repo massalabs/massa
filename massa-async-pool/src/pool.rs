@@ -98,12 +98,16 @@ impl AsyncPool {
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from `new_messages` (in the order they appear in `new_messages`)
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
+    /// The list of message that their filter has been trigger.
     pub fn settle_slot(
         &mut self,
         slot: &Slot,
         new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
         ledger_changes: &LedgerChanges,
-    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+    ) -> (
+        Vec<(AsyncMessageId, AsyncMessage)>,
+        Vec<(AsyncMessageId, AsyncMessage)>,
+    ) {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         let mut eliminated: Vec<_> = self
@@ -124,16 +128,18 @@ impl AsyncPool {
         for _ in 0..excess_count {
             eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
-        for (_, message) in self.messages.iter_mut() {
+        let mut triggered = Vec::new();
+        for (id, message) in self.messages.iter_mut() {
             if let Some(filter) = &message.filter && !message.can_be_executed && filter_triggered(filter, ledger_changes)
             {
                 self.hash ^= message.hash;
                 message.can_be_executed = true;
                 message.compute_hash();
                 self.hash ^= message.hash;
+                triggered.push((*id, message.clone()));
             }
         }
-        eliminated
+        (eliminated, triggered)
     }
 
     /// Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.
