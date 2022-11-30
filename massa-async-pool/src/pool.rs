@@ -68,8 +68,10 @@ impl AsyncPool {
 
                 Change::Activate(message_id) => {
                     if let Some(message) = self.messages.get_mut(message_id) {
+                        self.hash ^= message.hash;
                         message.can_be_executed = true;
-                        // TODO: Add hash calculation
+                        message.compute_hash();
+                        self.hash ^= message.hash;
                     }
                 }
 
@@ -125,8 +127,10 @@ impl AsyncPool {
         for (_, message) in self.messages.iter_mut() {
             if let Some(filter) = &message.filter && !message.can_be_executed && filter_triggered(filter, ledger_changes)
             {
-                //TODO: Recompute hash
+                self.hash ^= message.hash;
                 message.can_be_executed = true;
+                message.compute_hash();
+                self.hash ^= message.hash;
             }
         }
         eliminated

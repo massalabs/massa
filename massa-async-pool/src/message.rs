@@ -348,6 +348,16 @@ impl AsyncMessage {
             self.emission_index,
         )
     }
+
+    /// Recompute the hash of the message. Must be used each time we modify one field
+    pub fn compute_hash(&mut self) {
+        let async_message_ser = AsyncMessageSerializer::new();
+        let mut buffer = Vec::new();
+        async_message_ser.serialize(self, &mut buffer).expect(
+            "critical: asynchronous message serialization should never fail in recompute hash",
+        );
+        self.hash = Hash::compute_from(&buffer);
+    }
 }
 
 pub struct AsyncMessageSerializer {
