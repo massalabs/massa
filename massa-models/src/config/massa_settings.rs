@@ -33,47 +33,32 @@ use std::path::Path;
 /// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environment variable (`config/config.toml` by default)
 #[inline]
 pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix: &str) -> T {
-    let mut settings = config::Config::default();
+    let mut builder = config::Config::builder();
     let config_path = std::env::var("MASSA_CONFIG_PATH")
         .unwrap_or_else(|_| "base_config/config.toml".to_string());
-    settings
-        .merge(config::File::with_name(&config_path))
-        .unwrap_or_else(|error| {
-            panic!(
-                "failed to read {} config {}: {}",
-                config_path,
-                std::env::current_dir().unwrap().as_path().to_str().unwrap(),
-                error
-            )
-        });
+
+    builder = builder.add_source(config::File::with_name(&config_path));
+
     let config_override_path = std::env::var("MASSA_CONFIG_OVERRIDE_PATH")
         .unwrap_or_else(|_| "config/config.toml".to_string());
+
     if Path::new(&config_override_path).is_file() {
-        settings
-            .merge(config::File::with_name(&config_override_path))
-            .unwrap_or_else(|error| {
-                panic!(
-                    "failed to read {} override config {}: {}",
-                    config_override_path,
-                    std::env::current_dir().unwrap().as_path().to_str().unwrap(),
-                    error
-                )
-            });
+        builder = builder.add_source(config::File::with_name(&config_override_path));
     }
+
     if let Some(proj_dirs) = ProjectDirs::from("com", "MassaLabs", app_name) {
         // Portable user config loading
         let user_config_path = proj_dirs.config_dir();
         if user_config_path.exists() {
             let path_str = user_config_path.to_str().unwrap();
-            settings
-                .merge(config::File::with_name(path_str))
-                .unwrap_or_else(|error| {
-                    panic!("failed to read {} user config: {}", path_str, error)
-                });
+            builder = builder.add_source(config::File::with_name(path_str));
         }
     }
-    settings
-        .merge(config::Environment::with_prefix(env_prefix))
+
+    let s = builder
+        .add_source(config::Environment::with_prefix(env_prefix))
+        .build()
         .unwrap();
-    settings.try_into().unwrap()
+
+    s.try_deserialize().unwrap()
 }

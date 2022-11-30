@@ -1,6 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
+use jsonrpsee::{
+    core::Error as JsonRpseeError,
+    types::error::{CallError, ErrorObject},
+};
 use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
@@ -20,9 +24,9 @@ pub enum ApiError {
     ReceiveChannelError(String),
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
-    /// Consensus error: {0}
-    ConsensusError(#[from] Box<ConsensusError>),
-    /// Execution error: {0}
+    /// consensus error: {0}
+    ConsensusError(#[from] ConsensusError),
+    /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
     /// Network error: {0}
     NetworkError(#[from] NetworkError),
@@ -50,7 +54,7 @@ pub enum ApiError {
     InternalServerError(String),
 }
 
-impl From<ApiError> for jsonrpc_core::Error {
+impl From<ApiError> for JsonRpseeError {
     fn from(err: ApiError) -> Self {
         // JSON-RPC Server errors codes must be between -32099 to -32000
         let code = match err {
@@ -72,16 +76,7 @@ impl From<ApiError> for jsonrpc_core::Error {
             ApiError::MissingConfig(_) => -32018,
             ApiError::WrongAPI => -32019,
         };
-        jsonrpc_core::Error {
-            code: jsonrpc_core::ErrorCode::ServerError(code),
-            message: err.to_string(),
-            data: None,
-        }
-    }
-}
 
-impl std::convert::From<ConsensusError> for ApiError {
-    fn from(err: ConsensusError) -> Self {
-        ApiError::ConsensusError(Box::new(err))
+        CallError::Custom(ErrorObject::owned(code, err.to_string(), None::<()>)).into()
     }
 }

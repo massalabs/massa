@@ -2,3 +2,4 @@
 
 mod mock;
 mod scenarios_mandatories;
+mod tests_active_history;

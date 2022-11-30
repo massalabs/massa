@@ -16,6 +16,7 @@ use massa_models::{
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
@@ -174,6 +175,32 @@ impl Interface for InterfaceImpl {
         }
     }
 
+    /// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys(&self) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        match context.get_keys(&addr) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys_for(&self, address: &str) -> Result<BTreeSet<Vec<u8>>> {
+        let addr = &Address::from_str(address)?;
+        let context = context_guard!(self);
+        match context.get_keys(addr) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
     /// Gets a datastore value by key for a given address.
     ///
     /// # Arguments
@@ -182,10 +209,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
+    fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
         let addr = &massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_data_entry(addr, key.as_bytes()) {
+        match context.get_data_entry(addr, key) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -199,10 +226,10 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_set_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address)?;
         let mut context = context_guard!(self);
-        context.set_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -213,9 +240,9 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    fn raw_append_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_append_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address)?;
-        context_guard!(self).append_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context_guard!(self).append_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -225,9 +252,9 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to delete
-    fn raw_delete_data_for(&self, address: &str, key: &str) -> Result<()> {
+    fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
         let addr = &massa_models::address::Address::from_str(address)?;
-        context_guard!(self).delete_data_entry(addr, key.as_bytes())?;
+        context_guard!(self).delete_data_entry(addr, key)?;
         Ok(())
     }
 
@@ -239,10 +266,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
+    fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
         let addr = massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
-        Ok(context.has_data_entry(&addr, key.as_bytes()))
+        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Gets a datastore value by key for the current address (top of the call stack).
@@ -252,10 +279,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
+    fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_data_entry(&addr, key.as_bytes()) {
+        match context.get_data_entry(&addr, key) {
             Some(data) => Ok(data),
             _ => bail!("data entry not found"),
         }
@@ -269,10 +296,10 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.set_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -283,10 +310,10 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    fn raw_append_data(&self, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.append_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
+        context.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -295,10 +322,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * key: string key of the datastore entry to delete
-    fn raw_delete_data(&self, key: &str) -> Result<()> {
+    fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.delete_data_entry(&addr, key.as_bytes())?;
+        context.delete_data_entry(&addr, key)?;
         Ok(())
     }
 
@@ -309,10 +336,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn has_data(&self, key: &str) -> Result<bool> {
+    fn has_data(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        Ok(context.has_data_entry(&addr, key.as_bytes()))
+        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Get the operation datastore keys (aka entries).
@@ -546,7 +573,7 @@ impl Interface for InterfaceImpl {
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
     /// * `max_gas`: Maximum gas for the message execution
-    /// * `gas_price`: Price of one gas unit
+    /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
     fn send_message(
@@ -556,7 +583,7 @@ impl Interface for InterfaceImpl {
         validity_start: (u64, u8),
         validity_end: (u64, u8),
         max_gas: u64,
-        gas_price: u64,
+        raw_fee: u64,
         raw_coins: u64,
         data: &[u8],
     ) -> Result<()> {
@@ -571,20 +598,22 @@ impl Interface for InterfaceImpl {
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
+        let fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(Some(sender), None, coins, true)?;
-        execution_context.push_new_message(AsyncMessage {
+        execution_context.transfer_coins(Some(sender), None, fee, true)?;
+        execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
             sender,
-            destination: Address::from_str(target_address)?,
-            handler: target_handler.to_string(),
-            validity_start: Slot::new(validity_start.0, validity_start.1),
-            validity_end: Slot::new(validity_end.0, validity_end.1),
+            Address::from_str(target_address)?,
+            target_handler.to_string(),
             max_gas,
-            gas_price: Amount::from_raw(gas_price),
+            fee,
             coins,
-            data: data.to_vec(),
-        });
+            Slot::new(validity_start.0, validity_start.1),
+            Slot::new(validity_end.0, validity_end.1),
+            data.to_vec(),
+        ));
         execution_context.created_message_index += 1;
         Ok(())
     }

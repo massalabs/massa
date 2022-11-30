@@ -22,7 +22,11 @@ If required, please update the Git tag in setup_test.rs (line 25)
 
 #### Run
 
-* cargo script setup_test
+* cargo script setup_test.rs
+
+### Run with local sources
+
+* cargo script setup_test.rs -- --local "../../massa-unit-tests-src/build/massa/*.wasm"
 
 ### Howto: add a new SC unit tests
 

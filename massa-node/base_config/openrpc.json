@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.16.1",
+        "version": "TEST.17.0",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -991,7 +991,6 @@
                 "title": "CallSC",
                 "description": "Call Smart Contract",
                 "required": [
-                    "gas_price",
                     "max_gas",
                     "param",
                     "coins",
@@ -1016,10 +1015,6 @@
                         "type": "number"
                     },
                     "coins": {
-                        "description": "Amount",
-                        "type": "number"
-                    },
-                    "gas_price": {
                         "description": "Amount",
                         "type": "number"
                     }
@@ -1421,7 +1416,6 @@
                 "description": "Execute Smart Contract",
                 "required": [
                     "data",
-                    "gas_price",
                     "max_gas"
                 ],
                 "type": "object",
@@ -1436,10 +1430,6 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
-                    },
-                    "gas_price": {
-                        "description": "Represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.",
-                        "type": "string"
                     }
                 },
                 "additionalProperties": false
@@ -1940,17 +1930,12 @@
                 "description": "Read only bytecode execution",
                 "required": [
                     "max_gas",
-                    "simulated_gas_price",
                     "bytecode"
                 ],
                 "type": "object",
                 "properties": {
                     "max_gas": {
                         "description": "Max available gas",
-                        "type": "number"
-                    },
-                    "simulated_gas_price": {
-                        "description": "Gas price",
                         "type": "number"
                     },
                     "bytecode": {
@@ -1974,7 +1959,6 @@
                 "required": [
                     "max_gas",
                     "parameter",
-                    "simulated_gas_price",
                     "target_address",
                     "target_function"
                 ],
@@ -1982,10 +1966,6 @@
                 "properties": {
                     "max_gas": {
                         "description": "Max available gas",
-                        "type": "number"
-                    },
-                    "simulated_gas_price": {
-                        "description": "Gas price",
                         "type": "number"
                     },
                     "target_address": {

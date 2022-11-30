@@ -97,6 +97,51 @@ impl BlockId {
     }
 }
 
+/// Serializer for `BlockId`
+#[derive(Default, Clone)]
+pub struct BlockIdSerializer;
+
+impl BlockIdSerializer {
+    /// Creates a new serializer for `BlockId`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<BlockId> for BlockIdSerializer {
+    fn serialize(&self, value: &BlockId, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.extend(value.to_bytes());
+        Ok(())
+    }
+}
+
+/// Deserializer for `BlockId`
+#[derive(Default, Clone)]
+pub struct BlockIdDeserializer {
+    hash_deserializer: HashDeserializer,
+}
+
+impl BlockIdDeserializer {
+    /// Creates a new deserializer for `BlockId`
+    pub fn new() -> Self {
+        Self {
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<BlockId> for BlockIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BlockId, E> {
+        context("Failed BlockId deserialization", |input| {
+            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+            Ok((rest, BlockId(hash)))
+        })(buffer)
+    }
+}
+
 /// block
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {

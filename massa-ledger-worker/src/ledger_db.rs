@@ -485,9 +485,9 @@ impl LedgerDB {
                     IteratorMode::From(&last_key, Direction::Forward),
                 );
                 iter.next();
-                (iter, StreamingStep::Finished)
+                (iter, StreamingStep::Finished(None))
             }
-            StreamingStep::Finished => return Ok((ledger_part, cursor)),
+            StreamingStep::Finished(_) => return Ok((ledger_part, cursor)),
         };
 
         // Iterates over the whole database

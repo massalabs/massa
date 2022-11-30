@@ -30,12 +30,12 @@ pub enum BootstrapError {
     UnexpectedConnectionDrop,
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
+    /// `massa_consensus` error: {0}
+    MassaConsensusError(#[from] ConsensusError),
     /// `massa_signature` error {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// time error: {0}
     TimeError(#[from] TimeError),
-    /// consensus error: {0}
-    ConsensusError(#[from] ConsensusError),
     /// network error: {0}
     NetworkError(#[from] NetworkError),
     /// final state error: {0}

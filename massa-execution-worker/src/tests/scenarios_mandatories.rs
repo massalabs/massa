@@ -19,6 +19,7 @@ use massa_models::{
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use num::rational::Ratio;
 use serial_test::serial;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
@@ -65,7 +66,6 @@ fn test_readonly_execution() {
     let mut res = controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
-            simulated_gas_price: Amount::from_mantissa_scale(1_000_000, 0),
             call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
@@ -135,11 +135,15 @@ fn test_nested_call_gas_usage() {
 
     // get random keypair
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // load bytecodes
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/test.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
     // create the block containing the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -159,7 +163,7 @@ fn test_nested_call_gas_usage() {
     std::thread::sleep(Duration::from_millis(10));
 
     // length of the sub contract test.wasm
-    let bytecode_sub_contract_len = 3715;
+    let bytecode_sub_contract_len = 4374;
 
     let balance = sample_state
         .read()
@@ -197,8 +201,8 @@ fn test_nested_call_gas_usage() {
         10000000,
         Amount::from_str("0").unwrap(),
         Address::from_str(&address).unwrap(),
-        String::from("test"),
         address,
+        b"test".to_vec(),
     )
     .unwrap();
     // Init new storage for this block
@@ -274,12 +278,15 @@ fn send_and_receive_async_message() {
     init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load send_message bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // load bytecodes
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/send_message.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
 
     // create the block contaning the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -309,7 +316,7 @@ fn send_and_receive_async_message() {
 
     // match the events
     assert!(events.len() == 1, "One event was expected");
-    assert_eq!(events[0].data, "message received: hello my good friend!");
+    assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
     // stop the execution controller
     manager.stop();
 }
@@ -458,14 +465,22 @@ pub fn roll_buy() {
 #[test]
 #[serial]
 pub fn roll_sell() {
+    // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
+    // Check for resulting roll count + resulting deferred credits
+
     // setup the period duration
-    let exec_cfg = ExecutionConfig {
+    let mut exec_cfg = ExecutionConfig {
         t0: 100.into(),
         periods_per_cycle: 2,
         thread_count: 2,
         cursor_delay: 0.into(),
         ..Default::default()
     };
+    // turn off roll selling on missed block opportunities
+    // otherwise balance will be credited with those sold roll (and we need to check the balance for
+    // if the deferred credits are reimbursed
+    exec_cfg.max_miss_ratio = Ratio::new(1, 1);
+
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
@@ -482,20 +497,48 @@ pub fn roll_sell() {
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
-    // create the operation
-    let operation = Operation::new_wrapped(
+
+    // get initial balance
+    let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
+
+    // get initial roll count
+    let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
+    let roll_sell_1 = 10;
+    let roll_sell_2 = 1;
+
+    // create operation 1
+    let operation1 = Operation::new_wrapped(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
-            op: OperationType::RollSell { roll_count: 10 },
+            op: OperationType::RollSell {
+                roll_count: roll_sell_1,
+            },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+    let operation2 = Operation::new_wrapped(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollSell {
+                roll_count: roll_sell_2,
+            },
         },
         OperationSerializer::new(),
         &keypair,
     )
     .unwrap();
     // create the block containing the roll buy operation
-    storage.store_operations(vec![operation.clone()]);
-    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    storage.store_operations(vec![operation1.clone(), operation2.clone()]);
+    let block = create_block(
+        KeyPair::generate(),
+        vec![operation1, operation2],
+        Slot::new(1, 0),
+    )
+    .unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
@@ -508,18 +551,51 @@ pub fn roll_sell() {
         Default::default(),
         block_storage.clone(),
     );
-    std::thread::sleep(Duration::from_millis(350));
+    std::thread::sleep(Duration::from_millis(1000));
     // check roll count deferred credits and candidate balance of the seller address
     let sample_read = sample_state.read();
     let mut credits = PreHashMap::default();
-    credits.insert(address, Amount::from_str("1000").unwrap());
-    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 90);
+    let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
+    let roll_sold = roll_sell_1 + roll_sell_2;
+    credits.insert(
+        address,
+        exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
+    );
+
+    assert_eq!(
+        sample_read.pos_state.get_rolls_for(&address),
+        roll_remaining
+    );
     assert_eq!(
         sample_read
             .pos_state
             .get_deferred_credits_at(&Slot::new(7, 1)),
         credits
     );
+
+    // Check that deferred credit are reimbursed
+    let credits = PreHashMap::default();
+    assert_eq!(
+        sample_read
+            .pos_state
+            .get_deferred_credits_at(&Slot::new(8, 1)),
+        credits
+    );
+
+    // Now check balance
+    let balances = controller.get_final_and_candidate_balance(&[address]);
+    let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+    assert_eq!(
+        candidate_balance,
+        exec_cfg
+            .roll_price
+            .checked_mul_u64(roll_sell_1 + roll_sell_2)
+            .unwrap()
+            .checked_add(balance_initial)
+            .unwrap()
+    );
+
     // stop the execution controller
     manager.stop();
 }
@@ -550,10 +626,10 @@ fn sc_execution_error() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/execution_error.wasm");
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -609,14 +685,12 @@ fn sc_datastore() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/datastore.wasm");
-
     let datastore = BTreeMap::from([(vec![65, 66], vec![255]), (vec![9], vec![10, 11])]);
 
     // create the block contaning the erroneous smart contract execution operation
-    let operation =
-        create_execute_sc_operation_with_datastore(&keypair, bytecode, datastore).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -667,11 +741,15 @@ fn set_bytecode_error() {
     init_execution_worker(&exec_cfg, &storage, controller.clone());
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // load bytecodes
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/smart-contract.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -725,11 +803,13 @@ fn datastore_manipulations() {
 
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // let address = Address::from_public_key(&keypair.get_public_key());
+
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -746,8 +826,29 @@ fn datastore_manipulations() {
             .into(),
     );
 
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert!(!events.is_empty(), "2 events were expected");
+    let key = "TEST".to_string();
+    // in ASC, string are utf16 encoded
+    let s16 = key.encode_utf16();
+    let s16_as_bytes: Vec<u8> = s16.map(|item| item.to_ne_bytes()).flatten().collect();
+    // in SC, we use the builtin string formatting (using `keys: ${keys}`) & replicate it in Rust
+    let keys_str: String = s16_as_bytes
+        .iter()
+        .map(|b| format!("{}", b))
+        .collect::<Vec<String>>()
+        .join(",");
+    assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
+    assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
+
     // Length of the value left in the datastore. See sources for more context.
-    let value_len = 10;
+    let value_len = "TEST_VALUE"
+        .to_string()
+        .encode_utf16()
+        .size_hint()
+        .1
+        .unwrap() as u64;
     assert_eq!(
         sample_state
             .read()
@@ -808,7 +909,8 @@ fn events_from_switching_blockclique() {
         let keypair =
             KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
-        let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
+        let operation =
+            create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default()).unwrap();
         let blockclique_block =
             create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
@@ -834,7 +936,8 @@ fn events_from_switching_blockclique() {
         let keypair =
             KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
         let event_test_data = include_bytes!("./wasm/event_test.wasm");
-        let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
+        let operation =
+            create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default()).unwrap();
         let blockclique_block =
             create_block(keypair, vec![operation.clone()], blockclique_block_slot).unwrap();
         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
@@ -863,41 +966,16 @@ fn events_from_switching_blockclique() {
 fn create_execute_sc_operation(
     sender_keypair: &KeyPair,
     data: &[u8],
-) -> Result<WrappedOperation, ExecutionError> {
-    let op = OperationType::ExecuteSC {
-        data: data.to_vec(),
-        max_gas: 100_000,
-        gas_price: Amount::from_mantissa_scale(1, 0),
-        datastore: BTreeMap::new(),
-    };
-    let op = Operation::new_wrapped(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op,
-        },
-        OperationSerializer::new(),
-        sender_keypair,
-    )?;
-    Ok(op)
-}
-
-/// Create an operation for the given sender with `data` as bytecode.
-/// Return a result that should be unwrapped in the root `#[test]` routine.
-fn create_execute_sc_operation_with_datastore(
-    sender_keypair: &KeyPair,
-    data: &[u8],
     datastore: Datastore,
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 100_000,
-        gas_price: Amount::from_mantissa_scale(1, 0),
         datastore,
     };
     let op = Operation::new_wrapped(
         Operation {
-            fee: Amount::zero(),
+            fee: Amount::from_mantissa_scale(100000, 0),
             expire_period: 10,
             op,
         },
@@ -912,22 +990,21 @@ fn create_execute_sc_operation_with_datastore(
 fn create_call_sc_operation(
     sender_keypair: &KeyPair,
     max_gas: u64,
-    gas_price: Amount,
+    fee: Amount,
     target_addr: Address,
     target_func: String,
-    param: String,
+    param: Vec<u8>,
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::CallSC {
         max_gas,
         target_addr,
         coins: Amount::from_str("0").unwrap(),
-        gas_price,
         target_func,
         param,
     };
     let op = Operation::new_wrapped(
         Operation {
-            fee: Amount::zero(),
+            fee,
             expire_period: 10,
             op,
         },
@@ -963,10 +1040,10 @@ fn sc_builtins() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecode
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/use_builtins.wasm");
     // create the block contaning the erroneous smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
