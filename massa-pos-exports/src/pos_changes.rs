@@ -40,6 +40,7 @@ impl PoSChanges {
             && self.production_stats.is_empty()
             && self.deferred_credits.credits.is_empty()
     }
+
     /// Extends the current `PosChanges` with another one
     pub fn extend(&mut self, other: PoSChanges) {
         // extend seed bits
@@ -57,7 +58,7 @@ impl PoSChanges {
         }
 
         // extend deferred credits
-        self.deferred_credits.nested_replace(other.deferred_credits);
+        self.deferred_credits.nested_extend(other.deferred_credits);
     }
 }
 
