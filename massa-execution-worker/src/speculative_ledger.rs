@@ -5,11 +5,12 @@
 //! It never actually writes to the consensus state
 //! but keeps track of the changes that were applied to it since its creation.
 
+use std::collections::BTreeSet;
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalState;
-use massa_ledger_exports::{Applicable, LedgerChanges};
+use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -358,6 +359,55 @@ impl SpeculativeLedger {
         self.added_changes.set_bytecode(*addr, bytecode);
 
         Ok(())
+    }
+
+    /// Gets a copy of a datastore keys for a given address
+    ///
+    /// # Arguments
+    /// * `addr`: address to query
+    ///
+    /// # Returns
+    /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
+    pub fn get_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+
+        let mut keys: Option<BTreeSet<Vec<u8>>> = self
+            .final_state
+            .read()
+            .ledger
+            .get_datastore_keys(addr);
+
+        // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
+        let active_history = self.active_history.read();
+        let changes_iterator = active_history.0.iter().map(|item| &item.state_changes.ledger_changes).chain(std::iter::once(&self.added_changes));
+        for ledger_changes in changes_iterator {
+            match ledger_changes.get(addr) {
+                // address absent from the changes
+                None => (),
+
+                // address ledger entry being reset to an absolute new list of keys
+                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
+                    keys = Some(new_ledger_entry.datastore.keys().cloned().collect());
+                }
+
+                // address ledger entry being updated
+                Some(SetUpdateOrDelete::Update(entry_updates)) => {
+                    let ref_keys = keys.get_or_insert_default();
+                    for (ds_key, ds_update) in &entry_updates.datastore {
+                        match ds_update {
+                            SetOrDelete::Set(_) => ref_keys.insert(ds_key.clone()),
+                            SetOrDelete::Delete => ref_keys.remove(ds_key),
+                        };
+                    }
+                }
+
+                // address ledger entry being deleted
+                Some(SetUpdateOrDelete::Delete) => {
+                    keys = None;
+                }
+            }
+        }
+
+        keys
     }
 
     /// Gets a copy of a datastore value for a given address and datastore key

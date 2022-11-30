@@ -803,6 +803,8 @@ fn datastore_manipulations() {
 
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // let address = Address::from_public_key(&keypair.get_public_key());
+
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
@@ -824,8 +826,27 @@ fn datastore_manipulations() {
             .into(),
     );
 
+    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert!(!events.is_empty(), "2 events were expected");
+    let key = "TEST".to_string();
+    // in ASC, string are utf16 encoded
+    let s16 = key.encode_utf16();
+    let s16_as_bytes: Vec<u8> = s16
+        .map(|item| item.to_ne_bytes())
+        .flatten()
+        .collect();
+    // in SC, we use the builtin string formatting (using `keys: ${keys}`) & replicate it in Rust
+    let keys_str: String = s16_as_bytes
+        .iter()
+        .map(|b| format!("{}", b))
+        .collect::<Vec<String>>()
+        .join(",");
+    assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
+    assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
+
     // Length of the value left in the datastore. See sources for more context.
-    let value_len = 4;
+    let value_len = "TEST_VALUE".to_string().encode_utf16().size_hint().1.unwrap() as u64;
     assert_eq!(
         sample_state
             .read()
