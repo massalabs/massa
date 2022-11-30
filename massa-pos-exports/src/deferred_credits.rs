@@ -92,7 +92,7 @@ impl DeferredCredits {
             credits.retain(|address, amount| {
                 // if amount is zero XOR the credit hash and do not retain
                 if amount.is_zero() {
-                    self.hash ^= hash_computer.compute_credit_hash(&slot, &address, &amount);
+                    self.hash ^= hash_computer.compute_credit_hash(slot, address, amount);
                     false
                 } else {
                     true
