@@ -97,7 +97,7 @@ impl NetworkWorker {
         }: NetworkWorkerChannels,
         version: Version,
     ) -> NetworkWorker {
-        let self_node_id = NodeId(keypair.get_public_key());
+        let self_node_id = NodeId::new(keypair.get_public_key());
 
         let (node_event_tx, node_event_rx) =
             mpsc::channel::<NodeEvent>(cfg.node_event_channel_size);
