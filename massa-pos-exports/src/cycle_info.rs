@@ -178,15 +178,12 @@ impl CycleInfo {
 
         // extend roll counts
         for (addr, roll_count) in changes.roll_changes {
-            if roll_count == 0 {
-                if let Some(&current_roll_count) = self.roll_counts.get(&addr) {
-                    self.roll_counts_hash ^=
-                        hash_computer.compute_roll_entry_hash(&addr, current_roll_count);
-                    self.roll_counts.remove(&addr);
-                }
+            if roll_count == 0 && let Some(removed_count) = self.roll_counts.remove(&addr) {
+                self.roll_counts_hash ^=
+                    hash_computer.compute_roll_entry_hash(&addr, removed_count);
             } else {
-                self.roll_counts_hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
                 self.roll_counts.insert(addr, roll_count);
+                self.roll_counts_hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
             }
         }
         hash_concat.extend(self.roll_counts_hash.to_bytes());
