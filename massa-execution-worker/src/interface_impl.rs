@@ -5,7 +5,6 @@
 //! for example to interact with the ledger.
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
-use std::collections::BTreeSet;
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
 use massa_async_pool::AsyncMessage;
@@ -17,6 +16,7 @@ use massa_models::{
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;

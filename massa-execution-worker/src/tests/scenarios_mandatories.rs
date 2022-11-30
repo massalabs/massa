@@ -832,10 +832,7 @@ fn datastore_manipulations() {
     let key = "TEST".to_string();
     // in ASC, string are utf16 encoded
     let s16 = key.encode_utf16();
-    let s16_as_bytes: Vec<u8> = s16
-        .map(|item| item.to_ne_bytes())
-        .flatten()
-        .collect();
+    let s16_as_bytes: Vec<u8> = s16.map(|item| item.to_ne_bytes()).flatten().collect();
     // in SC, we use the builtin string formatting (using `keys: ${keys}`) & replicate it in Rust
     let keys_str: String = s16_as_bytes
         .iter()
@@ -846,7 +843,12 @@ fn datastore_manipulations() {
     assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
 
     // Length of the value left in the datastore. See sources for more context.
-    let value_len = "TEST_VALUE".to_string().encode_utf16().size_hint().1.unwrap() as u64;
+    let value_len = "TEST_VALUE"
+        .to_string()
+        .encode_utf16()
+        .size_hint()
+        .1
+        .unwrap() as u64;
     assert_eq!(
         sample_state
             .read()

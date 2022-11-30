@@ -5,7 +5,6 @@
 //! It never actually writes to the consensus state
 //! but keeps track of the changes that were applied to it since its creation.
 
-use std::collections::BTreeSet;
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
@@ -13,6 +12,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -369,16 +369,16 @@ impl SpeculativeLedger {
     /// # Returns
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
     pub fn get_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
-
-        let mut keys: Option<BTreeSet<Vec<u8>>> = self
-            .final_state
-            .read()
-            .ledger
-            .get_datastore_keys(addr);
+        let mut keys: Option<BTreeSet<Vec<u8>>> =
+            self.final_state.read().ledger.get_datastore_keys(addr);
 
         // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
         let active_history = self.active_history.read();
-        let changes_iterator = active_history.0.iter().map(|item| &item.state_changes.ledger_changes).chain(std::iter::once(&self.added_changes));
+        let changes_iterator = active_history
+            .0
+            .iter()
+            .map(|item| &item.state_changes.ledger_changes)
+            .chain(std::iter::once(&self.added_changes));
         for ledger_changes in changes_iterator {
             match ledger_changes.get(addr) {
                 // address absent from the changes

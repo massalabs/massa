@@ -18,6 +18,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
+use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -36,7 +37,6 @@ use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
-use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -1126,7 +1126,10 @@ impl ExecutionState {
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
-        let final_keys = self.final_state.read().ledger
+        let final_keys = self
+            .final_state
+            .read()
+            .ledger
             .get_datastore_keys(addr)
             .unwrap_or_default();
         let mut candidate_keys = final_keys.clone();
