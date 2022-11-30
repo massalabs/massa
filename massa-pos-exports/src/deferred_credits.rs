@@ -66,10 +66,7 @@ impl DeferredCredits {
     /// Extends the current `DeferredCredits` with another and replace the amounts for existing addresses
     pub fn nested_extend(&mut self, other: Self) {
         for (slot, other_credits) in other.credits {
-            let self_credits = self.credits.entry(slot).or_default();
-            for (address, other_amount) in other_credits {
-                self_credits.insert(address, other_amount);
-            }
+            self.credits.entry(slot).or_default().extend(other_credits);
         }
     }
 
