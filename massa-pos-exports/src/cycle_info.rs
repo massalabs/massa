@@ -182,7 +182,10 @@ impl CycleInfo {
                 self.roll_counts_hash ^=
                     hash_computer.compute_roll_entry_hash(&addr, removed_count);
             } else {
-                self.roll_counts.insert(addr, roll_count);
+                if let Some(replaced_count) = self.roll_counts.insert(addr, roll_count) {
+                    self.roll_counts_hash ^=
+                        hash_computer.compute_roll_entry_hash(&addr, replaced_count);
+                }
                 self.roll_counts_hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
             }
         }
@@ -237,7 +240,7 @@ fn test_cycle_info_hash_computation() {
 
     // add changes
     let mut roll_changes = PreHashMap::default();
-    roll_changes.insert(addr, 42);
+    roll_changes.insert(addr, 10);
     let mut production_stats = PreHashMap::default();
     production_stats.insert(
         addr,
@@ -247,16 +250,16 @@ fn test_cycle_info_hash_computation() {
         },
     );
     let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 0, 42],
+        seed_bits: bitvec![u8, Lsb0; 0, 10],
         roll_changes: roll_changes.clone(),
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::default(),
     };
     cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
 
-    // update changes
+    // update changes once
     roll_changes.clear();
-    roll_changes.insert(addr, 0);
+    roll_changes.insert(addr, 20);
     production_stats.clear();
     production_stats.insert(
         addr,
@@ -266,12 +269,31 @@ fn test_cycle_info_hash_computation() {
         },
     );
     let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 0, 68],
+        seed_bits: bitvec![u8, Lsb0; 0, 20],
+        roll_changes: roll_changes.clone(),
+        production_stats: production_stats.clone(),
+        deferred_credits: DeferredCredits::default(),
+    };
+    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
+
+    // update changes twice
+    roll_changes.clear();
+    roll_changes.insert(addr, 0);
+    production_stats.clear();
+    production_stats.insert(
+        addr,
+        ProductionStats {
+            block_success_count: 4,
+            block_failure_count: 12,
+        },
+    );
+    let changes = PoSChanges {
+        seed_bits: bitvec![u8, Lsb0; 0, 30],
         roll_changes,
         production_stats,
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
+    cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2);
 
     // create a seconde cycle from same value and match hash
     let cycle_b = CycleInfo::new_with_hash(
