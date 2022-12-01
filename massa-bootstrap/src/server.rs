@@ -220,7 +220,7 @@ impl BootstrapServer {
                                     let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size, self.bootstrap_config.thread_count, self.bootstrap_config.max_datastore_key_length, self.bootstrap_config.randomness_size_bytes, self.bootstrap_config.consensus_bootstrap_part_size);
                                     let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                         error:
-                                        format!("Your last bootstrap on this server was {} ago and you have to wait before.", format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())).to_string())
+                                        format!("Your last bootstrap on this server was {} ago and you have to wait before retrying.", format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())))
                                     })).await {
                                         Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error too early retry bootstrap send timed out").into()),
                                         Ok(Err(e)) => Err(e),
