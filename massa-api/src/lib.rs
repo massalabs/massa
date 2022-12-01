@@ -5,6 +5,7 @@
 #![warn(unused_crate_dependencies)]
 use crate::error::ApiError::WrongAPI;
 use hyper::Method;
+use tower_http::cors::{Any, CorsLayer};
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
