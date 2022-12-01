@@ -597,8 +597,10 @@
 <a href="#597" id="597">597</a>
 <a href="#598" id="598">598</a>
 <a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
 </pre><pre class="rust"><code><span class="kw">use </span>futures::stream::FuturesUnordered;
 <span class="kw">use </span>futures::StreamExt;
+<span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 <span class="kw">use </span>massa_final_state::FinalState;
@@ -806,7 +808,7 @@
                             <span class="self">self</span>.ip_hist_map.retain(|_k, v| now.duration_since(<span class="kw-2">*</span>v) &lt;= per_ip_min_interval);
                             <span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
                                 <span class="comment">// too many IPs are spamming us: clear cache
-                                </span><span class="macro">warn!</span>(<span class="string">&quot;high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms&quot;</span>, <span class="self">self</span>.ip_hist_map.len(), <span class="self">self</span>.bootstrap_config.per_ip_min_interval);
+                                </span><span class="macro">warn!</span>(<span class="string">&quot;high bootstrap load: at least {} different IPs attempted bootstrap in the last {}&quot;</span>, <span class="self">self</span>.ip_hist_map.len(),format_duration(<span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
                                 <span class="self">self</span>.ip_hist_map.clear();
                             }
                         }
@@ -818,7 +820,7 @@
                                     <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(dplx, <span class="self">self</span>.keypair.clone(), <span class="self">self</span>.bootstrap_config.max_bytes_read_write, <span class="self">self</span>.bootstrap_config.max_bootstrap_message_size, <span class="self">self</span>.bootstrap_config.thread_count, <span class="self">self</span>.bootstrap_config.max_datastore_key_length, <span class="self">self</span>.bootstrap_config.randomness_size_bytes, <span class="self">self</span>.bootstrap_config.consensus_bootstrap_part_size);
                                     <span class="kw">let _ </span>= <span class="kw">match </span>tokio::time::timeout(<span class="self">self</span>.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                         error:
-                                        <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.&quot;</span>, occ.get().elapsed().as_secs(), per_ip_min_interval.saturating_sub(occ.get().elapsed()).as_secs())
+                                        <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was {} ago and you have to wait before.&quot;</span>, format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())).to_string())
                                     })).<span class="kw">await </span>{
                                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, <span class="string">&quot;bootstrap error too early retry bootstrap send timed out&quot;</span>).into()),
                                         <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
