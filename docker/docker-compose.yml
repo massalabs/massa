@@ -1,21 +1,37 @@
 ---
-version: "3.9"
+version: '3.9'
 services:
   massa-node:
     container_name: massa-node
-    image: massa-node:${TAG}
+    image: svetekllc/massa-node:${TAG}
     environment:
       - PASSWORD=<insert password>
       - LOGGING=true
-    ports:     
+    ports:
     - "31244:31244"
     - "31245:31245"
     - "33035:33035"
     volumes:
     - /opt/massa/data:/app
+    - /etc/localtime:/etc/localtime:ro
     deploy:
       resources:
         limits:
-          cpus: 4
-          memory: 8gb
+          cpus: '6'
+          memory: 10gb
+    restart: unless-stopped
+
+  node_exporter:
+    image: prom/node-exporter:v1.4.0
+    container_name: node_exporter
+    volumes:
+      - type: 'bind'
+        source: '/'
+        target: '/rootfs'
+        read_only: true
+    command:
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|run|mnt)($$|/)'
+    pid: 'host'
+    network_mode: host
     restart: unless-stopped
