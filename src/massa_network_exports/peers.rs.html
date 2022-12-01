@@ -305,7 +305,7 @@
 <span class="kw">use </span>std::ops::Bound::Included;
 <span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
 <span class="doccomment">/// Associate a peer info with nodes
-</span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Peer {
     <span class="doccomment">/// peer info
     </span><span class="kw">pub </span>peer_info: PeerInfo,
@@ -467,7 +467,7 @@
 }
 
 <span class="doccomment">/// All information concerning a peer is here
-</span><span class="attr">#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+</span><span class="attr">#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>PeerInfo {
     <span class="doccomment">/// Peer ip address.
     </span><span class="kw">pub </span>ip: IpAddr,

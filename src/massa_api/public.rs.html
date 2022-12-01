@@ -959,6 +959,7 @@
 <a href="#959" id="959">959</a>
 <a href="#960" id="960">960</a>
 <a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1328,6 +1329,7 @@
             connected_nodes: peers
                 .peers
                 .iter()
+                .sorted()
                 .flat_map(|(ip, peer)| {
                     peer.active_nodes
                         .iter()
