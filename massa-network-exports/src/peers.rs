@@ -176,7 +176,7 @@ impl Default for PeerType {
 }
 
 /// All information concerning a peer is here
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Debug)]
 pub struct PeerInfo {
     /// Peer ip address.
     pub ip: IpAddr,
