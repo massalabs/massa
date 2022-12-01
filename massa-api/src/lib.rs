@@ -5,7 +5,6 @@
 #![warn(unused_crate_dependencies)]
 use crate::error::ApiError::WrongAPI;
 use hyper::Method;
-use tower_http::cors::{Any, CorsLayer};
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
@@ -40,6 +39,7 @@ use parking_lot::RwLock;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
+use tower_http::cors::{Any, CorsLayer};
 
 use tokio::sync::mpsc;
 use tracing::{info, warn};
