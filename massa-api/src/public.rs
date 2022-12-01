@@ -367,6 +367,7 @@ impl MassaRpcServer for API<Public> {
             connected_nodes: peers
                 .peers
                 .iter()
+                .sorted()
                 .flat_map(|(ip, peer)| {
                     peer.active_nodes
                         .iter()

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
 use std::{collections::HashMap, net::IpAddr};
 /// Associate a peer info with nodes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Peer {
     /// peer info
     pub peer_info: PeerInfo,
@@ -176,7 +176,7 @@ impl Default for PeerType {
 }
 
 /// All information concerning a peer is here
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,Serialize, Deserialize, Debug)]
 pub struct PeerInfo {
     /// Peer ip address.
     pub ip: IpAddr,
