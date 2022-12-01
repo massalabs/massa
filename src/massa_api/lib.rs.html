@@ -307,12 +307,25 @@
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ApiError::WrongAPI;
+<span class="kw">use </span>hyper::Method;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
 <span class="kw">use </span>jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
@@ -347,6 +360,7 @@
 <span class="kw">use </span>serde_json::Value;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 
 <span class="kw">use </span>tokio::sync::mpsc;
 <span class="kw">use </span>tracing::{info, warn};
@@ -445,7 +459,17 @@
         <span class="macro">panic!</span>(<span class="string">&quot;wrong server configuration, you can&#39;t disable both http and ws&quot;</span>)
     }
 
+    <span class="kw">let </span>cors = CorsLayer::new()
+        <span class="comment">// Allow `POST` and `OPTIONS` when accessing the resource
+        </span>.allow_methods([Method::POST, Method::OPTIONS])
+        <span class="comment">// Allow requests from any origin
+        </span>.allow_origin(Any)
+        .allow_headers([hyper::header::CONTENT_TYPE]);
+
+    <span class="kw">let </span>middleware = tower::ServiceBuilder::new().layer(cors);
+
     <span class="kw">let </span>server = server_builder
+        .set_middleware(middleware)
         .build(url)
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to build server&quot;</span>);
