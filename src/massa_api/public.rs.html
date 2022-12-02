@@ -960,6 +960,8 @@
 <a href="#960" id="960">960</a>
 <a href="#961" id="961">961</a>
 <a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1015,6 +1017,7 @@
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 
 <span class="kw">impl </span>API&lt;Public&gt; {
@@ -1321,21 +1324,22 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
         };
 
+        <span class="kw">let </span>connected_nodes = peers
+            .peers
+            .iter()
+            .flat_map(|(ip, peer)| {
+                peer.active_nodes
+                    .iter()
+                    .map(<span class="kw">move </span>|(id, is_outgoing)| (<span class="kw-2">*</span>id, (<span class="kw-2">*</span>ip, <span class="kw-2">*</span>is_outgoing)))
+            })
+            .collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
+
         <span class="prelude-val">Ok</span>(NodeStatus {
             node_id,
             node_ip: network_config.routable_ip,
             version,
             current_time: now,
-            connected_nodes: peers
-                .peers
-                .iter()
-                .sorted()
-                .flat_map(|(ip, peer)| {
-                    peer.active_nodes
-                        .iter()
-                        .map(<span class="kw">move </span>|(id, is_outgoing)| (<span class="kw-2">*</span>id, (<span class="kw-2">*</span>ip, <span class="kw-2">*</span>is_outgoing)))
-                })
-                .collect(),
+            connected_nodes,
             last_slot,
             next_slot,
             execution_stats,
