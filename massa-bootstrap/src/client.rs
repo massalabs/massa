@@ -167,10 +167,15 @@ async fn stream_final_state_and_consensus(
                     };
                     panic!("Bootstrap failed, try to bootstrap again.");
                 }
+                BootstrapServerMessage::BootstrapError { error } => {
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())
+                }
                 _ => {
-                    return Err(
-                        std::io::Error::new(std::io::ErrorKind::TimedOut, "bad message").into(),
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "unexpected message",
                     )
+                    .into())
                 }
             }
         }
