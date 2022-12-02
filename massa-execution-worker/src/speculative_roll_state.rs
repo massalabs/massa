@@ -24,7 +24,7 @@ pub(crate) struct SpeculativeRollState {
     active_history: Arc<RwLock<ActiveHistory>>,
 
     /// List of changes to the state after settling roll sell/buy
-    added_changes: PoSChanges,
+    pub(crate) added_changes: PoSChanges,
 }
 
 impl SpeculativeRollState {
@@ -118,17 +118,8 @@ impl SpeculativeRollState {
             )));
         }
 
-        let cur_cycle = slot.get_cycle(periods_per_cycle);
-
-        // remove the rolls
-        let current_rolls = self
-            .added_changes
-            .roll_changes
-            .entry(*seller_addr)
-            .or_insert_with(|| owned_count);
-        *current_rolls = owned_count.saturating_sub(roll_count);
-
         // compute deferred credit slot
+        let cur_cycle = slot.get_cycle(periods_per_cycle);
         let target_slot = Slot::new_last_of_cycle(
             cur_cycle
                 .checked_add(3)
@@ -136,16 +127,23 @@ impl SpeculativeRollState {
             periods_per_cycle,
             thread_count,
         )
-        .expect("unexepected slot overflot in try_sell_rolls");
+        .expect("unexpected slot overflow in try_sell_rolls");
 
-        // add deferred reimbursement corresponding to the sold rolls value
-        let credit = self
-            .added_changes
+        // Note 1: Deferred credits are stored as absolute value
+        let new_deferred_credits = self
+            .get_address_deferred_credit_for_slot(seller_addr, &target_slot)
+            .unwrap_or_default()
+            .saturating_add(roll_price.saturating_mul_u64(roll_count));
+
+        // Remove the rolls
+        self.added_changes
+            .roll_changes
+            .insert(*seller_addr, owned_count.saturating_sub(roll_count));
+
+        // Add deferred credits (reimbursement) corresponding to the sold rolls value
+        self.added_changes
             .deferred_credits
-            .0
-            .entry(target_slot)
-            .or_insert_with(PreHashMap::default);
-        credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
+            .insert(*seller_addr, target_slot, new_deferred_credits);
 
         Ok(())
     }
@@ -218,17 +216,14 @@ impl SpeculativeRollState {
                 if owned_count != 0 {
                     if let Some(amount) = roll_price.checked_mul_u64(owned_count) {
                         target_credits.insert(addr, amount);
-                        self.added_changes
-                            .roll_changes
-                            .entry(addr)
-                            .or_insert_with(|| 0);
+                        self.added_changes.roll_changes.insert(addr, 0);
                     }
                 }
             }
         }
         if !target_credits.is_empty() {
             let mut credits = DeferredCredits::default();
-            credits.0.insert(target_slot, target_credits);
+            credits.credits.insert(target_slot, target_credits);
             self.added_changes.deferred_credits.nested_extend(credits);
         }
     }
@@ -242,7 +237,12 @@ impl SpeculativeRollState {
         let mut res: HashMap<Slot, Amount> = HashMap::default();
 
         // get added values
-        for (slot, addr_amount) in self.added_changes.deferred_credits.0.range(min_slot..) {
+        for (slot, addr_amount) in self
+            .added_changes
+            .deferred_credits
+            .credits
+            .range(min_slot..)
+        {
             if let Some(amount) = addr_amount.get(address) {
                 let _ = res.try_insert(*slot, *amount);
             };
@@ -256,7 +256,7 @@ impl SpeculativeRollState {
                     .state_changes
                     .pos_changes
                     .deferred_credits
-                    .0
+                    .credits
                     .range(min_slot..)
                 {
                     if let Some(amount) = addr_amount.get(address) {
@@ -269,7 +269,12 @@ impl SpeculativeRollState {
         // get values from final state
         {
             let final_state = self.final_state.read();
-            for (slot, addr_amount) in final_state.pos_state.deferred_credits.0.range(min_slot..) {
+            for (slot, addr_amount) in final_state
+                .pos_state
+                .deferred_credits
+                .credits
+                .range(min_slot..)
+            {
                 if let Some(amount) = addr_amount.get(address) {
                     let _ = res.try_insert(*slot, *amount);
                 };
@@ -277,6 +282,40 @@ impl SpeculativeRollState {
         }
 
         res.into_iter().filter(|(_s, v)| !v.is_zero()).collect()
+    }
+
+    /// Gets the deferred credits for a given address that will be credited at a given slot
+    fn get_address_deferred_credit_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
+        // search in the added changes
+        if let Some(v) = self
+            .added_changes
+            .deferred_credits
+            .get_address_deferred_credit_for_slot(addr, slot)
+        {
+            return Some(v);
+        }
+
+        // search in the history
+        if let Some(v) = self
+            .active_history
+            .read()
+            .get_adress_deferred_credit_for(addr, slot)
+        {
+            return Some(v);
+        }
+
+        // search in the final state
+        if let Some(v) = self
+            .final_state
+            .read()
+            .pos_state
+            .deferred_credits
+            .get_address_deferred_credit_for_slot(addr, slot)
+        {
+            return Some(v);
+        }
+
+        None
     }
 
     /// Get the production statistics for a given address at a given cycle.
@@ -466,11 +505,11 @@ impl SpeculativeRollState {
         credits.extend(
             self.active_history
                 .read()
-                .fetch_all_deferred_credits_at(slot),
+                .get_all_deferred_credits_for(slot),
         );
 
         // added deferred credits
-        if let Some(creds) = self.added_changes.deferred_credits.0.get(slot) {
+        if let Some(creds) = self.added_changes.deferred_credits.credits.get(slot) {
             credits.extend(creds.clone());
         }
 

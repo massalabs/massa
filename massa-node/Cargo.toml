@@ -7,6 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+crossbeam-channel = "0.5.6"
 anyhow = "1.0"
 enum-map = { version = "2.4", features = ["serde"] }
 lazy_static = "1.4"
@@ -51,14 +52,12 @@ massa_wallet = { path = "../massa-wallet" }
 massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
 
-
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 beta = []
 deadlock_detection = []
 sandbox = [
     "massa_bootstrap/sandbox",
-    "massa_consensus_exports/sandbox",
     "massa_consensus_worker/sandbox",
     "massa_execution_worker/sandbox",
     "massa_final_state/sandbox",

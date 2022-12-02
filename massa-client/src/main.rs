@@ -9,7 +9,7 @@ use atty::Stream;
 use cmds::Command;
 use console::style;
 use dialoguer::Password;
-use massa_sdk::Client;
+use massa_sdk::{Client, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::net::IpAddr;
@@ -20,7 +20,6 @@ use structopt::StructOpt;
 mod cmds;
 mod repl;
 mod settings;
-mod utils;
 
 #[cfg(test)]
 pub mod tests;
@@ -96,8 +95,19 @@ fn main(args: Args) -> anyhow::Result<()> {
 }
 
 async fn run(args: Args) -> Result<()> {
+    let http_config = HttpConfig {
+        max_request_body_size: SETTINGS.http.max_request_body_size,
+        request_timeout: SETTINGS.http.request_timeout,
+        max_concurrent_requests: SETTINGS.http.max_concurrent_requests,
+        certificate_store: SETTINGS.http.certificate_store.clone(),
+        id_kind: SETTINGS.http.id_kind.clone(),
+        max_log_length: SETTINGS.http.max_log_length,
+        headers: SETTINGS.http.headers.clone(),
+    };
+
     // TODO: move settings loading in another crate ... see #1277
     let settings = SETTINGS.clone();
+
     let address = match args.ip {
         Some(ip) => ip,
         None => settings.default_node.ip,
@@ -124,10 +134,10 @@ async fn run(args: Args) -> Result<()> {
     // ...
     let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
     let mut wallet = Wallet::new(args.wallet, password)?;
-    let client = Client::new(address, public_port, private_port).await;
+    let client = Client::new(address, public_port, private_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &mut wallet).await;
+        repl::run(&client, &mut wallet).await?;
     } else {
         // Non-Interactive mode
         match args

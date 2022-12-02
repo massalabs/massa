@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.16.0",
+        "version": "TEST.17.0",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -125,7 +125,9 @@
                 {
                     "name": "blockId",
                     "description": "Block ID",
-                    "schema": false,
+                    "schema": {
+                        "$ref": "#/components/schemas/BlockId"
+                    },
                     "summary": "string",
                     "required": true
                 }
@@ -153,7 +155,7 @@
                     "description": "Slot of the block",
                     "schema": {
                         "type": "object",
-                        "$ref": "#/components/schemas/ExecutedAt"
+                        "$ref": "#/components/schemas/Slot"
                     },
                     "required": true
                 }
@@ -923,7 +925,7 @@
                 "type": "object",
                 "properties": {
                     "header": {
-                        "$ref": "#/components/schemas/Header",
+                        "$ref": "#/components/schemas/WrappedHeader",
                         "description": "signed header"
                     },
                     "operations": {
@@ -935,6 +937,10 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "BlockId": {
+                "description": "Block identifier",
+                "type": "string"
             },
             "BlockInfo": {
                 "title": "BlockInfo",
@@ -985,7 +991,6 @@
                 "title": "CallSC",
                 "description": "Call Smart Contract",
                 "required": [
-                    "gas_price",
                     "max_gas",
                     "param",
                     "coins",
@@ -1012,10 +1017,6 @@
                     "coins": {
                         "description": "Amount",
                         "type": "number"
-                    },
-                    "gas_price": {
-                        "description": "Amount",
-                        "type": "number"
                     }
                 },
                 "additionalProperties": false
@@ -1033,7 +1034,9 @@
                         "description": "The block ids of the blocks in that clique",
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "schema": {
+                                "$ref": "#/components/schemas/BlockId"
+                            }
                         }
                     },
                     "fitness": {
@@ -1265,7 +1268,8 @@
                         "$ref": "#/components/schemas/EndorsementContent"
                     },
                     "creator_public_key": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
                     },
                     "creator_address": {
                         "type": "string"
@@ -1382,7 +1386,8 @@
                 "required": [
                     "executed_at",
                     "output_events",
-                    "result"
+                    "result",
+                    "gas_cost"
                 ],
                 "type": "object",
                 "properties": {
@@ -1396,8 +1401,12 @@
                     "output_events": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/OutputEvent"
+                            "$ref": "#/components/schemas/SCOutputEvent"
                         }
+                    },
+                    "gas_cost": {
+                        "description": "The gas cost for the execution",
+                        "type": "number"
                     }
                 },
                 "additionalProperties": false
@@ -1407,7 +1416,6 @@
                 "description": "Execute Smart Contract",
                 "required": [
                     "data",
-                    "gas_price",
                     "max_gas"
                 ],
                 "type": "object",
@@ -1422,10 +1430,6 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
-                    },
-                    "gas_price": {
-                        "description": "Represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.",
-                        "type": "string"
                     }
                 },
                 "additionalProperties": false
@@ -1507,6 +1511,52 @@
                         }
                     }
                 }
+            },
+            "EventExecutionContext" : {
+                "title": "EventExecutionContext",
+                "description": "Context of the event (not generated by the user)",
+                "required": [
+                    "call_stack",
+                    "index_in_slot",
+                    "read_only",
+                    "slot",
+                    "is_final"
+                ],
+                "type": "object",
+                "properties": {
+                    "slot": {
+                        "$ref": "#/components/schemas/Slot",
+                        "description": "When was it generated"
+                    },
+                    "block": {
+                        "$ref": "#/components/schemas/BlockId",
+                        "description": "Block Id"
+                    },
+                    "read_only": {
+                        "description": "Wether the event was generated during  read only call",
+                        "type": "boolean"
+                    },
+                    "call_stack": {
+                        "description": "Addresses, most recent at the end",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Address"
+                        }
+                    },
+                    "index_in_slot": {
+                        "description": "Index of the event in the slot",
+                        "type": "number"
+                    },
+                    "origin_operation_id": {
+                        "$ref": "#/components/schemas/OperationId",
+                        "description": "Origin operation id"
+                    },
+                    "is_final": {
+                        "description": "Whether the event is final",
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
             },
             "GraphInterval": {
                 "title": "GraphInterval",
@@ -1746,7 +1796,7 @@
                         "type": "boolean"
                     },
                     "operation": {
-                        "$ref": "#/components/schemas/SignedOperation",
+                        "$ref": "#/components/schemas/WrappedOperation",
                         "description": "The operation itself"
                     }
                 },
@@ -1762,8 +1812,8 @@
                 "type": "object",
                 "properties": {
                     "creator_public_key": {
-                        "description": "The public key of the creator of the TX",
-                        "type": "string"
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
                     },
                     "signature": {
                         "$ref": "#/components/schemas/Signature",
@@ -1780,22 +1830,31 @@
                 },
                 "additionalProperties": false
             },
-            "OutputEvent": {
-                "title": "OutputEvent",
-                "required": [
-                    "context",
-                    "data"
-                ],
+            "OperationType": {
+                "description": "Type specific operation content.",
                 "type": "object",
                 "properties": {
-                    "context": {
-                        "$ref": "#/components/schemas/SCOEContext"
+                    "Transaction": {
+                        "$ref": "#/components/schemas/Transaction",
+                        "description": "transfer coins from sender to recipient"
                     },
-                    "data": {
-                        "type": "string"
+                    "ExecutSC": {
+                        "$ref": "#/components/schemas/ExecuteSC",
+                        "description": "Execute a smart contract."
+                    },
+                    "CallSC": {
+                        "$ref": "#/components/schemas/CallSC",
+                        "description": "Calls an exported function from a stored smart contract"
+                    },
+                    "RollBuy": {
+                        "$ref": "#/components/schemas/RollBuy",
+                        "description": "the sender buys `roll_count` rolls. Roll price is defined in configuration"
+                    },
+                    "RollSell": {
+                        "$ref": "#/components/schemas/RollSell",
+                        "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration"
                     }
-                },
-                "additionalProperties": false
+                }
             },
             "PoolStats": {
                 "title": "PoolStats",
@@ -1844,6 +1903,10 @@
                 },
                 "additionalProperties": false
             },
+            "PublicKey": {
+                "description": "Public key used to check if a message was encoded by the corresponding `PublicKey`.\nGenerated from the `KeyPair` using `SignatureEngine`",
+                "type": "string"
+            },
             "PubkeySig": {
                 "description": "Public key and a signature it has produced used for serialization/deserialization purpose",
                 "required": [
@@ -1867,17 +1930,12 @@
                 "description": "Read only bytecode execution",
                 "required": [
                     "max_gas",
-                    "simulated_gas_price",
                     "bytecode"
                 ],
                 "type": "object",
                 "properties": {
                     "max_gas": {
                         "description": "Max available gas",
-                        "type": "number"
-                    },
-                    "simulated_gas_price": {
-                        "description": "Gas price",
                         "type": "number"
                     },
                     "bytecode": {
@@ -1901,7 +1959,6 @@
                 "required": [
                     "max_gas",
                     "parameter",
-                    "simulated_gas_price",
                     "target_address",
                     "target_function"
                 ],
@@ -1909,10 +1966,6 @@
                 "properties": {
                     "max_gas": {
                         "description": "Max available gas",
-                        "type": "number"
-                    },
-                    "simulated_gas_price": {
-                        "description": "Gas price",
                         "type": "number"
                     },
                     "target_address": {
@@ -1948,6 +2001,19 @@
                 },
                 "additionalProperties": false
             },
+            "RollBuy": {
+                "description": "the sender buys `roll_count` rolls. Roll price is defined in configuration",
+                "required": [
+                    "roll_count"
+                ],
+                "type": "object",
+                "properties": {
+                    "roll_count": {
+                        "description": "roll count",
+                        "type": "number"
+                    }
+                }
+            },
             "RollsInfo": {
                 "title": "Rolls",
                 "required": [
@@ -1969,41 +2035,18 @@
                 },
                 "additionalProperties": false
             },
-            "SCContext": {
-                "title": "Context",
+            "RollSell": {
+                "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration",
                 "required": [
-                    "block",
-                    "call_stack",
-                    "index_in_slot",
-                    "origin_operation_id",
-                    "read_only",
-                    "slot"
+                    "roll_count"
                 ],
                 "type": "object",
                 "properties": {
-                    "slot": {
-                        "$ref": "#/components/schemas/Slot"
-                    },
-                    "block": {
-                        "type": "string"
-                    },
-                    "read_only": {
-                        "type": "boolean"
-                    },
-                    "call_stack": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "index_in_slot": {
-                        "type": "integer"
-                    },
-                    "origin_operation_id": {
-                        "type": "string"
+                    "roll_count": {
+                        "description": "roll count",
+                        "type": "number"
                     }
-                },
-                "additionalProperties": false
+                }
             },
             "SCOEContext": {
                 "title": "SCOEContext",
@@ -2016,7 +2059,7 @@
                 "type": "object",
                 "properties": {
                     "slot": {
-                        "$ref": "#/components/schemas/ExecutedAt"
+                        "$ref": "#/components/schemas/Slot"
                     },
                     "block": {
                         "description": "Block Id",
@@ -2047,8 +2090,7 @@
                 "title": "SCOutputEvent",
                 "required": [
                     "context",
-                    "data",
-                    "id"
+                    "data"
                 ],
                 "type": "object",
                 "properties": {
@@ -2056,41 +2098,16 @@
                         "description": "String of the event you sended",
                         "type": "string"
                     },
-                    "id": {
-                        "type": "string"
-                    },
                     "context": {
-                        "$ref": "#/components/schemas/SCContext"
+                        "$ref": "#/components/schemas/EventExecutionContext",
+                        "description": "Context generated by the execution context"
                     }
                 },
-                "additionalProperties": false,
-                "example": "Id of the event"
+                "additionalProperties": false
             },
             "Signature": {
                 "description": "Signature generated from a message and a `KeyPair`.",
                 "type": "string"
-            },
-            "SignedOperation": {
-                "title": "SignedOperation",
-                "description": "Signed Operation",
-                "required": [
-                    "creator_public_key",
-                    "serialized_content",
-                    "signature"
-                ],
-                "type": "object",
-                "properties": {
-                    "creator_public_key": {
-                        "type": "string"
-                    },
-                    "content": {
-                        "type": "string"
-                    },
-                    "signature": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": false
             },
             "Slot": {
                 "title": "TSlot",
@@ -2171,6 +2188,62 @@
                         "type": "number"
                     }
                 }
+            },
+            "WrappedHeader": {
+                "description": "signed operation",
+                "required": [
+                    "content",
+                    "signature",
+                    "creator_public_key",
+                    "creator_address"
+                ],
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "$ref": "#/components/schemas/Header",
+                        "description": "header type"
+                    },
+                    "signature": {
+                        "$ref": "#/components/schemas/Signature",
+                        "description": "signature"
+                    },
+                    "creator_public_key": {
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
+                    },
+                    "creator_address": {
+                        "$ref": "#/components/schemas/Address",
+                        "description": "the content creator address"
+                    }
+                }
+            },
+            "WrappedOperation": {
+                "description": "signed operation",
+                "required": [
+                    "content",
+                    "signature",
+                    "creator_public_key",
+                    "creator_address"
+                ],
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "$ref": "#/components/schemas/OperationType",
+                        "description": "operation type"
+                    },
+                    "signature": {
+                        "$ref": "#/components/schemas/Signature",
+                        "description": "signature"
+                    },
+                    "creator_public_key": {
+                        "$ref": "#/components/schemas/PublicKey",
+                        "description": "the content creator public key"
+                    },
+                    "creator_address": {
+                        "$ref": "#/components/schemas/Address",
+                        "description": "the content creator address"
+                    }
+                }
             }
         },
         "contentDescriptors": {
@@ -2180,6 +2253,14 @@
                 "description": "A AddressInfo object",
                 "schema": {
                     "$ref": "#/components/schemas/AddressInfo"
+                }
+            },
+            "BlockId": {
+                "name": "BlockId",
+                "summary": "BlockId",
+                "description": "A BlockId object",
+                "schema": {
+                    "$ref": "#/components/schemas/BlockId"
                 }
             },
             "BlockInfo": {
@@ -2238,6 +2319,14 @@
                     "$ref": "#/components/schemas/ExecuteReadOnlyResponse"
                 }
             },
+            "EventFilter": {
+                "name": "EventFilter",
+                "summary": "EventFilter",
+                "description": "A EventFilter object",
+                "schema": {
+                    "$ref": "#/components/schemas/EventFilter"
+                }
+            },
             "GraphInterval": {
                 "name": "GraphInterval",
                 "summary": "GraphInterval",
@@ -2278,6 +2367,14 @@
                     "$ref": "#/components/schemas/OperationInfo"
                 }
             },
+            "OperationType": {
+                "name": "OperationType",
+                "summary": "OperationType",
+                "description": "A OperationType object",
+                "schema": {
+                    "$ref": "#/components/schemas/OperationType"
+                }
+            },
             "PubkeySig": {
                 "name": "PubkeySig",
                 "summary": "PubkeySig",
@@ -2308,14 +2405,6 @@
                 "description": "A SCOutputEvent object",
                 "schema": {
                     "$ref": "#/components/schemas/SCOutputEvent"
-                }
-            },
-            "SignedOperation": {
-                "name": "SignedOperation",
-                "summary": "Signed operation",
-                "description": "A SignedOperation object",
-                "schema": {
-                    "$ref": "#/components/schemas/SignedOperation"
                 }
             },
             "Staker": {

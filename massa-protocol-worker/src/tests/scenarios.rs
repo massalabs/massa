@@ -3,14 +3,16 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::{protocol_test, protocol_test_with_storage};
+use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::block::BlockId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
-    tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
-    BlocksResults, ProtocolEvent,
+    tests::tools::{create_and_connect_nodes, create_block},
+    BlocksResults,
 };
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashSet;
 
@@ -22,9 +24,9 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             let ask_for_block_cmd_filter = |cmd| match cmd {
                 cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
@@ -46,34 +48,40 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash = match wait_protocol_event(
-                &mut protocol_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                _ => panic!("Unexpected or no protocol event."),
-            };
+            let (protocol_consensus_event_receiver, received_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_consensus_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockConsensusControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_consensus_event_receiver, id)
+                })
+                .await
+                .unwrap();
 
             // 4. Check that protocol sent the right header to consensus.
             let expected_hash = block.id;
             assert_eq!(expected_hash, received_hash);
 
             // 5. Ask for block.
-            protocol_command_sender
-                .send_wishlist_delta(
-                    vec![(expected_hash, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .await
-                .expect("Failed to ask for block.");
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .send_wishlist_delta(
+                        vec![(expected_hash, Some(block.content.header.clone()))]
+                            .into_iter()
+                            .collect(),
+                        PreHashSet::<BlockId>::default(),
+                    )
+                    .expect("Failed to ask for block.");
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Check that protocol asks the node for the full block.
             match network_controller
@@ -101,9 +109,9 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             );
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -118,9 +126,9 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             let send_block_info_cmd_filter = |cmd| match cmd {
@@ -141,10 +149,14 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
             // Add to storage, integrate.
             storage.store_block(block.clone());
-            protocol_command_sender
-                .integrated_block(expected_hash, storage.clone())
-                .await
-                .unwrap();
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .integrated_block(expected_hash, storage.clone())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 3. Simulate two nodes asking for a block.
             for node in nodes.iter().take(2) {
@@ -188,9 +200,9 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -205,9 +217,9 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 4 nodes.
@@ -235,19 +247,21 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
             // node[1] asks for that block
 
             // Check protocol sends header to consensus.
-            let (ref_hash, _) = match wait_protocol_event(
-                &mut protocol_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
-                _ => panic!("Unexpected or no protocol event."),
-            };
+            let (protocol_consensus_event_receiver, ref_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_consensus_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockConsensusControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_consensus_event_receiver, id)
+                })
+                .await
+                .unwrap();
 
             storage.store_block(ref_block.clone());
 
@@ -258,10 +272,14 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
 
             // 5. Propagate header.
             let _op_ids = ref_block.content.operations.clone();
-            protocol_command_sender
-                .integrated_block(ref_hash, storage)
-                .await
-                .expect("Failed to ask for block.");
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .integrated_block(ref_hash, storage.clone())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Check that protocol propagates the header to the right nodes.
             // node_a created the block and should receive nothing
@@ -302,9 +320,9 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -320,9 +338,9 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
     protocol_test_with_storage(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
+                    mut protocol_consensus_event_receiver,
                     protocol_pool_event_receiver,
                     mut storage| {
             // Create 4 nodes.
@@ -350,27 +368,33 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             // node[1] asks for that block
 
             // Check protocol sends header to consensus.
-            let (ref_hash, _) = match wait_protocol_event(
-                &mut protocol_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
-                _ => panic!("Unexpected or no protocol event."),
-            };
+            let (protocol_consensus_event_receiver, ref_hash) =
+                tokio::task::spawn_blocking(move || {
+                    let id = protocol_consensus_event_receiver
+                        .wait_command(MassaTime::from_millis(1000), |command| match command {
+                            MockConsensusControllerMessage::RegisterBlockHeader {
+                                block_id,
+                                header: _,
+                            } => Some(block_id),
+                            _ => panic!("unexpected protocol event"),
+                        })
+                        .unwrap();
+                    (protocol_consensus_event_receiver, id)
+                })
+                .await
+                .unwrap();
 
             storage.store_block(ref_block.clone());
             // 5. Propagate header.
             let _op_ids = ref_block.content.operations.clone();
-            protocol_command_sender
-                .integrated_block(ref_hash, storage)
-                .await
-                .expect("Failed to ask for block.");
+            protocol_command_sender = tokio::task::spawn_blocking(move || {
+                protocol_command_sender
+                    .integrated_block(ref_hash, storage.clone())
+                    .unwrap();
+                protocol_command_sender
+            })
+            .await
+            .unwrap();
 
             // 6. Check that protocol propagates the header to the right nodes.
             // node_a created the block and should receive nothing
@@ -442,9 +466,9 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
             }
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -460,9 +484,9 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
@@ -478,9 +502,9 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },
@@ -495,9 +519,9 @@ async fn test_protocol_block_not_found() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
+                    protocol_consensus_event_receiver,
                     protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
@@ -533,9 +557,9 @@ async fn test_protocol_block_not_found() {
 
             (
                 network_controller,
-                protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_consensus_event_receiver,
                 protocol_pool_event_receiver,
             )
         },

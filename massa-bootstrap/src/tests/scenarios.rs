@@ -4,7 +4,7 @@ use super::{
     mock_establisher,
     tools::{
         bridge_mock_streams, get_boot_state, get_peers, get_random_final_state_bootstrap,
-        get_random_ledger_changes, wait_consensus_command, wait_network_command,
+        get_random_ledger_changes, wait_network_command,
     },
 };
 use crate::tests::tools::{
@@ -16,19 +16,22 @@ use crate::{
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use massa_async_pool::AsyncPoolConfig;
-use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
+use massa_consensus_exports::{
+    bootstrapable_graph::BootstrapableGraph,
+    test_exports::{MockConsensusController, MockConsensusControllerMessage},
+};
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{
-    test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
+    test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
+    FinalState, FinalStateConfig, StateChanges,
 };
 use massa_ledger_exports::LedgerConfig;
+use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_models::{
-    address::Address,
     config::{
         MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
     },
-    slot::Slot,
-    version::Version,
+    prehash::PreHashSet,
 };
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{
@@ -59,8 +62,8 @@ async fn test_bootstrap_server() {
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
 
-    // init the communication channels
-    let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
+    let (consensus_controller, mut consensus_event_receiver) =
+        MockConsensusController::new_with_receiver();
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
 
     // setup final state local config
@@ -139,7 +142,7 @@ async fn test_bootstrap_server() {
     // start bootstrap server
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
-        ConsensusCommandSender(consensus_cmd_tx),
+        consensus_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state_server.clone(),
         bootstrap_config.clone(),
@@ -216,22 +219,47 @@ async fn test_bootstrap_server() {
         sent_peers
     };
 
-    // wait for bootstrap to ask consensus for bootstrap graph, send it
-    let wait_graph = async move || {
-        let response =
-            match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd {
-                ConsensusCommand::GetBootstrapState(resp) => Some(resp),
-                _ => None,
-            })
-            .await
-            {
-                Some(resp) => resp,
-                None => panic!("timeout waiting for get boot graph consensus command"),
-            };
-        let sent_graph = get_boot_state();
-        response.send(Box::new(sent_graph.clone())).await.unwrap();
-        sent_graph
-    };
+    // intercept consensus parts being asked
+    let sent_graph = get_boot_state();
+    let sent_graph_clone = sent_graph.clone();
+    std::thread::spawn(move || loop {
+        consensus_event_receiver.wait_command(MassaTime::from_millis(10_000), |cmd| match &cmd {
+            MockConsensusControllerMessage::GetBootstrapableGraph {
+                execution_cursor,
+                response_tx,
+                ..
+            } => {
+                // send the consensus blocks only on the first call
+                // give an empty answer for the following ones
+                if execution_cursor
+                    == &StreamingStep::Ongoing(Slot {
+                        period: 1,
+                        thread: 0,
+                    })
+                {
+                    response_tx
+                        .send(Ok((
+                            sent_graph_clone.clone(),
+                            PreHashSet::default(),
+                            StreamingStep::Started,
+                        )))
+                        .unwrap();
+                } else {
+                    response_tx
+                        .send(Ok((
+                            BootstrapableGraph {
+                                final_blocks: Vec::new(),
+                            },
+                            PreHashSet::default(),
+                            StreamingStep::Finished(None),
+                        )))
+                        .unwrap();
+                }
+                Some(())
+            }
+            _ => None,
+        });
+    });
 
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
@@ -258,7 +286,6 @@ async fn test_bootstrap_server() {
 
     // wait for peers and graph
     let sent_peers = wait_peers().await;
-    let sent_graph = wait_graph().await;
 
     // wait for get_state
     let bootstrap_res = get_state_h
@@ -292,6 +319,7 @@ async fn test_bootstrap_server() {
 
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());
+    assert_eq_final_state_hash(&final_state_server.read(), &final_state_client.read());
 
     // compute initial draws
     final_state_server.write().compute_initial_draws().unwrap();
@@ -309,7 +337,7 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
-    // check states
+    // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
     // stop bootstrap server

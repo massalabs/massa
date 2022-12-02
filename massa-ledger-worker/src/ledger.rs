@@ -152,8 +152,11 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
-        self.sorted_ledger.get_datastore_keys(addr)
+    fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+        match self.entry_exists(addr) {
+            true => Some(self.sorted_ledger.get_datastore_keys(addr)),
+            false => None,
+        }
     }
 
     /// Get the current disk ledger hash

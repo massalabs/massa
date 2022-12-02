@@ -5,24 +5,26 @@ use crate::settings::BootstrapConfig;
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_async_pool::{AsyncPoolChanges, Change};
-use massa_consensus_exports::commands::ConsensusCommand;
+use massa_consensus_exports::{
+    bootstrapable_graph::{
+        BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
+    },
+    export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
+};
 use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_graph::export_active_block::ExportActiveBlockSerializer;
-use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
-use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::config::{
-    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
-    MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT,
-    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
+    MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
+    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
@@ -139,7 +141,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
         for j in 0u64..r_limit {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
-        deferred_credits.0.insert(
+        deferred_credits.credits.insert(
             Slot {
                 period: i,
                 thread: 0,
@@ -154,14 +156,15 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
     let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-    cycle_history.push_back(CycleInfo {
-        cycle: 0,
+    cycle_history.push_back(CycleInfo::new_with_hash(
+        0,
+        false,
         roll_counts,
-        complete: false,
         rng_seed,
         production_stats,
-    });
-    let deferred_credits = get_random_deferred_credits(r_limit);
+    ));
+    let mut deferred_credits = DeferredCredits::default();
+    deferred_credits.final_nested_extend(get_random_deferred_credits(r_limit));
     PoSFinalState {
         cycle_history,
         deferred_credits,
@@ -184,13 +187,11 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
 pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
     let mut changes = AsyncPoolChanges::default();
     for _ in 0..(r_limit / 2) {
-        let mut message = get_random_message();
-        message.gas_price = Amount::from_str("10").unwrap();
+        let message = get_random_message(Some(Amount::from_str("10").unwrap()));
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in (r_limit / 2)..r_limit {
-        let mut message = get_random_message();
-        message.gas_price = Amount::from_str("1000").unwrap();
+        let message = get_random_message(Some(Amount::from_str("1_000_000").unwrap()));
         changes.0.push(Change::Add(message.compute_id(), message));
     }
     changes
@@ -228,10 +229,10 @@ pub fn get_random_final_state_bootstrap(
     let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
-    let mut messages = BTreeMap::new();
+    let mut messages = AsyncPoolChanges::default();
     for _ in 0..r_limit {
-        let message = get_random_message();
-        messages.insert(message.compute_id(), message);
+        let message = get_random_message(None);
+        messages.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
@@ -241,7 +242,8 @@ pub fn get_random_final_state_bootstrap(
 
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);
-    let async_pool = create_async_pool(config.async_pool_config.clone(), messages);
+    let mut async_pool = create_async_pool(config.async_pool_config.clone(), BTreeMap::new());
+    async_pool.apply_changes_unchecked(&messages);
 
     create_final_state(
         config.clone(),
@@ -324,27 +326,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
         max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    }
-}
-
-pub async fn wait_consensus_command<F, T>(
-    consensus_command_receiver: &mut Receiver<ConsensusCommand>,
-    timeout: MassaTime,
-    filter_map: F,
-) -> Option<T>
-where
-    F: Fn(ConsensusCommand) -> Option<T>,
-{
-    let timer = sleep(timeout.into());
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            cmd = consensus_command_receiver.recv() => match cmd {
-                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
-                _ => panic!("network event channel died")
-            },
-            _ = &mut timer => return None
-        }
+        consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
     }
 }
 
@@ -435,7 +417,6 @@ pub fn get_boot_state() -> BootstrapableGraph {
         block,
         parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
         is_final: true,
-        operations: Default::default(),
     };
 
     let boot_graph = BootstrapableGraph {
@@ -447,13 +428,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
         THREAD_COUNT,
         ENDORSEMENT_COUNT,
         MAX_BOOTSTRAP_BLOCKS,
-        MAX_DATASTORE_VALUE_LENGTH,
-        MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE,
         MAX_OPERATIONS_PER_BLOCK,
-        MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH,
-        MAX_OPERATION_DATASTORE_VALUE_LENGTH,
     );
 
     let mut bootstrapable_graph_serialized = Vec::new();

@@ -22,18 +22,17 @@ massa_wallet = { path = "../massa-wallet" }
 massa_hash = { path = "../massa-hash" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_serialization = { path = "../massa-serialization" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 
 [dev-dependencies]
 serial_test = "0.9"
 massa_protocol_exports = { path = "../massa-protocol-exports", features=["testing"] }
+massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
 massa_factory_exports = { path = "../massa-factory-exports", features=["testing"]  }
 massa_wallet = { path = "../massa-wallet", features=["testing"]  }
 massa_pos_exports = { path = "../massa-pos-exports", features=["testing"]  }
-massa_consensus_exports = { path = "../massa-consensus-exports", features=["testing"]  }
 massa_pool_exports = { path = "../massa-pool-exports", features=["testing"]  }
 
 [features]
 sandbox = []
-testing = ["massa_factory_exports/testing", "massa_pos_exports/testing", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_protocol_exports/testing", "massa_wallet/testing"]
+testing = ["massa_factory_exports/testing", "massa_pos_exports/testing", "massa_pool_exports/testing", "massa_protocol_exports/testing", "massa_wallet/testing"]

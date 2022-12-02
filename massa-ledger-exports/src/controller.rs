@@ -56,7 +56,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>>;
+    fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>>;
 
     /// Get the current disk ledger hash
     fn get_ledger_hash(&self) -> Hash;

@@ -31,7 +31,7 @@ use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::debug;
 
@@ -94,9 +94,6 @@ pub struct ExecutionContext {
 
     /// max gas for this execution
     pub max_gas: u64,
-
-    /// gas price of the execution
-    pub gas_price: Amount,
 
     /// slot at which the execution happens
     pub slot: Slot,
@@ -167,7 +164,6 @@ impl ExecutionContext {
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
-            gas_price: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -254,7 +250,6 @@ impl ExecutionContext {
         config: ExecutionConfig,
         slot: Slot,
         max_gas: u64,
-        gas_price: Amount,
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
@@ -277,7 +272,6 @@ impl ExecutionContext {
         // return readonly context
         ExecutionContext {
             max_gas,
-            gas_price,
             slot,
             stack: call_stack,
             read_only: true,
@@ -447,6 +441,11 @@ impl ExecutionContext {
     /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
     pub fn get_bytecode(&self, address: &Address) -> Option<Vec<u8>> {
         self.speculative_ledger.get_bytecode(address)
+    }
+
+    /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
+    pub fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
+        self.speculative_ledger.get_keys(address)
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
@@ -662,12 +661,22 @@ impl ExecutionContext {
     /// * `slot`: associated slot of the deferred credits to be executed
     /// * `credits`: deferred to be executed
     pub fn execute_deferred_credits(&mut self, slot: &Slot) {
-        let credits = self.speculative_roll_state.get_deferred_credits(slot);
-        for (addr, amount) in credits {
-            if let Err(e) = self.transfer_coins(None, Some(addr), amount, false) {
+        let executed_credits = self.speculative_roll_state.get_deferred_credits(slot);
+
+        for (address, amount) in executed_credits {
+            self.speculative_roll_state
+                .added_changes
+                .deferred_credits
+                .credits
+                .entry(*slot)
+                .or_default()
+                .entry(address)
+                .and_modify(|credit_amount| *credit_amount = Amount::default())
+                .or_default();
+            if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
-                    amount, addr, slot, e
+                    amount, address, slot, e
                 );
             }
         }
