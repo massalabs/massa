@@ -21,6 +21,7 @@ members = [
   "massa-network-exports",
   "massa-node",
   "massa-sdk",
+  "massa-sdk-py",
   "massa-storage",
   "massa-pool-worker",
   "massa-pool-exports",
