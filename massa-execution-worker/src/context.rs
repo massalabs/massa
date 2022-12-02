@@ -80,7 +80,6 @@ pub struct ExecutionContext {
     #[cfg(feature = "gas_calibration")]
     pub(crate) speculative_ledger: SpeculativeLedger,
 
-
     /// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
     speculative_async_pool: SpeculativeAsyncPool,

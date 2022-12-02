@@ -52,26 +52,29 @@ impl InterfaceImpl {
 
     #[cfg(feature = "gas_calibration")]
     /// Used to create an default interface to run SC in a test environment
-    pub fn new_default(sender_addr: Address, operation_datastore: Option<Datastore>) -> InterfaceImpl {
-        use massa_ledger_exports::{SetUpdateOrDelete, LedgerEntry};
+    pub fn new_default(
+        sender_addr: Address,
+        operation_datastore: Option<Datastore>,
+    ) -> InterfaceImpl {
+        use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
 
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
-        let mut execution_context = ExecutionContext::new(
-            config.clone(),
-            final_state,
-            Default::default(),
-        );
+        let mut execution_context =
+            ExecutionContext::new(config.clone(), final_state, Default::default());
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,
             coins: Amount::zero(),
             owned_addresses: vec![sender_addr],
             operation_datastore,
         }];
-        execution_context.speculative_ledger.added_changes.0.insert(sender_addr, SetUpdateOrDelete::Set(LedgerEntry {
-            balance: Amount::from_mantissa_scale(10000000, 0),
-            ..Default::default()
-        }));
+        execution_context.speculative_ledger.added_changes.0.insert(
+            sender_addr,
+            SetUpdateOrDelete::Set(LedgerEntry {
+                balance: Amount::from_mantissa_scale(10000000, 0),
+                ..Default::default()
+            }),
+        );
         let context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
     }

@@ -208,5 +208,4 @@ impl LedgerController for FinalLedger {
     fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
         self.sorted_ledger.get_entire_datastore(addr)
     }
-
 }
