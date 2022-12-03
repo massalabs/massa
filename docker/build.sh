@@ -21,18 +21,18 @@ if [[ "$PUSH_FLAG" == "yes" ]]
 then
     read -r -p "Enter DockerHub repository: " DOCKERHUB_REPO
     IMAGE_NAME=$DOCKERHUB_REPO/$IMAGE_NAME:$IMAGE_TAG
+    read -r -p "Enter username: " DOCKERHUB_USERNAME
+    read -r -p "Enter password: " DOCKERHUB_PASSWORD
 else
     IMAGE_NAME=$IMAGE_NAME:$IMAGE_TAG
 fi
 
-echo
-echo "Building massa-node docker image"
+echo -e "\nBuilding massa-node docker image"
 echo -e "Build date: \t$BUILD_DATE"
 echo -e "Dockerfile: \t$DOCKERFILE"
-echo "Docker context: $DIR"
+echo -e "Docker context: $DIR"
 echo -e "Docker Image: \t$IMAGE_NAME"
-echo -e "Version: \t$IMAGE_TAG"
-echo
+echo -e "Version: \t$IMAGE_TAG\n"
 
 if [[ "$(uname)" == "Darwin" ]]
 then
@@ -49,5 +49,9 @@ docker build -f "$DOCKERFILE" "$DIR" \
 
 if [[ "$PUSH_FLAG" == "yes" ]]
 then
+    echo -e "\nSending docker image \"$IMAGE_NAME\" to DockerHub\n"
+    docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD 2>/dev/null
     docker push $IMAGE_NAME
 fi
+
+echo -e "\nThe build is complete\n"
