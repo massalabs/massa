@@ -34,7 +34,7 @@
     # whether to enable HTTP.
     enable_http = true
     # whether to enable WS.
-    enable_ws = false
+    enable_ws = true
 
 [execution]
     # max number of generated events kept in RAM

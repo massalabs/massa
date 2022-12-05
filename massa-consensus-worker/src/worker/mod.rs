@@ -13,6 +13,7 @@ use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
+use tokio::sync::broadcast;
 
 use crate::commands::ConsensusCommand;
 use crate::controller::ConsensusControllerImpl;
@@ -112,7 +113,12 @@ pub fn start_consensus_worker(
         consensus_thread: Some((tx.clone(), consensus_thread)),
     };
 
-    let controller = ConsensusControllerImpl::new(tx, shared_state, bootstrap_part_size);
+    let controller = ConsensusControllerImpl::new(
+        tx,
+        broadcast::channel(128).0,
+        shared_state,
+        bootstrap_part_size,
+    );
 
     (Box::new(controller), Box::new(manager))
 }

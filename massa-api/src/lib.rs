@@ -8,6 +8,7 @@ use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
+use jsonrpsee::types::{SubscriptionEmptyError, SubscriptionResult};
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
@@ -132,8 +133,8 @@ async fn serve(
         server_builder = server_builder.http_only();
     } else if api_config.enable_ws && !api_config.enable_http {
         server_builder = server_builder.ws_only()
-    } else {
-        panic!("wrong server configuration, you can't disable both http and ws")
+    } else if !api_config.enable_http && !api_config.enable_ws {
+        panic!("wrong server configuration, you can't disable both http and ws");
     }
 
     let cors = CorsLayer::new()
@@ -341,10 +342,22 @@ pub trait MassaRpc {
     /// Get OpenRPC specification.
     #[method(name = "rpc.discover")]
     async fn get_openrpc_spec(&self) -> RpcResult<Value>;
+
+    /// New produced block.
+    #[subscription(
+		name = "subscribe_new_blocks" => "new_blocks",
+		unsubscribe = "unsubscribe_new_blocks",
+		item = Block
+	)]
+    fn subscribe_new_blocks(&self);
 }
 
 fn wrong_api<T>() -> RpcResult<T> {
     Err((WrongAPI).into())
+}
+
+fn wrong_subscription() -> SubscriptionResult {
+    Err(SubscriptionEmptyError)
 }
 
 fn _jsonrpsee_assert(_method: &str, _request: Value, _response: Value) {

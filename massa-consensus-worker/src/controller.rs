@@ -1,3 +1,4 @@
+use jsonrpsee::{core::error::SubscriptionClosed, SubscriptionSink};
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -5,7 +6,7 @@ use massa_consensus_exports::{
 };
 use massa_models::{
     api::BlockGraphStatus,
-    block::{BlockHeader, BlockId},
+    block::{Block, BlockHeader, BlockId},
     clique::Clique,
     prehash::PreHashSet,
     slot::Slot,
@@ -16,6 +17,8 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
+use tokio::sync::broadcast::Sender;
+use tokio_stream::wrappers::BroadcastStream;
 use tracing::log::warn;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
@@ -30,6 +33,7 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 #[derive(Clone)]
 pub struct ConsensusControllerImpl {
     command_sender: SyncSender<ConsensusCommand>,
+    block_sender: Sender<Block>,
     shared_state: Arc<RwLock<ConsensusState>>,
     bootstrap_part_size: u64,
 }
@@ -37,11 +41,13 @@ pub struct ConsensusControllerImpl {
 impl ConsensusControllerImpl {
     pub fn new(
         command_sender: SyncSender<ConsensusCommand>,
+        block_sender: Sender<Block>,
         shared_state: Arc<RwLock<ConsensusState>>,
         bootstrap_part_size: u64,
     ) -> Self {
         Self {
             command_sender,
+            block_sender,
             shared_state,
             bootstrap_part_size,
         }
@@ -219,6 +225,11 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
+        block_storage
+            .read_blocks()
+            .get(&block_id)
+            .map(|value| self.block_sender.send(value.content.clone()));
+
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlock(
@@ -252,5 +263,20 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn clone_box(&self) -> Box<dyn ConsensusController> {
         Box::new(self.clone())
+    }
+
+    fn subscribe_new_block(&self, mut sink: SubscriptionSink) {
+        let rx = BroadcastStream::new(self.block_sender.clone().subscribe());
+        tokio::spawn(async move {
+            match sink.pipe_from_try_stream(rx).await {
+                SubscriptionClosed::Success => {
+                    sink.close(SubscriptionClosed::Success);
+                }
+                SubscriptionClosed::RemotePeerAborted => (),
+                SubscriptionClosed::Failed(err) => {
+                    sink.close(err);
+                }
+            };
+        });
     }
 }
