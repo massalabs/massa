@@ -203,13 +203,14 @@ impl ConsensusState {
     ///
     /// exclusively used by `list_required_active_blocks`
     fn list_latest_final_blocks_at(&self, slot: Slot) -> Vec<(BlockId, u64)> {
-        let mut latest: Vec<(BlockId, u64)> = Vec::new();
+        let mut latest: Vec<(BlockId, u64)> = Vec::with_capacity(self.config.thread_count as usize);
         for id in self.active_index.iter() {
             if let Some((block, _storage)) = self.get_full_active_block(id) {
-                if block.is_final
-                    && block.slot <= slot
-                    && block.slot.period > latest[block.slot.thread as usize].1
-                {
+                if let Some((_id, period)) = latest.get(block.slot.thread as usize) {
+                    if block.is_final && block.slot <= slot && block.slot.period > *period {
+                        latest[block.slot.thread as usize] = (*id, block.slot.period)
+                    }
+                } else {
                     latest[block.slot.thread as usize] = (*id, block.slot.period)
                 }
             }
@@ -225,13 +226,18 @@ impl ConsensusState {
         block_ids: &PreHashSet<BlockId>,
         end_slot: Option<Slot>,
     ) -> Vec<(BlockId, u64)> {
-        let mut earliest: Vec<(BlockId, u64)> = Vec::new();
+        let mut earliest: Vec<(BlockId, u64)> =
+            Vec::with_capacity(self.config.thread_count as usize);
         for id in block_ids {
             if let Some((block, _storage)) = self.get_full_active_block(id) {
                 if let Some(slot) = end_slot && block.slot > slot {
                     continue;
                 }
-                if block.slot.period < earliest[block.slot.thread as usize].1 {
+                if let Some((_id, period)) = earliest.get(block.slot.thread as usize) {
+                    if block.slot.period < *period {
+                        earliest[block.slot.thread as usize] = (*id, block.slot.period)
+                    }
+                } else {
                     earliest[block.slot.thread as usize] = (*id, block.slot.period)
                 }
             }
