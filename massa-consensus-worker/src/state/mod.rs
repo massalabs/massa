@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque, BTreeMap};
+use std::collections::{HashMap, VecDeque};
 
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport,
@@ -45,9 +45,8 @@ pub struct ConsensusState {
     pub active_index: PreHashSet<BlockId>,
     /// Save of latest periods
     pub save_final_periods: Vec<u64>,
-    /// One block id per thread for the last 3 periods
-    /// IMPORTANT TODO: prune this
-    pub latest_final_blocks_periods: BTreeMap<u64, Vec<BlockId>>,
+    /// One (block id, period) per thread
+    pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
     pub best_parents: Vec<(BlockId, u64)>,
     /// Every block we know about

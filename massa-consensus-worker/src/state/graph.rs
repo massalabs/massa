@@ -5,12 +5,7 @@ use massa_consensus_exports::{
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
-use massa_models::{
-    block::{Block, BlockId},
-    clique::Clique,
-    prehash::PreHashSet,
-    slot::Slot,
-};
+use massa_models::{block::BlockId, clique::Clique, prehash::PreHashSet, slot::Slot};
 
 use super::ConsensusState;
 
@@ -350,11 +345,12 @@ impl ConsensusState {
                     }];
                 }
                 // update latest final blocks
-                let thread_list: &mut Vec<BlockId> = self
-                    .latest_final_blocks_periods
-                    .entry(final_block.slot.period)
-                    .or_insert_with(|| Vec::with_capacity(self.config.thread_count as usize));
-                thread_list[final_block.slot.thread as usize] = final_block.block_id;
+                if final_block.slot.period
+                    > self.latest_final_blocks_periods[final_block.slot.thread as usize].1
+                {
+                    self.latest_final_blocks_periods[final_block.slot.thread as usize] =
+                        (block_id, final_block.slot.period);
+                }
                 // update new final blocks list
                 self.new_final_blocks.insert(block_id);
             } else {
