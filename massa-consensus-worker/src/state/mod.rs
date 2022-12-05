@@ -266,6 +266,21 @@ impl ConsensusState {
         }
     }
 
+    /// list_required_active_blocks algo:
+    ///
+    /// if end_slot is None:
+    ///      set effective_latest_finals to be the IDs of the self.latest_final_blocks
+    /// else
+    ///      set effective_latest_finals to be the IDs of the Active Final blocks that have the highest period in each thread but are before end_slot (included)
+    ///
+    /// create a kept_blocks list of block IDs to keep
+    /// initialize it with effective_latest_finals as well as all the active blocks that are after the effective_latest_finals of their thread (included) (but before end_slot (included) if it is Some)
+    ///
+    /// do the following 3 times:
+    ///      extend kept_blocks with the parents of the current kept_blocks
+    ///      fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)
+    ///
+    /// return kept_blocks
     pub fn list_required_active_blocks(
         &self,
         end_slot: Option<Slot>,
