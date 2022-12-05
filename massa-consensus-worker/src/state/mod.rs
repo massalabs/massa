@@ -251,7 +251,7 @@ impl ConsensusState {
     fn add_active_blocks_after(
         &self,
         kept_blocks: &mut PreHashSet<BlockId>,
-        lower_bound: &Vec<(BlockId, u64)>,
+        lower_bound: &[(BlockId, u64)],
         end_slot: Option<Slot>,
     ) {
         for id in self.active_index.iter() {
