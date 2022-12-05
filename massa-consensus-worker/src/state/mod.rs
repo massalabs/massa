@@ -232,7 +232,7 @@ impl ConsensusState {
         };
 
         // init kept_blocks
-        let mut kept_blocks: Vec<BlockId> = effective_latest_finals
+        let mut kept_blocks: PreHashSet<BlockId> = effective_latest_finals
             .iter()
             .map(|(id, _period)| *id)
             .collect();
@@ -244,7 +244,7 @@ impl ConsensusState {
                     continue;
                 }
                 if block.slot.period > effective_latest_finals[block.slot.thread as usize].1 {
-                    kept_blocks.push(*id);
+                    kept_blocks.insert(*id);
                 }
             }
         }
