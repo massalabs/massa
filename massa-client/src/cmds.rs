@@ -218,7 +218,7 @@ pub enum Command {
         props(args = "SenderAddress PathToBytecode MaxGas Fee",),
         message = "create and send an operation containing byte code"
     )]
-    send_smart_contract,
+    execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
@@ -232,7 +232,7 @@ pub enum Command {
         props(args = "PathToBytecode MaxGas Address",),
         message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
-    read_only_smart_contract,
+    read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
@@ -818,7 +818,7 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-            Command::send_smart_contract => {
+            Command::execute_smart_contract => {
                 if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
@@ -931,7 +931,7 @@ impl Command {
                     bail!("Missing public key")
                 }
             }
-            Command::read_only_smart_contract => {
+            Command::read_only_execute_smart_contract => {
                 if parameters.len() != 2 && parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
