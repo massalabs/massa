@@ -199,16 +199,76 @@ impl ConsensusState {
         }
     }
 
-    pub fn list_required_active_blocks(&self) -> Result<PreHashSet<BlockId>, ConsensusError> {
-        // list all active blocks
+    fn list_latest_final_blocks_for(&self, slot: Slot) -> Vec<(BlockId, u64)> {
+        let mut latest: Vec<(BlockId, u64)> = Vec::new();
+        for id in self.active_index.iter() {
+            match self.get_full_active_block(id) {
+                Some((block, _storage))
+                    if block.is_final
+                        && block.slot <= slot
+                        && block.slot.period > latest[block.slot.thread as usize].1 =>
+                {
+                    latest[block.slot.thread as usize] = (*id, block.slot.period)
+                }
+                _ => (),
+            }
+        }
+        latest
+    }
+
+    pub fn list_required_active_blocks(
+        &self,
+        end_slot: Option<Slot>,
+    ) -> Result<PreHashSet<BlockId>, ConsensusError> {
         let mut retain_active: PreHashSet<BlockId> =
             PreHashSet::<BlockId>::with_capacity(self.active_index.len());
 
-        let latest_final_blocks: Vec<BlockId> = self
-            .latest_final_blocks_periods
+        // if an end_slot is provided compute the lastest final block for that given slot
+        // if not use the latest_final_blocks_periods
+        let effective_latest_finals: Vec<(BlockId, u64)> = if let Some(slot) = end_slot {
+            self.list_latest_final_blocks_for(slot)
+        } else {
+            self.latest_final_blocks_periods.clone()
+        };
+
+        // init kept_blocks
+        let mut kept_blocks: Vec<BlockId> = effective_latest_finals
             .iter()
-            .map(|(hash, _)| *hash)
+            .map(|(id, _period)| *id)
             .collect();
+
+        // add all the active blocks that are after the effective_latest_final of their thread
+        for id in self.active_index.iter() {
+            if let Some((block, _storage)) = self.get_full_active_block(id) {
+                if let Some(slot) = end_slot && block.slot > slot {
+                    continue;
+                }
+                if block.slot.period > effective_latest_finals[block.slot.thread as usize].1 {
+                    kept_blocks.push(*id);
+                }
+            }
+        }
+
+        // do the following 3 times:
+        // extend kept_blocks with the parents of the current kept_blocks
+        // add all the active block whose slot is after the earliest kept_blocks of their thread
+        for _ in 0..3 {
+            for id in kept_blocks.iter() {
+                let parents = self
+                    .get_full_active_block(id)
+                    .ok_or_else(|| {
+                        ConsensusError::ContainerInconsistency(format!(
+                            "{} is missing when extending with parents",
+                            id
+                        ))
+                    })?
+                    .0
+                    .parents
+                    .iter()
+                    .map(|(id, _period)| *id);
+                retain_active.extend(parents);
+            }
+        }
 
         // retain all non-final active blocks,
         // the current "best parents",
@@ -221,7 +281,7 @@ impl ConsensusState {
             {
                 if !active_block.is_final
                     || self.best_parents.iter().any(|(b, _p)| b == block_id)
-                    || latest_final_blocks.contains(block_id)
+                    || kept_blocks.contains(block_id)
                 {
                     retain_active.extend(active_block.parents.iter().map(|(p, _)| *p));
                     retain_active.insert(*block_id);
@@ -235,7 +295,7 @@ impl ConsensusState {
         // retain last final blocks
         retain_active.extend(self.latest_final_blocks_periods.iter().map(|(h, _)| *h));
 
-        for (thread, id) in latest_final_blocks.iter().enumerate() {
+        for (thread, id) in kept_blocks.iter().enumerate() {
             let mut current_block_id = *id;
             while let Some((current_block, _)) = self.get_full_active_block(&current_block_id) {
                 let parent_id = {
