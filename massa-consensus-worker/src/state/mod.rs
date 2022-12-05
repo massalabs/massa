@@ -239,6 +239,27 @@ impl ConsensusState {
         earliest
     }
 
+    /// adds to the given container every active block coming after the lower bound
+    ///
+    /// exclusively used by `list_required_active_blocks`
+    fn add_active_blocks_after(
+        &self,
+        kept_blocks: &mut PreHashSet<BlockId>,
+        lower_bound: &Vec<(BlockId, u64)>,
+        end_slot: Option<Slot>,
+    ) {
+        for id in self.active_index.iter() {
+            if let Some((block, _storage)) = self.get_full_active_block(id) {
+                if let Some(slot) = end_slot && block.slot > slot {
+                    continue;
+                }
+                if block.slot.period > lower_bound[block.slot.thread as usize].1 {
+                    kept_blocks.insert(*id);
+                }
+            }
+        }
+    }
+
     pub fn list_required_active_blocks(
         &self,
         end_slot: Option<Slot>,
@@ -258,16 +279,7 @@ impl ConsensusState {
             .collect();
 
         // add all the active blocks that are after the effective_latest_finals of their thread
-        for id in self.active_index.iter() {
-            if let Some((block, _storage)) = self.get_full_active_block(id) {
-                if let Some(slot) = end_slot && block.slot > slot {
-                    continue;
-                }
-                if block.slot.period > effective_latest_finals[block.slot.thread as usize].1 {
-                    kept_blocks.insert(*id);
-                }
-            }
-        }
+        self.add_active_blocks_after(&mut kept_blocks, &effective_latest_finals, end_slot);
 
         // do the following 3 times
         for _ in 0..3 {
@@ -290,16 +302,7 @@ impl ConsensusState {
             }
             // add all the active blocks whose slot is after the earliest kept_blocks of their thread
             let earliest_blocks = self.list_earliest_blocks_of(&kept_blocks, end_slot);
-            for id in self.active_index.iter() {
-                if let Some((block, _storage)) = self.get_full_active_block(id) {
-                    if let Some(slot) = end_slot && block.slot > slot {
-                        continue;
-                    }
-                    if block.slot.period > earliest_blocks[block.slot.thread as usize].1 {
-                        kept_blocks.insert(*id);
-                    }
-                }
-            }
+            self.add_active_blocks_after(&mut kept_blocks, &earliest_blocks, end_slot);
         }
 
         // return kept_blocks
