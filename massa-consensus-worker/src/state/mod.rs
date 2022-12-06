@@ -232,15 +232,18 @@ impl ConsensusState {
                 latest[block.slot.thread as usize] = Some((*id, block.slot.period));
             }
         }
-        for index in 0..(self.config.thread_count as usize) {
-            if latest[index].is_none() {
-                return Err(ConsensusError::ContainerInconsistency(format!(
-                    "could not find latest block for thread {}",
-                    index
-                )));
-            }
-        }
-        Ok(latest.into_iter().map(|opt| opt.unwrap()).collect())
+        latest
+            .into_iter()
+            .enumerate()
+            .map(|(thread, opt)| {
+                opt.ok_or_else(|| {
+                    ConsensusError::ContainerInconsistency(format!(
+                        "could not find latest block for thread {}",
+                        thread
+                    ))
+                })
+            })
+            .collect()
     }
 
     /// list the earliest blocks of the given block id list
@@ -263,15 +266,18 @@ impl ConsensusState {
             }
             earliest[block.slot.thread as usize] = Some((*id, block.slot.period));
         }
-        for index in 0..(self.config.thread_count as usize) {
-            if earliest[index].is_none() {
-                return Err(ConsensusError::ContainerInconsistency(format!(
-                    "could not find earliest block for thread {}",
-                    index
-                )));
-            }
-        }
-        Ok(earliest.into_iter().map(|opt| opt.unwrap()).collect())
+        earliest
+            .into_iter()
+            .enumerate()
+            .map(|(thread, opt)| {
+                opt.ok_or_else(|| {
+                    ConsensusError::ContainerInconsistency(format!(
+                        "could not find earliest block for thread {}",
+                        thread
+                    ))
+                })
+            })
+            .collect()
     }
 
     /// adds to the given container every active block coming after the lower bound
@@ -288,7 +294,7 @@ impl ConsensusState {
                 if let Some(slot) = end_slot && block.slot > slot {
                     continue;
                 }
-                if block.slot.period > lower_bound[block.slot.thread as usize].1 {
+                if block.slot.period >= lower_bound[block.slot.thread as usize].1 {
                     kept_blocks.insert(*id);
                 }
             }
@@ -305,7 +311,7 @@ impl ConsensusState {
     /// create a kept_blocks list of block IDs to keep
     /// initialize it with effective_latest_finals as well as all the active blocks that are after the effective_latest_finals of their thread (included) (but before end_slot (included) if it is Some)
     ///
-    /// do the following 3 times:
+    /// do the following 2 times:
     ///      extend kept_blocks with the parents of the current kept_blocks
     ///      fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)
     ///
@@ -331,19 +337,20 @@ impl ConsensusState {
         // add all the active blocks that are after the effective_latest_finals of their thread
         self.add_active_blocks_after(&mut kept_blocks, &effective_latest_finals, end_slot);
 
-        // do the following 3 times
-        for _ in 0..3 {
+        // do the following 2 times
+        for _ in 0..2 {
             // extend kept_blocks with the parents of the current kept_blocks
-            let kept_blocks_clone = kept_blocks.clone();
-            for id in kept_blocks_clone.iter() {
+            let mut cumulated_parents: Vec<BlockId> = Vec::new();
+            for id in kept_blocks.iter() {
                 let parents = self
                     .try_get_full_active_block(id)?
                     .0
                     .parents
                     .iter()
                     .map(|(id, _period)| *id);
-                kept_blocks.extend(parents);
+                cumulated_parents.extend(parents);
             }
+            kept_blocks.extend(cumulated_parents);
             // add all the active blocks whose slot is after the earliest kept_blocks of their thread
             let earliest_blocks = self.list_earliest_blocks_of(&kept_blocks, end_slot)?;
             self.add_active_blocks_after(&mut kept_blocks, &earliest_blocks, end_slot);
