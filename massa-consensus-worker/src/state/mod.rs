@@ -340,7 +340,7 @@ impl ConsensusState {
         // do the following 2 times
         for _ in 0..2 {
             // extend kept_blocks with the parents of the current kept_blocks
-            let mut cumulated_parents: Vec<BlockId> = Vec::new();
+            let mut cumulated_parents: PreHashSet<BlockId> = PreHashSet::default();
             for id in kept_blocks.iter() {
                 let parents = self
                     .try_get_full_active_block(id)?
