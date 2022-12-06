@@ -32,4 +32,5 @@ ds.insert([77, 88, 99], [25, 24, 23])
 for (k, v) in ds:
   print(k, v)
 print(repr(ds))
+print(ds.serialize())
 ```
