@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.17.3", features = ["extension-module"] }
 massa_models = { path = "../massa-models" }
+massa_serialization = { path = "../massa-serialization" }
