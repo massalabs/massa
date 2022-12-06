@@ -1,4 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    vec,
+};
 
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport,
@@ -218,29 +221,25 @@ impl ConsensusState {
         &self,
         slot: Slot,
     ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
-        let mut latest: Vec<(BlockId, u64)> = Vec::with_capacity(self.config.thread_count as usize);
+        let mut latest: Vec<Option<(BlockId, u64)>> = vec![None; self.config.thread_count as usize];
         for id in self.active_index.iter() {
             let (block, _storage) = self.try_get_full_active_block(id)?;
-            if let Some(latest_id_for_period) = latest.get_mut(block.slot.thread as usize) {
-                if block.is_final
-                    && block.slot <= slot
-                    && block.slot.period > latest_id_for_period.1
-                {
-                    *latest_id_for_period = (*id, block.slot.period)
-                }
-            } else {
-                latest.insert(block.slot.thread as usize, (*id, block.slot.period));
+            if let Some((_, p)) = latest[block.slot.thread as usize] && block.slot.period < p {
+                continue;
+            }
+            if block.is_final && block.slot <= slot {
+                latest[block.slot.thread as usize] = Some((*id, block.slot.period));
             }
         }
         for index in 0..(self.config.thread_count as usize) {
-            if latest.get(index).is_none() {
+            if latest[index].is_none() {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "could not find latest block for thread {}",
                     index
                 )));
             }
         }
-        Ok(latest)
+        Ok(latest.into_iter().map(|opt| opt.unwrap()).collect())
     }
 
     /// list the earliest blocks of the given block id list
@@ -251,30 +250,27 @@ impl ConsensusState {
         block_ids: &PreHashSet<BlockId>,
         end_slot: Option<Slot>,
     ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
-        let mut earliest: Vec<(BlockId, u64)> =
-            Vec::with_capacity(self.config.thread_count as usize);
+        let mut earliest: Vec<Option<(BlockId, u64)>> =
+            vec![None; self.config.thread_count as usize];
         for id in block_ids {
             let (block, _storage) = self.try_get_full_active_block(id)?;
             if let Some(slot) = end_slot && block.slot > slot {
                 continue;
             }
-            if let Some(earliest_id_for_period) = earliest.get_mut(block.slot.thread as usize) {
-                if block.slot.period < earliest_id_for_period.1 {
-                    *earliest_id_for_period = (*id, block.slot.period)
-                }
-            } else {
-                earliest.insert(block.slot.thread as usize, (*id, block.slot.period));
+            if let Some((_, p)) = earliest[block.slot.thread as usize] && block.slot.period > p {
+                continue;
             }
+            earliest[block.slot.thread as usize] = Some((*id, block.slot.period));
         }
         for index in 0..(self.config.thread_count as usize) {
-            if earliest.get(index).is_none() {
+            if earliest[index].is_none() {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "could not find earliest block for thread {}",
                     index
                 )));
             }
         }
-        Ok(earliest)
+        Ok(earliest.into_iter().map(|opt| opt.unwrap()).collect())
     }
 
     /// adds to the given container every active block coming after the lower bound
