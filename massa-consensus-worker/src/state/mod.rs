@@ -96,6 +96,18 @@ impl ConsensusState {
         }
     }
 
+    /// Get a full active block
+    ///
+    /// Returns an error if it was not found
+    pub fn get_full_active_block_with_err(
+        &self,
+        block_id: &BlockId,
+    ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {
+        self.get_full_active_block(block_id).ok_or_else(|| {
+            ConsensusError::ContainerInconsistency(format!("block {} is missing", block_id))
+        })
+    }
+
     pub fn get_clique_count(&self) -> usize {
         self.max_cliques.len()
     }
@@ -202,7 +214,10 @@ impl ConsensusState {
     /// list the latest final blocks at the given slot
     ///
     /// exclusively used by `list_required_active_blocks`
-    fn list_latest_final_blocks_at(&self, slot: Slot) -> Vec<(BlockId, u64)> {
+    fn list_latest_final_blocks_at(
+        &self,
+        slot: Slot,
+    ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
         let mut latest: Vec<(BlockId, u64)> = Vec::with_capacity(self.config.thread_count as usize);
         for id in self.active_index.iter() {
             if let Some((block, _storage)) = self.get_full_active_block(id) {
@@ -215,7 +230,15 @@ impl ConsensusState {
                 }
             }
         }
-        latest
+        for index in 0..(self.config.thread_count as usize) {
+            if latest.get(index).is_none() {
+                return Err(ConsensusError::ContainerInconsistency(format!(
+                    "could not find latest block for thread {}",
+                    index
+                )));
+            }
+        }
+        Ok(latest)
     }
 
     /// list the earliest blocks of the given block id list
@@ -225,7 +248,7 @@ impl ConsensusState {
         &self,
         block_ids: &PreHashSet<BlockId>,
         end_slot: Option<Slot>,
-    ) -> Vec<(BlockId, u64)> {
+    ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
         let mut earliest: Vec<(BlockId, u64)> =
             Vec::with_capacity(self.config.thread_count as usize);
         for id in block_ids {
@@ -242,7 +265,15 @@ impl ConsensusState {
                 }
             }
         }
-        earliest
+        for index in 0..(self.config.thread_count as usize) {
+            if earliest.get(index).is_none() {
+                return Err(ConsensusError::ContainerInconsistency(format!(
+                    "could not find earliest block for thread {}",
+                    index
+                )));
+            }
+        }
+        Ok(earliest)
     }
 
     /// adds to the given container every active block coming after the lower bound
@@ -288,7 +319,7 @@ impl ConsensusState {
         // if an end_slot is provided compute the lastest final block for that given slot
         // if not use the latest_final_blocks_periods
         let effective_latest_finals: Vec<(BlockId, u64)> = if let Some(slot) = end_slot {
-            self.list_latest_final_blocks_at(slot)
+            self.list_latest_final_blocks_at(slot)?
         } else {
             self.latest_final_blocks_periods.clone()
         };
@@ -308,13 +339,7 @@ impl ConsensusState {
             let kept_blocks_clone = kept_blocks.clone();
             for id in kept_blocks_clone.iter() {
                 let parents = self
-                    .get_full_active_block(id)
-                    .ok_or_else(|| {
-                        ConsensusError::ContainerInconsistency(format!(
-                            "{} is missing when extending with parents",
-                            id
-                        ))
-                    })?
+                    .get_full_active_block_with_err(id)?
                     .0
                     .parents
                     .iter()
@@ -322,8 +347,13 @@ impl ConsensusState {
                 kept_blocks.extend(parents);
             }
             // add all the active blocks whose slot is after the earliest kept_blocks of their thread
-            let earliest_blocks = self.list_earliest_blocks_of(&kept_blocks, end_slot);
+            let earliest_blocks = self.list_earliest_blocks_of(&kept_blocks, end_slot)?;
             self.add_active_blocks_after(&mut kept_blocks, &earliest_blocks, end_slot);
+        }
+
+        // check that we have the full blocks for every id we are about to return
+        for id in kept_blocks.iter() {
+            self.get_full_active_block_with_err(id)?;
         }
 
         // return kept_blocks
