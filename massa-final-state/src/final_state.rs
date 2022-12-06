@@ -133,7 +133,9 @@ impl FinalState {
             slot, self.pos_state.deferred_credits.hash
         );
         // 4. pos cycle history hashes
-        for cycle_info in &self.pos_state.cycle_history {
+        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
+            as usize;
+        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
             hash_concat.extend(cycle_info.global_hash.to_bytes());
             debug!(
                 "cycle ({}) hash at slot {}: {}",
@@ -320,7 +322,7 @@ mod tests {
 
     #[test]
     fn get_state_changes_part() {
-        let message = get_random_message();
+        let message = get_random_message(None);
         // Building the state changes
         let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
         let (low_address, high_address) = {

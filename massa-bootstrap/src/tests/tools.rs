@@ -163,7 +163,8 @@ fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
         rng_seed,
         production_stats,
     ));
-    let deferred_credits = get_random_deferred_credits(r_limit);
+    let mut deferred_credits = DeferredCredits::default();
+    deferred_credits.final_nested_extend(get_random_deferred_credits(r_limit));
     PoSFinalState {
         cycle_history,
         deferred_credits,
