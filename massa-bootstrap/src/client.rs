@@ -1,3 +1,4 @@
+use humantime::format_duration;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
@@ -167,10 +168,15 @@ async fn stream_final_state_and_consensus(
                     };
                     panic!("Bootstrap failed, try to bootstrap again.");
                 }
+                BootstrapServerMessage::BootstrapError { error } => {
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())
+                }
                 _ => {
-                    return Err(
-                        std::io::Error::new(std::io::ErrorKind::TimedOut, "bad message").into(),
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "unexpected message",
                     )
+                    .into())
                 }
             }
         }
@@ -487,7 +493,7 @@ pub async fn get_state(
                 }
             };
 
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_config.retry_delay.to_duration());
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
             sleep(bootstrap_config.retry_delay.into()).await;
         }
     }
