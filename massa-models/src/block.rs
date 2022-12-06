@@ -192,6 +192,15 @@ pub struct Block {
     pub operations: Vec<OperationId>,
 }
 
+/// block
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilledBlock {
+    /// signed header
+    pub header: WrappedHeader,
+    /// operations
+    pub operations: Vec<(OperationId, Option<WrappedOperation>)>,
+}
+
 /// Wrapped Block
 pub type WrappedBlock = Wrapped<Block, BlockId>;
 

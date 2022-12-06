@@ -121,8 +121,14 @@ pub trait ConsensusController: Send + Sync {
     /// Useful to allow cloning `Box<dyn ConsensusController>`.
     fn clone_box(&self) -> Box<dyn ConsensusController>;
 
+    /// New produced blocks headers.
+    fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink);
+
     /// New produced blocks
-    fn subscribe_new_block(&self, sink: SubscriptionSink);
+    fn subscribe_new_blocks(&self, sink: SubscriptionSink);
+
+    /// New produced block with operations content.
+    fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink);
 }
 
 /// Allow cloning `Box<dyn ConsensusController>`

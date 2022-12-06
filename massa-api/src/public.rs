@@ -991,9 +991,21 @@ impl MassaRpcServer for API<Public> {
         openrpc
     }
 
+    fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink) -> SubscriptionResult {
+        let consensus_controller = self.0.consensus_controller.clone();
+        consensus_controller.subscribe_new_blocks_headers(sink);
+        Ok(())
+    }
+
     fn subscribe_new_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
         let consensus_controller = self.0.consensus_controller.clone();
-        consensus_controller.subscribe_new_block(sink);
+        consensus_controller.subscribe_new_blocks(sink);
+        Ok(())
+    }
+
+    fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
+        let consensus_controller = self.0.consensus_controller.clone();
+        consensus_controller.subscribe_new_filled_blocks(sink);
         Ok(())
     }
 }

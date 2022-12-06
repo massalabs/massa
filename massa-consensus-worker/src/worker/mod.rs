@@ -2,7 +2,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
 };
-use massa_models::block::BlockId;
+use massa_models::block::{Block, BlockHeader, BlockId, FilledBlock};
 use massa_models::clique::Clique;
 use massa_models::config::CHANNEL_SIZE;
 use massa_models::prehash::PreHashSet;
@@ -13,7 +13,7 @@ use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
-use tokio::sync::broadcast;
+use tokio::sync::broadcast::{self, Sender};
 
 use crate::commands::ConsensusCommand;
 use crate::controller::ConsensusControllerImpl;
@@ -34,6 +34,13 @@ pub struct ConsensusWorker {
     next_slot: Slot,
     /// Next slot instant
     next_instant: Instant,
+}
+
+#[derive(Clone)]
+pub struct WsConfig {
+    pub block_header_sender: Sender<BlockHeader>,
+    pub block_sender: Sender<Block>,
+    pub filled_block_sender: Sender<FilledBlock>,
 }
 
 mod init;
@@ -113,12 +120,14 @@ pub fn start_consensus_worker(
         consensus_thread: Some((tx.clone(), consensus_thread)),
     };
 
-    let controller = ConsensusControllerImpl::new(
-        tx,
-        broadcast::channel(128).0,
-        shared_state,
-        bootstrap_part_size,
-    );
+    let consensus_ws_senders = WsConfig {
+        block_header_sender: broadcast::channel(128).0,
+        block_sender: broadcast::channel(128).0,
+        filled_block_sender: broadcast::channel(128).0,
+    };
+
+    let controller =
+        ConsensusControllerImpl::new(tx, consensus_ws_senders, shared_state, bootstrap_part_size);
 
     (Box::new(controller), Box::new(manager))
 }

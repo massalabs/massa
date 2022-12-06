@@ -306,7 +306,15 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Value>()
     }
 
+    fn subscribe_new_blocks_headers(&self, _sink: SubscriptionSink) -> SubscriptionResult {
+        crate::wrong_subscription()
+    }
+
     fn subscribe_new_blocks(&self, _sink: SubscriptionSink) -> SubscriptionResult {
+        crate::wrong_subscription()
+    }
+
+    fn subscribe_new_filled_blocks(&self, _sink: SubscriptionSink) -> SubscriptionResult {
         crate::wrong_subscription()
     }
 }
