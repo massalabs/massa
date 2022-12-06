@@ -99,7 +99,7 @@ impl ConsensusState {
     /// Get a full active block
     ///
     /// Returns an error if it was not found
-    pub fn get_full_active_block_with_err(
+    pub fn try_get_full_active_block(
         &self,
         block_id: &BlockId,
     ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {
@@ -220,14 +220,16 @@ impl ConsensusState {
     ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
         let mut latest: Vec<(BlockId, u64)> = Vec::with_capacity(self.config.thread_count as usize);
         for id in self.active_index.iter() {
-            if let Some((block, _storage)) = self.get_full_active_block(id) {
-                if let Some((_id, period)) = latest.get(block.slot.thread as usize) {
-                    if block.is_final && block.slot <= slot && block.slot.period > *period {
-                        latest[block.slot.thread as usize] = (*id, block.slot.period)
-                    }
-                } else {
-                    latest[block.slot.thread as usize] = (*id, block.slot.period)
+            let (block, _storage) = self.try_get_full_active_block(id)?;
+            if let Some(latest_id_for_period) = latest.get_mut(block.slot.thread as usize) {
+                if block.is_final
+                    && block.slot <= slot
+                    && block.slot.period > latest_id_for_period.1
+                {
+                    *latest_id_for_period = (*id, block.slot.period)
                 }
+            } else {
+                latest.insert(block.slot.thread as usize, (*id, block.slot.period));
             }
         }
         for index in 0..(self.config.thread_count as usize) {
@@ -252,17 +254,16 @@ impl ConsensusState {
         let mut earliest: Vec<(BlockId, u64)> =
             Vec::with_capacity(self.config.thread_count as usize);
         for id in block_ids {
-            if let Some((block, _storage)) = self.get_full_active_block(id) {
-                if let Some(slot) = end_slot && block.slot > slot {
-                    continue;
+            let (block, _storage) = self.try_get_full_active_block(id)?;
+            if let Some(slot) = end_slot && block.slot > slot {
+                continue;
+            }
+            if let Some(earliest_id_for_period) = earliest.get_mut(block.slot.thread as usize) {
+                if block.slot.period < earliest_id_for_period.1 {
+                    *earliest_id_for_period = (*id, block.slot.period)
                 }
-                if let Some((_id, period)) = earliest.get(block.slot.thread as usize) {
-                    if block.slot.period < *period {
-                        earliest[block.slot.thread as usize] = (*id, block.slot.period)
-                    }
-                } else {
-                    earliest[block.slot.thread as usize] = (*id, block.slot.period)
-                }
+            } else {
+                earliest.insert(block.slot.thread as usize, (*id, block.slot.period));
             }
         }
         for index in 0..(self.config.thread_count as usize) {
@@ -339,7 +340,7 @@ impl ConsensusState {
             let kept_blocks_clone = kept_blocks.clone();
             for id in kept_blocks_clone.iter() {
                 let parents = self
-                    .get_full_active_block_with_err(id)?
+                    .try_get_full_active_block(id)?
                     .0
                     .parents
                     .iter()
@@ -353,7 +354,7 @@ impl ConsensusState {
 
         // check that we have the full blocks for every id we are about to return
         for id in kept_blocks.iter() {
-            self.get_full_active_block_with_err(id)?;
+            self.try_get_full_active_block(id)?;
         }
 
         // return kept_blocks
