@@ -20,6 +20,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use tracing::debug;
 
 mod graph;
 mod process;
@@ -352,6 +353,9 @@ impl ConsensusState {
         for id in kept_blocks.iter() {
             self.try_get_full_active_block(id)?;
         }
+
+        // debug log for an easier diagnostic if needed
+        debug!("list_required_active_blocks return: {:?}", kept_blocks);
 
         // return kept_blocks
         Ok(kept_blocks)
