@@ -227,25 +227,27 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
-        block_storage.read_blocks().get(&block_id).map(|value| {
-            let operations: Vec<(OperationId, Option<Wrapped<Operation, OperationId>>)> = value
-                .content
-                .operations
-                .iter()
-                .map(|operation_id| {
-                    match block_storage.read_operations().get(operation_id).cloned() {
-                        Some(wrapped_operation) => (*operation_id, Some(wrapped_operation)),
-                        None => (*operation_id, None),
-                    }
-                })
-                .collect();
+        if self.ws_config.enabled {
+            block_storage.read_blocks().get(&block_id).map(|value| {
+                let operations: Vec<(OperationId, Option<Wrapped<Operation, OperationId>>)> = value
+                    .content
+                    .operations
+                    .iter()
+                    .map(|operation_id| {
+                        match block_storage.read_operations().get(operation_id).cloned() {
+                            Some(wrapped_operation) => (*operation_id, Some(wrapped_operation)),
+                            None => (*operation_id, None),
+                        }
+                    })
+                    .collect();
 
-            let _ = self.ws_config.block_sender.send(value.content.clone());
-            self.ws_config.filled_block_sender.send(FilledBlock {
-                header: value.content.header.clone(),
-                operations,
-            })
-        });
+                let _ = self.ws_config.block_sender.send(value.content.clone());
+                self.ws_config.filled_block_sender.send(FilledBlock {
+                    header: value.content.header.clone(),
+                    operations,
+                })
+            });
+        }
 
         if let Err(err) = self
             .command_sender
@@ -261,10 +263,12 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
-        let _ = self
-            .ws_config
-            .block_header_sender
-            .send(header.clone().content);
+        if self.ws_config.enabled {
+            let _ = self
+                .ws_config
+                .block_header_sender
+                .send(header.clone().content);
+        }
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))

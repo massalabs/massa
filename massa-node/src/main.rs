@@ -380,6 +380,10 @@ async fn launch(
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+        ws_enabled: SETTINGS.api.enable_ws,
+        ws_blocks_headers_capacity: SETTINGS.consensus.ws_blocks_headers_capacity,
+        ws_blocks_capacity: SETTINGS.consensus.ws_blocks_capacity,
+        ws_filled_blocks_capacity: SETTINGS.consensus.ws_filled_blocks_capacity,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =

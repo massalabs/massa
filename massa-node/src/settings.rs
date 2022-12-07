@@ -169,6 +169,12 @@ pub struct ConsensusSettings {
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
+    /// blocks headers sender(channel) capacity
+    pub ws_blocks_headers_capacity: usize,
+    /// blocks sender(channel) capacity
+    pub ws_blocks_capacity: usize,
+    /// filled blocks sender(channel) capacity
+    pub ws_filled_blocks_capacity: usize,
 }
 
 /// Protocol Configuration, read from toml user configuration file

@@ -83,6 +83,13 @@
     # max number of item returned per query
     max_item_return_count = 100
 
+    # blocks headers sender(channel) capacity
+    ws_blocks_headers_capacity = 128
+    # blocks sender(channel) capacity
+    ws_blocks_capacity = 128
+    # filled blocks sender(channel) capacity
+    ws_filled_blocks_capacity = 128
+
 [protocol]
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000

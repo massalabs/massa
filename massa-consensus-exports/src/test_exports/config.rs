@@ -33,6 +33,10 @@ impl Default for ConsensusConfig {
             stats_timespan: MassaTime::from_millis(60000),
             channel_size: CHANNEL_SIZE,
             bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            ws_enabled: true,
+            ws_blocks_headers_capacity: 128,
+            ws_blocks_capacity: 128,
+            ws_filled_blocks_capacity: 128,
         }
     }
 }
