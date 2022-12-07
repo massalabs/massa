@@ -184,18 +184,6 @@ impl KeyPair {
     pub fn get_public_key(&self) -> PublicKey {
         PublicKey(self.0.public)
     }
-
-    /// Encode a keypair into his `base58` form
-    ///
-    /// # Example
-    /// ```
-    /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate();
-    /// let bs58 = keypair.to_bs58_check();
-    /// ```
-    pub fn to_bs58_check(&self) -> String {
-        bs58::encode(self.to_bytes()).with_check().into_string()
-    }
 }
 
 impl ::serde::Serialize for KeyPair {
@@ -423,20 +411,6 @@ impl PublicKey {
         self.0.verify(hash.to_bytes(), &signature.0).map_err(|err| {
             MassaSignatureError::SignatureError(format!("Signature verification failed: {}", err))
         })
-    }
-
-    /// Serialize a `PublicKey` using `bs58` encoding with checksum.
-    ///
-    /// # Example
-    ///  ```
-    /// # use massa_signature::{PublicKey, KeyPair};
-    /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
-    ///
-    /// let serialized: String = keypair.get_public_key().to_bs58_check();
-    /// ```
-    pub fn to_bs58_check(&self) -> String {
-        bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
     /// Serialize a `PublicKey` as bytes.
