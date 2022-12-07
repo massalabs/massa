@@ -106,9 +106,19 @@ impl FinalState {
         self.pos_state
             .apply_changes(changes.pos_changes.clone(), self.slot, true)
             .expect("could not settle slot in final state proof-of-stake");
-        // TODO do not panic above: it might just mean that the lookback cycle is not available
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
+
+        // cycle history debug log
+        debug!(
+            "After slot {} PoS cycle list is {:?}",
+            slot,
+            self.pos_state
+                .cycle_history
+                .iter()
+                .map(|c| (c.cycle, c.is_complete()))
+                .collect::<Vec<(u64, bool)>>()
+        );
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {

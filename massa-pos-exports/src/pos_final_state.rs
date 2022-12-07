@@ -1,4 +1,6 @@
-use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
+use crate::{
+    CycleInfo, CycleStatus, PoSChanges, PosError, PosResult, ProductionStats, SelectorController,
+};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
@@ -11,7 +13,6 @@ use std::{
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
-use tracing::debug;
 
 /// Final state of PoS
 pub struct PoSFinalState {
@@ -76,7 +77,7 @@ impl PoSFinalState {
         }
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             0,
-            false,
+            CycleStatus::Ongoing,
             self.initial_rolls.clone(),
             rng_seed,
             PreHashMap::default(),
@@ -150,6 +151,7 @@ impl PoSFinalState {
         changes: PoSChanges,
         slot: Slot,
         feed_selector: bool,
+        final_state_hash: Hash,
     ) -> PosResult<()> {
         let slots_per_cycle: usize = self
             .config
@@ -172,7 +174,7 @@ impl PoSFinalState {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
                 self.cycle_history.push_back(CycleInfo::new_with_hash(
                     cycle,
-                    false,
+                    CycleStatus::Ongoing,
                     info.roll_counts.clone(),
                     BitVec::with_capacity(slots_per_cycle),
                     PreHashMap::default(),
@@ -196,11 +198,12 @@ impl PoSFinalState {
             .expect("cycle history should be non-empty");
 
         // apply changes to the current cycle
-        let cycle_completed = current.apply_changes(
+        current.apply_changes(
             changes.clone(),
             slot,
             self.config.periods_per_cycle,
             self.config.thread_count,
+            final_state_hash,
         );
 
         // extent deferred_credits with changes.deferred_credits
@@ -212,15 +215,7 @@ impl PoSFinalState {
         // feed the cycle if it is complete
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
-        debug!(
-            "After slot {} PoS cycle list is {:?}",
-            slot,
-            self.cycle_history
-                .iter()
-                .map(|c| (c.cycle, c.is_complete()))
-                .collect::<Vec<(u64, bool)>>()
-        );
-        if cycle_completed && feed_selector {
+        if current.is_complete() && feed_selector {
             self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow when feeding selector".into())
             })?)
