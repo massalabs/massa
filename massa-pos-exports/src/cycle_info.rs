@@ -86,13 +86,24 @@ impl CycleInfoHashComputer {
     }
 }
 
+
+/// Completion status of a cycle
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CycleStatus {
+    /// The cycle is the current ongoing cycle
+    Ongoing,
+    /// All the slots of the cycle are final
+    /// Contains a snapshot of the final state hash used for PoS selections
+    Complete(Hash),
+}
+
 /// State of a cycle for all threads
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleInfo {
     /// cycle number
     pub cycle: u64,
     /// whether the cycle is complete (all slots final)
-    pub complete: bool,
+    pub status: CycleStatus,
     /// number of rolls each staking address has
     pub roll_counts: BTreeMap<Address, u64>,
     /// random seed bits of all slots in the cycle so far
@@ -104,7 +115,7 @@ pub struct CycleInfo {
     /// Hash of the production statistics
     pub production_stats_hash: Hash,
     /// Hash of the cycle state
-    pub global_hash: Hash,
+    pub cycle_global_hash: Hash,
 }
 
 impl CycleInfo {
@@ -135,7 +146,7 @@ impl CycleInfo {
         hash_concat.extend(production_stats_hash.to_bytes());
 
         // compute the global hash
-        let global_hash = Hash::compute_from(&hash_concat);
+        let cycle_global_hash = Hash::compute_from(&hash_concat);
 
         // create the new cycle
         CycleInfo {
@@ -146,7 +157,7 @@ impl CycleInfo {
             production_stats,
             roll_counts_hash,
             production_stats_hash,
-            global_hash,
+            cycle_global_hash,
         }
     }
 
@@ -216,10 +227,15 @@ impl CycleInfo {
         }
 
         // compute the global hash
-        self.global_hash = Hash::compute_from(&hash_concat);
+        self.cycle_global_hash = Hash::compute_from(&hash_concat);
 
         // return the completion status
         self.complete
+    }
+
+    /// Indicates if the cycle is complete or ongoing
+    pub fn is_complete(&self) -> bool {
+        matches!(self.status, CycleStatus::Complete(_))
     }
 }
 
@@ -312,7 +328,7 @@ fn test_cycle_info_hash_computation() {
         "production_stats_hash mismatch"
     );
     assert_eq!(
-        cycle_a.global_hash, cycle_b.global_hash,
+        cycle_a.cycle_global_hash, cycle_b.cycle_global_hash,
         "global_hash mismatch"
     );
 }

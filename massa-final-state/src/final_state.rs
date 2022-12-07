@@ -136,10 +136,10 @@ impl FinalState {
         let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
             as usize;
         for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
-            hash_concat.extend(cycle_info.global_hash.to_bytes());
+            hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
             debug!(
                 "cycle ({}) hash at slot {}: {}",
-                cycle_info.cycle, slot, cycle_info.global_hash
+                cycle_info.cycle, slot, cycle_info.cycle_global_hash
             );
         }
         // 5. executed operations hash

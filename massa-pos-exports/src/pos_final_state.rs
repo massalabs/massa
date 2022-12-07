@@ -105,7 +105,7 @@ impl PoSFinalState {
 
         // feed cycles available from history
         for (idx, hist_item) in self.cycle_history.iter().enumerate() {
-            if !hist_item.complete {
+            if !hist_item.is_complete() {
                 break;
             }
             if history_starts_late && idx == 0 {
@@ -166,9 +166,9 @@ impl PoSFinalState {
         // pop_front from cycle_history until front() represents cycle C-4 or later
         // (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
         if let Some(info) = self.cycle_history.back() {
-            if cycle == info.cycle && !info.complete {
+            if cycle == info.cycle && !info.is_complete() {
                 // extend the last incomplete cycle
-            } else if info.cycle.checked_add(1) == Some(cycle) && info.complete {
+            } else if info.cycle.checked_add(1) == Some(cycle) && info.is_complete() {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
                 self.cycle_history.push_back(CycleInfo::new_with_hash(
                     cycle,
@@ -217,7 +217,7 @@ impl PoSFinalState {
             slot,
             self.cycle_history
                 .iter()
-                .map(|c| (c.cycle, c.complete))
+                .map(|c| (c.cycle, c.is_complete()))
                 .collect::<Vec<(u64, bool)>>()
         );
         if cycle_completed && feed_selector {
@@ -239,7 +239,7 @@ impl PoSFinalState {
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
-                if !cycle_info.complete {
+                if !cycle_info.is_complete() {
                     return Err(PosError::CycleUnfinished(c));
                 }
                 cycle_info.roll_counts.clone()
@@ -256,7 +256,7 @@ impl PoSFinalState {
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
-                if !cycle_info.complete {
+                if !cycle_info.is_complete() {
                     return Err(PosError::CycleUnfinished(c));
                 }
                 Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
