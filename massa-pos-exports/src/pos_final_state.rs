@@ -1,6 +1,4 @@
-use crate::{
-    CycleInfo, CycleStatus, PoSChanges, PosError, PosResult, ProductionStats, SelectorController,
-};
+use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
@@ -13,6 +11,7 @@ use std::{
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
+use tracing::debug;
 
 /// Final state of PoS
 pub struct PoSFinalState {
@@ -77,7 +76,7 @@ impl PoSFinalState {
         }
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             0,
-            CycleStatus::Ongoing,
+            false,
             self.initial_rolls.clone(),
             rng_seed,
             PreHashMap::default(),
@@ -106,7 +105,7 @@ impl PoSFinalState {
 
         // feed cycles available from history
         for (idx, hist_item) in self.cycle_history.iter().enumerate() {
-            if !hist_item.is_complete() {
+            if !hist_item.complete {
                 break;
             }
             if history_starts_late && idx == 0 {
@@ -151,7 +150,6 @@ impl PoSFinalState {
         changes: PoSChanges,
         slot: Slot,
         feed_selector: bool,
-        final_state_hash: Hash,
     ) -> PosResult<()> {
         let slots_per_cycle: usize = self
             .config
@@ -168,13 +166,13 @@ impl PoSFinalState {
         // pop_front from cycle_history until front() represents cycle C-4 or later
         // (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
         if let Some(info) = self.cycle_history.back() {
-            if cycle == info.cycle && !info.is_complete() {
+            if cycle == info.cycle && !info.complete {
                 // extend the last incomplete cycle
-            } else if info.cycle.checked_add(1) == Some(cycle) && info.is_complete() {
+            } else if info.cycle.checked_add(1) == Some(cycle) && info.complete {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
                 self.cycle_history.push_back(CycleInfo::new_with_hash(
                     cycle,
-                    CycleStatus::Ongoing,
+                    false,
                     info.roll_counts.clone(),
                     BitVec::with_capacity(slots_per_cycle),
                     PreHashMap::default(),
@@ -198,12 +196,11 @@ impl PoSFinalState {
             .expect("cycle history should be non-empty");
 
         // apply changes to the current cycle
-        current.apply_changes(
+        let cycle_completed = current.apply_changes(
             changes.clone(),
             slot,
             self.config.periods_per_cycle,
             self.config.thread_count,
-            final_state_hash,
         );
 
         // extent deferred_credits with changes.deferred_credits
@@ -215,7 +212,15 @@ impl PoSFinalState {
         // feed the cycle if it is complete
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
-        if current.is_complete() && feed_selector {
+        debug!(
+            "After slot {} PoS cycle list is {:?}",
+            slot,
+            self.cycle_history
+                .iter()
+                .map(|c| (c.cycle, c.complete))
+                .collect::<Vec<(u64, bool)>>()
+        );
+        if cycle_completed && feed_selector {
             self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow when feeding selector".into())
             })?)
@@ -234,7 +239,7 @@ impl PoSFinalState {
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
-                if !cycle_info.is_complete() {
+                if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
                 cycle_info.roll_counts.clone()
@@ -251,7 +256,7 @@ impl PoSFinalState {
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
-                if !cycle_info.is_complete() {
+                if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
                 Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())

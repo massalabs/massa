@@ -7,7 +7,8 @@ use massa_models::{
     slot::Slot,
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     branch::alt,
@@ -15,7 +16,7 @@ use nom::{
     combinator::value,
     error::{context, ContextError, ParseError},
     multi::length_count,
-    sequence::{preceded, tuple},
+    sequence::tuple,
     IResult, Parser,
 };
 use num::rational::Ratio;
@@ -48,13 +49,10 @@ impl CycleInfoHashComputer {
         Hash::compute_from(&buffer)
     }
 
-    fn compute_status_hash(&self, status: CycleStatus) -> Hash {
+    fn compute_complete_hash(&self, complete: bool) -> Hash {
         let mut buffer = Vec::new();
         self.u64_ser
-            .serialize(
-                &(matches!(status, CycleStatus::Complete(_)) as u64),
-                &mut buffer,
-            )
+            .serialize(&(complete as u64), &mut buffer)
             .unwrap();
         Hash::compute_from(&buffer)
     }
@@ -89,23 +87,13 @@ impl CycleInfoHashComputer {
     }
 }
 
-/// Completion status of a cycle
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CycleStatus {
-    /// The cycle is the current ongoing cycle
-    Ongoing,
-    /// All the slots of the cycle are final
-    /// Contains a snapshot of the final state hash used for PoS selections
-    Complete(Hash),
-}
-
 /// State of a cycle for all threads
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleInfo {
     /// cycle number
     pub cycle: u64,
     /// whether the cycle is complete (all slots final)
-    pub status: CycleStatus,
+    pub complete: bool,
     /// number of rolls each staking address has
     pub roll_counts: BTreeMap<Address, u64>,
     /// random seed bits of all slots in the cycle so far
@@ -118,13 +106,16 @@ pub struct CycleInfo {
     pub production_stats_hash: Hash,
     /// Hash of the cycle state
     pub cycle_global_hash: Hash,
+    /// Snapshot of the final state hash
+    /// Used for PoS selections
+    pub final_state_hash_snapshot: Option<Hash>,
 }
 
 impl CycleInfo {
     /// Create a new `CycleInfo` and compute its hash
     pub fn new_with_hash(
         cycle: u64,
-        status: CycleStatus,
+        complete: bool,
         roll_counts: BTreeMap<Address, u64>,
         rng_seed: BitVec<u8>,
         production_stats: PreHashMap<Address, ProductionStats>,
@@ -136,7 +127,7 @@ impl CycleInfo {
         // compute the cycle hash
         let mut hash_concat: Vec<u8> = Vec::new();
         hash_concat.extend(hash_computer.compute_cycle_hash(cycle).to_bytes());
-        hash_concat.extend(hash_computer.compute_status_hash(status).to_bytes());
+        hash_concat.extend(hash_computer.compute_complete_hash(complete).to_bytes());
         hash_concat.extend(hash_computer.compute_seed_hash(&rng_seed).to_bytes());
         for (addr, &count) in &roll_counts {
             roll_counts_hash ^= hash_computer.compute_roll_entry_hash(addr, count);
@@ -153,13 +144,14 @@ impl CycleInfo {
         // create the new cycle
         CycleInfo {
             cycle,
-            status,
+            complete,
             roll_counts,
             rng_seed,
             production_stats,
             roll_counts_hash,
             production_stats_hash,
             cycle_global_hash,
+            final_state_hash_snapshot: None,
         }
     }
 
@@ -170,8 +162,7 @@ impl CycleInfo {
         slot: Slot,
         periods_per_cycle: u64,
         thread_count: u8,
-        final_state_hash: Hash,
-    ) {
+    ) -> bool {
         let hash_computer = CycleInfoHashComputer::new();
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
         let mut hash_concat: Vec<u8> = Vec::new();
@@ -181,12 +172,8 @@ impl CycleInfo {
         hash_concat.extend(cycle_hash.to_bytes());
 
         // check for completion
-        if slot.is_last_of_cycle(periods_per_cycle, thread_count) {
-            self.status = CycleStatus::Complete(final_state_hash);
-        } else {
-            self.status = CycleStatus::Ongoing;
-        }
-        let complete_hash = hash_computer.compute_status_hash(self.status);
+        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+        let complete_hash = hash_computer.compute_complete_hash(self.complete);
         hash_concat.extend(complete_hash.to_bytes());
 
         // extend seed_bits with changes.seed_bits
@@ -229,17 +216,15 @@ impl CycleInfo {
         hash_concat.extend(self.production_stats_hash.to_bytes());
 
         // if the cycle just completed, check that it has the right number of seed bits
-        if self.is_complete() && self.rng_seed.len() as u64 != slots_per_cycle {
+        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
             panic!("cycle completed with incorrect number of seed bits");
         }
 
         // compute the global hash
         self.cycle_global_hash = Hash::compute_from(&hash_concat);
-    }
 
-    /// Indicates if the cycle is complete or ongoing
-    pub fn is_complete(&self) -> bool {
-        matches!(self.status, CycleStatus::Complete(_))
+        // return the completion status
+        self.complete
     }
 }
 
@@ -251,13 +236,12 @@ fn test_cycle_info_hash_computation() {
     // cycle and address
     let mut cycle_a = CycleInfo::new_with_hash(
         0,
-        CycleStatus::Ongoing,
+        false,
         BTreeMap::default(),
         BitVec::default(),
         PreHashMap::default(),
     );
-    let final_state_hash = Hash::compute_from(&[0u8; 32]);
-    let addr = Address::from_bytes(&[1u8; 32]);
+    let addr = Address::from_bytes(&[0u8; 32]);
 
     // add changes
     let mut roll_changes = PreHashMap::default();
@@ -276,7 +260,7 @@ fn test_cycle_info_hash_computation() {
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2, final_state_hash);
+    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
 
     // update changes once
     roll_changes.clear();
@@ -295,7 +279,7 @@ fn test_cycle_info_hash_computation() {
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2, final_state_hash);
+    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
 
     // update changes twice
     roll_changes.clear();
@@ -314,12 +298,12 @@ fn test_cycle_info_hash_computation() {
         production_stats,
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2, final_state_hash);
+    cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2);
 
     // create a seconde cycle from same value and match hash
     let cycle_b = CycleInfo::new_with_hash(
         0,
-        cycle_a.status,
+        cycle_a.complete,
         cycle_a.roll_counts,
         cycle_a.rng_seed,
         cycle_a.production_stats,
@@ -343,7 +327,7 @@ pub struct CycleInfoSerializer {
     u64_ser: U64VarIntSerializer,
     bitvec_ser: BitVecSerializer,
     production_stats_ser: ProductionStatsSerializer,
-    hash_ser: HashSerializer,
+    opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
 }
 
 impl Default for CycleInfoSerializer {
@@ -359,7 +343,7 @@ impl CycleInfoSerializer {
             u64_ser: U64VarIntSerializer::new(),
             bitvec_ser: BitVecSerializer::new(),
             production_stats_ser: ProductionStatsSerializer::new(),
-            hash_ser: HashSerializer::new(),
+            opt_hash_ser: OptionSerializer::new(HashSerializer::new()),
         }
     }
 }
@@ -370,12 +354,7 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.u64_ser.serialize(&value.cycle, buffer)?;
 
         // cycle_info.complete
-        if let CycleStatus::Complete(final_state_hash) = value.status {
-            buffer.push(1);
-            self.hash_ser.serialize(&final_state_hash, buffer)?;
-        } else {
-            buffer.push(0);
-        }
+        buffer.push(u8::from(value.complete));
 
         // cycle_info.roll_counts
         self.u64_ser
@@ -392,6 +371,10 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.production_stats_ser
             .serialize(&value.production_stats, buffer)?;
 
+        // cycle_info.final_state_hash_snapshot
+        self.opt_hash_ser
+            .serialize(&value.final_state_hash_snapshot, buffer)?;
+
         Ok(())
     }
 }
@@ -402,7 +385,7 @@ pub struct CycleInfoDeserializer {
     rolls_deser: RollsDeserializer,
     bitvec_deser: BitVecDeserializer,
     production_stats_deser: ProductionStatsDeserializer,
-    hash_deser: HashDeserializer,
+    opt_hash_deser: OptionDeserializer<Hash, HashDeserializer>,
 }
 
 impl CycleInfoDeserializer {
@@ -413,7 +396,7 @@ impl CycleInfoDeserializer {
             rolls_deser: RollsDeserializer::new(max_rolls_length),
             bitvec_deser: BitVecDeserializer::new(),
             production_stats_deser: ProductionStatsDeserializer::new(max_production_stats_length),
-            hash_deser: HashDeserializer::new(),
+            opt_hash_deser: OptionDeserializer::new(HashDeserializer::new()),
         }
     }
 }
@@ -428,45 +411,38 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
             tuple((
                 context("cycle", |input| self.u64_deser.deserialize(input)),
                 context(
-                    "status",
-                    alt((
-                        context(
-                            "CycleStatus::Ongoing",
-                            value(CycleStatus::Ongoing, tag(b"0")),
-                        ),
-                        context(
-                            "CycleStatus::Complete(_)",
-                            preceded(tag(b"1"), |input| {
-                                self.hash_deser
-                                    .deserialize(input)
-                                    .map(|(rest, data)| (rest, CycleStatus::Complete(data)))
-                            }),
-                        ),
-                    )),
+                    "complete",
+                    alt((value(true, tag(&[1])), value(false, tag(&[0])))),
                 ),
                 context("roll_counts", |input| self.rolls_deser.deserialize(input)),
                 context("rng_seed", |input| self.bitvec_deser.deserialize(input)),
                 context("production_stats", |input| {
                     self.production_stats_deser.deserialize(input)
                 }),
+                context("final_state_hash_snapshot", |input| {
+                    self.opt_hash_deser.deserialize(input)
+                }),
             )),
         )
         .map(
             #[allow(clippy::type_complexity)]
-            |(cycle, status, roll_counts, rng_seed, production_stats): (
+            |(cycle, complete, roll_counts, rng_seed, production_stats, opt_hash): (
                 u64,                                  // cycle
-                CycleStatus,                          // status
+                bool,                                 // complete
                 Vec<(Address, u64)>,                  // roll_counts
                 BitVec<u8>,                           // rng_seed
                 PreHashMap<Address, ProductionStats>, // production_stats (address, n_success, n_fail)
+                Option<Hash>,                         // final_state_hash_snapshot
             )| {
-                CycleInfo::new_with_hash(
+                let mut cycle = CycleInfo::new_with_hash(
                     cycle,
-                    status,
+                    complete,
                     roll_counts.into_iter().collect(),
                     rng_seed,
                     production_stats,
-                )
+                );
+                cycle.final_state_hash_snapshot = opt_hash;
+                cycle
             },
         )
         .parse(buffer)
