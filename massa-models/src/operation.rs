@@ -894,8 +894,8 @@ impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
     /// use std::str::FromStr;
     ///
     /// let mut operations_ids = Vec::new();
-    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
-    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
     /// ```
