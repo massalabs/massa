@@ -13,7 +13,7 @@ use crate::{
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::net::IpAddr;
 
 /// operation input
@@ -41,7 +41,7 @@ pub struct NodeStatus {
     /// current cycle
     pub current_cycle: u64,
     /// connected nodes (node id, ip address, true if the connection is outgoing, false if incoming)
-    pub connected_nodes: HashMap<NodeId, (IpAddr, bool)>,
+    pub connected_nodes: BTreeMap<NodeId, (IpAddr, bool)>,
     /// latest slot, none if now is before genesis timestamp
     pub last_slot: Option<Slot>,
     /// next slot

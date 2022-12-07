@@ -52,23 +52,10 @@ impl DeferredCreditsHashComputer {
         }
     }
 
-    fn compute_slot_credits_hash(
-        &self,
-        slot: &Slot,
-        credits: &PreHashMap<Address, Amount>,
-    ) -> Hash {
+    fn compute_credit_hash(&self, slot: &Slot, address: &Address, amount: &Amount) -> Hash {
         // serialization can never fail in the following computations, unwrap is justified
         let mut buffer = Vec::new();
         self.slot_ser.serialize(slot, &mut buffer).unwrap();
-        let mut hash = Hash::compute_from(&buffer);
-        for (address, amount) in credits {
-            hash ^= self.compute_single_credit_hash(address, amount);
-        }
-        hash
-    }
-
-    fn compute_single_credit_hash(&self, address: &Address, amount: &Amount) -> Hash {
-        let mut buffer = Vec::new();
         self.address_ser.serialize(address, &mut buffer).unwrap();
         self.amount_ser.serialize(amount, &mut buffer).unwrap();
         Hash::compute_from(&buffer)
@@ -76,75 +63,46 @@ impl DeferredCreditsHashComputer {
 }
 
 impl DeferredCredits {
-    /// Extends the current `DeferredCredits` with another but accumulates the addresses and amounts
-    pub fn nested_replace(&mut self, other: Self) {
+    /// Extends the current `DeferredCredits` with another and replace the amounts for existing addresses
+    pub fn nested_extend(&mut self, other: Self) {
         for (slot, other_credits) in other.credits {
-            self.credits
-                .entry(slot)
-                .and_modify(|current_credits| {
-                    for (address, other_amount) in other_credits.iter() {
-                        current_credits
-                            .entry(*address)
-                            .and_modify(|current_amount| *current_amount = *other_amount)
-                            .or_insert(*other_amount);
-                    }
-                })
-                .or_insert(other_credits);
+            self.credits.entry(slot).or_default().extend(other_credits);
         }
     }
 
-    /// Extends the current `DeferredCredits` with another, accumulates the addresses and amounts and computes the object hash, use only on finality
-    pub fn final_nested_replace(&mut self, other: Self) {
+    /// Extends the current `DeferredCredits` with another, replace the amounts for existing addresses and compute the object hash, use only on finality
+    pub fn final_nested_extend(&mut self, other: Self) {
         let hash_computer = DeferredCreditsHashComputer::new();
         for (slot, other_credits) in other.credits {
-            self.credits
-                .entry(slot)
-                // if has given slot entry update it
-                .and_modify(|current_credits| {
-                    for (address, other_amount) in other_credits.iter() {
-                        current_credits
-                            .entry(*address)
-                            .and_modify(|current_amount| {
-                                // compute the current credit hash and XOR it
-                                self.hash ^= hash_computer
-                                    .compute_single_credit_hash(address, current_amount);
-                                // compute the replacement credit hash and XOR it
-                                self.hash ^=
-                                    hash_computer.compute_single_credit_hash(address, other_amount);
-                                // set the new credit amount
-                                *current_amount = *other_amount
-                            })
-                            .or_insert({
-                                // compute the credit hash and XOR it
-                                self.hash ^=
-                                    hash_computer.compute_single_credit_hash(address, other_amount);
-                                // set the credit amount
-                                *other_amount
-                            });
-                    }
-                })
-                // if misses the given slot entry insert
-                .or_insert({
-                    // compute every slot credits hash and XOR them
-                    hash_computer.compute_slot_credits_hash(&slot, &other_credits);
-                    // set the slot credits
-                    other_credits
-                });
-        }
-    }
-
-    /// Remove zero credits, use only on finality
-    pub fn remove_zeros(&mut self) {
-        let hash_computer = DeferredCreditsHashComputer::new();
-        let mut delete_slots = Vec::new();
-        for (slot, credits) in &mut self.credits {
-            credits.retain(|_addr, amount| !amount.is_zero());
-            if credits.is_empty() {
-                delete_slots.push(*slot);
-                self.hash ^= hash_computer.compute_slot_credits_hash(slot, credits);
+            let self_credits = self.credits.entry(slot).or_default();
+            for (address, other_amount) in other_credits {
+                if let Some(cur_amount) = self_credits.insert(address, other_amount) {
+                    self.hash ^= hash_computer.compute_credit_hash(&slot, &address, &cur_amount);
+                }
+                self.hash ^= hash_computer.compute_credit_hash(&slot, &address, &other_amount);
             }
         }
-        for slot in delete_slots {
+    }
+
+    /// Remove credits set to zero, use only on finality
+    pub fn remove_zeros(&mut self) {
+        let hash_computer = DeferredCreditsHashComputer::new();
+        let mut empty_slots = Vec::new();
+        for (slot, credits) in &mut self.credits {
+            credits.retain(|address, amount| {
+                // if amount is zero XOR the credit hash and do not retain
+                if amount.is_zero() {
+                    self.hash ^= hash_computer.compute_credit_hash(slot, address, amount);
+                    false
+                } else {
+                    true
+                }
+            });
+            if credits.is_empty() {
+                empty_slots.push(*slot);
+            }
+        }
+        for slot in empty_slots {
             self.credits.remove(&slot);
         }
     }
