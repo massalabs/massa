@@ -206,7 +206,7 @@ impl PoSFinalState {
         // extent deferred_credits with changes.deferred_credits
         // remove zero-valued credits
         self.deferred_credits
-            .final_nested_replace(changes.deferred_credits);
+            .final_nested_extend(changes.deferred_credits);
         self.deferred_credits.remove_zeros();
 
         // feed the cycle if it is complete
@@ -415,12 +415,15 @@ impl PoSFinalState {
                 .cycle_history
                 .back()
                 .map(|info| info.cycle.saturating_add(1));
-            let current_cycle = cycle_info.cycle;
-            if let Some(next_cycle) = opt_next_cycle && current_cycle != next_cycle {
-            panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", current_cycle, next_cycle);
-        }
+            let received_cycle = cycle_info.cycle;
+            if let Some(next_cycle) = opt_next_cycle && received_cycle != next_cycle {
+                panic!(
+                    "PoS received cycle ({}) should be equal to the next expected cycle ({})",
+                    received_cycle, next_cycle
+                );
+            }
             self.cycle_history.push_back(cycle_info);
-            StreamingStep::Ongoing(current_cycle)
+            StreamingStep::Ongoing(received_cycle)
         } else {
             StreamingStep::Finished(None)
         }
@@ -431,7 +434,7 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
     pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
-        self.deferred_credits.final_nested_replace(part);
+        self.deferred_credits.final_nested_extend(part);
         if let Some(slot) = self
             .deferred_credits
             .credits

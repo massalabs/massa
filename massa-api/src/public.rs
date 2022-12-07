@@ -53,6 +53,7 @@ use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -359,20 +360,22 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::from(e).into()),
         };
 
+        let connected_nodes = peers
+            .peers
+            .iter()
+            .flat_map(|(ip, peer)| {
+                peer.active_nodes
+                    .iter()
+                    .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
+            })
+            .collect::<BTreeMap<_, _>>();
+
         Ok(NodeStatus {
             node_id,
             node_ip: network_config.routable_ip,
             version,
             current_time: now,
-            connected_nodes: peers
-                .peers
-                .iter()
-                .flat_map(|(ip, peer)| {
-                    peer.active_nodes
-                        .iter()
-                        .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
-                })
-                .collect(),
+            connected_nodes,
             last_slot,
             next_slot,
             execution_stats,

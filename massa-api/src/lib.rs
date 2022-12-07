@@ -4,6 +4,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 use crate::error::ApiError::WrongAPI;
+use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
@@ -38,6 +39,7 @@ use parking_lot::RwLock;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
+use tower_http::cors::{Any, CorsLayer};
 
 use tokio::sync::mpsc;
 use tracing::{info, warn};
@@ -136,7 +138,17 @@ async fn serve(
         panic!("wrong server configuration, you can't disable both http and ws")
     }
 
+    let cors = CorsLayer::new()
+        // Allow `POST` and `OPTIONS` when accessing the resource
+        .allow_methods([Method::POST, Method::OPTIONS])
+        // Allow requests from any origin
+        .allow_origin(Any)
+        .allow_headers([hyper::header::CONTENT_TYPE]);
+
+    let middleware = tower::ServiceBuilder::new().layer(cors);
+
     let server = server_builder
+        .set_middleware(middleware)
         .build(url)
         .await
         .expect("failed to build server");

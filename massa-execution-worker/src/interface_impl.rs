@@ -16,6 +16,7 @@ use massa_models::{
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
@@ -171,6 +172,32 @@ impl Interface for InterfaceImpl {
         match context_guard!(self).create_new_sc_address(bytecode.to_vec()) {
             Ok(addr) => Ok(addr.to_string()),
             Err(err) => bail!("couldn't create new SC address: {}", err),
+        }
+    }
+
+    /// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys(&self) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        match context.get_keys(&addr) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys_for(&self, address: &str) -> Result<BTreeSet<Vec<u8>>> {
+        let addr = &Address::from_str(address)?;
+        let context = context_guard!(self);
+        match context.get_keys(addr) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
         }
     }
 
@@ -396,7 +423,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the resulting address
     fn address_from_public_key(&self, public_key: &str) -> Result<String> {
-        let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
+        let public_key = massa_signature::PublicKey::from_str(public_key)?;
         let addr = massa_models::address::Address::from_public_key(&public_key);
         Ok(addr.to_string())
     }
@@ -415,7 +442,7 @@ impl Interface for InterfaceImpl {
             Ok(sig) => sig,
             Err(_) => return Ok(false),
         };
-        let public_key = match massa_signature::PublicKey::from_bs58_check(public_key) {
+        let public_key = match massa_signature::PublicKey::from_str(public_key) {
             Ok(pubk) => pubk,
             Err(_) => return Ok(false),
         };

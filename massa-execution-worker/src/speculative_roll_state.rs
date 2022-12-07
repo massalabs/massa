@@ -224,7 +224,7 @@ impl SpeculativeRollState {
         if !target_credits.is_empty() {
             let mut credits = DeferredCredits::default();
             credits.credits.insert(target_slot, target_credits);
-            self.added_changes.deferred_credits.nested_replace(credits);
+            self.added_changes.deferred_credits.nested_extend(credits);
         }
     }
 
