@@ -259,7 +259,16 @@ impl PoSFinalState {
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
-                Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
+                let mut seed = cycle_info.rng_seed.clone().into_vec();
+                seed.extend(
+                    cycle_info
+                        .final_state_hash_snapshot
+                        .expect(
+                            "critical: a complete cycle must contain a final state hash snapshot",
+                        )
+                        .to_bytes(),
+                );
+                Hash::compute_from(&seed)
             }
             // looking back to negative cycles
             None => self.initial_seeds[draw_cycle as usize],
