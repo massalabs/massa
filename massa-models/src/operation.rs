@@ -162,13 +162,6 @@ impl OperationId {
         OperationId(Hash::from_bytes(data))
     }
 
-    /// op id from `bs58` check
-    pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(
-            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
-        ))
-    }
-
     /// convert the [`OperationId`] into a [`OperationPrefixId`]
     pub fn into_prefix(self) -> OperationPrefixId {
         OperationPrefixId(
@@ -951,8 +944,8 @@ impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
     /// use std::str::FromStr;
     ///
     /// let mut operations_ids = Vec::new();
-    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
-    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
     /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new(1000).deserialize::<DeserializeError>(&buffer).unwrap();
