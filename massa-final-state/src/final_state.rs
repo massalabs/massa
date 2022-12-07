@@ -239,12 +239,12 @@ impl FinalState {
                             .0
                             .iter()
                             .filter_map(|change| match change {
-                                Change::Add(id, _) if id <= &last_id => Some(change.clone()),
-                                Change::Activate(id) if id <= &last_id => Some(change.clone()),
-                                Change::Delete(id) if id <= &last_id => Some(change.clone()),
-                                Change::Add(..) => None,
-                                Change::Activate(..) => None,
-                                Change::Delete(..) => None,
+                                Change::Add(id, _) | Change::Activate(id) | Change::Delete(id)
+                                    if id <= &last_id =>
+                                {
+                                    Some(change.clone())
+                                }
+                                _ => None,
                             })
                             .collect(),
                     );

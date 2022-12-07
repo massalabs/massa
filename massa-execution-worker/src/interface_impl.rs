@@ -7,7 +7,7 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
-use massa_async_pool::{AsyncMessage, AsyncMessageFilter};
+use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::{
@@ -617,7 +617,7 @@ impl Interface for InterfaceImpl {
             data.to_vec(),
             filter
                 .map(|(addr, key)| {
-                    Ok::<AsyncMessageFilter, ModelsError>(AsyncMessageFilter {
+                    Ok::<AsyncMessageTrigger, ModelsError>(AsyncMessageTrigger {
                         address: Address::from_str(addr)?,
                         datastore_key: key.map(|k| k.to_vec()),
                     })

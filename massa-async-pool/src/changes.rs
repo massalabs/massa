@@ -166,7 +166,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
-    ///     AsyncMessageFilter {
+    ///     AsyncMessageTrigger {
     ///        address: Some(Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()),
     ///        datastore_key: Some(String::from("test")),
     ///     }

@@ -339,7 +339,7 @@ fn send_and_receive_async_message() {
 /// 12. if they are some, we verify that the data has the correct value
 #[test]
 #[serial]
-fn send_and_receive_async_message_with_filter() {
+fn send_and_receive_async_message_with_trigger() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
@@ -425,7 +425,6 @@ fn send_and_receive_async_message_with_filter() {
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    //let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
     finalized_blocks.insert(block.content.header.content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
@@ -448,6 +447,7 @@ fn send_and_receive_async_message_with_filter() {
         KeyPair::from_str("S12APSAzMPsJjVGWzUJ61ZwwGFTNapA4YtArMKDyW4edLu6jHvCr").unwrap();
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
+    // This line execute the smart contract that will modify the data entry and then trigger the SC.
     let bytecode = include_bytes!("./wasm/send_message_trigger.wasm");
     let datastore = BTreeMap::new();
 
@@ -458,7 +458,6 @@ fn send_and_receive_async_message_with_filter() {
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    //let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
     finalized_blocks.insert(block.content.header.content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());

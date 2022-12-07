@@ -6,8 +6,8 @@ use crate::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
-    AsyncMessageDeserializer, AsyncMessageFilter, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageSerializer,
+    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncMessageSerializer, AsyncMessageTrigger,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerChanges;
@@ -130,12 +130,9 @@ impl AsyncPool {
         }
         let mut triggered = Vec::new();
         for (id, message) in self.messages.iter_mut() {
-            if let Some(filter) = &message.filter && !message.can_be_executed && filter_triggered(filter, ledger_changes)
+            if let Some(filter) = &message.trigger && !message.can_be_executed && is_triggered(filter, ledger_changes)
             {
-                self.hash ^= message.hash;
                 message.can_be_executed = true;
-                message.compute_hash();
-                self.hash ^= message.hash;
                 triggered.push((*id, message.clone()));
             }
         }
@@ -238,9 +235,9 @@ impl AsyncPool {
     }
 }
 
-/// Check in the ledger changes if a message filter has been trigger
-fn filter_triggered(filter: &AsyncMessageFilter, ledger_changes: &LedgerChanges) -> bool {
-    ledger_changes.has_address_and_key(&filter.address, filter.datastore_key.clone())
+/// Check in the ledger changes if a message trigger has been triggered
+fn is_triggered(filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) -> bool {
+    ledger_changes.has_changes(&filter.address, filter.datastore_key.clone())
 }
 
 /// Serializer for `AsyncPool`
@@ -344,7 +341,6 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
 
 #[test]
 fn test_take_batch() {
-    use super::AsyncMessageFilter;
     use massa_hash::Hash;
     use massa_models::{address::Address, amount::Amount, slot::Slot};
     use std::str::FromStr;
@@ -370,10 +366,7 @@ fn test_take_batch() {
             Slot::new(1, 0),
             Slot::new(3, 0),
             Vec::new(),
-            Some(AsyncMessageFilter {
-                address: address,
-                datastore_key: None,
-            }),
+            None,
         );
         pool.messages.insert(message.compute_id(), message);
     }
