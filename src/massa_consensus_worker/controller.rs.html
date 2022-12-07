@@ -250,6 +250,10 @@
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -367,8 +371,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>final_blocks: Vec&lt;ExportActiveBlock&gt; = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>retrieved_ids: PreHashSet&lt;BlockId&gt; = PreHashSet::default();
         <span class="kw">let </span>read_shared_state = <span class="self">self</span>.shared_state.read();
-        <span class="kw">let </span>required_blocks: PreHashSet&lt;BlockId&gt; =
-            read_shared_state.list_required_active_blocks()<span class="question-mark">?</span>;
+        <span class="kw">let </span>required_blocks: PreHashSet&lt;BlockId&gt; = <span class="kw">match </span>execution_cursor {
+            StreamingStep::Ongoing(slot) | StreamingStep::Finished(<span class="prelude-val">Some</span>(slot)) =&gt; {
+                read_shared_state.list_required_active_blocks(<span class="prelude-val">Some</span>(slot))<span class="question-mark">?
+            </span>}
+            <span class="kw">_ </span>=&gt; PreHashSet::default(),
+        };
 
         <span class="kw">let </span>(current_ids, previous_ids, outdated_ids) = <span class="kw">match </span>cursor {
             StreamingStep::Started =&gt; (

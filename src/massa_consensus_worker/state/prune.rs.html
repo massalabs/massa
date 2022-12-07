@@ -370,7 +370,7 @@
     <span class="doccomment">/// prune active blocks and return final blocks, return discarded final blocks
     </span><span class="kw">fn </span>prune_active(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashMap&lt;BlockId, ActiveBlock&gt;, ConsensusError&gt; {
         <span class="comment">// list required active blocks
-        </span><span class="kw">let </span><span class="kw-2">mut </span>retain_active: PreHashSet&lt;BlockId&gt; = <span class="self">self</span>.list_required_active_blocks()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>retain_active: PreHashSet&lt;BlockId&gt; = <span class="self">self</span>.list_required_active_blocks(<span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
