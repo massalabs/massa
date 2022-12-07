@@ -38,6 +38,8 @@ pub enum ModelsError {
     BlockIdParseError,
     /// operation id parsing error
     OperationIdParseError,
+    /// endorsement id parsing error
+    EndorsementIdParseError,
     /// checked operation error
     CheckedOperationError(String),
     /// invalid version identifier: {0}
