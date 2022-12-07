@@ -229,12 +229,12 @@ async fn test_bootstrap_server() {
                 response_tx,
                 ..
             } => {
-                // send the consensus blocks only on the first call
-                // give an empty answer for the following ones
+                // send the consensus blocks at the 4th slot (1 for startup + 3 for safety)
+                // give an empty answer for any other call
                 if execution_cursor
                     == &StreamingStep::Ongoing(Slot {
                         period: 1,
-                        thread: 0,
+                        thread: 1,
                     })
                 {
                     response_tx
