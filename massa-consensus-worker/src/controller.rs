@@ -115,8 +115,12 @@ impl ConsensusController for ConsensusControllerImpl {
         let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
         let mut retrieved_ids: PreHashSet<BlockId> = PreHashSet::default();
         let read_shared_state = self.shared_state.read();
-        let required_blocks: PreHashSet<BlockId> =
-            read_shared_state.list_required_active_blocks()?;
+        let required_blocks: PreHashSet<BlockId> = match execution_cursor {
+            StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
+                read_shared_state.list_required_active_blocks(Some(slot))?
+            }
+            _ => PreHashSet::default(),
+        };
 
         let (current_ids, previous_ids, outdated_ids) = match cursor {
             StreamingStep::Started => (
