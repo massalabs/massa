@@ -423,7 +423,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the resulting address
     fn address_from_public_key(&self, public_key: &str) -> Result<String> {
-        let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
+        let public_key = massa_signature::PublicKey::from_str(public_key)?;
         let addr = massa_models::address::Address::from_public_key(&public_key);
         Ok(addr.to_string())
     }
@@ -442,7 +442,7 @@ impl Interface for InterfaceImpl {
             Ok(sig) => sig,
             Err(_) => return Ok(false),
         };
-        let public_key = match massa_signature::PublicKey::from_bs58_check(public_key) {
+        let public_key = match massa_signature::PublicKey::from_str(public_key) {
             Ok(pubk) => pubk,
             Err(_) => return Ok(false),
         };
