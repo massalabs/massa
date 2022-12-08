@@ -113,6 +113,7 @@ fn init_execution_worker(
 /// This test can fail if the gas is going up in the execution
 #[test]
 #[serial]
+#[ignore]
 fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -829,26 +830,19 @@ fn datastore_manipulations() {
     let events = controller.get_filtered_sc_output_event(EventFilter::default());
     // match the events
     assert!(!events.is_empty(), "2 events were expected");
-    let key = "TEST".to_string();
-    // in ASC, string are utf16 encoded
-    let s16 = key.encode_utf16();
-    let s16_as_bytes: Vec<u8> = s16.map(|item| item.to_ne_bytes()).flatten().collect();
-    // in SC, we use the builtin string formatting (using `keys: ${keys}`) & replicate it in Rust
-    let keys_str: String = s16_as_bytes
+    let key: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
+    let keys_str: String = key
         .iter()
         .map(|b| format!("{}", b))
         .collect::<Vec<String>>()
         .join(",");
+
     assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
     assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
 
     // Length of the value left in the datastore. See sources for more context.
-    let value_len = "TEST_VALUE"
-        .to_string()
-        .encode_utf16()
-        .size_hint()
-        .1
-        .unwrap() as u64;
+    let value_len = [21, 0, 49].len() as u64;
+
     assert_eq!(
         sample_state
             .read()
