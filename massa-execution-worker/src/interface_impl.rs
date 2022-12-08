@@ -19,7 +19,7 @@ use rand::Rng;
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::{info, debug};
+use tracing::debug;
 
 /// helper for locking the context mutex
 macro_rules! context_guard {
