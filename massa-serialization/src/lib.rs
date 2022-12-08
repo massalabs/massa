@@ -185,6 +185,7 @@ macro_rules! gen_varint {
             #[doc = " Serializer for "]
             #[doc = $d]
             #[doc = " in a varint form."]
+            #[repr(C)]
             #[derive(Clone)]
             pub struct $s;
 
@@ -214,6 +215,7 @@ macro_rules! gen_varint {
             #[doc = " Deserializer for "]
             #[doc = $d]
             #[doc = " in a varint form."]
+            #[repr(C)]
             #[derive(Clone)]
             pub struct $ds {
                 range: (Bound<$type>, Bound<$type>)
@@ -335,3 +337,13 @@ where
         .parse(buffer)
     }
 }
+
+// #[no_mangle]
+// pub extern "C" fn root(
+//     u16_ser: U16VarIntSerializer,
+//     u16_der: U16VarIntDeserializer,
+//     u32_ser: U32VarIntSerializer,
+//     u32_der: U32VarIntDeserializer,
+//     u64_ser: U64VarIntSerializer,
+//     u64_der: U64VarIntDeserializer
+// ) {}

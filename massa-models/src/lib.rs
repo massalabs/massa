@@ -60,6 +60,19 @@ pub mod version;
 /// trait for signed structure
 pub mod wrapped;
 
+#[repr(C)]
+pub struct MySlot {
+    pub period: u64,
+    pub thread: u8,
+}
+
+#[no_mangle]
+// pub extern "C" fn root(_myslot: MySlot, _slot: slot::Slot) {}
+pub extern "C" fn root(
+    _myslot: MySlot,
+    _slot: slot::Slot,
+    _slot_ser: slot::SlotSerializer) {}
+
 /// Test utils
 #[cfg(feature = "testing")]
 pub mod test_exports;

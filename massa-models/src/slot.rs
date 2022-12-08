@@ -12,6 +12,7 @@ use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
 
 /// a point in time where a block is expected
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Slot {
     /// period
@@ -20,10 +21,17 @@ pub struct Slot {
     pub thread: u8,
 }
 
+// without alias
+#[no_mangle]
+pub extern "C" fn new_slot(period: u64, thread: u8) -> *mut Slot {
+    Box::into_raw(Box::new(Slot::new(period, thread)))
+}
+
 /// size of the slot key representation
 pub const SLOT_KEY_SIZE: usize = 9;
 
 /// Basic serializer for `Slot`
+#[repr(C)]
 #[derive(Clone)]
 pub struct SlotSerializer {
     u64_serializer: U64VarIntSerializer,
@@ -36,6 +44,12 @@ impl SlotSerializer {
             u64_serializer: U64VarIntSerializer::new(),
         }
     }
+}
+
+// without alias
+#[no_mangle]
+pub extern "C" fn new_slot_ser() -> *mut SlotSerializer {
+    Box::into_raw(Box::new(SlotSerializer::new()))
 }
 
 impl Default for SlotSerializer {
@@ -60,6 +74,16 @@ impl Serializer<Slot> for SlotSerializer {
         buffer.push(value.thread);
         Ok(())
     }
+}
+
+// without alias
+#[no_mangle]
+pub extern "C" fn slot_serialize(slot_ser: *mut SlotSerializer, slot: *mut Slot) {
+    let mut buffer = Vec::new();
+    unsafe {
+        slot_ser.as_ref().unwrap().serialize(slot.as_ref().unwrap(), &mut buffer).unwrap();
+    }
+    // Box::into_raw(Box::new(SlotSerializer::new()))
 }
 
 /// Basic `Slot` Deserializer

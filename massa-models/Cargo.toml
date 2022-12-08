@@ -27,6 +27,10 @@ massa_time = { path = "../massa-time" }
 [dev-dependencies]
 serial_test = "0.9"
 
+[lib]
+name = "massa_models"
+crate-type = ["cdylib"]
+
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 sandbox = []
