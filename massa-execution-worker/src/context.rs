@@ -222,8 +222,17 @@ impl ExecutionContext {
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
-        self.events = snapshot.events;
         self.unsafe_rng = snapshot.unsafe_rng;
+
+        // For events, set snapshot delta to error events.
+        // Stop iterating as soon as an event is contained because we are dealing with a VecDeque.
+        for event in self.events.0.iter_mut().rev() {
+            if !snapshot.events.0.contains(event) {
+                // TODO: set here
+            } else {
+                break;
+            }
+        }
 
         // If there was an error, emit the corresponding event now.
         // Note that the context event counter is properly handled by event_emit (see doc).

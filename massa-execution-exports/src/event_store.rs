@@ -9,7 +9,7 @@ use std::collections::VecDeque;
 
 /// Store for events emitted by smart contracts
 #[derive(Default, Debug, Clone)]
-pub struct EventStore(VecDeque<SCOutputEvent>);
+pub struct EventStore(pub VecDeque<SCOutputEvent>);
 
 impl EventStore {
     /// Push a new smart contract event to the store
