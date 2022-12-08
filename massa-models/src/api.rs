@@ -555,6 +555,12 @@ pub struct EventFilter {
     /// Some(false) means candidate
     /// None means final _and_ candidate
     pub is_final: Option<bool>,
+    /// optional execution status
+    ///
+    /// Some(true) means events coming from a failed sc execution
+    /// Some(false) means events coming from a succeeded sc execution
+    /// None means events coming from a succeeded sc execution
+    pub is_error: Option<bool>,
 }
 
 /// read only bytecode execution request

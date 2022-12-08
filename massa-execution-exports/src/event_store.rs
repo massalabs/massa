@@ -87,6 +87,11 @@ impl EventStore {
                     (Some(_), None) => return false,
                     _ => (),
                 }
+                match filter.is_error {
+                    Some(is_error) if x.context.is_error != is_error => return false,
+                    None if x.context.is_error => return false,
+                    _ => (),
+                }
                 true
             })
             .cloned()
@@ -110,6 +115,7 @@ fn test_prune() {
                 call_stack: VecDeque::new(),
                 origin_operation_id: None,
                 is_final: false,
+                is_error: false,
             },
             data: i.to_string(),
         });

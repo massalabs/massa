@@ -35,6 +35,8 @@ pub struct EventExecutionContext {
     pub origin_operation_id: Option<OperationId>,
     /// if the event is final
     pub is_final: bool,
+    /// if the sc that emitted this event failed
+    pub is_error: bool,
 }
 
 impl Display for EventExecutionContext {

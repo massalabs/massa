@@ -228,7 +228,7 @@ impl ExecutionContext {
         // Stop iterating as soon as an event is contained because we are dealing with a VecDeque.
         for event in self.events.0.iter_mut().rev() {
             if !snapshot.events.0.contains(event) {
-                // TODO: set here
+                event.context.is_error = true;
             } else {
                 break;
             }
@@ -782,6 +782,7 @@ impl ExecutionContext {
             index_in_slot: self.created_event_index,
             origin_operation_id: self.origin_operation_id,
             is_final: false,
+            is_error: false,
         };
 
         // Return the event
