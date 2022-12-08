@@ -3,12 +3,14 @@
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+use crate::api_trait::MassaApiServer;
 use crate::error::ApiError::WrongAPI;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 use jsonrpsee::types::{SubscriptionEmptyError, SubscriptionResult};
+use jsonrpsee::RpcModule;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
@@ -45,6 +47,8 @@ use tower_http::cors::{Any, CorsLayer};
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
+mod api;
+mod api_trait;
 mod config;
 mod error;
 mod private;
@@ -91,6 +95,16 @@ pub struct Private {
     pub node_wallet: Arc<RwLock<Wallet>>,
 }
 
+/// API v2 content
+pub struct ApiV2 {
+    /// link to the consensus component
+    pub consensus_controller: Box<dyn ConsensusController>,
+    /// API settings
+    pub api_settings: APIConfig,
+    /// node version
+    pub version: Version,
+}
+
 /// The API wrapper
 pub struct API<T>(T);
 
@@ -105,8 +119,19 @@ pub trait RpcServer: MassaRpcServer {
     ) -> Result<StopHandle, JsonRpseeError>;
 }
 
-async fn serve(
-    api: impl MassaRpcServer,
+/// Used to manage the API
+#[async_trait::async_trait]
+pub trait ApiServer: MassaApiServer {
+    /// Start the API
+    async fn serve(
+        self,
+        url: &SocketAddr,
+        api_config: &APIConfig,
+    ) -> Result<StopHandle, JsonRpseeError>;
+}
+
+async fn serve<T>(
+    api: RpcModule<T>,
     url: &SocketAddr,
     api_config: &APIConfig,
 ) -> Result<StopHandle, JsonRpseeError> {
@@ -152,7 +177,7 @@ async fn serve(
         .await
         .expect("failed to build server");
 
-    let server_handler = server.start(api.into_rpc()).expect("server start failed");
+    let server_handler = server.start(api).expect("server start failed");
     let stop_handler = StopHandle { server_handler };
 
     Ok(stop_handler)

@@ -96,7 +96,7 @@ impl RpcServer for API<Public> {
         url: &SocketAddr,
         api_config: &APIConfig,
     ) -> Result<StopHandle, JsonRpseeError> {
-        crate::serve(self, url, api_config).await
+        crate::serve(self.into_rpc(), url, api_config).await
     }
 }
 
