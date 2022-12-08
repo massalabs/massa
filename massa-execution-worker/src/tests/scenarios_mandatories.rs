@@ -647,14 +647,18 @@ fn sc_execution_error() {
     std::thread::sleep(Duration::from_millis(10));
 
     // retrieve the event emitted by the execution error
-    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        is_error: Some(true),
+        ..Default::default()
+    });
     // match the events
-    assert!(!events.is_empty(), "One event was expected");
-    assert!(events[0].data.contains("massa_execution_error"));
-    assert!(events[0]
+    assert!(!events.is_empty(), "2 events were expected");
+    assert_eq!(events[0].data, "event generated before the sc failure");
+    assert!(events[1].data.contains("massa_execution_error"));
+    assert!(events[1]
         .data
         .contains("runtime error when executing operation"));
-    assert!(events[0].data.contains("address parsing error"));
+    assert!(events[1].data.contains("address parsing error"));
     // stop the execution controller
     manager.stop();
 }
