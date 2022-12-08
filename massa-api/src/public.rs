@@ -6,8 +6,6 @@ use crate::error::ApiError;
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
-use jsonrpsee::types::SubscriptionResult;
-use jsonrpsee::SubscriptionSink;
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
@@ -989,23 +987,5 @@ impl MassaRpcServer for API<Public> {
             });
 
         openrpc
-    }
-
-    fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        let consensus_controller = self.0.consensus_controller.clone();
-        consensus_controller.subscribe_new_blocks_headers(sink);
-        Ok(())
-    }
-
-    fn subscribe_new_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        let consensus_controller = self.0.consensus_controller.clone();
-        consensus_controller.subscribe_new_blocks(sink);
-        Ok(())
-    }
-
-    fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        let consensus_controller = self.0.consensus_controller.clone();
-        consensus_controller.subscribe_new_filled_blocks(sink);
-        Ok(())
     }
 }

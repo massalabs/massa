@@ -16,6 +16,8 @@ pub struct APIConfig {
     pub bind_private: SocketAddr,
     /// bind for the public API
     pub bind_public: SocketAddr,
+    /// bind for the Massa API
+    pub bind_api: SocketAddr,
     /// max argument count
     pub max_arguments: u64,
     /// openrpc specification path

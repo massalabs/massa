@@ -9,7 +9,6 @@ use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
-use jsonrpsee::types::{SubscriptionEmptyError, SubscriptionResult};
 use jsonrpsee::RpcModule;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::ExecutionController;
@@ -367,40 +366,8 @@ pub trait MassaRpc {
     /// Get OpenRPC specification.
     #[method(name = "rpc.discover")]
     async fn get_openrpc_spec(&self) -> RpcResult<Value>;
-
-    /// New produced blocks headers.
-    #[subscription(
-        name = "subscribe_new_blocks_headers" => "new_blocks_headers",
-        unsubscribe = "unsubscribe_new_blocks_headers",
-        item = BlockHeader
-    )]
-    fn subscribe_new_blocks_headers(&self);
-
-    /// New produced block.
-    #[subscription(
-		name = "subscribe_new_blocks" => "new_blocks",
-		unsubscribe = "unsubscribe_new_blocks",
-		item = Block
-	)]
-    fn subscribe_new_blocks(&self);
-
-    /// New produced block with operations content.
-    #[subscription(
-		name = "subscribe_new_filled_blocks" => "new_filled_blocks",
-		unsubscribe = "unsubscribe_new_filled_blocks",
-		item = FilledBlock
-	)]
-    fn subscribe_new_filled_blocks(&self);
 }
 
 fn wrong_api<T>() -> RpcResult<T> {
     Err((WrongAPI).into())
-}
-
-fn wrong_subscription() -> SubscriptionResult {
-    Err(SubscriptionEmptyError)
-}
-
-fn _jsonrpsee_assert(_method: &str, _request: Value, _response: Value) {
-    // TODO: jsonrpsee_client_transports::RawClient::call_method ... see #1182
 }

@@ -118,6 +118,7 @@ pub struct APISettings {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
+    pub bind_api: SocketAddr,
     pub max_arguments: u64,
     pub openrpc_spec_path: PathBuf,
     pub max_request_body_size: u32,

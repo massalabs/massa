@@ -5,7 +5,7 @@ use jsonrpsee::proc_macros::rpc;
 use massa_models::version::Version;
 
 /// Exposed API methods
-#[rpc(server, namespace = "v2")]
+#[rpc(server)]
 pub trait MassaApi {
     /// Get Massa node version.
     #[method(name = "get_version")]

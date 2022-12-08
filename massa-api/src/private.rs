@@ -7,8 +7,6 @@ use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use itertools::Itertools;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
-use jsonrpsee::types::SubscriptionResult;
-use jsonrpsee::SubscriptionSink;
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
@@ -304,18 +302,6 @@ impl MassaRpcServer for API<Private> {
 
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {
         crate::wrong_api::<Value>()
-    }
-
-    fn subscribe_new_blocks_headers(&self, _sink: SubscriptionSink) -> SubscriptionResult {
-        crate::wrong_subscription()
-    }
-
-    fn subscribe_new_blocks(&self, _sink: SubscriptionSink) -> SubscriptionResult {
-        crate::wrong_subscription()
-    }
-
-    fn subscribe_new_filled_blocks(&self, _sink: SubscriptionSink) -> SubscriptionResult {
-        crate::wrong_subscription()
     }
 }
 

@@ -11,6 +11,8 @@
     bind_private = "127.0.0.1:33034"
     # port on which the node API listens for public requests. Can be exposed to the Internet
     bind_public = "0.0.0.0:33035"
+    # port on which the node API listens for HTTP requests and WebSOckets subscriptions. Can be exposed to the Internet
+    bind_api = "0.0.0.0:33036"
     # max number of arguments per RPC call
     max_arguments = 128
     # path to the openrpc specification file used in `rpc.discover` method
