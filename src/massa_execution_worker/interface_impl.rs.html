@@ -651,6 +651,10 @@
 <a href="#651" id="651">651</a>
 <a href="#652" id="652">652</a>
 <a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -715,7 +719,11 @@
 </span><span class="kw">impl </span>Interface <span class="kw">for </span>InterfaceImpl {
     <span class="doccomment">/// prints a message in the node logs at log level 3 (debug)
     </span><span class="kw">fn </span>print(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;SC print: {}&quot;</span>, message);
+        <span class="kw">if </span><span class="macro">cfg!</span>(test) {
+            <span class="macro">println!</span>(<span class="string">&quot;SC print: {}&quot;</span>, message);
+        } <span class="kw">else </span>{
+            <span class="macro">debug!</span>(<span class="string">&quot;SC print: {}&quot;</span>, message);
+        }
         <span class="prelude-val">Ok</span>(())
     }
 
