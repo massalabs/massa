@@ -207,6 +207,7 @@ impl ExecutionContext {
         let err_event = with_error.map(|err| {
             self.event_create(
                 serde_json::json!({ "massa_execution_error": format!("{}", err) }).to_string(),
+                true,
             )
         });
 
@@ -772,7 +773,7 @@ impl ExecutionContext {
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    pub fn event_create(&self, data: String) -> SCOutputEvent {
+    pub fn event_create(&self, data: String, is_error: bool) -> SCOutputEvent {
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: self.slot,
@@ -782,7 +783,7 @@ impl ExecutionContext {
             index_in_slot: self.created_event_index,
             origin_operation_id: self.origin_operation_id,
             is_final: false,
-            is_error: false,
+            is_error,
         };
 
         // Return the event
