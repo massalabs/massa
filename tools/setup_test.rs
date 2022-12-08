@@ -34,7 +34,7 @@ const TAG: &str = "TEST.16.3";
 const ARCHIVE_MAX_SIZE: u64 = 1048576;
 
 // destination path
-const PATH_DST_BASE_1: &str = "../massa-execution-worker/src/tests/wasm/";
+const PATH_DST_BASE_1: &str = "massa-execution-worker/src/tests/wasm/";
 
 #[derive(Debug, thiserror::Error)]
 enum DlFileError {
