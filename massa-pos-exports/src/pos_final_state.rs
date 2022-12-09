@@ -232,7 +232,7 @@ impl PoSFinalState {
     /// Feeds the selector targeting a given draw cycle
     fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
         // get roll lookback
-        let lookback_rolls = match draw_cycle.checked_sub(3) {
+        let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
             Some(c) => {
                 let index = self
@@ -242,10 +242,16 @@ impl PoSFinalState {
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
-                cycle_info.roll_counts.clone()
+                // take the final_state_hash_snapshot at cycle - 3
+                // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
+                // do this here to avoid a potential attacker manipulating the selections
+                let state_hash = cycle_info
+                    .final_state_hash_snapshot
+                    .expect("critical: a complete cycle must contain a final state hash snapshot");
+                (cycle_info.roll_counts.clone(), Some(state_hash))
             }
             // looking back to negative cycles
-            None => self.initial_rolls.clone(),
+            None => (self.initial_rolls.clone(), None),
         };
 
         // get seed lookback
@@ -260,14 +266,9 @@ impl PoSFinalState {
                     return Err(PosError::CycleUnfinished(c));
                 }
                 let mut seed = cycle_info.rng_seed.clone().into_vec();
-                seed.extend(
-                    cycle_info
-                        .final_state_hash_snapshot
-                        .expect(
-                            "critical: a complete cycle must contain a final state hash snapshot",
-                        )
-                        .to_bytes(),
-                );
+                if let Some(hash) = lookback_state_hash {
+                    seed.extend(hash.to_bytes());
+                }
                 Hash::compute_from(&seed)
             }
             // looking back to negative cycles
