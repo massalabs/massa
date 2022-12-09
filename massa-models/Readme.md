@@ -55,3 +55,69 @@ int main() {
 ### Valgrind check
 
     valgrind --leak-check=full --show-leak-kinds=all  ./main_c_1
+
+## Python bindings (CFFI)
+
+    python3 -m venv venv
+    venv/bin/python -m pip install cffi
+
+### Python bindings: tasks.py
+
+```python
+# tasks.py
+import pathlib
+
+import cffi
+
+""" Build the CFFI Python bindings """
+print("Building CFFI Module")
+ffi = cffi.FFI()
+
+this_dir = pathlib.Path().absolute()
+h_file_name = this_dir / "massa_models.h"
+with open(h_file_name) as h_file:
+    ffi.cdef(h_file.read())
+
+ffi.set_source(
+    "massa_models_py",
+    # Since you're calling a fully-built library directly, no custom source
+    # is necessary. You need to include the .h files, though, because behind
+    # the scenes cffi generates a .c file that contains a Python-friendly
+    # wrapper around each of the functions.
+    '#include "massa_models.h"',
+    # The important thing is to include the pre-built lib in the list of
+    # libraries you're linking against:
+    libraries=["massa_models"],
+    library_dirs=[this_dir.as_posix()],
+    extra_link_args=["-Wl,-rpath,."],
+)
+
+ffi.compile()
+```
+
+Note: 
+* Need (for now) manual processing of massa_models.h
+  * Some "#define" are not supported by python-cffi
+  * Can we automate this process?
+    * COntribute to python-cffi project?
+
+### Python bindings: howto use
+
+```python
+import massa_models_py
+
+if __name__ == "__main__":
+
+    print("Hello")
+    print(dir(massa_models_py.lib))
+
+    slot1 = massa_models_py.lib.new_slot(1, 7)
+    slot1_ser = massa_models_py.lib.slot_serialize(slot1)
+    print("slot1", slot1, slot1.Period, slot1.Thread);
+    print("slot1 ser", slot1_ser)
+    slot1_ser = massa_models_py.lib.slot_serialize(slot1)
+
+    slot1_der = massa_models_py.lib.slot_deserialize(slot1_ser);
+    print("slot1 der", slot1_der, slot1_der.Period, slot1_der.Thread)
+```
+
