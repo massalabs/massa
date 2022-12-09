@@ -1019,7 +1019,7 @@ impl ExecutionState {
 
         if req.max_gas > self.config.max_gas_per_execution {
             return Err(ExecutionError::ExecutionGasOverThreshold(format!(
-                "execution gas for operation read-only call is {} which is above the maximum allowed {}",
+                "execution gas for read-only call is {} which is above the maximum allowed {}",
                 req.max_gas, self.config.max_gas_per_execution
             )));
         }
