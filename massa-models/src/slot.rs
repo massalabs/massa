@@ -2,14 +2,13 @@
 
 use crate::error::ModelsError;
 use massa_hash::Hash;
-use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
+use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
 use serde::{Deserialize, Serialize};
 use std::ops::{Bound, RangeBounds};
 use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
+use std::ops::Bound::Included;
 
 /// a point in time where a block is expected
 #[repr(C)]
@@ -19,12 +18,6 @@ pub struct Slot {
     pub period: u64,
     /// thread
     pub thread: u8,
-}
-
-// without alias
-#[no_mangle]
-pub extern "C" fn new_slot(period: u64, thread: u8) -> *mut Slot {
-    Box::into_raw(Box::new(Slot::new(period, thread)))
 }
 
 /// size of the slot key representation
@@ -44,12 +37,6 @@ impl SlotSerializer {
             u64_serializer: U64VarIntSerializer::new(),
         }
     }
-}
-
-// without alias
-#[no_mangle]
-pub extern "C" fn new_slot_ser() -> *mut SlotSerializer {
-    Box::into_raw(Box::new(SlotSerializer::new()))
 }
 
 impl Default for SlotSerializer {
@@ -76,15 +63,6 @@ impl Serializer<Slot> for SlotSerializer {
     }
 }
 
-// without alias
-#[no_mangle]
-pub extern "C" fn slot_serialize(slot_ser: *mut SlotSerializer, slot: *mut Slot) {
-    let mut buffer = Vec::new();
-    unsafe {
-        slot_ser.as_ref().unwrap().serialize(slot.as_ref().unwrap(), &mut buffer).unwrap();
-    }
-    // Box::into_raw(Box::new(SlotSerializer::new()))
-}
 
 /// Basic `Slot` Deserializer
 #[derive(Clone)]
@@ -353,3 +331,112 @@ impl Slot {
             .saturating_sub(s.thread as u64))
     }
 }
+
+//
+// C API
+
+use std::isize;
+use std::slice;
+use std::ops::{ Deref, DerefMut };
+use std::alloc::{dealloc, Layout};
+use std::ptr;
+
+/// TODO
+/// From: https://users.rust-lang.org/t/how-to-safely-deal-with-c-uint8-t-or-char-in-rust/43109/5
+#[repr(C)]
+pub struct CBuffer {
+    ptr: *mut u8,
+    len: usize,
+}
+
+/// TODO
+impl CBuffer {
+    /// Constructor. Transfers ownership of `ptr`.
+    pub unsafe fn from_owning(ptr: *mut u8, len: usize) -> Option<Self> {
+        if ptr.is_null() || len > isize::MAX as usize {
+            // slices are not allowed to be backed by a null pointer
+            // or be longer than `isize::MAX`. Alignment is irrelevant for `u8`.
+            None
+        } else {
+            Some(CBuffer { ptr, len })
+        }
+    }
+}
+
+impl Drop for CBuffer {
+    /// Destructor.
+    fn drop(&mut self) {
+        unsafe {
+            libc::free(self.ptr.cast());
+            // for example. Might need custom deallocation.
+        }
+    }
+}
+
+impl Deref for CBuffer {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        unsafe {
+            slice::from_raw_parts(self.ptr as *const u8, self.len)
+        }
+    }
+}
+
+impl DerefMut for CBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe {
+            slice::from_raw_parts_mut(self.ptr, self.len)
+        }
+    }
+}
+
+/// TODO
+// without alias
+#[no_mangle]
+pub extern "C" fn new_slot(period: u64, thread: u8) -> *mut Slot {
+    Box::into_raw(Box::new(Slot::new(period, thread)))
+}
+
+/// TODO
+#[no_mangle]
+pub extern "C" fn free_slot(slot: *mut Slot) {
+    // drop(slot);
+    unsafe {
+        ptr::drop_in_place(slot);
+        dealloc(slot as *mut u8, Layout::new::<Slot>());
+    }
+}
+
+/// TODO
+#[no_mangle]
+pub extern "C" fn slot_serialize(slot: *const Slot) -> CBuffer {
+
+    let slot_ser = SlotSerializer::new();
+    let mut buffer = Vec::new();
+    unsafe {
+        slot_ser.serialize(slot.as_ref().unwrap(), &mut buffer).unwrap();
+        // println!("buffer ser: {:?}", buffer);
+        // FIXME: Can we return *CBuffer to avoid unwrap()
+        let cbuf = CBuffer::from_owning(buffer.as_mut_ptr(), buffer.len()).unwrap();
+        // Tell rust to forget buffer (and not drop it)
+        std::mem::forget(buffer);
+        cbuf
+    }
+}
+
+/// TODO
+#[no_mangle]
+pub extern "C" fn slot_deserialize(buffer: CBuffer) -> *mut Slot {
+
+    let deserializer = SlotDeserializer::new(
+        (Included(u64::MIN), Included(u64::MAX)),
+        (Included(u8::MIN), Included(u8::MAX.into()))
+    );
+
+    // TODO: avoid unwrap here
+    let (_rem, slot) = deserializer.deserialize::<DeserializeError>(buffer.deref()).unwrap();
+    return Box::into_raw(Box::new(slot));
+}
+
+

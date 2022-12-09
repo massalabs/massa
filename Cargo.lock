@@ -2357,6 +2357,7 @@ dependencies = [
  "directories",
  "displaydoc",
  "lazy_static",
+ "libc",
  "massa_hash",
  "massa_serialization",
  "massa_signature",

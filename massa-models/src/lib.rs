@@ -6,6 +6,7 @@
 #![feature(bound_map)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
+#![feature(libc)]
 
 extern crate lazy_static;
 
@@ -60,18 +61,23 @@ pub mod version;
 /// trait for signed structure
 pub mod wrapped;
 
+/// TODO
 #[repr(C)]
 pub struct MySlot {
+    /// TODO
     pub period: u64,
+    /// TODO
     pub thread: u8,
 }
 
+/// TODO
 #[no_mangle]
 // pub extern "C" fn root(_myslot: MySlot, _slot: slot::Slot) {}
 pub extern "C" fn root(
     _myslot: MySlot,
     _slot: slot::Slot,
-    _slot_ser: slot::SlotSerializer) {}
+    // _slot_ser: slot::SlotSerializer
+) {}
 
 /// Test utils
 #[cfg(feature = "testing")]
