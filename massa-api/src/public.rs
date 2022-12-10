@@ -934,9 +934,33 @@ impl MassaRpcServer for API<Public> {
         crate::wrong_api::<()>()
     }
 
+    async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+        crate::wrong_api::<Vec<IpAddr>>()
+    }
+
+    async fn node_add_to_bootstrap_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_remove_from_bootstrap_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
+        crate::wrong_api::<Vec<IpAddr>>()
+    }
+
+    async fn node_add_to_bootstrap_blacklist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_remove_from_bootstrap_blacklist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {
-        let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
-        let openrpc: RpcResult<Value> = std::fs::read_to_string(openrpc_spec_path)
+        let openrpc_spec_file = self.0.api_settings.openrpc_spec_file.clone();
+        let openrpc: RpcResult<Value> = std::fs::read_to_string(openrpc_spec_file)
             .map_err(|e| {
                 ApiError::InternalServerError(format!(
                     "failed to read OpenRPC specification: {}",

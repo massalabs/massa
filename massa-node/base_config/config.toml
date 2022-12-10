@@ -14,7 +14,7 @@
     # max number of arguments per RPC call
     max_arguments = 128
     # path to the openrpc specification file used in `rpc.discover` method
-    openrpc_spec_path = "base_config/openrpc.json"
+    openrpc_spec_file = "base_config/openrpc.json"
     # maximum size in bytes of a request
     max_request_body_size = 52428800 
     # maximum size in bytes of a response

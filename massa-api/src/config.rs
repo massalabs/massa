@@ -19,7 +19,11 @@ pub struct APIConfig {
     /// max argument count
     pub max_arguments: u64,
     /// openrpc specification path
-    pub openrpc_spec_path: PathBuf,
+    pub openrpc_spec_file: PathBuf,
+    /// bootstrap whitelist path
+    pub bootstrap_whitelist_file: PathBuf,
+    /// bootstrap blacklist path
+    pub bootstrap_blacklist_file: PathBuf,
     /// maximum size in bytes of a request.
     pub max_request_body_size: u32,
     /// maximum size in bytes of a response.

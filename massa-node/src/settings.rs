@@ -74,8 +74,8 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
-    pub bootstrap_whitelist_file: std::path::PathBuf,
-    pub bootstrap_blacklist_file: std::path::PathBuf,
+    pub bootstrap_whitelist_file: PathBuf,
+    pub bootstrap_blacklist_file: PathBuf,
     pub bind: Option<SocketAddr>,
     pub connect_timeout: MassaTime,
     pub read_timeout: MassaTime,
@@ -117,7 +117,7 @@ pub struct APISettings {
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
     pub max_arguments: u64,
-    pub openrpc_spec_path: PathBuf,
+    pub openrpc_spec_file: PathBuf,
     pub max_request_body_size: u32,
     pub max_response_body_size: u32,
     pub max_connections: u32,

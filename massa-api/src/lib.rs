@@ -230,6 +230,30 @@ pub trait MassaRpc {
     #[method(name = "node_whitelist")]
     async fn node_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
+    /// Returns node bootsrap whitelist IP address(es).
+    #[method(name = "node_bootstrap_whitelist")]
+    async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>>;
+
+    /// Add IP address(es) to node bootsrap whitelist.
+    #[method(name = "node_add_to_bootstrap_whitelist")]
+    async fn node_add_to_bootstrap_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
+    /// Remove IP address(es) to bootsrap whitelist.
+    #[method(name = "node_remove_from_bootstrap_whitelist")]
+    async fn node_remove_from_bootstrap_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
+    /// Returns node bootsrap blacklist IP address(es).
+    #[method(name = "node_bootstrap_blacklist")]
+    async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>>;
+
+    /// Add IP address(es) to node bootsrap blacklist.
+    #[method(name = "node_add_to_bootstrap_blacklist")]
+    async fn node_add_to_bootstrap_blacklist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
+    /// Remove IP address(es) to bootsrap blacklist.
+    #[method(name = "node_remove_from_bootstrap_blacklist")]
+    async fn node_remove_from_bootstrap_blacklist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
     /// remove from whitelist given IP address.
     /// keep it as standard
     /// No confirmation to expect.
