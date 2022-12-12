@@ -9,8 +9,8 @@ use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    EndorsementInfo, EventFilter, ListType, NodeStatus, OperationInfo, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -32,8 +32,8 @@ use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
 use std::fs::{File, OpenOptions};
-use std::io::BufReader;
 use std::net::{IpAddr, SocketAddr};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -233,356 +233,190 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
-        std::fs::read_to_string(self.0.api_settings.bootstrap_whitelist_file.clone())
-            .map_err(|e| {
-                ApiError::InternalServerError(format!(
-                    "failed to read bootsrap whitelist configuration file: {}",
-                    e
-                ))
-                .into()
-            })
-            .and_then(|bootsrap_whitelist_str| {
-                serde_json::from_str(&bootsrap_whitelist_str).map_err(|e| {
-                    ApiError::InternalServerError(format!(
-                        "failed to parse bootsrap whitelist configuration file: {}",
-                        e
-                    ))
-                    .into()
-                })
-            })
+        read_bootsrap_list(
+            self.0.api_settings.bootstrap_whitelist_file.clone(),
+            &ListType::Whitelist,
+        )
     }
 
     async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(self.0.api_settings.bootstrap_whitelist_file.clone())
-            .map_err(|e| {
-                ApiError::InternalServerError(format!(
-                    "failed to read bootsrap whitelist configuration file: {}",
-                    e
-                ))
-                .into()
-            })
-            .and_then(|bootsrap_whitelist_file| {
-                let len = match bootsrap_whitelist_file.metadata() {
-                    Ok(metadata) => metadata.len(),
-                    Err(e) => {
-                        return Err(ApiError::InternalServerError(format!(
-                            "failed to read bootsrap whitelist configuration file metadata: {}",
-                            e
-                        ))
-                        .into())
-                    }
-                };
-                if len == 0 {
-                    OpenOptions::new()
-                        .write(true)
-                        .open(self.0.api_settings.bootstrap_whitelist_file.clone())
-                        .map_err(|e| {
-                            ApiError::InternalServerError(format!(
-                                "failed to create bootsrap whitelist configuration file: {}",
-                                e
-                            ))
-                            .into()
-                        })
-                        .and_then(|whitelist_file| {
-                            let ips_set: BTreeSet<IpAddr> = BTreeSet::from_iter(ips);
-                            serde_json::to_writer_pretty(whitelist_file, &ips_set).map_err(|e| {
-                                ApiError::InternalServerError(format!(
-                                    "failed to write bootsrap whitelist configuration file: {}",
-                                    e
-                                ))
-                                .into()
-                            })
-                        })
-                } else {
-                    serde_json::from_reader::<BufReader<File>, BTreeSet<IpAddr>>(BufReader::new(
-                        bootsrap_whitelist_file,
-                    ))
-                    .map_err(|e| {
-                        ApiError::InternalServerError(format!(
-                            "failed to parse bootsrap whitelist configuration file: {}",
-                            e
-                        ))
-                        .into()
-                    })
-                    .and_then(|mut whitelist_ips: BTreeSet<IpAddr>| {
-                        whitelist_ips.extend(ips);
-                        OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(self.0.api_settings.bootstrap_whitelist_file.clone())
-                            .map_err(|e| {
-                                ApiError::InternalServerError(format!(
-                                    "failed to create bootsrap whitelist configuration file: {}",
-                                    e
-                                ))
-                                .into()
-                            })
-                            .and_then(|whitelist_file| {
-                                serde_json::to_writer_pretty(whitelist_file, &whitelist_ips)
-                                    .map_err(|e| {
-                                        ApiError::InternalServerError(format!(
-                                    "failed to write bootsrap whitelist configuration file: {}",
-                                    e
-                                ))
-                                        .into()
-                                    })
-                            })
-                    })
-                }
-            })
+        bootsrap_list_call(
+            self.0.api_settings.bootstrap_whitelist_file.clone(),
+            ips,
+            ListType::Whitelist,
+            ScrudOperation::Create,
+        )
     }
 
     async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(self.0.api_settings.bootstrap_whitelist_file.clone())
-            .map_err(|e| {
-                ApiError::InternalServerError(format!(
-                    "failed to read bootsrap whitelist configuration file: {}",
-                    e
-                ))
-                .into()
-            })
-            .and_then(|bootsrap_whitelist_file| {
-                let len = match bootsrap_whitelist_file.metadata() {
-                    Ok(metadata) => metadata.len(),
-                    Err(e) => {
-                        return Err(ApiError::InternalServerError(format!(
-                            "failed to read bootsrap whitelist configuration file metadata: {}",
-                            e
-                        ))
-                        .into())
-                    }
-                };
-                if len == 0 {
-                    Err(ApiError::BadRequest(
-                        "failed, bootsrap whitelist configuration file is empty".to_string(),
-                    )
-                    .into())
-                } else {
-                    serde_json::from_reader::<BufReader<File>, BTreeSet<IpAddr>>(BufReader::new(
-                        bootsrap_whitelist_file,
-                    ))
-                    .map_err(|e| {
-                        ApiError::InternalServerError(format!(
-                            "failed to parse bootsrap whitelist configuration file: {}",
-                            e
-                        ))
-                        .into()
-                    })
-                    .and_then(|mut whitelist_ips: BTreeSet<IpAddr>| {
-                        ips.into_iter().for_each(|ip| {
-                            whitelist_ips.remove(&ip);
-                        });
-                        OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(self.0.api_settings.bootstrap_whitelist_file.clone())
-                            .map_err(|e| {
-                                ApiError::InternalServerError(format!(
-                                    "failed to create bootsrap whitelist configuration file: {}",
-                                    e
-                                ))
-                                .into()
-                            })
-                            .and_then(|whitelist_file| {
-                                serde_json::to_writer_pretty(whitelist_file, &whitelist_ips)
-                                    .map_err(|e| {
-                                        ApiError::InternalServerError(format!(
-                                    "failed to write bootsrap whitelist configuration file: {}",
-                                    e
-                                ))
-                                        .into()
-                                    })
-                            })
-                    })
-                }
-            })
+        bootsrap_list_call(
+            self.0.api_settings.bootstrap_whitelist_file.clone(),
+            ips,
+            ListType::Whitelist,
+            ScrudOperation::Delete,
+        )
     }
 
     async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
-        std::fs::read_to_string(self.0.api_settings.bootstrap_blacklist_file.clone())
-            .map_err(|e| {
-                ApiError::InternalServerError(format!(
-                    "failed to read bootsrap blacklist configuration file: {}",
-                    e
-                ))
-                .into()
-            })
-            .and_then(|bootsrap_blacklist_str| {
-                serde_json::from_str(&bootsrap_blacklist_str).map_err(|e| {
-                    ApiError::InternalServerError(format!(
-                        "failed to parse bootsrap blacklist configuration file: {}",
-                        e
-                    ))
-                    .into()
-                })
-            })
+        read_bootsrap_list(
+            self.0.api_settings.bootstrap_blacklist_file.clone(),
+            &ListType::Blacklist,
+        )
     }
 
     async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(self.0.api_settings.bootstrap_blacklist_file.clone())
-            .map_err(|e| {
-                ApiError::InternalServerError(format!(
-                    "failed to read bootsrap blacklist configuration file: {}",
-                    e
-                ))
-                .into()
-            })
-            .and_then(|bootsrap_blacklist_file| {
-                let len = match bootsrap_blacklist_file.metadata() {
-                    Ok(metadata) => metadata.len(),
-                    Err(e) => {
-                        return Err(ApiError::InternalServerError(format!(
-                            "failed to read bootsrap blacklist configuration file metadata: {}",
-                            e
-                        ))
-                        .into())
-                    }
-                };
-                if len == 0 {
-                    OpenOptions::new()
-                        .write(true)
-                        .open(self.0.api_settings.bootstrap_blacklist_file.clone())
-                        .map_err(|e| {
-                            ApiError::InternalServerError(format!(
-                                "failed to create bootsrap blacklist configuration file: {}",
-                                e
-                            ))
-                            .into()
-                        })
-                        .and_then(|blacklist_file| {
-                            let ips_set: BTreeSet<IpAddr> = BTreeSet::from_iter(ips);
-                            serde_json::to_writer_pretty(blacklist_file, &ips_set).map_err(|e| {
-                                ApiError::InternalServerError(format!(
-                                    "failed to write bootsrap blacklist configuration file: {}",
-                                    e
-                                ))
-                                .into()
-                            })
-                        })
-                } else {
-                    serde_json::from_reader::<BufReader<File>, BTreeSet<IpAddr>>(BufReader::new(
-                        bootsrap_blacklist_file,
-                    ))
-                    .map_err(|e| {
-                        ApiError::InternalServerError(format!(
-                            "failed to parse bootsrap blacklist configuration file: {}",
-                            e
-                        ))
-                        .into()
-                    })
-                    .and_then(|mut blacklist_ips: BTreeSet<IpAddr>| {
-                        blacklist_ips.extend(ips);
-                        OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(self.0.api_settings.bootstrap_blacklist_file.clone())
-                            .map_err(|e| {
-                                ApiError::InternalServerError(format!(
-                                    "failed to create bootsrap blacklist configuration file: {}",
-                                    e
-                                ))
-                                .into()
-                            })
-                            .and_then(|blacklist_file| {
-                                serde_json::to_writer_pretty(blacklist_file, &blacklist_ips)
-                                    .map_err(|e| {
-                                        ApiError::InternalServerError(format!(
-                                        "failed to write bootsrap blacklist configuration file: {}",
-                                        e
-                                    ))
-                                        .into()
-                                    })
-                            })
-                    })
-                }
-            })
+        bootsrap_list_call(
+            self.0.api_settings.bootstrap_blacklist_file.clone(),
+            ips,
+            ListType::Blacklist,
+            ScrudOperation::Create,
+        )
     }
 
     async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        OpenOptions::new()
-            .read(true)
-            .open(self.0.api_settings.bootstrap_blacklist_file.clone())
-            .map_err(|e| {
-                ApiError::InternalServerError(format!(
-                    "failed to read bootsrap blacklist configuration file: {}",
-                    e
-                ))
-                .into()
-            })
-            .and_then(|bootsrap_blacklist_file| {
-                let len = match bootsrap_blacklist_file.metadata() {
-                    Ok(metadata) => metadata.len(),
-                    Err(e) => {
-                        return Err(ApiError::InternalServerError(format!(
-                            "failed to read bootsrap blacklist configuration file metadata: {}",
-                            e
-                        ))
-                        .into())
-                    }
-                };
-                if len == 0 {
-                    Err(ApiError::BadRequest(
-                        "failed, bootsrap blacklist configuration file is empty".to_string(),
-                    )
-                    .into())
-                } else {
-                    serde_json::from_reader::<BufReader<File>, BTreeSet<IpAddr>>(BufReader::new(
-                        bootsrap_blacklist_file,
-                    ))
-                    .map_err(|e| {
-                        ApiError::InternalServerError(format!(
-                            "failed to parse bootsrap blacklist configuration file: {}",
-                            e
-                        ))
-                        .into()
-                    })
-                    .and_then(|mut blacklist_ips: BTreeSet<IpAddr>| {
-                        ips.into_iter().for_each(|ip| {
-                            blacklist_ips.remove(&ip);
-                        });
-                        OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(self.0.api_settings.bootstrap_blacklist_file.clone())
-                            .map_err(|e| {
-                                ApiError::InternalServerError(format!(
-                                    "failed to create bootsrap blacklist configuration file: {}",
-                                    e
-                                ))
-                                .into()
-                            })
-                            .and_then(|blacklist_file| {
-                                serde_json::to_writer_pretty(blacklist_file, &blacklist_ips)
-                                    .map_err(|e| {
-                                        ApiError::InternalServerError(format!(
-                                    "failed to write bootsrap blacklist configuration file: {}",
-                                    e
-                                ))
-                                        .into()
-                                    })
-                            })
-                    })
-                }
-            })
+        bootsrap_list_call(
+            self.0.api_settings.bootstrap_blacklist_file.clone(),
+            ips,
+            ListType::Blacklist,
+            ScrudOperation::Delete,
+        )
     }
 
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {
         crate::wrong_api::<Value>()
     }
+}
+
+fn read_bootsrap_list(
+    bootstrap_list_file: PathBuf,
+    list_type: &ListType,
+) -> RpcResult<Vec<IpAddr>> {
+    std::fs::read_to_string(bootstrap_list_file)
+        .map_err(|e| {
+            ApiError::InternalServerError(format!(
+                "failed to read bootsrap {:?} configuration file: {}",
+                list_type, e
+            ))
+            .into()
+        })
+        .and_then(|bootsrap_list_str| {
+            serde_json::from_str(&bootsrap_list_str).map_err(|e| {
+                ApiError::InternalServerError(format!(
+                    "failed to parse bootsrap {:?} configuration file: {}",
+                    list_type, e
+                ))
+                .into()
+            })
+        })
+}
+
+fn bootsrap_list_call(
+    bootstrap_list_file: PathBuf,
+    ips: Vec<IpAddr>,
+    list_type: ListType,
+    scrud_operation: ScrudOperation,
+) -> RpcResult<()> {
+    match scrud_operation {
+        ScrudOperation::Create => {
+            get_file_with_length(bootstrap_list_file.clone(), &list_type, true).and_then(|tuple| {
+                if tuple.1 == 0 {
+                    json_to_file(bootstrap_list_file, BTreeSet::from_iter(ips), &list_type)
+                } else {
+                    read_bootsrap_list(bootstrap_list_file.clone(), &list_type)
+                        .map(BTreeSet::from_iter)
+                        .and_then(|mut list_ips: BTreeSet<IpAddr>| {
+                            list_ips.extend(ips);
+                            json_to_file(bootstrap_list_file, list_ips, &list_type)
+                        })
+                }
+            })
+        }
+        ScrudOperation::Delete => {
+            get_file_with_length(bootstrap_list_file.clone(), &list_type, false).and_then(|tuple| {
+                if tuple.1 == 0 {
+                    Err(ApiError::InternalServerError(format!(
+                        "failed, bootsrap {:?} configuration file is empty",
+                        list_type
+                    ))
+                    .into())
+                } else {
+                    read_bootsrap_list(bootstrap_list_file.clone(), &list_type)
+                        .map(BTreeSet::from_iter)
+                        .and_then(|mut list_ips: BTreeSet<IpAddr>| {
+                            if list_ips.is_empty() {
+                                return Err(ApiError::InternalServerError(format!(
+                                    "failed to execute delete operation, bootsrap {:?} is empty",
+                                    list_type
+                                ))
+                                .into());
+                            }
+                            ips.into_iter().for_each(|ip| {
+                                list_ips.remove(&ip);
+                            });
+                            json_to_file(bootstrap_list_file, list_ips, &list_type)
+                        })
+                }
+            })
+        }
+        _ => Err(ApiError::BadRequest(format!(
+            "failed operation {:?} is not supported on {:?}",
+            list_type, scrud_operation
+        ))
+        .into()),
+    }
+}
+
+fn json_to_file(
+    bootstrap_list_file: PathBuf,
+    ips: BTreeSet<IpAddr>,
+    list_type: &ListType,
+) -> RpcResult<()> {
+    OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(bootstrap_list_file)
+        .map_err(|e| {
+            ApiError::InternalServerError(format!(
+                "failed to create bootsrap {:?} configuration file: {}",
+                list_type, e
+            ))
+            .into()
+        })
+        .and_then(|file| {
+            serde_json::to_writer_pretty(file, &ips).map_err(|e| {
+                ApiError::InternalServerError(format!(
+                    "failed to write bootsrap {:?} configuration file: {}",
+                    list_type, e
+                ))
+                .into()
+            })
+        })
+}
+
+fn get_file_with_length(
+    bootstrap_list_file: PathBuf,
+    list_type: &ListType,
+    create: bool,
+) -> RpcResult<(File, u64)> {
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(create)
+        .open(bootstrap_list_file)
+        .map_err(|e| {
+            ApiError::InternalServerError(format!(
+                "failed to read bootsrap {:?} configuration file: {}",
+                list_type, e
+            ))
+            .into()
+        })
+        .and_then(|file| match file.metadata() {
+            Ok(metadata) => Ok((file, metadata.len())),
+            Err(e) => Err(ApiError::InternalServerError(format!(
+                "failed to read bootsrap {:?} configuration file metadata: {}",
+                list_type, e
+            ))
+            .into()),
+        })
 }

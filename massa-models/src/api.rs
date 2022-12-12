@@ -590,3 +590,27 @@ pub struct ReadOnlyCall {
     /// caller's address, optional
     pub caller_address: Option<Address>,
 }
+
+/// SCRUD operations
+#[derive(Debug)]
+pub enum ScrudOperation {
+    /// search operation
+    Search,
+    /// create operation
+    Create,
+    /// read operation
+    Read,
+    /// update operation
+    Update,
+    /// delete operation
+    Delete,
+}
+
+/// Bootsrap lists types
+#[derive(Debug)]
+pub enum ListType {
+    /// contains banned entry
+    Blacklist,
+    /// contains allowed entry
+    Whitelist,
+}
