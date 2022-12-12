@@ -60,4 +60,6 @@ pub struct ExecutionConfig {
     pub max_datastore_value_size: u64,
     /// Storage cost constants
     pub storage_costs_constants: StorageCostsConstants,
+    /// Max gas for read only executions
+    pub max_read_only_gas: u64,
 }
