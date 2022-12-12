@@ -692,7 +692,10 @@ impl ExecutionContext {
         let slot = self.slot;
 
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self.speculative_async_pool.settle_slot(&slot);
+        let ledger_changes = self.speculative_ledger.take();
+        let deleted_messages = self
+            .speculative_async_pool
+            .settle_slot(&slot, &ledger_changes);
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
         }
@@ -716,7 +719,7 @@ impl ExecutionContext {
 
         // generate the execution output
         let state_changes = StateChanges {
-            ledger_changes: self.speculative_ledger.take(),
+            ledger_changes,
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),

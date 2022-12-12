@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.17.0"
+            "TEST.18.0"
         }
         .parse()
         .unwrap()
@@ -126,7 +126,7 @@ pub const MAX_DEFERRED_CREDITS_LENGTH: u64 = 10_000;
 /// Maximum size of executed ops
 pub const MAX_EXECUTED_OPS_LENGTH: u64 = 1_000;
 /// Maximum size of executed ops changes
-pub const MAX_EXECUTED_OPS_CHANGES_LENGTH: u64 = 1_000;
+pub const MAX_EXECUTED_OPS_CHANGES_LENGTH: u64 = 20_000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 /// Maximum length of an operation datastore key

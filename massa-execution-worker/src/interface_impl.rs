@@ -7,11 +7,12 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
-use massa_async_pool::AsyncMessage;
+use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::{
-    address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
+    address::Address, amount::Amount, error::ModelsError, slot::Slot,
+    timeslots::get_block_slot_timestamp,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
@@ -618,6 +619,7 @@ impl Interface for InterfaceImpl {
         raw_fee: u64,
         raw_coins: u64,
         data: &[u8],
+        filter: Option<(&str, Option<&[u8]>)>,
     ) -> Result<()> {
         if validity_start.1 >= self.config.thread_count {
             bail!("validity start thread exceeds the configuration thread count")
@@ -645,6 +647,14 @@ impl Interface for InterfaceImpl {
             Slot::new(validity_start.0, validity_start.1),
             Slot::new(validity_end.0, validity_end.1),
             data.to_vec(),
+            filter
+                .map(|(addr, key)| {
+                    Ok::<AsyncMessageTrigger, ModelsError>(AsyncMessageTrigger {
+                        address: Address::from_str(addr)?,
+                        datastore_key: key.map(|k| k.to_vec()),
+                    })
+                })
+                .transpose()?,
         ));
         execution_context.created_message_index += 1;
         Ok(())

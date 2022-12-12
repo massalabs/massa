@@ -7,9 +7,10 @@ use crate::{
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
     AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-    AsyncMessageSerializer,
+    AsyncMessageSerializer, AsyncMessageTrigger,
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_ledger_exports::LedgerChanges;
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -65,6 +66,15 @@ impl AsyncPool {
                     }
                 }
 
+                Change::Activate(message_id) => {
+                    if let Some(message) = self.messages.get_mut(message_id) {
+                        self.hash ^= message.hash;
+                        message.can_be_executed = true;
+                        message.compute_hash();
+                        self.hash ^= message.hash;
+                    }
+                }
+
                 // delete a message from the pool
                 Change::Delete(message_id) => {
                     if let Some(removed_message) = self.messages.remove(message_id) {
@@ -88,11 +98,16 @@ impl AsyncPool {
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from `new_messages` (in the order they appear in `new_messages`)
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
+    /// The list of message that their filter has been trigger.
     pub fn settle_slot(
         &mut self,
         slot: &Slot,
         new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
-    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        ledger_changes: &LedgerChanges,
+    ) -> (
+        Vec<(AsyncMessageId, AsyncMessage)>,
+        Vec<(AsyncMessageId, AsyncMessage)>,
+    ) {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         let mut eliminated: Vec<_> = self
@@ -113,7 +128,15 @@ impl AsyncPool {
         for _ in 0..excess_count {
             eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
-        eliminated
+        let mut triggered = Vec::new();
+        for (id, message) in self.messages.iter_mut() {
+            if let Some(filter) = &message.trigger && !message.can_be_executed && is_triggered(filter, ledger_changes)
+            {
+                message.can_be_executed = true;
+                triggered.push((*id, message.clone()));
+            }
+        }
+        (eliminated, triggered)
     }
 
     /// Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.
@@ -139,6 +162,7 @@ impl AsyncPool {
                 if available_gas >= message.max_gas
                     && slot >= message.validity_start
                     && slot < message.validity_end
+                    && message.can_be_executed
                 {
                     available_gas -= message.max_gas;
                     true
@@ -211,6 +235,11 @@ impl AsyncPool {
     }
 }
 
+/// Check in the ledger changes if a message trigger has been triggered
+fn is_triggered(filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) -> bool {
+    ledger_changes.has_changes(&filter.address, filter.datastore_key.clone())
+}
+
 /// Serializer for `AsyncPool`
 pub struct AsyncPoolSerializer {
     u64_serializer: U64VarIntSerializer,
@@ -267,6 +296,7 @@ impl AsyncPoolDeserializer {
         thread_count: u8,
         max_async_pool_length: u64,
         max_async_message_data: u64,
+        max_key_length: u32,
     ) -> AsyncPoolDeserializer {
         AsyncPoolDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
@@ -277,6 +307,7 @@ impl AsyncPoolDeserializer {
             async_message_deserializer: AsyncMessageDeserializer::new(
                 thread_count,
                 max_async_message_data,
+                max_key_length,
             ),
         }
     }
@@ -335,6 +366,7 @@ fn test_take_batch() {
             Slot::new(1, 0),
             Slot::new(3, 0),
             Vec::new(),
+            None,
         );
         pool.messages.insert(message.compute_id(), message);
     }

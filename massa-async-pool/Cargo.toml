@@ -17,6 +17,7 @@ tracing = "0.1"
 rand = "0.8"
 # custom modules
 massa_hash = { path = "../massa-hash" }
+massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }

@@ -38,6 +38,7 @@ pub fn get_random_message(fee: Option<Amount>) -> AsyncMessage {
         Slot::new(2, 0),
         Slot::new(4, 0),
         vec![1, 2, 3],
+        None,
     )
 }
 
