@@ -334,7 +334,7 @@ fn send_and_receive_async_message() {
 /// 7. We send a new operation with a smart contract that create `test2` datastore key and so trigger the message.
 /// 8. once the execution period is over we stop the execution controller
 /// 9. we retrieve the events emitted by smart contract
-/// 10. `test` handler function should have emitted two events
+/// 10. `test` handler function should have emitted a second event
 /// 11. we check if they are events
 /// 12. if they are some, we verify that the data has the correct value
 #[test]
@@ -396,7 +396,7 @@ fn send_and_receive_async_message_with_trigger() {
         Some(blockclique_blocks.clone()),
         block_storage.clone(),
     );
-    // sleep for 150ms to reach the message execution period
+    // sleep for 10ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(10));
 
     // retrieve events emitted by smart contracts
@@ -404,11 +404,10 @@ fn send_and_receive_async_message_with_trigger() {
         ..Default::default()
     });
 
-    println!("events: {:?}", events);
-
     // match the events
     assert!(events.len() == 2, "Two event was expected");
     assert_eq!(events[0].data, "Triggered");
+    assert_eq!(events[1].data, "Triggered");
 
     // keypair associated to thread 1
     let keypair = KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
@@ -430,7 +429,7 @@ fn send_and_receive_async_message_with_trigger() {
     block_storage.insert(block.id, storage.clone());
     blockclique_blocks.insert(block.content.header.content.slot, block.id);
     controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
-    // sleep for 150ms to reach the message execution period
+    // sleep for 10ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(10));
 
     // retrieve events emitted by smart contracts
@@ -463,7 +462,7 @@ fn send_and_receive_async_message_with_trigger() {
     block_storage.insert(block.id, storage.clone());
     blockclique_blocks.insert(block.content.header.content.slot, block.id);
     controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
-    // sleep for 150ms to reach the message execution period
+    // sleep for 1000ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(1000));
 
     // retrieve events emitted by smart contracts
