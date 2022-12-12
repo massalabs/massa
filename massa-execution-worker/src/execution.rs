@@ -208,14 +208,8 @@ impl ExecutionState {
             return Err(ExecutionError::InvalidSlotRange);
         }
 
-        // check operation gas
+        // check remaining block gas
         let op_gas = operation.get_gas_usage();
-        if op_gas > self.config.max_gas_per_execution {
-            return Err(ExecutionError::ExecutionGasOverThreshold(format!(
-                "execution gas for operation {} is {} which is above the maximum allowed {}",
-                operation.id, op_gas, self.config.max_gas_per_execution
-            )));
-        }
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 "not enough remaining block gas to execute operation".to_string(),
@@ -1016,13 +1010,6 @@ impl ExecutionState {
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
         // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
-
-        if req.max_gas > self.config.max_gas_per_execution {
-            return Err(ExecutionError::ExecutionGasOverThreshold(format!(
-                "execution gas for read-only call is {} which is above the maximum allowed {}",
-                req.max_gas, self.config.max_gas_per_execution
-            )));
-        }
 
         // set the execution slot to be the one after the latest executed active slot
         let slot = self

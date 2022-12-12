@@ -131,14 +131,6 @@ impl MassaRpcServer for API<Public> {
             operation_datastore,
         } in reqs
         {
-            if max_gas > self.0.api_settings.max_gas_per_execution {
-                return Err(ApiError::BadRequest(format!(
-                    "one of the provided read-only execution requests has a gas amount ({}) above the allowed maximum ({})",
-                    max_gas, self.0.api_settings.max_gas_per_execution
-                ))
-                .into());
-            }
-
             let address = address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
                 Address::from_public_key(&KeyPair::generate().get_public_key())
@@ -223,14 +215,6 @@ impl MassaRpcServer for API<Public> {
             caller_address,
         } in reqs
         {
-            if max_gas > self.0.api_settings.max_gas_per_execution {
-                return Err(ApiError::BadRequest(format!(
-                    "one of the provided read-only call requests has a gas amount ({}) above the allowed maximum ({})",
-                    max_gas, self.0.api_settings.max_gas_per_execution
-                ))
-                .into());
-            }
-
             let caller_address = caller_address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
                 Address::from_public_key(&KeyPair::generate().get_public_key())
@@ -895,14 +879,6 @@ impl MassaRpcServer for API<Public> {
                     .map_err(|err| {
                         ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
                     })?;
-                let op_gas = op.get_gas_usage();
-                if op_gas > self.0.api_settings.max_gas_per_execution {
-                    return Err(ApiError::BadRequest(format!(
-                        "operation {} has a gas amount ({}) above the allowed maximum ({})",
-                        op.id, op_gas, self.0.api_settings.max_gas_per_execution
-                    ))
-                    .into());
-                }
                 if rest.is_empty() {
                     Ok(op)
                 } else {

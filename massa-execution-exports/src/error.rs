@@ -39,9 +39,6 @@ pub enum ExecutionError {
     /// Not enough gas in the block: {0}
     NotEnoughGas(String),
 
-    /// Execution gas is over the defined threshold: {0}
-    ExecutionGasOverThreshold(String),
-
     /// Include operation error: {0}
     IncludeOperationError(String),
 }

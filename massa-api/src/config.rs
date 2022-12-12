@@ -60,6 +60,4 @@ pub struct APIConfig {
     pub t0: MassaTime,
     /// periods per cycle
     pub periods_per_cycle: u64,
-    /// maximum gas per sc execution
-    pub max_gas_per_execution: u64,
 }
