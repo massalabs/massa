@@ -329,6 +329,7 @@ async fn launch(
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
+        max_read_only_gas: SETTINGS.execution.max_read_only_gas,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
