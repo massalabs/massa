@@ -323,6 +323,72 @@ fn send_and_receive_async_message() {
 
 #[test]
 #[serial]
+fn local_execution() {
+    // setup the period duration and the maximum gas for asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        max_async_gas: 100_000,
+        cursor_delay: 0.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg.clone(),
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecodes
+    // you can check the source code of the following wasm file in massa-unit-tests-src
+    let bytecode = include_bytes!("./wasm/local.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+    // create the block contaning the smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+
+    // set our block as a final block so the message is sent
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
+    );
+    // sleep for 100ms to reach the message execution period
+    std::thread::sleep(Duration::from_millis(100));
+
+    // retrieve events emitted by smart contracts
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        ..Default::default()
+    });
+
+    println!("events: {:#?}", events);
+
+    // match the events
+    // assert!(events.len() == 1, "One event was expected");
+
+    // stop the execution controller
+    manager.stop();
+}
+
+#[test]
+#[serial]
 pub fn send_and_receive_transaction() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
