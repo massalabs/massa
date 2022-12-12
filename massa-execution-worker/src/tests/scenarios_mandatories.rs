@@ -348,8 +348,8 @@ fn local_execution() {
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecodes
     // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/local.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
+    let bytecode = include_bytes!("./wasm/local_execution.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/local_function.wasm").to_vec();
     let mut datastore = BTreeMap::new();
     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
 
@@ -380,7 +380,10 @@ fn local_execution() {
 
     // match the events
     assert!(events.len() == 4, "4 events were expected");
-    assert!(events[1].data.contains("message correctly received"));
+    assert_eq!(
+        Amount::from_raw(events[1].data.parse().unwrap()),
+        Amount::from_str("299_000").unwrap() // start (300_000) - fee (1000)
+    );
     assert_eq!(events[2].data, "one local execution completed");
 
     // stop the execution controller
@@ -1041,7 +1044,7 @@ fn create_execute_sc_operation(
     };
     let op = Operation::new_wrapped(
         Operation {
-            fee: Amount::from_mantissa_scale(100000, 0),
+            fee: Amount::from_str("1000").unwrap(),
             expire_period: 10,
             op,
         },
