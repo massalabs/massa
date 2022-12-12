@@ -327,7 +327,7 @@ fn local_execution() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
-        max_async_gas: 100_000,
+        max_async_gas: 1_000_000,
         cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
@@ -347,16 +347,24 @@ fn local_execution() {
     // keypair associated to thread 0
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     // load bytecodes
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/local_execution.wasm");
+    // you can check the source code of the following wasm files in massa-unit-tests-src
+    let exec_bytecode = include_bytes!("./wasm/local_execution.wasm");
+    let call_bytecode = include_bytes!("./wasm/local_call.wasm");
     let datastore_bytecode = include_bytes!("./wasm/local_function.wasm").to_vec();
     let mut datastore = BTreeMap::new();
     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
 
-    // create the block contaning the smart contract execution operation
-    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    storage.store_operations(vec![operation.clone()]);
-    let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+    // create the block contaning the operations
+    let local_exec_op =
+        create_execute_sc_operation(&keypair, exec_bytecode, datastore.clone()).unwrap();
+    let local_call_op = create_execute_sc_operation(&keypair, call_bytecode, datastore).unwrap();
+    storage.store_operations(vec![local_exec_op.clone(), local_call_op.clone()]);
+    let block = create_block(
+        KeyPair::generate(),
+        vec![local_exec_op.clone(), local_call_op.clone()],
+        Slot::new(1, 0),
+    )
+    .unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -378,13 +386,28 @@ fn local_execution() {
         ..Default::default()
     });
 
-    // match the events
-    assert!(events.len() == 4, "4 events were expected");
+    // match the events, check balance and call stack to make sure the executions were local
+    assert!(events.len() == 8, "8 events were expected");
     assert_eq!(
         Amount::from_raw(events[1].data.parse().unwrap()),
         Amount::from_str("299_000").unwrap() // start (300_000) - fee (1000)
     );
+    assert_eq!(events[1].context.call_stack.len(), 1);
+    assert_eq!(
+        events[1].context.call_stack.back().unwrap(),
+        &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+    );
     assert_eq!(events[2].data, "one local execution completed");
+    assert_eq!(
+        Amount::from_raw(events[5].data.parse().unwrap()),
+        Amount::from_str("297_999.03475").unwrap() // start (299_000) - fee (1000) - storage cost
+    );
+    assert_eq!(events[5].context.call_stack.len(), 1);
+    assert_eq!(
+        events[1].context.call_stack.back().unwrap(),
+        &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+    );
+    assert_eq!(events[6].data, "one local call completed");
 
     // stop the execution controller
     manager.stop();
