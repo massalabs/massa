@@ -378,10 +378,10 @@ fn local_execution() {
         ..Default::default()
     });
 
-    println!("events: {:#?}", events);
-
     // match the events
-    // assert!(events.len() == 1, "One event was expected");
+    assert!(events.len() == 4, "4 events were expected");
+    assert!(events[1].data.contains("message correctly received"));
+    assert_eq!(events[2].data, "one local execution completed");
 
     // stop the execution controller
     manager.stop();
