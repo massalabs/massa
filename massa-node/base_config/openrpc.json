@@ -482,6 +482,66 @@
             ],
             "params": [
                 {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_add_to_bootsrap_blacklist",
+            "summary": "Add to bootsrap blacklist given IP address(es)",
+            "description": "Add to bootsrap blacklist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_add_to_bootsrap_whitelist",
+            "summary": "Add to bootsrap whitelist given IP address(es)",
+            "description": "Add to bootsrap whitelist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
                     "name": "id",
                     "description": "The strings are nodes ids.",
                     "schema": {
@@ -530,6 +590,112 @@
             "name": "node_ban_by_ip",
             "summary": "Ban given IP address(es)",
             "description": "Ban given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "name": "ip",
+                "description": "The strings must be IP address(es)",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "description": "Ip address",
+                        "$ref": "#/components/schemas/IpAddress"
+                    }
+                }
+            },
+            "name": "node_bootsrap_blacklist",
+            "summary": "Returns bootsrap blacklist IP address(es)",
+            "description": "Returns bootsrap blacklist IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "name": "ip",
+                "description": "The strings must be IP address(es)",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "description": "Ip address",
+                        "$ref": "#/components/schemas/IpAddress"
+                    }
+                }
+            },
+            "name": "node_bootsrap_whitelist",
+            "summary": "Returns bootsrap whitelist IP address(es)",
+            "description": "Returns bootsrap whitelist IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_remove_from_bootsrap_blacklist",
+            "summary": "Remove from bootsrap blacklist given IP address(es)",
+            "description": "Remove from bootsrap blacklist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_remove_from_bootsrap_whitelist",
+            "summary": "Remove from bootsrap whitelist given IP address(es)",
+            "description": "Remove from bootsrap whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -1566,6 +1732,10 @@
                 },
                 "additionalProperties": false
             },
+            "IpAddress": {
+                "description": "Ipv4 or Ipv6 address",
+                "type": "string"
+            },
             "GraphInterval": {
                 "title": "GraphInterval",
                 "required": [
@@ -2333,6 +2503,14 @@
                 "description": "A EventFilter object",
                 "schema": {
                     "$ref": "#/components/schemas/EventFilter"
+                }
+            },
+            "IpAddress": {
+                "name": "IpAddress",
+                "summary": "IpAddress",
+                "description": "A IpAddress object",
+                "schema": {
+                    "$ref": "#/components/schemas/IpAddress"
                 }
             },
             "GraphInterval": {
