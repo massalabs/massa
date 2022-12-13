@@ -8,7 +8,7 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
@@ -32,7 +32,11 @@ pub struct FinalState {
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub changes_history: VecDeque<(Slot, StateChanges)>,
+    /// hash of the final state, it is computed on finality
+    pub final_state_hash: Hash,
 }
+
+const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
     /// Initializes a new `FinalState`
@@ -50,6 +54,7 @@ impl FinalState {
             &config.initial_seed_string,
             &config.initial_rolls_path,
             selector,
+            ledger.get_ledger_hash(),
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
@@ -62,7 +67,7 @@ impl FinalState {
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
-        // generate the final state
+        // create the final state
         Ok(FinalState {
             slot,
             ledger,
@@ -71,54 +76,15 @@ impl FinalState {
             config,
             executed_ops,
             changes_history: Default::default(), // no changes in history
+            final_state_hash: Hash::compute_from(FINAL_STATE_HASH_INITIAL_BYTES),
         })
     }
 
-    /// Performs the initial draws.
-    pub fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
-        self.pos_state
-            .compute_initial_draws()
-            .map_err(|err| FinalStateError::PosError(err.to_string()))
-    }
-
-    /// Applies changes to the execution state at a given slot, and settles that slot forever.
-    /// Once this is called, the state is attached at the output of the provided slot.
+    /// Compute the current state hash.
     ///
-    /// Panics if the new slot is not the one coming just after the current one.
-    pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        // check slot consistency
-        let next_slot = self
-            .slot
-            .get_next_slot(self.config.thread_count)
-            .expect("overflow in execution state slot");
-        if slot != next_slot {
-            panic!("attempting to apply execution state changes at slot {} while the current slot is {}", slot, self.slot);
-        }
-
-        // update current slot
-        self.slot = slot;
-
-        // apply changes
-        self.ledger
-            .apply_changes(changes.ledger_changes.clone(), self.slot);
-        self.async_pool
-            .apply_changes_unchecked(&changes.async_pool_changes);
-        self.pos_state
-            .apply_changes(changes.pos_changes.clone(), self.slot, true)
-            .expect("could not settle slot in final state proof-of-stake");
-        // TODO do not panic above: it might just mean that the lookback cycle is not available
-        self.executed_ops
-            .apply_changes(changes.executed_ops_changes.clone(), self.slot);
-
-        // push history element and limit history size
-        if self.config.final_history_length > 0 {
-            while self.changes_history.len() >= self.config.final_history_length {
-                self.changes_history.pop_front();
-            }
-            self.changes_history.push_back((slot, changes));
-        }
-
-        // final hash computing and sub hashes logging
+    /// Used when finalizing a slot.
+    /// Slot information is only used for logging.
+    pub fn compute_state_hash_at_slot(&mut self, slot: Slot) {
         // 1. init hash concatenation with the ledger hash
         let ledger_hash = self.ledger.get_ledger_hash();
         let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
@@ -148,13 +114,65 @@ impl FinalState {
             "executed_ops hash at slot {}: {}",
             slot, self.executed_ops.hash
         );
-        // 6. final state hash
-        let final_state_hash = Hash::compute_from(&hash_concat);
-        info!("final_state hash at slot {}: {}", slot, final_state_hash);
-        // 7. save final state hash in the latest cycle
-        if let Some(cycle) = self.pos_state.cycle_history.back_mut() {
-            cycle.final_state_hash_snapshot = Some(final_state_hash);
+        // 6. compute and save final state hash
+        self.final_state_hash = Hash::compute_from(&hash_concat);
+        info!(
+            "final_state hash at slot {}: {}",
+            slot, self.final_state_hash
+        );
+    }
+
+    /// Performs the initial draws.
+    pub fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
+        self.pos_state
+            .compute_initial_draws()
+            .map_err(|err| FinalStateError::PosError(err.to_string()))
+    }
+
+    /// Applies changes to the execution state at a given slot, and settles that slot forever.
+    /// Once this is called, the state is attached at the output of the provided slot.
+    ///
+    /// Panics if the new slot is not the one coming just after the current one.
+    pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
+        // check slot consistency
+        let next_slot = self
+            .slot
+            .get_next_slot(self.config.thread_count)
+            .expect("overflow in execution state slot");
+        if slot != next_slot {
+            panic!("attempting to apply execution state changes at slot {} while the current slot is {}", slot, self.slot);
         }
+
+        // update current slot
+        self.slot = slot;
+
+        // apply the state changes
+        // unwrap is justified because every error in PoS `apply_changes` is critical
+        self.ledger
+            .apply_changes(changes.ledger_changes.clone(), self.slot);
+        self.async_pool
+            .apply_changes_unchecked(&changes.async_pool_changes);
+        self.pos_state
+            .apply_changes(changes.pos_changes.clone(), self.slot, true)
+            .unwrap();
+        self.executed_ops
+            .apply_changes(changes.executed_ops_changes.clone(), self.slot);
+
+        // push history element and limit history size
+        if self.config.final_history_length > 0 {
+            while self.changes_history.len() >= self.config.final_history_length {
+                self.changes_history.pop_front();
+            }
+            self.changes_history.push_back((slot, changes));
+        }
+
+        // compute the final state hash
+        self.compute_state_hash_at_slot(slot);
+
+        // feed final_state_hash to the last cycle
+        let cycle = slot.get_cycle(self.config.periods_per_cycle);
+        self.pos_state
+            .feed_cycle_state_hash(cycle, self.final_state_hash);
     }
 
     /// Used for bootstrap.
