@@ -5,6 +5,7 @@ use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
+use massa_serialization::{Serializer, U64VarIntSerializer};
 use std::collections::VecDeque;
 use std::{
     collections::BTreeMap,
@@ -271,7 +272,10 @@ impl PoSFinalState {
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
-                let mut seed = cycle_info.rng_seed.clone().into_vec();
+                let u64_ser = U64VarIntSerializer::new();
+                let mut seed = Vec::new();
+                u64_ser.serialize(&c, &mut seed).unwrap();
+                seed.extend(cycle_info.rng_seed.clone().into_vec());
                 seed.extend(lookback_state_hash.to_bytes());
                 Hash::compute_from(&seed)
             }
