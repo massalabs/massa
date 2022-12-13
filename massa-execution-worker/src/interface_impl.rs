@@ -342,7 +342,7 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key))
     }
 
-    /// TODO
+    /// Returns bytecode of the current address
     fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
@@ -352,7 +352,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    /// TODO
+    /// Returns bytecode of the target address
     fn raw_get_bytecode_for(&self, address: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = Address::from_str(address)?;
