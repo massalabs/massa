@@ -362,14 +362,33 @@ pub async fn stream_bootstrap_information(
                         "Bootstrap cursor set to future slot".to_string(),
                     ));
                 }
-                final_state_changes = final_state_read.get_state_changes_part(
+                final_state_changes = match final_state_read.get_state_changes_part(
                     slot,
                     new_ledger_step.clone(),
                     new_pool_step,
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,
-                )?;
+                ) {
+                    Ok(data) => data,
+                    Err(err) => {
+                        match tokio::time::timeout(
+                            write_timeout,
+                            server.send(BootstrapServerMessage::SlotTooOld),
+                        )
+                        .await
+                        {
+                            Err(_) => Err(std::io::Error::new(
+                                std::io::ErrorKind::TimedOut,
+                                "bootstrap ask ledger part send timed out",
+                            )
+                            .into()),
+                            Ok(Err(e)) => Err(e),
+                            Ok(Ok(_)) => Ok(()),
+                        }?;
+                        return Ok(());
+                    }
+                };
             } else {
                 final_state_changes = Vec::new();
             }
