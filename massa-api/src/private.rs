@@ -320,13 +320,13 @@ fn bootsrap_list_call(
         ScrudOperation::Create => {
             get_file_with_length(bootstrap_list_file.clone(), &list_type, true).and_then(|tuple| {
                 if tuple.1 == 0 {
-                    json_to_file(bootstrap_list_file, BTreeSet::from_iter(ips), &list_type)
+                    write_to_jsonfile(bootstrap_list_file, BTreeSet::from_iter(ips), &list_type)
                 } else {
                     read_bootsrap_list(bootstrap_list_file.clone(), &list_type)
                         .map(BTreeSet::from_iter)
                         .and_then(|mut list_ips: BTreeSet<IpAddr>| {
                             list_ips.extend(ips);
-                            json_to_file(bootstrap_list_file, list_ips, &list_type)
+                            write_to_jsonfile(bootstrap_list_file, list_ips, &list_type)
                         })
                 }
             })
@@ -353,7 +353,7 @@ fn bootsrap_list_call(
                             ips.into_iter().for_each(|ip| {
                                 list_ips.remove(&ip);
                             });
-                            json_to_file(bootstrap_list_file, list_ips, &list_type)
+                            write_to_jsonfile(bootstrap_list_file, list_ips, &list_type)
                         })
                 }
             })
@@ -366,7 +366,7 @@ fn bootsrap_list_call(
     }
 }
 
-fn json_to_file(
+fn write_to_jsonfile(
     bootstrap_list_file: PathBuf,
     ips: BTreeSet<IpAddr>,
     list_type: &ListType,
@@ -407,6 +407,7 @@ fn get_file_with_length(
         .map_err(|e| {
             ApiError::InternalServerError(format!(
                 "failed to read bootsrap {:?} configuration file: {}",
+                
                 list_type, e
             ))
             .into()
