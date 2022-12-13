@@ -3,7 +3,7 @@ use futures::StreamExt;
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{
     block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -329,6 +329,8 @@ pub async fn stream_bootstrap_information(
         let exec_ops_part;
         let final_state_changes;
 
+        let mut slot_too_old = false;
+
         // Scope of the final state read
         {
             let final_state_read = final_state.read();
@@ -371,23 +373,11 @@ pub async fn stream_bootstrap_information(
                     new_ops_step,
                 ) {
                     Ok(data) => data,
-                    Err(err) => {
-                        match tokio::time::timeout(
-                            write_timeout,
-                            server.send(BootstrapServerMessage::SlotTooOld),
-                        )
-                        .await
-                        {
-                            Err(_) => Err(std::io::Error::new(
-                                std::io::ErrorKind::TimedOut,
-                                "bootstrap ask ledger part send timed out",
-                            )
-                            .into()),
-                            Ok(Err(e)) => Err(e),
-                            Ok(Ok(_)) => Ok(()),
-                        }?;
-                        return Ok(());
+                    Err(err) if matches!(err, FinalStateError::InvalidSlot(_)) => {
+                        slot_too_old = true;
+                        Vec::default()
                     }
+                    Err(err) => return Err(BootstrapError::FinalStateError(err)),
                 };
             } else {
                 final_state_changes = Vec::new();
@@ -401,6 +391,24 @@ pub async fn stream_bootstrap_information(
             last_ops_step = new_ops_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
+        }
+
+        if slot_too_old {
+            match tokio::time::timeout(
+                write_timeout,
+                server.send(BootstrapServerMessage::SlotTooOld),
+            )
+            .await
+            {
+                Err(_) => Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "SlotTooOld message send timed out",
+                )
+                .into()),
+                Ok(Err(e)) => Err(e),
+                Ok(Ok(_)) => Ok(()),
+            }?;
+            return Ok(());
         }
 
         // Setup final state global cursor
