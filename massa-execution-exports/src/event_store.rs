@@ -72,6 +72,11 @@ impl EventStore {
                         return false;
                     }
                 }
+                if let Some(is_error) = filter.is_error {
+                    if x.context.is_error != is_error {
+                        return false;
+                    }
+                }
                 match (filter.emitter_address, x.context.call_stack.front()) {
                     (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
                     (Some(_), None) => return false,
@@ -85,11 +90,6 @@ impl EventStore {
                 match (filter.original_operation_id, x.context.origin_operation_id) {
                     (Some(addr1), Some(addr2)) if addr1 != addr2 => return false,
                     (Some(_), None) => return false,
-                    _ => (),
-                }
-                match filter.is_error {
-                    Some(is_error) if x.context.is_error != is_error => return false,
-                    None if x.context.is_error => return false,
                     _ => (),
                 }
                 true

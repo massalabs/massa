@@ -559,7 +559,7 @@ pub struct EventFilter {
     ///
     /// Some(true) means events coming from a failed sc execution
     /// Some(false) means events coming from a succeeded sc execution
-    /// None means events coming from a succeeded sc execution
+    /// None means both
     pub is_error: Option<bool>,
 }
 
