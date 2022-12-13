@@ -666,7 +666,7 @@
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                     };
-                    <span class="macro">panic!</span>(<span class="string">&quot;Bootstrap failed, try to bootstrap again.&quot;</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(<span class="string">&quot;Slot too old&quot;</span>)));
                 }
                 BootstrapServerMessage::BootstrapError { error } =&gt; {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())

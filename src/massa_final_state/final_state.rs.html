@@ -546,16 +546,16 @@
             </span><span class="kw">let </span>index = slot
                 .slots_since(first_slot, <span class="self">self</span>.config.thread_count)
                 .map_err(|<span class="kw">_</span>| {
-                    FinalStateError::LedgerError(
-                        <span class="string">&quot;get_state_changes_part given slot is overflowing history.&quot;</span>.to_string(),
+                    FinalStateError::InvalidSlot(
+                        <span class="string">&quot;get_state_changes_part given slot is overflowing history&quot;</span>.to_string(),
                     )
                 })<span class="question-mark">?
                 </span>.saturating_add(<span class="number">1</span>);
 
             <span class="comment">// Check if the `slot` index isn&#39;t in the future
             </span><span class="kw">if </span><span class="self">self</span>.changes_history.len() <span class="kw">as </span>u64 &lt;= index {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::LedgerError(
-                    <span class="string">&quot;slot index is overflowing history.&quot;</span>.to_string(),
+                <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::InvalidSlot(
+                    <span class="string">&quot;slot index is overflowing history&quot;</span>.to_string(),
                 ));
             }
             index
