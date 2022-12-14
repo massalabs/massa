@@ -154,7 +154,10 @@ impl FinalState {
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
             .apply_changes(changes.pos_changes.clone(), self.slot, true)
-            .unwrap();
+            .expect("could not settle slot in final state proof-of-stake");
+        // TODO:
+        // do not panic above, it might just mean that the lookback cycle is not available
+        // bootstrap again instead
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
