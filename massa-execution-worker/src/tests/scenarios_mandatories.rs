@@ -402,7 +402,7 @@ fn local_execution() {
     assert!(events.len() == 8, "8 events were expected");
     assert_eq!(
         Amount::from_raw(events[1].data.parse().unwrap()),
-        Amount::from_str("299_000").unwrap() // start (300_000) - fee (1000)
+        Amount::from_str("299990").unwrap() // start (300_000) - fee (1000)
     );
     assert_eq!(events[1].context.call_stack.len(), 1);
     assert_eq!(
@@ -412,7 +412,7 @@ fn local_execution() {
     assert_eq!(events[2].data, "one local execution completed");
     assert_eq!(
         Amount::from_raw(events[5].data.parse().unwrap()),
-        Amount::from_str("297_999.03475").unwrap() // start (299_000) - fee (1000) - storage cost
+        Amount::from_str("299_979.03475").unwrap() // start (299_000) - fee (1000) - storage cost
     );
     assert_eq!(events[5].context.call_stack.len(), 1);
     assert_eq!(
@@ -511,7 +511,6 @@ fn send_and_receive_async_message_with_trigger() {
     // match the events
     assert!(events.len() == 2, "Two event was expected");
     assert_eq!(events[0].data, "Triggered");
-    assert_eq!(events[1].data, "Triggered");
 
     // keypair associated to thread 1
     let keypair = KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
@@ -543,7 +542,7 @@ fn send_and_receive_async_message_with_trigger() {
 
     // match the events
     assert!(events.len() == 2, "Two event was expected");
-    assert_eq!(events[0].data, "Triggered");
+    assert_eq!(events[0].data, "Triggered");    
 
     // keypair associated to thread 2
     let keypair =
@@ -577,6 +576,7 @@ fn send_and_receive_async_message_with_trigger() {
 
     // match the events
     assert!(events.len() == 1, "One event was expected");
+    assert_eq!(events[0].data, "Triggered");
     assert_eq!(events[0].data, "Triggered");
 
     manager.stop();
@@ -761,6 +761,7 @@ pub fn roll_sell() {
 
     // get initial balance
     let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
+    println!("balance_initial: {}", balance_initial);
 
     // get initial roll count
     let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
@@ -1123,7 +1124,7 @@ fn datastore_manipulations() {
         Amount::from_str("300000")
             .unwrap()
             // Gas fee
-            .saturating_sub(Amount::from_str("100000").unwrap())
+            .saturating_sub(Amount::from_mantissa_scale(10, 0))
             // Storage cost key
             .saturating_sub(
                 exec_cfg
@@ -1343,7 +1344,7 @@ fn sc_builtins() {
             .ledger
             .get_balance(&Address::from_public_key(&keypair.get_public_key()))
             .unwrap(),
-        Amount::from_str("200000").unwrap()
+        Amount::from_str("299990").unwrap()
     );
     // stop the execution controller
     manager.stop();
