@@ -342,6 +342,28 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key))
     }
 
+    /// Check whether or not the caller has write access in the current context
+    ///
+    /// # Returns
+    /// true if the caller has write access
+    fn caller_has_write_access(&self) -> Result<bool> {
+        let context = context_guard!(self);
+        let caller = context
+            .get_call_stack()
+            .first()
+            .ok_or_else(|| anyhow!("No adresses in the stack"))?;
+        let owned_addresses = context.get_current_owned_addresses()?;
+        Ok(owned_addresses.contains(caller))
+    }
+
+    /// Check whether or not the given function exists at the given address
+    ///
+    /// # Return
+    /// true if the function exists
+    fn function_exists(&self, address: &str, function: &str) -> Result<bool> {
+        unimplemented!("function_exists")
+    }
+
     /// Get the operation datastore keys (aka entries).
     /// Note that the datastore is only accessible to the initial caller level.
     ///
