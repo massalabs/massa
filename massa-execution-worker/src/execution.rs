@@ -320,7 +320,7 @@ impl ExecutionState {
                         operation_id, &err
                     ));
                     debug!("{}", &err);
-                    context.reset_to_snapshot(context_snapshot, Some(err));
+                    context.reset_to_snapshot(context_snapshot, err);
                 }
             }
         }
@@ -660,7 +660,7 @@ impl ExecutionState {
                             "message data does not convert to utf-8".into(),
                         )
                     };
-                    context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                    context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(&message);
                     return Err(err);
                 }
@@ -675,7 +675,7 @@ impl ExecutionState {
                     "could not credit coins to target of async execution: {}",
                     err
                 ));
-                context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
             }
@@ -697,7 +697,7 @@ impl ExecutionState {
                 err
             ));
             let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            context.reset_to_snapshot(context_snapshot, err.clone());
             context.cancel_async_message(&message);
             Err(err)
         } else {
