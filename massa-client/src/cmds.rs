@@ -153,7 +153,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool"
+            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool"
         ),
         message = "show events emitted by smart contracts with various filters"
     )]
@@ -576,13 +576,14 @@ impl Command {
             }
 
             Command::get_filtered_sc_output_event => {
-                let p_list: [&str; 6] = [
+                let p_list: [&str; 7] = [
                     "start",
                     "end",
                     "emitter_address",
                     "caller_address",
                     "operation_id",
                     "is_final",
+                    "is_error",
                 ];
                 let mut p: HashMap<&str, &str> = HashMap::new();
                 for v in parameters {
@@ -600,6 +601,7 @@ impl Command {
                     original_caller_address: parse_key_value(&p, p_list[3]),
                     original_operation_id: parse_key_value(&p, p_list[4]),
                     is_final: parse_key_value(&p, p_list[5]),
+                    is_error: parse_key_value(&p, p_list[6]),
                 };
                 match client.public.get_filtered_sc_output_event(filter).await {
                     Ok(events) => Ok(Box::new(events)),

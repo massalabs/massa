@@ -179,7 +179,7 @@ fn test_nested_call_gas_usage() {
     let balance_expected = Amount::from_str("300000")
         .unwrap()
         // Gas fee
-        .saturating_sub(Amount::from_str("100000").unwrap())
+        .saturating_sub(Amount::from_str("10").unwrap())
         // Storage cost base
         .saturating_sub(exec_cfg.storage_costs_constants.ledger_entry_base_cost)
         // Storage cost bytecode
@@ -302,7 +302,7 @@ fn send_and_receive_async_message() {
         Default::default(),
         block_storage.clone(),
     );
-    // sleep for 100ms to reach the message execution period
+    // sleep for 150ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(150));
 
     // retrieve events emitted by smart contracts
@@ -320,6 +320,7 @@ fn send_and_receive_async_message() {
     // stop the execution controller
     manager.stop();
 }
+
 
 /// Context
 ///
@@ -421,6 +422,163 @@ fn local_execution() {
     assert_eq!(events[6].data, "one local call completed");
 
     // stop the execution controller
+    manager.stop();
+}
+
+/// # Context
+///
+/// Functional test for asynchronous messages sending and handling with a filter
+///
+/// 1. a block is created containing an `execute_sc` operation
+/// 2. this operation deploy a smart contract and call his function `test`
+/// 3. `test` generates an event and place a message to be triggered once again if `test2` datastore key of address `A12DDxjqtBVshdQ4nLqYg6GwRddY5LzEC7bnatVxB5SFtpbCFj8E` is created/modify
+/// 4. we set the created block as finalized so the message is actually sent
+/// 5. we execute the following slots for 300 milliseconds to reach the message execution period
+/// 6. We send a new operation with a smart contract that modify `test` datastore key and so doesn't trigger the message.
+/// 7. We send a new operation with a smart contract that create `test2` datastore key and so trigger the message.
+/// 8. once the execution period is over we stop the execution controller
+/// 9. we retrieve the events emitted by smart contract
+/// 10. `test` handler function should have emitted a second event
+/// 11. we check if they are events
+/// 12. if they are some, we verify that the data has the correct value
+#[test]
+#[serial]
+fn send_and_receive_async_message_with_trigger() {
+    // setup the period duration and the maximum gas for asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        max_async_gas: 1_000_000_000,
+        cursor_delay: 0.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg.clone(),
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-unit-tests-src
+    let bytecode = include_bytes!("./wasm/send_message_deploy_condition.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/send_message_condition.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    let key = unsafe {
+        String::from("smart-contract")
+            .encode_utf16()
+            .collect::<Vec<u16>>()
+            .align_to::<u8>()
+            .1
+            .to_vec()
+    };
+    datastore.insert(key, datastore_bytecode);
+
+    // create the block containing the smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(keypair, vec![operation], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+
+    // set our block as a final block so the message is sent
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    blockclique_blocks.insert(block.content.header.content.slot, block.id);
+    controller.update_blockclique_status(
+        finalized_blocks.clone(),
+        Some(blockclique_blocks.clone()),
+        block_storage.clone(),
+    );
+    // sleep for 10ms to reach the message execution period
+    std::thread::sleep(Duration::from_millis(10));
+
+    // retrieve events emitted by smart contracts
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        ..Default::default()
+    });
+
+    // match the events
+    assert!(events.len() == 2, "Two event was expected");
+    assert_eq!(events[0].data, "Triggered");
+    assert_eq!(events[1].data, "Triggered");
+
+    // keypair associated to thread 1
+    let keypair = KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-unit-tests-src
+    let bytecode = include_bytes!("./wasm/send_message_wrong_trigger.wasm");
+    let datastore = BTreeMap::new();
+
+    // create the block containing the smart contract execution operation
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(keypair, vec![operation], Slot::new(1, 1)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+
+    // set our block as a final block so the message is sent
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    blockclique_blocks.insert(block.content.header.content.slot, block.id);
+    controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
+    // sleep for 10ms to reach the message execution period
+    std::thread::sleep(Duration::from_millis(10));
+
+    // retrieve events emitted by smart contracts
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        ..Default::default()
+    });
+
+    // match the events
+    assert!(events.len() == 2, "Two event was expected");
+    assert_eq!(events[0].data, "Triggered");
+
+    // keypair associated to thread 2
+    let keypair =
+        KeyPair::from_str("S12APSAzMPsJjVGWzUJ61ZwwGFTNapA4YtArMKDyW4edLu6jHvCr").unwrap();
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-unit-tests-src
+    // This line execute the smart contract that will modify the data entry and then trigger the SC.
+    let bytecode = include_bytes!("./wasm/send_message_trigger.wasm");
+    let datastore = BTreeMap::new();
+
+    let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+    storage.store_operations(vec![operation.clone()]);
+    let block = create_block(keypair, vec![operation], Slot::new(1, 2)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+
+    // set our block as a final block so the message is sent
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    blockclique_blocks.insert(block.content.header.content.slot, block.id);
+    controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
+    // sleep for 1000ms to reach the message execution period
+    std::thread::sleep(Duration::from_millis(1000));
+
+    // retrieve events emitted by smart contracts
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        start: Some(Slot::new(1, 3)),
+        ..Default::default()
+    });
+
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert_eq!(events[0].data, "Triggered");
+
     manager.stop();
 }
 
@@ -538,7 +696,7 @@ pub fn roll_buy() {
         &keypair,
     )
     .unwrap();
-    // create the block contaning the roll buy operation
+    // create the block containing the roll buy operation
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
@@ -731,7 +889,7 @@ fn sc_execution_error() {
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/execution_error.wasm");
-    // create the block contaning the erroneous smart contract execution operation
+    // create the block containing the erroneous smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
@@ -750,14 +908,18 @@ fn sc_execution_error() {
     std::thread::sleep(Duration::from_millis(10));
 
     // retrieve the event emitted by the execution error
-    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        is_error: Some(true),
+        ..Default::default()
+    });
     // match the events
-    assert!(!events.is_empty(), "One event was expected");
-    assert!(events[0].data.contains("massa_execution_error"));
-    assert!(events[0]
+    assert!(!events.is_empty(), "2 events were expected");
+    assert_eq!(events[0].data, "event generated before the sc failure");
+    assert!(events[1].data.contains("massa_execution_error"));
+    assert!(events[1]
         .data
         .contains("runtime error when executing operation"));
-    assert!(events[0].data.contains("address parsing error"));
+    assert!(events[1].data.contains("address parsing error"));
     // stop the execution controller
     manager.stop();
 }
@@ -792,7 +954,7 @@ fn sc_datastore() {
     let bytecode = include_bytes!("./wasm/datastore.wasm");
     let datastore = BTreeMap::from([(vec![65, 66], vec![255]), (vec![9], vec![10, 11])]);
 
-    // create the block contaning the erroneous smart contract execution operation
+    // create the block containing the erroneous smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
@@ -851,7 +1013,7 @@ fn set_bytecode_error() {
     let mut datastore = BTreeMap::new();
     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
 
-    // create the block contaning the erroneous smart contract execution operation
+    // create the block containing the erroneous smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
@@ -911,7 +1073,7 @@ fn datastore_manipulations() {
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
-    // create the block contaning the erroneous smart contract execution operation
+    // create the block containing the erroneous smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
@@ -1078,7 +1240,7 @@ fn create_execute_sc_operation(
     };
     let op = Operation::new_wrapped(
         Operation {
-            fee: Amount::from_str("1000").unwrap(),
+            fee: Amount::from_mantissa_scale(10, 0),
             expire_period: 10,
             op,
         },
@@ -1145,7 +1307,7 @@ fn sc_builtins() {
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/use_builtins.wasm");
-    // create the block contaning the erroneous smart contract execution operation
+    // create the block containing the erroneous smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();

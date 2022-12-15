@@ -2072,6 +2072,7 @@ dependencies = [
  "futures",
  "lazy_static",
  "massa_hash",
+ "massa_ledger_exports",
  "massa_logging",
  "massa_models",
  "massa_serialization",

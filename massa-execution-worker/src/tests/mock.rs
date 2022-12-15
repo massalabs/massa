@@ -58,6 +58,32 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
         },
     );
 
+    // thread 2 / 31
+    let keypair_2 =
+        KeyPair::from_str("S12APSAzMPsJjVGWzUJ61ZwwGFTNapA4YtArMKDyW4edLu6jHvCr").unwrap();
+    let addr_2 = Address::from_public_key(&keypair_2.get_public_key());
+    rolls.insert(addr_2, 100);
+    ledger.insert(
+        addr_2,
+        LedgerEntry {
+            balance: Amount::from_str("300_000").unwrap(),
+            ..Default::default()
+        },
+    );
+
+    // thread 3 / 31
+    let keypair_3 =
+        KeyPair::from_str("S12onbtxzgHcDSrVMp9bzP1cUjno8V5hZd4yYiqaMmC3nq4z7fSv").unwrap();
+    let addr_3 = Address::from_public_key(&keypair_3.get_public_key());
+    rolls.insert(addr_3, 100);
+    ledger.insert(
+        addr_3,
+        LedgerEntry {
+            balance: Amount::from_str("300_000").unwrap(),
+            ..Default::default()
+        },
+    );
+
     // write file
     serde_json::to_writer_pretty::<&File, BTreeMap<Address, u64>>(file.as_file(), &rolls)
         .expect("unable to write ledger file");
