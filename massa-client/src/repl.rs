@@ -20,6 +20,7 @@ use rustyline::error::ReadlineError;
 use rustyline::validate::MatchingBracketValidator;
 use rustyline::{CompletionType, Config, Editor};
 use rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
+use std::net::IpAddr;
 use std::str;
 use strum::IntoEnumIterator;
 use strum::ParseError;
@@ -276,6 +277,14 @@ impl Output for Vec<EndorsementInfo> {
     fn pretty_print(&self) {
         for endorsement_info in self {
             println!("{}", endorsement_info);
+        }
+    }
+}
+
+impl Output for Vec<IpAddr> {
+    fn pretty_print(&self) {
+        for ips in self {
+            println!("{}", ips);
         }
     }
 }

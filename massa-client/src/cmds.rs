@@ -97,17 +97,24 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "whitelist given IP addresses"
+        props(args = "add or remove) [IpAddr]"),
+        message = "Manage boostrap whitelist IP address(es)"
     )]
-    node_whitelist,
+    node_bootsrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "remove from whitelist given IP addresses"
+        props(args = "add or remove) [IpAddr]"),
+        message = "Manage boostrap blacklist IP address(es)"
     )]
-    node_remove_from_whitelist,
+    node_bootsrap_blacklist,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "add or remove) [IpAddr]"),
+        message = "Manage whitelist IP address(es)"
+    )]
+    node_peers_whitelist,
 
     #[strum(
         ascii_case_insensitive,
@@ -251,6 +258,32 @@ pub enum Command {
     when_moon,
 }
 
+#[derive(Debug, Display, EnumString, EnumIter)]
+#[strum(serialize_all = "snake_case")]
+pub enum CLIOperation {
+    #[strum(
+        ascii_case_insensitive,
+        message = "add",
+        detailed_message = "add(s) the given value(s) to the target"
+    )]
+    Add,
+    #[strum(
+        ascii_case_insensitive,
+        message = "remove",
+        detailed_message = "remove(s) the given value(s) from the target if exists"
+    )]
+    Remove,
+}
+
+impl Display for CLIOperationIter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let res = CLIOperation::iter()
+            .map(|op| op.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        f.write_str(format!("[{}]", res).as_str())
+    }
+}
 /// Display the help of all commands
 pub(crate) fn help() {
     println!("HELP of Massa client (list of available commands):");
@@ -988,29 +1021,155 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-            Command::node_whitelist => {
-                let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.node_whitelist(ips).await {
-                    Ok(()) => {
-                        if !json {
-                            println!("Request of whitelisting successfully sent!")
-                        }
+            Command::node_bootsrap_blacklist => {
+                if parameters.is_empty() {
+                    match client.private.node_bootstrap_blacklist().await {
+                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Err(e) => rpc_error!(e),
                     }
-                    Err(e) => rpc_error!(e),
+                } else {
+                    let cli_op = match parameters[0].parse::<CLIOperation>() {
+                        Ok(op) => op,
+                        Err(_) => bail!(
+                            "failed to parse operation, supported operations are: {:}",
+                            CLIOperation::iter()
+                        ),
+                    };
+                    let args = &parameters[1..];
+                    if args.is_empty() {
+                        bail!("[IpAddr] parameter shouldn't be empty");
+                    }
+                    let ips = parse_vec::<IpAddr>(args)?;
+                    let res: Result<Box<dyn Output>> = match cli_op {
+                        CLIOperation::Add => {
+                            match client.private.node_add_to_bootstrap_blacklist(ips).await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!(
+                                            "Request of bootsrap blacklisting successfully sent!"
+                                        )
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        CLIOperation::Remove => {
+                            match client
+                                .private
+                                .node_remove_from_bootstrap_blacklist(ips)
+                                .await
+                            {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of remove from bootsrap blacklist successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                    };
+                    res
                 }
-                Ok(Box::new(()))
             }
-            Command::node_remove_from_whitelist => {
-                let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.node_remove_from_whitelist(ips).await {
-                    Ok(()) => {
-                        if !json {
-                            println!("Request of removing from whitelist successfully sent!")
-                        }
+            Command::node_bootsrap_whitelist => {
+                if parameters.is_empty() {
+                    match client.private.node_bootstrap_whitelist().await {
+                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Err(e) => rpc_error!(e),
                     }
-                    Err(e) => rpc_error!(e),
+                } else {
+                    let cli_op = match parameters[0].parse::<CLIOperation>() {
+                        Ok(op) => op,
+                        Err(_) => bail!(
+                            "failed to parse operation, supported operations are: {:}",
+                            CLIOperation::iter()
+                        ),
+                    };
+                    let args = &parameters[1..];
+                    if args.is_empty() {
+                        bail!("[IpAddr] parameter shouldn't be empty");
+                    }
+                    let ips = parse_vec::<IpAddr>(args)?;
+                    let res: Result<Box<dyn Output>> = match cli_op {
+                        CLIOperation::Add => {
+                            match client.private.node_add_to_bootstrap_whitelist(ips).await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!(
+                                            "Request of bootsrap whitelisting successfully sent!"
+                                        )
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        CLIOperation::Remove => {
+                            match client
+                                .private
+                                .node_remove_from_bootstrap_whitelist(ips)
+                                .await
+                            {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of remove from bootsrap whitelist successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                    };
+                    res
                 }
-                Ok(Box::new(()))
+            }
+            Command::node_peers_whitelist => {
+                if parameters.is_empty() {
+                    match client.private.node_peers_whitelist().await {
+                        Ok(peerlist_ips) => Ok(Box::new(peerlist_ips)),
+                        Err(e) => rpc_error!(e),
+                    }
+                } else {
+                    let cli_op = match parameters[0].parse::<CLIOperation>() {
+                        Ok(op) => op,
+                        Err(_) => bail!(
+                            "failed to parse operation, supported operations are: {:}",
+                            CLIOperation::iter()
+                        ),
+                    };
+                    let args = &parameters[1..];
+                    if args.is_empty() {
+                        bail!("[IpAddr] parameter shouldn't be empty");
+                    }
+                    let ips = parse_vec::<IpAddr>(args)?;
+                    let res: Result<Box<dyn Output>> = match cli_op {
+                        CLIOperation::Add => {
+                            match client.private.node_add_to_peers_whitelist(ips).await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of peers whitelisting successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        CLIOperation::Remove => {
+                            match client.private.node_remove_from_peers_whitelist(ips).await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of remove from peers whitelist successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                    };
+                    res
+                }
             }
         }
     }

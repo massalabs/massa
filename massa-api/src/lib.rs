@@ -259,7 +259,7 @@ pub trait MassaRpc {
     /// Remove IP address(es) to bootsrap blacklist.
     #[method(name = "node_remove_from_bootstrap_blacklist")]
     async fn node_remove_from_bootstrap_blacklist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
-    
+
     /// Unban given IP address(es).
     /// No confirmation to expect.
     #[method(name = "node_unban_by_ip")]

@@ -407,7 +407,6 @@ fn get_file_with_length(
         .map_err(|e| {
             ApiError::InternalServerError(format!(
                 "failed to read bootsrap {:?} configuration file: {}",
-                
                 list_type, e
             ))
             .into()
