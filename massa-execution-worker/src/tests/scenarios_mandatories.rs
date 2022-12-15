@@ -321,6 +321,17 @@ fn send_and_receive_async_message() {
     manager.stop();
 }
 
+/// Context
+///
+/// Functional test for local smart-contract execution
+///
+/// 1. a block is created with 2 ExecuteSC operations
+///    it contains 1 local execution and 1 local call
+///    both operation datastores have the bytecode of local_function.wasm
+/// 2. store and set the block as final
+/// 3. wait for execution
+/// 4. retrieve events emitted by the initial an sub functions
+/// 5. match event and call stack to make sure that executions were local
 #[test]
 #[serial]
 fn local_execution() {
@@ -378,7 +389,7 @@ fn local_execution() {
         Default::default(),
         block_storage.clone(),
     );
-    // sleep for 100ms to reach the message execution period
+    // sleep for 100ms to wait for execution
     std::thread::sleep(Duration::from_millis(100));
 
     // retrieve events emitted by smart contracts
