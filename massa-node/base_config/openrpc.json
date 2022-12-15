@@ -1490,6 +1490,10 @@
                     "is_final": {
                         "description": "Optional filter to filter only candidate or final events",
                         "type": "boolean"
+                    },
+                    "is_error": {
+                        "description": "Optional filter to retrieve events generated in a failed execution",
+                        "type": "boolean"
                     }
                 },
                 "additionalProperties": false
@@ -1553,6 +1557,10 @@
                     },
                     "is_final": {
                         "description": "Whether the event is final",
+                        "type": "boolean"
+                    },
+                    "is_error": {
+                        "description": "Whether the event was generated in a failed executed or not",
                         "type": "boolean"
                     }
                 },

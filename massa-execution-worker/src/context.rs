@@ -207,6 +207,7 @@ impl ExecutionContext {
         let err_event = with_error.map(|err| {
             self.event_create(
                 serde_json::json!({ "massa_execution_error": format!("{}", err) }).to_string(),
+                true,
             )
         });
 
@@ -222,8 +223,17 @@ impl ExecutionContext {
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
-        self.events = snapshot.events;
         self.unsafe_rng = snapshot.unsafe_rng;
+
+        // For events, set snapshot delta to error events.
+        // Stop iterating as soon as an event is contained because we are dealing with a VecDeque.
+        for event in self.events.0.iter_mut().rev() {
+            if !snapshot.events.0.contains(event) {
+                event.context.is_error = true;
+            } else {
+                break;
+            }
+        }
 
         // If there was an error, emit the corresponding event now.
         // Note that the context event counter is properly handled by event_emit (see doc).
@@ -763,7 +773,7 @@ impl ExecutionContext {
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    pub fn event_create(&self, data: String) -> SCOutputEvent {
+    pub fn event_create(&self, data: String, is_error: bool) -> SCOutputEvent {
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: self.slot,
@@ -773,6 +783,7 @@ impl ExecutionContext {
             index_in_slot: self.created_event_index,
             origin_operation_id: self.origin_operation_id,
             is_final: false,
+            is_error,
         };
 
         // Return the event

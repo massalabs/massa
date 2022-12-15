@@ -527,7 +527,7 @@ impl Interface for InterfaceImpl {
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
         let mut context = context_guard!(self);
-        let event = context.event_create(data);
+        let event = context.event_create(data, false);
         context.event_emit(event);
         Ok(())
     }
