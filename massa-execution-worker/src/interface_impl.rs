@@ -10,9 +10,9 @@ use anyhow::{anyhow, bail, Result};
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
+use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
-    address::Address, amount::Amount, error::ModelsError, slot::Slot,
-    timeslots::get_block_slot_timestamp,
+    address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
@@ -617,9 +617,15 @@ impl Interface for InterfaceImpl {
             data.to_vec(),
             filter
                 .map(|(addr, key)| {
-                    Ok::<AsyncMessageTrigger, ModelsError>(AsyncMessageTrigger {
+                    let datastore_key = key.map(|k| k.to_vec());
+                    if let Some(ref k) = datastore_key {
+                        if k.len() > MAX_DATASTORE_KEY_LENGTH as usize {
+                            bail!("datastore key is too long")
+                        }
+                    }
+                    Ok::<AsyncMessageTrigger, _>(AsyncMessageTrigger {
                         address: Address::from_str(addr)?,
-                        datastore_key: key.map(|k| k.to_vec()),
+                        datastore_key,
                     })
                 })
                 .transpose()?,

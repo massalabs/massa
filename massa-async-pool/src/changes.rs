@@ -31,6 +31,13 @@ pub enum Change<T, U> {
     Delete(T),
 }
 
+#[repr(u32)]
+enum ChangeId {
+    Add = 0,
+    Activate = 1,
+    Delete = 2,
+}
+
 /// represents a list of additions and deletions to the asynchronous message pool
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
@@ -99,16 +106,16 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
         for change in &value.0 {
             match change {
                 Change::Add(id, message) => {
-                    buffer.push(0);
+                    buffer.push(ChangeId::Add as u8);
                     self.id_serializer.serialize(id, buffer)?;
                     self.message_serializer.serialize(message, buffer)?;
                 }
                 Change::Activate(id) => {
-                    buffer.push(1);
+                    buffer.push(ChangeId::Activate as u8);
                     self.id_serializer.serialize(id, buffer)?;
                 }
                 Change::Delete(id) => {
-                    buffer.push(2);
+                    buffer.push(ChangeId::Delete as u8);
                     self.id_serializer.serialize(id, buffer)?;
                 }
             }
@@ -256,7 +263,6 @@ impl AsyncPoolChanges {
     }
 
     /// Pushes a message activation to the list of changes.
-    /// No add/delete compensations are done.
     ///
     /// Arguments:
     /// * `msg_id`: ID of the message to push as ready to be executed to the list of changes
