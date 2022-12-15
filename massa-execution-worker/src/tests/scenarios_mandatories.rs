@@ -321,7 +321,6 @@ fn send_and_receive_async_message() {
     manager.stop();
 }
 
-
 /// Context
 ///
 /// Functional test for local smart-contract execution
@@ -542,7 +541,7 @@ fn send_and_receive_async_message_with_trigger() {
 
     // match the events
     assert!(events.len() == 2, "Two event was expected");
-    assert_eq!(events[0].data, "Triggered");    
+    assert_eq!(events[0].data, "Triggered");
 
     // keypair associated to thread 2
     let keypair =
