@@ -86,6 +86,7 @@
 //! See `test_exports/mod.rs` for details.
 
 #![feature(btree_drain_filter)]
+#![feature(let_chains)]
 #![feature(drain_filter)]
 
 mod changes;
@@ -99,7 +100,7 @@ pub use changes::{
 pub use config::AsyncPoolConfig;
 pub use message::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageSerializer,
+    AsyncMessageIdSerializer, AsyncMessageSerializer, AsyncMessageTrigger,
 };
 pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 
