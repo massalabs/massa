@@ -343,6 +343,26 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key))
     }
 
+    /// Returns bytecode of the current address
+    fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let address = context.get_current_address()?;
+        match context.get_bytecode(&address) {
+            Some(bytecode) => Ok(bytecode),
+            _ => bail!("bytecode not found"),
+        }
+    }
+
+    /// Returns bytecode of the target address
+    fn raw_get_bytecode_for(&self, address: &str) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let address = Address::from_str(address)?;
+        match context.get_bytecode(&address) {
+            Some(bytecode) => Ok(bytecode),
+            _ => bail!("bytecode not found"),
+        }
+    }
+
     /// Get the operation datastore keys (aka entries).
     /// Note that the datastore is only accessible to the initial caller level.
     ///
