@@ -499,7 +499,7 @@
                 "description": "No return.",
                 "schema": false
             },
-            "name": "node_add_to_bootsrap_blacklist",
+            "name": "node_add_to_bootstrap_blacklist",
             "summary": "Add to bootsrap blacklist given IP address(es)",
             "description": "Add to bootsrap blacklist given IP address(es)."
         },
@@ -529,9 +529,39 @@
                 "description": "No return.",
                 "schema": false
             },
-            "name": "node_add_to_bootsrap_whitelist",
+            "name": "node_add_to_bootstrap_whitelist",
             "summary": "Add to bootsrap whitelist given IP address(es)",
             "description": "Add to bootsrap whitelist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_add_to_peers_whitelist",
+            "summary": "Add to peers whitelist given IP address(es)",
+            "description": "Add to peers whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -610,7 +640,7 @@
                     }
                 }
             },
-            "name": "node_bootsrap_blacklist",
+            "name": "node_bootstrap_blacklist",
             "summary": "Returns bootsrap blacklist IP address(es)",
             "description": "Returns bootsrap blacklist IP address(es)."
         },
@@ -633,9 +663,32 @@
                     }
                 }
             },
-            "name": "node_bootsrap_whitelist",
+            "name": "node_bootstrap_whitelist",
             "summary": "Returns bootsrap whitelist IP address(es)",
             "description": "Returns bootsrap whitelist IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "name": "ip",
+                "description": "The strings must be IP address(es)",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "description": "Ip address",
+                        "$ref": "#/components/schemas/IpAddress"
+                    }
+                }
+            },
+            "name": "node_peers_whitelist",
+            "summary": "Returns peers whitelist IP address(es)",
+            "description": "Returns peers whitelist IP address(es)."
         },
         {
             "tags": [
@@ -663,7 +716,7 @@
                 "description": "No return.",
                 "schema": false
             },
-            "name": "node_remove_from_bootsrap_blacklist",
+            "name": "node_remove_from_bootstrap_blacklist",
             "summary": "Remove from bootsrap blacklist given IP address(es)",
             "description": "Remove from bootsrap blacklist given IP address(es)."
         },
@@ -693,9 +746,39 @@
                 "description": "No return.",
                 "schema": false
             },
-            "name": "node_remove_from_bootsrap_whitelist",
+            "name": "node_remove_from_bootstrap_whitelist",
             "summary": "Remove from bootsrap whitelist given IP address(es)",
             "description": "Remove from bootsrap whitelist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_remove_from_peers_whitelist",
+            "summary": "Remove from peers whitelist given IP address(es)",
+            "description": "Remove from peers whitelist given IP address(es)."
         },
         {
             "tags": [

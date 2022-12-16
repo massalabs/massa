@@ -926,11 +926,15 @@ impl MassaRpcServer for API<Public> {
         Ok(events)
     }
 
-    async fn node_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+    async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+        crate::wrong_api::<Vec<IpAddr>>()
+    }
+
+    async fn node_add_to_peers_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    async fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+    async fn node_remove_from_peers_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 

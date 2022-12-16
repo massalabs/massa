@@ -5,6 +5,7 @@ use crate::error::ApiError;
 use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
+use itertools::Itertools;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
@@ -216,15 +217,23 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Vec<SCOutputEvent>>()
     }
 
-    async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.whitelist(ips).await {
+        match network_command_sender.get_peers().await {
+            Ok(peers) => return Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
+            Err(e) => return Err(ApiError::from(e).into()),
+        };
+    }
+
+    async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        match network_command_sender.add_to_whitelist(ips).await {
             Ok(()) => return Ok(()),
             Err(e) => return Err(ApiError::from(e).into()),
         };
     }
 
-    async fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.remove_from_whitelist(ips).await {
             Ok(()) => return Ok(()),

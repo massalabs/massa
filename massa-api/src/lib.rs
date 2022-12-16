@@ -224,17 +224,21 @@ pub trait MassaRpc {
     #[method(name = "node_ban_by_id")]
     async fn node_ban_by_id(&self, arg: Vec<NodeId>) -> RpcResult<()>;
 
-    /// whitelist given IP address.
+    /// Returns node peers whitelist IP address(es).
+    #[method(name = "node_peers_whitelist")]
+    async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>>;
+
+    /// Add IP address(es) to node peers whitelist.
     /// No confirmation to expect.
     /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
-    #[method(name = "node_whitelist")]
-    async fn node_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+    #[method(name = "node_add_to_peers_whitelist")]
+    async fn node_add_to_peers_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
-    /// remove from whitelist given IP address.
+    /// Remove from peers whitelist given IP address(es).
     /// keep it as standard
     /// No confirmation to expect.
-    #[method(name = "node_remove_from_whitelist")]
-    async fn node_remove_from_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+    #[method(name = "node_remove_from_peers_whitelist")]
+    async fn node_remove_from_peers_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
     /// Returns node bootsrap whitelist IP address(es).
     #[method(name = "node_bootstrap_whitelist")]

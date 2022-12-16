@@ -1173,7 +1173,7 @@ impl Command {
                     };
                     res
                 }
-            } 
+            }
             Command::exit => {
                 std::process::exit(0);
             }
