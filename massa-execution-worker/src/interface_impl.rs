@@ -349,13 +349,19 @@ impl Interface for InterfaceImpl {
     /// true if the caller has write access
     fn caller_has_write_access(&self) -> Result<bool> {
         let context = context_guard!(self);
-        let owned_addresses = context.get_current_owned_addresses()?;
-        Ok(owned_addresses.contains(
-            context
-                .get_call_stack()
-                .first()
-                .ok_or_else(|| anyhow!("No adresses in the stack"))?,
-        ))
+        let mut call_stack_iter = context.get_call_stack().into_iter().rev();
+        let caller = if let Some(last) = call_stack_iter.next() {
+            if let Some(prev_to_last) = call_stack_iter.next() {
+                prev_to_last
+            } else {
+                last
+            }
+        } else {
+            return Err(anyhow!("empty stack"));
+        };
+        let caller_owned_addresses = context.get_owned_addresses_for(caller)?;
+        let current_address = context.get_current_address()?;
+        Ok(caller_owned_addresses.contains(&current_address))
     }
 
     /// Returns bytecode of the current address

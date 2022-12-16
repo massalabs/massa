@@ -353,6 +353,25 @@ impl ExecutionContext {
         }
     }
 
+    /// Gets the list of owned addresses for the given address
+    /// Ordering is conserved for determinism
+    pub fn get_owned_addresses_for(&self, target: Address) -> Result<Vec<Address>, ExecutionError> {
+        for ExecutionStackElement {
+            address,
+            owned_addresses,
+            ..
+        } in self.stack.iter()
+        {
+            if *address == target {
+                return Ok(owned_addresses.clone());
+            }
+        }
+        Err(ExecutionError::RuntimeError(format!(
+            "failed to read owned addresses for {}, target address is missing from the stack",
+            target
+        )))
+    }
+
     /// Gets the current call coins
     pub fn get_current_call_coins(&self) -> Result<Amount, ExecutionError> {
         match self.stack.last() {
