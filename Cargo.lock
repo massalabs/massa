@@ -2015,12 +2015,13 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=init-sc-abi-update#7fc17be5502a279bd6aa6a458fdb06b8f52150b7"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=init-sc-abi-update#8b85d6b6295ac4a75adf101f08ed2c7a24462fc6"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
  "base64",
  "cornetto",
+ "displaydoc",
  "function_name",
  "lazy_static",
  "loupe",
@@ -2031,6 +2032,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test 0.8.0",
+ "thiserror",
  "wasmer",
  "wasmer-compiler-singlepass",
  "wasmer-engine-universal",
