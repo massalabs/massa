@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::repl::Output;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use console::style;
 use massa_models::api::{
     AddressInfo, CompactAddressInfo, DatastoreEntryInput, EventFilter, OperationInput,
@@ -1227,8 +1227,16 @@ async fn send_operation(
 
 /// TODO: ugly utilities functions
 /// takes a slice of string and makes it into a `Vec<T>`
-pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
-    args.iter().map(|x| x.parse::<T>()).collect()
+pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, Error>
+where
+    T::Err: Display,
+{
+    args.iter()
+        .map(|x| {
+            x.parse::<T>()
+                .map_err(|e| anyhow!("failed to parse \"{}\" due to: {}", x, e))
+        })
+        .collect()
 }
 
 /// reads a file
