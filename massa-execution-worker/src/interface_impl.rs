@@ -358,14 +358,6 @@ impl Interface for InterfaceImpl {
         ))
     }
 
-    /// Check whether or not the given function exists at the given address
-    ///
-    /// # Return
-    /// true if the function exists
-    fn function_exists(&self, address: &str, function: &str) -> Result<bool> {
-        unimplemented!("function_exists")
-    }
-
     /// Returns bytecode of the current address
     fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
         let context = context_guard!(self);
