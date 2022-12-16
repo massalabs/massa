@@ -197,20 +197,8 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `snapshot`: a saved snapshot to be restored
-    /// * `with_error`: an optional execution error to emit as an event conserved after snapshot reset.
-    pub fn reset_to_snapshot(
-        &mut self,
-        snapshot: ExecutionContextSnapshot,
-        with_error: Option<ExecutionError>,
-    ) {
-        // Create error event, if any.
-        let err_event = with_error.map(|err| {
-            self.event_create(
-                serde_json::json!({ "massa_execution_error": format!("{}", err) }).to_string(),
-                true,
-            )
-        });
-
+    /// * `error`: an execution error to emit as an event conserved after snapshot reset.
+    pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
         // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
@@ -226,20 +214,17 @@ impl ExecutionContext {
         self.unsafe_rng = snapshot.unsafe_rng;
 
         // For events, set snapshot delta to error events.
-        // Stop iterating as soon as an event is contained because we are dealing with a VecDeque.
-        for event in self.events.0.iter_mut().rev() {
-            if !snapshot.events.0.contains(event) {
-                event.context.is_error = true;
-            } else {
-                break;
-            }
+        // Start iterating from snapshot events length because we are dealing with a VecDeque.
+        for event in self.events.0.range_mut(snapshot.events.0.len()..) {
+            event.context.is_error = true;
         }
 
-        // If there was an error, emit the corresponding event now.
+        // Emit the error event.
         // Note that the context event counter is properly handled by event_emit (see doc).
-        if let Some(event) = err_event {
-            self.event_emit(event);
-        }
+        self.event_emit(self.event_create(
+            serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
+            true,
+        ));
     }
 
     /// Create a new `ExecutionContext` for read-only execution
@@ -699,7 +684,10 @@ impl ExecutionContext {
         let slot = self.slot;
 
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self.speculative_async_pool.settle_slot(&slot);
+        let ledger_changes = self.speculative_ledger.take();
+        let deleted_messages = self
+            .speculative_async_pool
+            .settle_slot(&slot, &ledger_changes);
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
         }
@@ -723,7 +711,7 @@ impl ExecutionContext {
 
         // generate the execution output
         let state_changes = StateChanges {
-            ledger_changes: self.speculative_ledger.take(),
+            ledger_changes,
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
