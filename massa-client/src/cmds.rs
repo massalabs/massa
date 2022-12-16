@@ -40,6 +40,9 @@ pub enum Command {
     #[strum(ascii_case_insensitive, message = "display this help")]
     help,
 
+    #[strum(ascii_case_insensitive, message = "exit the prompt")]
+    exit,
+
     #[strum(
         ascii_case_insensitive,
         props(args = "IpAddr1 IpAddr2 ..."),
@@ -97,21 +100,21 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "add or remove) [IpAddr]"),
+        props(args = "(add or remove) [IpAddr]"),
         message = "Manage boostrap whitelist IP address(es)"
     )]
     node_bootsrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "add or remove) [IpAddr]"),
+        props(args = "(add or remove) [IpAddr]"),
         message = "Manage boostrap blacklist IP address(es)"
     )]
     node_bootsrap_blacklist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "add or remove) [IpAddr]"),
+        props(args = "(add or remove) [IpAddr]"),
         message = "Manage whitelist IP address(es)"
     )]
     node_peers_whitelist,
@@ -1170,6 +1173,9 @@ impl Command {
                     };
                     res
                 }
+            } 
+            Command::exit => {
+                std::process::exit(0);
             }
         }
     }
