@@ -208,7 +208,7 @@ impl MassaTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    /// let now_massa_time : MassaTime = MassaTime::now(0).unwrap();
+    /// let now_massa_time : MassaTime = MassaTime::now().unwrap();
     /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
     /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < 100.into())
     /// ```
@@ -252,7 +252,7 @@ impl MassaTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// # use std::time::Instant;
-    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now(0).unwrap(), Instant::now());
+    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
     /// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
     /// assert!(max(
     ///     massa_time_instant.saturating_duration_since(cur_instant),
