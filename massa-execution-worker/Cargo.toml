@@ -32,13 +32,10 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
 
 [dev-dependencies]
+massa_pos_worker = { path = "../massa-pos-worker" }
 serial_test = "0.9"
 tempfile = "3.2"
 # custom modules with testing enabled
-massa_pos_worker = { path = "../massa-pos-worker" }
-massa_ledger_worker = { path = "../massa-ledger-worker", features = [
-    "testing",
-] }
 massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
 ] }

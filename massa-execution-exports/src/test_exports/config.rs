@@ -4,6 +4,7 @@
 
 use crate::{ExecutionConfig, StorageCostsConstants};
 use massa_models::config::*;
+use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
 
 impl Default for ExecutionConfig {
@@ -43,6 +44,19 @@ impl Default for ExecutionConfig {
             max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
             storage_costs_constants,
             max_read_only_gas: 100_000_000,
+            gas_costs: GasCosts::new(
+                concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../massa-node/base_config/gas_costs/abi_gas_costs.json"
+                )
+                .into(),
+                concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../massa-node/base_config/gas_costs/wasm_gas_costs.json"
+                )
+                .into(),
+            )
+            .unwrap(),
         }
     }
 }
