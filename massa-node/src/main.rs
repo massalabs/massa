@@ -15,7 +15,7 @@ use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
 use massa_executed_ops::ExecutedOpsConfig;
-use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
+use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -330,6 +330,11 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+        gas_costs: GasCosts::new(
+            SETTINGS.execution.abi_gas_costs_file.clone(),
+            SETTINGS.execution.wasm_gas_costs_file.clone(),
+        )
+        .expect("Failed to load gas costs"),
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,

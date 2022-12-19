@@ -3,6 +3,7 @@
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
 use massa_models::amount::Amount;
+use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
@@ -62,4 +63,6 @@ pub struct ExecutionConfig {
     pub storage_costs_constants: StorageCostsConstants,
     /// Max gas for read only executions
     pub max_read_only_gas: u64,
+    /// Gas costs
+    pub gas_costs: GasCosts,
 }

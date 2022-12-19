@@ -506,7 +506,12 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        match massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface) {
+        match massa_sc_runtime::run_main(
+            bytecode,
+            *max_gas,
+            &*self.execution_interface,
+            self.config.gas_costs.clone(),
+        ) {
             Ok(_reamining_gas) => {}
             Err(err) => {
                 // there was an error during bytecode execution
@@ -601,6 +606,7 @@ impl ExecutionState {
             target_func,
             param,
             &*self.execution_interface,
+            self.config.gas_costs.clone(),
         ) {
             Ok(_reamining_gas) => {}
             Err(err) => {
@@ -690,6 +696,7 @@ impl ExecutionState {
             &message.handler,
             &message.data,
             &*self.execution_interface,
+            self.config.gas_costs.clone(),
         ) {
             // execution failed: reset context to snapshot and reimburse sender
             let err = ExecutionError::RuntimeError(format!(
@@ -1042,8 +1049,13 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
-                massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
-                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
+                massa_sc_runtime::run_main(
+                    &bytecode,
+                    req.max_gas,
+                    &*self.execution_interface,
+                    self.config.gas_costs.clone(),
+                )
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1065,6 +1077,7 @@ impl ExecutionState {
                     &target_func,
                     &parameter,
                     &*self.execution_interface,
+                    self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
