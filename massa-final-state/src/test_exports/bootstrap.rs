@@ -92,7 +92,7 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
             cycle1.cycle
         );
         assert_eq!(
-            cycle1.global_hash, cycle2.global_hash,
+            cycle1.cycle_global_hash, cycle2.cycle_global_hash,
             "cycle ({}) global_hash mismatch",
             cycle1.cycle
         );
