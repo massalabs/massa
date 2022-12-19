@@ -60,7 +60,7 @@ impl ExecutionThread {
             input_data,
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             execution_state,
-            slot_sequencer: SlotSequencer::new(config.clone(), final_cursor),
+            slot_sequencer: SlotSequencer::new(config, final_cursor),
             selector,
         }
     }
