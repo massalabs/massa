@@ -331,7 +331,7 @@ fn bootsrap_list_call(
             get_file_with_length(bootstrap_list_file.clone(), &list_type, false).and_then(|tuple| {
                 if tuple.1 == 0 {
                     Err(ApiError::InternalServerError(format!(
-                        "failed, bootsrap {:?} configuration file is empty",
+                        "failed, bootsrap {} configuration file is empty",
                         list_type
                     ))
                     .into())
@@ -341,7 +341,7 @@ fn bootsrap_list_call(
                         .and_then(|mut list_ips: BTreeSet<IpAddr>| {
                             if list_ips.is_empty() {
                                 return Err(ApiError::InternalServerError(format!(
-                                    "failed to execute delete operation, bootsrap {:?} is empty",
+                                    "failed to execute delete operation, bootsrap {} is empty",
                                     list_type
                                 ))
                                 .into());
@@ -355,7 +355,7 @@ fn bootsrap_list_call(
             })
         }
         _ => Err(ApiError::BadRequest(format!(
-            "failed operation {:?} is not supported on {:?}",
+            "failed operation {} is not supported on {}",
             list_type, scrud_operation
         ))
         .into()),
@@ -374,7 +374,7 @@ fn get_file_with_length(
         .open(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to read bootsrap {:?} configuration file: {}",
+                "failed to read bootsrap {} configuration file: {}",
                 list_type, e
             ))
             .into()
@@ -382,7 +382,7 @@ fn get_file_with_length(
         .and_then(|file| match file.metadata() {
             Ok(metadata) => Ok((file, metadata.len())),
             Err(e) => Err(ApiError::InternalServerError(format!(
-                "failed to read bootsrap {:?} configuration file metadata: {}",
+                "failed to read bootsrap {} configuration file metadata: {}",
                 list_type, e
             ))
             .into()),
@@ -396,7 +396,7 @@ fn read_bootsrap_list(
     std::fs::read_to_string(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to read bootsrap {:?} configuration file: {}",
+                "failed to read bootsrap {} configuration file: {}",
                 list_type, e
             ))
             .into()
@@ -404,7 +404,7 @@ fn read_bootsrap_list(
         .and_then(|bootsrap_list_str| {
             serde_json::from_str(&bootsrap_list_str).map_err(|e| {
                 ApiError::InternalServerError(format!(
-                    "failed to parse bootsrap {:?} configuration file: {}",
+                    "failed to parse bootsrap {} configuration file: {}",
                     list_type, e
                 ))
                 .into()
@@ -424,7 +424,7 @@ fn write_to_jsonfile(
         .open(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to create bootsrap {:?} configuration file: {}",
+                "failed to create bootsrap {} configuration file: {}",
                 list_type, e
             ))
             .into()
@@ -432,7 +432,7 @@ fn write_to_jsonfile(
         .and_then(|file| {
             serde_json::to_writer_pretty(file, &ips).map_err(|e| {
                 ApiError::InternalServerError(format!(
-                    "failed to write bootsrap {:?} configuration file: {}",
+                    "failed to write bootsrap {} configuration file: {}",
                     list_type, e
                 ))
                 .into()

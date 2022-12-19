@@ -15,6 +15,7 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::net::IpAddr;
+use strum::Display;
 
 /// operation input
 #[derive(Serialize, Deserialize, Debug)]
@@ -592,7 +593,8 @@ pub struct ReadOnlyCall {
 }
 
 /// SCRUD operations
-#[derive(Debug)]
+#[derive(Display)]
+#[strum(serialize_all = "snake_case")]
 pub enum ScrudOperation {
     /// search operation
     Search,
@@ -607,7 +609,8 @@ pub enum ScrudOperation {
 }
 
 /// Bootsrap lists types
-#[derive(Debug)]
+#[derive(Display)]
+#[strum(serialize_all = "snake_case")]
 pub enum ListType {
     /// contains banned entry
     Blacklist,

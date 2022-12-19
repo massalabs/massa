@@ -29,7 +29,7 @@ use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
-use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
+use strum_macros::{Display, EnumIter, EnumString};
 
 /// All the client commands
 /// the order they are defined is the order they are displayed in so be careful
@@ -1129,7 +1129,14 @@ impl Command {
                         }
                         CLIOperation::AllowAll => {
                             match client.private.node_bootstrap_whitelist_allow_all().await {
-                                Ok(peerlist_ips) => Ok(Box::new(peerlist_ips)),
+                                Ok(()) => {
+                                    if !json {
+                                        println!(
+                                            "Request of bootsrap whitelisting everyone successfully sent!"
+                                        )
+                                    }
+                                    Ok(Box::new(()))
+                                }
                                 Err(e) => rpc_error!(e),
                             }
                         }
