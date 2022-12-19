@@ -942,6 +942,10 @@ impl MassaRpcServer for API<Public> {
         crate::wrong_api::<Vec<IpAddr>>()
     }
 
+    async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
     async fn node_add_to_bootstrap_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }

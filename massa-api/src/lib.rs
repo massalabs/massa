@@ -244,6 +244,11 @@ pub trait MassaRpc {
     #[method(name = "node_bootstrap_whitelist")]
     async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>>;
 
+    /// Allow everyone to bootsrap from the node.
+    /// remove bootsrap whitelist configuration file.
+    #[method(name = "node_bootstrap_whitelist_allow_all")]
+    async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()>;
+
     /// Add IP address(es) to node bootsrap whitelist.
     #[method(name = "node_add_to_bootstrap_whitelist")]
     async fn node_add_to_bootstrap_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;

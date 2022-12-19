@@ -200,6 +200,14 @@ impl RpcClient {
             .await
     }
 
+    /// Allow everyone to bootsrap from the node.
+    /// remove bootsrap whitelist configuration file.
+    pub async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
+        self.http_client
+            .request("node_bootstrap_whitelist_allow_all", rpc_params![])
+            .await
+    }
+
     /// Add IP address(es) to node bootsrap whitelist.
     pub async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client

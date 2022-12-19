@@ -676,6 +676,23 @@
             ],
             "params": [],
             "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_bootstrap_whitelist_allow_all",
+            "summary": "Allow everyone to bootsrap from the node",
+            "description": "Allow everyone to bootsrap from the node. Remove bootsrap whitelist configuration file."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
                 "name": "ip",
                 "description": "The strings must be IP address(es)",
                 "schema": {

@@ -32,7 +32,7 @@ use massa_wallet::Wallet;
 
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
-use std::fs::{File, OpenOptions};
+use std::fs::{remove_file, File, OpenOptions};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -248,6 +248,16 @@ impl MassaRpcServer for API<Private> {
         )
     }
 
+    async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
+        remove_file(self.0.api_settings.bootstrap_whitelist_file.clone()).map_err(|e| {
+            ApiError::InternalServerError(format!(
+                "failed to delete bootsrap whitelist configuration file due to: {}",
+                e
+            ))
+            .into()
+        })
+    }
+
     async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         bootsrap_list_call(
             self.0.api_settings.bootstrap_whitelist_file.clone(),
@@ -294,29 +304,6 @@ impl MassaRpcServer for API<Private> {
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {
         crate::wrong_api::<Value>()
     }
-}
-
-fn read_bootsrap_list(
-    bootstrap_list_file: PathBuf,
-    list_type: &ListType,
-) -> RpcResult<Vec<IpAddr>> {
-    std::fs::read_to_string(bootstrap_list_file)
-        .map_err(|e| {
-            ApiError::InternalServerError(format!(
-                "failed to read bootsrap {:?} configuration file: {}",
-                list_type, e
-            ))
-            .into()
-        })
-        .and_then(|bootsrap_list_str| {
-            serde_json::from_str(&bootsrap_list_str).map_err(|e| {
-                ApiError::InternalServerError(format!(
-                    "failed to parse bootsrap {:?} configuration file: {}",
-                    list_type, e
-                ))
-                .into()
-            })
-        })
 }
 
 fn bootsrap_list_call(
@@ -375,6 +362,56 @@ fn bootsrap_list_call(
     }
 }
 
+fn get_file_with_length(
+    bootstrap_list_file: PathBuf,
+    list_type: &ListType,
+    create: bool,
+) -> RpcResult<(File, u64)> {
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(create)
+        .open(bootstrap_list_file)
+        .map_err(|e| {
+            ApiError::InternalServerError(format!(
+                "failed to read bootsrap {:?} configuration file: {}",
+                list_type, e
+            ))
+            .into()
+        })
+        .and_then(|file| match file.metadata() {
+            Ok(metadata) => Ok((file, metadata.len())),
+            Err(e) => Err(ApiError::InternalServerError(format!(
+                "failed to read bootsrap {:?} configuration file metadata: {}",
+                list_type, e
+            ))
+            .into()),
+        })
+}
+
+fn read_bootsrap_list(
+    bootstrap_list_file: PathBuf,
+    list_type: &ListType,
+) -> RpcResult<Vec<IpAddr>> {
+    std::fs::read_to_string(bootstrap_list_file)
+        .map_err(|e| {
+            ApiError::InternalServerError(format!(
+                "failed to read bootsrap {:?} configuration file: {}",
+                list_type, e
+            ))
+            .into()
+        })
+        .and_then(|bootsrap_list_str| {
+            serde_json::from_str(&bootsrap_list_str).map_err(|e| {
+                ApiError::InternalServerError(format!(
+                    "failed to parse bootsrap {:?} configuration file: {}",
+                    list_type, e
+                ))
+                .into()
+            })
+        })
+}
+
 fn write_to_jsonfile(
     bootstrap_list_file: PathBuf,
     ips: BTreeSet<IpAddr>,
@@ -400,32 +437,5 @@ fn write_to_jsonfile(
                 ))
                 .into()
             })
-        })
-}
-
-fn get_file_with_length(
-    bootstrap_list_file: PathBuf,
-    list_type: &ListType,
-    create: bool,
-) -> RpcResult<(File, u64)> {
-    OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(create)
-        .open(bootstrap_list_file)
-        .map_err(|e| {
-            ApiError::InternalServerError(format!(
-                "failed to read bootsrap {:?} configuration file: {}",
-                list_type, e
-            ))
-            .into()
-        })
-        .and_then(|file| match file.metadata() {
-            Ok(metadata) => Ok((file, metadata.len())),
-            Err(e) => Err(ApiError::InternalServerError(format!(
-                "failed to read bootsrap {:?} configuration file metadata: {}",
-                list_type, e
-            ))
-            .into()),
         })
 }

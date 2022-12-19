@@ -100,7 +100,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "(add or remove) [IpAddr]"),
+        props(args = "(add, remove or allow-all) [IpAddr]"),
         message = "Manage boostrap whitelist IP address(es)"
     )]
     node_bootsrap_whitelist,
@@ -272,21 +272,19 @@ pub enum CLIOperation {
     Add,
     #[strum(
         ascii_case_insensitive,
+        serialize = "allow-all",
+        message = "allow-all",
+        detailed_message = "allow all in the target if exists"
+    )]
+    AllowAll,
+    #[strum(
+        ascii_case_insensitive,
         message = "remove",
         detailed_message = "remove(s) the given value(s) from the target if exists"
     )]
     Remove,
 }
 
-impl Display for CLIOperationIter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let res = CLIOperation::iter()
-            .map(|op| op.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        f.write_str(format!("[{}]", res).as_str())
-    }
-}
 /// Display the help of all commands
 pub(crate) fn help() {
     println!("HELP of Massa client (list of available commands):");
@@ -1034,8 +1032,7 @@ impl Command {
                     let cli_op = match parameters[0].parse::<CLIOperation>() {
                         Ok(op) => op,
                         Err(_) => bail!(
-                            "failed to parse operation, supported operations are: {:}",
-                            CLIOperation::iter()
+                            "failed to parse operation, supported operations are: [add, remove]"
                         ),
                     };
                     let args = &parameters[1..];
@@ -1072,6 +1069,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
+                        CLIOperation::AllowAll => bail!("Not implemented"),
                     };
                     res
                 }
@@ -1086,18 +1084,20 @@ impl Command {
                     let cli_op = match parameters[0].parse::<CLIOperation>() {
                         Ok(op) => op,
                         Err(_) => bail!(
-                            "failed to parse operation, supported operations are: {:}",
-                            CLIOperation::iter()
+                            "failed to parse operation, supported operations are: [add, remove, allow-all]"
                         ),
                     };
                     let args = &parameters[1..];
-                    if args.is_empty() {
-                        bail!("[IpAddr] parameter shouldn't be empty");
-                    }
-                    let ips = parse_vec::<IpAddr>(args)?;
                     let res: Result<Box<dyn Output>> = match cli_op {
                         CLIOperation::Add => {
-                            match client.private.node_add_to_bootstrap_whitelist(ips).await {
+                            if args.is_empty() {
+                                bail!("[IpAddr] parameter shouldn't be empty");
+                            }
+                            match client
+                                .private
+                                .node_add_to_bootstrap_whitelist(parse_vec::<IpAddr>(args)?)
+                                .await
+                            {
                                 Ok(()) => {
                                     if !json {
                                         println!(
@@ -1110,9 +1110,12 @@ impl Command {
                             }
                         }
                         CLIOperation::Remove => {
+                            if args.is_empty() {
+                                bail!("[IpAddr] parameter shouldn't be empty");
+                            }
                             match client
                                 .private
-                                .node_remove_from_bootstrap_whitelist(ips)
+                                .node_remove_from_bootstrap_whitelist(parse_vec::<IpAddr>(args)?)
                                 .await
                             {
                                 Ok(()) => {
@@ -1121,6 +1124,12 @@ impl Command {
                                     }
                                     Ok(Box::new(()))
                                 }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        CLIOperation::AllowAll => {
+                            match client.private.node_bootstrap_whitelist_allow_all().await {
+                                Ok(peerlist_ips) => Ok(Box::new(peerlist_ips)),
                                 Err(e) => rpc_error!(e),
                             }
                         }
@@ -1138,8 +1147,7 @@ impl Command {
                     let cli_op = match parameters[0].parse::<CLIOperation>() {
                         Ok(op) => op,
                         Err(_) => bail!(
-                            "failed to parse operation, supported operations are: {:}",
-                            CLIOperation::iter()
+                            "failed to parse operation, supported operations are: [add, remove]"
                         ),
                     };
                     let args = &parameters[1..];
@@ -1170,6 +1178,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
+                        CLIOperation::AllowAll => bail!("Not implemented"),
                     };
                     res
                 }
