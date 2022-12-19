@@ -335,10 +335,9 @@ fn send_and_receive_async_message() {
 #[test]
 #[serial]
 fn local_execution() {
-    // setup the period duration and the maximum gas for asynchronous messages execution
+    // setup the period duration and cursor delay
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
-        max_async_gas: 1_000_000,
         cursor_delay: 0.into(),
         ..ExecutionConfig::default()
     };
@@ -419,6 +418,82 @@ fn local_execution() {
         &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
     );
     assert_eq!(events[6].data, "one local call completed");
+
+    // stop the execution controller
+    manager.stop();
+}
+
+/// Context
+///
+/// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
+///
+/// 1. a block is created with one ExecuteSC operation containing
+///    a deployment sc as bytecode to execute and a deplyed sc as an op datatsore entry
+/// 2. store and set the block as final
+/// 3. wait for execution
+/// 4. retrieve events emitted by the initial an sub functions
+/// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
+#[test]
+#[serial]
+fn sc_deployment() {
+    // setup the period duration and cursor delay
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        cursor_delay: 0.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+    // init the storage
+    let mut storage = Storage::create_root();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(
+        exec_cfg.clone(),
+        sample_state.clone(),
+        sample_state.read().pos_state.selector.clone(),
+    );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
+    // keypair associated to thread 0
+    let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+    // load bytecodes
+    // you can check the source code of the following wasm files in massa-unit-tests-src
+    let op_bytecode = include_bytes!("./wasm/deploy_sc.wasm");
+    let datastore_bytecode = include_bytes!("./wasm/init_sc.wasm").to_vec();
+    let mut datastore = BTreeMap::new();
+    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+    // create the block contaning the operation
+    let op = create_execute_sc_operation(&keypair, op_bytecode, datastore.clone()).unwrap();
+    storage.store_operations(vec![op.clone()]);
+    let block = create_block(KeyPair::generate(), vec![op], Slot::new(1, 0)).unwrap();
+    // store the block in storage
+    storage.store_block(block.clone());
+
+    // set our block as a final block so the message is sent
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+    block_storage.insert(block.id, storage.clone());
+    controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_storage.clone(),
+    );
+    // sleep for 100ms to wait for execution
+    std::thread::sleep(Duration::from_millis(100));
+
+    // retrieve events emitted by smart contracts
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        ..Default::default()
+    });
+
+    // match the events
+    assert!(events.len() == 3, "3 events were expected");
+    assert_eq!(events[0].data, "sc created");
+    assert_eq!(events[1].data, "constructor exists and will be called");
+    assert_eq!(events[2].data, "constructor called by deployer");
 
     // stop the execution controller
     manager.stop();
