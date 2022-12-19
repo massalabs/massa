@@ -180,7 +180,7 @@ async fn launch(
         write_error_timeout: SETTINGS.bootstrap.write_error_timeout,
         retry_delay: SETTINGS.bootstrap.retry_delay,
         max_ping: SETTINGS.bootstrap.max_ping,
-        enable_clock_synchronization: SETTINGS.bootstrap.enable_clock_synchronization,
+        allowed_clock_diff: SETTINGS.bootstrap.allowed_clock_diff,
         cache_duration: SETTINGS.bootstrap.cache_duration,
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,

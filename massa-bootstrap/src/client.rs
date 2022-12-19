@@ -267,38 +267,19 @@ async fn bootstrap_from_server(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    let recv_time_uncompensated = MassaTime::now()?;
+    let recv_time = MassaTime::now()?;
 
     // compute ping
-    let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
+    let ping = recv_time.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
         ));
     }
 
-    // TODO HERE
-    // compute compensation
-    let compensation_millis = if cfg.enable_clock_synchronization {
-        let local_time_uncompensated =
-            recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
-        let compensation_millis = if server_time >= local_time_uncompensated {
-            server_time
-                .saturating_sub(local_time_uncompensated)
-                .to_millis()
-        } else {
-            local_time_uncompensated
-                .saturating_sub(server_time)
-                .to_millis()
-        };
-        let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
-            BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
-        })?;
-        debug!("Server clock compensation set to: {}", compensation_millis);
-        compensation_millis
-    } else {
-        0
-    };
+    let local_time = recv_time.checked_sub(ping.checked_div_u64(2)?)?;
+
+    // IMPORTANT TODO: check here
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
