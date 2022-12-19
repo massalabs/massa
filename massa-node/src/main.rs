@@ -89,7 +89,7 @@ async fn launch(
 ) {
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
-        if MassaTime::now(0).expect("could not get now time") > end {
+        if MassaTime::now().expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
@@ -284,7 +284,6 @@ async fn launch(
         start_network_controller(
             &network_config,
             Establisher::new(),
-            bootstrap_state.compensation_millis,
             bootstrap_state.peers,
             *VERSION,
         )
@@ -312,7 +311,6 @@ async fn launch(
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
-        clock_compensation: bootstrap_state.compensation_millis,
         max_async_gas: MAX_ASYNC_GAS,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         roll_price: ROLL_PRICE,
@@ -376,7 +374,6 @@ async fn launch(
         max_item_return_count: SETTINGS.consensus.max_item_return_count,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
-        clock_compensation_millis: bootstrap_state.compensation_millis,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
     };
 
@@ -446,7 +443,6 @@ async fn launch(
         thread_count: THREAD_COUNT,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
-        clock_compensation_millis: bootstrap_state.compensation_millis,
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
@@ -468,7 +464,6 @@ async fn launch(
         bootstrap_config,
         massa_bootstrap::Establisher::new(),
         private_key,
-        bootstrap_state.compensation_millis,
         *VERSION,
     )
     .await
@@ -524,7 +519,6 @@ async fn launch(
         network_config,
         *VERSION,
         network_command_sender.clone(),
-        bootstrap_state.compensation_millis,
         node_id,
         shared_storage.clone(),
     );

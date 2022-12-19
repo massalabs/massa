@@ -26,8 +26,6 @@ use tracing::debug;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
-    // Execution config
-    config: ExecutionConfig,
     // A copy of the input data allowing access to incoming requests
     input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     // Total continuous slot sequence
@@ -64,7 +62,6 @@ impl ExecutionThread {
             execution_state,
             slot_sequencer: SlotSequencer::new(config.clone(), final_cursor),
             selector,
-            config,
         }
     }
 
@@ -141,8 +138,7 @@ impl ExecutionThread {
             // Compute when the next slot will be
             // This is useful to wait for the next speculative miss to append to active slots.
             let wakeup_deadline = self.slot_sequencer.get_next_slot_deadline();
-            let now =
-                MassaTime::now(self.config.clock_compensation).expect("could not get current time");
+            let now = MassaTime::now().expect("could not get current time");
             if wakeup_deadline <= now {
                 // next slot is right now: the loop needs to iterate
                 return (input_data, false);
@@ -153,7 +149,7 @@ impl ExecutionThread {
             let _ = self.input_data.0.wait_until(
                 &mut input_data_lock,
                 wakeup_deadline
-                    .estimate_instant(self.config.clock_compensation)
+                    .estimate_instant()
                     .expect("could not estimate instant"),
             );
         }

@@ -938,7 +938,7 @@ impl ProtocolWorker {
             // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
             let mut ops_to_propagate = ops.clone();
             let operations_to_not_propagate = {
-                let now = MassaTime::now(0)?;
+                let now = MassaTime::now()?;
                 let read_operations = ops_to_propagate.read_operations();
                 ops_to_propagate
                     .get_op_refs()
@@ -1039,7 +1039,7 @@ impl ProtocolWorker {
                 // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
                 let mut endorsements_to_propagate = endorsements.clone();
                 let endorsements_to_not_propagate = {
-                    let now = MassaTime::now(0)?;
+                    let now = MassaTime::now()?;
                     let read_endorsements = endorsements_to_propagate.read_endorsements();
                     endorsements_to_propagate
                         .get_endorsement_refs()

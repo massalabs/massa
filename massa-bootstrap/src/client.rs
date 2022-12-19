@@ -216,7 +216,7 @@ async fn bootstrap_from_server(
     };
 
     // handshake
-    let send_time_uncompensated = MassaTime::now(0)?;
+    let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
         Err(_) => {
@@ -231,7 +231,7 @@ async fn bootstrap_from_server(
     }
 
     // compute ping
-    let ping = MassaTime::now(0)?.saturating_sub(send_time_uncompensated);
+    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
@@ -267,7 +267,7 @@ async fn bootstrap_from_server(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    let recv_time_uncompensated = MassaTime::now(0)?;
+    let recv_time_uncompensated = MassaTime::now()?;
 
     // compute ping
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
@@ -277,6 +277,7 @@ async fn bootstrap_from_server(
         ));
     }
 
+    // TODO HERE
     // compute compensation
     let compensation_millis = if cfg.enable_clock_synchronization {
         let local_time_uncompensated =
@@ -298,8 +299,6 @@ async fn bootstrap_from_server(
     } else {
         0
     };
-
-    global_bootstrap_state.compensation_millis = compensation_millis;
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
@@ -425,7 +424,7 @@ pub async fn get_state(
     end_timestamp: Option<MassaTime>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now(0)?;
+    let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
@@ -467,7 +466,7 @@ pub async fn get_state(
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
-                if MassaTime::now(0).expect("could not get now time") > end {
+                if MassaTime::now().expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
