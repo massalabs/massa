@@ -12,8 +12,7 @@ use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
-    address::Address, amount::Amount, slot::Slot,
-    timeslots::get_block_slot_timestamp,
+    address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;

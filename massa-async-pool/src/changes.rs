@@ -118,10 +118,6 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
                     buffer.push(ChangeId::Delete as u8);
                     self.id_serializer.serialize(id, buffer)?;
                 }
-                Change::Delete(id) => {
-                    buffer.push(2);
-                    self.id_serializer.serialize(id, buffer)?;
-                }
             }
         }
         Ok(())
