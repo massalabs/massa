@@ -320,7 +320,7 @@ impl ExecutionState {
                         operation_id, &err
                     ));
                     debug!("{}", &err);
-                    context.reset_to_snapshot(context_snapshot, Some(err));
+                    context.reset_to_snapshot(context_snapshot, err);
                 }
             }
         }
@@ -660,7 +660,7 @@ impl ExecutionState {
                             "message data does not convert to utf-8".into(),
                         )
                     };
-                    context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                    context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(&message);
                     return Err(err);
                 }
@@ -675,7 +675,7 @@ impl ExecutionState {
                     "could not credit coins to target of async execution: {}",
                     err
                 ));
-                context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
             }
@@ -697,7 +697,7 @@ impl ExecutionState {
                 err
             ));
             let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            context.reset_to_snapshot(context_snapshot, err.clone());
             context.cancel_async_message(&message);
             Err(err)
         } else {
@@ -1010,6 +1010,14 @@ impl ExecutionState {
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
         // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
+
+        // check if read only request max gas is above the threshold
+        if req.max_gas > self.config.max_read_only_gas {
+            return Err(ExecutionError::TooMuchGas(format!(
+                "execution gas for read-only call is {} which is above the maximum allowed {}",
+                req.max_gas, self.config.max_read_only_gas
+            )));
+        }
 
         // set the execution slot to be the one after the latest executed active slot
         let slot = self

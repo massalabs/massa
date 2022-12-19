@@ -10,8 +10,9 @@ use anyhow::{anyhow, bail, Result};
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
+use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
-    address::Address, amount::Amount, error::ModelsError, slot::Slot,
+    address::Address, amount::Amount, slot::Slot,
     timeslots::get_block_slot_timestamp,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
@@ -375,6 +376,26 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key))
     }
 
+    /// Returns bytecode of the current address
+    fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let address = context.get_current_address()?;
+        match context.get_bytecode(&address) {
+            Some(bytecode) => Ok(bytecode),
+            _ => bail!("bytecode not found"),
+        }
+    }
+
+    /// Returns bytecode of the target address
+    fn raw_get_bytecode_for(&self, address: &str) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let address = Address::from_str(address)?;
+        match context.get_bytecode(&address) {
+            Some(bytecode) => Ok(bytecode),
+            _ => bail!("bytecode not found"),
+        }
+    }
+
     /// Get the operation datastore keys (aka entries).
     /// Note that the datastore is only accessible to the initial caller level.
     ///
@@ -456,7 +477,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the resulting address
     fn address_from_public_key(&self, public_key: &str) -> Result<String> {
-        let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
+        let public_key = massa_signature::PublicKey::from_str(public_key)?;
         let addr = massa_models::address::Address::from_public_key(&public_key);
         Ok(addr.to_string())
     }
@@ -475,7 +496,7 @@ impl Interface for InterfaceImpl {
             Ok(sig) => sig,
             Err(_) => return Ok(false),
         };
-        let public_key = match massa_signature::PublicKey::from_bs58_check(public_key) {
+        let public_key = match massa_signature::PublicKey::from_str(public_key) {
             Ok(pubk) => pubk,
             Err(_) => return Ok(false),
         };
@@ -560,7 +581,7 @@ impl Interface for InterfaceImpl {
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
         let mut context = context_guard!(self);
-        let event = context.event_create(data);
+        let event = context.event_create(data, false);
         context.event_emit(event);
         Ok(())
     }
@@ -649,9 +670,15 @@ impl Interface for InterfaceImpl {
             data.to_vec(),
             filter
                 .map(|(addr, key)| {
-                    Ok::<AsyncMessageTrigger, ModelsError>(AsyncMessageTrigger {
+                    let datastore_key = key.map(|k| k.to_vec());
+                    if let Some(ref k) = datastore_key {
+                        if k.len() > MAX_DATASTORE_KEY_LENGTH as usize {
+                            bail!("datastore key is too long")
+                        }
+                    }
+                    Ok::<AsyncMessageTrigger, _>(AsyncMessageTrigger {
                         address: Address::from_str(addr)?,
-                        datastore_key: key.map(|k| k.to_vec()),
+                        datastore_key,
                     })
                 })
                 .transpose()?,

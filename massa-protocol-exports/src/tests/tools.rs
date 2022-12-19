@@ -33,7 +33,7 @@ pub struct NodeInfo {
 /// create node info
 pub fn create_node() -> NodeInfo {
     let keypair = KeyPair::generate();
-    let id = NodeId(keypair.get_public_key());
+    let id = NodeId::new(keypair.get_public_key());
     NodeInfo { keypair, id }
 }
 

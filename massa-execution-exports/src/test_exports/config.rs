@@ -42,6 +42,7 @@ impl Default for ExecutionConfig {
             max_bytecode_size: MAX_BYTECODE_LENGTH,
             max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
             storage_costs_constants,
+            max_read_only_gas: 100_000_000,
         }
     }
 }

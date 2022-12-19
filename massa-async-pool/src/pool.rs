@@ -98,7 +98,7 @@ impl AsyncPool {
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from `new_messages` (in the order they appear in `new_messages`)
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
-    /// The list of message that their filter has been trigger.
+    /// The list of message that their trigger has been triggered.
     pub fn settle_slot(
         &mut self,
         slot: &Slot,
