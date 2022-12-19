@@ -267,6 +267,7 @@ async fn bootstrap_from_server(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
+    // get the time of reception
     let recv_time = MassaTime::now()?;
 
     // compute ping
@@ -277,9 +278,19 @@ async fn bootstrap_from_server(
         ));
     }
 
-    let local_time = recv_time.checked_sub(ping.checked_div_u64(2)?)?;
+    // compute client / server clock delta
+    let adjusted_server_time = server_time.checked_add(ping.checked_div_u64(2)?)?;
+    let clock_delta = adjusted_server_time.abs_diff(recv_time);
 
-    // IMPORTANT TODO: check here
+    // if clock delta is too high warn the user and restart bootstrap
+    if clock_delta > cfg.max_clock_delta {
+        warn!("client and server clocks differ too much, please check your clock");
+        let message = format!(
+            "client = {}, server = {}, ping = {}, max_delta = {}",
+            recv_time, server_time, ping, cfg.max_clock_delta
+        );
+        return Err(BootstrapError::ClockError(message));
+    }
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent

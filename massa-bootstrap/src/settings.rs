@@ -31,7 +31,7 @@ pub struct BootstrapConfig {
     /// Max ping delay.
     pub max_ping: MassaTime,
     /// Maximum allowed time between server and client clocks
-    pub allowed_clock_diff: MassaTime,
+    pub max_clock_delta: MassaTime,
     /// Cache duration
     pub cache_duration: MassaTime,
     /// Max simultaneous bootstraps

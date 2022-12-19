@@ -211,8 +211,8 @@
     read_error_timeout = 200
     # timeout for message error sending
     write_error_timeout = 200
-    # allowed difference between client and servers clocks
-    allowed_clock_diff= 5000
+    # max allowed difference between client and servers clocks
+    max_clock_delta = 5000
     # [server] data is cached for cache duration milliseconds
     cache_duration = 15000
     # max number of simulataneous bootstraps for server

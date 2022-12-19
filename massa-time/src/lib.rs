@@ -400,6 +400,19 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
+    ///
+    /// let time1 = MassaTime::from(42);
+    /// let time2 = MassaTime::from(84);
+    ///
+    /// assert_eq!(time1.abs_diff(time2), MassaTime::from(42));
+    /// assert_eq!(time2.abs_diff(time1), MassaTime::from(42));
+    /// ```
+    pub fn abs_diff(&self, t: MassaTime) -> MassaTime {
+        MassaTime(self.0.abs_diff(t.0))
+    }
+
+    /// ```
+    /// # use massa_time::*;
     /// let massa_time : MassaTime = MassaTime::from(1_640_995_200_000);
     /// assert_eq!(massa_time.to_utc_string(), "2022-01-01T00:00:00Z")
     /// ```
