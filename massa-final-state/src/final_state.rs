@@ -76,7 +76,7 @@ impl FinalState {
             config,
             executed_ops,
             changes_history: Default::default(), // no changes in history
-            final_state_hash: Hash::compute_from(FINAL_STATE_HASH_INITIAL_BYTES),
+            final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
         })
     }
 
