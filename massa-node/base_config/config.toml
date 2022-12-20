@@ -211,7 +211,7 @@
     read_error_timeout = 200
     # timeout for message error sending
     write_error_timeout = 200
-    # max allowed difference between client and servers clocks
+    # max allowed difference between client and servers clocks in ms
     max_clock_delta = 5000
     # [server] data is cached for cache duration milliseconds
     cache_duration = 15000
