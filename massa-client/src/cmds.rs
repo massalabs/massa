@@ -101,21 +101,21 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "(add, remove or allow-all) [IpAddr]"),
-        message = "Manage boostrap whitelist IP address(es)"
+        message = "Manage boostrap whitelist IP address(es).No args returns the whitelist blacklist"
     )]
     node_bootsrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "(add or remove) [IpAddr]"),
-        message = "Manage boostrap blacklist IP address(es)"
+        message = "Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist"
     )]
     node_bootsrap_blacklist,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "(add or remove) [IpAddr]"),
-        message = "Manage whitelist IP address(es)"
+        message = "Manage peers whitelist IP address(es). No args returns the peers whitelist"
     )]
     node_peers_whitelist,
 
@@ -1069,7 +1069,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        CLIOperation::AllowAll => bail!("Not implemented"),
+                        _ => bail!("Not implemented"),
                     };
                     res
                 }
@@ -1078,7 +1078,10 @@ impl Command {
                 if parameters.is_empty() {
                     match client.private.node_bootstrap_whitelist().await {
                         Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
-                        Err(e) => rpc_error!(e),
+                        Err(e) => {
+                            client_warning!("if bootsrap whitelist configuration file does't exists, bootsrap is allowed for everyone !!!");
+                            rpc_error!(e)
+                        },
                     }
                 } else {
                     let cli_op = match parameters[0].parse::<CLIOperation>() {
@@ -1185,7 +1188,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        CLIOperation::AllowAll => bail!("Not implemented"),
+                        _ => bail!("Not implemented"),
                     };
                     res
                 }
