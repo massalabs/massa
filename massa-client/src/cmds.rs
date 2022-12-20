@@ -1081,7 +1081,7 @@ impl Command {
                         Err(e) => {
                             client_warning!("if bootsrap whitelist configuration file does't exists, bootsrap is allowed for everyone !!!");
                             rpc_error!(e)
-                        },
+                        }
                     }
                 } else {
                     let cli_op = match parameters[0].parse::<CLIOperation>() {

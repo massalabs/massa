@@ -86,9 +86,9 @@ impl MassaRpcServer for API<Private> {
     async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.node_sign_message(message).await {
-            Ok(public_key_signature) => return Ok(public_key_signature),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(public_key_signature) => Ok(public_key_signature),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> RpcResult<()> {
@@ -100,9 +100,9 @@ impl MassaRpcServer for API<Private> {
         let node_wallet = self.0.node_wallet.clone();
         let mut w_wallet = node_wallet.write();
         match w_wallet.add_keypairs(keypairs) {
-            Ok(_) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(_) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn execute_read_only_bytecode(
@@ -123,9 +123,9 @@ impl MassaRpcServer for API<Private> {
         let node_wallet = self.0.node_wallet.clone();
         let mut w_wallet = node_wallet.write();
         match w_wallet.remove_addresses(&addresses) {
-            Ok(()) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(()) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
@@ -137,33 +137,33 @@ impl MassaRpcServer for API<Private> {
     async fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.node_ban_by_ips(ips).await {
-            Ok(()) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(()) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn node_ban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.node_ban_by_ids(ids).await {
-            Ok(()) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(()) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.node_unban_by_ids(ids).await {
-            Ok(()) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(()) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.node_unban_ips(ips).await {
-            Ok(()) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(()) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn get_status(&self) -> RpcResult<NodeStatus> {
@@ -220,25 +220,25 @@ impl MassaRpcServer for API<Private> {
     async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.get_peers().await {
-            Ok(peers) => return Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(peers) => Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.add_to_whitelist(ips).await {
-            Ok(()) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(()) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.remove_from_whitelist(ips).await {
-            Ok(()) => return Ok(()),
-            Err(e) => return Err(ApiError::from(e).into()),
-        };
+            Ok(()) => Ok(()),
+            Err(e) => Err(ApiError::from(e).into()),
+        }
     }
 
     async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
