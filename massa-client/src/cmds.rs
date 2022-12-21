@@ -263,7 +263,7 @@ pub enum Command {
 
 #[derive(Debug, Display, EnumString, EnumIter)]
 #[strum(serialize_all = "snake_case")]
-pub enum CLIOperation {
+pub enum ListOperation {
     #[strum(
         ascii_case_insensitive,
         message = "add",
@@ -1029,7 +1029,7 @@ impl Command {
                         Err(e) => rpc_error!(e),
                     }
                 } else {
-                    let cli_op = match parameters[0].parse::<CLIOperation>() {
+                    let cli_op = match parameters[0].parse::<ListOperation>() {
                         Ok(op) => op,
                         Err(_) => bail!(
                             "failed to parse operation, supported operations are: [add, remove]"
@@ -1041,7 +1041,7 @@ impl Command {
                     }
                     let ips = parse_vec::<IpAddr>(args)?;
                     let res: Result<Box<dyn Output>> = match cli_op {
-                        CLIOperation::Add => {
+                        ListOperation::Add => {
                             match client.private.node_add_to_bootstrap_blacklist(ips).await {
                                 Ok(()) => {
                                     if !json {
@@ -1054,7 +1054,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        CLIOperation::Remove => {
+                        ListOperation::Remove => {
                             match client
                                 .private
                                 .node_remove_from_bootstrap_blacklist(ips)
@@ -1069,7 +1069,9 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        _ => bail!("Not implemented"),
+                        ListOperation::AllowAll => {
+                            bail!("\"allow-all\" command is not implemented")
+                        }
                     };
                     res
                 }
@@ -1084,7 +1086,7 @@ impl Command {
                         }
                     }
                 } else {
-                    let cli_op = match parameters[0].parse::<CLIOperation>() {
+                    let cli_op = match parameters[0].parse::<ListOperation>() {
                         Ok(op) => op,
                         Err(_) => bail!(
                             "failed to parse operation, supported operations are: [add, remove, allow-all]"
@@ -1092,7 +1094,7 @@ impl Command {
                     };
                     let args = &parameters[1..];
                     let res: Result<Box<dyn Output>> = match cli_op {
-                        CLIOperation::Add => {
+                        ListOperation::Add => {
                             if args.is_empty() {
                                 bail!("[IpAddr] parameter shouldn't be empty");
                             }
@@ -1112,7 +1114,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        CLIOperation::Remove => {
+                        ListOperation::Remove => {
                             if args.is_empty() {
                                 bail!("[IpAddr] parameter shouldn't be empty");
                             }
@@ -1130,7 +1132,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        CLIOperation::AllowAll => {
+                        ListOperation::AllowAll => {
                             match client.private.node_bootstrap_whitelist_allow_all().await {
                                 Ok(()) => {
                                     if !json {
@@ -1154,7 +1156,7 @@ impl Command {
                         Err(e) => rpc_error!(e),
                     }
                 } else {
-                    let cli_op = match parameters[0].parse::<CLIOperation>() {
+                    let cli_op = match parameters[0].parse::<ListOperation>() {
                         Ok(op) => op,
                         Err(_) => bail!(
                             "failed to parse operation, supported operations are: [add, remove]"
@@ -1166,7 +1168,7 @@ impl Command {
                     }
                     let ips = parse_vec::<IpAddr>(args)?;
                     let res: Result<Box<dyn Output>> = match cli_op {
-                        CLIOperation::Add => {
+                        ListOperation::Add => {
                             match client.private.node_add_to_peers_whitelist(ips).await {
                                 Ok(()) => {
                                     if !json {
@@ -1177,7 +1179,7 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        CLIOperation::Remove => {
+                        ListOperation::Remove => {
                             match client.private.node_remove_from_peers_whitelist(ips).await {
                                 Ok(()) => {
                                     if !json {
@@ -1188,7 +1190,9 @@ impl Command {
                                 Err(e) => rpc_error!(e),
                             }
                         }
-                        _ => bail!("Not implemented"),
+                        ListOperation::AllowAll => {
+                            bail!("\"allow-all\" command is not implemented")
+                        }
                     };
                     res
                 }

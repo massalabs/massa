@@ -32,7 +32,7 @@ use massa_wallet::Wallet;
 
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
-use std::fs::{remove_file, File, OpenOptions};
+use std::fs::{remove_file, OpenOptions};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -85,10 +85,10 @@ impl MassaRpcServer for API<Private> {
 
     async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.node_sign_message(message).await {
-            Ok(public_key_signature) => Ok(public_key_signature),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        network_command_sender
+            .node_sign_message(message)
+            .await
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     async fn add_staking_secret_keys(&self, secret_keys: Vec<String>) -> RpcResult<()> {
@@ -99,10 +99,10 @@ impl MassaRpcServer for API<Private> {
 
         let node_wallet = self.0.node_wallet.clone();
         let mut w_wallet = node_wallet.write();
-        match w_wallet.add_keypairs(keypairs) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        w_wallet
+            .add_keypairs(keypairs)
+            .map(|_| ())
+            .map_err(|e| ApiError::WalletError(e).into())
     }
 
     async fn execute_read_only_bytecode(
@@ -122,48 +122,47 @@ impl MassaRpcServer for API<Private> {
     async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
         let node_wallet = self.0.node_wallet.clone();
         let mut w_wallet = node_wallet.write();
-        match w_wallet.remove_addresses(&addresses) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        w_wallet
+            .remove_addresses(&addresses)
+            .map_err(|e| ApiError::WalletError(e).into())
     }
 
     async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
         let node_wallet = self.0.node_wallet.clone();
-        let addresses_set = node_wallet.write().get_wallet_address_list();
-        Ok(addresses_set)
+        let w_wallet = node_wallet.read();
+        Ok(w_wallet.get_wallet_address_list())
     }
 
     async fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.node_ban_by_ips(ips).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        network_command_sender
+            .node_ban_by_ips(ips)
+            .await
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     async fn node_ban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.node_ban_by_ids(ids).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        network_command_sender
+            .node_ban_by_ids(ids)
+            .await
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.node_unban_by_ids(ids).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        network_command_sender
+            .node_unban_by_ids(ids)
+            .await
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.node_unban_ips(ips).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        network_command_sender
+            .node_unban_ips(ips)
+            .await
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     async fn get_status(&self) -> RpcResult<NodeStatus> {
@@ -221,28 +220,28 @@ impl MassaRpcServer for API<Private> {
         let network_command_sender = self.0.network_command_sender.clone();
         match network_command_sender.get_peers().await {
             Ok(peers) => Ok(peers.peers.into_keys().sorted().collect::<Vec<IpAddr>>()),
-            Err(e) => Err(ApiError::from(e).into()),
+            Err(e) => Err(ApiError::NetworkError(e).into()),
         }
     }
 
     async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.add_to_whitelist(ips).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        network_command_sender
+            .add_to_whitelist(ips)
+            .await
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         let network_command_sender = self.0.network_command_sender.clone();
-        match network_command_sender.remove_from_whitelist(ips).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(ApiError::from(e).into()),
-        }
+        network_command_sender
+            .remove_from_whitelist(ips)
+            .await
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
-        read_bootsrap_list(
+        read_ips_from_jsonfile(
             self.0.api_settings.bootstrap_whitelist_file.clone(),
             &ListType::Whitelist,
         )
@@ -251,7 +250,7 @@ impl MassaRpcServer for API<Private> {
     async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
         remove_file(self.0.api_settings.bootstrap_whitelist_file.clone()).map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to delete bootsrap whitelist configuration file due to: {}",
+                "failed to delete bootsrap whitelist configuration file: {}",
                 e
             ))
             .into()
@@ -259,7 +258,7 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        bootsrap_list_call(
+        run_scrud_operation(
             self.0.api_settings.bootstrap_whitelist_file.clone(),
             ips,
             ListType::Whitelist,
@@ -268,7 +267,7 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        bootsrap_list_call(
+        run_scrud_operation(
             self.0.api_settings.bootstrap_whitelist_file.clone(),
             ips,
             ListType::Whitelist,
@@ -277,14 +276,14 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
-        read_bootsrap_list(
+        read_ips_from_jsonfile(
             self.0.api_settings.bootstrap_blacklist_file.clone(),
             &ListType::Blacklist,
         )
     }
 
     async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        bootsrap_list_call(
+        run_scrud_operation(
             self.0.api_settings.bootstrap_blacklist_file.clone(),
             ips,
             ListType::Blacklist,
@@ -293,7 +292,7 @@ impl MassaRpcServer for API<Private> {
     }
 
     async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        bootsrap_list_call(
+        run_scrud_operation(
             self.0.api_settings.bootstrap_blacklist_file.clone(),
             ips,
             ListType::Blacklist,
@@ -306,37 +305,37 @@ impl MassaRpcServer for API<Private> {
     }
 }
 
-fn bootsrap_list_call(
+/// Run Search, Create, Read, Update, Delete operation on bootsrap list of IP(s)
+fn run_scrud_operation(
     bootstrap_list_file: PathBuf,
     ips: Vec<IpAddr>,
     list_type: ListType,
     scrud_operation: ScrudOperation,
 ) -> RpcResult<()> {
     match scrud_operation {
-        ScrudOperation::Create => {
-            get_file_with_length(bootstrap_list_file.clone(), &list_type, true).and_then(|tuple| {
-                if tuple.1 == 0 {
-                    write_to_jsonfile(bootstrap_list_file, BTreeSet::from_iter(ips), &list_type)
+        ScrudOperation::Create => get_file_len(bootstrap_list_file.clone(), &list_type, true)
+            .and_then(|length| {
+                if length == 0 {
+                    write_ips_to_jsonfile(bootstrap_list_file, BTreeSet::from_iter(ips), &list_type)
                 } else {
-                    read_bootsrap_list(bootstrap_list_file.clone(), &list_type)
+                    read_ips_from_jsonfile(bootstrap_list_file.clone(), &list_type)
                         .map(BTreeSet::from_iter)
                         .and_then(|mut list_ips: BTreeSet<IpAddr>| {
                             list_ips.extend(ips);
-                            write_to_jsonfile(bootstrap_list_file, list_ips, &list_type)
+                            write_ips_to_jsonfile(bootstrap_list_file, list_ips, &list_type)
                         })
                 }
-            })
-        }
-        ScrudOperation::Delete => {
-            get_file_with_length(bootstrap_list_file.clone(), &list_type, false).and_then(|tuple| {
-                if tuple.1 == 0 {
+            }),
+        ScrudOperation::Delete => get_file_len(bootstrap_list_file.clone(), &list_type, false)
+            .and_then(|length| {
+                if length == 0 {
                     Err(ApiError::InternalServerError(format!(
                         "failed, bootsrap {} configuration file is empty",
                         list_type
                     ))
                     .into())
                 } else {
-                    read_bootsrap_list(bootstrap_list_file.clone(), &list_type)
+                    read_ips_from_jsonfile(bootstrap_list_file.clone(), &list_type)
                         .map(BTreeSet::from_iter)
                         .and_then(|mut list_ips: BTreeSet<IpAddr>| {
                             if list_ips.is_empty() {
@@ -349,11 +348,10 @@ fn bootsrap_list_call(
                             ips.into_iter().for_each(|ip| {
                                 list_ips.remove(&ip);
                             });
-                            write_to_jsonfile(bootstrap_list_file, list_ips, &list_type)
+                            write_ips_to_jsonfile(bootstrap_list_file, list_ips, &list_type)
                         })
                 }
-            })
-        }
+            }),
         _ => Err(ApiError::BadRequest(format!(
             "failed operation {} is not supported on {}",
             list_type, scrud_operation
@@ -362,11 +360,12 @@ fn bootsrap_list_call(
     }
 }
 
-fn get_file_with_length(
+/// Get length of the given file if it exists(or create it if requested)
+fn get_file_len(
     bootstrap_list_file: PathBuf,
     list_type: &ListType,
     create: bool,
-) -> RpcResult<(File, u64)> {
+) -> RpcResult<u64> {
     OpenOptions::new()
         .read(true)
         .write(true)
@@ -380,7 +379,7 @@ fn get_file_with_length(
             .into()
         })
         .and_then(|file| match file.metadata() {
-            Ok(metadata) => Ok((file, metadata.len())),
+            Ok(metadata) => Ok(metadata.len()),
             Err(e) => Err(ApiError::InternalServerError(format!(
                 "failed to read bootsrap {} configuration file metadata: {}",
                 list_type, e
@@ -389,7 +388,8 @@ fn get_file_with_length(
         })
 }
 
-fn read_bootsrap_list(
+/// Read bootsrap list IP(s) from json file
+fn read_ips_from_jsonfile(
     bootstrap_list_file: PathBuf,
     list_type: &ListType,
 ) -> RpcResult<Vec<IpAddr>> {
@@ -412,7 +412,8 @@ fn read_bootsrap_list(
         })
 }
 
-fn write_to_jsonfile(
+/// Write bootsrap list IP(s) from json file
+fn write_ips_to_jsonfile(
     bootstrap_list_file: PathBuf,
     ips: BTreeSet<IpAddr>,
     list_type: &ListType,

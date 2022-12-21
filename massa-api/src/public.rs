@@ -307,7 +307,7 @@ impl MassaRpcServer for API<Public> {
         let config = CompactConfig::default();
         let now = match MassaTime::now() {
             Ok(now) => now,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::TimeError(e).into()),
         };
 
         let last_slot_result = get_latest_block_slot_at_timestamp(
@@ -318,14 +318,14 @@ impl MassaRpcServer for API<Public> {
         );
         let last_slot = match last_slot_result {
             Ok(last_slot) => last_slot,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
         let execution_stats = execution_controller.get_stats();
         let consensus_stats_result = consensus_controller.get_stats();
         let consensus_stats = match consensus_stats_result {
             Ok(consensus_stats) => consensus_stats,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };
 
         let (network_stats_result, peers_result) = tokio::join!(
@@ -335,12 +335,12 @@ impl MassaRpcServer for API<Public> {
 
         let network_stats = match network_stats_result {
             Ok(network_stats) => network_stats,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::NetworkError(e).into()),
         };
 
         let peers = match peers_result {
             Ok(peers) => peers,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::NetworkError(e).into()),
         };
 
         let pool_stats = (
@@ -354,7 +354,7 @@ impl MassaRpcServer for API<Public> {
 
         let next_slot = match next_slot_result {
             Ok(next_slot) => next_slot,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
         let connected_nodes = peers
@@ -397,7 +397,7 @@ impl MassaRpcServer for API<Public> {
 
         let now = match MassaTime::now() {
             Ok(now) => now,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::TimeError(e).into()),
         };
 
         let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
@@ -411,7 +411,7 @@ impl MassaRpcServer for API<Public> {
             Ok(curr_cycle) => curr_cycle
                 .unwrap_or_else(|| Slot::new(0, 0))
                 .get_cycle(cfg.periods_per_cycle),
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
         let mut staker_vec = execution_controller
@@ -651,12 +651,12 @@ impl MassaRpcServer for API<Public> {
 
         let (start_slot, end_slot) = match time_range_to_slot_range_result {
             Ok(time_range_to_slot_range) => time_range_to_slot_range,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
         let graph = match consensus_controller.get_block_graph_status(start_slot, end_slot) {
             Ok(graph) => graph,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };
 
         let mut res = Vec::with_capacity(graph.active_blocks.len());
@@ -887,7 +887,7 @@ impl MassaRpcServer for API<Public> {
                 Ok(operation) => {
                     let _verify_signature = match operation.verify_signature() {
                         Ok(()) => (),
-                        Err(e) => return Err(ApiError::from(e).into()),
+                        Err(e) => return Err(ApiError::ModelsError(e).into()),
                     };
                     Ok(operation)
                 }
