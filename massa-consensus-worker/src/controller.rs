@@ -228,25 +228,35 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
         if self.ws_config.enabled {
-            block_storage.read_blocks().get(&block_id).map(|value| {
-                let operations: Vec<(OperationId, Option<Wrapped<Operation, OperationId>>)> = value
-                    .content
-                    .operations
-                    .iter()
-                    .map(|operation_id| {
-                        match block_storage.read_operations().get(operation_id).cloned() {
-                            Some(wrapped_operation) => (*operation_id, Some(wrapped_operation)),
-                            None => (*operation_id, None),
-                        }
-                    })
-                    .collect();
+            if let Some(wrapped_block) = block_storage.read_blocks().get(&block_id) {
+                let operations: Vec<(OperationId, Option<Wrapped<Operation, OperationId>>)> =
+                    wrapped_block
+                        .content
+                        .operations
+                        .iter()
+                        .map(|operation_id| {
+                            match block_storage.read_operations().get(operation_id).cloned() {
+                                Some(wrapped_operation) => (*operation_id, Some(wrapped_operation)),
+                                None => (*operation_id, None),
+                            }
+                        })
+                        .collect();
 
-                let _ = self.ws_config.block_sender.send(value.content.clone());
-                self.ws_config.filled_block_sender.send(FilledBlock {
-                    header: value.content.header.clone(),
-                    operations,
-                })
-            });
+                let _block_receivers_count = self
+                    .ws_config
+                    .block_sender
+                    .send(wrapped_block.content.clone());
+                let _filled_block_receivers_count =
+                    self.ws_config.filled_block_sender.send(FilledBlock {
+                        header: wrapped_block.content.header.clone(),
+                        operations,
+                    });
+            } else {
+                warn!(
+                    "error no ws event sent, block with id {} not found",
+                    block_id
+                );
+            };
         }
 
         if let Err(err) = self
