@@ -35,8 +35,6 @@ pub struct ExecutionConfig {
     pub roll_price: Amount,
     /// extra lag to add on the execution cursor to improve performance
     pub cursor_delay: MassaTime,
-    /// time compensation in milliseconds
-    pub clock_compensation: i64,
     /// genesis timestamp
     pub genesis_timestamp: MassaTime,
     /// period duration

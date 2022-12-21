@@ -60,7 +60,6 @@ pub async fn start_bootstrap_server(
     bootstrap_config: BootstrapConfig,
     establisher: Establisher,
     keypair: KeyPair,
-    compensation_millis: i64,
     version: Version,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
@@ -112,7 +111,6 @@ pub async fn start_bootstrap_server(
                 manager_rx,
                 bind,
                 keypair,
-                compensation_millis,
                 version,
                 whitelist,
                 blacklist,
@@ -140,7 +138,6 @@ struct BootstrapServer {
     bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
-    compensation_millis: i64,
     version: Version,
     blacklist: Option<HashSet<IpAddr>>,
     whitelist: Option<HashSet<IpAddr>>,
@@ -254,7 +251,6 @@ impl BootstrapServer {
 
                         // launch bootstrap
 
-                        let compensation_millis = self.compensation_millis;
                         let version = self.version;
                         let data_execution = self.final_state.clone();
                         let consensus_command_sender = self.consensus_controller.clone();
@@ -264,7 +260,7 @@ impl BootstrapServer {
 
                         bootstrap_sessions.push(async move {
                             let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
-                            match manage_bootstrap(&config, &mut server, data_execution, compensation_millis, version, consensus_command_sender, network_command_sender).await {
+                            match manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender).await {
                                 Ok(_) => {
                                     info!("bootstrapped peer {}", remote_addr)
                                 },
@@ -486,7 +482,6 @@ async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
-    compensation_millis: i64,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
@@ -523,7 +518,7 @@ async fn manage_bootstrap(
     let write_timeout: std::time::Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
-    let server_time = MassaTime::now(compensation_millis)?;
+    let server_time = MassaTime::now()?;
 
     match tokio::time::timeout(
         write_timeout,

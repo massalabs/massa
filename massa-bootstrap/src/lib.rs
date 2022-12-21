@@ -51,9 +51,6 @@ pub struct GlobalBootstrapState {
 
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
-
-    /// timestamp correction in milliseconds
-    pub compensation_millis: i64,
 }
 
 impl GlobalBootstrapState {
@@ -62,7 +59,6 @@ impl GlobalBootstrapState {
             final_state,
             graph: None,
             peers: None,
-            compensation_millis: Default::default(),
         }
     }
 }

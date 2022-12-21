@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now(0)
+            MassaTime::now()
                 .unwrap()
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )

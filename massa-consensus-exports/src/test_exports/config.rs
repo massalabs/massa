@@ -12,7 +12,6 @@ use crate::ConsensusConfig;
 impl Default for ConsensusConfig {
     fn default() -> Self {
         Self {
-            clock_compensation_millis: 0,
             genesis_timestamp: *GENESIS_TIMESTAMP,
             t0: T0,
             thread_count: THREAD_COUNT,

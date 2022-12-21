@@ -41,7 +41,6 @@ pub mod tests;
 pub async fn start_network_controller(
     network_settings: &NetworkConfig,
     mut establisher: Establisher,
-    clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
     version: Version,
 ) -> Result<
@@ -95,7 +94,7 @@ pub async fn start_network_controller(
 
     debug!("Loading peer database");
     // load peer info database
-    let mut peer_info_db = PeerInfoDatabase::new(network_settings, clock_compensation).await?;
+    let mut peer_info_db = PeerInfoDatabase::new(network_settings).await?;
 
     // add bootstrap peers
     if let Some(peers) = initial_peers {

@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ConsensusConfig {
-    /// Clock compensation
-    pub clock_compensation_millis: i64,
     /// Genesis timestamp
     pub genesis_timestamp: MassaTime,
     /// Delta time between two period

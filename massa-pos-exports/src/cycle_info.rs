@@ -1,5 +1,5 @@
 use bitvec::vec::BitVec;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
@@ -7,7 +7,8 @@ use massa_models::{
     slot::Slot,
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     branch::alt,
@@ -104,7 +105,10 @@ pub struct CycleInfo {
     /// Hash of the production statistics
     pub production_stats_hash: Hash,
     /// Hash of the cycle state
-    pub global_hash: Hash,
+    pub cycle_global_hash: Hash,
+    /// Snapshot of the final state hash
+    /// Used for PoS selections
+    pub final_state_hash_snapshot: Option<Hash>,
 }
 
 impl CycleInfo {
@@ -135,7 +139,7 @@ impl CycleInfo {
         hash_concat.extend(production_stats_hash.to_bytes());
 
         // compute the global hash
-        let global_hash = Hash::compute_from(&hash_concat);
+        let cycle_global_hash = Hash::compute_from(&hash_concat);
 
         // create the new cycle
         CycleInfo {
@@ -146,7 +150,8 @@ impl CycleInfo {
             production_stats,
             roll_counts_hash,
             production_stats_hash,
-            global_hash,
+            cycle_global_hash,
+            final_state_hash_snapshot: None,
         }
     }
 
@@ -216,7 +221,7 @@ impl CycleInfo {
         }
 
         // compute the global hash
-        self.global_hash = Hash::compute_from(&hash_concat);
+        self.cycle_global_hash = Hash::compute_from(&hash_concat);
 
         // return the completion status
         self.complete
@@ -312,7 +317,7 @@ fn test_cycle_info_hash_computation() {
         "production_stats_hash mismatch"
     );
     assert_eq!(
-        cycle_a.global_hash, cycle_b.global_hash,
+        cycle_a.cycle_global_hash, cycle_b.cycle_global_hash,
         "global_hash mismatch"
     );
 }
@@ -322,6 +327,7 @@ pub struct CycleInfoSerializer {
     u64_ser: U64VarIntSerializer,
     bitvec_ser: BitVecSerializer,
     production_stats_ser: ProductionStatsSerializer,
+    opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
 }
 
 impl Default for CycleInfoSerializer {
@@ -337,6 +343,7 @@ impl CycleInfoSerializer {
             u64_ser: U64VarIntSerializer::new(),
             bitvec_ser: BitVecSerializer::new(),
             production_stats_ser: ProductionStatsSerializer::new(),
+            opt_hash_ser: OptionSerializer::new(HashSerializer::new()),
         }
     }
 }
@@ -364,6 +371,10 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.production_stats_ser
             .serialize(&value.production_stats, buffer)?;
 
+        // cycle_info.final_state_hash_snapshot
+        self.opt_hash_ser
+            .serialize(&value.final_state_hash_snapshot, buffer)?;
+
         Ok(())
     }
 }
@@ -374,6 +385,7 @@ pub struct CycleInfoDeserializer {
     rolls_deser: RollsDeserializer,
     bitvec_deser: BitVecDeserializer,
     production_stats_deser: ProductionStatsDeserializer,
+    opt_hash_deser: OptionDeserializer<Hash, HashDeserializer>,
 }
 
 impl CycleInfoDeserializer {
@@ -384,6 +396,7 @@ impl CycleInfoDeserializer {
             rolls_deser: RollsDeserializer::new(max_rolls_length),
             bitvec_deser: BitVecDeserializer::new(),
             production_stats_deser: ProductionStatsDeserializer::new(max_production_stats_length),
+            opt_hash_deser: OptionDeserializer::new(HashDeserializer::new()),
         }
     }
 }
@@ -406,24 +419,30 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
                 context("production_stats", |input| {
                     self.production_stats_deser.deserialize(input)
                 }),
+                context("final_state_hash_snapshot", |input| {
+                    self.opt_hash_deser.deserialize(input)
+                }),
             )),
         )
         .map(
             #[allow(clippy::type_complexity)]
-            |(cycle, complete, roll_counts, rng_seed, production_stats): (
+            |(cycle, complete, roll_counts, rng_seed, production_stats, opt_hash): (
                 u64,                                  // cycle
                 bool,                                 // complete
                 Vec<(Address, u64)>,                  // roll_counts
                 BitVec<u8>,                           // rng_seed
                 PreHashMap<Address, ProductionStats>, // production_stats (address, n_success, n_fail)
+                Option<Hash>,                         // final_state_hash_snapshot
             )| {
-                CycleInfo::new_with_hash(
+                let mut cycle = CycleInfo::new_with_hash(
                     cycle,
                     complete,
                     roll_counts.into_iter().collect(),
                     rng_seed,
                     production_stats,
-                )
+                );
+                cycle.final_state_hash_snapshot = opt_hash;
+                cycle
             },
         )
         .parse(buffer)

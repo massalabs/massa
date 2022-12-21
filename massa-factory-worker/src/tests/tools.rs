@@ -113,7 +113,7 @@ impl TestFactory {
         operations: Option<Vec<WrappedOperation>>,
         endorsements: Option<Vec<WrappedEndorsement>>,
     ) -> (BlockId, Storage) {
-        let now = MassaTime::now(0).expect("could not get current time");
+        let now = MassaTime::now().expect("could not get current time");
         let next_slot_instant = get_next_slot_instant(
             self.factory_config.genesis_timestamp,
             self.factory_config.thread_count,

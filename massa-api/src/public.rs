@@ -68,7 +68,6 @@ impl API<Public> {
         network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
-        compensation_millis: i64,
         node_id: NodeId,
         storage: Storage,
     ) -> Self {
@@ -80,7 +79,6 @@ impl API<Public> {
             version,
             network_command_sender,
             protocol_command_sender,
-            compensation_millis,
             node_id,
             execution_controller,
             selector_controller,
@@ -304,11 +302,10 @@ impl MassaRpcServer for API<Public> {
         let network_config = self.0.network_settings.clone();
         let version = self.0.version;
         let api_settings = self.0.api_settings.clone();
-        let compensation_millis = self.0.compensation_millis;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
-        let now = match MassaTime::now(compensation_millis) {
+        let now = match MassaTime::now() {
             Ok(now) => now,
             Err(e) => return Err(ApiError::from(e).into()),
         };
@@ -397,9 +394,8 @@ impl MassaRpcServer for API<Public> {
     async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
-        let compensation_millis = self.0.compensation_millis;
 
-        let now = match MassaTime::now(compensation_millis) {
+        let now = match MassaTime::now() {
             Ok(now) => now,
             Err(e) => return Err(ApiError::from(e).into()),
         };
@@ -765,7 +761,6 @@ impl MassaRpcServer for API<Public> {
                 self.0.api_settings.thread_count,
                 self.0.api_settings.t0,
                 self.0.api_settings.genesis_timestamp,
-                self.0.compensation_millis,
             )
             .expect("could not get latest current slot")
             .unwrap_or_else(|| Slot::new(0, 0));

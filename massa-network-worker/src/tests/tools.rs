@@ -370,7 +370,6 @@ pub async fn network_test<F, V>(
         start_network_controller(
             &network_settings,
             establisher,
-            0,
             None,
             Version::from_str("TEST.1.10").unwrap(),
         )

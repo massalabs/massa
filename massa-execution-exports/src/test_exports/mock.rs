@@ -116,8 +116,8 @@ impl ExecutionController for MockExecutionController {
     /// Get execution statistics
     fn get_stats(&self) -> ExecutionStats {
         ExecutionStats {
-            time_window_start: MassaTime::now(0).unwrap(),
-            time_window_end: MassaTime::now(0).unwrap(),
+            time_window_start: MassaTime::now().unwrap(),
+            time_window_end: MassaTime::now().unwrap(),
             final_block_count: 0,
             final_executed_operations_count: 0,
             active_cursor: Slot::new(0, 0),

@@ -86,7 +86,7 @@ pub struct BootstrapSettings {
     pub write_error_timeout: MassaTime,
     pub retry_delay: MassaTime,
     pub max_ping: MassaTime,
-    pub enable_clock_synchronization: bool,
+    pub max_clock_delta: MassaTime,
     pub cache_duration: MassaTime,
     pub max_simultaneous_bootstraps: u32,
     pub per_ip_min_interval: MassaTime,

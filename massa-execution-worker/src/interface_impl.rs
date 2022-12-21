@@ -375,6 +375,26 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, key))
     }
 
+    /// Check whether or not the caller has write access in the current context
+    ///
+    /// # Returns
+    /// true if the caller has write access
+    fn caller_has_write_access(&self) -> Result<bool> {
+        let context = context_guard!(self);
+        let mut call_stack_iter = context.stack.iter().rev();
+        let caller_owned_addresses = if let Some(last) = call_stack_iter.next() {
+            if let Some(prev_to_last) = call_stack_iter.next() {
+                prev_to_last.owned_addresses.clone()
+            } else {
+                last.owned_addresses.clone()
+            }
+        } else {
+            return Err(anyhow!("empty stack"));
+        };
+        let current_address = context.get_current_address()?;
+        Ok(caller_owned_addresses.contains(&current_address))
+    }
+
     /// Returns bytecode of the current address
     fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
         let context = context_guard!(self);
