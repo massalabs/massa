@@ -220,7 +220,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_serialized_operations_size_per_block: 1024,
         controller_channel_size: 1024,
         event_channel_size: 1024,
-        genesis_timestamp: MassaTime::now(0).unwrap(),
+        genesis_timestamp: MassaTime::now().unwrap(),
         t0: MassaTime::from_millis(16000),
         max_operations_propagation_time: MassaTime::from_millis(30000),
         max_endorsements_propagation_time: MassaTime::from_millis(60000),

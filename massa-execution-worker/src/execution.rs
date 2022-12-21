@@ -114,10 +114,7 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
-            stats_counter: ExecutionStatsCounter::new(
-                config.stats_time_window_duration,
-                config.clock_compensation,
-            ),
+            stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             config,
         }
     }

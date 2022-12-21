@@ -79,8 +79,7 @@ impl ConsensusWorker {
         init_graph: Option<BootstrapableGraph>,
         storage: Storage,
     ) -> Result<Self, ConsensusError> {
-        let now = MassaTime::now(config.clock_compensation_millis)
-            .expect("Couldn't init timer consensus");
+        let now = MassaTime::now().expect("Couldn't init timer consensus");
         let previous_slot = get_latest_block_slot_at_timestamp(
             config.thread_count,
             config.t0,
@@ -126,7 +125,7 @@ impl ConsensusWorker {
             config.genesis_timestamp,
             next_slot,
         )?
-        .estimate_instant(config.clock_compensation_millis)?;
+        .estimate_instant()?;
 
         info!(
             "Started node at time {}, cycle {}, period {}, thread {}",

@@ -800,9 +800,8 @@ impl Command {
                 };
                 let mut res = "".to_string();
                 if let Some(e) = end {
-                    let (days, hours, mins, secs) = e
-                        .saturating_sub(MassaTime::now(0)?)
-                        .days_hours_mins_secs()?; // compensation milliseconds is zero
+                    let (days, hours, mins, secs) =
+                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
 
                     let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
                 } else {
@@ -1032,7 +1031,7 @@ async fn send_operation(
     }
     .config;
 
-    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)? // clock compensation is zero
+    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)?
         .unwrap_or_else(|| Slot::new(0, 0));
     let mut expire_period = slot.period + cfg.operation_validity_periods;
     if slot.thread >= addr.get_thread(cfg.thread_count) {

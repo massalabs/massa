@@ -50,4 +50,6 @@ pub enum BootstrapError {
     IncompatibleVersionError(String),
     /// Received error: {0}
     ReceivedError(String),
+    /// clock error: {0}
+    ClockError(String),
 }

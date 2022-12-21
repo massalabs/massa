@@ -31,10 +31,8 @@ impl Default for ExecutionConfig {
             max_gas_per_block: MAX_GAS_PER_BLOCK,
             operation_validity_period: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            clock_compensation: Default::default(),
             // reset genesis timestamp because we are in test mode that can take a while to process
-            genesis_timestamp: MassaTime::now(0)
-                .expect("Impossible to reset the timestamp in test"),
+            genesis_timestamp: MassaTime::now().expect("Impossible to reset the timestamp in test"),
             t0: 64.into(),
             stats_time_window_duration: MassaTime::from_millis(30000),
             max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
