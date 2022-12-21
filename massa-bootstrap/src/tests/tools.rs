@@ -292,7 +292,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         bootstrap_blacklist_file: std::path::PathBuf::from(
             "../massa-node/base_config/bootstrap_blacklist.json",
         ),
-        enable_clock_synchronization: true,
+        max_clock_delta: MassaTime::from_millis(1000),
         cache_duration: 10000.into(),
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,
