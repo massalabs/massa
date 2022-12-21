@@ -279,6 +279,8 @@ async fn bootstrap_from_server(
     }
 
     // compute client / server clock delta
+    // div 2 is an approximation of the time it took the message to do server -> client
+    // the complete ping value being client -> server -> client
     let adjusted_server_time = server_time.checked_add(ping.checked_div_u64(2)?)?;
     let clock_delta = adjusted_server_time.abs_diff(recv_time);
 
