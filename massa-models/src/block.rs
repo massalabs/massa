@@ -26,6 +26,7 @@ use nom::{
     IResult,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::ops::Bound::{Excluded, Included};
@@ -35,7 +36,9 @@ use std::str::FromStr;
 const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// block id
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct BlockId(pub Hash);
 
 impl PreHashed for BlockId {}

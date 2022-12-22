@@ -10,6 +10,7 @@ lazy_static = "1.4"
 num_enum = "0.5"
 rust_decimal = "1.26"
 serde = { version = "1.0", features = ["derive"] }
+serde_with = "2.1.0"
 thiserror = "1.0"
 num = { version = "0.4", features = ["serde"] }
 directories = "4.0"

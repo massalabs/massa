@@ -17,6 +17,7 @@ use nom::{
     IResult,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
 
@@ -24,7 +25,9 @@ use std::{fmt::Display, str::FromStr};
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// endorsement id
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct EndorsementId(Hash);
 
 const ENDORSEMENTID_PREFIX: char = 'E';

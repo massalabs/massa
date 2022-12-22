@@ -5,11 +5,13 @@ use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_signature::PublicKey;
-use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::ops::Bound::Included;
 
 /// `NodeId` wraps a public key to uniquely identify a node.
-#[derive(Clone, Copy, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct NodeId(PublicKey);
 
 const NODEID_PREFIX: char = 'N';
