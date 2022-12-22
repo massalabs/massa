@@ -588,11 +588,10 @@ impl MassaRpcServer for API<Public> {
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                let block = match storage.read_blocks().get(&id).cloned() {
-                    Some(b) => b.content,
-                    None => {
-                        return None;
-                    }
+                let block = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
+                    wrapped_block.content.clone()
+                } else {
+                    return None;
                 };
                 if let Some(graph_status) = consensus_controller
                     .get_block_statuses(&[id])
