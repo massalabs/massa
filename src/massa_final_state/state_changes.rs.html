@@ -255,6 +255,7 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -405,6 +406,7 @@
                 thread_count,
                 max_async_pool_changes,
                 max_async_message_data,
+                max_datastore_key_length <span class="kw">as </span>u32,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
                 thread_count,

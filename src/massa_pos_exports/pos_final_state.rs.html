@@ -447,6 +447,34 @@
 <a href="#447" id="447">447</a>
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -454,6 +482,7 @@
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::streaming_step::StreamingStep;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
+<span class="kw">use </span>massa_serialization::{Serializer, U64VarIntSerializer};
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::{
     collections::BTreeMap,
@@ -476,6 +505,8 @@
     </span><span class="kw">pub </span>initial_rolls: BTreeMap&lt;Address, u64&gt;,
     <span class="doccomment">/// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     </span><span class="kw">pub </span>initial_seeds: Vec&lt;Hash&gt;,
+    <span class="doccomment">/// initial state hash
+    </span><span class="kw">pub </span>initial_ledger_hash: Hash,
 }
 
 <span class="kw">impl </span>PoSFinalState {
@@ -485,6 +516,7 @@
         initial_seed_string: <span class="kw-2">&amp;</span>str,
         initial_rolls_path: <span class="kw-2">&amp;</span>PathBuf,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+        initial_ledger_hash: Hash,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, PosError&gt; {
         <span class="comment">// load get initial rolls from file
         </span><span class="kw">let </span>initial_rolls = serde_json::from_str::&lt;BTreeMap&lt;Address, u64&gt;&gt;(
@@ -505,6 +537,7 @@
             selector,
             initial_rolls,
             initial_seeds,
+            initial_ledger_hash,
         })
     }
 
@@ -635,7 +668,9 @@
                 ));
             }
         } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;PoS History shouldn&#39;t be empty here.&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::ContainerInconsistency(
+                <span class="string">&quot;PoS history should never be empty here&quot;</span>.into(),
+            ));
         }
 
         <span class="comment">// get the last history cycle, should always be present because it was filled above
@@ -681,7 +716,7 @@
     <span class="doccomment">/// Feeds the selector targeting a given draw cycle
     </span><span class="kw">fn </span>feed_selector(<span class="kw-2">&amp;</span><span class="self">self</span>, draw_cycle: u64) -&gt; PosResult&lt;()&gt; {
         <span class="comment">// get roll lookback
-        </span><span class="kw">let </span>lookback_rolls = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">3</span>) {
+        </span><span class="kw">let </span>(lookback_rolls, lookback_state_hash) = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">3</span>) {
             <span class="comment">// looking back in history
             </span><span class="prelude-val">Some</span>(c) =&gt; {
                 <span class="kw">let </span>index = <span class="self">self
@@ -691,10 +726,16 @@
                 <span class="kw">if </span>!cycle_info.complete {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::CycleUnfinished(c));
                 }
-                cycle_info.roll_counts.clone()
+                <span class="comment">// take the final_state_hash_snapshot at cycle - 3
+                // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
+                // do this here to avoid a potential attacker manipulating the selections
+                </span><span class="kw">let </span>state_hash = cycle_info
+                    .final_state_hash_snapshot
+                    .expect(<span class="string">&quot;critical: a complete cycle must contain a final state hash snapshot&quot;</span>);
+                (cycle_info.roll_counts.clone(), state_hash)
             }
             <span class="comment">// looking back to negative cycles
-            </span><span class="prelude-val">None </span>=&gt; <span class="self">self</span>.initial_rolls.clone(),
+            </span><span class="prelude-val">None </span>=&gt; (<span class="self">self</span>.initial_rolls.clone(), <span class="self">self</span>.initial_ledger_hash),
         };
 
         <span class="comment">// get seed lookback
@@ -708,7 +749,12 @@
                 <span class="kw">if </span>!cycle_info.complete {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::CycleUnfinished(c));
                 }
-                Hash::compute_from(<span class="kw-2">&amp;</span>cycle_info.rng_seed.clone().into_vec())
+                <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
+                <span class="kw">let </span><span class="kw-2">mut </span>seed = Vec::new();
+                u64_ser.serialize(<span class="kw-2">&amp;</span>c, <span class="kw-2">&amp;mut </span>seed).unwrap();
+                seed.extend(cycle_info.rng_seed.clone().into_vec());
+                seed.extend(lookback_state_hash.to_bytes());
+                Hash::compute_from(<span class="kw-2">&amp;</span>seed)
             }
             <span class="comment">// looking back to negative cycles
             </span><span class="prelude-val">None </span>=&gt; <span class="self">self</span>.initial_seeds[draw_cycle <span class="kw">as </span>usize],
@@ -718,6 +764,16 @@
         </span><span class="self">self</span>.selector
             .as_ref()
             .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
+    }
+
+    <span class="doccomment">/// Feeds the selector targeting a given draw cycle
+    </span><span class="kw">pub fn </span>feed_cycle_state_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64, final_state_hash: Hash) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <span class="self">self</span>.get_cycle_index(cycle) {
+            <span class="kw">let </span>cycle = <span class="self">self</span>.cycle_history.get_mut(index).unwrap();
+            cycle.final_state_hash_snapshot = <span class="prelude-val">Some</span>(final_state_hash);
+        } <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">&quot;cycle {} should be contained here&quot;</span>, cycle);
+        }
     }
 
     <span class="doccomment">/// Retrieves the amount of rolls a given address has at the latest cycle

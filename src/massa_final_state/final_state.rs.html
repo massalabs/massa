@@ -364,6 +364,33 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -374,7 +401,7 @@
 </span><span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
-<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
@@ -398,7 +425,11 @@
     <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     </span><span class="kw">pub </span>changes_history: VecDeque&lt;(Slot, StateChanges)&gt;,
+    <span class="doccomment">/// hash of the final state, it is computed on finality
+    </span><span class="kw">pub </span>final_state_hash: Hash,
 }
+
+<span class="kw">const </span>FINAL_STATE_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="kw">impl </span>FinalState {
     <span class="doccomment">/// Initializes a new `FinalState`
@@ -416,6 +447,7 @@
             <span class="kw-2">&amp;</span>config.initial_seed_string,
             <span class="kw-2">&amp;</span>config.initial_rolls_path,
             selector,
+            ledger.get_ledger_hash(),
         )
         .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;PoS final state init error: {}&quot;</span>, err)))<span class="question-mark">?</span>;
 
@@ -428,7 +460,7 @@
         <span class="comment">// create a default executed ops
         </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
-        <span class="comment">// generate the final state
+        <span class="comment">// create the final state
         </span><span class="prelude-val">Ok</span>(FinalState {
             slot,
             ledger,
@@ -437,7 +469,50 @@
             config,
             executed_ops,
             changes_history: Default::default(), <span class="comment">// no changes in history
-        </span>})
+            </span>final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
+        })
+    }
+
+    <span class="doccomment">/// Compute the current state hash.
+    ///
+    /// Used when finalizing a slot.
+    /// Slot information is only used for logging.
+    </span><span class="kw">pub fn </span>compute_state_hash_at_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+        <span class="comment">// 1. init hash concatenation with the ledger hash
+        </span><span class="kw">let </span>ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = ledger_hash.to_bytes().to_vec();
+        <span class="macro">debug!</span>(<span class="string">&quot;ledger hash at slot {}: {}&quot;</span>, slot, ledger_hash);
+        <span class="comment">// 2. async_pool hash
+        </span>hash_concat.extend(<span class="self">self</span>.async_pool.hash.to_bytes());
+        <span class="macro">debug!</span>(<span class="string">&quot;async_pool hash at slot {}: {}&quot;</span>, slot, <span class="self">self</span>.async_pool.hash);
+        <span class="comment">// 3. pos deferred_credit hash
+        </span>hash_concat.extend(<span class="self">self</span>.pos_state.deferred_credits.hash.to_bytes());
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;deferred_credit hash at slot {}: {}&quot;</span>,
+            slot, <span class="self">self</span>.pos_state.deferred_credits.hash
+        );
+        <span class="comment">// 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
+        </span><span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
+            <span class="kw">as </span>usize;
+        <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
+            hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
+            <span class="macro">debug!</span>(
+                <span class="string">&quot;cycle ({}) hash at slot {}: {}&quot;</span>,
+                cycle_info.cycle, slot, cycle_info.cycle_global_hash
+            );
+        }
+        <span class="comment">// 5. executed operations hash
+        </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;executed_ops hash at slot {}: {}&quot;</span>,
+            slot, <span class="self">self</span>.executed_ops.hash
+        );
+        <span class="comment">// 6. compute and save final state hash
+        </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
+        <span class="macro">info!</span>(
+            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
+            slot, <span class="self">self</span>.final_state_hash
+        );
     }
 
     <span class="doccomment">/// Performs the initial draws.
@@ -464,7 +539,8 @@
         <span class="comment">// update current slot
         </span><span class="self">self</span>.slot = slot;
 
-        <span class="comment">// apply changes
+        <span class="comment">// apply the state changes
+        // unwrap is justified because every error in PoS `apply_changes` is critical
         </span><span class="self">self</span>.ledger
             .apply_changes(changes.ledger_changes.clone(), <span class="self">self</span>.slot);
         <span class="self">self</span>.async_pool
@@ -472,7 +548,9 @@
         <span class="self">self</span>.pos_state
             .apply_changes(changes.pos_changes.clone(), <span class="self">self</span>.slot, <span class="bool-val">true</span>)
             .expect(<span class="string">&quot;could not settle slot in final state proof-of-stake&quot;</span>);
-        <span class="comment">// TODO do not panic above: it might just mean that the lookback cycle is not available
+        <span class="comment">// TODO:
+        // do not panic above, it might just mean that the lookback cycle is not available
+        // bootstrap again instead
         </span><span class="self">self</span>.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), <span class="self">self</span>.slot);
 
@@ -484,39 +562,13 @@
             <span class="self">self</span>.changes_history.push_back((slot, changes));
         }
 
-        <span class="comment">// final hash computing and sub hashes logging
-        // 1. init hash concatenation with the ledger hash
-        </span><span class="kw">let </span>ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
-        <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = ledger_hash.to_bytes().to_vec();
-        <span class="macro">debug!</span>(<span class="string">&quot;ledger hash at slot {}: {}&quot;</span>, slot, ledger_hash);
-        <span class="comment">// 2. async_pool hash
-        </span>hash_concat.extend(<span class="self">self</span>.async_pool.hash.to_bytes());
-        <span class="macro">debug!</span>(<span class="string">&quot;async_pool hash at slot {}: {}&quot;</span>, slot, <span class="self">self</span>.async_pool.hash);
-        <span class="comment">// 3. pos deferred_credit hash
-        </span>hash_concat.extend(<span class="self">self</span>.pos_state.deferred_credits.hash.to_bytes());
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;deferred_credit hash at slot {}: {}&quot;</span>,
-            slot, <span class="self">self</span>.pos_state.deferred_credits.hash
-        );
-        <span class="comment">// 4. pos cycle history hashes
-        </span><span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
-            <span class="kw">as </span>usize;
-        <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
-            hash_concat.extend(cycle_info.global_hash.to_bytes());
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;cycle ({}) hash at slot {}: {}&quot;</span>,
-                cycle_info.cycle, slot, cycle_info.global_hash
-            );
-        }
-        <span class="comment">// 5. executed operations hash
-        </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;executed_ops hash at slot {}: {}&quot;</span>,
-            slot, <span class="self">self</span>.executed_ops.hash
-        );
-        <span class="comment">// 6. final state hash
-        </span><span class="kw">let </span>final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
-        <span class="macro">info!</span>(<span class="string">&quot;final_state hash at slot {}: {}&quot;</span>, slot, final_state_hash);
+        <span class="comment">// compute the final state hash
+        </span><span class="self">self</span>.compute_state_hash_at_slot(slot);
+
+        <span class="comment">// feed final_state_hash to the last cycle
+        </span><span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
+        <span class="self">self</span>.pos_state
+            .feed_cycle_state_hash(cycle, <span class="self">self</span>.final_state_hash);
     }
 
     <span class="doccomment">/// Used for bootstrap.
@@ -546,16 +598,16 @@
             </span><span class="kw">let </span>index = slot
                 .slots_since(first_slot, <span class="self">self</span>.config.thread_count)
                 .map_err(|<span class="kw">_</span>| {
-                    FinalStateError::InvalidSlot(
-                        <span class="string">&quot;get_state_changes_part given slot is overflowing history&quot;</span>.to_string(),
+                    FinalStateError::LedgerError(
+                        <span class="string">&quot;get_state_changes_part given slot is overflowing history.&quot;</span>.to_string(),
                     )
                 })<span class="question-mark">?
                 </span>.saturating_add(<span class="number">1</span>);
 
             <span class="comment">// Check if the `slot` index isn&#39;t in the future
             </span><span class="kw">if </span><span class="self">self</span>.changes_history.len() <span class="kw">as </span>u64 &lt;= index {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::InvalidSlot(
-                    <span class="string">&quot;slot index is overflowing history&quot;</span>.to_string(),
+                <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::LedgerError(
+                    <span class="string">&quot;slot index is overflowing history.&quot;</span>.to_string(),
                 ));
             }
             index
@@ -605,10 +657,12 @@
                             .<span class="number">0
                             </span>.iter()
                             .filter_map(|change| <span class="kw">match </span>change {
-                                Change::Add(id, <span class="kw">_</span>) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt; <span class="prelude-val">Some</span>(change.clone()),
-                                Change::Delete(id) <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt; <span class="prelude-val">Some</span>(change.clone()),
-                                Change::Add(..) =&gt; <span class="prelude-val">None</span>,
-                                Change::Delete(..) =&gt; <span class="prelude-val">None</span>,
+                                Change::Add(id, <span class="kw">_</span>) | Change::Activate(id) | Change::Delete(id)
+                                    <span class="kw">if </span>id &lt;= <span class="kw-2">&amp;</span>last_id =&gt;
+                                {
+                                    <span class="prelude-val">Some</span>(change.clone())
+                                }
+                                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                             })
                             .collect(),
                     );

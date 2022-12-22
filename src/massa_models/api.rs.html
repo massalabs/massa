@@ -584,6 +584,12 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::ExecutionAddressCycleInfo;
@@ -1141,6 +1147,12 @@
     /// Some(false) means candidate
     /// None means final _and_ candidate
     </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="doccomment">/// optional execution status
+    ///
+    /// Some(true) means events coming from a failed sc execution
+    /// Some(false) means events coming from a succeeded sc execution
+    /// None means both
+    </span><span class="kw">pub </span>is_error: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="doccomment">/// read only bytecode execution request

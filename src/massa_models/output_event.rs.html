@@ -67,6 +67,8 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{address::Address, block::BlockId, operation::OperationId, slot::Slot};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{collections::VecDeque, fmt::Display};
@@ -104,6 +106,8 @@
     </span><span class="kw">pub </span>origin_operation_id: <span class="prelude-ty">Option</span>&lt;OperationId&gt;,
     <span class="doccomment">/// if the event is final
     </span><span class="kw">pub </span>is_final: bool,
+    <span class="doccomment">/// if the sc that emitted this event failed
+    </span><span class="kw">pub </span>is_error: bool,
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>EventExecutionContext {

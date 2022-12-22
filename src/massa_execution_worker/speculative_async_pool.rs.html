@@ -112,6 +112,17 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -120,6 +131,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges};
 <span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::Arc;
@@ -135,7 +147,7 @@
     <span class="doccomment">/// List of newly emitted asynchronous messages
     </span>emitted: Vec&lt;(AsyncMessageId, AsyncMessage)&gt;,
 
-    <span class="doccomment">/// List of changes (additions/deletions) to the pool after settling emitted messages
+    <span class="doccomment">/// List of changes (additions/deletions/activation) to the pool after settling emitted messages
     </span>settled_changes: AsyncPoolChanges,
 }
 
@@ -212,16 +224,26 @@
     ///
     /// # Arguments
     /// * slot: slot that is being settled
+    /// * ledger_changes: ledger changes for that slot, used to see if we can activate some messages
     ///
     /// # Returns
     /// the list of deleted `(message_id, message)`, used for reimbursement
-    </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
-        <span class="kw">let </span>deleted_messages = <span class="self">self</span>.async_pool.settle_slot(slot, <span class="kw-2">&amp;mut </span><span class="self">self</span>.emitted);
+    </span><span class="kw">pub fn </span>settle_slot(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        slot: <span class="kw-2">&amp;</span>Slot,
+        ledger_changes: <span class="kw-2">&amp;</span>LedgerChanges,
+    ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
+        <span class="kw">let </span>(deleted_messages, triggered_messages) =
+            <span class="self">self</span>.async_pool
+                .settle_slot(slot, <span class="kw-2">&amp;mut </span><span class="self">self</span>.emitted, ledger_changes);
         <span class="kw">for </span>(msg_id, msg) <span class="kw">in </span>std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.emitted) {
             <span class="self">self</span>.settled_changes.push_add(msg_id, msg);
         }
         <span class="kw">for </span>(msg_id, _msg) <span class="kw">in </span>deleted_messages.iter() {
             <span class="self">self</span>.settled_changes.push_delete(<span class="kw-2">*</span>msg_id);
+        }
+        <span class="kw">for </span>(msg_id, _msg) <span class="kw">in </span>triggered_messages.iter() {
+            <span class="self">self</span>.settled_changes.push_activate(<span class="kw-2">*</span>msg_id);
         }
         deleted_messages
     }

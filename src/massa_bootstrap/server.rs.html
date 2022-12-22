@@ -593,44 +593,12 @@
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a>
-<a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
-<a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
-<a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
-<a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
-<a href="#625" id="625">625</a>
-<a href="#626" id="626">626</a>
-<a href="#627" id="627">627</a>
 </pre><pre class="rust"><code><span class="kw">use </span>futures::stream::FuturesUnordered;
 <span class="kw">use </span>futures::StreamExt;
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-<span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
+<span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -687,7 +655,6 @@
     bootstrap_config: BootstrapConfig,
     establisher: Establisher,
     keypair: KeyPair,
-    compensation_millis: i64,
     version: Version,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.start_bootstrap_server&quot;</span>, {});
@@ -739,7 +706,6 @@
                 manager_rx,
                 bind,
                 keypair,
-                compensation_millis,
                 version,
                 whitelist,
                 blacklist,
@@ -767,7 +733,6 @@
     bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
-    compensation_millis: i64,
     version: Version,
     blacklist: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
     whitelist: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
@@ -881,8 +846,7 @@
 
                         <span class="comment">// launch bootstrap
 
-                        </span><span class="kw">let </span>compensation_millis = <span class="self">self</span>.compensation_millis;
-                        <span class="kw">let </span>version = <span class="self">self</span>.version;
+                        </span><span class="kw">let </span>version = <span class="self">self</span>.version;
                         <span class="kw">let </span>data_execution = <span class="self">self</span>.final_state.clone();
                         <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.consensus_controller.clone();
                         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.network_command_sender.clone();
@@ -891,7 +855,7 @@
 
                         bootstrap_sessions.push(<span class="kw">async move </span>{
                             <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
-                            <span class="kw">match </span>manage_bootstrap(<span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;mut </span>server, data_execution, compensation_millis, version, consensus_command_sender, network_command_sender).<span class="kw">await </span>{
+                            <span class="kw">match </span>manage_bootstrap(<span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;mut </span>server, data_execution, version, consensus_command_sender, network_command_sender).<span class="kw">await </span>{
                                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                                     <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr)
                                 },
@@ -956,8 +920,6 @@
         <span class="kw">let </span>exec_ops_part;
         <span class="kw">let </span>final_state_changes;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>slot_too_old = <span class="bool-val">false</span>;
-
         <span class="comment">// Scope of the final state read
         </span>{
             <span class="kw">let </span>final_state_read = final_state.read();
@@ -991,21 +953,14 @@
                         <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
                     ));
                 }
-                final_state_changes = <span class="kw">match </span>final_state_read.get_state_changes_part(
+                final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     new_ledger_step.clone(),
                     new_pool_step,
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,
-                ) {
-                    <span class="prelude-val">Ok</span>(data) =&gt; data,
-                    <span class="prelude-val">Err</span>(err) <span class="kw">if </span><span class="macro">matches!</span>(err, FinalStateError::InvalidSlot(<span class="kw">_</span>)) =&gt; {
-                        slot_too_old = <span class="bool-val">true</span>;
-                        Vec::default()
-                    }
-                    <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::FinalStateError(err)),
-                };
+                )<span class="question-mark">?</span>;
             } <span class="kw">else </span>{
                 final_state_changes = Vec::new();
             }
@@ -1018,24 +973,6 @@
             last_ops_step = new_ops_step;
             last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
             current_slot = final_state_read.slot;
-        }
-
-        <span class="kw">if </span>slot_too_old {
-            <span class="kw">match </span>tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::SlotTooOld),
-            )
-            .<span class="kw">await
-            </span>{
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    <span class="string">&quot;SlotTooOld message send timed out&quot;</span>,
-                )
-                .into()),
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
-            }<span class="question-mark">?</span>;
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
         <span class="comment">// Setup final state global cursor
@@ -1140,7 +1077,6 @@
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    compensation_millis: i64,
     version: Version,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: NetworkCommandSender,
@@ -1177,7 +1113,7 @@
     <span class="kw">let </span>write_timeout: std::time::Duration = bootstrap_config.write_timeout.into();
 
     <span class="comment">// Sync clocks.
-    </span><span class="kw">let </span>server_time = MassaTime::now(compensation_millis)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>server_time = MassaTime::now()<span class="question-mark">?</span>;
 
     <span class="kw">match </span>tokio::time::timeout(
         write_timeout,
