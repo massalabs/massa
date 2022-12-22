@@ -286,10 +286,10 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         read_error_timeout: 200.into(),
         write_error_timeout: 200.into(),
         bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
-        bootstrap_whitelist_file: std::path::PathBuf::from(
+        bootstrap_whitelist_path: PathBuf::from(
             "../massa-node/base_config/bootstrap_whitelist.json",
         ),
-        bootstrap_blacklist_file: std::path::PathBuf::from(
+        bootstrap_blacklist_path: PathBuf::from(
             "../massa-node/base_config/bootstrap_blacklist.json",
         ),
         enable_clock_synchronization: true,

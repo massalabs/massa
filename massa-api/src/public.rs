@@ -967,8 +967,8 @@ impl MassaRpcServer for API<Public> {
     }
 
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {
-        let openrpc_spec_file = self.0.api_settings.openrpc_spec_file.clone();
-        let openrpc: RpcResult<Value> = std::fs::read_to_string(openrpc_spec_file)
+        let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
+        let openrpc: RpcResult<Value> = std::fs::read_to_string(openrpc_spec_path)
             .map_err(|e| {
                 ApiError::InternalServerError(format!(
                     "failed to read OpenRPC specification: {}",

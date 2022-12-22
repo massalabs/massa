@@ -67,7 +67,7 @@ pub async fn start_bootstrap_server(
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
 
         let whitelist = if let Ok(whitelist) =
-            std::fs::read_to_string(&bootstrap_config.bootstrap_whitelist_file)
+            std::fs::read_to_string(&bootstrap_config.bootstrap_whitelist_path)
         {
             Some(
                 serde_json::from_str::<HashSet<IpAddr>>(whitelist.as_str())
@@ -85,7 +85,7 @@ pub async fn start_bootstrap_server(
         };
 
         let blacklist = if let Ok(blacklist) =
-            std::fs::read_to_string(&bootstrap_config.bootstrap_blacklist_file)
+            std::fs::read_to_string(&bootstrap_config.bootstrap_blacklist_path)
         {
             Some(
                 serde_json::from_str::<HashSet<IpAddr>>(blacklist.as_str())

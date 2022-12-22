@@ -242,13 +242,13 @@ impl MassaRpcServer for API<Private> {
 
     async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         read_ips_from_jsonfile(
-            self.0.api_settings.bootstrap_whitelist_file.clone(),
+            self.0.api_settings.bootstrap_whitelist_path.clone(),
             &ListType::Whitelist,
         )
     }
 
     async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
-        remove_file(self.0.api_settings.bootstrap_whitelist_file.clone()).map_err(|e| {
+        remove_file(self.0.api_settings.bootstrap_whitelist_path.clone()).map_err(|e| {
             ApiError::InternalServerError(format!(
                 "failed to delete bootsrap whitelist configuration file: {}",
                 e
@@ -259,7 +259,7 @@ impl MassaRpcServer for API<Private> {
 
     async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         run_scrud_operation(
-            self.0.api_settings.bootstrap_whitelist_file.clone(),
+            self.0.api_settings.bootstrap_whitelist_path.clone(),
             ips,
             ListType::Whitelist,
             ScrudOperation::Create,
@@ -268,7 +268,7 @@ impl MassaRpcServer for API<Private> {
 
     async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         run_scrud_operation(
-            self.0.api_settings.bootstrap_whitelist_file.clone(),
+            self.0.api_settings.bootstrap_whitelist_path.clone(),
             ips,
             ListType::Whitelist,
             ScrudOperation::Delete,
@@ -277,14 +277,14 @@ impl MassaRpcServer for API<Private> {
 
     async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
         read_ips_from_jsonfile(
-            self.0.api_settings.bootstrap_blacklist_file.clone(),
+            self.0.api_settings.bootstrap_blacklist_path.clone(),
             &ListType::Blacklist,
         )
     }
 
     async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         run_scrud_operation(
-            self.0.api_settings.bootstrap_blacklist_file.clone(),
+            self.0.api_settings.bootstrap_blacklist_path.clone(),
             ips,
             ListType::Blacklist,
             ScrudOperation::Create,
@@ -293,7 +293,7 @@ impl MassaRpcServer for API<Private> {
 
     async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         run_scrud_operation(
-            self.0.api_settings.bootstrap_blacklist_file.clone(),
+            self.0.api_settings.bootstrap_blacklist_path.clone(),
             ips,
             ListType::Blacklist,
             ScrudOperation::Delete,
