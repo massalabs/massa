@@ -144,7 +144,7 @@ pub enum Command {
         props(args = "BlockId"),
         message = "show info about a block (content, finality ...)"
     )]
-    get_block,
+    get_blocks,
 
     #[strum(
         ascii_case_insensitive,
@@ -582,13 +582,13 @@ impl Command {
                 }
             }
 
-            Command::get_block => {
+            Command::get_blocks => {
                 if parameters.len() != 1 {
-                    bail!("wrong param numbers")
+                    bail!("wrong param numbers, [IpAddr] shouldn't be empty")
                 }
-                let block_id = parameters[0].parse::<BlockId>()?;
-                match client.public.get_block(block_id).await {
-                    Ok(block_info) => Ok(Box::new(block_info)),
+                let block_ids = parse_vec::<BlockId>(parameters)?;
+                match client.public.get_blocks(block_ids).await {
+                    Ok(blocks_info) => Ok(Box::new(blocks_info)),
                     Err(e) => rpc_error!(e),
                 }
             }

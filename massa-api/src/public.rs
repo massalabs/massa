@@ -580,40 +580,48 @@ impl MassaRpcServer for API<Public> {
         Ok(res)
     }
 
-    /// gets a block. Returns None if not found
+    /// gets a block(s). Returns nothing if not found
     /// only active blocks are returned
-    async fn get_block(&self, id: BlockId) -> RpcResult<BlockInfo> {
+    async fn get_blocks(&self, ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
         let consensus_controller = self.0.consensus_controller.clone();
         let storage = self.0.storage.clone_without_refs();
-        let block = match storage.read_blocks().get(&id).cloned() {
-            Some(b) => b.content,
-            None => {
-                return Ok(BlockInfo { id, content: None });
-            }
-        };
-
-        let graph_status = consensus_controller
-            .get_block_statuses(&[id])
+        let blocks = ids
             .into_iter()
-            .next()
-            .expect("expected get_block_statuses to return one element");
+            .filter_map(|id| {
+                let block = match storage.read_blocks().get(&id).cloned() {
+                    Some(b) => b.content,
+                    None => {
+                        return None;
+                    }
+                };
+                if let Some(graph_status) = consensus_controller
+                    .get_block_statuses(&[id])
+                    .into_iter()
+                    .next()
+                {
+                    let is_final = graph_status == BlockGraphStatus::Final;
+                    let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+                    let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+                    let is_discarded = graph_status == BlockGraphStatus::Discarded;
 
-        let is_final = graph_status == BlockGraphStatus::Final;
-        let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-        let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-        let is_discarded = graph_status == BlockGraphStatus::Discarded;
+                    Some(BlockInfo {
+                        id,
+                        content: Some(BlockInfoContent {
+                            is_final,
+                            is_in_blockclique,
+                            is_candidate,
+                            is_discarded,
+                            block,
+                        }),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<BlockInfo>>();
 
-        Ok(BlockInfo {
-            id,
-            content: Some(BlockInfoContent {
-                is_final,
-                is_in_blockclique,
-                is_candidate,
-                is_discarded,
-                block,
-            }),
-        })
+        Ok(blocks)
     }
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {

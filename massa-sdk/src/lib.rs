@@ -265,7 +265,7 @@ impl RpcClient {
         self.http_client.request("get_stakers", rpc_params![]).await
     }
 
-    /// Returns operations information associated to a given list of operations' IDs.
+    /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     pub async fn get_operations(
         &self,
         operation_ids: Vec<OperationId>,
@@ -275,7 +275,7 @@ impl RpcClient {
             .await
     }
 
-    /// get info on endorsements by ids
+    /// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
     pub async fn get_endorsements(
         &self,
         endorsement_ids: Vec<EndorsementId>,
@@ -285,10 +285,10 @@ impl RpcClient {
             .await
     }
 
-    /// Get information on a block given its `BlockId`
-    pub async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
+    /// Returns block(s) information associated to a given list of block(s) ID(s)
+    pub async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<BlockInfo> {
         self.http_client
-            .request("get_block", rpc_params![block_id])
+            .request("get_blocks", rpc_params![block_ids])
             .await
     }
 

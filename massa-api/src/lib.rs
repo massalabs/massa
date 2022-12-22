@@ -316,17 +316,17 @@ pub trait MassaRpc {
     #[method(name = "get_stakers")]
     async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>>;
 
-    /// Returns operations information associated to a given list of operations' IDs.
+    /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     #[method(name = "get_operations")]
     async fn get_operations(&self, arg: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>>;
 
-    /// Get endorsements (not yet implemented).
+    /// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
     #[method(name = "get_endorsements")]
     async fn get_endorsements(&self, arg: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>>;
 
-    /// Get information on a block given its hash.
-    #[method(name = "get_block")]
-    async fn get_block(&self, arg: BlockId) -> RpcResult<BlockInfo>;
+    /// Returns block(s) information associated to a given list of block(s) ID(s)
+    #[method(name = "get_blocks")]
+    async fn get_blocks(&self, arg: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>>;
 
     /// Get information on the block at a slot in the blockclique.
     /// If there is no block at this slot a `None` is returned.
