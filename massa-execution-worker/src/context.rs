@@ -37,7 +37,7 @@ use tracing::debug;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
-pub(crate) struct ExecutionContextSnapshot {
+pub struct ExecutionContextSnapshot {
     /// speculative ledger changes caused so far in the context
     pub ledger_changes: LedgerChanges,
 
@@ -69,13 +69,16 @@ pub(crate) struct ExecutionContextSnapshot {
 /// An execution context that needs to be initialized before executing bytecode,
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
-pub(crate) struct ExecutionContext {
+pub struct ExecutionContext {
     /// configuration
     config: ExecutionConfig,
 
     /// speculative ledger state,
     /// as seen after everything that happened so far in the context
+    #[cfg(not(feature = "gas_calibration"))]
     speculative_ledger: SpeculativeLedger,
+    #[cfg(feature = "gas_calibration")]
+    pub(crate) speculative_ledger: SpeculativeLedger,
 
     /// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context

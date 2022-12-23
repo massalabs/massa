@@ -156,13 +156,9 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
     let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-    cycle_history.push_back(CycleInfo::new_with_hash(
-        0,
-        false,
-        roll_counts,
-        rng_seed,
-        production_stats,
-    ));
+    let mut cycle = CycleInfo::new_with_hash(0, false, roll_counts, rng_seed, production_stats);
+    cycle.final_state_hash_snapshot = Some(Hash::from_bytes(&[0; 32]));
+    cycle_history.push_back(cycle);
     let mut deferred_credits = DeferredCredits::default();
     deferred_credits.final_nested_extend(get_random_deferred_credits(r_limit));
     PoSFinalState {
@@ -292,7 +288,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         bootstrap_blacklist_file: std::path::PathBuf::from(
             "../massa-node/base_config/bootstrap_blacklist.json",
         ),
-        enable_clock_synchronization: true,
+        max_clock_delta: MassaTime::from_millis(1000),
         cache_duration: 10000.into(),
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,

@@ -48,6 +48,10 @@
     stats_time_window_duration = 60000
     # maximum allowed gas for read only executions
     max_read_only_gas = 100_000_000
+    # gas cost for ABIs
+    abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
+    # gas cost for wasm operator
+    wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
 
 [ledger]
     # path to the initial ledger

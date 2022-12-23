@@ -28,6 +28,8 @@ pub struct ExecutionSettings {
     pub cursor_delay: MassaTime,
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,
+    pub abi_gas_costs_file: PathBuf,
+    pub wasm_gas_costs_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize)]

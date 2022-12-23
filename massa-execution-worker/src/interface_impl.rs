@@ -22,6 +22,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
 
+#[cfg(feature = "gas_calibration")]
+use massa_models::datastore::Datastore;
+
 /// helper for locking the context mutex
 macro_rules! context_guard {
     ($self:ident) => {
@@ -31,7 +34,7 @@ macro_rules! context_guard {
 
 /// an implementation of the Interface trait (see massa-sc-runtime crate)
 #[derive(Clone)]
-pub(crate) struct InterfaceImpl {
+pub struct InterfaceImpl {
     /// execution configuration
     config: ExecutionConfig,
     /// thread-safe shared access to the execution context (see context.rs)
@@ -46,6 +49,35 @@ impl InterfaceImpl {
     /// * `context`: thread-safe shared access to the current execution context (see context.rs)
     pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
         InterfaceImpl { config, context }
+    }
+
+    #[cfg(feature = "gas_calibration")]
+    /// Used to create an default interface to run SC in a test environment
+    pub fn new_default(
+        sender_addr: Address,
+        operation_datastore: Option<Datastore>,
+    ) -> InterfaceImpl {
+        use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+
+        let config = ExecutionConfig::default();
+        let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
+        let mut execution_context =
+            ExecutionContext::new(config.clone(), final_state, Default::default());
+        execution_context.stack = vec![ExecutionStackElement {
+            address: sender_addr,
+            coins: Amount::zero(),
+            owned_addresses: vec![sender_addr],
+            operation_datastore,
+        }];
+        execution_context.speculative_ledger.added_changes.0.insert(
+            sender_addr,
+            SetUpdateOrDelete::Set(LedgerEntry {
+                balance: Amount::from_mantissa_scale(1_000_000_000, 0),
+                ..Default::default()
+            }),
+        );
+        let context = Arc::new(Mutex::new(execution_context));
+        InterfaceImpl::new(config, context)
     }
 }
 
