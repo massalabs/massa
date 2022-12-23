@@ -1032,6 +1032,29 @@
                 {
                     "name": "experimental",
                     "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/Version"
+                },
+                "name": "Version",
+                "description": "Node version"
+            },
+            "name": "get_version",
+            "summary": "Get Massa node version",
+            "description": "Get Massa node version."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
                 },
                 {
                     "name": "websocket",
@@ -1133,42 +1156,6 @@
                 "name": "unsubscribe result",
                 "description": "unsubscribe success message"
             },
-            "name": "unsubscribe_new_blocks_headers",
-            "summary": "Unsubscribe from new produced blocks headers",
-            "description": "Unsubscribe from new produced blocks headers."
-        },
-        {
-            "tags": [
-                {
-                    "name": "api",
-                    "description": "Massa api V2"
-                },
-                {
-                    "name": "experimental",
-                    "description": "Experimental APIs. They might disappear, and they will change"
-                },
-                {
-                    "name": "websocket",
-                    "description": "WebSocket subscription"
-                }
-            ],
-            "params": [
-                {
-                    "name": "subscriptionId",
-                    "description": "Subscription id",
-                    "schema": {
-                        "type": "integer"
-                    },
-                    "required": true
-                }
-            ],
-            "result": {
-                "schema": {
-                    "type": "boolean"
-                },
-                "name": "unsubscribe result",
-                "description": "unsubscribe success message"
-            },
             "name": "unsubscribe_new_blocks",
             "summary": "Unsubscribe from new produced blocks",
             "description": "Unsubscribe from new produced blocks."
@@ -1205,9 +1192,9 @@
                 "name": "unsubscribe result",
                 "description": "unsubscribe success message"
             },
-            "name": "unsubscribe_new_filled_blocks",
-            "summary": "Unsubscribe from new produced filled blocks",
-            "description": "Unsubscribe from new produced filled blocks."
+            "name": "unsubscribe_new_blocks_headers",
+            "summary": "Unsubscribe from new produced blocks headers",
+            "description": "Unsubscribe from new produced blocks headers."
         },
         {
             "tags": [
@@ -1218,19 +1205,32 @@
                 {
                     "name": "experimental",
                     "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
                 }
             ],
-            "params": [],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
             "result": {
                 "schema": {
-                    "$ref": "#/components/schemas/Version"
+                    "type": "boolean"
                 },
-                "name": "Version",
-                "description": "Node version"
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
             },
-            "name": "get_version",
-            "summary": "Get Massa node version",
-            "description": "Get Massa node version."
+            "name": "unsubscribe_new_filled_blocks",
+            "summary": "Unsubscribe from new produced filled blocks",
+            "description": "Unsubscribe from new produced filled blocks."
         }
     ],
     "components": {

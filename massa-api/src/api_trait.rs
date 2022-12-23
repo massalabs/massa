@@ -11,14 +11,6 @@ pub trait MassaApi {
     #[method(name = "get_version")]
     async fn get_version(&self) -> RpcResult<Version>;
 
-    /// New produced blocks headers.
-    #[subscription(
-        name = "subscribe_new_blocks_headers" => "new_blocks_headers",
-        unsubscribe = "unsubscribe_new_blocks_headers",
-        item = BlockHeader
-    )]
-    fn subscribe_new_blocks_headers(&self);
-
     /// New produced block.
     #[subscription(
 		name = "subscribe_new_blocks" => "new_blocks",
@@ -26,6 +18,14 @@ pub trait MassaApi {
 		item = Block
 	)]
     fn subscribe_new_blocks(&self);
+
+    /// New produced blocks headers.
+    #[subscription(
+        name = "subscribe_new_blocks_headers" => "new_blocks_headers",
+        unsubscribe = "unsubscribe_new_blocks_headers",
+        item = BlockHeader
+    )]
+    fn subscribe_new_blocks_headers(&self);
 
     /// New produced block with operations content.
     #[subscription(
