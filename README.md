@@ -19,8 +19,7 @@ published in this [technical paper](https://arxiv.org/pdf/1803.09029).
 It shows that throughput of 10'000 transactions per second is reached
 even in a fully decentralized network with thousands of nodes.
 
-An easy-to-read blog post introduction with videos is written
-[here](https://www.youtube.com/watch?v=HbILgK1Wh-4).
+You can watch a short introduction video [here](https://www.youtube.com/watch?v=HbILgK1Wh-4).
 
 We are now releasing the **Massa testnet** in this GitHub repository,
 with its explorer available at <https://massa.net/testnet>.
