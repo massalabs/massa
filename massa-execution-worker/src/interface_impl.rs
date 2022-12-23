@@ -95,7 +95,11 @@ impl InterfaceClone for InterfaceImpl {
 impl Interface for InterfaceImpl {
     /// prints a message in the node logs at log level 3 (debug)
     fn print(&self, message: &str) -> Result<()> {
-        debug!("SC print: {}", message);
+        if cfg!(test) {
+            println!("SC print: {}", message);
+        } else {
+            debug!("SC print: {}", message);
+        }
         Ok(())
     }
 

@@ -205,16 +205,16 @@ impl FinalState {
             let index = slot
                 .slots_since(first_slot, self.config.thread_count)
                 .map_err(|_| {
-                    FinalStateError::LedgerError(
-                        "get_state_changes_part given slot is overflowing history.".to_string(),
+                    FinalStateError::InvalidSlot(
+                        "get_state_changes_part given slot is overflowing history".to_string(),
                     )
                 })?
                 .saturating_add(1);
 
             // Check if the `slot` index isn't in the future
             if self.changes_history.len() as u64 <= index {
-                return Err(FinalStateError::LedgerError(
-                    "slot index is overflowing history.".to_string(),
+                return Err(FinalStateError::InvalidSlot(
+                    "slot index is overflowing history".to_string(),
                 ));
             }
             index
