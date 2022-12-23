@@ -195,7 +195,7 @@ pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 //
 
 /// Maximum of GAS allowed for a block
-pub const MAX_GAS_PER_BLOCK: u64 = 1_000_000_000;
+pub const MAX_GAS_PER_BLOCK: u64 = u64::MAX;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 
