@@ -172,18 +172,74 @@ impl RpcClient {
             .await
     }
 
-    /// add ips to whitelist
-    /// create peer if it was unknown
-    pub async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    /// Returns node peers whitelist IP address(es).
+    pub async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         self.http_client
-            .request("node_whitelist", rpc_params![ips])
+            .request("node_peers_whitelist", rpc_params![])
             .await
     }
 
-    /// remove IPs from whitelist
-    pub async fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    /// Add IP address(es) to node peers whitelist.
+    pub async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
-            .request("node_remove_from_whitelist", rpc_params![ips])
+            .request("node_add_to_peers_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Remove IP address(es) to node peers whitelist.
+    pub async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_remove_from_peers_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Returns node bootsrap whitelist IP address(es).
+    pub async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+        self.http_client
+            .request("node_bootstrap_whitelist", rpc_params![])
+            .await
+    }
+
+    /// Allow everyone to bootsrap from the node.
+    /// remove bootsrap whitelist configuration file.
+    pub async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
+        self.http_client
+            .request("node_bootstrap_whitelist_allow_all", rpc_params![])
+            .await
+    }
+
+    /// Add IP address(es) to node bootsrap whitelist.
+    pub async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_add_to_bootstrap_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Remove IP address(es) to bootsrap whitelist.
+    pub async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_remove_from_bootstrap_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Returns node bootsrap blacklist IP address(es).
+    pub async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
+        self.http_client
+            .request("node_bootstrap_blacklist", rpc_params![])
+            .await
+    }
+
+    /// Add IP address(es) to node bootsrap blacklist.
+    pub async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_add_to_bootstrap_blacklist", rpc_params![ips])
+            .await
+    }
+
+    /// Remove IP address(es) to bootsrap blacklist.
+    pub async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_remove_from_bootstrap_blacklist", rpc_params![ips])
             .await
     }
 

@@ -76,8 +76,8 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
-    pub bootstrap_whitelist_file: std::path::PathBuf,
-    pub bootstrap_blacklist_file: std::path::PathBuf,
+    pub bootstrap_whitelist_path: PathBuf,
+    pub bootstrap_blacklist_path: PathBuf,
     pub bind: Option<SocketAddr>,
     pub connect_timeout: MassaTime,
     pub read_timeout: MassaTime,

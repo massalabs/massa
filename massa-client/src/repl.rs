@@ -20,6 +20,7 @@ use rustyline::error::ReadlineError;
 use rustyline::validate::MatchingBracketValidator;
 use rustyline::{CompletionType, Config, Editor};
 use rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
+use std::net::IpAddr;
 use std::str;
 use strum::IntoEnumIterator;
 use strum::ParseError;
@@ -97,7 +98,7 @@ struct MyHelper {
 
 pub(crate) async fn run(client: &Client, wallet: &mut Wallet) -> Result<()> {
     massa_fancy_ascii_art_logo!();
-    println!("Use 'CTRL+D or CTRL+C' to quit the prompt");
+    println!("Use 'exit' or 'CTRL+D or CTRL+C' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
     println!("Use the Right arrow or Tab to complete your command");
     println!("Use the Enter key to execute your command");
@@ -276,6 +277,14 @@ impl Output for Vec<EndorsementInfo> {
     fn pretty_print(&self) {
         for endorsement_info in self {
             println!("{}", endorsement_info);
+        }
+    }
+}
+
+impl Output for Vec<IpAddr> {
+    fn pretty_print(&self) {
+        for ips in self {
+            println!("{}", ips);
         }
     }
 }

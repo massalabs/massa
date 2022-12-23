@@ -50,7 +50,7 @@ impl NetworkCommandSender {
     }
 
     /// add ip to whitelist
-    pub async fn whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    pub async fn add_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Whitelist(ips))
             .await
