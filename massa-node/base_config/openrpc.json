@@ -1022,6 +1022,215 @@
             "name": "send_operations",
             "summary": "Adds operations to pool",
             "description": "Adds operations to pool. Returns operations that were ok and sent to pool."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/BlockInfo"
+                },
+                "name": "BlockInfo"
+            },
+            "name": "subscribe_new_blocks",
+            "summary": "New produced blocks",
+            "description": "New produced blocks."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/WrappedHeader"
+                },
+                "name": "BlockHeader"
+            },
+            "name": "subscribe_new_blocks_headers",
+            "summary": "New produced blocks headers",
+            "description": "New produced blocks headers."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/FilledBlockInfo"
+                },
+                "name": "FilledBlockInfo"
+            },
+            "name": "subscribe_new_filled_blocks",
+            "summary": "New produced block with operations content",
+            "description": "New produced block with operations content.."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "boolean"
+                },
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
+            },
+            "name": "unsubscribe_new_blocks_headers",
+            "summary": "Unsubscribe from new produced blocks headers",
+            "description": "Unsubscribe from new produced blocks headers."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "boolean"
+                },
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
+            },
+            "name": "unsubscribe_new_blocks",
+            "summary": "Unsubscribe from new produced blocks",
+            "description": "Unsubscribe from new produced blocks."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "boolean"
+                },
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
+            },
+            "name": "unsubscribe_new_filled_blocks",
+            "summary": "Unsubscribe from new produced filled blocks",
+            "description": "Unsubscribe from new produced filled blocks."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/Version"
+                },
+                "name": "Version",
+                "description": "Node version"
+            },
+            "name": "get_version",
+            "summary": "Get Massa node version",
+            "description": "Get Massa node version."
         }
     ],
     "components": {
@@ -1836,6 +2045,73 @@
                 "description": "Ipv4 or Ipv6 address",
                 "type": "string"
             },
+            "FilledBlock": {
+                "title": "FilledBlock",
+                "required": [
+                    "header",
+                    "operations"
+                ],
+                "type": "object",
+                "properties": {
+                    "header": {
+                        "$ref": "#/components/schemas/WrappedHeader",
+                        "description": "signed header"
+                    },
+                    "operations": {
+                        "description": "Operations",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OperationInfo"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FilledBlockInfo": {
+                "title": "FilledBlockInfo",
+                "required": [
+                    "id"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "$ref": "#/components/schemas/FilledBlockInfoContent"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FilledBlockInfoContent": {
+                "title": "FilledBlockInfoContent",
+                "required": [
+                    "block",
+                    "is_final",
+                    "is_in_blockclique",
+                    "is_stale"
+                ],
+                "type": "object",
+                "properties": {
+                    "is_final": {
+                        "description": "true if final",
+                        "type": "boolean"
+                    },
+                    "is_stale": {
+                        "description": "true if incompatible with a final block",
+                        "type": "boolean"
+                    },
+                    "is_in_blockclique": {
+                        "description": "true if in the greatest clique",
+                        "type": "boolean"
+                    },
+                    "block": {
+                        "$ref": "#/components/schemas/FilledBlock",
+                        "description": "filled block"
+                    }
+                },
+                "additionalProperties": false
+            },
             "GraphInterval": {
                 "title": "GraphInterval",
                 "required": [
@@ -2446,26 +2722,7 @@
             },
             "Version": {
                 "description": "Application version, checked during handshakes",
-                "required": [
-                    "instance",
-                    "major",
-                    "minor"
-                ],
-                "type": "object",
-                "properties": {
-                    "instance": {
-                        "description": "",
-                        "type": "number"
-                    },
-                    "major": {
-                        "description": "",
-                        "type": "number"
-                    },
-                    "minor": {
-                        "description": "",
-                        "type": "number"
-                    }
-                }
+                "type": "string"
             },
             "WrappedHeader": {
                 "description": "signed operation",
@@ -2549,6 +2806,14 @@
                     "$ref": "#/components/schemas/BlockInfo"
                 }
             },
+            "BlockHeader": {
+                "name": "BlockHeader",
+                "summary": "BlockHeader",
+                "description": "A BlockHeader object",
+                "schema": {
+                    "$ref": "#/components/schemas/WrappedHeader"
+                }
+            },
             "Clique": {
                 "name": "Clique",
                 "summary": "Clique",
@@ -2605,12 +2870,12 @@
                     "$ref": "#/components/schemas/EventFilter"
                 }
             },
-            "IpAddress": {
-                "name": "IpAddress",
-                "summary": "IpAddress",
-                "description": "A IpAddress object",
+            "FilledBlockInfo": {
+                "name": "FilledBlockInfo",
+                "summary": "FilledBlockInfo",
+                "description": "A FilledBlockInfo object",
                 "schema": {
-                    "$ref": "#/components/schemas/IpAddress"
+                    "$ref": "#/components/schemas/FilledBlockInfo"
                 }
             },
             "GraphInterval": {
@@ -2699,6 +2964,14 @@
                 "description": "A Staker object. A tuple which contains (address, active_rolls)",
                 "schema": {
                     "$ref": "#/components/schemas/Staker"
+                }
+            },
+            "Version": {
+                "name": "Version",
+                "summary": "Version",
+                "description": "A Version object",
+                "schema": {
+                    "$ref": "#/components/schemas/Version"
                 }
             }
         }
