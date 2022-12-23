@@ -588,35 +588,33 @@ impl MassaRpcServer for API<Public> {
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                let block = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
-                    wrapped_block.content.clone()
-                } else {
-                    return None;
-                };
-                if let Some(graph_status) = consensus_controller
-                    .get_block_statuses(&[id])
-                    .into_iter()
-                    .next()
-                {
-                    let is_final = graph_status == BlockGraphStatus::Final;
-                    let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-                    let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-                    let is_discarded = graph_status == BlockGraphStatus::Discarded;
+                if let Some(wrapped_block) = storage.read_blocks().get(&id).cloned() {
+                    if let Some(graph_status) = consensus_controller
+                        .get_block_statuses(&[id])
+                        .into_iter()
+                        .next()
+                    {
+                        let is_final = graph_status == BlockGraphStatus::Final;
+                        let is_in_blockclique =
+                            graph_status == BlockGraphStatus::ActiveInBlockclique;
+                        let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+                        let is_discarded = graph_status == BlockGraphStatus::Discarded;
 
-                    Some(BlockInfo {
-                        id,
-                        content: Some(BlockInfoContent {
-                            is_final,
-                            is_in_blockclique,
-                            is_candidate,
-                            is_discarded,
-                            block,
-                        }),
-                    })
-                } else {
-                    None
+                        return Some(BlockInfo {
+                            id,
+                            content: Some(BlockInfoContent {
+                                is_final,
+                                is_in_blockclique,
+                                is_candidate,
+                                is_discarded,
+                                block: wrapped_block.content,
+                            }),
+                        });
+                    }
                 }
+
+                None
             })
             .collect::<Vec<BlockInfo>>();
 

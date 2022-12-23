@@ -584,7 +584,7 @@ impl Command {
 
             Command::get_blocks => {
                 if parameters.len() != 1 {
-                    bail!("wrong param numbers, [IpAddr] shouldn't be empty")
+                    bail!("wrong param numbers, expecting at least one IP address")
                 }
                 let block_ids = parse_vec::<BlockId>(parameters)?;
                 match client.public.get_blocks(block_ids).await {
