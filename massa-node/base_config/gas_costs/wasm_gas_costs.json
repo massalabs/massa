@@ -1,13 +1,13 @@
 {
-  "Wasm:Drop": 8,
-  "Wasm:GlobalGet": 34,
-  "Wasm:GlobalSet": 56,
-  "Wasm:I32Add": 8,
-  "Wasm:I32Const": 2,
-  "Wasm:I32DivS": 40,
-  "Wasm:I32Mul": 25,
-  "Wasm:I32Sub": 33,
-  "Wasm:If": 76,
-  "Wasm:LocalGet": 0,
-  "Wasm:LocalSet": 47
+  "Wasm:Drop": 195,
+  "Wasm:GlobalGet": 247,
+  "Wasm:GlobalSet": 367,
+  "Wasm:I32Add": 528,
+  "Wasm:I32Const": 0,
+  "Wasm:I32DivS": 780,
+  "Wasm:I32Mul": 266,
+  "Wasm:I32Sub": 507,
+  "Wasm:If": 865,
+  "Wasm:LocalGet": 344,
+  "Wasm:LocalSet": 325
 }
