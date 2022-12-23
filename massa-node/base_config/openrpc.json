@@ -91,7 +91,7 @@
             "params": [
                 {
                     "name": "address",
-                    "description": "The strings should be valid address(es).",
+                    "description": "Need to provide at least one valid address",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -124,7 +124,7 @@
             "params": [
                 {
                     "name": "blockId",
-                    "description": "Must be a block(s) id(s)",
+                    "description": "Need to provide at least one valid block id",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -270,7 +270,7 @@
             "params": [
                 {
                     "name": "endorsementId",
-                    "description": "Must be an endorsement(s) id(s)",
+                    "description": "Need to provide at least one valid endorsement id",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -364,7 +364,7 @@
             "params": [
                 {
                     "name": "operationId",
-                    "description": "Must be an operation(s) Id(s)",
+                    "description": "Need to provide at least one valid operation id",
                     "schema": {
                         "type": "array",
                         "items": {
