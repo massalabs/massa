@@ -25,6 +25,9 @@
 <a href="#25" id="25">25</a>
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the factory settings
@@ -42,6 +45,9 @@
 
     <span class="doccomment">/// period duration
     </span><span class="kw">pub </span>t0: MassaTime,
+
+    <span class="doccomment">/// clock compensation in relative milliseconds
+    </span><span class="kw">pub </span>clock_compensation_millis: i64,
 
     <span class="doccomment">/// initial delay before starting production, to avoid double-production on node restart
     </span><span class="kw">pub </span>initial_delay: MassaTime,

@@ -942,7 +942,7 @@
     /// Note that this time cursor is shifted by `self.config.cursor_delay`
     /// to avoid computing speculative slots that are too recent, and therefore subject to frequent re-writes.
     </span><span class="kw">fn </span>get_time_cursor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Slot {
-        <span class="kw">let </span>shifted_now = MassaTime::now()
+        <span class="kw">let </span>shifted_now = MassaTime::now(<span class="self">self</span>.config.clock_compensation)
             .expect(<span class="string">&quot;could not get current time&quot;</span>)
             .saturating_sub(<span class="self">self</span>.config.cursor_delay);
         get_latest_block_slot_at_timestamp(
@@ -1481,7 +1481,7 @@
         // This means that we are still waiting for `Self::update` to be called for the first time.
         // To avoid CPU-intensive loops upstream, just register a wake-up after a single slot delay (t0/T).
         </span><span class="kw">if </span><span class="self">self</span>.sequence.is_empty() {
-            <span class="kw">return </span>MassaTime::now()
+            <span class="kw">return </span>MassaTime::now(<span class="self">self</span>.config.clock_compensation)
                 .expect(<span class="string">&quot;could not get current time&quot;</span>)
                 .saturating_add(
                     <span class="self">self</span>.config

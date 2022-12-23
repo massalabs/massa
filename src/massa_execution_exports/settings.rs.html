@@ -97,6 +97,8 @@
     </span><span class="kw">pub </span>roll_price: Amount,
     <span class="doccomment">/// extra lag to add on the execution cursor to improve performance
     </span><span class="kw">pub </span>cursor_delay: MassaTime,
+    <span class="doccomment">/// time compensation in milliseconds
+    </span><span class="kw">pub </span>clock_compensation: i64,
     <span class="doccomment">/// genesis timestamp
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// period duration
@@ -121,8 +123,6 @@
     </span><span class="kw">pub </span>max_datastore_value_size: u64,
     <span class="doccomment">/// Storage cost constants
     </span><span class="kw">pub </span>storage_costs_constants: StorageCostsConstants,
-    <span class="doccomment">/// Max gas for read only executions
-    </span><span class="kw">pub </span>max_read_only_gas: u64,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

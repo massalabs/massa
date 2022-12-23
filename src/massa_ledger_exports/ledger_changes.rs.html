@@ -952,36 +952,6 @@
 <a href="#952" id="952">952</a>
 <a href="#953" id="953">953</a>
 <a href="#954" id="954">954</a>
-<a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
-<a href="#976" id="976">976</a>
-<a href="#977" id="977">977</a>
-<a href="#978" id="978">978</a>
-<a href="#979" id="979">979</a>
-<a href="#980" id="980">980</a>
-<a href="#981" id="981">981</a>
-<a href="#982" id="982">982</a>
-<a href="#983" id="983">983</a>
-<a href="#984" id="984">984</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file provides structures representing changes to ledger entries
@@ -1786,36 +1756,6 @@
             // We therefore have no info on the absolute contents of its datastore entry.
             // We call the fallback function and return its output.
             </span><span class="prelude-val">None </span>=&gt; f(),
-        }
-    }
-
-    <span class="doccomment">/// Tries to return whether there is a change on a given address in the ledger changes
-    /// and optionally if a datastore key modification also exists in the address&#39;s datastore.
-    ///
-    /// # Arguments
-    /// * `addr`: target address
-    /// * `key`: optional datastore key
-    ///
-    /// # Returns
-    /// * true if the address and, optionally the datastore key, exists in the ledger changes
-    </span><span class="kw">pub fn </span>has_changes(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;) -&gt; bool {
-        <span class="comment">// Get the current changes being applied to the ledger entry associated to that address
-        </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.get(addr) {
-            <span class="comment">// This ledger entry is being replaced by a new one:
-            // check if the new ledger entry has a datastore entry for the provided key
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; key.map_or(<span class="bool-val">true</span>, |k| v.datastore.contains_key(<span class="kw-2">&amp;</span>k)),
-
-            <span class="comment">// This ledger entry is being updated
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) =&gt; {
-                <span class="comment">// Check if the update being applied to that datastore entry
-                </span>key.map_or(<span class="bool-val">true</span>, |k| datastore.contains_key(<span class="kw-2">&amp;</span>k))
-            }
-
-            <span class="comment">// This ledger entry is being deleted: return true
-            </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="bool-val">true</span>,
-
-            <span class="comment">// This ledger entry is not being changed.
-            </span><span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 

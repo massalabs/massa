@@ -350,7 +350,7 @@
         <span class="kw">let </span>self_random_hash = Hash::compute_from(<span class="kw-2">&amp;</span>self_random_bytes);
         <span class="comment">// send handshake init future
         </span><span class="kw">let </span>msg = Message::HandshakeInitiation {
-            public_key: <span class="self">self</span>.self_node_id.get_public_key(),
+            public_key: <span class="self">self</span>.self_node_id.<span class="number">0</span>,
             random_bytes: self_random_bytes,
             version: <span class="self">self</span>.version,
         };
@@ -374,7 +374,7 @@
                     public_key: pk,
                     random_bytes: rb,
                     version,
-                } =&gt; (NodeId::new(pk), rb, version),
+                } =&gt; (NodeId(pk), rb, version),
                 Message::PeerList(list) =&gt; <span class="macro">throw!</span>(PeerListReceived, list),
                 <span class="kw">_ </span>=&gt; <span class="macro">throw!</span>(HandshakeWrongMessage),
             },
@@ -421,8 +421,8 @@
 
         <span class="comment">// check their signature
         </span>other_node_id
-            .get_public_key()
-            .verify_signature(<span class="kw-2">&amp;</span>self_random_hash, <span class="kw-2">&amp;</span>other_signature)
+            .<span class="number">0
+            </span>.verify_signature(<span class="kw-2">&amp;</span>self_random_hash, <span class="kw-2">&amp;</span>other_signature)
             .map_err(|_err| {
                 NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignature)
             })<span class="question-mark">?</span>;

@@ -922,7 +922,7 @@
         }: NetworkWorkerChannels,
         version: Version,
     ) -&gt; NetworkWorker {
-        <span class="kw">let </span>self_node_id = NodeId::new(keypair.get_public_key());
+        <span class="kw">let </span>self_node_id = NodeId(keypair.get_public_key());
 
         <span class="kw">let </span>(node_event_tx, node_event_rx) =
             mpsc::channel::&lt;NodeEvent&gt;(cfg.node_event_channel_size);

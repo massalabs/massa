@@ -14,6 +14,8 @@
 <a href="#14" id="14">14</a>
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines all error types for final state management
@@ -25,6 +27,8 @@
 </span><span class="attr">#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 </span><span class="kw">pub enum </span>FinalStateError {
+    <span class="doccomment">/// invalid slot: {0}
+    </span>InvalidSlot(String),
     <span class="doccomment">/// ledger error: {0}
     </span>LedgerError(String),
     <span class="doccomment">/// PoS error: {0}

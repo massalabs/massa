@@ -319,7 +319,7 @@
 <span class="doccomment">/// create node info
 </span><span class="kw">pub fn </span>create_node() -&gt; NodeInfo {
     <span class="kw">let </span>keypair = KeyPair::generate();
-    <span class="kw">let </span>id = NodeId::new(keypair.get_public_key());
+    <span class="kw">let </span>id = NodeId(keypair.get_public_key());
     NodeInfo { keypair, id }
 }
 
@@ -506,7 +506,7 @@
         max_serialized_operations_size_per_block: <span class="number">1024</span>,
         controller_channel_size: <span class="number">1024</span>,
         event_channel_size: <span class="number">1024</span>,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(<span class="number">0</span>).unwrap(),
         t0: MassaTime::from_millis(<span class="number">16000</span>),
         max_operations_propagation_time: MassaTime::from_millis(<span class="number">30000</span>),
         max_endorsements_propagation_time: MassaTime::from_millis(<span class="number">60000</span>),

@@ -440,11 +440,6 @@
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Unsigned time management
 </span><span class="attr">#![warn(missing_docs)]
@@ -647,7 +642,10 @@
     <span class="doccomment">/// Smallest time interval
     </span><span class="kw">pub const </span>EPSILON: MassaTime = MassaTime(<span class="number">1</span>);
 
-    <span class="doccomment">/// Gets current UNIX timestamp (resolution: milliseconds).
+    <span class="doccomment">/// Gets current compensated UNIX timestamp (resolution: milliseconds).
+    ///
+    /// # Parameters
+    ///   * `compensation_millis`: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp
     ///
     /// ```
     /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -655,18 +653,23 @@
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    /// let now_massa_time : MassaTime = MassaTime::now().unwrap();
+    /// let now_massa_time : MassaTime = MassaTime::now(0).unwrap();
     /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
     /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) &lt; 100.into())
     /// ```
-    </span><span class="kw">pub fn </span>now() -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
-        <span class="kw">let </span>now: u64 = SystemTime::now()
+    </span><span class="kw">pub fn </span>now(compensation_millis: i64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
+        <span class="kw">let </span>now: i64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?
             </span>.as_millis()
             .try_into()
             .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(MassaTime(now))
+        <span class="kw">let </span>compensated = now
+            .checked_add(compensation_millis)
+            .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?
+            </span>.try_into()
+            .map_err(|<span class="kw">_</span>| TimeError::TimeOverflowError)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(MassaTime(compensated))
     }
 
     <span class="doccomment">/// Conversion to `std::time::Duration`.
@@ -699,16 +702,16 @@
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// # use std::time::Instant;
-    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
+    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now(0).unwrap(), Instant::now());
     /// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
     /// assert!(max(
     ///     massa_time_instant.saturating_duration_since(cur_instant),
     ///     cur_instant.saturating_duration_since(massa_time_instant)
     /// ) &lt; std::time::Duration::from_millis(10))
     /// ```
-    </span><span class="kw">pub fn </span>estimate_instant(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Instant, TimeError&gt; {
+    </span><span class="kw">pub fn </span>estimate_instant(<span class="self">self</span>, compensation_millis: i64) -&gt; <span class="prelude-ty">Result</span>&lt;Instant, TimeError&gt; {
         <span class="kw">let </span>(cur_timestamp, cur_instant): (MassaTime, Instant) =
-            (MassaTime::now()<span class="question-mark">?</span>, Instant::now());
+            (MassaTime::now(compensation_millis)<span class="question-mark">?</span>, Instant::now());
         cur_instant
             .checked_add(<span class="self">self</span>.to_duration())
             .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?
@@ -843,19 +846,6 @@
             </span>.checked_rem(n)
             .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;remainder error&quot;</span>.to_string()))
             .map(MassaTime)
-    }
-
-    <span class="doccomment">/// ```
-    /// # use massa_time::*;
-    ///
-    /// let time1 = MassaTime::from(42);
-    /// let time2 = MassaTime::from(84);
-    ///
-    /// assert_eq!(time1.abs_diff(time2), MassaTime::from(42));
-    /// assert_eq!(time2.abs_diff(time1), MassaTime::from(42));
-    /// ```
-    </span><span class="kw">pub fn </span>abs_diff(<span class="kw-2">&amp;</span><span class="self">self</span>, t: MassaTime) -&gt; MassaTime {
-        MassaTime(<span class="self">self</span>.<span class="number">0</span>.abs_diff(t.<span class="number">0</span>))
     }
 
     <span class="doccomment">/// ```

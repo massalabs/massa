@@ -1089,7 +1089,6 @@
 <a href="#1089" id="1089">1089</a>
 <a href="#1090" id="1090">1090</a>
 <a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1245,7 +1244,7 @@
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">&quot;start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool&quot;
+            args = <span class="string">&quot;start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool&quot;
         </span>),
         message = <span class="string">&quot;show events emitted by smart contracts with various filters&quot;
     </span>)]
@@ -1310,7 +1309,7 @@
         props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas Fee&quot;</span>,),
         message = <span class="string">&quot;create and send an operation containing byte code&quot;
     </span>)]
-    </span>execute_smart_contract,
+    </span>send_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -1324,7 +1323,7 @@
         props(args = <span class="string">&quot;PathToBytecode MaxGas Address&quot;</span>,),
         message = <span class="string">&quot;execute byte code, address is optional. Nothing is really executed on chain&quot;
     </span>)]
-    </span>read_only_execute_smart_contract,
+    </span>read_only_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -1668,14 +1667,13 @@
             }
 
             Command::get_filtered_sc_output_event =&gt; {
-                <span class="kw">let </span>p_list: [<span class="kw-2">&amp;</span>str; <span class="number">7</span>] = [
+                <span class="kw">let </span>p_list: [<span class="kw-2">&amp;</span>str; <span class="number">6</span>] = [
                     <span class="string">&quot;start&quot;</span>,
                     <span class="string">&quot;end&quot;</span>,
                     <span class="string">&quot;emitter_address&quot;</span>,
                     <span class="string">&quot;caller_address&quot;</span>,
                     <span class="string">&quot;operation_id&quot;</span>,
                     <span class="string">&quot;is_final&quot;</span>,
-                    <span class="string">&quot;is_error&quot;</span>,
                 ];
                 <span class="kw">let </span><span class="kw-2">mut </span>p: HashMap&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str&gt; = HashMap::new();
                 <span class="kw">for </span>v <span class="kw">in </span>parameters {
@@ -1693,7 +1691,6 @@
                     original_caller_address: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">3</span>]),
                     original_operation_id: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">4</span>]),
                     is_final: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">5</span>]),
-                    is_error: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">6</span>]),
                 };
                 <span class="kw">match </span>client.public.get_filtered_sc_output_event(filter).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(events) =&gt; <span class="prelude-val">Ok</span>(Box::new(events)),
@@ -1892,8 +1889,9 @@
                 };
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = end {
-                    <span class="kw">let </span>(days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()<span class="question-mark">?</span>).days_hours_mins_secs()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero
+                    <span class="kw">let </span>(days, hours, mins, secs) = e
+                        .saturating_sub(MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>)
+                        .days_hours_mins_secs()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero
 
                     </span><span class="kw">let _ </span>= <span class="macro">write!</span>(res, <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode&quot;</span>, days, hours, mins, secs);
                 } <span class="kw">else </span>{
@@ -1911,7 +1909,7 @@
                 }
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
-            Command::execute_smart_contract =&gt; {
+            Command::send_smart_contract =&gt; {
                 <span class="kw">if </span>parameters.len() != <span class="number">4 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2024,7 +2022,7 @@
                     <span class="macro">bail!</span>(<span class="string">&quot;Missing public key&quot;</span>)
                 }
             }
-            Command::read_only_execute_smart_contract =&gt; {
+            Command::read_only_smart_contract =&gt; {
                 <span class="kw">if </span>parameters.len() != <span class="number">2 </span>&amp;&amp; parameters.len() != <span class="number">3 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2123,7 +2121,7 @@
     }
     .config;
 
-    <span class="kw">let </span>slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)<span class="question-mark">?
+    <span class="kw">let </span>slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, <span class="number">0</span>)<span class="question-mark">? </span><span class="comment">// clock compensation is zero
         </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
     <span class="kw">let </span><span class="kw-2">mut </span>expire_period = slot.period + cfg.operation_validity_periods;
     <span class="kw">if </span>slot.thread &gt;= addr.get_thread(cfg.thread_count) {

@@ -2093,7 +2093,7 @@
             <span class="comment">// Propagate operations when their expire period isn&#39;t `max_operations_propagation_time` old.
             </span><span class="kw">let </span><span class="kw-2">mut </span>ops_to_propagate = ops.clone();
             <span class="kw">let </span>operations_to_not_propagate = {
-                <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
+                <span class="kw">let </span>now = MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>;
                 <span class="kw">let </span>read_operations = ops_to_propagate.read_operations();
                 ops_to_propagate
                     .get_op_refs()
@@ -2194,7 +2194,7 @@
                 <span class="comment">// Propagate endorsements when the slot of the block they endorse isn&#39;t `max_endorsements_propagation_time` old.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements_to_propagate = endorsements.clone();
                 <span class="kw">let </span>endorsements_to_not_propagate = {
-                    <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
+                    <span class="kw">let </span>now = MassaTime::now(<span class="number">0</span>)<span class="question-mark">?</span>;
                     <span class="kw">let </span>read_endorsements = endorsements_to_propagate.read_endorsements();
                     endorsements_to_propagate
                         .get_endorsement_refs()

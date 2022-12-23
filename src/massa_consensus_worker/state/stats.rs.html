@@ -95,6 +95,10 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 <span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
 <span class="kw">use </span>massa_models::stats::ConsensusStats;
@@ -110,7 +114,10 @@
 <span class="kw">impl </span>ConsensusState {
     <span class="doccomment">/// Calculate and return stats about consensus
     </span><span class="kw">pub fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConsensusStats, ConsensusError&gt; {
-        <span class="kw">let </span>timespan_end = max(<span class="self">self</span>.launch_time, MassaTime::now()<span class="question-mark">?</span>);
+        <span class="kw">let </span>timespan_end = max(
+            <span class="self">self</span>.launch_time,
+            MassaTime::now(<span class="self">self</span>.config.clock_compensation_millis)<span class="question-mark">?</span>,
+        );
         <span class="kw">let </span>timespan_start = max(
             timespan_end.saturating_sub(<span class="self">self</span>.config.stats_timespan),
             <span class="self">self</span>.launch_time,
@@ -141,7 +148,7 @@
         // if none =&gt; we are probably desync
         </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
         </span>{
-            <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
+            <span class="kw">let </span>now = MassaTime::now(<span class="self">self</span>.config.clock_compensation_millis)<span class="question-mark">?</span>;
             <span class="kw">if </span>now
                 &gt; max(<span class="self">self</span>.config.genesis_timestamp, <span class="self">self</span>.launch_time)
                     .saturating_add(<span class="self">self</span>.stats_desync_detection_timespan)
@@ -167,7 +174,8 @@
 
     <span class="doccomment">/// Remove old stats from consensus storage
     </span><span class="kw">pub fn </span>prune_stats(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
-        <span class="kw">let </span>start_time = MassaTime::now()<span class="question-mark">?</span>.saturating_sub(<span class="self">self</span>.stats_history_timespan);
+        <span class="kw">let </span>start_time = MassaTime::now(<span class="self">self</span>.config.clock_compensation_millis)<span class="question-mark">?
+            </span>.saturating_sub(<span class="self">self</span>.stats_history_timespan);
         <span class="kw">while let </span><span class="prelude-val">Some</span>((t, <span class="kw">_</span>, <span class="kw">_</span>)) = <span class="self">self</span>.final_block_stats.front() {
             <span class="kw">if </span>t &lt; <span class="kw-2">&amp;</span>start_time {
                 <span class="self">self</span>.final_block_stats.pop_front();

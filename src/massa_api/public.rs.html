@@ -957,6 +957,11 @@
 <a href="#957" id="957">957</a>
 <a href="#958" id="958">958</a>
 <a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1027,6 +1032,7 @@
         network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
+        compensation_millis: i64,
         node_id: NodeId,
         storage: Storage,
     ) -&gt; <span class="self">Self </span>{
@@ -1038,6 +1044,7 @@
             version,
             network_command_sender,
             protocol_command_sender,
+            compensation_millis,
             node_id,
             execution_controller,
             selector_controller,
@@ -1261,10 +1268,11 @@
         <span class="kw">let </span>network_config = <span class="self">self</span>.<span class="number">0</span>.network_settings.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.<span class="number">0</span>.version;
         <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
+        <span class="kw">let </span>compensation_millis = <span class="self">self</span>.<span class="number">0</span>.compensation_millis;
         <span class="kw">let </span>pool_command_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
         <span class="kw">let </span>config = CompactConfig::default();
-        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
+        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now(compensation_millis) {
             <span class="prelude-val">Ok</span>(now) =&gt; now,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
         };
@@ -1353,8 +1361,9 @@
     <span class="kw">async fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;(Address, u64)&gt;&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
         <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
+        <span class="kw">let </span>compensation_millis = <span class="self">self</span>.<span class="number">0</span>.compensation_millis;
 
-        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
+        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now(compensation_millis) {
             <span class="prelude-val">Ok</span>(now) =&gt; now,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
         };
@@ -1720,6 +1729,7 @@
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.thread_count,
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.t0,
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.genesis_timestamp,
+                <span class="self">self</span>.<span class="number">0</span>.compensation_millis,
             )
             .expect(<span class="string">&quot;could not get latest current slot&quot;</span>)
             .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));

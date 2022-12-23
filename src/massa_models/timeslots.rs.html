@@ -297,6 +297,12 @@
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! warning: assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`
@@ -387,8 +393,14 @@
     thread_count: u8,
     t0: MassaTime,
     genesis_timestamp: MassaTime,
+    clock_compensation: i64,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Slot&gt;, ModelsError&gt; {
-    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, MassaTime::now()<span class="question-mark">?</span>)
+    get_latest_block_slot_at_timestamp(
+        thread_count,
+        t0,
+        genesis_timestamp,
+        MassaTime::now(clock_compensation)<span class="question-mark">?</span>,
+    )
 }
 
 <span class="doccomment">/// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end

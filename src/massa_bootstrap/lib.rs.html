@@ -62,6 +62,10 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Bootstrap crate
 //!
@@ -115,6 +119,9 @@
 
     <span class="doccomment">/// list of network peers
     </span><span class="kw">pub </span>peers: <span class="prelude-ty">Option</span>&lt;BootstrapPeers&gt;,
+
+    <span class="doccomment">/// timestamp correction in milliseconds
+    </span><span class="kw">pub </span>compensation_millis: i64,
 }
 
 <span class="kw">impl </span>GlobalBootstrapState {
@@ -123,6 +130,7 @@
             final_state,
             graph: <span class="prelude-val">None</span>,
             peers: <span class="prelude-val">None</span>,
+            compensation_millis: Default::default(),
         }
     }
 }
