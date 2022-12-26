@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-jsonrpsee = { version = "0.16.1", features = ["client"] }
+jsonrpsee = { version = "0.16.2", features = ["client"] }
 http = "0.2.8"
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }

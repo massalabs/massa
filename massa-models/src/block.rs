@@ -188,8 +188,17 @@ impl Deserializer<BlockId> for BlockIdDeserializer {
 pub struct Block {
     /// signed header
     pub header: WrappedHeader,
-    /// operations
+    /// operations ids
     pub operations: Vec<OperationId>,
+}
+
+/// filled block
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilledBlock {
+    /// signed header
+    pub header: WrappedHeader,
+    /// operations
+    pub operations: Vec<(OperationId, Option<WrappedOperation>)>,
 }
 
 /// Wrapped Block

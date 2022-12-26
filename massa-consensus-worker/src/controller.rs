@@ -1,3 +1,4 @@
+use jsonrpsee::{core::error::SubscriptionClosed, SubscriptionSink};
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -5,8 +6,9 @@ use massa_consensus_exports::{
 };
 use massa_models::{
     api::BlockGraphStatus,
-    block::{BlockHeader, BlockId},
+    block::{BlockHeader, BlockId, FilledBlock},
     clique::Clique,
+    operation::{Operation, OperationId},
     prehash::PreHashSet,
     slot::Slot,
     stats::ConsensusStats,
@@ -15,10 +17,13 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use parking_lot::RwLock;
+use serde::Serialize;
 use std::sync::{mpsc::SyncSender, Arc};
+use tokio::sync::broadcast::Sender;
+use tokio_stream::wrappers::BroadcastStream;
 use tracing::log::warn;
 
-use crate::{commands::ConsensusCommand, state::ConsensusState};
+use crate::{commands::ConsensusCommand, state::ConsensusState, worker::WsConfig};
 
 /// The retrieval of data is made using a shared state and modifications are asked by sending message to a channel.
 /// This is done mostly to be able to:
@@ -30,6 +35,7 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 #[derive(Clone)]
 pub struct ConsensusControllerImpl {
     command_sender: SyncSender<ConsensusCommand>,
+    ws_config: WsConfig,
     shared_state: Arc<RwLock<ConsensusState>>,
     bootstrap_part_size: u64,
 }
@@ -37,11 +43,13 @@ pub struct ConsensusControllerImpl {
 impl ConsensusControllerImpl {
     pub fn new(
         command_sender: SyncSender<ConsensusCommand>,
+        ws_config: WsConfig,
         shared_state: Arc<RwLock<ConsensusState>>,
         bootstrap_part_size: u64,
     ) -> Self {
         Self {
             command_sender,
+            ws_config,
             shared_state,
             bootstrap_part_size,
         }
@@ -219,6 +227,38 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
+        if self.ws_config.enabled {
+            if let Some(wrapped_block) = block_storage.read_blocks().get(&block_id) {
+                let operations: Vec<(OperationId, Option<Wrapped<Operation, OperationId>>)> =
+                    wrapped_block
+                        .content
+                        .operations
+                        .iter()
+                        .map(|operation_id| {
+                            match block_storage.read_operations().get(operation_id).cloned() {
+                                Some(wrapped_operation) => (*operation_id, Some(wrapped_operation)),
+                                None => (*operation_id, None),
+                            }
+                        })
+                        .collect();
+
+                let _block_receivers_count = self
+                    .ws_config
+                    .block_sender
+                    .send(wrapped_block.content.clone());
+                let _filled_block_receivers_count =
+                    self.ws_config.filled_block_sender.send(FilledBlock {
+                        header: wrapped_block.content.header.clone(),
+                        operations,
+                    });
+            } else {
+                warn!(
+                    "error no ws event sent, block with id {} not found",
+                    block_id
+                );
+            };
+        }
+
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlock(
@@ -233,6 +273,12 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
+        if self.ws_config.enabled {
+            let _ = self
+                .ws_config
+                .block_header_sender
+                .send(header.clone().content);
+        }
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))
@@ -253,4 +299,31 @@ impl ConsensusController for ConsensusControllerImpl {
     fn clone_box(&self) -> Box<dyn ConsensusController> {
         Box::new(self.clone())
     }
+
+    fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink) {
+        pipe(self.ws_config.block_header_sender.clone(), sink);
+    }
+
+    fn subscribe_new_blocks(&self, sink: SubscriptionSink) {
+        pipe(self.ws_config.block_sender.clone(), sink);
+    }
+
+    fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink) {
+        pipe(self.ws_config.filled_block_sender.clone(), sink);
+    }
+}
+
+fn pipe<T: Serialize + Send + Clone + 'static>(sender: Sender<T>, mut sink: SubscriptionSink) {
+    let rx = BroadcastStream::new(sender.subscribe());
+    tokio::spawn(async move {
+        match sink.pipe_from_try_stream(rx).await {
+            SubscriptionClosed::Success => {
+                sink.close(SubscriptionClosed::Success);
+            }
+            SubscriptionClosed::RemotePeerAborted => (),
+            SubscriptionClosed::Failed(err) => {
+                sink.close(err);
+            }
+        };
+    });
 }
