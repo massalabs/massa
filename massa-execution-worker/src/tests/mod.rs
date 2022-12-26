@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#[cfg(any(test, feature = "gas_calibration"))]
 mod mock;
 
 #[cfg(not(feature = "gas_calibration"))]

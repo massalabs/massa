@@ -99,6 +99,7 @@ impl AsyncPool {
     /// * expired messages from `new_messages` (in the order they appear in `new_messages`)
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     /// The list of message that their trigger has been triggered.
+    #[allow(clippy::type_complexity)]
     pub fn settle_slot(
         &mut self,
         slot: &Slot,

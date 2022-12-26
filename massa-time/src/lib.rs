@@ -253,7 +253,7 @@ impl MassaTime {
     /// # use std::cmp::max;
     /// # use std::time::Instant;
     /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
-    /// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
+    /// let massa_time_instant: Instant = cur_timestamp.estimate_instant().unwrap();
     /// assert!(max(
     ///     massa_time_instant.saturating_duration_since(cur_instant),
     ///     cur_instant.saturating_duration_since(massa_time_instant)

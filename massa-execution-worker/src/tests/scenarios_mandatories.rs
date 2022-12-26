@@ -411,7 +411,7 @@ fn local_execution() {
     assert_eq!(events[2].data, "one local execution completed");
     assert_eq!(
         Amount::from_raw(events[5].data.parse().unwrap()),
-        Amount::from_str("299_979.03475").unwrap() // start (299_000) - fee (1000) - storage cost
+        Amount::from_str("299_979.05275").unwrap() // start (299_000) - fee (1000) - storage cost
     );
     assert_eq!(events[5].context.call_stack.len(), 1);
     assert_eq!(
@@ -616,7 +616,7 @@ fn send_and_receive_async_message_with_trigger() {
     });
 
     // match the events
-    assert!(events.len() == 2, "Two event was expected");
+    assert!(events.len() == 3, "Three event was expected");
     assert_eq!(events[0].data, "Triggered");
 
     // keypair associated to thread 2
@@ -1306,7 +1306,7 @@ fn create_execute_sc_operation(
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
-        max_gas: 100_000,
+        max_gas: 1_000_000,
         datastore,
     };
     let op = Operation::new_wrapped(

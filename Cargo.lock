@@ -531,16 +531,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "combine"
-version = "4.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35ed6e9d84f0b51a7f52daf1c7d71dd136fd7a3f41a8462b8cdb8c78d920fad4"
-dependencies = [
- "bytes",
- "memchr",
-]
-
-[[package]]
 name = "config"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2141,7 +2131,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_18#4aa60c9b8a4eeef34db461d0c9b0ca7c2048383d"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_18#3a842e20069c2e6e172c973ff96d4a33be6d059c"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2215,7 +2205,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "thiserror",
  "tracing",
 ]
@@ -2251,7 +2241,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2370,7 +2360,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_xoshiro",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "tempfile",
  "tracing",
 ]
@@ -2421,7 +2411,7 @@ dependencies = [
  "parking_lot",
  "serde",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "tracing",
 ]
 
@@ -2455,7 +2445,7 @@ dependencies = [
  "nom",
  "serde",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "thiserror",
 ]
 
@@ -2496,7 +2486,7 @@ version = "0.1.0"
 dependencies = [
  "pretty_assertions",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "tracing",
 ]
 
@@ -2520,7 +2510,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_with",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "strum",
  "thiserror",
 ]
@@ -2564,7 +2554,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "tempfile",
  "tokio",
  "tracing",
@@ -2678,7 +2668,7 @@ dependencies = [
  "massa_time",
  "rayon",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "tokio",
  "tracing",
 ]
@@ -2716,7 +2706,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
- "serial_test 0.9.0",
+ "serial_test 0.10.0",
  "thiserror",
 ]
 
@@ -2886,6 +2876,16 @@ name = "nom"
 version = "7.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8903e5a29a317527874d0402f867152a3d21c908bb0b933e416c65e301d4c36"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
+]
+
+[[package]]
+name = "nom8"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75d908f0297c3526d34e478d438b07eefe3d7b0416494d7ffccb17f1c7f7262c"
 dependencies = [
  "memchr",
  "minimal-lexical",
@@ -3166,9 +3166,9 @@ checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "pest"
-version = "2.5.1"
+version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc8bed3549e0f9b0a2a78bf7c0018237a2cdf085eecbbc048e52612438e4e9d0"
+checksum = "0f6e86fb9e7026527a0d46bc308b841d73170ef8f443e1807f6ef88526a816d4"
 dependencies = [
  "thiserror",
  "ucd-trie",
@@ -3176,9 +3176,9 @@ dependencies = [
 
 [[package]]
 name = "pest_derive"
-version = "2.5.1"
+version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdc078600d06ff90d4ed238f0119d84ab5d43dbaad278b0e33a8820293b32344"
+checksum = "96504449aa860c8dcde14f9fba5c58dc6658688ca1fe363589d6327b8662c603"
 dependencies = [
  "pest",
  "pest_generator",
@@ -3186,9 +3186,9 @@ dependencies = [
 
 [[package]]
 name = "pest_generator"
-version = "2.5.1"
+version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28a1af60b1c4148bb269006a750cff8e2ea36aff34d2d96cf7be0b14d1bed23c"
+checksum = "798e0220d1111ae63d66cb66a5dcb3fc2d986d520b98e49e1852bfdb11d7c5e7"
 dependencies = [
  "pest",
  "pest_meta",
@@ -3199,9 +3199,9 @@ dependencies = [
 
 [[package]]
 name = "pest_meta"
-version = "2.5.1"
+version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fec8605d59fc2ae0c6c1aefc0c7c7a9769732017c0ce07f7a9cfffa7b4404f20"
+checksum = "984298b75898e30a843e278a9f2452c31e349a073a0ce6fd950a12a74464e065"
 dependencies = [
  "once_cell",
  "pest",
@@ -3933,16 +3933,16 @@ dependencies = [
 
 [[package]]
 name = "serial_test"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92761393ee4dc3ff8f4af487bd58f4307c9329bbedea02cac0089ad9c411e153"
+checksum = "1c789ec87f4687d022a2405cf46e0cd6284889f1839de292cadeb6c6019506f2"
 dependencies = [
  "dashmap",
  "futures",
  "lazy_static",
  "log",
  "parking_lot",
- "serial_test_derive 0.9.0",
+ "serial_test_derive 0.10.0",
 ]
 
 [[package]]
@@ -3960,11 +3960,10 @@ dependencies = [
 
 [[package]]
 name = "serial_test_derive"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b6f5d1c3087fb119617cff2966fe3808a80e5eb59a8c1601d5994d66f4346a5"
+checksum = "b64f9e531ce97c88b4778aad0ceee079216071cffec6ac9b904277f8f92e7fe3"
 dependencies = [
- "proc-macro-error",
  "proc-macro2",
  "quote",
  "syn",
@@ -4408,13 +4407,13 @@ checksum = "808b51e57d0ef8f71115d8f3a01e7d3750d01c79cac4b3eda910f4389fdf92fd"
 
 [[package]]
 name = "toml_edit"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1541ba70885967e662f69d31ab3aeca7b1aaecfcd58679590b893e9239c3646"
+checksum = "dcd65b83c7473af53e3fd994eb2888dfddfeb28cac9a82825ec5803c233c882c"
 dependencies = [
- "combine",
  "indexmap",
  "itertools",
+ "nom8",
  "toml_datetime",
 ]
 
