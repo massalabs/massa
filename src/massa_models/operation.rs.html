@@ -1463,6 +1463,46 @@
 <a href="#1463" id="1463">1463</a>
 <a href="#1464" id="1464">1464</a>
 <a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
@@ -1476,8 +1516,9 @@
 };
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
 <span class="kw">use </span>massa_serialization::{
-    Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
-    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U16VarIntDeserializer,
+    U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 <span class="kw">use </span>nom::error::context;
 <span class="kw">use </span>nom::multi::length_count;
@@ -1490,6 +1531,7 @@
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::{DeserializeFromStr, SerializeDisplay};
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::fmt::Formatter;
 <span class="kw">use </span>std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
@@ -1501,8 +1543,13 @@
 </span><span class="kw">pub const </span>OPERATION_ID_PREFIX_SIZE_BYTES: usize = <span class="number">17</span>;
 
 <span class="doccomment">/// operation id
-</span><span class="attr">#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+</span><span class="attr">#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 </span><span class="kw">pub struct </span>OperationId(Hash);
+
+<span class="kw">const </span>OPERATIONID_PREFIX: char = <span class="string">&#39;O&#39;</span>;
+<span class="kw">const </span>OPERATIONID_VERSION: u64 = <span class="number">0</span>;
 
 <span class="doccomment">/// Left part of the operation id hash stored in a vector of size [`OPERATION_ID_PREFIX_SIZE_BYTES`]
 </span><span class="attr">#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -1510,13 +1557,25 @@
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.to_bs58_check())
+        <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
+        <span class="comment">// might want to allocate the vector with capacity in order to avoid re-allocation
+        </span><span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = Vec::new();
+        u64_serializer
+            .serialize(<span class="kw-2">&amp;</span>OPERATIONID_VERSION, <span class="kw-2">&amp;mut </span>bytes)
+            .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
+        bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
+        <span class="macro">write!</span>(
+            f,
+            <span class="string">&quot;{}{}&quot;</span>,
+            OPERATIONID_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
     }
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>OperationId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.to_bs58_check())
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
     }
 }
 
@@ -1534,8 +1593,36 @@
 
 <span class="kw">impl </span>FromStr <span class="kw">for </span>OperationId {
     <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
-    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
-        <span class="prelude-val">Ok</span>(OperationId(Hash::from_str(s)<span class="question-mark">?</span>))
+    <span class="doccomment">/// ## Example
+    /// ```rust
+    /// # use massa_hash::Hash;
+    /// # use std::str::FromStr;
+    /// # use massa_models::operation::OperationId;
+    /// # let op_id = OperationId::from_bytes(&amp;[0; 32]);
+    /// let ser = op_id.to_string();
+    /// let res_op_id = OperationId::from_str(&amp;ser).unwrap();
+    /// assert_eq!(op_id, res_op_id);
+    /// ```
+    </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
+        <span class="kw">match </span>chars.next() {
+            <span class="prelude-val">Some</span>(prefix) <span class="kw">if </span>prefix == OPERATIONID_PREFIX =&gt; {
+                <span class="kw">let </span>data = chars.collect::&lt;String&gt;();
+                <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
+                    .with_check(<span class="prelude-val">None</span>)
+                    .into_vec()
+                    .map_err(|<span class="kw">_</span>| ModelsError::OperationIdParseError)<span class="question-mark">?</span>;
+                <span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
+                <span class="kw">let </span>(rest, _version) = u64_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
+                    .map_err(|<span class="kw">_</span>| ModelsError::OperationIdParseError)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(OperationId(Hash::from_bytes(
+                    rest.try_into()
+                        .map_err(|<span class="kw">_</span>| ModelsError::OperationIdParseError)<span class="question-mark">?</span>,
+                )))
+            }
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::OperationIdParseError),
+        }
     }
 }
 
@@ -1581,13 +1668,6 @@
     <span class="doccomment">/// op id from bytes
     </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; OPERATION_ID_SIZE_BYTES]) -&gt; OperationId {
         OperationId(Hash::from_bytes(data))
-    }
-
-    <span class="doccomment">/// op id from `bs58` check
-    </span><span class="kw">pub fn </span>from_bs58_check(data: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;OperationId, ModelsError&gt; {
-        <span class="prelude-val">Ok</span>(OperationId(
-            Hash::from_bs58_check(data).map_err(|<span class="kw">_</span>| ModelsError::HashError)<span class="question-mark">?</span>,
-        ))
     }
 
     <span class="doccomment">/// convert the [`OperationId`] into a [`OperationPrefixId`]
@@ -2322,8 +2402,8 @@
     /// use std::str::FromStr;
     ///
     /// let mut operations_ids = Vec::new();
-    /// operations_ids.push(OperationId::from_str(&quot;2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz&quot;).unwrap());
-    /// operations_ids.push(OperationId::from_str(&quot;2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz&quot;).unwrap());
+    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
+    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&amp;operations_ids, &amp;mut buffer).unwrap();
     /// ```
@@ -2372,8 +2452,8 @@
     /// use std::str::FromStr;
     ///
     /// let mut operations_ids = Vec::new();
-    /// operations_ids.push(OperationId::from_str(&quot;2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz&quot;).unwrap());
-    /// operations_ids.push(OperationId::from_str(&quot;2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz&quot;).unwrap());
+    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
+    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&amp;operations_ids, &amp;mut buffer).unwrap();
     /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new(1000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();

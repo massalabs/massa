@@ -364,7 +364,7 @@
     }
 
     <span class="doccomment">/// add ip to whitelist
-    </span><span class="kw">pub async fn </span>whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    </span><span class="kw">pub async fn </span>add_to_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.send(NetworkCommand::Whitelist(ips))
             .<span class="kw">await

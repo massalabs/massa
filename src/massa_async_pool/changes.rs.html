@@ -238,6 +238,38 @@
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
 <a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="kw">use </span>massa_serialization::{
@@ -264,8 +296,18 @@
     <span class="doccomment">/// an item with identifier T and value U is added
     </span>Add(T, U),
 
+    <span class="doccomment">/// an item with identifier T is ready to be executed
+    </span>Activate(T),
+
     <span class="doccomment">/// an item with identifier T is deleted
     </span>Delete(T),
+}
+
+<span class="attr">#[repr(u32)]
+</span><span class="kw">enum </span>ChangeId {
+    Add = <span class="number">0</span>,
+    Activate = <span class="number">1</span>,
+    Delete = <span class="number">2</span>,
 }
 
 <span class="doccomment">/// represents a list of additions and deletions to the asynchronous message pool
@@ -336,12 +378,16 @@
         <span class="kw">for </span>change <span class="kw">in </span><span class="kw-2">&amp;</span>value.<span class="number">0 </span>{
             <span class="kw">match </span>change {
                 Change::Add(id, message) =&gt; {
-                    buffer.push(<span class="number">0</span>);
+                    buffer.push(ChangeId::Add <span class="kw">as </span>u8);
                     <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
                     <span class="self">self</span>.message_serializer.serialize(message, buffer)<span class="question-mark">?</span>;
                 }
+                Change::Activate(id) =&gt; {
+                    buffer.push(ChangeId::Activate <span class="kw">as </span>u8);
+                    <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
+                }
                 Change::Delete(id) =&gt; {
-                    buffer.push(<span class="number">1</span>);
+                    buffer.push(ChangeId::Delete <span class="kw">as </span>u8);
                     <span class="self">self</span>.id_serializer.serialize(id, buffer)<span class="question-mark">?</span>;
                 }
             }
@@ -357,7 +403,12 @@
 }
 
 <span class="kw">impl </span>AsyncPoolChangesDeserializer {
-    <span class="kw">pub fn </span>new(thread_count: u8, max_async_pool_changes: u64, max_async_message_data: u64) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(
+        thread_count: u8,
+        max_async_pool_changes: u64,
+        max_async_message_data: u64,
+        max_key_length: u32,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             async_pool_changes_length: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -367,6 +418,7 @@
             message_deserializer: AsyncMessageDeserializer::new(
                 thread_count,
                 max_async_message_data,
+                max_key_length,
             ),
         }
     }
@@ -393,6 +445,10 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     AsyncMessageTrigger {
+    ///        address: Some(Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap()),
+    ///        datastore_key: Some(String::from(&quot;test&quot;)),
+    ///     }
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
@@ -476,6 +532,14 @@
     /// * `msg_id`: ID of the message to push as deleted to the list of changes
     </span><span class="kw">pub fn </span>push_delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg_id: AsyncMessageId) {
         <span class="self">self</span>.<span class="number">0</span>.push(Change::Delete(msg_id));
+    }
+
+    <span class="doccomment">/// Pushes a message activation to the list of changes.
+    ///
+    /// Arguments:
+    /// * `msg_id`: ID of the message to push as ready to be executed to the list of changes
+    </span><span class="kw">pub fn </span>push_activate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg_id: AsyncMessageId) {
+        <span class="self">self</span>.<span class="number">0</span>.push(Change::Activate(msg_id));
     }
 }
 </code></pre></div>

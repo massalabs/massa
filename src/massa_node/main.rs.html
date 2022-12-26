@@ -818,6 +818,33 @@
 <a href="#818" id="818">818</a>
 <a href="#819" id="819">819</a>
 <a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -828,14 +855,14 @@
 
 <span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
 <span class="kw">use </span>dialoguer::Password;
-<span class="kw">use </span>massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
+<span class="kw">use </span>massa_api::{APIConfig, ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
 <span class="kw">use </span>massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
 <span class="kw">use </span>massa_executed_ops::ExecutedOpsConfig;
-<span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
+<span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 <span class="kw">use </span>massa_factory_worker::start_factory;
@@ -906,10 +933,11 @@
     mpsc::Receiver&lt;()&gt;,
     StopHandle,
     StopHandle,
+    StopHandle,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
     <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
-        <span class="kw">if </span>MassaTime::now(<span class="number">0</span>).expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
+        <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
             <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
         }
     }
@@ -990,8 +1018,8 @@
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
-        bootstrap_whitelist_file: SETTINGS.bootstrap.bootstrap_whitelist_file.clone(),
-        bootstrap_blacklist_file: SETTINGS.bootstrap.bootstrap_blacklist_file.clone(),
+        bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
+        bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -1000,7 +1028,7 @@
         write_error_timeout: SETTINGS.bootstrap.write_error_timeout,
         retry_delay: SETTINGS.bootstrap.retry_delay,
         max_ping: SETTINGS.bootstrap.max_ping,
-        enable_clock_synchronization: SETTINGS.bootstrap.enable_clock_synchronization,
+        max_clock_delta: SETTINGS.bootstrap.max_clock_delta,
         cache_duration: SETTINGS.bootstrap.cache_duration,
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
@@ -1104,7 +1132,6 @@
         start_network_controller(
             <span class="kw-2">&amp;</span>network_config,
             Establisher::new(),
-            bootstrap_state.compensation_millis,
             bootstrap_state.peers,
             <span class="kw-2">*</span>VERSION,
         )
@@ -1132,7 +1159,6 @@
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
-        clock_compensation: bootstrap_state.compensation_millis,
         max_async_gas: MAX_ASYNC_GAS,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         roll_price: ROLL_PRICE,
@@ -1149,6 +1175,12 @@
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
+        max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+        gas_costs: GasCosts::new(
+            SETTINGS.execution.abi_gas_costs_file.clone(),
+            SETTINGS.execution.wasm_gas_costs_file.clone(),
+        )
+        .expect(<span class="string">&quot;Failed to load gas costs&quot;</span>),
     };
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -1195,8 +1227,11 @@
         max_item_return_count: SETTINGS.consensus.max_item_return_count,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
-        clock_compensation_millis: bootstrap_state.compensation_millis,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+        ws_enabled: SETTINGS.api.enable_ws,
+        ws_blocks_headers_capacity: SETTINGS.consensus.ws_blocks_headers_capacity,
+        ws_blocks_capacity: SETTINGS.consensus.ws_blocks_capacity,
+        ws_filled_blocks_capacity: SETTINGS.consensus.ws_filled_blocks_capacity,
     };
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
@@ -1265,7 +1300,6 @@
         thread_count: THREAD_COUNT,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
-        clock_compensation_millis: bootstrap_state.compensation_millis,
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE <span class="kw">as </span>u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
@@ -1287,7 +1321,6 @@
         bootstrap_config,
         massa_bootstrap::Establisher::new(),
         private_key,
-        bootstrap_state.compensation_millis,
         <span class="kw-2">*</span>VERSION,
     )
     .<span class="kw">await
@@ -1296,9 +1329,12 @@
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
         bind_public: SETTINGS.api.bind_public,
+        bind_api: SETTINGS.api.bind_api,
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
         openrpc_spec_path: SETTINGS.api.openrpc_spec_path.clone(),
+        bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
+        bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         max_request_body_size: SETTINGS.api.max_request_body_size,
         max_response_body_size: SETTINGS.api.max_response_body_size,
         max_connections: SETTINGS.api.max_connections,
@@ -1320,6 +1356,18 @@
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
     };
+
+    <span class="comment">// spawn Massa API
+    </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(consensus_controller.clone(), api_config.clone(), <span class="kw-2">*</span>VERSION);
+    <span class="kw">let </span>api_handle = api
+        .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_api, <span class="kw-2">&amp;</span>api_config)
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;failed to start MASSA API&quot;</span>);
+
+    <span class="comment">// Disable WebSockets for Private and Public API&#39;s
+    </span><span class="kw">let </span><span class="kw-2">mut </span>api_config = api_config.clone();
+    api_config.enable_ws = <span class="bool-val">false</span>;
+
     <span class="comment">// spawn private API
     </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
         network_command_sender.clone(),
@@ -1343,7 +1391,6 @@
         network_config,
         <span class="kw-2">*</span>VERSION,
         network_command_sender.clone(),
-        bootstrap_state.compensation_millis,
         node_id,
         shared_storage.clone(),
     );
@@ -1394,6 +1441,7 @@
         api_private_stop_rx,
         api_private_handle,
         api_public_handle,
+        api_handle,
     )
 }
 
@@ -1422,6 +1470,7 @@
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
+    api_handle: StopHandle,
 ) {
     <span class="comment">// stop bootstrap
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
@@ -1436,6 +1485,9 @@
 
     <span class="comment">// stop private API
     </span>api_private_handle.stop();
+
+    <span class="comment">// stop Massa API
+    </span>api_handle.stop();
 
     <span class="comment">// stop factory
     </span>factory_manager.stop();
@@ -1564,6 +1616,7 @@
             <span class="kw-2">mut </span>api_private_stop_rx,
             api_private_handle,
             api_public_handle,
+            api_handle,
         ) = launch(node_wallet.clone()).<span class="kw">await</span>;
 
         <span class="comment">// interrupt signal listener
@@ -1628,6 +1681,7 @@
             },
             api_private_handle,
             api_public_handle,
+            api_handle,
         )
         .<span class="kw">await</span>;
 

@@ -49,14 +49,18 @@
 <a href="#49" id="49">49</a>
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>ConsensusConfig {
-    <span class="doccomment">/// Clock compensation
-    </span><span class="kw">pub </span>clock_compensation_millis: i64,
     <span class="doccomment">/// Genesis timestamp
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// Delta time between two period
@@ -99,6 +103,14 @@
     </span><span class="kw">pub </span>channel_size: usize,
     <span class="doccomment">/// size of a consensus bootstrap streaming part
     </span><span class="kw">pub </span>bootstrap_part_size: u64,
+    <span class="doccomment">/// whether WebSockets are enabled
+    </span><span class="kw">pub </span>ws_enabled: bool,
+    <span class="doccomment">/// blocks headers sender(channel) capacity
+    </span><span class="kw">pub </span>ws_blocks_headers_capacity: usize,
+    <span class="doccomment">/// blocks sender(channel) capacity
+    </span><span class="kw">pub </span>ws_blocks_capacity: usize,
+    <span class="doccomment">/// filled blocks sender(channel) capacity
+    </span><span class="kw">pub </span>ws_filled_blocks_capacity: usize,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_consensus_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

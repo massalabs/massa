@@ -655,6 +655,94 @@
 <a href="#655" id="655">655</a>
 <a href="#656" id="656">656</a>
 <a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -664,9 +752,10 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
 <span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
-<span class="kw">use </span>massa_async_pool::AsyncMessage;
+<span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 <span class="kw">use </span>massa_execution_exports::ExecutionConfig;
 <span class="kw">use </span>massa_execution_exports::ExecutionStackElement;
+<span class="kw">use </span>massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
@@ -678,6 +767,9 @@
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::debug;
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+</span><span class="kw">use </span>massa_models::datastore::Datastore;
+
 <span class="doccomment">/// helper for locking the context mutex
 </span><span class="macro">macro_rules! </span>context_guard {
     (<span class="macro-nonterminal">$self</span>:ident) =&gt; {
@@ -687,7 +779,7 @@
 
 <span class="doccomment">/// an implementation of the Interface trait (see massa-sc-runtime crate)
 </span><span class="attr">#[derive(Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>InterfaceImpl {
+</span><span class="kw">pub struct </span>InterfaceImpl {
     <span class="doccomment">/// execution configuration
     </span>config: ExecutionConfig,
     <span class="doccomment">/// thread-safe shared access to the execution context (see context.rs)
@@ -702,6 +794,35 @@
     /// * `context`: thread-safe shared access to the current execution context (see context.rs)
     </span><span class="kw">pub fn </span>new(config: ExecutionConfig, context: Arc&lt;Mutex&lt;ExecutionContext&gt;&gt;) -&gt; InterfaceImpl {
         InterfaceImpl { config, context }
+    }
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+    </span><span class="doccomment">/// Used to create an default interface to run SC in a test environment
+    </span><span class="kw">pub fn </span>new_default(
+        sender_addr: Address,
+        operation_datastore: <span class="prelude-ty">Option</span>&lt;Datastore&gt;,
+    ) -&gt; InterfaceImpl {
+        <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+
+        <span class="kw">let </span>config = ExecutionConfig::default();
+        <span class="kw">let </span>(final_state, _tempfile, _tempdir) = <span class="kw">crate</span>::tests::get_sample_state().unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>execution_context =
+            ExecutionContext::new(config.clone(), final_state, Default::default());
+        execution_context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
+            address: sender_addr,
+            coins: Amount::zero(),
+            owned_addresses: <span class="macro">vec!</span>[sender_addr],
+            operation_datastore,
+        }];
+        execution_context.speculative_ledger.added_changes.<span class="number">0</span>.insert(
+            sender_addr,
+            SetUpdateOrDelete::Set(LedgerEntry {
+                balance: Amount::from_mantissa_scale(<span class="number">1_000_000_000</span>, <span class="number">0</span>),
+                ..Default::default()
+            }),
+        );
+        <span class="kw">let </span>context = Arc::new(Mutex::new(execution_context));
+        InterfaceImpl::new(config, context)
     }
 }
 
@@ -1003,6 +1124,46 @@
         <span class="prelude-val">Ok</span>(context.has_data_entry(<span class="kw-2">&amp;</span>addr, key))
     }
 
+    <span class="doccomment">/// Check whether or not the caller has write access in the current context
+    ///
+    /// # Returns
+    /// true if the caller has write access
+    </span><span class="kw">fn </span>caller_has_write_access(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>call_stack_iter = context.stack.iter().rev();
+        <span class="kw">let </span>caller_owned_addresses = <span class="kw">if let </span><span class="prelude-val">Some</span>(last) = call_stack_iter.next() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_to_last) = call_stack_iter.next() {
+                prev_to_last.owned_addresses.clone()
+            } <span class="kw">else </span>{
+                last.owned_addresses.clone()
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;empty stack&quot;</span>));
+        };
+        <span class="kw">let </span>current_address = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(caller_owned_addresses.contains(<span class="kw-2">&amp;</span>current_address))
+    }
+
+    <span class="doccomment">/// Returns bytecode of the current address
+    </span><span class="kw">fn </span>raw_get_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let </span>address = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
+            <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found&quot;</span>),
+        }
+    }
+
+    <span class="doccomment">/// Returns bytecode of the target address
+    </span><span class="kw">fn </span>raw_get_bytecode_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let </span>address = Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
+            <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found&quot;</span>),
+        }
+    }
+
     <span class="doccomment">/// Get the operation datastore keys (aka entries).
     /// Note that the datastore is only accessible to the initial caller level.
     ///
@@ -1084,7 +1245,7 @@
     /// # Returns
     /// The string representation of the resulting address
     </span><span class="kw">fn </span>address_from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
-        <span class="kw">let </span>public_key = massa_signature::PublicKey::from_bs58_check(public_key)<span class="question-mark">?</span>;
+        <span class="kw">let </span>public_key = massa_signature::PublicKey::from_str(public_key)<span class="question-mark">?</span>;
         <span class="kw">let </span>addr = massa_models::address::Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
         <span class="prelude-val">Ok</span>(addr.to_string())
     }
@@ -1103,7 +1264,7 @@
             <span class="prelude-val">Ok</span>(sig) =&gt; sig,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
         };
-        <span class="kw">let </span>public_key = <span class="kw">match </span>massa_signature::PublicKey::from_bs58_check(public_key) {
+        <span class="kw">let </span>public_key = <span class="kw">match </span>massa_signature::PublicKey::from_str(public_key) {
             <span class="prelude-val">Ok</span>(pubk) =&gt; pubk,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
         };
@@ -1188,7 +1349,7 @@
     /// data: the string data that is the payload of the event
     </span><span class="kw">fn </span>generate_event(<span class="kw-2">&amp;</span><span class="self">self</span>, data: String) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>event = context.event_create(data);
+        <span class="kw">let </span>event = context.event_create(data, <span class="bool-val">false</span>);
         context.event_emit(event);
         <span class="prelude-val">Ok</span>(())
     }
@@ -1247,6 +1408,7 @@
         raw_fee: u64,
         raw_coins: u64,
         data: <span class="kw-2">&amp;</span>[u8],
+        filter: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>str, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span>validity_start.<span class="number">1 </span>&gt;= <span class="self">self</span>.config.thread_count {
             <span class="macro">bail!</span>(<span class="string">&quot;validity start thread exceeds the configuration thread count&quot;</span>)
@@ -1274,6 +1436,20 @@
             Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>),
             Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>),
             data.to_vec(),
+            filter
+                .map(|(addr, key)| {
+                    <span class="kw">let </span>datastore_key = key.map(|k| k.to_vec());
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>k) = datastore_key {
+                        <span class="kw">if </span>k.len() &gt; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize {
+                            <span class="macro">bail!</span>(<span class="string">&quot;datastore key is too long&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Ok</span>::&lt;AsyncMessageTrigger, <span class="kw">_</span>&gt;(AsyncMessageTrigger {
+                        address: Address::from_str(addr)<span class="question-mark">?</span>,
+                        datastore_key,
+                    })
+                })
+                .transpose()<span class="question-mark">?</span>,
         ));
         execution_context.created_message_index += <span class="number">1</span>;
         <span class="prelude-val">Ok</span>(())

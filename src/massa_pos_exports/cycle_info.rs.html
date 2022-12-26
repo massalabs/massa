@@ -611,8 +611,27 @@
 <a href="#611" id="611">611</a>
 <a href="#612" id="612">612</a>
 <a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
 </pre><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
-<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
@@ -620,7 +639,8 @@
     slot::Slot,
 };
 <span class="kw">use </span>massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>nom::{
     branch::alt,
@@ -717,7 +737,10 @@
     <span class="doccomment">/// Hash of the production statistics
     </span><span class="kw">pub </span>production_stats_hash: Hash,
     <span class="doccomment">/// Hash of the cycle state
-    </span><span class="kw">pub </span>global_hash: Hash,
+    </span><span class="kw">pub </span>cycle_global_hash: Hash,
+    <span class="doccomment">/// Snapshot of the final state hash
+    /// Used for PoS selections
+    </span><span class="kw">pub </span>final_state_hash_snapshot: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
 }
 
 <span class="kw">impl </span>CycleInfo {
@@ -748,7 +771,7 @@
         hash_concat.extend(production_stats_hash.to_bytes());
 
         <span class="comment">// compute the global hash
-        </span><span class="kw">let </span>global_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
+        </span><span class="kw">let </span>cycle_global_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
         <span class="comment">// create the new cycle
         </span>CycleInfo {
@@ -759,7 +782,8 @@
             production_stats,
             roll_counts_hash,
             production_stats_hash,
-            global_hash,
+            cycle_global_hash,
+            final_state_hash_snapshot: <span class="prelude-val">None</span>,
         }
     }
 
@@ -829,7 +853,7 @@
         }
 
         <span class="comment">// compute the global hash
-        </span><span class="self">self</span>.global_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
+        </span><span class="self">self</span>.cycle_global_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
         <span class="comment">// return the completion status
         </span><span class="self">self</span>.complete
@@ -925,7 +949,7 @@
         <span class="string">&quot;production_stats_hash mismatch&quot;
     </span>);
     <span class="macro">assert_eq!</span>(
-        cycle_a.global_hash, cycle_b.global_hash,
+        cycle_a.cycle_global_hash, cycle_b.cycle_global_hash,
         <span class="string">&quot;global_hash mismatch&quot;
     </span>);
 }
@@ -935,6 +959,7 @@
     u64_ser: U64VarIntSerializer,
     bitvec_ser: BitVecSerializer,
     production_stats_ser: ProductionStatsSerializer,
+    opt_hash_ser: OptionSerializer&lt;Hash, HashSerializer&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>CycleInfoSerializer {
@@ -950,6 +975,7 @@
             u64_ser: U64VarIntSerializer::new(),
             bitvec_ser: BitVecSerializer::new(),
             production_stats_ser: ProductionStatsSerializer::new(),
+            opt_hash_ser: OptionSerializer::new(HashSerializer::new()),
         }
     }
 }
@@ -977,6 +1003,10 @@
         </span><span class="self">self</span>.production_stats_ser
             .serialize(<span class="kw-2">&amp;</span>value.production_stats, buffer)<span class="question-mark">?</span>;
 
+        <span class="comment">// cycle_info.final_state_hash_snapshot
+        </span><span class="self">self</span>.opt_hash_ser
+            .serialize(<span class="kw-2">&amp;</span>value.final_state_hash_snapshot, buffer)<span class="question-mark">?</span>;
+
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -987,6 +1017,7 @@
     rolls_deser: RollsDeserializer,
     bitvec_deser: BitVecDeserializer,
     production_stats_deser: ProductionStatsDeserializer,
+    opt_hash_deser: OptionDeserializer&lt;Hash, HashDeserializer&gt;,
 }
 
 <span class="kw">impl </span>CycleInfoDeserializer {
@@ -997,6 +1028,7 @@
             rolls_deser: RollsDeserializer::new(max_rolls_length),
             bitvec_deser: BitVecDeserializer::new(),
             production_stats_deser: ProductionStatsDeserializer::new(max_production_stats_length),
+            opt_hash_deser: OptionDeserializer::new(HashDeserializer::new()),
         }
     }
 }
@@ -1019,24 +1051,30 @@
                 context(<span class="string">&quot;production_stats&quot;</span>, |input| {
                     <span class="self">self</span>.production_stats_deser.deserialize(input)
                 }),
+                context(<span class="string">&quot;final_state_hash_snapshot&quot;</span>, |input| {
+                    <span class="self">self</span>.opt_hash_deser.deserialize(input)
+                }),
             )),
         )
         .map(
             <span class="attr">#[allow(clippy::type_complexity)]
-            </span>|(cycle, complete, roll_counts, rng_seed, production_stats): (
+            </span>|(cycle, complete, roll_counts, rng_seed, production_stats, opt_hash): (
                 u64,                                  <span class="comment">// cycle
                 </span>bool,                                 <span class="comment">// complete
                 </span>Vec&lt;(Address, u64)&gt;,                  <span class="comment">// roll_counts
                 </span>BitVec&lt;u8&gt;,                           <span class="comment">// rng_seed
                 </span>PreHashMap&lt;Address, ProductionStats&gt;, <span class="comment">// production_stats (address, n_success, n_fail)
+                </span><span class="prelude-ty">Option</span>&lt;Hash&gt;,                         <span class="comment">// final_state_hash_snapshot
             </span>)| {
-                CycleInfo::new_with_hash(
+                <span class="kw">let </span><span class="kw-2">mut </span>cycle = CycleInfo::new_with_hash(
                     cycle,
                     complete,
                     roll_counts.into_iter().collect(),
                     rng_seed,
                     production_stats,
-                )
+                );
+                cycle.final_state_hash_snapshot = opt_hash;
+                cycle
             },
         )
         .parse(buffer)

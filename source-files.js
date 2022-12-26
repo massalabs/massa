@@ -1,5 +1,5 @@
 var sourcesIndex = JSON.parse('{\
-"massa_api":["",[],["config.rs","error.rs","lib.rs","private.rs","public.rs"]],\
+"massa_api":["",[],["api.rs","api_trait.rs","config.rs","error.rs","lib.rs","private.rs","public.rs"]],\
 "massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","message.rs","pool.rs"]],\
 "massa_bootstrap":["",[],["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server.rs","server_binder.rs","settings.rs","tools.rs"]],\
 "massa_cipher":["",[],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]],\

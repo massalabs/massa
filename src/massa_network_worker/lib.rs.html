@@ -150,7 +150,6 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![feature(async_closure)]
@@ -194,7 +193,6 @@
 </span><span class="kw">pub async fn </span>start_network_controller(
     network_settings: <span class="kw-2">&amp;</span>NetworkConfig,
     <span class="kw-2">mut </span>establisher: Establisher,
-    clock_compensation: i64,
     initial_peers: <span class="prelude-ty">Option</span>&lt;BootstrapPeers&gt;,
     version: Version,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;
@@ -238,7 +236,7 @@
         }
         keypair
     };
-    <span class="kw">let </span>self_node_id = NodeId(keypair.get_public_key());
+    <span class="kw">let </span>self_node_id = NodeId::new(keypair.get_public_key());
 
     <span class="macro">info!</span>(<span class="string">&quot;The node_id of this node is: {}&quot;</span>, self_node_id);
     <span class="macro">massa_trace!</span>(<span class="string">&quot;self_node_id&quot;</span>, { <span class="string">&quot;node_id&quot;</span>: self_node_id });
@@ -248,7 +246,7 @@
 
     <span class="macro">debug!</span>(<span class="string">&quot;Loading peer database&quot;</span>);
     <span class="comment">// load peer info database
-    </span><span class="kw">let </span><span class="kw-2">mut </span>peer_info_db = PeerInfoDatabase::new(network_settings, clock_compensation).<span class="kw">await</span><span class="question-mark">?</span>;
+    </span><span class="kw">let </span><span class="kw-2">mut </span>peer_info_db = PeerInfoDatabase::new(network_settings).<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="comment">// add bootstrap peers
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(peers) = initial_peers {

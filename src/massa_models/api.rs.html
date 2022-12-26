@@ -584,6 +584,39 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::ExecutionAddressCycleInfo;
@@ -601,6 +634,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::net::IpAddr;
+<span class="kw">use </span>strum::Display;
 
 <span class="doccomment">/// operation input
 </span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
@@ -1141,6 +1175,12 @@
     /// Some(false) means candidate
     /// None means final _and_ candidate
     </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="doccomment">/// optional execution status
+    ///
+    /// Some(true) means events coming from a failed sc execution
+    /// Some(false) means events coming from a succeeded sc execution
+    /// None means both
+    </span><span class="kw">pub </span>is_error: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="doccomment">/// read only bytecode execution request
@@ -1169,6 +1209,32 @@
     </span><span class="kw">pub </span>parameter: Vec&lt;u8&gt;,
     <span class="doccomment">/// caller&#39;s address, optional
     </span><span class="kw">pub </span>caller_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
+}
+
+<span class="doccomment">/// SCRUD operations
+</span><span class="attr">#[derive(Display)]
+#[strum(serialize_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>ScrudOperation {
+    <span class="doccomment">/// search operation
+    </span>Search,
+    <span class="doccomment">/// create operation
+    </span>Create,
+    <span class="doccomment">/// read operation
+    </span>Read,
+    <span class="doccomment">/// update operation
+    </span>Update,
+    <span class="doccomment">/// delete operation
+    </span>Delete,
+}
+
+<span class="doccomment">/// Bootsrap lists types
+</span><span class="attr">#[derive(Display)]
+#[strum(serialize_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>ListType {
+    <span class="doccomment">/// contains banned entry
+    </span>Blacklist,
+    <span class="doccomment">/// contains allowed entry
+    </span>Whitelist,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

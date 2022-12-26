@@ -975,13 +975,6 @@
 <a href="#975" id="975">975</a>
 <a href="#976" id="976">976</a>
 <a href="#977" id="977">977</a>
-<a href="#978" id="978">978</a>
-<a href="#979" id="979">979</a>
-<a href="#980" id="980">980</a>
-<a href="#981" id="981">981</a>
-<a href="#982" id="982">982</a>
-<a href="#983" id="983">983</a>
-<a href="#984" id="984">984</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
@@ -1018,8 +1011,6 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) peer_types_connection_count: EnumMap&lt;PeerType, ConnectionCount&gt;,
     <span class="doccomment">/// Every `wakeup_interval` we try to establish a connection with known inactive peers
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) wakeup_interval: MassaTime,
-    <span class="doccomment">/// Clock compensation.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) clock_compensation: i64,
 }
 
 <span class="doccomment">/// Saves advertised and non standard peers to a file.
@@ -1067,7 +1058,6 @@
     cfg: <span class="kw-2">&amp;</span>NetworkConfig,
     peers: <span class="kw-2">&amp;mut </span>HashMap&lt;IpAddr, PeerInfo&gt;,
     opt_new_peers: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Vec&lt;IpAddr&gt;&gt;,
-    clock_compensation: i64,
     ban_timeout: MassaTime,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="comment">// filter and map new peers, remove duplicates
@@ -1138,7 +1128,7 @@
 
     <span class="comment">// sort and truncate inactive banned peers
     // forget about old banned peers
-    </span><span class="kw">let </span>ban_limit = MassaTime::now(clock_compensation)<span class="question-mark">?</span>.saturating_sub(ban_timeout);
+    </span><span class="kw">let </span>ban_limit = MassaTime::now()<span class="question-mark">?</span>.saturating_sub(ban_timeout);
     banned_peers.retain(|p| p.last_failure.map_or(<span class="bool-val">false</span>, |v| v &gt;= ban_limit));
     banned_peers.sort_unstable_by_key(|<span class="kw-2">&amp;</span>p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
@@ -1156,8 +1146,7 @@
     ///
     /// # Argument
     /// * `cfg`: network configuration
-    /// * `clock_compensation`: sync with server
-    </span><span class="kw">pub async fn </span>new(cfg: <span class="kw-2">&amp;</span>NetworkConfig, clock_compensation: i64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NetworkError&gt; {
+    </span><span class="kw">pub async fn </span>new(cfg: <span class="kw-2">&amp;</span>NetworkConfig) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NetworkError&gt; {
         <span class="comment">// wakeup interval
         </span><span class="kw">let </span>wakeup_interval = cfg.wakeup_interval;
 
@@ -1186,7 +1175,7 @@
         }
 
         <span class="comment">// cleanup
-        </span>cleanup_peers(cfg, <span class="kw-2">&amp;mut </span>peers, <span class="prelude-val">None</span>, clock_compensation, cfg.ban_timeout)<span class="question-mark">?</span>;
+        </span>cleanup_peers(cfg, <span class="kw-2">&amp;mut </span>peers, <span class="prelude-val">None</span>, cfg.ban_timeout)<span class="question-mark">?</span>;
 
         <span class="comment">// setup saver
         </span><span class="kw">let </span>peers_file = cfg.peers_file.clone();
@@ -1226,7 +1215,6 @@
             saver_join_handle,
             saver_watch_tx,
             wakeup_interval,
-            clock_compensation,
             peer_types_connection_count: EnumMap::default(),
         })
     }
@@ -1281,7 +1269,6 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.network_settings,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.peers,
             <span class="prelude-val">None</span>,
-            <span class="self">self</span>.clock_compensation,
             <span class="self">self</span>.network_settings.ban_timeout,
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -1311,7 +1298,6 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.network_settings,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.peers,
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>new_peers.to_vec()),
-            <span class="self">self</span>.clock_compensation,
             <span class="self">self</span>.network_settings.ban_timeout,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.request_dump()
@@ -1458,7 +1444,7 @@
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })<span class="question-mark">?
-            </span>.last_alive = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+            </span>.last_alive = <span class="prelude-val">Some</span>(MassaTime::now()<span class="question-mark">?</span>);
         <span class="self">self</span>.request_dump()
     }
 
@@ -1476,7 +1462,7 @@
                     NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })<span class="question-mark">?
-            </span>.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+            </span>.last_failure = <span class="prelude-val">Some</span>(MassaTime::now()<span class="question-mark">?</span>);
         <span class="self">self</span>.request_dump()
     }
 
@@ -1492,7 +1478,7 @@
             </span>.peers
             .entry(ip)
             .or_insert_with(|| PeerInfo::new(ip, <span class="bool-val">false</span>));
-        peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+        peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now()<span class="question-mark">?</span>);
         <span class="kw">if </span>!peer.banned {
             peer.banned = <span class="bool-val">true</span>;
             <span class="kw">if </span>!peer.is_active() {
@@ -1627,7 +1613,7 @@
             peer.advertised = <span class="bool-val">true</span>; <span class="comment">// we just connected to it. Assume advertised.
 
             </span><span class="kw">if </span>peer.banned {
-                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now()<span class="question-mark">?</span>);
                 <span class="kw">if </span>!peer.is_active() &amp;&amp; peer.peer_type == Default::default() {
                     <span class="self">self</span>.update()<span class="question-mark">?</span>;
                 }
@@ -1669,7 +1655,7 @@
                 )
             })<span class="question-mark">?</span>;
             peer.active_out_connection_attempts -= <span class="number">1</span>;
-            peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+            peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now()<span class="question-mark">?</span>);
             <span class="kw">let </span>pt = peer.peer_type;
             <span class="kw">if </span>!peer.is_active() &amp;&amp; peer.peer_type == PeerType::Standard {
                 <span class="self">self</span>.update()<span class="question-mark">?</span>;
@@ -1729,7 +1715,7 @@
             // is there a attempt slot available
             </span><span class="kw">if </span>peer.banned {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused_peer_banned&quot;</span>, {<span class="string">&quot;ip&quot;</span>: peer.ip});
-                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>);
+                peer.last_failure = <span class="prelude-val">Some</span>(MassaTime::now()<span class="question-mark">?</span>);
                 <span class="self">self</span>.request_dump()<span class="question-mark">?</span>;
                 <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::BannedPeerTryingToConnect(ip),
@@ -1836,7 +1822,7 @@
         cfg: <span class="kw-2">&amp;</span>PeerTypeConnectionConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;IpAddr&gt;, NetworkError&gt; {
         <span class="kw">let </span>available_slots = count.get_available_out_connection_attempts(cfg);
-        <span class="kw">let </span>now = MassaTime::now(<span class="self">self</span>.clock_compensation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
         <span class="kw">let </span>f = <span class="kw">move </span>|p: &amp;&amp;PeerInfo| {
             <span class="kw">if </span>p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
                 <span class="kw">return </span><span class="bool-val">false</span>;

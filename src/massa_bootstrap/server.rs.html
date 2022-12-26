@@ -620,11 +620,6 @@
 <a href="#620" id="620">620</a>
 <a href="#621" id="621">621</a>
 <a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
-<a href="#625" id="625">625</a>
-<a href="#626" id="626">626</a>
-<a href="#627" id="627">627</a>
 </pre><pre class="rust"><code><span class="kw">use </span>futures::stream::FuturesUnordered;
 <span class="kw">use </span>futures::StreamExt;
 <span class="kw">use </span>humantime::format_duration;
@@ -687,7 +682,6 @@
     bootstrap_config: BootstrapConfig,
     establisher: Establisher,
     keypair: KeyPair,
-    compensation_millis: i64,
     version: Version,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.start_bootstrap_server&quot;</span>, {});
@@ -695,7 +689,7 @@
         <span class="kw">let </span>(manager_tx, manager_rx) = mpsc::channel::&lt;()&gt;(<span class="number">1</span>);
 
         <span class="kw">let </span>whitelist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(whitelist) =
-            std::fs::read_to_string(<span class="kw-2">&amp;</span>bootstrap_config.bootstrap_whitelist_file)
+            std::fs::read_to_string(<span class="kw-2">&amp;</span>bootstrap_config.bootstrap_whitelist_path)
         {
             <span class="prelude-val">Some</span>(
                 serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(whitelist.as_str())
@@ -713,7 +707,7 @@
         </span>};
 
         <span class="kw">let </span>blacklist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(blacklist) =
-            std::fs::read_to_string(<span class="kw-2">&amp;</span>bootstrap_config.bootstrap_blacklist_file)
+            std::fs::read_to_string(<span class="kw-2">&amp;</span>bootstrap_config.bootstrap_blacklist_path)
         {
             <span class="prelude-val">Some</span>(
                 serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(blacklist.as_str())
@@ -739,7 +733,6 @@
                 manager_rx,
                 bind,
                 keypair,
-                compensation_millis,
                 version,
                 whitelist,
                 blacklist,
@@ -767,7 +760,6 @@
     bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
-    compensation_millis: i64,
     version: Version,
     blacklist: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
     whitelist: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
@@ -847,7 +839,7 @@
                                     <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(dplx, <span class="self">self</span>.keypair.clone(), <span class="self">self</span>.bootstrap_config.max_bytes_read_write, <span class="self">self</span>.bootstrap_config.max_bootstrap_message_size, <span class="self">self</span>.bootstrap_config.thread_count, <span class="self">self</span>.bootstrap_config.max_datastore_key_length, <span class="self">self</span>.bootstrap_config.randomness_size_bytes, <span class="self">self</span>.bootstrap_config.consensus_bootstrap_part_size);
                                     <span class="kw">let _ </span>= <span class="kw">match </span>tokio::time::timeout(<span class="self">self</span>.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                         error:
-                                        <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was {} ago and you have to wait before retrying.&quot;</span>, format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())))
+                                        <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was {} ago and you have to wait {} before retrying.&quot;</span>, format_duration(occ.get().elapsed()), format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())))
                                     })).<span class="kw">await </span>{
                                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, <span class="string">&quot;bootstrap error too early retry bootstrap send timed out&quot;</span>).into()),
                                         <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
@@ -881,8 +873,7 @@
 
                         <span class="comment">// launch bootstrap
 
-                        </span><span class="kw">let </span>compensation_millis = <span class="self">self</span>.compensation_millis;
-                        <span class="kw">let </span>version = <span class="self">self</span>.version;
+                        </span><span class="kw">let </span>version = <span class="self">self</span>.version;
                         <span class="kw">let </span>data_execution = <span class="self">self</span>.final_state.clone();
                         <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.consensus_controller.clone();
                         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.network_command_sender.clone();
@@ -891,7 +882,7 @@
 
                         bootstrap_sessions.push(<span class="kw">async move </span>{
                             <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
-                            <span class="kw">match </span>manage_bootstrap(<span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;mut </span>server, data_execution, compensation_millis, version, consensus_command_sender, network_command_sender).<span class="kw">await </span>{
+                            <span class="kw">match </span>manage_bootstrap(<span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;mut </span>server, data_execution, version, consensus_command_sender, network_command_sender).<span class="kw">await </span>{
                                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                                     <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr)
                                 },
@@ -1140,7 +1131,6 @@
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    compensation_millis: i64,
     version: Version,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: NetworkCommandSender,
@@ -1177,7 +1167,7 @@
     <span class="kw">let </span>write_timeout: std::time::Duration = bootstrap_config.write_timeout.into();
 
     <span class="comment">// Sync clocks.
-    </span><span class="kw">let </span>server_time = MassaTime::now(compensation_millis)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>server_time = MassaTime::now()<span class="question-mark">?</span>;
 
     <span class="kw">match </span>tokio::time::timeout(
         write_timeout,

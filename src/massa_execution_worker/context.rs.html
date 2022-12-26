@@ -832,6 +832,8 @@
 <a href="#832" id="832">832</a>
 <a href="#833" id="833">833</a>
 <a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -871,7 +873,7 @@
 
 <span class="doccomment">/// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionContextSnapshot {
+</span><span class="kw">pub struct </span>ExecutionContextSnapshot {
     <span class="doccomment">/// speculative ledger changes caused so far in the context
     </span><span class="kw">pub </span>ledger_changes: LedgerChanges,
 
@@ -903,13 +905,16 @@
 <span class="doccomment">/// An execution context that needs to be initialized before executing bytecode,
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionContext {
+</span><span class="kw">pub struct </span>ExecutionContext {
     <span class="doccomment">/// configuration
     </span>config: ExecutionConfig,
 
     <span class="doccomment">/// speculative ledger state,
     /// as seen after everything that happened so far in the context
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;gas_calibration&quot;</span>))]
     </span>speculative_ledger: SpeculativeLedger,
+    <span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) speculative_ledger: SpeculativeLedger,
 
     <span class="doccomment">/// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
@@ -1031,19 +1036,8 @@
     ///
     /// # Arguments
     /// * `snapshot`: a saved snapshot to be restored
-    /// * `with_error`: an optional execution error to emit as an event conserved after snapshot reset.
-    </span><span class="kw">pub fn </span>reset_to_snapshot(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        snapshot: ExecutionContextSnapshot,
-        with_error: <span class="prelude-ty">Option</span>&lt;ExecutionError&gt;,
-    ) {
-        <span class="comment">// Create error event, if any.
-        </span><span class="kw">let </span>err_event = with_error.map(|err| {
-            <span class="self">self</span>.event_create(
-                <span class="macro">serde_json::json!</span>({ <span class="string">&quot;massa_execution_error&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err) }).to_string(),
-            )
-        });
-
+    /// * `error`: an execution error to emit as an event conserved after snapshot reset.
+    </span><span class="kw">pub fn </span>reset_to_snapshot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
         <span class="comment">// Reset context to snapshot.
         </span><span class="self">self</span>.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
@@ -1056,14 +1050,20 @@
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
         <span class="self">self</span>.created_event_index = snapshot.created_event_index;
         <span class="self">self</span>.stack = snapshot.stack;
-        <span class="self">self</span>.events = snapshot.events;
         <span class="self">self</span>.unsafe_rng = snapshot.unsafe_rng;
 
-        <span class="comment">// If there was an error, emit the corresponding event now.
-        // Note that the context event counter is properly handled by event_emit (see doc).
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(event) = err_event {
-            <span class="self">self</span>.event_emit(event);
+        <span class="comment">// For events, set snapshot delta to error events.
+        // Start iterating from snapshot events length because we are dealing with a VecDeque.
+        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.<span class="number">0</span>.range_mut(snapshot.events.<span class="number">0</span>.len()..) {
+            event.context.is_error = <span class="bool-val">true</span>;
         }
+
+        <span class="comment">// Emit the error event.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        </span><span class="self">self</span>.event_emit(<span class="self">self</span>.event_create(
+            <span class="macro">serde_json::json!</span>({ <span class="string">&quot;massa_execution_error&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, error) }).to_string(),
+            <span class="bool-val">true</span>,
+        ));
     }
 
     <span class="doccomment">/// Create a new `ExecutionContext` for read-only execution
@@ -1523,7 +1523,10 @@
         <span class="kw">let </span>slot = <span class="self">self</span>.slot;
 
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
-        </span><span class="kw">let </span>deleted_messages = <span class="self">self</span>.speculative_async_pool.settle_slot(<span class="kw-2">&amp;</span>slot);
+        </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
+        <span class="kw">let </span>deleted_messages = <span class="self">self
+            </span>.speculative_async_pool
+            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>ledger_changes);
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
             <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg);
         }
@@ -1547,7 +1550,7 @@
 
         <span class="comment">// generate the execution output
         </span><span class="kw">let </span>state_changes = StateChanges {
-            ledger_changes: <span class="self">self</span>.speculative_ledger.take(),
+            ledger_changes,
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
@@ -1597,7 +1600,7 @@
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    </span><span class="kw">pub fn </span>event_create(<span class="kw-2">&amp;</span><span class="self">self</span>, data: String) -&gt; SCOutputEvent {
+    </span><span class="kw">pub fn </span>event_create(<span class="kw-2">&amp;</span><span class="self">self</span>, data: String, is_error: bool) -&gt; SCOutputEvent {
         <span class="comment">// Gather contextual information from the execution context
         </span><span class="kw">let </span>context = EventExecutionContext {
             slot: <span class="self">self</span>.slot,
@@ -1607,6 +1610,7 @@
             index_in_slot: <span class="self">self</span>.created_event_index,
             origin_operation_id: <span class="self">self</span>.origin_operation_id,
             is_final: <span class="bool-val">false</span>,
+            is_error,
         };
 
         <span class="comment">// Return the event

@@ -844,6 +844,7 @@
 <a href="#844" id="844">844</a>
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_async_pool::{
@@ -1197,6 +1198,7 @@
                 thread_count,
                 max_async_pool_length,
                 max_async_message_data,
+                max_datastore_key_length <span class="kw">as </span>u32,
             ),
             opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
                 max_rolls_length,

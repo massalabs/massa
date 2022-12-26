@@ -216,6 +216,16 @@
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -245,6 +255,9 @@
     <span class="kw">pub </span>readonly_queue_length: usize,
     <span class="kw">pub </span>cursor_delay: MassaTime,
     <span class="kw">pub </span>stats_time_window_duration: MassaTime,
+    <span class="kw">pub </span>max_read_only_gas: u64,
+    <span class="kw">pub </span>abi_gas_costs_file: PathBuf,
+    <span class="kw">pub </span>wasm_gas_costs_file: PathBuf,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]
@@ -291,8 +304,8 @@
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>BootstrapSettings {
     <span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, PublicKey)&gt;,
-    <span class="kw">pub </span>bootstrap_whitelist_file: std::path::PathBuf,
-    <span class="kw">pub </span>bootstrap_blacklist_file: std::path::PathBuf,
+    <span class="kw">pub </span>bootstrap_whitelist_path: PathBuf,
+    <span class="kw">pub </span>bootstrap_blacklist_path: PathBuf,
     <span class="kw">pub </span>bind: <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;,
     <span class="kw">pub </span>connect_timeout: MassaTime,
     <span class="kw">pub </span>read_timeout: MassaTime,
@@ -301,7 +314,7 @@
     <span class="kw">pub </span>write_error_timeout: MassaTime,
     <span class="kw">pub </span>retry_delay: MassaTime,
     <span class="kw">pub </span>max_ping: MassaTime,
-    <span class="kw">pub </span>enable_clock_synchronization: bool,
+    <span class="kw">pub </span>max_clock_delta: MassaTime,
     <span class="kw">pub </span>cache_duration: MassaTime,
     <span class="kw">pub </span>max_simultaneous_bootstraps: u32,
     <span class="kw">pub </span>per_ip_min_interval: MassaTime,
@@ -333,6 +346,7 @@
     <span class="kw">pub </span>draw_lookahead_period_count: u64,
     <span class="kw">pub </span>bind_private: SocketAddr,
     <span class="kw">pub </span>bind_public: SocketAddr,
+    <span class="kw">pub </span>bind_api: SocketAddr,
     <span class="kw">pub </span>max_arguments: u64,
     <span class="kw">pub </span>openrpc_spec_path: PathBuf,
     <span class="kw">pub </span>max_request_body_size: u32,
@@ -384,6 +398,12 @@
     </span><span class="kw">pub </span>block_db_prune_interval: MassaTime,
     <span class="doccomment">/// max number of items returned while querying
     </span><span class="kw">pub </span>max_item_return_count: usize,
+    <span class="doccomment">/// blocks headers sender(channel) capacity
+    </span><span class="kw">pub </span>ws_blocks_headers_capacity: usize,
+    <span class="doccomment">/// blocks sender(channel) capacity
+    </span><span class="kw">pub </span>ws_blocks_capacity: usize,
+    <span class="doccomment">/// filled blocks sender(channel) capacity
+    </span><span class="kw">pub </span>ws_filled_blocks_capacity: usize,
 }
 
 <span class="doccomment">/// Protocol Configuration, read from toml user configuration file

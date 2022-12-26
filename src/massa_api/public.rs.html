@@ -962,6 +962,38 @@
 <a href="#962" id="962">962</a>
 <a href="#963" id="963">963</a>
 <a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1032,7 +1064,6 @@
         network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
-        compensation_millis: i64,
         node_id: NodeId,
         storage: Storage,
     ) -&gt; <span class="self">Self </span>{
@@ -1044,7 +1075,6 @@
             version,
             network_command_sender,
             protocol_command_sender,
-            compensation_millis,
             node_id,
             execution_controller,
             selector_controller,
@@ -1060,7 +1090,7 @@
         url: <span class="kw-2">&amp;</span>SocketAddr,
         api_config: <span class="kw-2">&amp;</span>APIConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, JsonRpseeError&gt; {
-        <span class="kw">crate</span>::serve(<span class="self">self</span>, url, api_config).<span class="kw">await
+        <span class="kw">crate</span>::serve(<span class="self">self</span>.into_rpc(), url, api_config).<span class="kw">await
     </span>}
 }
 
@@ -1268,13 +1298,12 @@
         <span class="kw">let </span>network_config = <span class="self">self</span>.<span class="number">0</span>.network_settings.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.<span class="number">0</span>.version;
         <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">let </span>compensation_millis = <span class="self">self</span>.<span class="number">0</span>.compensation_millis;
         <span class="kw">let </span>pool_command_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
         <span class="kw">let </span>config = CompactConfig::default();
-        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now(compensation_millis) {
+        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
             <span class="prelude-val">Ok</span>(now) =&gt; now,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::TimeError(e).into()),
         };
 
         <span class="kw">let </span>last_slot_result = get_latest_block_slot_at_timestamp(
@@ -1285,14 +1314,14 @@
         );
         <span class="kw">let </span>last_slot = <span class="kw">match </span>last_slot_result {
             <span class="prelude-val">Ok</span>(last_slot) =&gt; last_slot,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
         <span class="kw">let </span>execution_stats = execution_controller.get_stats();
         <span class="kw">let </span>consensus_stats_result = consensus_controller.get_stats();
         <span class="kw">let </span>consensus_stats = <span class="kw">match </span>consensus_stats_result {
             <span class="prelude-val">Ok</span>(consensus_stats) =&gt; consensus_stats,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
         <span class="kw">let </span>(network_stats_result, peers_result) = <span class="macro">tokio::join!</span>(
@@ -1302,12 +1331,12 @@
 
         <span class="kw">let </span>network_stats = <span class="kw">match </span>network_stats_result {
             <span class="prelude-val">Ok</span>(network_stats) =&gt; network_stats,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::NetworkError(e).into()),
         };
 
         <span class="kw">let </span>peers = <span class="kw">match </span>peers_result {
             <span class="prelude-val">Ok</span>(peers) =&gt; peers,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::NetworkError(e).into()),
         };
 
         <span class="kw">let </span>pool_stats = (
@@ -1321,7 +1350,7 @@
 
         <span class="kw">let </span>next_slot = <span class="kw">match </span>next_slot_result {
             <span class="prelude-val">Ok</span>(next_slot) =&gt; next_slot,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
         <span class="kw">let </span>connected_nodes = peers
@@ -1361,11 +1390,10 @@
     <span class="kw">async fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;(Address, u64)&gt;&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
         <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">let </span>compensation_millis = <span class="self">self</span>.<span class="number">0</span>.compensation_millis;
 
-        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now(compensation_millis) {
+        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
             <span class="prelude-val">Ok</span>(now) =&gt; now,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::TimeError(e).into()),
         };
 
         <span class="kw">let </span>latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
@@ -1379,7 +1407,7 @@
             <span class="prelude-val">Ok</span>(curr_cycle) =&gt; curr_cycle
                 .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
                 .get_cycle(cfg.periods_per_cycle),
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = execution_controller
@@ -1548,40 +1576,45 @@
         </span><span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="doccomment">/// gets a block. Returns None if not found
+    <span class="doccomment">/// gets a block(s). Returns nothing if not found
     /// only active blocks are returned
-    </span><span class="kw">async fn </span>get_block(<span class="kw-2">&amp;</span><span class="self">self</span>, id: BlockId) -&gt; RpcResult&lt;BlockInfo&gt; {
+    </span><span class="kw">async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt; {
         <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>storage = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
-        <span class="kw">let </span>block = <span class="kw">match </span>storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
-            <span class="prelude-val">Some</span>(b) =&gt; b.content,
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(BlockInfo { id, content: <span class="prelude-val">None </span>});
-            }
-        };
-
-        <span class="kw">let </span>graph_status = consensus_controller
-            .get_block_statuses(<span class="kw-2">&amp;</span>[id])
+        <span class="kw">let </span>blocks = ids
             .into_iter()
-            .next()
-            .expect(<span class="string">&quot;expected get_block_statuses to return one element&quot;</span>);
+            .filter_map(|id| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(graph_status) = consensus_controller
+                        .get_block_statuses(<span class="kw-2">&amp;</span>[id])
+                        .into_iter()
+                        .next()
+                    {
+                        <span class="kw">let </span>is_final = graph_status == BlockGraphStatus::Final;
+                        <span class="kw">let </span>is_in_blockclique =
+                            graph_status == BlockGraphStatus::ActiveInBlockclique;
+                        <span class="kw">let </span>is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+                        <span class="kw">let </span>is_discarded = graph_status == BlockGraphStatus::Discarded;
 
-        <span class="kw">let </span>is_final = graph_status == BlockGraphStatus::Final;
-        <span class="kw">let </span>is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-        <span class="kw">let </span>is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-        <span class="kw">let </span>is_discarded = graph_status == BlockGraphStatus::Discarded;
+                        <span class="kw">return </span><span class="prelude-val">Some</span>(BlockInfo {
+                            id,
+                            content: <span class="prelude-val">Some</span>(BlockInfoContent {
+                                is_final,
+                                is_in_blockclique,
+                                is_candidate,
+                                is_discarded,
+                                block: wrapped_block.content,
+                            }),
+                        });
+                    }
+                }
 
-        <span class="prelude-val">Ok</span>(BlockInfo {
-            id,
-            content: <span class="prelude-val">Some</span>(BlockInfoContent {
-                is_final,
-                is_in_blockclique,
-                is_candidate,
-                is_discarded,
-                block,
-            }),
-        })
+                <span class="prelude-val">None
+            </span>})
+            .collect::&lt;Vec&lt;BlockInfo&gt;&gt;();
+
+        <span class="prelude-val">Ok</span>(blocks)
     }
 
     <span class="kw">async fn </span>get_blockclique_block_by_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; RpcResult&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;&gt; {
@@ -1619,12 +1652,12 @@
 
         <span class="kw">let </span>(start_slot, end_slot) = <span class="kw">match </span>time_range_to_slot_range_result {
             <span class="prelude-val">Ok</span>(time_range_to_slot_range) =&gt; time_range_to_slot_range,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
         <span class="kw">let </span>graph = <span class="kw">match </span>consensus_controller.get_block_graph_status(start_slot, end_slot) {
             <span class="prelude-val">Ok</span>(graph) =&gt; graph,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(graph.active_blocks.len());
@@ -1729,7 +1762,6 @@
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.thread_count,
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.t0,
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.genesis_timestamp,
-                <span class="self">self</span>.<span class="number">0</span>.compensation_millis,
             )
             .expect(<span class="string">&quot;could not get latest current slot&quot;</span>)
             .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
@@ -1856,7 +1888,7 @@
                 <span class="prelude-val">Ok</span>(operation) =&gt; {
                     <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature() {
                         <span class="prelude-val">Ok</span>(()) =&gt; (),
-                        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::from(e).into()),
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
                     };
                     <span class="prelude-val">Ok</span>(operation)
                 }
@@ -1895,11 +1927,43 @@
         </span><span class="prelude-val">Ok</span>(events)
     }
 
-    <span class="kw">async fn </span>node_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+    <span class="kw">async fn </span>node_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;Vec&lt;IpAddr&gt;&gt;()
+    }
+
+    <span class="kw">async fn </span>node_add_to_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">async fn </span>node_remove_from_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+    <span class="kw">async fn </span>node_remove_from_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
+    }
+
+    <span class="kw">async fn </span>node_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;Vec&lt;IpAddr&gt;&gt;()
+    }
+
+    <span class="kw">async fn </span>node_bootstrap_whitelist_allow_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
+    }
+
+    <span class="kw">async fn </span>node_add_to_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
+    }
+
+    <span class="kw">async fn </span>node_remove_from_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
+    }
+
+    <span class="kw">async fn </span>node_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;Vec&lt;IpAddr&gt;&gt;()
+    }
+
+    <span class="kw">async fn </span>node_add_to_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
+    }
+
+    <span class="kw">async fn </span>node_remove_from_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
