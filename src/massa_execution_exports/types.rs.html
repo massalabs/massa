@@ -125,6 +125,8 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -183,6 +185,8 @@
     </span><span class="kw">pub </span>out: ExecutionOutput,
     <span class="doccomment">/// Gas cost for this execution
     </span><span class="kw">pub </span>gas_cost: u64,
+    <span class="doccomment">/// Returned value from the module call
+    </span><span class="kw">pub </span>call_result: Vec&lt;u8&gt;,
 }
 
 <span class="doccomment">/// structure describing different types of read-only execution request
