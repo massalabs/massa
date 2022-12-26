@@ -374,6 +374,7 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -475,6 +476,7 @@
     /// * expired messages from `new_messages` (in the order they appear in `new_messages`)
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     /// The list of message that their trigger has been triggered.
+    </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>settle_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,

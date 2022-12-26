@@ -23,7 +23,7 @@ milliseconds since 01/01/1970.</p>
 <span class="macro">assert_eq!</span>(res, <span class="number">42</span>);</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.estimate_instant" class="method has-srclink"><a class="srclink rightside" href="../src/massa_time/lib.rs.html#262-270">source</a><h4 class="code-header">pub fn <a href="#method.estimate_instant" class="fnname">estimate_instant</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/std/time/struct.Instant.html" title="struct std::time::Instant">Instant</a>, <a class="enum" href="enum.TimeError.html" title="enum massa_time::TimeError">TimeError</a>&gt;</h4></section></summary><div class="docblock">
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>(cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
-<span class="kw">let </span>massa_time_instant: Instant = cur_timestamp.estimate_instant(<span class="number">0</span>).unwrap();
+<span class="kw">let </span>massa_time_instant: Instant = cur_timestamp.estimate_instant().unwrap();
 <span class="macro">assert!</span>(max(
     massa_time_instant.saturating_duration_since(cur_instant),
     cur_instant.saturating_duration_since(massa_time_instant)

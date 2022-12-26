@@ -270,6 +270,7 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="kw">use </span>massa_serialization::{
@@ -358,6 +359,7 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
@@ -431,7 +433,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
     ///
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
@@ -445,15 +447,15 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
-    ///     AsyncMessageTrigger {
-    ///        address: Some(Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap()),
-    ///        datastore_key: Some(String::from(&quot;test&quot;)),
-    ///     }
+    ///     Some(AsyncMessageTrigger {
+    ///        address: Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///        datastore_key: Some(vec![1, 2, 3, 4]),
+    ///     })
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000);
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
     /// serializer.serialize(&amp;changes, &amp;mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());

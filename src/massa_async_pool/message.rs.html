@@ -661,6 +661,12 @@
 <a href="#661" id="661">661</a>
 <a href="#662" id="662">662</a>
 <a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -734,6 +740,7 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
@@ -792,6 +799,7 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
@@ -1052,7 +1060,7 @@
 <span class="kw">impl </span>Serializer&lt;AsyncMessage&gt; <span class="kw">for </span>AsyncMessageSerializer {
     <span class="doccomment">/// ## Example
     /// ```
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageTrigger};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -1069,6 +1077,10 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     Some(AsyncMessageTrigger {
+    ///         address: Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///         datastore_key: Some(vec![1, 2, 3, 4])
+    ///     })
     /// );
     /// let mut buffer = Vec::new();
     /// let message_serializer = AsyncMessageSerializer::new();
@@ -1164,10 +1176,10 @@
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
-    ///     AsyncMessageTrigger {
-    ///        address: Some(Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap()),
-    ///        datastore_key: Some(String::from(&quot;test&quot;)),
-    ///     }
+    ///     Some(AsyncMessageTrigger {
+    ///        address: Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///        datastore_key: Some(vec![1, 2, 3, 4]),
+    ///     })
     /// );
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
