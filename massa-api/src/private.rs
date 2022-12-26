@@ -185,8 +185,8 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Vec<EndorsementInfo>>()
     }
 
-    async fn get_block(&self, _: BlockId) -> RpcResult<BlockInfo> {
-        crate::wrong_api::<BlockInfo>()
+    async fn get_blocks(&self, _: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
+        crate::wrong_api::<Vec<BlockInfo>>()
     }
 
     async fn get_blockclique_block_by_slot(&self, _: Slot) -> RpcResult<Option<Block>> {

@@ -91,7 +91,7 @@
             "params": [
                 {
                     "name": "address",
-                    "description": "The strings should be valid address(es).",
+                    "description": "Need to provide at least one valid address",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -124,9 +124,12 @@
             "params": [
                 {
                     "name": "blockId",
-                    "description": "Block ID",
+                    "description": "Need to provide at least one valid block id",
                     "schema": {
-                        "$ref": "#/components/schemas/BlockId"
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BlockId"
+                        }
                     },
                     "summary": "string",
                     "required": true
@@ -138,9 +141,9 @@
                 },
                 "name": "BlockInfo"
             },
-            "name": "get_block",
-            "summary": "Get block",
-            "description": "Get block."
+            "name": "get_blocks",
+            "summary": "Get block(s)",
+            "description": "Get block(s)."
         },
         {
             "tags": [
@@ -267,7 +270,7 @@
             "params": [
                 {
                     "name": "endorsementId",
-                    "description": "Must be an endorsement id",
+                    "description": "Need to provide at least one valid endorsement id",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -360,8 +363,8 @@
             ],
             "params": [
                 {
-                    "name": "name",
-                    "description": "String must be an operation Id",
+                    "name": "operationId",
+                    "description": "Need to provide at least one valid operation id",
                     "schema": {
                         "type": "array",
                         "items": {
