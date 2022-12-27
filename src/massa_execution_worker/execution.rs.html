@@ -1290,7 +1290,6 @@
 <a href="#1290" id="1290">1290</a>
 <a href="#1291" id="1291">1291</a>
 <a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1802,7 +1801,7 @@
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             <span class="self">self</span>.config.gas_costs.clone(),
         ) {
-            <span class="prelude-val">Ok</span>(_reamining_gas) =&gt; {}
+            <span class="prelude-val">Ok</span>(_response) =&gt; {}
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="comment">// there was an error during bytecode execution
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
@@ -1898,7 +1897,7 @@
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             <span class="self">self</span>.config.gas_costs.clone(),
         ) {
-            <span class="prelude-val">Ok</span>(_reamining_gas) =&gt; {}
+            <span class="prelude-val">Ok</span>(_response) =&gt; {}
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="comment">// there was an error during bytecode execution
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
@@ -2331,9 +2330,9 @@
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
         );
-        <span class="comment">// TODO release massa-sc-runtime and use
-        // run the intepreter according to the target type
-        </span><span class="kw">let </span>remaining_gas = <span class="kw">match </span>req.target {
+
+        <span class="comment">// run the interpreter according to the target type
+        </span><span class="kw">let </span>exec_response = <span class="kw">match </span>req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) =&gt; {
                 <span class="comment">// set the execution context for execution
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
@@ -2377,9 +2376,8 @@
         </span><span class="kw">let </span>execution_output = <span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot();
         <span class="prelude-val">Ok</span>(ReadOnlyExecutionOutput {
             out: execution_output,
-            gas_cost: req.max_gas.saturating_sub(remaining_gas),
-            <span class="comment">// TODO release massa-sc-runtime and bind it
-            </span>call_result: Vec::new(),
+            gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
+            call_result: exec_response.ret,
         })
     }
 
