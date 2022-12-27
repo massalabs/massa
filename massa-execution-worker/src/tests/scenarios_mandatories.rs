@@ -113,6 +113,7 @@ fn init_execution_worker(
 /// This test can fail if the gas is going up in the execution
 #[test]
 #[serial]
+#[ignore]
 fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -410,7 +411,7 @@ fn local_execution() {
     assert_eq!(events[2].data, "one local execution completed");
     assert_eq!(
         Amount::from_raw(events[5].data.parse().unwrap()),
-        Amount::from_str("299_979.03475").unwrap() // start (299_000) - fee (1000) - storage cost
+        Amount::from_str("299_979.05275").unwrap() // start (299_000) - fee (1000) - storage cost
     );
     assert_eq!(events[5].context.call_stack.len(), 1);
     assert_eq!(
@@ -615,7 +616,7 @@ fn send_and_receive_async_message_with_trigger() {
     });
 
     // match the events
-    assert!(events.len() == 2, "Two event was expected");
+    assert!(events.len() == 3, "Three event was expected");
     assert_eq!(events[0].data, "Triggered");
 
     // keypair associated to thread 2
@@ -799,8 +800,6 @@ pub fn roll_buy() {
 
 #[test]
 #[serial]
-// IMPORTANT TODO: find out what is causing this https://github.com/massalabs/massa/issues/3338
-#[ignore]
 pub fn roll_sell() {
     // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
     // Check for resulting roll count + resulting deferred credits
@@ -834,10 +833,6 @@ pub fn roll_sell() {
     // generate the keypair and its corresponding address
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
-
-    // get initial balance
-    let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
-    println!("balance_initial: {}", balance_initial);
 
     // get initial roll count
     let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
@@ -918,20 +913,6 @@ pub fn roll_sell() {
             .pos_state
             .get_deferred_credits_at(&Slot::new(8, 1)),
         credits
-    );
-
-    // Now check balance
-    let balances = controller.get_final_and_candidate_balance(&[address]);
-    let candidate_balance = balances.get(0).unwrap().1.unwrap();
-
-    assert_eq!(
-        candidate_balance,
-        exec_cfg
-            .roll_price
-            .checked_mul_u64(roll_sell_1 + roll_sell_2)
-            .unwrap()
-            .checked_add(balance_initial)
-            .unwrap()
     );
 
     // stop the execution controller
@@ -1171,26 +1152,19 @@ fn datastore_manipulations() {
     let events = controller.get_filtered_sc_output_event(EventFilter::default());
     // match the events
     assert!(!events.is_empty(), "2 events were expected");
-    let key = "TEST".to_string();
-    // in ASC, string are utf16 encoded
-    let s16 = key.encode_utf16();
-    let s16_as_bytes: Vec<u8> = s16.map(|item| item.to_ne_bytes()).flatten().collect();
-    // in SC, we use the builtin string formatting (using `keys: ${keys}`) & replicate it in Rust
-    let keys_str: String = s16_as_bytes
+    let key: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
+    let keys_str: String = key
         .iter()
         .map(|b| format!("{}", b))
         .collect::<Vec<String>>()
         .join(",");
+
     assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
     assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
 
     // Length of the value left in the datastore. See sources for more context.
-    let value_len = "TEST_VALUE"
-        .to_string()
-        .encode_utf16()
-        .size_hint()
-        .1
-        .unwrap() as u64;
+    let value_len = [21, 0, 49].len() as u64;
+
     assert_eq!(
         sample_state
             .read()
@@ -1312,7 +1286,7 @@ fn create_execute_sc_operation(
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
-        max_gas: 100_000,
+        max_gas: 1_000_000,
         datastore,
     };
     let op = Operation::new_wrapped(

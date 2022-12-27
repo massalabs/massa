@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.17.2",
+        "version": "TEST.18.0",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -91,7 +91,7 @@
             "params": [
                 {
                     "name": "address",
-                    "description": "The strings should be valid address(es).",
+                    "description": "Need to provide at least one valid address",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -124,9 +124,12 @@
             "params": [
                 {
                     "name": "blockId",
-                    "description": "Block ID",
+                    "description": "Need to provide at least one valid block id",
                     "schema": {
-                        "$ref": "#/components/schemas/BlockId"
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BlockId"
+                        }
                     },
                     "summary": "string",
                     "required": true
@@ -138,9 +141,9 @@
                 },
                 "name": "BlockInfo"
             },
-            "name": "get_block",
-            "summary": "Get block",
-            "description": "Get block."
+            "name": "get_blocks",
+            "summary": "Get block(s)",
+            "description": "Get block(s)."
         },
         {
             "tags": [
@@ -267,7 +270,7 @@
             "params": [
                 {
                     "name": "endorsementId",
-                    "description": "Must be an endorsement id",
+                    "description": "Need to provide at least one valid endorsement id",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -360,8 +363,8 @@
             ],
             "params": [
                 {
-                    "name": "name",
-                    "description": "String must be an operation Id",
+                    "name": "operationId",
+                    "description": "Need to provide at least one valid operation id",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -482,6 +485,96 @@
             ],
             "params": [
                 {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_add_to_bootstrap_blacklist",
+            "summary": "Add to bootsrap blacklist given IP address(es)",
+            "description": "Add to bootsrap blacklist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_add_to_bootstrap_whitelist",
+            "summary": "Add to bootsrap whitelist given IP address(es)",
+            "description": "Add to bootsrap whitelist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_add_to_peers_whitelist",
+            "summary": "Add to peers whitelist given IP address(es)",
+            "description": "Add to peers whitelist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
                     "name": "id",
                     "description": "The strings are nodes ids.",
                     "schema": {
@@ -530,6 +623,182 @@
             "name": "node_ban_by_ip",
             "summary": "Ban given IP address(es)",
             "description": "Ban given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "name": "ip",
+                "description": "The strings must be IP address(es)",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "description": "Ip address",
+                        "$ref": "#/components/schemas/IpAddress"
+                    }
+                }
+            },
+            "name": "node_bootstrap_blacklist",
+            "summary": "Returns bootsrap blacklist IP address(es)",
+            "description": "Returns bootsrap blacklist IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "name": "ip",
+                "description": "The strings must be IP address(es)",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "description": "Ip address",
+                        "$ref": "#/components/schemas/IpAddress"
+                    }
+                }
+            },
+            "name": "node_bootstrap_whitelist",
+            "summary": "Returns bootsrap whitelist IP address(es)",
+            "description": "Returns bootsrap whitelist IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_bootstrap_whitelist_allow_all",
+            "summary": "Allow everyone to bootsrap from the node",
+            "description": "Allow everyone to bootsrap from the node. Remove bootsrap whitelist configuration file."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "name": "ip",
+                "description": "The strings must be IP address(es)",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "description": "Ip address",
+                        "$ref": "#/components/schemas/IpAddress"
+                    }
+                }
+            },
+            "name": "node_peers_whitelist",
+            "summary": "Returns peers whitelist IP address(es)",
+            "description": "Returns peers whitelist IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_remove_from_bootstrap_blacklist",
+            "summary": "Remove from bootsrap blacklist given IP address(es)",
+            "description": "Remove from bootsrap blacklist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_remove_from_bootstrap_whitelist",
+            "summary": "Remove from bootsrap whitelist given IP address(es)",
+            "description": "Remove from bootsrap whitelist given IP address(es)."
+        },
+        {
+            "tags": [
+                {
+                    "name": "private",
+                    "description": "Massa private api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "ip",
+                    "description": "The strings must be IP address(es)",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "description": "Ip address",
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "No return",
+                "description": "No return.",
+                "schema": false
+            },
+            "name": "node_remove_from_peers_whitelist",
+            "summary": "Remove from peers whitelist given IP address(es)",
+            "description": "Remove from peers whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -756,6 +1025,215 @@
             "name": "send_operations",
             "summary": "Adds operations to pool",
             "description": "Adds operations to pool. Returns operations that were ok and sent to pool."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/Version"
+                },
+                "name": "Version",
+                "description": "Node version"
+            },
+            "name": "get_version",
+            "summary": "Get Massa node version",
+            "description": "Get Massa node version."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/BlockInfo"
+                },
+                "name": "BlockInfo"
+            },
+            "name": "subscribe_new_blocks",
+            "summary": "New produced blocks",
+            "description": "New produced blocks."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/WrappedHeader"
+                },
+                "name": "BlockHeader"
+            },
+            "name": "subscribe_new_blocks_headers",
+            "summary": "New produced blocks headers",
+            "description": "New produced blocks headers."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/FilledBlockInfo"
+                },
+                "name": "FilledBlockInfo"
+            },
+            "name": "subscribe_new_filled_blocks",
+            "summary": "New produced block with operations content",
+            "description": "New produced block with operations content.."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "boolean"
+                },
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
+            },
+            "name": "unsubscribe_new_blocks",
+            "summary": "Unsubscribe from new produced blocks",
+            "description": "Unsubscribe from new produced blocks."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "boolean"
+                },
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
+            },
+            "name": "unsubscribe_new_blocks_headers",
+            "summary": "Unsubscribe from new produced blocks headers",
+            "description": "Unsubscribe from new produced blocks headers."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "boolean"
+                },
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
+            },
+            "name": "unsubscribe_new_filled_blocks",
+            "summary": "Unsubscribe from new produced filled blocks",
+            "description": "Unsubscribe from new produced filled blocks."
         }
     ],
     "components": {
@@ -1566,6 +2044,77 @@
                 },
                 "additionalProperties": false
             },
+            "IpAddress": {
+                "description": "Ipv4 or Ipv6 address",
+                "type": "string"
+            },
+            "FilledBlock": {
+                "title": "FilledBlock",
+                "required": [
+                    "header",
+                    "operations"
+                ],
+                "type": "object",
+                "properties": {
+                    "header": {
+                        "$ref": "#/components/schemas/WrappedHeader",
+                        "description": "signed header"
+                    },
+                    "operations": {
+                        "description": "Operations",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OperationInfo"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FilledBlockInfo": {
+                "title": "FilledBlockInfo",
+                "required": [
+                    "id"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "$ref": "#/components/schemas/FilledBlockInfoContent"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FilledBlockInfoContent": {
+                "title": "FilledBlockInfoContent",
+                "required": [
+                    "block",
+                    "is_final",
+                    "is_in_blockclique",
+                    "is_stale"
+                ],
+                "type": "object",
+                "properties": {
+                    "is_final": {
+                        "description": "true if final",
+                        "type": "boolean"
+                    },
+                    "is_stale": {
+                        "description": "true if incompatible with a final block",
+                        "type": "boolean"
+                    },
+                    "is_in_blockclique": {
+                        "description": "true if in the greatest clique",
+                        "type": "boolean"
+                    },
+                    "block": {
+                        "$ref": "#/components/schemas/FilledBlock",
+                        "description": "filled block"
+                    }
+                },
+                "additionalProperties": false
+            },
             "GraphInterval": {
                 "title": "GraphInterval",
                 "required": [
@@ -2176,26 +2725,7 @@
             },
             "Version": {
                 "description": "Application version, checked during handshakes",
-                "required": [
-                    "instance",
-                    "major",
-                    "minor"
-                ],
-                "type": "object",
-                "properties": {
-                    "instance": {
-                        "description": "",
-                        "type": "number"
-                    },
-                    "major": {
-                        "description": "",
-                        "type": "number"
-                    },
-                    "minor": {
-                        "description": "",
-                        "type": "number"
-                    }
-                }
+                "type": "string"
             },
             "WrappedHeader": {
                 "description": "signed operation",
@@ -2279,6 +2809,14 @@
                     "$ref": "#/components/schemas/BlockInfo"
                 }
             },
+            "BlockHeader": {
+                "name": "BlockHeader",
+                "summary": "BlockHeader",
+                "description": "A BlockHeader object",
+                "schema": {
+                    "$ref": "#/components/schemas/WrappedHeader"
+                }
+            },
             "Clique": {
                 "name": "Clique",
                 "summary": "Clique",
@@ -2333,6 +2871,14 @@
                 "description": "A EventFilter object",
                 "schema": {
                     "$ref": "#/components/schemas/EventFilter"
+                }
+            },
+            "FilledBlockInfo": {
+                "name": "FilledBlockInfo",
+                "summary": "FilledBlockInfo",
+                "description": "A FilledBlockInfo object",
+                "schema": {
+                    "$ref": "#/components/schemas/FilledBlockInfo"
                 }
             },
             "GraphInterval": {
@@ -2421,6 +2967,14 @@
                 "description": "A Staker object. A tuple which contains (address, active_rolls)",
                 "schema": {
                     "$ref": "#/components/schemas/Staker"
+                }
+            },
+            "Version": {
+                "name": "Version",
+                "summary": "Version",
+                "description": "A Version object",
+                "schema": {
+                    "$ref": "#/components/schemas/Version"
                 }
             }
         }

@@ -86,6 +86,7 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
@@ -159,7 +160,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
     ///
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
@@ -173,15 +174,15 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
-    ///     AsyncMessageTrigger {
-    ///        address: Some(Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()),
-    ///        datastore_key: Some(String::from("test")),
-    ///     }
+    ///     Some(AsyncMessageTrigger {
+    ///        address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///        datastore_key: Some(vec![1, 2, 3, 4]),
+    ///     })
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000);
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
     /// serializer.serialize(&changes, &mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

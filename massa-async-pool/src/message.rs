@@ -71,6 +71,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
@@ -129,6 +130,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
@@ -389,7 +391,7 @@ impl Default for AsyncMessageSerializer {
 impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     /// ## Example
     /// ```
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageTrigger};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -406,6 +408,10 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     Some(AsyncMessageTrigger {
+    ///         address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///         datastore_key: Some(vec![1, 2, 3, 4])
+    ///     })
     /// );
     /// let mut buffer = Vec::new();
     /// let message_serializer = AsyncMessageSerializer::new();
@@ -501,10 +507,10 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
-    ///     AsyncMessageTrigger {
-    ///        address: Some(Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()),
-    ///        datastore_key: Some(String::from("test")),
-    ///     }
+    ///     Some(AsyncMessageTrigger {
+    ///        address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///        datastore_key: Some(vec![1, 2, 3, 4]),
+    ///     })
     /// );
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();

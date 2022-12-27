@@ -3,6 +3,7 @@
 .envrc
 .idea
 .vscode
+.fleet
 *.swp*
 **/Cargo.lock
 **/target

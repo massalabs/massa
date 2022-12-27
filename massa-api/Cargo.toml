@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
-jsonrpsee = { version = "0.16.1", features = ["server", "macros"] }
+jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 async-trait = "0.1.58"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.87"

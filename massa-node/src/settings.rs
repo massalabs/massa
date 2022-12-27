@@ -28,6 +28,8 @@ pub struct ExecutionSettings {
     pub cursor_delay: MassaTime,
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,
+    pub abi_gas_costs_file: PathBuf,
+    pub wasm_gas_costs_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -74,8 +76,8 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
-    pub bootstrap_whitelist_file: std::path::PathBuf,
-    pub bootstrap_blacklist_file: std::path::PathBuf,
+    pub bootstrap_whitelist_path: PathBuf,
+    pub bootstrap_blacklist_path: PathBuf,
     pub bind: Option<SocketAddr>,
     pub connect_timeout: MassaTime,
     pub read_timeout: MassaTime,
@@ -116,6 +118,7 @@ pub struct APISettings {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
+    pub bind_api: SocketAddr,
     pub max_arguments: u64,
     pub openrpc_spec_path: PathBuf,
     pub max_request_body_size: u32,
@@ -167,6 +170,12 @@ pub struct ConsensusSettings {
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
+    /// blocks headers sender(channel) capacity
+    pub ws_blocks_headers_capacity: usize,
+    /// blocks sender(channel) capacity
+    pub ws_blocks_capacity: usize,
+    /// filled blocks sender(channel) capacity
+    pub ws_filled_blocks_capacity: usize,
 }
 
 /// Protocol Configuration, read from toml user configuration file

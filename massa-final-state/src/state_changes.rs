@@ -80,6 +80,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None,
     /// );
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
@@ -188,6 +189,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None,
     /// );
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;

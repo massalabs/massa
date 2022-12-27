@@ -1,5 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#[cfg(any(test, feature = "gas_calibration"))]
 mod mock;
+
+#[cfg(not(feature = "gas_calibration"))]
 mod scenarios_mandatories;
+
+#[cfg(not(feature = "gas_calibration"))]
 mod tests_active_history;
+
+#[cfg(feature = "gas_calibration")]
+pub use mock::get_sample_state;

@@ -1,5 +1,6 @@
 use crate::block_graph_export::BlockGraphExport;
 use crate::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
+use jsonrpsee::SubscriptionSink;
 use massa_models::prehash::PreHashSet;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{
@@ -119,6 +120,15 @@ pub trait ConsensusController: Send + Sync {
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ConsensusController>`.
     fn clone_box(&self) -> Box<dyn ConsensusController>;
+
+    /// New produced blocks
+    fn subscribe_new_blocks(&self, sink: SubscriptionSink);
+
+    /// New produced blocks headers.
+    fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink);
+
+    /// New produced block with operations content.
+    fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink);
 }
 
 /// Allow cloning `Box<dyn ConsensusController>`

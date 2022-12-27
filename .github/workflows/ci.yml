@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, staging, trying]
   pull_request:
-    branches: [main]
+    branches: [main, 'testnet_*']
     types:
     - opened
     - reopened
@@ -116,7 +116,7 @@ jobs:
 
   # Full cross-platform tests required by bors to merge on main branch
   full:
-    if: github.ref == 'refs/heads/staging'
+    # if: github.ref == 'refs/heads/staging'
     name: full
     needs: sanity
     runs-on: ${{ matrix.os }}
@@ -146,7 +146,7 @@ jobs:
           args: run --retries 2
 
   build: # quick hack because bors wrongly detect matrix jobs status
-    if: github.ref == 'refs/heads/staging'
+    # if: github.ref == 'refs/heads/staging'
     needs: full
     runs-on: ubuntu-latest
     steps:
@@ -154,7 +154,7 @@ jobs:
 
   doc:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
         with:

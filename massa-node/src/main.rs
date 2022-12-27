@@ -8,14 +8,14 @@ use crate::settings::SETTINGS;
 
 use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
-use massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
+use massa_api::{APIConfig, ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
 use massa_executed_ops::ExecutedOpsConfig;
-use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
+use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -84,6 +84,7 @@ async fn launch(
     NetworkManager,
     Box<dyn FactoryManager>,
     mpsc::Receiver<()>,
+    StopHandle,
     StopHandle,
     StopHandle,
 ) {
@@ -170,8 +171,8 @@ async fn launch(
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
-        bootstrap_whitelist_file: SETTINGS.bootstrap.bootstrap_whitelist_file.clone(),
-        bootstrap_blacklist_file: SETTINGS.bootstrap.bootstrap_blacklist_file.clone(),
+        bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
+        bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -328,6 +329,11 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+        gas_costs: GasCosts::new(
+            SETTINGS.execution.abi_gas_costs_file.clone(),
+            SETTINGS.execution.wasm_gas_costs_file.clone(),
+        )
+        .expect("Failed to load gas costs"),
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -375,6 +381,10 @@ async fn launch(
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+        ws_enabled: SETTINGS.api.enable_ws,
+        ws_blocks_headers_capacity: SETTINGS.consensus.ws_blocks_headers_capacity,
+        ws_blocks_capacity: SETTINGS.consensus.ws_blocks_capacity,
+        ws_filled_blocks_capacity: SETTINGS.consensus.ws_filled_blocks_capacity,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -472,9 +482,12 @@ async fn launch(
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
         bind_public: SETTINGS.api.bind_public,
+        bind_api: SETTINGS.api.bind_api,
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
         openrpc_spec_path: SETTINGS.api.openrpc_spec_path.clone(),
+        bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
+        bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         max_request_body_size: SETTINGS.api.max_request_body_size,
         max_response_body_size: SETTINGS.api.max_response_body_size,
         max_connections: SETTINGS.api.max_connections,
@@ -496,6 +509,18 @@ async fn launch(
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
     };
+
+    // spawn Massa API
+    let api = API::<ApiV2>::new(consensus_controller.clone(), api_config.clone(), *VERSION);
+    let api_handle = api
+        .serve(&SETTINGS.api.bind_api, &api_config)
+        .await
+        .expect("failed to start MASSA API");
+
+    // Disable WebSockets for Private and Public API's
+    let mut api_config = api_config.clone();
+    api_config.enable_ws = false;
+
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         network_command_sender.clone(),
@@ -569,6 +594,7 @@ async fn launch(
         api_private_stop_rx,
         api_private_handle,
         api_public_handle,
+        api_handle,
     )
 }
 
@@ -597,6 +623,7 @@ async fn stop(
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
+    api_handle: StopHandle,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -611,6 +638,9 @@ async fn stop(
 
     // stop private API
     api_private_handle.stop();
+
+    // stop Massa API
+    api_handle.stop();
 
     // stop factory
     factory_manager.stop();
@@ -739,6 +769,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
+            api_handle,
         ) = launch(node_wallet.clone()).await;
 
         // interrupt signal listener
@@ -803,6 +834,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             },
             api_private_handle,
             api_public_handle,
+            api_handle,
         )
         .await;
 

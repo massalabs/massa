@@ -3,7 +3,7 @@ use futures::StreamExt;
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{
     block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -67,7 +67,7 @@ pub async fn start_bootstrap_server(
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
 
         let whitelist = if let Ok(whitelist) =
-            std::fs::read_to_string(&bootstrap_config.bootstrap_whitelist_file)
+            std::fs::read_to_string(&bootstrap_config.bootstrap_whitelist_path)
         {
             Some(
                 serde_json::from_str::<HashSet<IpAddr>>(whitelist.as_str())
@@ -85,7 +85,7 @@ pub async fn start_bootstrap_server(
         };
 
         let blacklist = if let Ok(blacklist) =
-            std::fs::read_to_string(&bootstrap_config.bootstrap_blacklist_file)
+            std::fs::read_to_string(&bootstrap_config.bootstrap_blacklist_path)
         {
             Some(
                 serde_json::from_str::<HashSet<IpAddr>>(blacklist.as_str())
@@ -217,7 +217,7 @@ impl BootstrapServer {
                                     let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size, self.bootstrap_config.thread_count, self.bootstrap_config.max_datastore_key_length, self.bootstrap_config.randomness_size_bytes, self.bootstrap_config.consensus_bootstrap_part_size);
                                     let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                         error:
-                                        format!("Your last bootstrap on this server was {} ago and you have to wait before retrying.", format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())))
+                                        format!("Your last bootstrap on this server was {} ago and you have to wait {} before retrying.", format_duration(occ.get().elapsed()), format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())))
                                     })).await {
                                         Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error too early retry bootstrap send timed out").into()),
                                         Ok(Err(e)) => Err(e),
@@ -325,6 +325,8 @@ pub async fn stream_bootstrap_information(
         let exec_ops_part;
         let final_state_changes;
 
+        let mut slot_too_old = false;
+
         // Scope of the final state read
         {
             let final_state_read = final_state.read();
@@ -358,14 +360,21 @@ pub async fn stream_bootstrap_information(
                         "Bootstrap cursor set to future slot".to_string(),
                     ));
                 }
-                final_state_changes = final_state_read.get_state_changes_part(
+                final_state_changes = match final_state_read.get_state_changes_part(
                     slot,
                     new_ledger_step.clone(),
                     new_pool_step,
                     new_cycle_step,
                     new_credits_step,
                     new_ops_step,
-                )?;
+                ) {
+                    Ok(data) => data,
+                    Err(err) if matches!(err, FinalStateError::InvalidSlot(_)) => {
+                        slot_too_old = true;
+                        Vec::default()
+                    }
+                    Err(err) => return Err(BootstrapError::FinalStateError(err)),
+                };
             } else {
                 final_state_changes = Vec::new();
             }
@@ -378,6 +387,24 @@ pub async fn stream_bootstrap_information(
             last_ops_step = new_ops_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
+        }
+
+        if slot_too_old {
+            match tokio::time::timeout(
+                write_timeout,
+                server.send(BootstrapServerMessage::SlotTooOld),
+            )
+            .await
+            {
+                Err(_) => Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "SlotTooOld message send timed out",
+                )
+                .into()),
+                Ok(Err(e)) => Err(e),
+                Ok(Ok(_)) => Ok(()),
+            }?;
+            return Ok(());
         }
 
         // Setup final state global cursor

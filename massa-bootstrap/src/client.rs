@@ -166,7 +166,7 @@ async fn stream_final_state_and_consensus(
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                     };
-                    panic!("Bootstrap failed, try to bootstrap again.");
+                    return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 BootstrapServerMessage::BootstrapError { error } => {
                     return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())
