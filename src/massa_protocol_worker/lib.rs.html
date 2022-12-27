@@ -22,6 +22,18 @@
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Protocol component
 //! High level management of communications between nodes
@@ -34,7 +46,10 @@
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 
-</span><span class="doccomment">/// protocol worker
+</span><span class="kw">use </span>massa_models::operation::Operation;
+<span class="kw">use </span>tokio::sync::broadcast::Sender;
+
+<span class="doccomment">/// protocol worker
 </span><span class="kw">pub mod </span>protocol_worker;
 <span class="kw">pub mod </span>worker_operations_impl;
 <span class="kw">pub use </span>protocol_worker::start_protocol_controller;
@@ -43,6 +58,15 @@
 <span class="kw">mod </span>node_info;
 <span class="kw">mod </span>protocol_network;
 <span class="kw">mod </span>sig_verifier;
+
+<span class="doccomment">/// WebSocket configuration.
+</span><span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>WsConfig {
+    <span class="doccomment">/// Whether WebSockets are enabled
+    </span><span class="kw">pub </span>enabled: bool,
+    <span class="doccomment">/// Broadcast sender(channel) for operations
+    </span><span class="kw">pub </span>operation_sender: Sender&lt;Operation&gt;,
+}
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>tests;

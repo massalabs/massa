@@ -284,6 +284,8 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">super</span>::mock_network_controller::MockNetworkController;
@@ -510,6 +512,8 @@
         t0: MassaTime::from_millis(<span class="number">16000</span>),
         max_operations_propagation_time: MassaTime::from_millis(<span class="number">30000</span>),
         max_endorsements_propagation_time: MassaTime::from_millis(<span class="number">60000</span>),
+        ws_enabled: <span class="bool-val">false</span>,
+        ws_operations_capacity: <span class="number">128</span>,
     }
 }
 

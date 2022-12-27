@@ -309,26 +309,7 @@
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-</pre><pre class="rust"><code><span class="kw">use </span>jsonrpsee::{core::error::SubscriptionClosed, SubscriptionSink};
-<span class="kw">use </span>massa_consensus_exports::{
+</pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     export_active_block::ExportActiveBlock, ConsensusController,
@@ -345,11 +326,9 @@
     wrapped::Wrapped,
 };
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_ws::{__reexports::jsonrpsee::SubscriptionSink, broadcast_via_ws};
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::sync::{mpsc::SyncSender, Arc};
-<span class="kw">use </span>tokio::sync::broadcast::Sender;
-<span class="kw">use </span>tokio_stream::wrappers::BroadcastStream;
 <span class="kw">use </span>tracing::log::warn;
 
 <span class="kw">use crate</span>::{commands::ConsensusCommand, state::ConsensusState, worker::WsConfig};
@@ -630,31 +609,16 @@
     }
 
     <span class="kw">fn </span>subscribe_new_blocks_headers(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) {
-        pipe(<span class="self">self</span>.ws_config.block_header_sender.clone(), sink);
+        broadcast_via_ws(<span class="self">self</span>.ws_config.block_header_sender.clone(), sink);
     }
 
     <span class="kw">fn </span>subscribe_new_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) {
-        pipe(<span class="self">self</span>.ws_config.block_sender.clone(), sink);
+        broadcast_via_ws(<span class="self">self</span>.ws_config.block_sender.clone(), sink);
     }
 
     <span class="kw">fn </span>subscribe_new_filled_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) {
-        pipe(<span class="self">self</span>.ws_config.filled_block_sender.clone(), sink);
+        broadcast_via_ws(<span class="self">self</span>.ws_config.filled_block_sender.clone(), sink);
     }
-}
-
-<span class="kw">fn </span>pipe&lt;T: Serialize + Send + Clone + <span class="lifetime">&#39;static</span>&gt;(sender: Sender&lt;T&gt;, <span class="kw-2">mut </span>sink: SubscriptionSink) {
-    <span class="kw">let </span>rx = BroadcastStream::new(sender.subscribe());
-    tokio::spawn(<span class="kw">async move </span>{
-        <span class="kw">match </span>sink.pipe_from_try_stream(rx).<span class="kw">await </span>{
-            SubscriptionClosed::Success =&gt; {
-                sink.close(SubscriptionClosed::Success);
-            }
-            SubscriptionClosed::RemotePeerAborted =&gt; (),
-            SubscriptionClosed::Failed(err) =&gt; {
-                sink.close(err);
-            }
-        };
-    });
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
