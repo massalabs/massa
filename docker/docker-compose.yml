@@ -3,7 +3,7 @@ version: '3.9'
 services:
   massa-node:
     container_name: massa-node
-    image: svetekllc/massa-node:${TAG}
+    image: massalabs/massa-node:${TAG}
     environment:
       - PASSWORD=<insert password>
       - LOGGING=true
