@@ -1,4 +1,4 @@
-use jsonrpsee::{core::error::SubscriptionClosed, SubscriptionSink};
+use massa_api::{__reexports::jsonrpsee::SubscriptionSink, broadcast_via_ws};
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -17,10 +17,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use serde::Serialize;
 use std::sync::{mpsc::SyncSender, Arc};
-use tokio::sync::broadcast::Sender;
-use tokio_stream::wrappers::BroadcastStream;
 use tracing::log::warn;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState, worker::WsConfig};
@@ -301,29 +298,14 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink) {
-        pipe(self.ws_config.block_header_sender.clone(), sink);
+        broadcast_via_ws(self.ws_config.block_header_sender.clone(), sink);
     }
 
     fn subscribe_new_blocks(&self, sink: SubscriptionSink) {
-        pipe(self.ws_config.block_sender.clone(), sink);
+        broadcast_via_ws(self.ws_config.block_sender.clone(), sink);
     }
 
     fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink) {
-        pipe(self.ws_config.filled_block_sender.clone(), sink);
+        broadcast_via_ws(self.ws_config.filled_block_sender.clone(), sink);
     }
-}
-
-fn pipe<T: Serialize + Send + Clone + 'static>(sender: Sender<T>, mut sink: SubscriptionSink) {
-    let rx = BroadcastStream::new(sender.subscribe());
-    tokio::spawn(async move {
-        match sink.pipe_from_try_stream(rx).await {
-            SubscriptionClosed::Success => {
-                sink.close(SubscriptionClosed::Success);
-            }
-            SubscriptionClosed::RemotePeerAborted => (),
-            SubscriptionClosed::Failed(err) => {
-                sink.close(err);
-            }
-        };
-    });
 }

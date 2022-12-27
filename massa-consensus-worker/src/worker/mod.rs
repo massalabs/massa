@@ -1,3 +1,4 @@
+use massa_api::__reexports::tokio::sync::broadcast::{self, Sender};
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
@@ -13,7 +14,6 @@ use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
-use tokio::sync::broadcast::{self, Sender};
 
 use crate::commands::ConsensusCommand;
 use crate::controller::ConsensusControllerImpl;
