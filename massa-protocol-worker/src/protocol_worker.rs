@@ -1103,7 +1103,6 @@ impl ProtocolWorker {
 
     /// New produced operations.
     pub(crate) fn subscribe_new_operations(&self, sink: SubscriptionSink) {
-        println!("wawwwwwwwwwwwwwwwww");
         broadcast_via_ws(self.ws_config.operation_sender.clone(), sink);
     }
 }

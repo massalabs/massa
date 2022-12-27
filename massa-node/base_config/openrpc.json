@@ -1125,7 +1125,33 @@
             },
             "name": "subscribe_new_filled_blocks",
             "summary": "New produced block with operations content",
-            "description": "New produced block with operations content.."
+            "description": "New produced block with operations content."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/Operation"
+                },
+                "name": "Operation"
+            },
+            "name": "subscribe_new_filled_blocks",
+            "summary": "New produced operations",
+            "description": "New produced operations."
         },
         {
             "tags": [
@@ -1234,6 +1260,42 @@
             "name": "unsubscribe_new_filled_blocks",
             "summary": "Unsubscribe from new produced filled blocks",
             "description": "Unsubscribe from new produced filled blocks."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                },
+                {
+                    "name": "websocket",
+                    "description": "WebSocket subscription"
+                }
+            ],
+            "params": [
+                {
+                    "name": "subscriptionId",
+                    "description": "Subscription id",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "boolean"
+                },
+                "name": "unsubscribe result",
+                "description": "unsubscribe success message"
+            },
+            "name": "unsubscribe_new_operations",
+            "summary": "Unsubscribe from new produced operations",
+            "description": "Unsubscribe from new produced operations."
         }
     ],
     "components": {
