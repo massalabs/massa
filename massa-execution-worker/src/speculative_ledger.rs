@@ -31,9 +31,9 @@ pub(crate) struct SpeculativeLedger {
     active_history: Arc<RwLock<ActiveHistory>>,
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
-    #[cfg(not(feature = "gas_calibration"))]
+    #[cfg(all(not(feature = "gas_calibration"), not(feature = "benchmarking")))]
     added_changes: LedgerChanges,
-    #[cfg(feature = "gas_calibration")]
+    #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
     pub added_changes: LedgerChanges,
 
     /// max datastore key length

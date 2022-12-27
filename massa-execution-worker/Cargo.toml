@@ -41,6 +41,11 @@ massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
 ] }
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
+criterion = "0.4"
+
+[[bench]]
+name = "basic"
+harness = false
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]
@@ -51,3 +56,4 @@ testing = [
     "massa_pos_exports/testing",
     "massa_final_state/testing",
 ]
+benchmarking = ["massa_pos_worker", "massa_ledger_worker", "tempfile"]

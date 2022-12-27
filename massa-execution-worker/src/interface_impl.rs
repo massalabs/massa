@@ -22,7 +22,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
 
-#[cfg(feature = "gas_calibration")]
+#[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
 use massa_models::datastore::Datastore;
 
 /// helper for locking the context mutex
@@ -51,7 +51,7 @@ impl InterfaceImpl {
         InterfaceImpl { config, context }
     }
 
-    #[cfg(feature = "gas_calibration")]
+    #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(
         sender_addr: Address,
