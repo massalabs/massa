@@ -1086,7 +1086,7 @@ impl ExecutionState {
             out: execution_output,
             gas_cost: req.max_gas.saturating_sub(remaining_gas),
             // TODO release massa-sc-runtime and bind it
-            call_result: Vec::new()
+            call_result: Vec::new(),
         })
     }
 
