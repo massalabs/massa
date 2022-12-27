@@ -58,11 +58,11 @@ then
 fi
 
 ## Massa node launch ###
-if [[ -f $PRIVKEY && -f $WALLET ]]
+if [[ ! -f $PRIVKEY || ! -f $WALLET ]]
 then
-    echo "Node launch"
-    start_node
-else
     echo "Node initialization"
     init_node
 fi
+
+echo "Node launch"
+start_node
