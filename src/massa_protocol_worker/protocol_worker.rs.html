@@ -1178,7 +1178,6 @@
 <a href="#1178" id="1178">1178</a>
 <a href="#1179" id="1179">1179</a>
 <a href="#1180" id="1180">1180</a>
-<a href="#1181" id="1181">1181</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cache::{LinearHashCacheMap, LinearHashCacheSet};
@@ -2284,7 +2283,6 @@
 
     <span class="doccomment">/// New produced operations.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subscribe_new_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) {
-        <span class="macro">println!</span>(<span class="string">&quot;wawwwwwwwwwwwwwwwww&quot;</span>);
         broadcast_via_ws(<span class="self">self</span>.ws_config.operation_sender.clone(), sink);
     }
 }
