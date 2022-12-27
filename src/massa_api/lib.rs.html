@@ -371,37 +371,6 @@
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
@@ -410,11 +379,10 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::api_trait::MassaApiServer;
 <span class="kw">use </span><span class="kw">crate</span>::error::ApiError::WrongAPI;
 <span class="kw">use </span>hyper::Method;
-<span class="kw">use </span>jsonrpsee::core::error::SubscriptionClosed;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
 <span class="kw">use </span>jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
-<span class="kw">use </span>jsonrpsee::{RpcModule, SubscriptionSink};
+<span class="kw">use </span>jsonrpsee::RpcModule;
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::api::{
@@ -443,15 +411,12 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>serde_json::Value;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 
-<span class="kw">use </span>tokio::sync::broadcast::Sender;
 <span class="kw">use </span>tokio::sync::mpsc;
-<span class="kw">use </span>tokio_stream::wrappers::BroadcastStream;
 <span class="kw">use </span>tracing::{info, warn};
 
 <span class="kw">mod </span>api;
@@ -778,33 +743,6 @@
 
 <span class="kw">fn </span>wrong_api&lt;T&gt;() -&gt; RpcResult&lt;T&gt; {
     <span class="prelude-val">Err</span>((WrongAPI).into())
-}
-
-<span class="doccomment">/// Re-exports libraries to not require any additional
-/// dependencies to be explicitly added on the module(s) side.
-</span><span class="attr">#[doc(hidden)]
-</span><span class="kw">pub mod </span>__reexports {
-    <span class="kw">pub use </span>jsonrpsee;
-    <span class="kw">pub use </span>tokio;
-}
-
-<span class="doccomment">/// Brodcast the stream(sender) content via a WebSocket
-</span><span class="kw">pub fn </span>broadcast_via_ws&lt;T: Serialize + Send + Clone + <span class="lifetime">&#39;static</span>&gt;(
-    sender: Sender&lt;T&gt;,
-    <span class="kw-2">mut </span>sink: SubscriptionSink,
-) {
-    <span class="kw">let </span>rx = BroadcastStream::new(sender.subscribe());
-    tokio::spawn(<span class="kw">async move </span>{
-        <span class="kw">match </span>sink.pipe_from_try_stream(rx).<span class="kw">await </span>{
-            SubscriptionClosed::Success =&gt; {
-                sink.close(SubscriptionClosed::Success);
-            }
-            SubscriptionClosed::RemotePeerAborted =&gt; (),
-            SubscriptionClosed::Failed(err) =&gt; {
-                sink.close(err);
-            }
-        };
-    });
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e631891f7 2022-11-13)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

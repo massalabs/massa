@@ -911,9 +911,9 @@
 
     <span class="doccomment">/// speculative ledger state,
     /// as seen after everything that happened so far in the context
-    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;gas_calibration&quot;</span>))]
+    </span><span class="attr">#[cfg(all(not(feature = <span class="string">&quot;gas_calibration&quot;</span>), not(feature = <span class="string">&quot;benchmarking&quot;</span>)))]
     </span>speculative_ledger: SpeculativeLedger,
-    <span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) speculative_ledger: SpeculativeLedger,
 
     <span class="doccomment">/// speculative asynchronous pool state,
