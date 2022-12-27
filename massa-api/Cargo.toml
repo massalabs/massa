@@ -16,7 +16,6 @@ tower = { version = "0.4.13", features = ["full"] }
 hyper = "0.14.20"
 thiserror = "1.0"
 tokio = { version = "1.21", features = ["full"] }
-tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = "0.1"
 itertools = "0.10"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }

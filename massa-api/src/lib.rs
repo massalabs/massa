@@ -6,11 +6,10 @@
 use crate::api_trait::MassaApiServer;
 use crate::error::ApiError::WrongAPI;
 use hyper::Method;
-use jsonrpsee::core::error::SubscriptionClosed;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
-use jsonrpsee::{RpcModule, SubscriptionSink};
+use jsonrpsee::RpcModule;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
@@ -39,15 +38,12 @@ use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use serde::Serialize;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 
-use tokio::sync::broadcast::Sender;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::BroadcastStream;
 use tracing::{info, warn};
 
 mod api;
@@ -102,6 +98,8 @@ pub struct Private {
 pub struct ApiV2 {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
+    /// link to the protocol component
+    pub protocol_command_sender: ProtocolCommandSender,
     /// API settings
     pub api_settings: APIConfig,
     /// node version
@@ -374,31 +372,4 @@ pub trait MassaRpc {
 
 fn wrong_api<T>() -> RpcResult<T> {
     Err((WrongAPI).into())
-}
-
-/// Re-exports libraries to not require any additional
-/// dependencies to be explicitly added on the module(s) side.
-#[doc(hidden)]
-pub mod __reexports {
-    pub use jsonrpsee;
-    pub use tokio;
-}
-
-/// Brodcast the stream(sender) content via a WebSocket
-pub fn broadcast_via_ws<T: Serialize + Send + Clone + 'static>(
-    sender: Sender<T>,
-    mut sink: SubscriptionSink,
-) {
-    let rx = BroadcastStream::new(sender.subscribe());
-    tokio::spawn(async move {
-        match sink.pipe_from_try_stream(rx).await {
-            SubscriptionClosed::Success => {
-                sink.close(SubscriptionClosed::Success);
-            }
-            SubscriptionClosed::RemotePeerAborted => (),
-            SubscriptionClosed::Failed(err) => {
-                sink.close(err);
-            }
-        };
-    });
 }

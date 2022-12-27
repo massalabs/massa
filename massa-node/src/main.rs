@@ -434,6 +434,8 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        ws_enabled: SETTINGS.api.enable_ws,
+        ws_operations_capacity: SETTINGS.protocol.ws_operations_capacity,
     };
 
     let protocol_manager = start_protocol_controller(
@@ -511,7 +513,12 @@ async fn launch(
     };
 
     // spawn Massa API
-    let api = API::<ApiV2>::new(consensus_controller.clone(), api_config.clone(), *VERSION);
+    let api = API::<ApiV2>::new(
+        consensus_controller.clone(),
+        ProtocolCommandSender(protocol_command_sender.clone()),
+        api_config.clone(),
+        *VERSION,
+    );
     let api_handle = api
         .serve(&SETTINGS.api.bind_api, &api_config)
         .await

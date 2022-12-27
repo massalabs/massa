@@ -1,0 +1,13 @@
+[package]
+name = "massa_ws"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.21", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }

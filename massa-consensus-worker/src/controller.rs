@@ -1,4 +1,3 @@
-use massa_api::{__reexports::jsonrpsee::SubscriptionSink, broadcast_via_ws};
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -16,6 +15,7 @@ use massa_models::{
     wrapped::Wrapped,
 };
 use massa_storage::Storage;
+use massa_ws::{__reexports::jsonrpsee::SubscriptionSink, broadcast_via_ws};
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
 use tracing::log::warn;

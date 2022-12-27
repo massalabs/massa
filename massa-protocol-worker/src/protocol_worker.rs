@@ -3,6 +3,7 @@
 use crate::cache::{LinearHashCacheMap, LinearHashCacheSet};
 use crate::checked_operations::CheckedOperations;
 use crate::sig_verifier::verify_sigs_batch;
+use crate::WsConfig;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_consensus_exports::ConsensusController;
@@ -27,9 +28,12 @@ use massa_protocol_exports::{
 use massa_models::wrapped::Id;
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
+use massa_ws::__reexports::jsonrpsee::SubscriptionSink;
+use massa_ws::broadcast_via_ws;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::pin::Pin;
+use tokio::sync::broadcast;
 use tokio::{
     sync::mpsc,
     time::{sleep, sleep_until, Instant, Sleep},
@@ -61,8 +65,13 @@ pub async fn start_protocol_controller(
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let pool_controller = pool_controller.clone();
     let join_handle = tokio::spawn(async move {
+        let ws_config = WsConfig {
+            enabled: config.ws_enabled,
+            operation_sender: broadcast::channel(config.ws_operations_capacity).0,
+        };
         let res = ProtocolWorker::new(
             config,
+            ws_config,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
@@ -119,6 +128,8 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) config: ProtocolConfig,
+    /// WebSocket configuration.
+    pub(crate) ws_config: WsConfig,
     /// Consensus controller
     pub(crate) consensus_controller: Box<dyn ConsensusController>,
     /// Associated network command sender.
@@ -169,12 +180,14 @@ impl ProtocolWorker {
     ///
     /// # Arguments
     /// * `config`: protocol configuration.
+    /// * `ws_config`: WebSocket configuration.
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
     /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
         config: ProtocolConfig,
+        ws_config: WsConfig,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
@@ -187,6 +200,7 @@ impl ProtocolWorker {
     ) -> ProtocolWorker {
         ProtocolWorker {
             config,
+            ws_config,
             network_command_sender,
             network_event_receiver,
             consensus_controller,
@@ -511,6 +525,7 @@ impl ProtocolWorker {
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 self.propagate_endorsements(&endorsements).await;
             }
+            ProtocolCommand::SubscribeNewOperations(sink) => self.subscribe_new_operations(sink),
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
@@ -931,6 +946,11 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
+            if self.ws_config.enabled {
+                for op in new_operations.clone() {
+                    let _ = self.ws_config.operation_sender.send(op.1.content);
+                }
+            }
             // Store operation, claim locally
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
@@ -1079,6 +1099,12 @@ impl ProtocolWorker {
         }
 
         Ok(())
+    }
+
+    /// New produced operations.
+    pub(crate) fn subscribe_new_operations(&self, sink: SubscriptionSink) {
+        println!("wawwwwwwwwwwwwwwwww");
+        broadcast_via_ws(self.ws_config.operation_sender.clone(), sink);
     }
 }
 
