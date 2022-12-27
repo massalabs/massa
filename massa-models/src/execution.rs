@@ -34,7 +34,7 @@ impl Display for ExecuteReadOnlyResponse {
             match &self.result {
                 ReadOnlyResult::Error(e) =>
                     format!("an error occurred during the execution: {}", e),
-                ReadOnlyResult::Ok(ret) => format!("success, returned value: {:?}", ret)
+                ReadOnlyResult::Ok(ret) => format!("success, returned value: {:?}", ret),
             }
         )?;
         if !self.output_events.is_empty() {
