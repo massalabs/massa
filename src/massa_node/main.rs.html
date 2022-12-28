@@ -845,13 +845,6 @@
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1288,8 +1281,6 @@
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-        ws_enabled: SETTINGS.api.enable_ws,
-        ws_operations_capacity: SETTINGS.protocol.ws_operations_capacity,
     };
 
     <span class="kw">let </span>protocol_manager = start_protocol_controller(
@@ -1367,12 +1358,7 @@
     };
 
     <span class="comment">// spawn Massa API
-    </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(
-        consensus_controller.clone(),
-        ProtocolCommandSender(protocol_command_sender.clone()),
-        api_config.clone(),
-        <span class="kw-2">*</span>VERSION,
-    );
+    </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(consensus_controller.clone(), api_config.clone(), <span class="kw-2">*</span>VERSION);
     <span class="kw">let </span>api_handle = api
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_api, <span class="kw-2">&amp;</span>api_config)
         .<span class="kw">await

@@ -147,11 +147,11 @@
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_ws::__reexports::tokio::sync::broadcast::{<span class="self">self</span>, Sender};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::{mpsc, Arc};
 <span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::time::Instant;
+<span class="kw">use </span>tokio::sync::broadcast::{<span class="self">self</span>, Sender};
 
 <span class="kw">use </span><span class="kw">crate</span>::commands::ConsensusCommand;
 <span class="kw">use </span><span class="kw">crate</span>::controller::ConsensusControllerImpl;

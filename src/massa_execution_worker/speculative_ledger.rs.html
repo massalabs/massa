@@ -633,9 +633,9 @@
     </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
 
     <span class="doccomment">/// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
-    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;gas_calibration&quot;</span>))]
+    </span><span class="attr">#[cfg(all(not(feature = <span class="string">&quot;gas_calibration&quot;</span>), not(feature = <span class="string">&quot;benchmarking&quot;</span>)))]
     </span>added_changes: LedgerChanges,
-    <span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
     </span><span class="kw">pub </span>added_changes: LedgerChanges,
 
     <span class="doccomment">/// max datastore key length

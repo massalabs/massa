@@ -159,19 +159,6 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
@@ -185,7 +172,6 @@
 };
 <span class="kw">use </span>massa_network_exports::NetworkEventReceiver;
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>massa_ws::__reexports::jsonrpsee::SubscriptionSink;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>tokio::{sync::mpsc, task::JoinHandle};
 <span class="kw">use </span>tracing::info;
@@ -225,8 +211,6 @@
     </span>PropagateOperations(Storage),
     <span class="doccomment">/// Propagate endorsements
     </span>PropagateEndorsements(Storage),
-    <span class="doccomment">/// Subscribe to new produced operations
-    </span>SubscribeNewOperations(SubscriptionSink),
 }
 
 <span class="doccomment">/// protocol management commands
@@ -305,16 +289,6 @@
             </span>.blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
             .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.into())
-            })
-    }
-
-    <span class="doccomment">/// New produced operations.
-    </span><span class="kw">pub fn </span>subscribe_new_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.subscribe_new_operations&quot;</span>, {});
-        <span class="self">self</span>.<span class="number">0
-            </span>.blocking_send(ProtocolCommand::SubscribeNewOperations(sink))
-            .map_err(|<span class="kw">_</span>| {
-                ProtocolError::ChannelError(<span class="string">&quot;subscribe_new_operations command send error&quot;</span>.into())
             })
     }
 }

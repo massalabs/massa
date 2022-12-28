@@ -226,8 +226,6 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -449,8 +447,6 @@
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// Time threshold after which operation are not propagated
     </span><span class="kw">pub </span>max_endorsements_propagation_time: MassaTime,
-    <span class="doccomment">/// operations sender sender(channel) capacity
-    </span><span class="kw">pub </span>ws_operations_capacity: usize,
 }
 
 <span class="attr">#[cfg(test)]
