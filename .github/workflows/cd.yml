@@ -50,7 +50,7 @@ jobs:
           toolchain: nightly-2022-12-24
           target: ${{ matrix.target }}
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
       - uses: actions-rs/cargo@v1
         if: matrix.platform != 'arm64'
         with:
