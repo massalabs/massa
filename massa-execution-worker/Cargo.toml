@@ -10,6 +10,7 @@ edition = "2021"
 anyhow = "1.0"
 rand = "0.8"
 rand_xoshiro = "0.6"
+criterion = {version = "0.4", optional = true}
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 tracing = "0.1"
 serde_json = "1.0"
@@ -41,7 +42,6 @@ massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
 ] }
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
-criterion = "0.4"
 
 [[bench]]
 name = "basic"
@@ -58,4 +58,4 @@ testing = [
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks
-benchmarking = ["massa_pos_worker", "massa_ledger_worker", "tempfile"]
+benchmarking = ["criterion", "massa_pos_worker", "massa_ledger_worker", "tempfile"]
