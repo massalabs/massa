@@ -10,6 +10,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     use std::path::PathBuf;
     use std::str::FromStr;
 
+    /// This function is used to prepare the data for the benchmarks
+    /// It prepare the interface and the contracts to be executed.
     fn prepare_bench_function() -> (InterfaceImpl, Vec<Vec<u8>>, GasCosts) {
         let interface = InterfaceImpl::new_default(
             black_box(
