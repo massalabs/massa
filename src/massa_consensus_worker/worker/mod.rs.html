@@ -134,8 +134,6 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
@@ -257,13 +255,11 @@
     }));
 
     <span class="kw">let </span>shared_state_cloned = shared_state.clone();
+    <span class="kw">let </span><span class="kw-2">mut </span>consensus_worker =
+        ConsensusWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
     <span class="kw">let </span>consensus_thread = thread::Builder::new()
         .name(<span class="string">&quot;consensus worker&quot;</span>.into())
-        .spawn(<span class="kw">move </span>|| {
-            <span class="kw">let </span><span class="kw-2">mut </span>consensus_worker =
-                ConsensusWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
-            consensus_worker.run()
-        })
+        .spawn(<span class="kw">move </span>|| consensus_worker.run())
         .expect(<span class="string">&quot;Can&#39;t spawn consensus thread.&quot;</span>);
 
     <span class="kw">let </span>manager = ConsensusManagerImpl {
