@@ -31,6 +31,8 @@ jobs:
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "test"
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
