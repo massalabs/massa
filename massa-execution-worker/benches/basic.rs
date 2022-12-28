@@ -6,9 +6,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     use massa_execution_worker::InterfaceImpl;
     use massa_models::address::Address;
     use massa_sc_runtime::{run_main, GasCosts};
+    use rand::Rng;
     use std::path::PathBuf;
     use std::str::FromStr;
-    use rand::Rng;
 
     fn prepare_bench_function() -> (InterfaceImpl, Vec<Vec<u8>>, GasCosts) {
         let interface = InterfaceImpl::new_default(
