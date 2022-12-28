@@ -33,7 +33,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          key: "global"
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -72,6 +71,8 @@ jobs:
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "massa"
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -99,6 +100,8 @@ jobs:
           toolchain: nightly-2022-12-24
           override: true
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "massa"
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -122,6 +125,9 @@ jobs:
           toolchain: nightly-2022-12-24
           components: rustfmt
           override: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "massa"
       - uses: actions-rs/cargo@v1
         with:
           command: doc
