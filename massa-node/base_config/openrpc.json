@@ -1859,6 +1859,21 @@
                 },
                 "additionalProperties": false
             },
+            "ReadOnlyResult": {
+                "title": "ReadOnlyResult",
+                "type": "object",
+                "description": "The result of a read-only execution",
+                "properties": {
+                    "Ok": {
+                        "type": "array",
+                        "description": "Included in case of success. The result of the execution"
+                    },
+                    "Error": {
+                        "type": "string",
+                        "description": "Included in case of error. The error message"
+                    }
+                }
+            },
             "ExecuteReadOnlyResponse": {
                 "title": "ExecuteReadOnlyResponse",
                 "required": [
@@ -1873,8 +1888,7 @@
                         "$ref": "#/components/schemas/ExecutedAt"
                     },
                     "result": {
-                        "description": "\"ok\" or error message",
-                        "type": "string"
+                        "$ref": "#/components/schemas/ReadOnlyResult"
                     },
                     "output_events": {
                         "type": "array",
