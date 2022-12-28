@@ -35,6 +35,20 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+  
+  check:
+    if: github.ref != 'refs/heads/staging'
+    needs: sanity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: "recursive"
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2022-12-24
       - uses: actions-rs/cargo@v1
         with:
           command: check
