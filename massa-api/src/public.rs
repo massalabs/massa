@@ -182,7 +182,7 @@ impl MassaRpcServer for API<Public> {
                     .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
-                    |_| ReadOnlyResult::Ok,
+                    |res| ReadOnlyResult::Ok(res.call_result.clone()),
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
@@ -257,7 +257,7 @@ impl MassaRpcServer for API<Public> {
                     .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
-                    |_| ReadOnlyResult::Ok,
+                    |res| ReadOnlyResult::Ok(res.call_result.clone()),
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result

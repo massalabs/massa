@@ -9,8 +9,7 @@ pub enum ReadOnlyResult {
     /// An error occurred during execution.
     Error(String),
     /// The result of a successful execution.
-    /// TODO: specify result.
-    Ok,
+    Ok(Vec<u8>),
 }
 
 /// The response to a request for a read-only execution.
@@ -35,7 +34,7 @@ impl Display for ExecuteReadOnlyResponse {
             match &self.result {
                 ReadOnlyResult::Error(e) =>
                     format!("an error occurred during the execution: {}", e),
-                ReadOnlyResult::Ok => "ok".to_string(),
+                ReadOnlyResult::Ok(ret) => format!("success, returned value: {:?}", ret),
             }
         )?;
         if !self.output_events.is_empty() {

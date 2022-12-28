@@ -509,7 +509,7 @@ impl ExecutionState {
             &*self.execution_interface,
             self.config.gas_costs.clone(),
         ) {
-            Ok(_reamining_gas) => {}
+            Ok(_response) => {}
             Err(err) => {
                 // there was an error during bytecode execution
                 return Err(ExecutionError::RuntimeError(format!(
@@ -605,7 +605,7 @@ impl ExecutionState {
             &*self.execution_interface,
             self.config.gas_costs.clone(),
         ) {
-            Ok(_reamining_gas) => {}
+            Ok(_response) => {}
             Err(err) => {
                 // there was an error during bytecode execution
                 return Err(ExecutionError::RuntimeError(format!(
@@ -1039,8 +1039,8 @@ impl ExecutionState {
             self.active_history.clone(),
         );
 
-        // run the intepreter according to the target type
-        let remaining_gas = match req.target {
+        // run the interpreter according to the target type
+        let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
@@ -1084,7 +1084,8 @@ impl ExecutionState {
         let execution_output = context_guard!(self).settle_slot();
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
-            gas_cost: req.max_gas.saturating_sub(remaining_gas),
+            gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
+            call_result: exec_response.ret,
         })
     }
 
