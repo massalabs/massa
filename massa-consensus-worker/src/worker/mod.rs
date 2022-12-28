@@ -9,7 +9,7 @@ use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_ws::__reexports::tokio::sync::broadcast::{self, Sender};
+use massa_ws::{broadcast, Sender};
 use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 use std::thread;

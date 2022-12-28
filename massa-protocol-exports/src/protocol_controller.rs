@@ -11,7 +11,7 @@ use massa_models::{
 };
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
-use massa_ws::__reexports::jsonrpsee::SubscriptionSink;
+use massa_ws::SubscriptionSink;
 use serde::Serialize;
 use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::info;

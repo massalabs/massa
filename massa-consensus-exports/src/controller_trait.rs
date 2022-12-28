@@ -1,6 +1,5 @@
 use crate::block_graph_export::BlockGraphExport;
 use crate::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
-use jsonrpsee::SubscriptionSink;
 use massa_models::prehash::PreHashSet;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{

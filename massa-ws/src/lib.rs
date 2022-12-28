@@ -4,18 +4,11 @@
 #![warn(unused_crate_dependencies)]
 #![feature(bound_map)]
 
-use jsonrpsee::{core::error::SubscriptionClosed, SubscriptionSink};
 use serde::Serialize;
-use tokio::sync::broadcast::Sender;
 use tokio_stream::wrappers::BroadcastStream;
 
-/// Re-exports libraries to not require any additional
-/// dependencies to be explicitly added on the module(s) side.
-#[doc(hidden)]
-pub mod __reexports {
-    pub use jsonrpsee;
-    pub use tokio;
-}
+pub use jsonrpsee::{core::error::SubscriptionClosed, SubscriptionSink};
+pub use tokio::sync::broadcast::{self, Sender};
 
 /// Brodcast the stream(sender) content via a WebSocket
 pub fn broadcast_via_ws<T: Serialize + Send + Clone + 'static>(

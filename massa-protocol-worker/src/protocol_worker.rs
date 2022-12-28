@@ -28,8 +28,8 @@ use massa_protocol_exports::{
 use massa_models::wrapped::Id;
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
-use massa_ws::__reexports::jsonrpsee::SubscriptionSink;
 use massa_ws::broadcast_via_ws;
+use massa_ws::SubscriptionSink;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::pin::Pin;
