@@ -1149,7 +1149,7 @@
                 },
                 "name": "Operation"
             },
-            "name": "subscribe_new_filled_blocks",
+            "name": "subscribe_new_operations",
             "summary": "New produced operations",
             "description": "New produced operations."
         },

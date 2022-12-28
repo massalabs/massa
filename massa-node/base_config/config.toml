@@ -133,7 +133,7 @@
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
     # operations sender(channel) capacity
-    ws_operations_capacity = 128
+    ws_operations_capacity = 5000
 
 [network]
     # port on which to listen for protocol communication
