@@ -33,7 +33,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          key: ""
+          key: "global"
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
