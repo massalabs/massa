@@ -8,20 +8,21 @@ use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
-use massa_consensus_exports::ConsensusController;
+use massa_consensus_exports::ConsensusChannels;
 use massa_models::version::Version;
 use massa_protocol_exports::ProtocolCommandSender;
+use massa_ws::broadcast_via_ws;
 
 impl API<ApiV2> {
     /// generate a new massa API
     pub fn new(
-        consensus_controller: Box<dyn ConsensusController>,
+        consensus_channels: ConsensusChannels,
         protocol_command_sender: ProtocolCommandSender,
         api_settings: APIConfig,
         version: Version,
     ) -> Self {
         API(ApiV2 {
-            consensus_controller,
+            consensus_channels,
             protocol_command_sender,
             api_settings,
             version,
@@ -48,20 +49,17 @@ impl MassaApiServer for API<ApiV2> {
     }
 
     fn subscribe_new_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        let consensus_controller = self.0.consensus_controller.clone();
-        consensus_controller.subscribe_new_blocks(sink);
+        broadcast_via_ws(self.0.consensus_channels.block_sender.clone(), sink);
         Ok(())
     }
 
     fn subscribe_new_blocks_headers(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        let consensus_controller = self.0.consensus_controller.clone();
-        consensus_controller.subscribe_new_blocks_headers(sink);
+        broadcast_via_ws(self.0.consensus_channels.block_header_sender.clone(), sink);
         Ok(())
     }
 
     fn subscribe_new_filled_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        let consensus_controller = self.0.consensus_controller.clone();
-        consensus_controller.subscribe_new_filled_blocks(sink);
+        broadcast_via_ws(self.0.consensus_channels.filled_block_sender.clone(), sink);
         Ok(())
     }
 

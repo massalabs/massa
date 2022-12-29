@@ -33,3 +33,4 @@ massa_serialization = { path = "../massa-serialization"}
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
+massa_ws = { path = "../massa-ws" }

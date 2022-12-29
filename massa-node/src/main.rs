@@ -66,7 +66,7 @@ use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
@@ -395,11 +395,14 @@ async fn launch(
         pool_command_sender: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+        block_header_sender: broadcast::channel(consensus_config.ws_blocks_headers_capacity).0,
+        block_sender: broadcast::channel(consensus_config.ws_blocks_capacity).0,
+        filled_block_sender: broadcast::channel(consensus_config.ws_filled_blocks_capacity).0,
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
         consensus_config,
-        consensus_channels,
+        consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
     );
@@ -514,7 +517,7 @@ async fn launch(
 
     // spawn Massa API
     let api = API::<ApiV2>::new(
-        consensus_controller.clone(),
+        consensus_channels,
         ProtocolCommandSender(protocol_command_sender.clone()),
         api_config.clone(),
         *VERSION,

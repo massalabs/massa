@@ -2277,6 +2277,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_wallet",
+ "massa_ws",
  "parking_lot",
  "serde",
  "serde_json",
@@ -2387,6 +2388,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

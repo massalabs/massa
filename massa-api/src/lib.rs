@@ -10,7 +10,7 @@ use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
-use massa_consensus_exports::ConsensusController;
+use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
@@ -96,8 +96,8 @@ pub struct Private {
 
 /// API v2 content
 pub struct ApiV2 {
-    /// link to the consensus component
-    pub consensus_controller: Box<dyn ConsensusController>,
+    /// link(channels) to the consensus component
+    pub consensus_channels: ConsensusChannels,
     /// link to the protocol component
     pub protocol_command_sender: ProtocolCommandSender,
     /// API settings
