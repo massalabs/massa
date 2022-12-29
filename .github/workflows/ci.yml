@@ -107,8 +107,12 @@ jobs:
           shared-key: "massa"
       - uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --features testing
+          command: install
+          args: cargo-nextest
+      - uses: actions-rs/cargo@v1
+        with:
+          command: nextest
+          args: run --retries 4
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
