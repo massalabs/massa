@@ -32,7 +32,7 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "massa"
+          shared-key: "sanity"
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
