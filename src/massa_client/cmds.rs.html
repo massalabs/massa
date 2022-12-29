@@ -2024,7 +2024,7 @@
                             }
                         }
                         <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will be rejected&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
                         }
                     }
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(staked_keys) = client.private.get_staking_addresses().<span class="kw">await </span>{
@@ -2169,8 +2169,8 @@
                         <span class="prelude-val">Ok</span>(node_status) =&gt; node_status.config.max_block_size,
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;RpcError: {}&quot;</span>, e),
                     };
-                    <span class="kw">if </span>data.len() &gt; max_block_size <span class="kw">as </span>usize {
-                        <span class="macro">client_warning!</span>(<span class="string">&quot;bytecode size exceeded the maximum size of a block, operation will be rejected&quot;</span>);
+                    <span class="kw">if </span>data.len() &gt; max_block_size <span class="kw">as </span>usize / <span class="number">2 </span>{
+                        <span class="macro">client_warning!</span>(<span class="string">&quot;bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected&quot;</span>);
                     }
                 }
                 <span class="kw">let </span>datastore = BTreeMap::new();
@@ -2222,7 +2222,7 @@
                             }
                         }
                         <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will be rejected&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
                         }
                     }
                 };

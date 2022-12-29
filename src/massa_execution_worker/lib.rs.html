@@ -205,10 +205,10 @@
 
 <span class="kw">pub use </span>worker::start_execution_worker;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
 </span><span class="kw">pub use </span>interface_impl::InterfaceImpl;
 
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;gas_calibration&quot;</span>))]
+<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
 </span><span class="kw">mod </span>tests;
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
