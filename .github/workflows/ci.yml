@@ -53,7 +53,7 @@ jobs:
           toolchain: nightly-2022-12-24
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "massa"
+          shared-key: "check"
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -75,7 +75,7 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "massa"
+          shared-key: "clippy"
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -130,7 +130,7 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "massa"
+          shared-key: "doc"
       - uses: actions-rs/cargo@v1
         with:
           command: doc
