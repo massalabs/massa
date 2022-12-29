@@ -52,7 +52,8 @@ use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager,
+    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager, ProtocolReceivers,
+    ProtocolSenders,
 };
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
@@ -381,10 +382,10 @@ async fn launch(
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
-        ws_enabled: SETTINGS.api.enable_ws,
-        ws_blocks_headers_capacity: SETTINGS.consensus.ws_blocks_headers_capacity,
-        ws_blocks_capacity: SETTINGS.consensus.ws_blocks_capacity,
-        ws_filled_blocks_capacity: SETTINGS.consensus.ws_filled_blocks_capacity,
+        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
+        broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
+        broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -395,9 +396,11 @@ async fn launch(
         pool_command_sender: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
-        block_header_sender: broadcast::channel(consensus_config.ws_blocks_headers_capacity).0,
-        block_sender: broadcast::channel(consensus_config.ws_blocks_capacity).0,
-        filled_block_sender: broadcast::channel(consensus_config.ws_filled_blocks_capacity).0,
+        block_header_sender: broadcast::channel(consensus_config.broadcast_blocks_headers_capacity)
+            .0,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,
+        filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
+            .0,
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
@@ -437,15 +440,24 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-        ws_enabled: SETTINGS.api.enable_ws,
-        ws_operations_capacity: SETTINGS.protocol.ws_operations_capacity,
+        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_operations_capacity: SETTINGS.protocol.broadcast_operations_capacity,
+    };
+
+    let protocol_senders = ProtocolSenders {
+        network_command_sender: network_command_sender.clone(),
+        operation_sender: broadcast::channel(protocol_config.broadcast_operations_capacity).0,
+    };
+
+    let protocol_receivers = ProtocolReceivers {
+        network_event_receiver,
+        protocol_command_receiver,
     };
 
     let protocol_manager = start_protocol_controller(
         protocol_config,
-        network_command_sender.clone(),
-        network_event_receiver,
-        protocol_command_receiver,
+        protocol_receivers,
+        protocol_senders.clone(),
         consensus_controller.clone(),
         pool_controller.clone(),
         shared_storage.clone(),
@@ -518,7 +530,7 @@ async fn launch(
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_channels,
-        ProtocolCommandSender(protocol_command_sender.clone()),
+        protocol_senders,
         api_config.clone(),
         *VERSION,
     );

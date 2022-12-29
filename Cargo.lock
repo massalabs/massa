@@ -2277,12 +2277,12 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_wallet",
- "massa_ws",
  "parking_lot",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tracing",
@@ -2403,7 +2403,6 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "massa_ws",
  "num",
  "parking_lot",
  "serde",
@@ -2745,7 +2744,6 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "massa_ws",
  "serde",
  "serde_json",
  "thiserror",
@@ -2770,7 +2768,6 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "massa_ws",
  "rayon",
  "serde_json",
  "serial_test 0.10.0",
@@ -2854,16 +2851,6 @@ dependencies = [
  "serde_qs",
  "tempfile",
  "thiserror",
-]
-
-[[package]]
-name = "massa_ws"
-version = "0.1.0"
-dependencies = [
- "jsonrpsee",
- "serde",
- "tokio",
- "tokio-stream",
 ]
 
 [[package]]

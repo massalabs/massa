@@ -171,11 +171,11 @@ pub struct ConsensusSettings {
     /// max number of items returned while querying
     pub max_item_return_count: usize,
     /// blocks headers sender(channel) capacity
-    pub ws_blocks_headers_capacity: usize,
+    pub broadcast_blocks_headers_capacity: usize,
     /// blocks sender(channel) capacity
-    pub ws_blocks_capacity: usize,
+    pub broadcast_blocks_capacity: usize,
     /// filled blocks sender(channel) capacity
-    pub ws_filled_blocks_capacity: usize,
+    pub broadcast_filled_blocks_capacity: usize,
 }
 
 /// Protocol Configuration, read from toml user configuration file
@@ -220,7 +220,7 @@ pub struct ProtocolSettings {
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
     /// operations sender sender(channel) capacity
-    pub ws_operations_capacity: usize,
+    pub broadcast_operations_capacity: usize,
 }
 
 #[cfg(test)]

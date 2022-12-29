@@ -46,12 +46,12 @@ pub struct ConsensusConfig {
     pub channel_size: usize,
     /// size of a consensus bootstrap streaming part
     pub bootstrap_part_size: u64,
-    /// whether WebSockets are enabled
-    pub ws_enabled: bool,
+    /// whether broadcast is enabled
+    pub broadcast_enabled: bool,
     /// blocks headers sender(channel) capacity
-    pub ws_blocks_headers_capacity: usize,
+    pub broadcast_blocks_headers_capacity: usize,
     /// blocks sender(channel) capacity
-    pub ws_blocks_capacity: usize,
+    pub broadcast_blocks_capacity: usize,
     /// filled blocks sender(channel) capacity
-    pub ws_filled_blocks_capacity: usize,
+    pub broadcast_filled_blocks_capacity: usize,
 }

@@ -56,7 +56,7 @@ pub struct ProtocolConfig {
     /// max time we propagate endorsements
     pub max_endorsements_propagation_time: MassaTime,
     /// Whether WebSockets are enabled
-    pub ws_enabled: bool,
+    pub broadcast_enabled: bool,
     /// operation sender sender(channel) capacity
-    pub ws_operations_capacity: usize,
+    pub broadcast_operations_capacity: usize,
 }

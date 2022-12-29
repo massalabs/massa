@@ -116,7 +116,7 @@ pub fn start_consensus_worker(
         channels,
         shared_state,
         bootstrap_part_size,
-        config.ws_enabled,
+        config.broadcast_enabled,
     );
 
     (Box::new(controller), Box::new(manager))

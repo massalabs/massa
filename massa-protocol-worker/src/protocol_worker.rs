@@ -3,12 +3,12 @@
 use crate::cache::{LinearHashCacheMap, LinearHashCacheSet};
 use crate::checked_operations::CheckedOperations;
 use crate::sig_verifier::verify_sigs_batch;
-use crate::WsConfig;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 
 use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
+use massa_models::operation::Operation;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -23,17 +23,15 @@ use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEvent
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
+    ProtocolReceivers, ProtocolSenders,
 };
 
 use massa_models::wrapped::Id;
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
-use massa_ws::broadcast_via_ws;
-use massa_ws::SubscriptionSink;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::pin::Pin;
-use tokio::sync::broadcast;
 use tokio::{
     sync::mpsc,
     time::{sleep, sleep_until, Instant, Sleep},
@@ -47,14 +45,14 @@ use tracing::{debug, error, info, warn};
 ///
 /// # Arguments
 /// * `config`: protocol settings
-/// * `network_command_sender`: the `NetworkCommandSender` we interact with
-/// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
+/// * `senders`: sender(s) channel(s) to communicate with other modules
+/// * `receivers`: receiver(s) channel(s) to communicate with other modules
+/// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     config: ProtocolConfig,
-    network_command_sender: NetworkCommandSender,
-    network_event_receiver: NetworkEventReceiver,
-    protocol_command_receiver: mpsc::Receiver<ProtocolCommand>,
+    receivers: ProtocolReceivers,
+    senders: ProtocolSenders,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
@@ -65,18 +63,14 @@ pub async fn start_protocol_controller(
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let pool_controller = pool_controller.clone();
     let join_handle = tokio::spawn(async move {
-        let ws_config = WsConfig {
-            enabled: config.ws_enabled,
-            operation_sender: broadcast::channel(config.ws_operations_capacity).0,
-        };
         let res = ProtocolWorker::new(
             config,
-            ws_config,
             ProtocolWorkerChannels {
-                network_command_sender,
-                network_event_receiver,
-                controller_command_rx: protocol_command_receiver,
+                network_command_sender: senders.network_command_sender,
+                network_event_receiver: receivers.network_event_receiver,
+                controller_command_rx: receivers.protocol_command_receiver,
                 controller_manager_rx,
+                operation_sender: senders.operation_sender,
             },
             consensus_controller,
             pool_controller,
@@ -128,8 +122,6 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) config: ProtocolConfig,
-    /// WebSocket configuration.
-    pub(crate) ws_config: WsConfig,
     /// Consensus controller
     pub(crate) consensus_controller: Box<dyn ConsensusController>,
     /// Associated network command sender.
@@ -142,6 +134,8 @@ pub struct ProtocolWorker {
     controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+    /// Broadcast sender(channel) for new operations
+    operation_sender: tokio::sync::broadcast::Sender<Operation>,
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
@@ -173,6 +167,8 @@ pub struct ProtocolWorkerChannels {
     pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// protocol management command receiver
     pub controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+    /// Broadcast sender(channel) for new operations
+    pub operation_sender: tokio::sync::broadcast::Sender<Operation>,
 }
 
 impl ProtocolWorker {
@@ -180,19 +176,18 @@ impl ProtocolWorker {
     ///
     /// # Arguments
     /// * `config`: protocol configuration.
-    /// * `ws_config`: WebSocket configuration.
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
     /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
         config: ProtocolConfig,
-        ws_config: WsConfig,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
             controller_command_rx,
             controller_manager_rx,
+            operation_sender,
         }: ProtocolWorkerChannels,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
@@ -200,13 +195,13 @@ impl ProtocolWorker {
     ) -> ProtocolWorker {
         ProtocolWorker {
             config,
-            ws_config,
             network_command_sender,
             network_event_receiver,
             consensus_controller,
             pool_controller,
             controller_command_rx,
             controller_manager_rx,
+            operation_sender,
             active_nodes: Default::default(),
             block_wishlist: Default::default(),
             checked_endorsements: LinearHashCacheSet::new(config.max_known_endorsements_size),
@@ -525,7 +520,6 @@ impl ProtocolWorker {
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 self.propagate_endorsements(&endorsements).await;
             }
-            ProtocolCommand::SubscribeNewOperations(sink) => self.subscribe_new_operations(sink),
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
@@ -946,9 +940,9 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
-            if self.ws_config.enabled {
+            if self.config.broadcast_enabled {
                 for op in new_operations.clone() {
-                    let _ = self.ws_config.operation_sender.send(op.1.content);
+                    let _ = self.operation_sender.send(op.1.content);
                 }
             }
             // Store operation, claim locally
@@ -1099,11 +1093,6 @@ impl ProtocolWorker {
         }
 
         Ok(())
-    }
-
-    /// New produced operations.
-    pub(crate) fn subscribe_new_operations(&self, sink: SubscriptionSink) {
-        broadcast_via_ws(self.ws_config.operation_sender.clone(), sink);
     }
 }
 

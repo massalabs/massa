@@ -11,7 +11,6 @@ use massa_models::{
 };
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
-use massa_ws::SubscriptionSink;
 use serde::Serialize;
 use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::info;
@@ -51,8 +50,6 @@ pub enum ProtocolCommand {
     PropagateOperations(Storage),
     /// Propagate endorsements
     PropagateEndorsements(Storage),
-    /// Subscribe to new produced operations
-    SubscribeNewOperations(SubscriptionSink),
 }
 
 /// protocol management commands
@@ -131,16 +128,6 @@ impl ProtocolCommandSender {
             .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
-            })
-    }
-
-    /// New produced operations.
-    pub fn subscribe_new_operations(&self, sink: SubscriptionSink) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.subscribe_new_operations", {});
-        self.0
-            .blocking_send(ProtocolCommand::SubscribeNewOperations(sink))
-            .map_err(|_| {
-                ProtocolError::ChannelError("subscribe_new_operations command send error".into())
             })
     }
 }

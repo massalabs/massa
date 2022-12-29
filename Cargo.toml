@@ -30,7 +30,6 @@ members = [
   "massa-signature",
   "massa-time",
   "massa-wallet",
-  "massa-ws",
   "massa-ledger-worker",
   "massa-ledger-exports",
   "massa-final-state",

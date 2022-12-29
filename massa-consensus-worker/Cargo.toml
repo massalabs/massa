@@ -21,7 +21,6 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
-massa_ws = { path = "../massa-ws" }
 
 [features]
 

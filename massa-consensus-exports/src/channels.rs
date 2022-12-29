@@ -8,7 +8,7 @@ use crate::events::ConsensusEvent;
 
 /// Contains a reference to the pool, selector and execution controller
 /// Contains a channel to send info to protocol
-/// Contains a channel to send info to api
+/// Contains channels to send info to api
 #[derive(Clone)]
 pub struct ConsensusChannels {
     pub execution_controller: Box<dyn ExecutionController>,

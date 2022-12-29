@@ -5,25 +5,27 @@ use std::net::SocketAddr;
 use crate::api_trait::MassaApiServer;
 use crate::{APIConfig, ApiServer, ApiV2, StopHandle, API};
 use async_trait::async_trait;
+use jsonrpsee::core::error::SubscriptionClosed;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
 use massa_consensus_exports::ConsensusChannels;
 use massa_models::version::Version;
-use massa_protocol_exports::ProtocolCommandSender;
-use massa_ws::broadcast_via_ws;
+use massa_protocol_exports::ProtocolSenders;
+use serde::Serialize;
+use tokio_stream::wrappers::BroadcastStream;
 
 impl API<ApiV2> {
     /// generate a new massa API
     pub fn new(
         consensus_channels: ConsensusChannels,
-        protocol_command_sender: ProtocolCommandSender,
+        protocol_senders: ProtocolSenders,
         api_settings: APIConfig,
         version: Version,
     ) -> Self {
         API(ApiV2 {
             consensus_channels,
-            protocol_command_sender,
+            protocol_senders,
             api_settings,
             version,
         })
@@ -64,8 +66,26 @@ impl MassaApiServer for API<ApiV2> {
     }
 
     fn subscribe_new_operations(&self, sink: SubscriptionSink) -> SubscriptionResult {
-        let protocol_command_sender = self.0.protocol_command_sender.clone();
-        tokio::task::spawn_blocking(move || protocol_command_sender.subscribe_new_operations(sink));
+        broadcast_via_ws(self.0.protocol_senders.operation_sender.clone(), sink);
         Ok(())
     }
+}
+
+/// Brodcast the stream(sender) content via a WebSocket
+fn broadcast_via_ws<T: Serialize + Send + Clone + 'static>(
+    sender: tokio::sync::broadcast::Sender<T>,
+    mut sink: SubscriptionSink,
+) {
+    let rx = BroadcastStream::new(sender.subscribe());
+    tokio::spawn(async move {
+        match sink.pipe_from_try_stream(rx).await {
+            SubscriptionClosed::Success => {
+                sink.close(SubscriptionClosed::Success);
+            }
+            SubscriptionClosed::RemotePeerAborted => (),
+            SubscriptionClosed::Failed(err) => {
+                sink.close(err);
+            }
+        };
+    });
 }

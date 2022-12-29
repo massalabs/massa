@@ -34,7 +34,7 @@ pub struct ConsensusControllerImpl {
     channels: ConsensusChannels,
     shared_state: Arc<RwLock<ConsensusState>>,
     bootstrap_part_size: u64,
-    ws_enabled: bool,
+    broadcast_enabled: bool,
 }
 
 impl ConsensusControllerImpl {
@@ -43,14 +43,14 @@ impl ConsensusControllerImpl {
         channels: ConsensusChannels,
         shared_state: Arc<RwLock<ConsensusState>>,
         bootstrap_part_size: u64,
-        ws_enabled: bool,
+        broadcast_enabled: bool,
     ) -> Self {
         Self {
             command_sender,
             channels,
             shared_state,
             bootstrap_part_size,
-            ws_enabled,
+            broadcast_enabled,
         }
     }
 }
@@ -226,7 +226,7 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
-        if self.ws_enabled {
+        if self.broadcast_enabled {
             if let Some(wrapped_block) = block_storage.read_blocks().get(&block_id) {
                 let operations: Vec<(OperationId, Option<Wrapped<Operation, OperationId>>)> =
                     wrapped_block
@@ -272,7 +272,7 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
-        if self.ws_enabled {
+        if self.broadcast_enabled {
             let _ = self
                 .channels
                 .block_header_sender
