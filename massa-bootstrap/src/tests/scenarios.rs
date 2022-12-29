@@ -207,7 +207,7 @@ async fn test_bootstrap_server() {
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =
-            match wait_network_command(&mut network_cmd_rx, 10_000.into(), |cmd| match cmd {
+            match wait_network_command(&mut network_cmd_rx, 20_000.into(), |cmd| match cmd {
                 NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
                 _ => None,
             })
@@ -225,7 +225,7 @@ async fn test_bootstrap_server() {
     let sent_graph = get_boot_state();
     let sent_graph_clone = sent_graph.clone();
     std::thread::spawn(move || loop {
-        consensus_event_receiver.wait_command(MassaTime::from_millis(10_000), |cmd| match &cmd {
+        consensus_event_receiver.wait_command(MassaTime::from_millis(20_000), |cmd| match &cmd {
             MockConsensusControllerMessage::GetBootstrapableGraph {
                 execution_cursor,
                 response_tx,
@@ -268,7 +268,7 @@ async fn test_bootstrap_server() {
     let list_changes_clone = list_changes.clone();
     std::thread::spawn(move || {
         for _ in 0..10 {
-            std::thread::sleep(Duration::from_millis(500));
+            std::thread::sleep(Duration::from_millis(650));
             let mut final_write = final_state_server_clone.write();
             let next = final_write.slot.get_next_slot(thread_count).unwrap();
             final_write.slot = next;

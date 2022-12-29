@@ -295,6 +295,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously received header.
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
+                std::thread::sleep(Duration::from_millis(300));
                 let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();

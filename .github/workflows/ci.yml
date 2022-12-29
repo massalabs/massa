@@ -30,16 +30,19 @@ jobs:
           toolchain: nightly-2022-12-24
           components: rustfmt
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "sanity"
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-
+  
   check:
     if: github.ref != 'refs/heads/staging'
     needs: sanity
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v2
         with:
@@ -48,53 +51,16 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly-2022-12-24
-          override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "check"
       - uses: actions-rs/cargo@v1
         with:
           command: check
 
-  test:
-    if: github.ref != 'refs/heads/staging'
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2022-12-24
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --lib
-
-  doctest:
-    if: github.ref != 'refs/heads/staging'
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2022-12-24
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc
-
   clippy:
     if: github.ref != 'refs/heads/staging'
-    needs: check
+    needs: sanity
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -107,7 +73,9 @@ jobs:
           toolchain: nightly-2022-12-24
           components: clippy
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "clippy"
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -116,7 +84,6 @@ jobs:
 
   # Full cross-platform tests required by bors to merge on main branch
   full:
-    # if: github.ref == 'refs/heads/staging'
     name: full
     needs: sanity
     runs-on: ${{ matrix.os }}
@@ -135,14 +102,15 @@ jobs:
           profile: minimal
           toolchain: nightly-2022-12-24
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "massa"
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --features testing
 
   build: # quick hack because bors wrongly detect matrix jobs status
-    # if: github.ref == 'refs/heads/staging'
     needs: full
     runs-on: ubuntu-latest
     steps:
@@ -150,7 +118,6 @@ jobs:
 
   doc:
     runs-on: ubuntu-latest
-    # if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
         with:
@@ -161,6 +128,9 @@ jobs:
           toolchain: nightly-2022-12-24
           components: rustfmt
           override: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "doc"
       - uses: actions-rs/cargo@v1
         with:
           command: doc

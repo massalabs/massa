@@ -119,13 +119,11 @@ pub fn start_consensus_worker(
     }));
 
     let shared_state_cloned = shared_state.clone();
+    let mut consensus_worker =
+        ConsensusWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
     let consensus_thread = thread::Builder::new()
         .name("consensus worker".into())
-        .spawn(move || {
-            let mut consensus_worker =
-                ConsensusWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
-            consensus_worker.run()
-        })
+        .spawn(move || consensus_worker.run())
         .expect("Can't spawn consensus thread.");
 
     let manager = ConsensusManagerImpl {
