@@ -51,6 +51,9 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly-2022-12-24
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "massa"
       - uses: actions-rs/cargo@v1
         with:
           command: check
