@@ -736,7 +736,7 @@ impl Command {
                             }
                         }
                         None => {
-                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                            client_warning!("the total amount hit the limit overflow, operation will be rejected");
                         }
                     }
                     if let Ok(staked_keys) = client.private.get_staking_addresses().await {
@@ -881,8 +881,8 @@ impl Command {
                         Ok(node_status) => node_status.config.max_block_size,
                         Err(e) => bail!("RpcError: {}", e),
                     };
-                    if data.len() > max_block_size as usize / 2 {
-                        client_warning!("bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected");
+                    if data.len() > max_block_size as usize {
+                        client_warning!("bytecode size exceeded the maximum size of a block, operation will be rejected");
                     }
                 }
                 let datastore = BTreeMap::new();
@@ -934,7 +934,7 @@ impl Command {
                             }
                         }
                         None => {
-                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                            client_warning!("the total amount hit the limit overflow, operation will be rejected");
                         }
                     }
                 };
