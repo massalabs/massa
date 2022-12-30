@@ -121,11 +121,24 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
 };
-<span class="kw">use </span>massa_models::block::BlockId;
+<span class="kw">use </span>massa_models::block::{Block, BlockHeader, BlockId, FilledBlock};
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::config::CHANNEL_SIZE;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
@@ -136,6 +149,7 @@
 <span class="kw">use </span>std::sync::{mpsc, Arc};
 <span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::time::Instant;
+<span class="kw">use </span>tokio::sync::broadcast::{<span class="self">self</span>, Sender};
 
 <span class="kw">use </span><span class="kw">crate</span>::commands::ConsensusCommand;
 <span class="kw">use </span><span class="kw">crate</span>::controller::ConsensusControllerImpl;
@@ -158,6 +172,18 @@
     </span>next_instant: Instant,
 }
 
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>WsConfig {
+    <span class="doccomment">/// Whether WebSockets are enabled
+    </span><span class="kw">pub </span>enabled: bool,
+    <span class="doccomment">/// Broadcast sender(channel) for blocks headers
+    </span><span class="kw">pub </span>block_header_sender: Sender&lt;BlockHeader&gt;,
+    <span class="doccomment">/// Broadcast sender(channel) for blocks
+    </span><span class="kw">pub </span>block_sender: Sender&lt;Block&gt;,
+    <span class="doccomment">/// Broadcast sender(channel) for filled blocks
+    </span><span class="kw">pub </span>filled_block_sender: Sender&lt;FilledBlock&gt;,
+}
+
 <span class="kw">mod </span>init;
 <span class="kw">mod </span>main_loop;
 
@@ -178,6 +204,13 @@
     init_graph: <span class="prelude-ty">Option</span>&lt;BootstrapableGraph&gt;,
     storage: Storage,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ConsensusController&gt;, Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;) {
+    <span class="kw">let </span>ws_config = WsConfig {
+        enabled: config.ws_enabled,
+        block_header_sender: broadcast::channel(config.ws_blocks_headers_capacity).<span class="number">0</span>,
+        block_sender: broadcast::channel(config.ws_blocks_capacity).<span class="number">0</span>,
+        filled_block_sender: broadcast::channel(config.ws_filled_blocks_capacity).<span class="number">0</span>,
+    };
+
     <span class="kw">let </span>(tx, rx) = mpsc::sync_channel(CHANNEL_SIZE);
     <span class="comment">// desync detection timespan
     </span><span class="kw">let </span>bootstrap_part_size = config.bootstrap_part_size;
@@ -186,7 +219,7 @@
     <span class="kw">let </span>shared_state = Arc::new(RwLock::new(ConsensusState {
         storage: storage.clone(),
         config: config.clone(),
-        channels: channels.clone(),
+        channels,
         max_cliques: <span class="macro">vec!</span>[Clique {
             block_ids: PreHashSet::&lt;BlockId&gt;::default(),
             fitness: <span class="number">0</span>,
@@ -223,8 +256,7 @@
 
     <span class="kw">let </span>shared_state_cloned = shared_state.clone();
     <span class="kw">let </span><span class="kw-2">mut </span>consensus_worker =
-        ConsensusWorker::new(config.clone(), rx, shared_state_cloned, init_graph, storage).unwrap();
-
+        ConsensusWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
     <span class="kw">let </span>consensus_thread = thread::Builder::new()
         .name(<span class="string">&quot;consensus worker&quot;</span>.into())
         .spawn(<span class="kw">move </span>|| consensus_worker.run())
@@ -234,13 +266,7 @@
         consensus_thread: <span class="prelude-val">Some</span>((tx.clone(), consensus_thread)),
     };
 
-    <span class="kw">let </span>controller = ConsensusControllerImpl::new(
-        tx,
-        channels,
-        shared_state,
-        bootstrap_part_size,
-        config.broadcast_enabled,
-    );
+    <span class="kw">let </span>controller = ConsensusControllerImpl::new(tx, ws_config, shared_state, bootstrap_part_size);
 
     (Box::new(controller), Box::new(manager))
 }
