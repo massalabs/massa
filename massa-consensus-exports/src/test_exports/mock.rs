@@ -266,18 +266,6 @@ impl ConsensusController for MockConsensusController {
             .unwrap();
     }
 
-    fn subscribe_new_blocks_headers(&self, _sink: jsonrpsee::SubscriptionSink) {
-        panic!("Not implemented")
-    }
-
-    fn subscribe_new_blocks(&self, _sink: jsonrpsee::SubscriptionSink) {
-        panic!("Not implemented")
-    }
-
-    fn subscribe_new_filled_blocks(&self, _sink: jsonrpsee::SubscriptionSink) {
-        panic!("Not implemented")
-    }
-
     fn clone_box(&self) -> Box<dyn ConsensusController> {
         Box::new(self.clone())
     }

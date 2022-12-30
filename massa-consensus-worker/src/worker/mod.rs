@@ -2,7 +2,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
 };
-use massa_models::block::{Block, BlockHeader, BlockId, FilledBlock};
+use massa_models::block::BlockId;
 use massa_models::clique::Clique;
 use massa_models::config::CHANNEL_SIZE;
 use massa_models::prehash::PreHashSet;
@@ -13,7 +13,6 @@ use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
-use tokio::sync::broadcast::{self, Sender};
 
 use crate::commands::ConsensusCommand;
 use crate::controller::ConsensusControllerImpl;
@@ -36,18 +35,6 @@ pub struct ConsensusWorker {
     next_instant: Instant,
 }
 
-#[derive(Clone)]
-pub struct WsConfig {
-    /// Whether WebSockets are enabled
-    pub enabled: bool,
-    /// Broadcast sender(channel) for blocks headers
-    pub block_header_sender: Sender<BlockHeader>,
-    /// Broadcast sender(channel) for blocks
-    pub block_sender: Sender<Block>,
-    /// Broadcast sender(channel) for filled blocks
-    pub filled_block_sender: Sender<FilledBlock>,
-}
-
 mod init;
 mod main_loop;
 
@@ -68,13 +55,6 @@ pub fn start_consensus_worker(
     init_graph: Option<BootstrapableGraph>,
     storage: Storage,
 ) -> (Box<dyn ConsensusController>, Box<dyn ConsensusManager>) {
-    let ws_config = WsConfig {
-        enabled: config.ws_enabled,
-        block_header_sender: broadcast::channel(config.ws_blocks_headers_capacity).0,
-        block_sender: broadcast::channel(config.ws_blocks_capacity).0,
-        filled_block_sender: broadcast::channel(config.ws_filled_blocks_capacity).0,
-    };
-
     let (tx, rx) = mpsc::sync_channel(CHANNEL_SIZE);
     // desync detection timespan
     let bootstrap_part_size = config.bootstrap_part_size;
@@ -83,7 +63,7 @@ pub fn start_consensus_worker(
     let shared_state = Arc::new(RwLock::new(ConsensusState {
         storage: storage.clone(),
         config: config.clone(),
-        channels,
+        channels: channels.clone(),
         max_cliques: vec![Clique {
             block_ids: PreHashSet::<BlockId>::default(),
             fitness: 0,
@@ -120,7 +100,8 @@ pub fn start_consensus_worker(
 
     let shared_state_cloned = shared_state.clone();
     let mut consensus_worker =
-        ConsensusWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
+        ConsensusWorker::new(config.clone(), rx, shared_state_cloned, init_graph, storage).unwrap();
+
     let consensus_thread = thread::Builder::new()
         .name("consensus worker".into())
         .spawn(move || consensus_worker.run())
@@ -130,7 +111,13 @@ pub fn start_consensus_worker(
         consensus_thread: Some((tx.clone(), consensus_thread)),
     };
 
-    let controller = ConsensusControllerImpl::new(tx, ws_config, shared_state, bootstrap_part_size);
+    let controller = ConsensusControllerImpl::new(
+        tx,
+        channels,
+        shared_state,
+        bootstrap_part_size,
+        config.broadcast_enabled,
+    );
 
     (Box::new(controller), Box::new(manager))
 }

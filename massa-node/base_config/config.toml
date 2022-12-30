@@ -86,11 +86,11 @@
     max_item_return_count = 100
 
     # blocks headers sender(channel) capacity
-    ws_blocks_headers_capacity = 128
+    broadcast_blocks_headers_capacity = 128
     # blocks sender(channel) capacity
-    ws_blocks_capacity = 128
+    broadcast_blocks_capacity = 128
     # filled blocks sender(channel) capacity
-    ws_filled_blocks_capacity = 128
+    broadcast_filled_blocks_capacity = 128
 
 [protocol]
     # timeout after which without answer a hanshake is ended
@@ -132,6 +132,8 @@
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
+    # operations sender(channel) capacity
+    broadcast_operations_capacity = 5000
 
 [network]
     # port on which to listen for protocol communication

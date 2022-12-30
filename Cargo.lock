@@ -2282,6 +2282,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tracing",
@@ -2387,6 +2388,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -2394,7 +2396,6 @@ name = "massa_consensus_worker"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "jsonrpsee",
  "massa_consensus_exports",
  "massa_hash",
  "massa_logging",
@@ -2406,8 +2407,6 @@ dependencies = [
  "parking_lot",
  "serde",
  "serde_json",
- "tokio",
- "tokio-stream",
  "tracing",
 ]
 
