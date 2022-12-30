@@ -137,19 +137,8 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_graph_export::BlockGraphExport;
 <span class="kw">use crate</span>::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
-<span class="kw">use </span>jsonrpsee::SubscriptionSink;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::streaming_step::StreamingStep;
 <span class="kw">use </span>massa_models::{
@@ -269,15 +258,6 @@
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Useful to allow cloning `Box&lt;dyn ConsensusController&gt;`.
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ConsensusController&gt;;
-
-    <span class="doccomment">/// New produced blocks
-    </span><span class="kw">fn </span>subscribe_new_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink);
-
-    <span class="doccomment">/// New produced blocks headers.
-    </span><span class="kw">fn </span>subscribe_new_blocks_headers(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink);
-
-    <span class="doccomment">/// New produced block with operations content.
-    </span><span class="kw">fn </span>subscribe_new_filled_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink);
 }
 
 <span class="doccomment">/// Allow cloning `Box&lt;dyn ConsensusController&gt;`
