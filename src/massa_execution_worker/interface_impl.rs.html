@@ -767,7 +767,7 @@
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::debug;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
 </span><span class="kw">use </span>massa_models::datastore::Datastore;
 
 <span class="doccomment">/// helper for locking the context mutex
@@ -796,7 +796,7 @@
         InterfaceImpl { config, context }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;gas_calibration&quot;</span>)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
     </span><span class="doccomment">/// Used to create an default interface to run SC in a test environment
     </span><span class="kw">pub fn </span>new_default(
         sender_addr: Address,
