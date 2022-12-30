@@ -33,6 +33,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
+          save-if: ${{ github.ref == 'refs/pull/3280/merge' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -54,6 +55,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
+          save-if: ${{ github.ref == 'refs/pull/3280/merge' }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -76,6 +78,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
+          save-if: ${{ github.ref == 'refs/pull/3280/merge' }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -105,6 +108,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
+          save-if: ${{ github.ref == 'refs/pull/3280/merge' }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -135,6 +139,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
+          save-if: ${{ github.ref == 'refs/pull/3280/merge' }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc
