@@ -112,7 +112,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --features testing --retries 4
+          args: run --features testing --retries 10
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
