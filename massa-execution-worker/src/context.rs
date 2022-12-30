@@ -75,9 +75,9 @@ pub struct ExecutionContext {
 
     /// speculative ledger state,
     /// as seen after everything that happened so far in the context
-    #[cfg(not(feature = "gas_calibration"))]
+    #[cfg(all(not(feature = "gas_calibration"), not(feature = "benchmarking")))]
     speculative_ledger: SpeculativeLedger,
-    #[cfg(feature = "gas_calibration")]
+    #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
     pub(crate) speculative_ledger: SpeculativeLedger,
 
     /// speculative asynchronous pool state,
