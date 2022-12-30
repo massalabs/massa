@@ -1150,8 +1150,8 @@
                 "name": "Operation"
             },
             "name": "subscribe_new_operations",
-            "summary": "New produced operations",
-            "description": "New produced operations."
+            "summary": "Subscribe to new received operations",
+            "description": "Subscribe to new received operations."
         },
         {
             "tags": [
@@ -1294,8 +1294,8 @@
                 "description": "unsubscribe success message"
             },
             "name": "unsubscribe_new_operations",
-            "summary": "Unsubscribe from new produced operations",
-            "description": "Unsubscribe from new produced operations."
+            "summary": "Unsubscribe from new received operations",
+            "description": "Unsubscribe from new received operations."
         }
     ],
     "components": {

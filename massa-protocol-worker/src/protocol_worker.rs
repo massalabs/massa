@@ -11,6 +11,7 @@ use massa_logging::massa_trace;
 use massa_models::operation::Operation;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::wrapped::Id;
 use massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::{EndorsementId, WrappedEndorsement},
@@ -25,8 +26,6 @@ use massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
     ProtocolReceivers, ProtocolSenders,
 };
-
-use massa_models::wrapped::Id;
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};

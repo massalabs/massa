@@ -116,11 +116,21 @@ where
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel(protocol_config.controller_channel_size);
-    let protocol_manager = start_protocol_controller(
-        *protocol_config,
-        network_command_sender,
+
+    let protocol_senders = ProtocolSenders {
+        network_command_sender: network_command_sender.clone(),
+        operation_sender: broadcast::channel(protocol_config.broadcast_operations_capacity).0,
+    };
+
+    let protocol_receivers = ProtocolReceivers {
         network_event_receiver,
         protocol_command_receiver,
+    };
+
+    let protocol_manager = start_protocol_controller(
+        *protocol_config,
+        protocol_receivers,
+        protocol_senders,
         consensus_controller,
         pool_controller,
         storage.clone(),
