@@ -349,17 +349,6 @@ impl RpcClient {
                 JsonRpseeError::Custom("missing return value on execute_read_only_call".into())
             })
     }
-
-    ////////////////
-    //   API V2   //
-    ////////////////
-    //
-    // Experimental APIs. They might disappear, and they will change //
-
-    /// Get Massa node version
-    pub async fn get_version(&self) -> RpcResult<Version> {
-        self.http_client.request("get_version", rpc_params![]).await
-    }
 }
 
 /// Client V2
