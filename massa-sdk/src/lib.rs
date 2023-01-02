@@ -20,6 +20,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::version::Version;
 use massa_models::{
     address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
 };
@@ -37,6 +38,8 @@ pub struct Client {
     pub public: RpcClient,
     /// private component
     pub private: RpcClient,
+    /// private component
+    pub api: RpcClient,
 }
 
 impl Client {
@@ -45,15 +48,19 @@ impl Client {
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
+        api_port: u16,
         http_config: &HttpConfig,
     ) -> Client {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
+        let api_socket_addr = SocketAddr::new(ip, api_port);
         let public_url = format!("http://{}", public_socket_addr);
         let private_url = format!("http://{}", private_socket_addr);
+        let api_url = format!("http://{}", api_socket_addr);
         Client {
             public: RpcClient::from_url(&public_url, http_config).await,
             private: RpcClient::from_url(&private_url, http_config).await,
+            api: RpcClient::from_url(&api_url, http_config).await,
         }
     }
 }
@@ -374,5 +381,16 @@ impl RpcClient {
             .ok_or_else(|| {
                 JsonRpseeError::Custom("missing return value on execute_read_only_call".into())
             })
+    }
+
+    ////////////////
+    //   API V2   //
+    ////////////////
+    //
+    // Experimental APIs. They might disappear, and they will change //
+
+    /// Get Massa node version
+    pub async fn get_version(&self) -> RpcResult<Version> {
+        self.http_client.request("get_version", rpc_params![]).await
     }
 }

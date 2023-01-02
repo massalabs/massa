@@ -32,6 +32,9 @@ struct Args {
     /// Port to listen on (Massa private API).
     #[structopt(long)]
     private_port: Option<u16>,
+    /// Port to listen on (Massa API V2).
+    #[structopt(long)]
+    api_port: Option<u16>,
     /// Address to listen on
     #[structopt(long)]
     ip: Option<IpAddr>,
@@ -120,6 +123,10 @@ async fn run(args: Args) -> Result<()> {
         Some(private_port) => private_port,
         None => settings.default_node.private_port,
     };
+    let api_port = match args.api_port {
+        Some(api_port) => api_port,
+        None => settings.default_node.api_port,
+    };
 
     // Setup panic handlers,
     // and when a panic occurs,
@@ -134,7 +141,7 @@ async fn run(args: Args) -> Result<()> {
     // ...
     let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
     let mut wallet = Wallet::new(args.wallet, password)?;
-    let client = Client::new(address, public_port, private_port, &http_config).await;
+    let client = Client::new(address, public_port, private_port, api_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&client, &mut wallet).await?;
