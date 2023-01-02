@@ -781,7 +781,7 @@ impl ConsensusState {
             }
 
             // manage finalized blocks
-            let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
+            let timestamp = MassaTime::now()?;
             let finalized_blocks = mem::take(&mut self.new_final_blocks);
             let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
             let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
@@ -810,7 +810,7 @@ impl ConsensusState {
 
             // add stale blocks to stats
             let new_stale_block_ids_creators_slots = mem::take(&mut self.new_stale_blocks);
-            let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
+            let timestamp = MassaTime::now()?;
             for (_b_id, (_b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
                 self.stale_block_stats.push_back(timestamp);
             }

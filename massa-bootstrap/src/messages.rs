@@ -351,6 +351,7 @@ impl BootstrapServerMessageDeserializer {
                 thread_count,
                 max_async_pool_length,
                 max_async_message_data,
+                max_datastore_key_length as u32,
             ),
             opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
                 max_rolls_length,

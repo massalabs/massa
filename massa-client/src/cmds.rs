@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::repl::Output;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use console::style;
 use massa_models::api::{
     AddressInfo, CompactAddressInfo, DatastoreEntryInput, EventFilter, OperationInput,
@@ -29,7 +29,7 @@ use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
-use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
+use strum_macros::{Display, EnumIter, EnumString};
 
 /// All the client commands
 /// the order they are defined is the order they are displayed in so be careful
@@ -39,6 +39,9 @@ use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 pub enum Command {
     #[strum(ascii_case_insensitive, message = "display this help")]
     help,
+
+    #[strum(ascii_case_insensitive, message = "exit the prompt")]
+    exit,
 
     #[strum(
         ascii_case_insensitive,
@@ -97,17 +100,24 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "whitelist given IP addresses"
+        props(args = "(add, remove or allow-all) [IpAddr]"),
+        message = "Manage boostrap whitelist IP address(es).No args returns the whitelist blacklist"
     )]
-    node_whitelist,
+    node_bootsrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "remove from whitelist given IP addresses"
+        props(args = "(add or remove) [IpAddr]"),
+        message = "Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist"
     )]
-    node_remove_from_whitelist,
+    node_bootsrap_blacklist,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "(add or remove) [IpAddr]"),
+        message = "Manage peers whitelist IP address(es). No args returns the peers whitelist"
+    )]
+    node_peers_whitelist,
 
     #[strum(
         ascii_case_insensitive,
@@ -134,7 +144,7 @@ pub enum Command {
         props(args = "BlockId"),
         message = "show info about a block (content, finality ...)"
     )]
-    get_block,
+    get_blocks,
 
     #[strum(
         ascii_case_insensitive,
@@ -153,7 +163,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool"
+            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool"
         ),
         message = "show events emitted by smart contracts with various filters"
     )]
@@ -218,7 +228,7 @@ pub enum Command {
         props(args = "SenderAddress PathToBytecode MaxGas Fee",),
         message = "create and send an operation containing byte code"
     )]
-    send_smart_contract,
+    execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
@@ -232,7 +242,7 @@ pub enum Command {
         props(args = "PathToBytecode MaxGas Address",),
         message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
-    read_only_smart_contract,
+    read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
@@ -249,6 +259,30 @@ pub enum Command {
 
     #[strum(ascii_case_insensitive, message = "tells you when moon")]
     when_moon,
+}
+
+#[derive(Debug, Display, EnumString, EnumIter)]
+#[strum(serialize_all = "snake_case")]
+pub enum ListOperation {
+    #[strum(
+        ascii_case_insensitive,
+        message = "add",
+        detailed_message = "add(s) the given value(s) to the target"
+    )]
+    Add,
+    #[strum(
+        ascii_case_insensitive,
+        serialize = "allow-all",
+        message = "allow-all",
+        detailed_message = "allow all in the target if exists"
+    )]
+    AllowAll,
+    #[strum(
+        ascii_case_insensitive,
+        message = "remove",
+        detailed_message = "remove(s) the given value(s) from the target if exists"
+    )]
+    Remove,
 }
 
 /// Display the help of all commands
@@ -548,13 +582,13 @@ impl Command {
                 }
             }
 
-            Command::get_block => {
+            Command::get_blocks => {
                 if parameters.len() != 1 {
-                    bail!("wrong param numbers")
+                    bail!("wrong param numbers, expecting at least one IP address")
                 }
-                let block_id = parameters[0].parse::<BlockId>()?;
-                match client.public.get_block(block_id).await {
-                    Ok(block_info) => Ok(Box::new(block_info)),
+                let block_ids = parse_vec::<BlockId>(parameters)?;
+                match client.public.get_blocks(block_ids).await {
+                    Ok(blocks_info) => Ok(Box::new(blocks_info)),
                     Err(e) => rpc_error!(e),
                 }
             }
@@ -576,13 +610,14 @@ impl Command {
             }
 
             Command::get_filtered_sc_output_event => {
-                let p_list: [&str; 6] = [
+                let p_list: [&str; 7] = [
                     "start",
                     "end",
                     "emitter_address",
                     "caller_address",
                     "operation_id",
                     "is_final",
+                    "is_error",
                 ];
                 let mut p: HashMap<&str, &str> = HashMap::new();
                 for v in parameters {
@@ -600,6 +635,7 @@ impl Command {
                     original_caller_address: parse_key_value(&p, p_list[3]),
                     original_operation_id: parse_key_value(&p, p_list[4]),
                     is_final: parse_key_value(&p, p_list[5]),
+                    is_error: parse_key_value(&p, p_list[6]),
                 };
                 match client.public.get_filtered_sc_output_event(filter).await {
                     Ok(events) => Ok(Box::new(events)),
@@ -700,7 +736,7 @@ impl Command {
                             }
                         }
                         None => {
-                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                            client_warning!("the total amount hit the limit overflow, operation will be rejected");
                         }
                     }
                     if let Ok(staked_keys) = client.private.get_staking_addresses().await {
@@ -798,9 +834,8 @@ impl Command {
                 };
                 let mut res = "".to_string();
                 if let Some(e) = end {
-                    let (days, hours, mins, secs) = e
-                        .saturating_sub(MassaTime::now(0)?)
-                        .days_hours_mins_secs()?; // compensation milliseconds is zero
+                    let (days, hours, mins, secs) =
+                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
 
                     let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
                 } else {
@@ -818,7 +853,7 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-            Command::send_smart_contract => {
+            Command::execute_smart_contract => {
                 if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
@@ -846,8 +881,8 @@ impl Command {
                         Ok(node_status) => node_status.config.max_block_size,
                         Err(e) => bail!("RpcError: {}", e),
                     };
-                    if data.len() > max_block_size as usize / 2 {
-                        client_warning!("bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected");
+                    if data.len() > max_block_size as usize {
+                        client_warning!("bytecode size exceeded the maximum size of a block, operation will be rejected");
                     }
                 }
                 let datastore = BTreeMap::new();
@@ -899,7 +934,7 @@ impl Command {
                             }
                         }
                         None => {
-                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                            client_warning!("the total amount hit the limit overflow, operation will be rejected");
                         }
                     }
                 };
@@ -931,7 +966,7 @@ impl Command {
                     bail!("Missing public key")
                 }
             }
-            Command::read_only_smart_contract => {
+            Command::read_only_execute_smart_contract => {
                 if parameters.len() != 2 && parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
@@ -987,29 +1022,183 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-            Command::node_whitelist => {
-                let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.node_whitelist(ips).await {
-                    Ok(()) => {
-                        if !json {
-                            println!("Request of whitelisting successfully sent!")
-                        }
+            Command::node_bootsrap_blacklist => {
+                if parameters.is_empty() {
+                    match client.private.node_bootstrap_blacklist().await {
+                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Err(e) => rpc_error!(e),
                     }
-                    Err(e) => rpc_error!(e),
+                } else {
+                    let cli_op = match parameters[0].parse::<ListOperation>() {
+                        Ok(op) => op,
+                        Err(_) => bail!(
+                            "failed to parse operation, supported operations are: [add, remove]"
+                        ),
+                    };
+                    let args = &parameters[1..];
+                    if args.is_empty() {
+                        bail!("[IpAddr] parameter shouldn't be empty");
+                    }
+                    let ips = parse_vec::<IpAddr>(args)?;
+                    let res: Result<Box<dyn Output>> = match cli_op {
+                        ListOperation::Add => {
+                            match client.private.node_add_to_bootstrap_blacklist(ips).await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!(
+                                            "Request of bootsrap blacklisting successfully sent!"
+                                        )
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        ListOperation::Remove => {
+                            match client
+                                .private
+                                .node_remove_from_bootstrap_blacklist(ips)
+                                .await
+                            {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of remove from bootsrap blacklist successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        ListOperation::AllowAll => {
+                            bail!("\"allow-all\" command is not implemented")
+                        }
+                    };
+                    res
                 }
-                Ok(Box::new(()))
             }
-            Command::node_remove_from_whitelist => {
-                let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.node_remove_from_whitelist(ips).await {
-                    Ok(()) => {
-                        if !json {
-                            println!("Request of removing from whitelist successfully sent!")
+            Command::node_bootsrap_whitelist => {
+                if parameters.is_empty() {
+                    match client.private.node_bootstrap_whitelist().await {
+                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Err(e) => {
+                            client_warning!("if bootsrap whitelist configuration file does't exists, bootsrap is allowed for everyone !!!");
+                            rpc_error!(e)
                         }
                     }
-                    Err(e) => rpc_error!(e),
+                } else {
+                    let cli_op = match parameters[0].parse::<ListOperation>() {
+                        Ok(op) => op,
+                        Err(_) => bail!(
+                            "failed to parse operation, supported operations are: [add, remove, allow-all]"
+                        ),
+                    };
+                    let args = &parameters[1..];
+                    let res: Result<Box<dyn Output>> = match cli_op {
+                        ListOperation::Add => {
+                            if args.is_empty() {
+                                bail!("[IpAddr] parameter shouldn't be empty");
+                            }
+                            match client
+                                .private
+                                .node_add_to_bootstrap_whitelist(parse_vec::<IpAddr>(args)?)
+                                .await
+                            {
+                                Ok(()) => {
+                                    if !json {
+                                        println!(
+                                            "Request of bootsrap whitelisting successfully sent!"
+                                        )
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        ListOperation::Remove => {
+                            if args.is_empty() {
+                                bail!("[IpAddr] parameter shouldn't be empty");
+                            }
+                            match client
+                                .private
+                                .node_remove_from_bootstrap_whitelist(parse_vec::<IpAddr>(args)?)
+                                .await
+                            {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of remove from bootsrap whitelist successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        ListOperation::AllowAll => {
+                            match client.private.node_bootstrap_whitelist_allow_all().await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!(
+                                            "Request of bootsrap whitelisting everyone successfully sent!"
+                                        )
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                    };
+                    res
                 }
-                Ok(Box::new(()))
+            }
+            Command::node_peers_whitelist => {
+                if parameters.is_empty() {
+                    match client.private.node_peers_whitelist().await {
+                        Ok(peerlist_ips) => Ok(Box::new(peerlist_ips)),
+                        Err(e) => rpc_error!(e),
+                    }
+                } else {
+                    let cli_op = match parameters[0].parse::<ListOperation>() {
+                        Ok(op) => op,
+                        Err(_) => bail!(
+                            "failed to parse operation, supported operations are: [add, remove]"
+                        ),
+                    };
+                    let args = &parameters[1..];
+                    if args.is_empty() {
+                        bail!("[IpAddr] parameter shouldn't be empty");
+                    }
+                    let ips = parse_vec::<IpAddr>(args)?;
+                    let res: Result<Box<dyn Output>> = match cli_op {
+                        ListOperation::Add => {
+                            match client.private.node_add_to_peers_whitelist(ips).await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of peers whitelisting successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        ListOperation::Remove => {
+                            match client.private.node_remove_from_peers_whitelist(ips).await {
+                                Ok(()) => {
+                                    if !json {
+                                        println!("Request of remove from peers whitelist successfully sent!")
+                                    }
+                                    Ok(Box::new(()))
+                                }
+                                Err(e) => rpc_error!(e),
+                            }
+                        }
+                        ListOperation::AllowAll => {
+                            bail!("\"allow-all\" command is not implemented")
+                        }
+                    };
+                    res
+                }
+            }
+            Command::exit => {
+                std::process::exit(0);
             }
         }
     }
@@ -1030,7 +1219,7 @@ async fn send_operation(
     }
     .config;
 
-    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)? // clock compensation is zero
+    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)?
         .unwrap_or_else(|| Slot::new(0, 0));
     let mut expire_period = slot.period + cfg.operation_validity_periods;
     if slot.thread >= addr.get_thread(cfg.thread_count) {
@@ -1067,8 +1256,16 @@ async fn send_operation(
 
 /// TODO: ugly utilities functions
 /// takes a slice of string and makes it into a `Vec<T>`
-pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
-    args.iter().map(|x| x.parse::<T>()).collect()
+pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, Error>
+where
+    T::Err: Display,
+{
+    args.iter()
+        .map(|x| {
+            x.parse::<T>()
+                .map_err(|e| anyhow!("failed to parse \"{}\" due to: {}", x, e))
+        })
+        .collect()
 }
 
 /// reads a file

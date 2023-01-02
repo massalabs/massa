@@ -114,10 +114,7 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
-            stats_counter: ExecutionStatsCounter::new(
-                config.stats_time_window_duration,
-                config.clock_compensation,
-            ),
+            stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             config,
         }
     }
@@ -320,7 +317,7 @@ impl ExecutionState {
                         operation_id, &err
                     ));
                     debug!("{}", &err);
-                    context.reset_to_snapshot(context_snapshot, Some(err));
+                    context.reset_to_snapshot(context_snapshot, err);
                 }
             }
         }
@@ -506,8 +503,13 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        match massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface) {
-            Ok(_reamining_gas) => {}
+        match massa_sc_runtime::run_main(
+            bytecode,
+            *max_gas,
+            &*self.execution_interface,
+            self.config.gas_costs.clone(),
+        ) {
+            Ok(_response) => {}
             Err(err) => {
                 // there was an error during bytecode execution
                 return Err(ExecutionError::RuntimeError(format!(
@@ -601,8 +603,9 @@ impl ExecutionState {
             target_func,
             param,
             &*self.execution_interface,
+            self.config.gas_costs.clone(),
         ) {
-            Ok(_reamining_gas) => {}
+            Ok(_response) => {}
             Err(err) => {
                 // there was an error during bytecode execution
                 return Err(ExecutionError::RuntimeError(format!(
@@ -660,7 +663,7 @@ impl ExecutionState {
                             "message data does not convert to utf-8".into(),
                         )
                     };
-                    context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                    context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(&message);
                     return Err(err);
                 }
@@ -675,7 +678,7 @@ impl ExecutionState {
                     "could not credit coins to target of async execution: {}",
                     err
                 ));
-                context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
             }
@@ -690,6 +693,7 @@ impl ExecutionState {
             &message.handler,
             &message.data,
             &*self.execution_interface,
+            self.config.gas_costs.clone(),
         ) {
             // execution failed: reset context to snapshot and reimburse sender
             let err = ExecutionError::RuntimeError(format!(
@@ -697,7 +701,7 @@ impl ExecutionState {
                 err
             ));
             let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            context.reset_to_snapshot(context_snapshot, err.clone());
             context.cancel_async_message(&message);
             Err(err)
         } else {
@@ -1011,6 +1015,14 @@ impl ExecutionState {
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
         // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
 
+        // check if read only request max gas is above the threshold
+        if req.max_gas > self.config.max_read_only_gas {
+            return Err(ExecutionError::TooMuchGas(format!(
+                "execution gas for read-only call is {} which is above the maximum allowed {}",
+                req.max_gas, self.config.max_read_only_gas
+            )));
+        }
+
         // set the execution slot to be the one after the latest executed active slot
         let slot = self
             .active_cursor
@@ -1027,15 +1039,20 @@ impl ExecutionState {
             self.active_history.clone(),
         );
 
-        // run the intepreter according to the target type
-        let remaining_gas = match req.target {
+        // run the interpreter according to the target type
+        let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
-                massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
-                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
+                massa_sc_runtime::run_main(
+                    &bytecode,
+                    req.max_gas,
+                    &*self.execution_interface,
+                    self.config.gas_costs.clone(),
+                )
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1057,6 +1074,7 @@ impl ExecutionState {
                     &target_func,
                     &parameter,
                     &*self.execution_interface,
+                    self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
@@ -1066,7 +1084,8 @@ impl ExecutionState {
         let execution_output = context_guard!(self).settle_slot();
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
-            gas_cost: req.max_gas.saturating_sub(remaining_gas),
+            gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
+            call_result: exec_response.ret,
         })
     }
 

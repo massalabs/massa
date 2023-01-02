@@ -24,8 +24,18 @@ pub enum Change<T, U> {
     /// an item with identifier T and value U is added
     Add(T, U),
 
+    /// an item with identifier T is ready to be executed
+    Activate(T),
+
     /// an item with identifier T is deleted
     Delete(T),
+}
+
+#[repr(u32)]
+enum ChangeId {
+    Add = 0,
+    Activate = 1,
+    Delete = 2,
 }
 
 /// represents a list of additions and deletions to the asynchronous message pool
@@ -76,6 +86,7 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
@@ -96,12 +107,16 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
         for change in &value.0 {
             match change {
                 Change::Add(id, message) => {
-                    buffer.push(0);
+                    buffer.push(ChangeId::Add as u8);
                     self.id_serializer.serialize(id, buffer)?;
                     self.message_serializer.serialize(message, buffer)?;
                 }
+                Change::Activate(id) => {
+                    buffer.push(ChangeId::Activate as u8);
+                    self.id_serializer.serialize(id, buffer)?;
+                }
                 Change::Delete(id) => {
-                    buffer.push(1);
+                    buffer.push(ChangeId::Delete as u8);
                     self.id_serializer.serialize(id, buffer)?;
                 }
             }
@@ -117,7 +132,12 @@ pub struct AsyncPoolChangesDeserializer {
 }
 
 impl AsyncPoolChangesDeserializer {
-    pub fn new(thread_count: u8, max_async_pool_changes: u64, max_async_message_data: u64) -> Self {
+    pub fn new(
+        thread_count: u8,
+        max_async_pool_changes: u64,
+        max_async_message_data: u64,
+        max_key_length: u32,
+    ) -> Self {
         Self {
             async_pool_changes_length: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -127,6 +147,7 @@ impl AsyncPoolChangesDeserializer {
             message_deserializer: AsyncMessageDeserializer::new(
                 thread_count,
                 max_async_message_data,
+                max_key_length,
             ),
         }
     }
@@ -139,7 +160,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
     ///
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
@@ -153,11 +174,15 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     Some(AsyncMessageTrigger {
+    ///        address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///        datastore_key: Some(vec![1, 2, 3, 4]),
+    ///     })
     /// );
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000);
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
     /// serializer.serialize(&changes, &mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -236,5 +261,13 @@ impl AsyncPoolChanges {
     /// * `msg_id`: ID of the message to push as deleted to the list of changes
     pub fn push_delete(&mut self, msg_id: AsyncMessageId) {
         self.0.push(Change::Delete(msg_id));
+    }
+
+    /// Pushes a message activation to the list of changes.
+    ///
+    /// Arguments:
+    /// * `msg_id`: ID of the message to push as ready to be executed to the list of changes
+    pub fn push_activate(&mut self, msg_id: AsyncMessageId) {
+        self.0.push(Change::Activate(msg_id));
     }
 }

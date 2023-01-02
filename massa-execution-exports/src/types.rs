@@ -56,6 +56,8 @@ pub struct ReadOnlyExecutionOutput {
     pub out: ExecutionOutput,
     /// Gas cost for this execution
     pub gas_cost: u64,
+    /// Returned value from the module call
+    pub call_result: Vec<u8>,
 }
 
 /// structure describing different types of read-only execution request

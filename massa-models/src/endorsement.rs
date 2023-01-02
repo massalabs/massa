@@ -6,7 +6,8 @@ use crate::wrapped::{Id, Wrapped, WrappedContent};
 use crate::{block::BlockId, error::ModelsError};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
+    U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::error::context;
 use nom::sequence::tuple;
@@ -16,6 +17,7 @@ use nom::{
     IResult,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
 
@@ -23,8 +25,13 @@ use std::{fmt::Display, str::FromStr};
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// endorsement id
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct EndorsementId(Hash);
+
+const ENDORSEMENTID_PREFIX: char = 'E';
+const ENDORSEMENTID_VERSION: u64 = 0;
 
 impl PreHashed for EndorsementId {}
 
@@ -40,14 +47,60 @@ impl Id for EndorsementId {
 
 impl std::fmt::Display for EndorsementId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        let u64_serializer = U64VarIntSerializer::new();
+        // might want to allocate the vector with capacity in order to avoid re-allocation
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&ENDORSEMENTID_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.to_bytes());
+        write!(
+            f,
+            "{}{}",
+            ENDORSEMENTID_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
+    }
+}
+
+impl std::fmt::Debug for EndorsementId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
 impl FromStr for EndorsementId {
     type Err = ModelsError;
+    /// ## Example
+    /// ```rust
+    /// # use massa_hash::Hash;
+    /// # use std::str::FromStr;
+    /// # use massa_models::endorsement::EndorsementId;
+    /// # let endo_id = EndorsementId::from_bytes(&[0; 32]);
+    /// let ser = endo_id.to_string();
+    /// let res_endo_id = EndorsementId::from_str(&ser).unwrap();
+    /// assert_eq!(endo_id, res_endo_id);
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(EndorsementId(Hash::from_str(s)?))
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(prefix) if prefix == ENDORSEMENTID_PREFIX => {
+                let data = chars.collect::<String>();
+                let decoded_bs58_check = bs58::decode(data)
+                    .with_check(None)
+                    .into_vec()
+                    .map_err(|_| ModelsError::EndorsementIdParseError)?;
+                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+                let (rest, _version) = u64_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+                    .map_err(|_| ModelsError::EndorsementIdParseError)?;
+                Ok(EndorsementId(Hash::from_bytes(
+                    rest.try_into()
+                        .map_err(|_| ModelsError::EndorsementIdParseError)?,
+                )))
+            }
+            _ => Err(ModelsError::EndorsementIdParseError),
+        }
     }
 }
 
@@ -65,13 +118,6 @@ impl EndorsementId {
     /// endorsement id from bytes
     pub fn from_bytes(data: &[u8; ENDORSEMENT_ID_SIZE_BYTES]) -> EndorsementId {
         EndorsementId(Hash::from_bytes(data))
-    }
-
-    /// endorsement id from `bs58` check
-    pub fn from_bs58_check(data: &str) -> Result<EndorsementId, ModelsError> {
-        Ok(EndorsementId(
-            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
-        ))
     }
 }
 

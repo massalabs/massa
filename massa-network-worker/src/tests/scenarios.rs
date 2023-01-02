@@ -102,7 +102,7 @@ async fn test_node_worker_shutdown() {
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
 
     let node_worker_command_tx = node_command_tx.clone();
     let node_fn_handle = tokio::spawn(async move {
@@ -176,7 +176,7 @@ async fn test_node_worker_operations_message() {
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
 
     // Create transaction.
     let transaction = get_transaction(50, 10);

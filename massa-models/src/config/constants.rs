@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now(0)
+            MassaTime::now()
                 .unwrap()
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.17.2"
+            "TEST.18.0"
         }
         .parse()
         .unwrap()
@@ -195,7 +195,7 @@ pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 //
 
 /// Maximum of GAS allowed for a block
-pub const MAX_GAS_PER_BLOCK: u64 = 1_000_000_000;
+pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 

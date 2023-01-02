@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
 use massa_executed_ops::ExecutedOps;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
@@ -30,6 +31,7 @@ pub fn create_final_state(
         changes_history,
         pos_state,
         executed_ops,
+        final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
     }
 }
 
@@ -92,7 +94,7 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
             cycle1.cycle
         );
         assert_eq!(
-            cycle1.global_hash, cycle2.global_hash,
+            cycle1.cycle_global_hash, cycle2.cycle_global_hash,
             "cycle ({}) global_hash mismatch",
             cycle1.cycle
         );

@@ -3,7 +3,7 @@
 //! This file defines the structure representing an asynchronous message
 
 use massa_hash::Hash;
-use massa_models::address::AddressDeserializer;
+use massa_models::address::{AddressDeserializer, AddressSerializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
 use massa_models::{
@@ -13,7 +13,8 @@ use massa_models::{
     slot::Slot,
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
@@ -70,6 +71,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
@@ -128,6 +130,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     None
     /// );
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
@@ -160,6 +163,86 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
             )),
         )
         .map(|(fee, denom, slot, index)| (std::cmp::Reverse(Ratio::new(fee, denom)), slot, index))
+        .parse(buffer)
+    }
+}
+
+/// Structure defining a trigger for an asynchronous message
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AsyncMessageTrigger {
+    /// Filter on the address
+    pub address: Address,
+
+    /// Filter on the datastore key
+    pub datastore_key: Option<Vec<u8>>,
+}
+
+/// Serializer for a trigger for an asynchronous message
+struct AsyncMessageTriggerSerializer {
+    address_serializer: AddressSerializer,
+    key_serializer: OptionSerializer<Vec<u8>, VecU8Serializer>,
+}
+
+impl AsyncMessageTriggerSerializer {
+    pub fn new() -> Self {
+        Self {
+            address_serializer: AddressSerializer::new(),
+            key_serializer: OptionSerializer::new(VecU8Serializer::new()),
+        }
+    }
+}
+
+impl Serializer<AsyncMessageTrigger> for AsyncMessageTriggerSerializer {
+    fn serialize(
+        &self,
+        value: &AsyncMessageTrigger,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        self.address_serializer.serialize(&value.address, buffer)?;
+        self.key_serializer
+            .serialize(&value.datastore_key, buffer)?;
+        Ok(())
+    }
+}
+
+/// Deserializer for a trigger for an asynchronous message
+struct AsyncMessageTriggerDeserializer {
+    address_deserializer: AddressDeserializer,
+    key_serializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
+}
+
+impl AsyncMessageTriggerDeserializer {
+    pub fn new(max_key_length: u32) -> Self {
+        Self {
+            address_deserializer: AddressDeserializer::new(),
+            key_serializer: OptionDeserializer::new(VecU8Deserializer::new(
+                Included(0),
+                Excluded(max_key_length as u64),
+            )),
+        }
+    }
+}
+
+impl Deserializer<AsyncMessageTrigger> for AsyncMessageTriggerDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], AsyncMessageTrigger, E> {
+        context(
+            "Failed AsyncMessageTrigger deserialization",
+            tuple((
+                context("Failed address deserialization", |input| {
+                    self.address_deserializer.deserialize(input)
+                }),
+                context("Failed datastore_key deserialization", |input| {
+                    self.key_serializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(address, datastore_key)| AsyncMessageTrigger {
+            address,
+            datastore_key,
+        })
         .parse(buffer)
     }
 }
@@ -204,6 +287,13 @@ pub struct AsyncMessage {
     /// Raw payload data of the message
     pub data: Vec<u8>,
 
+    /// Trigger that define whenever a message can be executed
+    pub trigger: Option<AsyncMessageTrigger>,
+
+    /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+    pub can_be_executed: bool,
+
     /// Hash of the message
     pub hash: Hash,
 }
@@ -223,6 +313,7 @@ impl AsyncMessage {
         validity_start: Slot,
         validity_end: Slot,
         data: Vec<u8>,
+        trigger: Option<AsyncMessageTrigger>,
     ) -> Self {
         let async_message_ser = AsyncMessageSerializer::new();
         let mut buffer = Vec::new();
@@ -238,6 +329,8 @@ impl AsyncMessage {
             validity_start,
             validity_end,
             data,
+            can_be_executed: trigger.is_none(),
+            trigger,
             // placeholder hash to serialize the message, replaced below
             hash: Hash::from_bytes(&[0; 32]),
         };
@@ -257,6 +350,16 @@ impl AsyncMessage {
             self.emission_index,
         )
     }
+
+    /// Recompute the hash of the message. Must be used each time we modify one field
+    pub fn compute_hash(&mut self) {
+        let async_message_ser = AsyncMessageSerializer::new();
+        let mut buffer = Vec::new();
+        async_message_ser.serialize(self, &mut buffer).expect(
+            "critical: asynchronous message serialization should never fail in recompute hash",
+        );
+        self.hash = Hash::compute_from(&buffer);
+    }
 }
 
 pub struct AsyncMessageSerializer {
@@ -264,6 +367,7 @@ pub struct AsyncMessageSerializer {
     amount_serializer: AmountSerializer,
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
+    trigger_serializer: OptionSerializer<AsyncMessageTrigger, AsyncMessageTriggerSerializer>,
 }
 
 impl AsyncMessageSerializer {
@@ -273,6 +377,7 @@ impl AsyncMessageSerializer {
             amount_serializer: AmountSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
+            trigger_serializer: OptionSerializer::new(AsyncMessageTriggerSerializer::new()),
         }
     }
 }
@@ -286,7 +391,7 @@ impl Default for AsyncMessageSerializer {
 impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     /// ## Example
     /// ```
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageTrigger};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -303,6 +408,10 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     Some(AsyncMessageTrigger {
+    ///         address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///         datastore_key: Some(vec![1, 2, 3, 4])
+    ///     })
     /// );
     /// let mut buffer = Vec::new();
     /// let message_serializer = AsyncMessageSerializer::new();
@@ -335,6 +444,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
         self.slot_serializer
             .serialize(&value.validity_end, buffer)?;
         self.vec_u8_serializer.serialize(&value.data, buffer)?;
+        self.trigger_serializer.serialize(&value.trigger, buffer)?;
         Ok(())
     }
 }
@@ -346,10 +456,11 @@ pub struct AsyncMessageDeserializer {
     max_gas_deserializer: U64VarIntDeserializer,
     data_deserializer: VecU8Deserializer,
     address_deserializer: AddressDeserializer,
+    trigger_deserializer: OptionDeserializer<AsyncMessageTrigger, AsyncMessageTriggerDeserializer>,
 }
 
 impl AsyncMessageDeserializer {
-    pub fn new(thread_count: u8, max_async_message_data: u64) -> Self {
+    pub fn new(thread_count: u8, max_async_message_data: u64, max_key_length: u32) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -369,6 +480,9 @@ impl AsyncMessageDeserializer {
                 Included(max_async_message_data),
             ),
             address_deserializer: AddressDeserializer::new(),
+            trigger_deserializer: OptionDeserializer::new(AsyncMessageTriggerDeserializer::new(
+                max_key_length,
+            )),
         }
     }
 }
@@ -376,7 +490,7 @@ impl AsyncMessageDeserializer {
 impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// ## Example
     /// ```
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer, AsyncMessageTrigger};
     /// use massa_models::{address::Address, amount::Amount, slot::Slot};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -393,11 +507,15 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
+    ///     Some(AsyncMessageTrigger {
+    ///        address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///        datastore_key: Some(vec![1, 2, 3, 4]),
+    ///     })
     /// );
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&message, &mut serialized).unwrap();
-    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000);
+    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000, 255);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
@@ -458,6 +576,9 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 context("Failed data deserialization", |input| {
                     self.data_deserializer.deserialize(input)
                 }),
+                context("Failed filter deserialization", |input| {
+                    self.trigger_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(
@@ -473,6 +594,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 validity_start,
                 validity_end,
                 data,
+                filter,
             )| {
                 AsyncMessage::new_with_hash(
                     emission_slot,
@@ -486,6 +608,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     validity_start,
                     validity_end,
                     data,
+                    filter,
                 )
             },
         )
@@ -501,10 +624,12 @@ mod tests {
     use massa_models::{
         address::Address,
         amount::Amount,
-        config::{MAX_ASYNC_MESSAGE_DATA, THREAD_COUNT},
+        config::{MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
         slot::Slot,
     };
     use std::str::FromStr;
+
+    use super::AsyncMessageTrigger;
 
     #[test]
     fn bad_serialization_version() {
@@ -520,14 +645,22 @@ mod tests {
             Slot::new(2, 0),
             Slot::new(3, 0),
             vec![1, 2, 3, 4],
+            Some(AsyncMessageTrigger {
+                address: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                    .unwrap(),
+                datastore_key: None,
+            }),
         );
         let message_serializer = AsyncMessageSerializer::new();
         let mut serialized = Vec::new();
         message_serializer
             .serialize(&message, &mut serialized)
             .unwrap();
-        let message_deserializer =
-            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_ASYNC_MESSAGE_DATA);
+        let message_deserializer = AsyncMessageDeserializer::new(
+            THREAD_COUNT,
+            MAX_ASYNC_MESSAGE_DATA,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+        );
         serialized[1] = 50;
         message_deserializer
             .deserialize::<DeserializeError>(&serialized)

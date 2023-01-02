@@ -83,7 +83,7 @@ pub async fn full_connection_to_controller(
 
     // perform handshake
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -142,7 +142,7 @@ pub async fn rejected_connection_to_controller(
 
     // perform handshake and ignore errors
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
     let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -227,7 +227,7 @@ pub async fn full_connection_from_controller(
 
     // perform handshake
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -370,7 +370,6 @@ pub async fn network_test<F, V>(
         start_network_controller(
             &network_settings,
             establisher,
-            0,
             None,
             Version::from_str("TEST.1.10").unwrap(),
         )

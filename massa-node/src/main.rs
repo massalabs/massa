@@ -8,14 +8,14 @@ use crate::settings::SETTINGS;
 
 use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
-use massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
+use massa_api::{APIConfig, ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
 use massa_executed_ops::ExecutedOpsConfig;
-use massa_execution_exports::{ExecutionConfig, ExecutionManager, StorageCostsConstants};
+use massa_execution_exports::{ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants};
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
@@ -52,7 +52,8 @@ use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager,
+    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolManager, ProtocolReceivers,
+    ProtocolSenders,
 };
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
@@ -66,7 +67,7 @@ use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
@@ -86,10 +87,11 @@ async fn launch(
     mpsc::Receiver<()>,
     StopHandle,
     StopHandle,
+    StopHandle,
 ) {
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
-        if MassaTime::now(0).expect("could not get now time") > end {
+        if MassaTime::now().expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
@@ -170,8 +172,8 @@ async fn launch(
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
-        bootstrap_whitelist_file: SETTINGS.bootstrap.bootstrap_whitelist_file.clone(),
-        bootstrap_blacklist_file: SETTINGS.bootstrap.bootstrap_blacklist_file.clone(),
+        bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
+        bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -180,7 +182,7 @@ async fn launch(
         write_error_timeout: SETTINGS.bootstrap.write_error_timeout,
         retry_delay: SETTINGS.bootstrap.retry_delay,
         max_ping: SETTINGS.bootstrap.max_ping,
-        enable_clock_synchronization: SETTINGS.bootstrap.enable_clock_synchronization,
+        max_clock_delta: SETTINGS.bootstrap.max_clock_delta,
         cache_duration: SETTINGS.bootstrap.cache_duration,
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
@@ -284,7 +286,6 @@ async fn launch(
         start_network_controller(
             &network_config,
             Establisher::new(),
-            bootstrap_state.compensation_millis,
             bootstrap_state.peers,
             *VERSION,
         )
@@ -312,7 +313,6 @@ async fn launch(
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
-        clock_compensation: bootstrap_state.compensation_millis,
         max_async_gas: MAX_ASYNC_GAS,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         roll_price: ROLL_PRICE,
@@ -329,6 +329,12 @@ async fn launch(
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
+        max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+        gas_costs: GasCosts::new(
+            SETTINGS.execution.abi_gas_costs_file.clone(),
+            SETTINGS.execution.wasm_gas_costs_file.clone(),
+        )
+        .expect("Failed to load gas costs"),
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -375,8 +381,11 @@ async fn launch(
         max_item_return_count: SETTINGS.consensus.max_item_return_count,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
-        clock_compensation_millis: bootstrap_state.compensation_millis,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
+        broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
+        broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -387,11 +396,16 @@ async fn launch(
         pool_command_sender: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+        block_header_sender: broadcast::channel(consensus_config.broadcast_blocks_headers_capacity)
+            .0,
+        block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,
+        filled_block_sender: broadcast::channel(consensus_config.broadcast_filled_blocks_capacity)
+            .0,
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
         consensus_config,
-        consensus_channels,
+        consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
     );
@@ -426,13 +440,24 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_operations_capacity: SETTINGS.protocol.broadcast_operations_capacity,
+    };
+
+    let protocol_senders = ProtocolSenders {
+        network_command_sender: network_command_sender.clone(),
+        operation_sender: broadcast::channel(protocol_config.broadcast_operations_capacity).0,
+    };
+
+    let protocol_receivers = ProtocolReceivers {
+        network_event_receiver,
+        protocol_command_receiver,
     };
 
     let protocol_manager = start_protocol_controller(
         protocol_config,
-        network_command_sender.clone(),
-        network_event_receiver,
-        protocol_command_receiver,
+        protocol_receivers,
+        protocol_senders.clone(),
         consensus_controller.clone(),
         pool_controller.clone(),
         shared_storage.clone(),
@@ -445,7 +470,6 @@ async fn launch(
         thread_count: THREAD_COUNT,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
-        clock_compensation_millis: bootstrap_state.compensation_millis,
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
@@ -467,7 +491,6 @@ async fn launch(
         bootstrap_config,
         massa_bootstrap::Establisher::new(),
         private_key,
-        bootstrap_state.compensation_millis,
         *VERSION,
     )
     .await
@@ -476,9 +499,12 @@ async fn launch(
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
         bind_public: SETTINGS.api.bind_public,
+        bind_api: SETTINGS.api.bind_api,
         draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
         max_arguments: SETTINGS.api.max_arguments,
         openrpc_spec_path: SETTINGS.api.openrpc_spec_path.clone(),
+        bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
+        bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         max_request_body_size: SETTINGS.api.max_request_body_size,
         max_response_body_size: SETTINGS.api.max_response_body_size,
         max_connections: SETTINGS.api.max_connections,
@@ -500,6 +526,23 @@ async fn launch(
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
     };
+
+    // spawn Massa API
+    let api = API::<ApiV2>::new(
+        consensus_channels,
+        protocol_senders,
+        api_config.clone(),
+        *VERSION,
+    );
+    let api_handle = api
+        .serve(&SETTINGS.api.bind_api, &api_config)
+        .await
+        .expect("failed to start MASSA API");
+
+    // Disable WebSockets for Private and Public API's
+    let mut api_config = api_config.clone();
+    api_config.enable_ws = false;
+
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         network_command_sender.clone(),
@@ -523,7 +566,6 @@ async fn launch(
         network_config,
         *VERSION,
         network_command_sender.clone(),
-        bootstrap_state.compensation_millis,
         node_id,
         shared_storage.clone(),
     );
@@ -574,6 +616,7 @@ async fn launch(
         api_private_stop_rx,
         api_private_handle,
         api_public_handle,
+        api_handle,
     )
 }
 
@@ -602,6 +645,7 @@ async fn stop(
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
+    api_handle: StopHandle,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -616,6 +660,9 @@ async fn stop(
 
     // stop private API
     api_private_handle.stop();
+
+    // stop Massa API
+    api_handle.stop();
 
     // stop factory
     factory_manager.stop();
@@ -744,6 +791,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
+            api_handle,
         ) = launch(node_wallet.clone()).await;
 
         // interrupt signal listener
@@ -808,6 +856,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             },
             api_private_handle,
             api_public_handle,
+            api_handle,
         )
         .await;
 
