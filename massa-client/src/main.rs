@@ -9,7 +9,7 @@ use atty::Stream;
 use cmds::Command;
 use console::style;
 use dialoguer::Password;
-use massa_sdk::{Client, HttpConfig};
+use massa_sdk::{Client, ClientConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::net::IpAddr;
@@ -32,9 +32,6 @@ struct Args {
     /// Port to listen on (Massa private API).
     #[structopt(long)]
     private_port: Option<u16>,
-    /// Port to listen on (Massa API V2).
-    #[structopt(long)]
-    api_port: Option<u16>,
     /// Address to listen on
     #[structopt(long)]
     ip: Option<IpAddr>,
@@ -98,14 +95,19 @@ fn main(args: Args) -> anyhow::Result<()> {
 }
 
 async fn run(args: Args) -> Result<()> {
+    let client_config = ClientConfig {
+        max_request_body_size: SETTINGS.client.max_request_body_size,
+        request_timeout: SETTINGS.client.request_timeout,
+        max_concurrent_requests: SETTINGS.client.max_concurrent_requests,
+        certificate_store: SETTINGS.client.certificate_store.clone(),
+        id_kind: SETTINGS.client.id_kind.clone(),
+        max_log_length: SETTINGS.client.max_log_length,
+        headers: SETTINGS.client.headers.clone(),
+    };
+
     let http_config = HttpConfig {
-        max_request_body_size: SETTINGS.http.max_request_body_size,
-        request_timeout: SETTINGS.http.request_timeout,
-        max_concurrent_requests: SETTINGS.http.max_concurrent_requests,
-        certificate_store: SETTINGS.http.certificate_store.clone(),
-        id_kind: SETTINGS.http.id_kind.clone(),
-        max_log_length: SETTINGS.http.max_log_length,
-        headers: SETTINGS.http.headers.clone(),
+        client_config,
+        enabled: SETTINGS.client.http.enabled,
     };
 
     // TODO: move settings loading in another crate ... see #1277
@@ -123,10 +125,6 @@ async fn run(args: Args) -> Result<()> {
         Some(private_port) => private_port,
         None => settings.default_node.private_port,
     };
-    let api_port = match args.api_port {
-        Some(api_port) => api_port,
-        None => settings.default_node.api_port,
-    };
 
     // Setup panic handlers,
     // and when a panic occurs,
@@ -141,7 +139,7 @@ async fn run(args: Args) -> Result<()> {
     // ...
     let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
     let mut wallet = Wallet::new(args.wallet, password)?;
-    let client = Client::new(address, public_port, private_port, api_port, &http_config).await;
+    let client = Client::new(address, public_port, private_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&client, &mut wallet).await?;

@@ -5,10 +5,14 @@
 #![warn(unused_crate_dependencies)]
 
 use http::header::HeaderName;
-use jsonrpsee::core::client::{CertificateStore, ClientT, IdKind};
+use jsonrpsee::core::client::{
+    CertificateStore, ClientT, IdKind, Subscription, SubscriptionClientT,
+};
 use jsonrpsee::http_client::HttpClient;
 use jsonrpsee::rpc_params;
-use jsonrpsee::ws_client::{HeaderMap, HeaderValue};
+use jsonrpsee::types::error::CallError;
+use jsonrpsee::types::ErrorObject;
+use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
@@ -30,7 +34,9 @@ use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
 mod config;
+pub use config::ClientConfig;
 pub use config::HttpConfig;
+pub use config::WsConfig;
 
 /// Client
 pub struct Client {
@@ -38,8 +44,6 @@ pub struct Client {
     pub public: RpcClient,
     /// private component
     pub private: RpcClient,
-    /// private component
-    pub api: RpcClient,
 }
 
 impl Client {
@@ -48,24 +52,20 @@ impl Client {
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
-        api_port: u16,
         http_config: &HttpConfig,
     ) -> Client {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
-        let api_socket_addr = SocketAddr::new(ip, api_port);
         let public_url = format!("http://{}", public_socket_addr);
         let private_url = format!("http://{}", private_socket_addr);
-        let api_url = format!("http://{}", api_socket_addr);
         Client {
             public: RpcClient::from_url(&public_url, http_config).await,
             private: RpcClient::from_url(&private_url, http_config).await,
-            api: RpcClient::from_url(&api_url, http_config).await,
         }
     }
 }
 
-/// TODO add ws client
+/// Rpc client
 pub struct RpcClient {
     http_client: HttpClient,
 }
@@ -73,41 +73,8 @@ pub struct RpcClient {
 impl RpcClient {
     /// Default constructor
     pub async fn from_url(url: &str, http_config: &HttpConfig) -> RpcClient {
-        let certificate_store = match http_config.certificate_store.as_str() {
-            "Native" => CertificateStore::Native,
-            "WebPki" => CertificateStore::WebPki,
-            _ => CertificateStore::Native,
-        };
-        let id_kind = match http_config.id_kind.as_str() {
-            "Number" => IdKind::Number,
-            "String" => IdKind::String,
-            _ => IdKind::Number,
-        };
-
-        let mut headers = HeaderMap::new();
-        http_config.headers.iter().for_each(|(key, value)| {
-            let header_name = match HeaderName::from_str(key.as_str()) {
-                Ok(header_name) => header_name,
-                Err(_) => panic!("invalid header name: {:?}", key),
-            };
-            let header_value = match HeaderValue::from_str(value.as_str()) {
-                Ok(header_name) => header_name,
-                Err(_) => panic!("invalid header value: {:?}", value),
-            };
-            headers.insert(header_name, header_value);
-        });
-
-        match HttpClientBuilder::default()
-            .max_request_body_size(http_config.max_request_body_size)
-            .request_timeout(http_config.request_timeout.to_duration())
-            .max_concurrent_requests(http_config.max_concurrent_requests)
-            .certificate_store(certificate_store)
-            .id_format(id_kind)
-            .set_headers(headers)
-            .build(url)
-        {
-            Ok(http_client) => RpcClient { http_client },
-            Err(_) => panic!("unable to connect to Node."),
+        RpcClient {
+            http_client: http_client_from_url(url, http_config).await,
         }
     }
 
@@ -392,5 +359,199 @@ impl RpcClient {
     /// Get Massa node version
     pub async fn get_version(&self) -> RpcResult<Version> {
         self.http_client.request("get_version", rpc_params![]).await
+    }
+}
+
+/// Client V2
+pub struct ClientV2 {
+    /// API V2 component
+    pub api: RpcClientV2,
+}
+
+impl ClientV2 {
+    /// creates a new client
+    pub async fn new(
+        ip: IpAddr,
+        api_port: u16,
+        http_config: &HttpConfig,
+        ws_config: &WsConfig,
+    ) -> ClientV2 {
+        let api_socket_addr = SocketAddr::new(ip, api_port);
+        ClientV2 {
+            api: RpcClientV2::from_url(api_socket_addr, http_config, ws_config).await,
+        }
+    }
+}
+
+/// Rpc V2 client
+pub struct RpcClientV2 {
+    http_client: Option<HttpClient>,
+    ws_client: Option<WsClient>,
+}
+
+impl RpcClientV2 {
+    /// Default constructor
+    pub async fn from_url(
+        socket_addr: SocketAddr,
+        http_config: &HttpConfig,
+        ws_config: &WsConfig,
+    ) -> RpcClientV2 {
+        let http_url = format!("http://{}", socket_addr);
+        let ws_url = format!("ws://{}", socket_addr);
+
+        if http_config.enabled && !ws_config.enabled {
+            let http_client = http_client_from_url(&http_url, http_config).await;
+            return RpcClientV2 {
+                http_client: Some(http_client),
+                ws_client: None,
+            };
+        } else if !http_config.enabled && ws_config.enabled {
+            let ws_client = ws_client_from_url(&ws_url, ws_config).await;
+            return RpcClientV2 {
+                http_client: None,
+                ws_client: Some(ws_client),
+            };
+        } else if !http_config.enabled && !ws_config.enabled {
+            panic!("wrong client configuration, you can't disable both http and ws");
+        }
+
+        let http_client = http_client_from_url(&http_url, http_config).await;
+        let ws_client = ws_client_from_url(&ws_url, ws_config).await;
+
+        RpcClientV2 {
+            http_client: Some(http_client),
+            ws_client: Some(ws_client),
+        }
+    }
+
+    ////////////////
+    //   API V2   //
+    ////////////////
+    //
+    // Experimental APIs. They might disappear, and they will change //
+
+    /// Get Massa node version
+    pub async fn get_version(&self) -> RpcResult<Version> {
+        if let Some(client) = self.http_client.as_ref() {
+            client.request("get_version", rpc_params![]).await
+        } else {
+            Err(JsonRpseeError::Custom(
+                "error, no Http client instance found".to_owned(),
+            ))
+        }
+    }
+
+    /// New produced blocks
+    pub async fn subscribe_new_blocks(
+        &self,
+    ) -> Result<Subscription<BlockInfo>, jsonrpsee::core::Error> {
+        if let Some(client) = self.ws_client.as_ref() {
+            let res = client
+                .subscribe(
+                    "subscribe_new_blocks",
+                    rpc_params![],
+                    "unsubscribe_new_blocks",
+                )
+                .await;
+
+            res
+        } else {
+            Err(CallError::Custom(ErrorObject::owned(
+                -32020,
+                "error, no Http client instance found".to_owned(),
+                None::<()>,
+            ))
+            .into())
+        }
+    }
+}
+
+async fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient {
+    let certificate_store = match http_config.client_config.certificate_store.as_str() {
+        "Native" => CertificateStore::Native,
+        "WebPki" => CertificateStore::WebPki,
+        _ => CertificateStore::Native,
+    };
+    let id_kind = match http_config.client_config.id_kind.as_str() {
+        "Number" => IdKind::Number,
+        "String" => IdKind::String,
+        _ => IdKind::Number,
+    };
+
+    let mut headers = HeaderMap::new();
+    http_config
+        .client_config
+        .headers
+        .iter()
+        .for_each(|(key, value)| {
+            let header_name = match HeaderName::from_str(key.as_str()) {
+                Ok(header_name) => header_name,
+                Err(_) => panic!("invalid header name: {:?}", key),
+            };
+            let header_value = match HeaderValue::from_str(value.as_str()) {
+                Ok(header_name) => header_name,
+                Err(_) => panic!("invalid header value: {:?}", value),
+            };
+            headers.insert(header_name, header_value);
+        });
+
+    match HttpClientBuilder::default()
+        .max_request_body_size(http_config.client_config.max_request_body_size)
+        .request_timeout(http_config.client_config.request_timeout.to_duration())
+        .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
+        .certificate_store(certificate_store)
+        .id_format(id_kind)
+        .set_headers(headers)
+        .build(url)
+    {
+        Ok(http_client) => http_client,
+        Err(_) => panic!("unable to create Http client."),
+    }
+}
+
+async fn ws_client_from_url(url: &str, ws_config: &WsConfig) -> WsClient
+where
+    WsClient: SubscriptionClientT,
+{
+    let certificate_store = match ws_config.client_config.certificate_store.as_str() {
+        "Native" => CertificateStore::Native,
+        "WebPki" => CertificateStore::WebPki,
+        _ => CertificateStore::Native,
+    };
+    let id_kind = match ws_config.client_config.id_kind.as_str() {
+        "Number" => IdKind::Number,
+        "String" => IdKind::String,
+        _ => IdKind::Number,
+    };
+
+    let mut headers = HeaderMap::new();
+    ws_config
+        .client_config
+        .headers
+        .iter()
+        .for_each(|(key, value)| {
+            let header_name = match HeaderName::from_str(key.as_str()) {
+                Ok(header_name) => header_name,
+                Err(_) => panic!("invalid header name: {:?}", key),
+            };
+            let header_value = match HeaderValue::from_str(value.as_str()) {
+                Ok(header_name) => header_name,
+                Err(_) => panic!("invalid header value: {:?}", value),
+            };
+            headers.insert(header_name, header_value);
+        });
+
+    match WsClientBuilder::default()
+        .max_request_body_size(ws_config.client_config.max_request_body_size)
+        .request_timeout(ws_config.client_config.request_timeout.to_duration())
+        .max_concurrent_requests(ws_config.client_config.max_concurrent_requests)
+        .certificate_store(certificate_store)
+        .id_format(id_kind)
+        .set_headers(headers)
+        .build(url)
+        .await
+    {
+        Ok(ws_client) => ws_client,
+        Err(_) => panic!("unable to create WebSocket client"),
     }
 }

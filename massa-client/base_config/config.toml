@@ -6,8 +6,8 @@ timeout = 1000
 ip = "127.0.0.1"
 private_port = 33034
 public_port = 33035
-api_port = 33036
-[http]
+
+[client]
     # maximum size in bytes of a request
     max_request_body_size = 52428800
     # request timeout
@@ -22,3 +22,7 @@ api_port = 33036
     max_log_length = 4096
     # custom headers passed to the server with every request (default is empty).
     headers = []
+
+    [client.http]
+        # whether to enable HTTP.
+        enabled = true
