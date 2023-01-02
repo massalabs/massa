@@ -1,12 +1,12 @@
 use std::{sync::mpsc, time::Instant};
 
-use massa_consensus_exports::error::ConsensusError;
+use massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
 use massa_models::{
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
-use tracing::{info, log::warn};
+use tracing::log::{info, warn};
 
 use crate::commands::ConsensusCommand;
 
@@ -117,6 +117,18 @@ impl ConsensusWorker {
         loop {
             match self.wait_slot_or_command(self.next_instant) {
                 WaitingStatus::Ended => {
+                    if let Some(end) = self.config.end_timestamp {
+                        if self.next_instant > end.estimate_instant().unwrap() {
+                            info!("This episode has come to an end, please get the latest testnet node version to continue");
+                            let _ = self
+                                .shared_state
+                                .read()
+                                .channels
+                                .controller_event_tx
+                                .send(ConsensusEvent::Stop);
+                            break;
+                        }
+                    }
                     let previous_cycle = self
                         .previous_slot
                         .map(|s| s.get_cycle(self.config.periods_per_cycle));
