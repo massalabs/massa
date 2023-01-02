@@ -1044,6 +1044,20 @@
 <a href="#1044" id="1044">1044</a>
 <a href="#1045" id="1045">1045</a>
 <a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
@@ -1756,36 +1770,50 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeader, E&gt; {
-        <span class="kw">let </span>(rest, (slot, parents, operation_merkle_root)): (<span class="kw-2">&amp;</span>[u8], (Slot, Vec&lt;BlockId&gt;, Hash)) =
-            context(
-                <span class="string">&quot;Failed BlockHeader deserialization&quot;</span>,
-                tuple((
+        <span class="comment">// We want to deserialize slots and parents and validate the requirement that if parent.count == 0, then the slot period must also be 0
+        </span><span class="kw">let </span>(rest, (slot, parents)): (<span class="kw-2">&amp;</span>[u8], (Slot, Vec&lt;BlockId&gt;)) =
+            context(<span class="string">&quot;Parent count XOR slot period is 0&quot;</span>, |input| {
+                <span class="kw">let </span>(rest, slot): (<span class="kw-2">&amp;</span>[u8], Slot) =
                     context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
                         <span class="self">self</span>.slot_deserializer.deserialize(input)
-                    }),
-                    context(
-                        <span class="string">&quot;Failed parents deserialization&quot;</span>,
-                        alt((
-                            preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
-                            preceded(
-                                tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-                                count(
-                                    context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
-                                ),
+                    })(buffer)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>(rest, parents): (<span class="kw-2">&amp;</span>[u8], Vec&lt;BlockId&gt;) = context(
+                    <span class="string">&quot;Failed parents deserialization&quot;</span>,
+                    alt((
+                        preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
+                        preceded(
+                            tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                            count(
+                                context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
+                                    <span class="self">self</span>.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                                <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
                             ),
-                        )),
-                    ),
-                    context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
-                        <span class="self">self</span>.hash_deserializer.deserialize(input)
-                    }),
-                )),
-            )
-            .parse(buffer)<span class="question-mark">?</span>;
+                        ),
+                    )),
+                )
+                .parse(rest)<span class="question-mark">?</span>;
+
+                <span class="comment">// Let&#39;s sort this out before deserializing the rest of the data-struct...
+                </span><span class="kw">if </span>parents.is_empty() != (slot.period == <span class="number">0</span>) {
+                    <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                        input,
+                        nom::error::ErrorKind::Fail,
+                    )))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Ok</span>((rest, (slot, parents)))
+                }
+            })(buffer)<span class="question-mark">?</span>;
+
+        <span class="comment">// Now parent count and slot period is known to be good, deserializing operation merkle root is not a throw-away operation
+        </span><span class="kw">let </span>(rest, operation_merkle_root): (<span class="kw-2">&amp;</span>[u8], Hash) =
+            context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
+                <span class="self">self</span>.hash_deserializer.deserialize(input)
+            })
+            .parse(rest)<span class="question-mark">?</span>;
 
         <span class="kw">if </span>parents.is_empty() {
             <span class="kw">return </span><span class="prelude-val">Ok</span>((
@@ -1979,7 +2007,7 @@
         <span class="comment">// create block header
         </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
             BlockHeader {
-                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
