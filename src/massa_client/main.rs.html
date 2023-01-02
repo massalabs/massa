@@ -169,13 +169,6 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attr">#![feature(str_split_whitespace_as_str)]
@@ -210,9 +203,6 @@
     <span class="doccomment">/// Port to listen on (Massa private API).
     </span><span class="attr">#[structopt(long)]
     </span>private_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
-    <span class="doccomment">/// Port to listen on (Massa API V2).
-    </span><span class="attr">#[structopt(long)]
-    </span>api_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
     <span class="doccomment">/// Address to listen on
     </span><span class="attr">#[structopt(long)]
     </span>ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
@@ -301,10 +291,6 @@
         <span class="prelude-val">Some</span>(private_port) =&gt; private_port,
         <span class="prelude-val">None </span>=&gt; settings.default_node.private_port,
     };
-    <span class="kw">let </span>api_port = <span class="kw">match </span>args.api_port {
-        <span class="prelude-val">Some</span>(api_port) =&gt; api_port,
-        <span class="prelude-val">None </span>=&gt; settings.default_node.api_port,
-    };
 
     <span class="comment">// Setup panic handlers,
     // and when a panic occurs,
@@ -319,7 +305,7 @@
     <span class="comment">// ...
     </span><span class="kw">let </span>password = args.password.unwrap_or_else(|| ask_password(<span class="kw-2">&amp;</span>args.wallet));
     <span class="kw">let </span><span class="kw-2">mut </span>wallet = Wallet::new(args.wallet, password)<span class="question-mark">?</span>;
-    <span class="kw">let </span>client = Client::new(address, public_port, private_port, api_port, <span class="kw-2">&amp;</span>http_config).<span class="kw">await</span>;
+    <span class="kw">let </span>client = Client::new(address, public_port, private_port, <span class="kw-2">&amp;</span>http_config).<span class="kw">await</span>;
     <span class="kw">if </span>atty::is(Stream::Stdout) &amp;&amp; args.command == Command::help &amp;&amp; !args.json {
         <span class="comment">// Interactive mode
         </span>repl::run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;mut </span>wallet).<span class="kw">await</span><span class="question-mark">?</span>;
