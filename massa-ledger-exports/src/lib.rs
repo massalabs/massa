@@ -17,7 +17,7 @@ pub use controller::LedgerController;
 pub use error::LedgerError;
 pub use key::{
     get_address_from_key, KeyDeserializer, KeySerializer, BALANCE_IDENT, BYTECODE_IDENT,
-    DATASTORE_IDENT,
+    DATASTORE_IDENT, Key, KeyType,
 };
 pub use ledger_changes::{
     DatastoreUpdateDeserializer, DatastoreUpdateSerializer, LedgerChanges,
