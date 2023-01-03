@@ -18,10 +18,12 @@ use massa_models::api::{
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
+use massa_models::block::{BlockHeader, FilledBlock};
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
+use massa_models::operation::Operation;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::version::Version;
@@ -435,19 +437,83 @@ impl RpcClientV2 {
         &self,
     ) -> Result<Subscription<BlockInfo>, jsonrpsee::core::Error> {
         if let Some(client) = self.ws_client.as_ref() {
-            let res = client
+            client
                 .subscribe(
                     "subscribe_new_blocks",
                     rpc_params![],
                     "unsubscribe_new_blocks",
                 )
-                .await;
-
-            res
+                .await
         } else {
             Err(CallError::Custom(ErrorObject::owned(
-                -32020,
-                "error, no Http client instance found".to_owned(),
+                -32080,
+                "error, no WebSocket client instance found".to_owned(),
+                None::<()>,
+            ))
+            .into())
+        }
+    }
+
+    /// New produced blocks headers
+    pub async fn subscribe_new_blocks_headers(
+        &self,
+    ) -> Result<Subscription<BlockHeader>, jsonrpsee::core::Error> {
+        if let Some(client) = self.ws_client.as_ref() {
+            client
+                .subscribe(
+                    "subscribe_new_blocks_headers",
+                    rpc_params![],
+                    "unsubscribe_new_blocks_headers",
+                )
+                .await
+        } else {
+            Err(CallError::Custom(ErrorObject::owned(
+                -32080,
+                "error, no WebSocket client instance found".to_owned(),
+                None::<()>,
+            ))
+            .into())
+        }
+    }
+
+    /// New produced blocks with operations content.
+    pub async fn subscribe_new_filled_blocks(
+        &self,
+    ) -> Result<Subscription<FilledBlock>, jsonrpsee::core::Error> {
+        if let Some(client) = self.ws_client.as_ref() {
+            client
+                .subscribe(
+                    "subscribe_new_filled_blocks",
+                    rpc_params![],
+                    "unsubscribe_new_filled_blocks",
+                )
+                .await
+        } else {
+            Err(CallError::Custom(ErrorObject::owned(
+                -32080,
+                "error, no WebSocket client instance found".to_owned(),
+                None::<()>,
+            ))
+            .into())
+        }
+    }
+
+    /// New received only operations.
+    pub async fn subscribe_new_operations(
+        &self,
+    ) -> Result<Subscription<Operation>, jsonrpsee::core::Error> {
+        if let Some(client) = self.ws_client.as_ref() {
+            client
+                .subscribe(
+                    "subscribe_new_operations",
+                    rpc_params![],
+                    "unsubscribe_new_operations",
+                )
+                .await
+        } else {
+            Err(CallError::Custom(ErrorObject::owned(
+                -32080,
+                "error, no WebSocket client instance found".to_owned(),
                 None::<()>,
             ))
             .into())

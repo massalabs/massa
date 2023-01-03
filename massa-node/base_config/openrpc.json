@@ -1124,8 +1124,8 @@
                 "name": "FilledBlockInfo"
             },
             "name": "subscribe_new_filled_blocks",
-            "summary": "New produced block with operations content",
-            "description": "New produced block with operations content."
+            "summary": "New produced blocks with operations content",
+            "description": "New produced blocks with operations content."
         },
         {
             "tags": [
