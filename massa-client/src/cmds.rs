@@ -79,17 +79,17 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ..."),
-        message = "remove staking addresses"
+        props(args = "Address1 Address2 ...")
+        message = "starts staking with the given addresses"
     )]
-    node_remove_staking_addresses,
+    node_start_staking,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SecretKey1 SecretKey2 ..."),
-        message = "add staking secret keys"
+        props(args = "Address1 Address2 ...")
+        message = "stops staking with the given addresses"
     )]
-    node_add_staking_secret_keys,
+    node_stop_staking,
 
     #[strum(
         ascii_case_insensitive,
@@ -171,9 +171,27 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        message = "show wallet info (keys, addresses, balances ...)"
+        message = "show wallet info (addresses, balances ...)"
     )]
     wallet_info,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(
+            args = "Address"
+        ),
+        message = "get public key of an address"
+    )]
+    get_public_key,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(
+            args = "Address"
+        ),
+        message = "get secret key of an address"
+    )]
+    get_secret_key,
 
     #[strum(
         ascii_case_insensitive,
@@ -659,6 +677,72 @@ impl Command {
                 }
             }
 
+            Command::get_public_key => {
+                let addresses = parse_vec::<Address>(parameters)?;
+                if !json {
+                    client_warning!("do not share your key");
+                }
+                match client
+                    .public
+                    .get_addresses(addresses)
+                    .await
+                {
+                    Ok(addresses_info) => {
+                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
+                    }
+                    Err(_) => Ok(Box::new(wallet.clone())), // FIXME
+                }
+            }
+
+            Command::get_secret_key => {
+                if !json {
+                    client_warning!("do not share your key");
+                }
+                match client
+                    .public
+                    .get_addresses(wallet.get_full_wallet().keys().copied().collect())
+                    .await
+                {
+                    Ok(addresses_info) => {
+                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
+                    }
+                    Err(_) => Ok(Box::new(wallet.clone())), // FIXME
+                }
+            }
+
+            Command::node_start_staking => {
+                let addresses = parse_vec::<Address>(parameters)?;
+                let secret: Vec<Option<&KeyPair>> = addresses.iter().map(|addr| wallet.get_full_wallet().get(addr)).collect();
+                let secret_str = secret.iter().filter(|a| a.is_some()).map(|s| format!("{}", s.unwrap())).collect();
+
+                match client
+                    .private
+                    .add_staking_secret_keys(secret_str)
+                    .await
+                {
+                    Ok(()) => {
+                        if !json {
+                            println!("Keys successfully added!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                };
+                Ok(Box::new(()))
+            }
+
+            Command::node_stop_staking => {
+                let addresses = parse_vec::<Address>(parameters)?;
+                match client.private.remove_staking_addresses(addresses).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Addresses successfully removed!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
+
             Command::wallet_generate_secret_key => {
                 let key = KeyPair::generate();
                 let ad = wallet.add_keypairs(vec![key])?[0];
@@ -666,7 +750,7 @@ impl Command {
                     Ok(Box::new(ad.to_string()))
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
-                    println!("Type `node_add_staking_secret_keys <your secret key>` to start staking with this key.\n");
+                    println!("Type `node_start_staking <address>` to start staking with this address.\n");
                     Ok(Box::new(()))
                 }
             }
@@ -680,7 +764,7 @@ impl Command {
                     for address in addresses {
                         println!("Derived and added address {} to the wallet.", address);
                     }
-                    println!("Type `node_add_staking_secret_keys <your secret key>` to start staking with the corresponding key.\n");
+                    println!("Type `node_start_staking <address>` to start staking with the corresponding key.\n");
                 }
                 Ok(Box::new(()))
             }
@@ -741,7 +825,7 @@ impl Command {
                     }
                     if let Ok(staked_keys) = client.private.get_staking_addresses().await {
                         if !staked_keys.contains(&addr) {
-                            client_warning!("You are buying rolls with an address not registered for staking. Don't forget to run 'node_add_staking_secret_keys <your_secret_key'");
+                            client_warning!("You are buying rolls with an address not registered for staking. Don't forget to run 'node_start_staking <address>'");
                         }
                     }
                 }
