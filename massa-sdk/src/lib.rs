@@ -577,9 +577,9 @@ fn get_id_kind(id_kind: &str) -> IdKind {
     }
 }
 
-fn get_headers(headers: &Vec<(String, String)>) -> HeaderMap {
+fn get_headers(headers: &[(String, String)]) -> HeaderMap {
     let mut headers_map = HeaderMap::new();
-    headers.into_iter().for_each(|(key, value)| {
+    headers.iter().for_each(|(key, value)| {
         let header_name = match HeaderName::from_str(key.as_str()) {
             Ok(header_name) => header_name,
             Err(_) => panic!("invalid header name: {:?}", key),
