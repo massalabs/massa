@@ -40,4 +40,8 @@ pub struct WsConfig {
     pub client_config: ClientConfig,
     /// whether to enable WS.
     pub enabled: bool,
+    /// Max notifications per subscription.
+    pub max_notifs_per_subscription: usize,
+    /// Max number of redirections.
+    pub max_redirections: usize,
 }

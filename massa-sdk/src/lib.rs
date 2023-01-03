@@ -551,6 +551,8 @@ where
         ))
         .id_format(get_id_kind(ws_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(&ws_config.client_config.headers))
+        .max_notifs_per_subscription(ws_config.max_notifs_per_subscription)
+        .max_redirections(ws_config.max_redirections)
         .build(url)
         .await
     {
