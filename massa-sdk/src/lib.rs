@@ -522,41 +522,15 @@ impl RpcClientV2 {
 }
 
 async fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient {
-    let certificate_store = match http_config.client_config.certificate_store.as_str() {
-        "Native" => CertificateStore::Native,
-        "WebPki" => CertificateStore::WebPki,
-        _ => CertificateStore::Native,
-    };
-    let id_kind = match http_config.client_config.id_kind.as_str() {
-        "Number" => IdKind::Number,
-        "String" => IdKind::String,
-        _ => IdKind::Number,
-    };
-
-    let mut headers = HeaderMap::new();
-    http_config
-        .client_config
-        .headers
-        .iter()
-        .for_each(|(key, value)| {
-            let header_name = match HeaderName::from_str(key.as_str()) {
-                Ok(header_name) => header_name,
-                Err(_) => panic!("invalid header name: {:?}", key),
-            };
-            let header_value = match HeaderValue::from_str(value.as_str()) {
-                Ok(header_name) => header_name,
-                Err(_) => panic!("invalid header value: {:?}", value),
-            };
-            headers.insert(header_name, header_value);
-        });
-
     match HttpClientBuilder::default()
         .max_request_body_size(http_config.client_config.max_request_body_size)
         .request_timeout(http_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
-        .certificate_store(certificate_store)
-        .id_format(id_kind)
-        .set_headers(headers)
+        .certificate_store(get_certificate_store(
+            http_config.client_config.certificate_store.as_str(),
+        ))
+        .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
+        .set_headers(get_headers(&http_config.client_config.headers))
         .build(url)
     {
         Ok(http_client) => http_client,
@@ -568,45 +542,52 @@ async fn ws_client_from_url(url: &str, ws_config: &WsConfig) -> WsClient
 where
     WsClient: SubscriptionClientT,
 {
-    let certificate_store = match ws_config.client_config.certificate_store.as_str() {
-        "Native" => CertificateStore::Native,
-        "WebPki" => CertificateStore::WebPki,
-        _ => CertificateStore::Native,
-    };
-    let id_kind = match ws_config.client_config.id_kind.as_str() {
-        "Number" => IdKind::Number,
-        "String" => IdKind::String,
-        _ => IdKind::Number,
-    };
-
-    let mut headers = HeaderMap::new();
-    ws_config
-        .client_config
-        .headers
-        .iter()
-        .for_each(|(key, value)| {
-            let header_name = match HeaderName::from_str(key.as_str()) {
-                Ok(header_name) => header_name,
-                Err(_) => panic!("invalid header name: {:?}", key),
-            };
-            let header_value = match HeaderValue::from_str(value.as_str()) {
-                Ok(header_name) => header_name,
-                Err(_) => panic!("invalid header value: {:?}", value),
-            };
-            headers.insert(header_name, header_value);
-        });
-
     match WsClientBuilder::default()
         .max_request_body_size(ws_config.client_config.max_request_body_size)
         .request_timeout(ws_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(ws_config.client_config.max_concurrent_requests)
-        .certificate_store(certificate_store)
-        .id_format(id_kind)
-        .set_headers(headers)
+        .certificate_store(get_certificate_store(
+            ws_config.client_config.certificate_store.as_str(),
+        ))
+        .id_format(get_id_kind(ws_config.client_config.id_kind.as_str()))
+        .set_headers(get_headers(&ws_config.client_config.headers))
         .build(url)
         .await
     {
         Ok(ws_client) => ws_client,
         Err(_) => panic!("unable to create WebSocket client"),
     }
+}
+
+fn get_certificate_store(certificate_store: &str) -> CertificateStore {
+    match certificate_store {
+        "Native" => CertificateStore::Native,
+        "WebPki" => CertificateStore::WebPki,
+        _ => CertificateStore::Native,
+    }
+}
+
+fn get_id_kind(id_kind: &str) -> IdKind {
+    match id_kind {
+        "Number" => IdKind::Number,
+        "String" => IdKind::String,
+        _ => IdKind::Number,
+    }
+}
+
+fn get_headers(headers: &Vec<(String, String)>) -> HeaderMap {
+    let mut headers_map = HeaderMap::new();
+    headers.into_iter().for_each(|(key, value)| {
+        let header_name = match HeaderName::from_str(key.as_str()) {
+            Ok(header_name) => header_name,
+            Err(_) => panic!("invalid header name: {:?}", key),
+        };
+        let header_value = match HeaderValue::from_str(value.as_str()) {
+            Ok(header_name) => header_name,
+            Err(_) => panic!("invalid header value: {:?}", value),
+        };
+        headers_map.insert(header_name, header_value);
+    });
+
+    headers_map
 }
