@@ -143,9 +143,9 @@ jobs:
           path: gas-calibration
           ref: main
       - name: "test"
-        run: echo ${{ github.ref_name }}
+        run: echo ${{ github.head_ref || github.ref_name }} 
       - name: "Use the current branch as dependency for gas-calibration"
-        run: ls && cd gas-calibration && sed -i 's/main/${{ github.ref_name }}/g' Cargo.toml && cat Cargo.toml
+        run: ls && cd gas-calibration && sed -i 's/main/${{ github.head_ref || github.ref_name }}/g' Cargo.toml && cat Cargo.toml
       
 
   doc:
