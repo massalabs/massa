@@ -21,7 +21,7 @@ jobs:
   sanity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -33,7 +33,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
-          save-if: ${{ github.ref == 'refs/pull/3358/merge' }}
+          save-if: ${{ github.ref_name == 'testnet_19' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -55,7 +55,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
-          save-if: ${{ github.ref == 'refs/pull/3358/merge' }}
+          save-if: ${{ github.ref_name == 'testnet_19' }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -78,7 +78,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
-          save-if: ${{ github.ref == 'refs/pull/3358/merge' }}
+          save-if: ${{ github.ref_name == 'testnet_19' }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -97,7 +97,7 @@ jobs:
           - macOS-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -108,7 +108,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          save-if: ${{ github.ref == 'refs/pull/3358/merge' }}
+          save-if: ${{ github.ref_name == 'testnet_19' }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -124,10 +124,32 @@ jobs:
     steps:
       - run: exit 0
 
+  gas-costs-check:
+    if: github.ref != 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2022-12-24
+          components: rustfmt
+          override: true
+      - uses: actions/checkout@v3
+        with:
+          repository: massalabs/gas-calibration
+          path: gas-calibration
+          ref: main
+      - name: "test"
+        run: ls && cd gas-calibration && ls
+      
+
   doc:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -139,7 +161,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
-          save-if: ${{ github.ref == 'refs/pull/3358/merge' }}
+          save-if: ${{ github.ref_name == 'testnet_19' }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc
