@@ -3,7 +3,7 @@
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use serde::Deserialize;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
 /// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
@@ -11,9 +11,9 @@ pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
     /// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
-    pub bootstrap_whitelist_file: std::path::PathBuf,
+    pub bootstrap_whitelist_path: PathBuf,
     /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
-    pub bootstrap_blacklist_file: std::path::PathBuf,
+    pub bootstrap_blacklist_path: PathBuf,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
     pub bind: Option<SocketAddr>,
     /// connection timeout
@@ -30,8 +30,8 @@ pub struct BootstrapConfig {
     pub retry_delay: MassaTime,
     /// Max ping delay.
     pub max_ping: MassaTime,
-    /// Enable clock synchronization
-    pub enable_clock_synchronization: bool,
+    /// Maximum allowed time between server and client clocks
+    pub max_clock_delta: MassaTime,
     /// Cache duration
     pub cache_duration: MassaTime,
     /// Max simultaneous bootstraps

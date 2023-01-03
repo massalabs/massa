@@ -166,7 +166,7 @@ async fn stream_final_state_and_consensus(
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                     };
-                    panic!("Bootstrap failed, try to bootstrap again.");
+                    return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 BootstrapServerMessage::BootstrapError { error } => {
                     return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())
@@ -216,7 +216,7 @@ async fn bootstrap_from_server(
     };
 
     // handshake
-    let send_time_uncompensated = MassaTime::now(0)?;
+    let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
         Err(_) => {
@@ -231,7 +231,7 @@ async fn bootstrap_from_server(
     }
 
     // compute ping
-    let ping = MassaTime::now(0)?.saturating_sub(send_time_uncompensated);
+    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
@@ -267,39 +267,32 @@ async fn bootstrap_from_server(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    let recv_time_uncompensated = MassaTime::now(0)?;
+    // get the time of reception
+    let recv_time = MassaTime::now()?;
 
     // compute ping
-    let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
+    let ping = recv_time.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
         ));
     }
 
-    // compute compensation
-    let compensation_millis = if cfg.enable_clock_synchronization {
-        let local_time_uncompensated =
-            recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
-        let compensation_millis = if server_time >= local_time_uncompensated {
-            server_time
-                .saturating_sub(local_time_uncompensated)
-                .to_millis()
-        } else {
-            local_time_uncompensated
-                .saturating_sub(server_time)
-                .to_millis()
-        };
-        let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
-            BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
-        })?;
-        debug!("Server clock compensation set to: {}", compensation_millis);
-        compensation_millis
-    } else {
-        0
-    };
+    // compute client / server clock delta
+    // div 2 is an approximation of the time it took the message to do server -> client
+    // the complete ping value being client -> server -> client
+    let adjusted_server_time = server_time.checked_add(ping.checked_div_u64(2)?)?;
+    let clock_delta = adjusted_server_time.abs_diff(recv_time);
 
-    global_bootstrap_state.compensation_millis = compensation_millis;
+    // if clock delta is too high warn the user and restart bootstrap
+    if clock_delta > cfg.max_clock_delta {
+        warn!("client and server clocks differ too much, please check your clock");
+        let message = format!(
+            "client = {}, server = {}, ping = {}, max_delta = {}",
+            recv_time, server_time, ping, cfg.max_clock_delta
+        );
+        return Err(BootstrapError::ClockError(message));
+    }
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
@@ -425,7 +418,7 @@ pub async fn get_state(
     end_timestamp: Option<MassaTime>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now(0)?;
+    let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
@@ -467,7 +460,7 @@ pub async fn get_state(
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
-                if MassaTime::now(0).expect("could not get now time") > end {
+                if MassaTime::now().expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }

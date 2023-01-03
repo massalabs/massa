@@ -15,6 +15,7 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::net::IpAddr;
+use strum::Display;
 
 /// operation input
 #[derive(Serialize, Deserialize, Debug)]
@@ -555,6 +556,12 @@ pub struct EventFilter {
     /// Some(false) means candidate
     /// None means final _and_ candidate
     pub is_final: Option<bool>,
+    /// optional execution status
+    ///
+    /// Some(true) means events coming from a failed sc execution
+    /// Some(false) means events coming from a succeeded sc execution
+    /// None means both
+    pub is_error: Option<bool>,
 }
 
 /// read only bytecode execution request
@@ -583,4 +590,30 @@ pub struct ReadOnlyCall {
     pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
+}
+
+/// SCRUD operations
+#[derive(Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum ScrudOperation {
+    /// search operation
+    Search,
+    /// create operation
+    Create,
+    /// read operation
+    Read,
+    /// update operation
+    Update,
+    /// delete operation
+    Delete,
+}
+
+/// Bootsrap lists types
+#[derive(Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum ListType {
+    /// contains banned entry
+    Blacklist,
+    /// contains allowed entry
+    Whitelist,
 }

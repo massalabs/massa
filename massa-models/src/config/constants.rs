@@ -40,19 +40,19 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now(0)
+            MassaTime::now()
                 .unwrap()
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1669852801000.into()  // Thursday, December 01, 2022 00:00:01 AM UTC
+        1672790401000.into()  // Wednesday, January 04, 2022 00:00:01 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1672466400000.into())  // Saturday, December 31, 2022 6:00:00 PM UTC
+        Some(1675105200000.into())  // Monday, January 30, 2022 19:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.17.2"
+            "TEST.18.0"
         }
         .parse()
         .unwrap()
@@ -195,7 +195,7 @@ pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 //
 
 /// Maximum of GAS allowed for a block
-pub const MAX_GAS_PER_BLOCK: u64 = 1_000_000_000;
+pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 

@@ -5,6 +5,7 @@ use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
+use massa_serialization::{Serializer, U64VarIntSerializer};
 use std::collections::VecDeque;
 use std::{
     collections::BTreeMap,
@@ -27,6 +28,8 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
+    /// initial state hash
+    pub initial_ledger_hash: Hash,
 }
 
 impl PoSFinalState {
@@ -36,6 +39,7 @@ impl PoSFinalState {
         initial_seed_string: &str,
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
+        initial_ledger_hash: Hash,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -56,6 +60,7 @@ impl PoSFinalState {
             selector,
             initial_rolls,
             initial_seeds,
+            initial_ledger_hash,
         })
     }
 
@@ -186,7 +191,9 @@ impl PoSFinalState {
                 ));
             }
         } else {
-            panic!("PoS History shouldn't be empty here.");
+            return Err(PosError::ContainerInconsistency(
+                "PoS history should never be empty here".into(),
+            ));
         }
 
         // get the last history cycle, should always be present because it was filled above
@@ -232,7 +239,7 @@ impl PoSFinalState {
     /// Feeds the selector targeting a given draw cycle
     fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
         // get roll lookback
-        let lookback_rolls = match draw_cycle.checked_sub(3) {
+        let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
             Some(c) => {
                 let index = self
@@ -242,10 +249,16 @@ impl PoSFinalState {
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
-                cycle_info.roll_counts.clone()
+                // take the final_state_hash_snapshot at cycle - 3
+                // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
+                // do this here to avoid a potential attacker manipulating the selections
+                let state_hash = cycle_info
+                    .final_state_hash_snapshot
+                    .expect("critical: a complete cycle must contain a final state hash snapshot");
+                (cycle_info.roll_counts.clone(), state_hash)
             }
             // looking back to negative cycles
-            None => self.initial_rolls.clone(),
+            None => (self.initial_rolls.clone(), self.initial_ledger_hash),
         };
 
         // get seed lookback
@@ -259,7 +272,12 @@ impl PoSFinalState {
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
-                Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
+                let u64_ser = U64VarIntSerializer::new();
+                let mut seed = Vec::new();
+                u64_ser.serialize(&c, &mut seed).unwrap();
+                seed.extend(cycle_info.rng_seed.clone().into_vec());
+                seed.extend(lookback_state_hash.to_bytes());
+                Hash::compute_from(&seed)
             }
             // looking back to negative cycles
             None => self.initial_seeds[draw_cycle as usize],
@@ -269,6 +287,16 @@ impl PoSFinalState {
         self.selector
             .as_ref()
             .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
+    }
+
+    /// Feeds the selector targeting a given draw cycle
+    pub fn feed_cycle_state_hash(&mut self, cycle: u64, final_state_hash: Hash) {
+        if let Some(index) = self.get_cycle_index(cycle) {
+            let cycle = self.cycle_history.get_mut(index).unwrap();
+            cycle.final_state_hash_snapshot = Some(final_state_hash);
+        } else {
+            panic!("cycle {} should be contained here", cycle);
+        }
     }
 
     /// Retrieves the amount of rolls a given address has at the latest cycle

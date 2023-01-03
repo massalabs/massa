@@ -1,18 +1,8 @@
-use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerError};
 use massa_ledger_worker::FinalLedger;
-use massa_models::{
-    address::Address,
-    amount::Amount,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
-    config::THREAD_COUNT,
-    operation::WrappedOperation,
-    slot::Slot,
-    wrapped::WrappedContent,
-};
+use massa_models::{address::Address, amount::Amount, config::THREAD_COUNT};
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
@@ -26,6 +16,20 @@ use std::{
 };
 use tempfile::NamedTempFile;
 use tempfile::TempDir;
+
+#[cfg(feature = "testing")]
+use massa_models::{
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
+    operation::WrappedOperation,
+    slot::Slot,
+    wrapped::WrappedContent,
+};
+
+#[cfg(feature = "testing")]
+use massa_execution_exports::ExecutionError;
+
+#[cfg(feature = "testing")]
+use massa_hash::Hash;
 
 fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let file = NamedTempFile::new().unwrap();
@@ -58,6 +62,32 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
         },
     );
 
+    // thread 2 / 31
+    let keypair_2 =
+        KeyPair::from_str("S12APSAzMPsJjVGWzUJ61ZwwGFTNapA4YtArMKDyW4edLu6jHvCr").unwrap();
+    let addr_2 = Address::from_public_key(&keypair_2.get_public_key());
+    rolls.insert(addr_2, 100);
+    ledger.insert(
+        addr_2,
+        LedgerEntry {
+            balance: Amount::from_str("300_000").unwrap(),
+            ..Default::default()
+        },
+    );
+
+    // thread 3 / 31
+    let keypair_3 =
+        KeyPair::from_str("S12onbtxzgHcDSrVMp9bzP1cUjno8V5hZd4yYiqaMmC3nq4z7fSv").unwrap();
+    let addr_3 = Address::from_public_key(&keypair_3.get_public_key());
+    rolls.insert(addr_3, 100);
+    ledger.insert(
+        addr_3,
+        LedgerEntry {
+            balance: Amount::from_str("300_000").unwrap(),
+            ..Default::default()
+        },
+    );
+
     // write file
     serde_json::to_writer_pretty::<&File, BTreeMap<Address, u64>>(file.as_file(), &rolls)
         .expect("unable to write ledger file");
@@ -70,6 +100,7 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 
 /// Same as `get_random_address()` and return `keypair` associated
 /// to the address.
+#[cfg(feature = "testing")]
 pub fn get_random_address_full() -> (Address, KeyPair) {
     let keypair = KeyPair::generate();
     (Address::from_public_key(&keypair.get_public_key()), keypair)
@@ -105,6 +136,7 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
 /// creator.
 ///
 /// Return a result that should be unwrapped in the root `#[test]` routine.
+#[cfg(feature = "testing")]
 pub fn create_block(
     creator_keypair: KeyPair,
     operations: Vec<WrappedOperation>,

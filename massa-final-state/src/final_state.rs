@@ -8,7 +8,7 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
@@ -32,7 +32,11 @@ pub struct FinalState {
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub changes_history: VecDeque<(Slot, StateChanges)>,
+    /// hash of the final state, it is computed on finality
+    pub final_state_hash: Hash,
 }
+
+const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
     /// Initializes a new `FinalState`
@@ -50,6 +54,7 @@ impl FinalState {
             &config.initial_seed_string,
             &config.initial_rolls_path,
             selector,
+            ledger.get_ledger_hash(),
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
@@ -62,7 +67,7 @@ impl FinalState {
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
-        // generate the final state
+        // create the final state
         Ok(FinalState {
             slot,
             ledger,
@@ -71,7 +76,50 @@ impl FinalState {
             config,
             executed_ops,
             changes_history: Default::default(), // no changes in history
+            final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
         })
+    }
+
+    /// Compute the current state hash.
+    ///
+    /// Used when finalizing a slot.
+    /// Slot information is only used for logging.
+    pub fn compute_state_hash_at_slot(&mut self, slot: Slot) {
+        // 1. init hash concatenation with the ledger hash
+        let ledger_hash = self.ledger.get_ledger_hash();
+        let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
+        debug!("ledger hash at slot {}: {}", slot, ledger_hash);
+        // 2. async_pool hash
+        hash_concat.extend(self.async_pool.hash.to_bytes());
+        debug!("async_pool hash at slot {}: {}", slot, self.async_pool.hash);
+        // 3. pos deferred_credit hash
+        hash_concat.extend(self.pos_state.deferred_credits.hash.to_bytes());
+        debug!(
+            "deferred_credit hash at slot {}: {}",
+            slot, self.pos_state.deferred_credits.hash
+        );
+        // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
+        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
+            as usize;
+        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
+            hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
+            debug!(
+                "cycle ({}) hash at slot {}: {}",
+                cycle_info.cycle, slot, cycle_info.cycle_global_hash
+            );
+        }
+        // 5. executed operations hash
+        hash_concat.extend(self.executed_ops.hash.to_bytes());
+        debug!(
+            "executed_ops hash at slot {}: {}",
+            slot, self.executed_ops.hash
+        );
+        // 6. compute and save final state hash
+        self.final_state_hash = Hash::compute_from(&hash_concat);
+        info!(
+            "final_state hash at slot {}: {}",
+            slot, self.final_state_hash
+        );
     }
 
     /// Performs the initial draws.
@@ -98,7 +146,8 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        // apply changes
+        // apply the state changes
+        // unwrap is justified because every error in PoS `apply_changes` is critical
         self.ledger
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
@@ -106,7 +155,9 @@ impl FinalState {
         self.pos_state
             .apply_changes(changes.pos_changes.clone(), self.slot, true)
             .expect("could not settle slot in final state proof-of-stake");
-        // TODO do not panic above: it might just mean that the lookback cycle is not available
+        // TODO:
+        // do not panic above, it might just mean that the lookback cycle is not available
+        // bootstrap again instead
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
@@ -118,39 +169,13 @@ impl FinalState {
             self.changes_history.push_back((slot, changes));
         }
 
-        // final hash computing and sub hashes logging
-        // 1. init hash concatenation with the ledger hash
-        let ledger_hash = self.ledger.get_ledger_hash();
-        let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
-        debug!("ledger hash at slot {}: {}", slot, ledger_hash);
-        // 2. async_pool hash
-        hash_concat.extend(self.async_pool.hash.to_bytes());
-        debug!("async_pool hash at slot {}: {}", slot, self.async_pool.hash);
-        // 3. pos deferred_credit hash
-        hash_concat.extend(self.pos_state.deferred_credits.hash.to_bytes());
-        debug!(
-            "deferred_credit hash at slot {}: {}",
-            slot, self.pos_state.deferred_credits.hash
-        );
-        // 4. pos cycle history hashes
-        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
-            as usize;
-        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
-            hash_concat.extend(cycle_info.global_hash.to_bytes());
-            debug!(
-                "cycle ({}) hash at slot {}: {}",
-                cycle_info.cycle, slot, cycle_info.global_hash
-            );
-        }
-        // 5. executed operations hash
-        hash_concat.extend(self.executed_ops.hash.to_bytes());
-        debug!(
-            "executed_ops hash at slot {}: {}",
-            slot, self.executed_ops.hash
-        );
-        // 6. final state hash
-        let final_state_hash = Hash::compute_from(&hash_concat);
-        info!("final_state hash at slot {}: {}", slot, final_state_hash);
+        // compute the final state hash
+        self.compute_state_hash_at_slot(slot);
+
+        // feed final_state_hash to the last cycle
+        let cycle = slot.get_cycle(self.config.periods_per_cycle);
+        self.pos_state
+            .feed_cycle_state_hash(cycle, self.final_state_hash);
     }
 
     /// Used for bootstrap.
@@ -180,16 +205,16 @@ impl FinalState {
             let index = slot
                 .slots_since(first_slot, self.config.thread_count)
                 .map_err(|_| {
-                    FinalStateError::LedgerError(
-                        "get_state_changes_part given slot is overflowing history.".to_string(),
+                    FinalStateError::InvalidSlot(
+                        "get_state_changes_part given slot is overflowing history".to_string(),
                     )
                 })?
                 .saturating_add(1);
 
             // Check if the `slot` index isn't in the future
             if self.changes_history.len() as u64 <= index {
-                return Err(FinalStateError::LedgerError(
-                    "slot index is overflowing history.".to_string(),
+                return Err(FinalStateError::InvalidSlot(
+                    "slot index is overflowing history".to_string(),
                 ));
             }
             index
@@ -239,10 +264,12 @@ impl FinalState {
                             .0
                             .iter()
                             .filter_map(|change| match change {
-                                Change::Add(id, _) if id <= &last_id => Some(change.clone()),
-                                Change::Delete(id) if id <= &last_id => Some(change.clone()),
-                                Change::Add(..) => None,
-                                Change::Delete(..) => None,
+                                Change::Add(id, _) | Change::Activate(id) | Change::Delete(id)
+                                    if id <= &last_id =>
+                                {
+                                    Some(change.clone())
+                                }
+                                _ => None,
                             })
                             .collect(),
                     );

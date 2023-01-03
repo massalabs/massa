@@ -25,6 +25,7 @@ use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
     FinalState, FinalStateConfig, StateChanges,
 };
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_models::{
@@ -122,6 +123,7 @@ async fn test_bootstrap_server() {
             "",
             &rolls_path,
             server_selector_controller.clone(),
+            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         )
         .unwrap(),
         final_state_local_config.clone(),
@@ -132,6 +134,7 @@ async fn test_bootstrap_server() {
             "",
             &rolls_path,
             client_selector_controller.clone(),
+            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         )
         .unwrap(),
         final_state_local_config,
@@ -148,7 +151,6 @@ async fn test_bootstrap_server() {
         bootstrap_config.clone(),
         bootstrap_establisher,
         keypair.clone(),
-        0,
         Version::from_str("TEST.1.10").unwrap(),
     )
     .await
@@ -163,7 +165,7 @@ async fn test_bootstrap_server() {
             final_state_client_clone,
             remote_establisher,
             Version::from_str("TEST.1.10").unwrap(),
-            MassaTime::now(0).unwrap().saturating_sub(1000.into()),
+            MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
         )
         .await
@@ -205,7 +207,7 @@ async fn test_bootstrap_server() {
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =
-            match wait_network_command(&mut network_cmd_rx, 10_000.into(), |cmd| match cmd {
+            match wait_network_command(&mut network_cmd_rx, 20_000.into(), |cmd| match cmd {
                 NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
                 _ => None,
             })
@@ -223,7 +225,7 @@ async fn test_bootstrap_server() {
     let sent_graph = get_boot_state();
     let sent_graph_clone = sent_graph.clone();
     std::thread::spawn(move || loop {
-        consensus_event_receiver.wait_command(MassaTime::from_millis(10_000), |cmd| match &cmd {
+        consensus_event_receiver.wait_command(MassaTime::from_millis(20_000), |cmd| match &cmd {
             MockConsensusControllerMessage::GetBootstrapableGraph {
                 execution_cursor,
                 response_tx,

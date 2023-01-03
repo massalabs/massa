@@ -8,8 +8,10 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
+use massa_models::operation::Operation;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::wrapped::Id;
 use massa_models::{
     block::{BlockId, WrappedHeader},
     endorsement::{EndorsementId, WrappedEndorsement},
@@ -22,9 +24,8 @@ use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEvent
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
+    ProtocolReceivers, ProtocolSenders,
 };
-
-use massa_models::wrapped::Id;
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};
@@ -43,14 +44,14 @@ use tracing::{debug, error, info, warn};
 ///
 /// # Arguments
 /// * `config`: protocol settings
-/// * `network_command_sender`: the `NetworkCommandSender` we interact with
-/// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
+/// * `senders`: sender(s) channel(s) to communicate with other modules
+/// * `receivers`: receiver(s) channel(s) to communicate with other modules
+/// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     config: ProtocolConfig,
-    network_command_sender: NetworkCommandSender,
-    network_event_receiver: NetworkEventReceiver,
-    protocol_command_receiver: mpsc::Receiver<ProtocolCommand>,
+    receivers: ProtocolReceivers,
+    senders: ProtocolSenders,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
@@ -64,10 +65,11 @@ pub async fn start_protocol_controller(
         let res = ProtocolWorker::new(
             config,
             ProtocolWorkerChannels {
-                network_command_sender,
-                network_event_receiver,
-                controller_command_rx: protocol_command_receiver,
+                network_command_sender: senders.network_command_sender,
+                network_event_receiver: receivers.network_event_receiver,
+                controller_command_rx: receivers.protocol_command_receiver,
                 controller_manager_rx,
+                operation_sender: senders.operation_sender,
             },
             consensus_controller,
             pool_controller,
@@ -131,6 +133,8 @@ pub struct ProtocolWorker {
     controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+    /// Broadcast sender(channel) for new operations
+    operation_sender: tokio::sync::broadcast::Sender<Operation>,
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
@@ -162,6 +166,8 @@ pub struct ProtocolWorkerChannels {
     pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// protocol management command receiver
     pub controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+    /// Broadcast sender(channel) for new operations
+    pub operation_sender: tokio::sync::broadcast::Sender<Operation>,
 }
 
 impl ProtocolWorker {
@@ -180,6 +186,7 @@ impl ProtocolWorker {
             network_event_receiver,
             controller_command_rx,
             controller_manager_rx,
+            operation_sender,
         }: ProtocolWorkerChannels,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
@@ -193,6 +200,7 @@ impl ProtocolWorker {
             pool_controller,
             controller_command_rx,
             controller_manager_rx,
+            operation_sender,
             active_nodes: Default::default(),
             block_wishlist: Default::default(),
             checked_endorsements: LinearHashCacheSet::new(config.max_known_endorsements_size),
@@ -931,6 +939,11 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
+            if self.config.broadcast_enabled {
+                for op in new_operations.clone() {
+                    let _ = self.operation_sender.send(op.1.content);
+                }
+            }
             // Store operation, claim locally
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
@@ -938,7 +951,7 @@ impl ProtocolWorker {
             // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
             let mut ops_to_propagate = ops.clone();
             let operations_to_not_propagate = {
-                let now = MassaTime::now(0)?;
+                let now = MassaTime::now()?;
                 let read_operations = ops_to_propagate.read_operations();
                 ops_to_propagate
                     .get_op_refs()
@@ -1039,7 +1052,7 @@ impl ProtocolWorker {
                 // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
                 let mut endorsements_to_propagate = endorsements.clone();
                 let endorsements_to_not_propagate = {
-                    let now = MassaTime::now(0)?;
+                    let now = MassaTime::now()?;
                     let read_endorsements = endorsements_to_propagate.read_endorsements();
                     endorsements_to_propagate
                         .get_endorsement_refs()

@@ -538,7 +538,9 @@ impl LedgerDB {
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
 
         // Every byte should have been read
-        if rest.is_empty() {
+        if last_key.is_empty() {
+            Ok(StreamingStep::Finished(None))
+        } else if rest.is_empty() {
             self.write_batch(batch);
             Ok(StreamingStep::Ongoing((*last_key).clone()))
         } else {

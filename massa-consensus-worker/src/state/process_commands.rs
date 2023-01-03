@@ -97,7 +97,7 @@ impl ConsensusState {
 
         // Block is coming from protocol mark it for desync calculation
         if !created {
-            let now = MassaTime::now(self.config.clock_compensation_millis)?;
+            let now = MassaTime::now()?;
             self.protocol_blocks.push_back((now, block_id));
         }
 

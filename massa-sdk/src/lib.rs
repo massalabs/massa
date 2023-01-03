@@ -172,18 +172,74 @@ impl RpcClient {
             .await
     }
 
-    /// add ips to whitelist
-    /// create peer if it was unknown
-    pub async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    /// Returns node peers whitelist IP address(es).
+    pub async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         self.http_client
-            .request("node_whitelist", rpc_params![ips])
+            .request("node_peers_whitelist", rpc_params![])
             .await
     }
 
-    /// remove IPs from whitelist
-    pub async fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    /// Add IP address(es) to node peers whitelist.
+    pub async fn node_add_to_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
-            .request("node_remove_from_whitelist", rpc_params![ips])
+            .request("node_add_to_peers_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Remove IP address(es) to node peers whitelist.
+    pub async fn node_remove_from_peers_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_remove_from_peers_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Returns node bootsrap whitelist IP address(es).
+    pub async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+        self.http_client
+            .request("node_bootstrap_whitelist", rpc_params![])
+            .await
+    }
+
+    /// Allow everyone to bootsrap from the node.
+    /// remove bootsrap whitelist configuration file.
+    pub async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
+        self.http_client
+            .request("node_bootstrap_whitelist_allow_all", rpc_params![])
+            .await
+    }
+
+    /// Add IP address(es) to node bootsrap whitelist.
+    pub async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_add_to_bootstrap_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Remove IP address(es) to bootsrap whitelist.
+    pub async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_remove_from_bootstrap_whitelist", rpc_params![ips])
+            .await
+    }
+
+    /// Returns node bootsrap blacklist IP address(es).
+    pub async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
+        self.http_client
+            .request("node_bootstrap_blacklist", rpc_params![])
+            .await
+    }
+
+    /// Add IP address(es) to node bootsrap blacklist.
+    pub async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_add_to_bootstrap_blacklist", rpc_params![ips])
+            .await
+    }
+
+    /// Remove IP address(es) to bootsrap blacklist.
+    pub async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.http_client
+            .request("node_remove_from_bootstrap_blacklist", rpc_params![ips])
             .await
     }
 
@@ -209,7 +265,7 @@ impl RpcClient {
         self.http_client.request("get_stakers", rpc_params![]).await
     }
 
-    /// Returns operations information associated to a given list of operations' IDs.
+    /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     pub async fn get_operations(
         &self,
         operation_ids: Vec<OperationId>,
@@ -219,7 +275,7 @@ impl RpcClient {
             .await
     }
 
-    /// get info on endorsements by ids
+    /// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
     pub async fn get_endorsements(
         &self,
         endorsement_ids: Vec<EndorsementId>,
@@ -229,10 +285,10 @@ impl RpcClient {
             .await
     }
 
-    /// Get information on a block given its `BlockId`
-    pub async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
+    /// Returns block(s) information associated to a given list of block(s) ID(s)
+    pub async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<BlockInfo> {
         self.http_client
-            .request("get_block", rpc_params![block_id])
+            .request("get_blocks", rpc_params![block_ids])
             .await
     }
 

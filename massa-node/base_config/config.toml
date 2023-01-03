@@ -11,6 +11,8 @@
     bind_private = "127.0.0.1:33034"
     # port on which the node API listens for public requests. Can be exposed to the Internet
     bind_public = "0.0.0.0:33035"
+    # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet
+    bind_api = "0.0.0.0:33036"
     # max number of arguments per RPC call
     max_arguments = 128
     # path to the openrpc specification file used in `rpc.discover` method
@@ -46,6 +48,12 @@
     cursor_delay = 2000
     # duration of the statistics time window in milliseconds
     stats_time_window_duration = 60000
+    # maximum allowed gas for read only executions
+    max_read_only_gas = 100_000_000
+    # gas cost for ABIs
+    abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
+    # gas cost for wasm operator
+    wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
 
 [ledger]
     # path to the initial ledger
@@ -76,6 +84,13 @@
     stats_timespan = 60000
     # max number of item returned per query
     max_item_return_count = 100
+
+    # blocks headers sender(channel) capacity
+    broadcast_blocks_headers_capacity = 128
+    # blocks sender(channel) capacity
+    broadcast_blocks_capacity = 128
+    # filled blocks sender(channel) capacity
+    broadcast_filled_blocks_capacity = 128
 
 [protocol]
     # timeout after which without answer a hanshake is ended
@@ -117,6 +132,8 @@
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
+    # operations sender(channel) capacity
+    broadcast_operations_capacity = 5000
 
 [network]
     # port on which to listen for protocol communication
@@ -190,9 +207,9 @@
         ["51.75.60.228:31245", "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
     ]
     # path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
-    bootstrap_whitelist_file = "base_config/bootstrap_whitelist.json"
+    bootstrap_whitelist_path = "base_config/bootstrap_whitelist.json"
     # path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
-    bootstrap_blacklist_file = "base_config/bootstrap_blacklist.json"
+    bootstrap_blacklist_path = "base_config/bootstrap_blacklist.json"
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
@@ -209,8 +226,8 @@
     read_error_timeout = 200
     # timeout for message error sending
     write_error_timeout = 200
-    # when enabled, apply a correction to the local computer clock to match bootstrap server time
-    enable_clock_synchronization = false
+    # max allowed difference between client and servers clocks in ms
+    max_clock_delta = 5000
     # [server] data is cached for cache duration milliseconds
     cache_duration = 15000
     # max number of simulataneous bootstraps for server

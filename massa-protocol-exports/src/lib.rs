@@ -5,10 +5,12 @@
 #![feature(ip)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+mod channels;
 mod error;
 mod protocol_controller;
 mod settings;
 
+pub use channels::{ProtocolReceivers, ProtocolSenders};
 pub use error::ProtocolError;
 pub use protocol_controller::{
     BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolManagementCommand,
