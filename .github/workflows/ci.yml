@@ -142,8 +142,10 @@ jobs:
           repository: massalabs/gas-calibration
           path: gas-calibration
           ref: main
-      - name: "Use the current branch as dependency for gas-calibratipn"
-        run: ls && cd gas-calibration && sed -i 's/main/${{github.ref_name}}/g' Cargo.toml && cat Cargo.toml
+      - name: "test"
+        run: echo ${{ github.ref_name }}
+      - name: "Use the current branch as dependency for gas-calibration"
+        run: ls && cd gas-calibration && sed -i 's/main/${{ github.ref_name }}/g' Cargo.toml && cat Cargo.toml
       
 
   doc:
