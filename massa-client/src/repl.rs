@@ -139,7 +139,7 @@ pub(crate) async fn run(client: &Client, wallet_path: &PathBuf) -> Result<()> {
                 match cmd {
                     Ok(command) => {
                         if command.is_pwd_needed() && wallet_opt.is_none() {
-                            let password = ask_password(&wallet_path);
+                            let password = ask_password(wallet_path);
                             let wallet = Wallet::new(wallet_path.to_path_buf(), password)?;
                             wallet_opt = Some(wallet);
                         }
