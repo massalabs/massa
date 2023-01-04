@@ -1286,98 +1286,6 @@
 <a href="#1286" id="1286">1286</a>
 <a href="#1287" id="1287">1287</a>
 <a href="#1288" id="1288">1288</a>
-<a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
-<a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
-<a href="#1295" id="1295">1295</a>
-<a href="#1296" id="1296">1296</a>
-<a href="#1297" id="1297">1297</a>
-<a href="#1298" id="1298">1298</a>
-<a href="#1299" id="1299">1299</a>
-<a href="#1300" id="1300">1300</a>
-<a href="#1301" id="1301">1301</a>
-<a href="#1302" id="1302">1302</a>
-<a href="#1303" id="1303">1303</a>
-<a href="#1304" id="1304">1304</a>
-<a href="#1305" id="1305">1305</a>
-<a href="#1306" id="1306">1306</a>
-<a href="#1307" id="1307">1307</a>
-<a href="#1308" id="1308">1308</a>
-<a href="#1309" id="1309">1309</a>
-<a href="#1310" id="1310">1310</a>
-<a href="#1311" id="1311">1311</a>
-<a href="#1312" id="1312">1312</a>
-<a href="#1313" id="1313">1313</a>
-<a href="#1314" id="1314">1314</a>
-<a href="#1315" id="1315">1315</a>
-<a href="#1316" id="1316">1316</a>
-<a href="#1317" id="1317">1317</a>
-<a href="#1318" id="1318">1318</a>
-<a href="#1319" id="1319">1319</a>
-<a href="#1320" id="1320">1320</a>
-<a href="#1321" id="1321">1321</a>
-<a href="#1322" id="1322">1322</a>
-<a href="#1323" id="1323">1323</a>
-<a href="#1324" id="1324">1324</a>
-<a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
-<a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1460,16 +1368,16 @@
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
-        message = <span class="string">&quot;starts staking with the given addresses&quot;
+        message = <span class="string">&quot;remove staking addresses&quot;
     </span>)]
-    </span>node_start_staking,
+    </span>node_remove_staking_addresses,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
-        message = <span class="string">&quot;stops staking with the given addresses&quot;
+        props(args = <span class="string">&quot;SecretKey1 SecretKey2 ...&quot;</span>),
+        message = <span class="string">&quot;add staking secret keys&quot;
     </span>)]
-    </span>node_stop_staking,
+    </span>node_add_staking_secret_keys,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -1551,87 +1459,68 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(pwd_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;show wallet info (addresses, balances ...)&quot;
+        message = <span class="string">&quot;show wallet info (keys, addresses, balances ...)&quot;
     </span>)]
     </span>wallet_info,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;get public key of an address&quot;
-    </span>)]
-    </span>get_public_key,
-
-    <span class="attr">#[strum(
-        ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;get secret key of an address&quot;
-    </span>)]
-    </span>get_secret_key,
-
-    <span class="attr">#[strum(
-        ascii_case_insensitive,
-        props(pwd_needed = <span class="string">&quot;true&quot;</span>),
         message = <span class="string">&quot;generate a secret key and add it into the wallet&quot;
     </span>)]
     </span>wallet_generate_secret_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SecretKey1 SecretKey2 ...&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
+        props(args = <span class="string">&quot;SecretKey1 SecretKey2 ...&quot;</span>),
         message = <span class="string">&quot;add a list of secret keys to the wallet&quot;
     </span>)]
     </span>wallet_add_secret_keys,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
+        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
         message = <span class="string">&quot;remove a list of addresses from the wallet&quot;
     </span>)]
     </span>wallet_remove_addresses,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address string&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
+        props(args = <span class="string">&quot;Address string&quot;</span>),
         message = <span class="string">&quot;sign provided string with given address (address must be in the wallet)&quot;
     </span>)]
     </span>wallet_sign,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address RollCount Fee&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
+        props(args = <span class="string">&quot;Address RollCount Fee&quot;</span>),
         message = <span class="string">&quot;buy rolls with wallet address&quot;
     </span>)]
     </span>buy_rolls,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address RollCount Fee&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
+        props(args = <span class="string">&quot;Address RollCount Fee&quot;</span>),
         message = <span class="string">&quot;sell rolls with wallet address&quot;
     </span>)]
     </span>sell_rolls,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SenderAddress ReceiverAddress Amount Fee&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
+        props(args = <span class="string">&quot;SenderAddress ReceiverAddress Amount Fee&quot;</span>),
         message = <span class="string">&quot;send coins from a wallet address&quot;
     </span>)]
     </span>send_transaction,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas Fee&quot;</span>, pwd_needed = <span class="string">&quot;true&quot;</span>),
+        props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas Fee&quot;</span>,),
         message = <span class="string">&quot;create and send an operation containing byte code&quot;
     </span>)]
     </span>execute_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(
-            args = <span class="string">&quot;SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee&quot;</span>,
-            pwd_needed = <span class="string">&quot;true&quot;
-        </span>),
+        props(args = <span class="string">&quot;SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee&quot;</span>,),
         message = <span class="string">&quot;create and send an operation to call a function of a smart contract&quot;
     </span>)]
     </span>call_smart_contract,
@@ -1787,10 +1676,6 @@
         )
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_pwd_needed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.get_str(<span class="string">&quot;pwd_needed&quot;</span>).is_some() &amp;&amp; <span class="self">self</span>.get_str(<span class="string">&quot;pwd_needed&quot;</span>).unwrap() == <span class="string">&quot;true&quot;
-    </span>}
-
     <span class="doccomment">/// run a given command
     ///
     /// # parameters
@@ -1802,7 +1687,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         client: <span class="kw-2">&amp;</span>Client,
-        wallet_opt: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;Wallet&gt;,
+        wallet: <span class="kw-2">&amp;mut </span>Wallet,
         parameters: <span class="kw-2">&amp;</span>[String],
         json: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; {
@@ -1896,9 +1781,36 @@
                 }
             }
 
-            Command::node_testnet_rewards_program_ownership_proof =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
+            Command::node_remove_staking_addresses =&gt; {
+                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
+                <span class="kw">match </span>client.private.remove_staking_addresses(addresses).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if </span>!json {
+                            <span class="macro">println!</span>(<span class="string">&quot;Addresses successfully removed!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
+                }
+                <span class="prelude-val">Ok</span>(Box::new(()))
+            }
 
+            Command::node_add_staking_secret_keys =&gt; {
+                <span class="kw">match </span>client
+                    .private
+                    .add_staking_secret_keys(parameters.to_vec())
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if </span>!json {
+                            <span class="macro">println!</span>(<span class="string">&quot;Keys successfully added!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
+                };
+                <span class="prelude-val">Ok</span>(Box::new(()))
+            }
+
+            Command::node_testnet_rewards_program_ownership_proof =&gt; {
                 <span class="kw">if </span>parameters.len() != <span class="number">2 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2020,8 +1932,6 @@
             }
 
             Command::wallet_info =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">if </span>!json {
                     <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your key&quot;</span>);
                 }
@@ -2037,99 +1947,19 @@
                 </span>}
             }
 
-            Command::get_public_key =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
-                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
-
-                <span class="kw">let </span>keypair: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
-                    .iter()
-                    .map(|addr| wallet.get_full_wallet().get(addr))
-                    .filter(|kp| kp.is_some())
-                    .collect();
-                <span class="kw">let </span>_public_keys: Vec&lt;<span class="kw">_</span>&gt; = keypair
-                    .iter()
-                    .map(|kp| kp.unwrap().get_public_key())
-                    .collect();
-
-                <span class="prelude-val">Ok</span>(Box::new(wallet.clone()))
-            }
-
-            Command::get_secret_key =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
-                <span class="kw">if </span>!json {
-                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your key&quot;</span>);
-                }
-                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
-
-                <span class="kw">let </span>keypair: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
-                    .iter()
-                    .map(|addr| wallet.get_full_wallet().get(addr))
-                    .filter(|kp| kp.is_some())
-                    .collect();
-                <span class="kw">let </span>_secret_keys: Vec&lt;<span class="kw">_</span>&gt; = keypair.iter().map(|kp| kp.unwrap()).collect();
-
-                <span class="prelude-val">Ok</span>(Box::new(wallet.clone()))
-            }
-
-            Command::node_start_staking =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
-                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
-                <span class="kw">let </span>secret: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
-                    .iter()
-                    .map(|addr| wallet.get_full_wallet().get(addr))
-                    .collect();
-                <span class="kw">let </span>secret_str = secret
-                    .iter()
-                    .filter(|a| a.is_some())
-                    .map(|s| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, s.unwrap()))
-                    .collect();
-
-                <span class="kw">match </span>client.private.add_staking_secret_keys(secret_str).<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(()) =&gt; {
-                        <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Keys successfully added!&quot;</span>)
-                        }
-                    }
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
-                };
-                <span class="prelude-val">Ok</span>(Box::new(()))
-            }
-
-            Command::node_stop_staking =&gt; {
-                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
-                <span class="kw">match </span>client.private.remove_staking_addresses(addresses).<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(()) =&gt; {
-                        <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Addresses successfully removed!&quot;</span>)
-                        }
-                    }
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
-                }
-                <span class="prelude-val">Ok</span>(Box::new(()))
-            }
-
             Command::wallet_generate_secret_key =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">let </span>key = KeyPair::generate();
                 <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
                 <span class="kw">if </span>json {
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
                 } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, ad);
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;Type `node_start_staking &lt;address&gt;` to start staking with this address.\n&quot;
-                    </span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_secret_keys &lt;your secret key&gt;` to start staking with this key.\n&quot;</span>);
                     <span class="prelude-val">Ok</span>(Box::new(()))
                 }
             }
 
             Command::wallet_add_secret_keys =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">let </span>keypairs = parse_vec::&lt;KeyPair&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">let </span>addresses = wallet.add_keypairs(keypairs)<span class="question-mark">?</span>;
                 <span class="kw">if </span>json {
@@ -2138,14 +1968,12 @@
                     <span class="kw">for </span>address <span class="kw">in </span>addresses {
                         <span class="macro">println!</span>(<span class="string">&quot;Derived and added address {} to the wallet.&quot;</span>, address);
                     }
-                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_start_staking &lt;address&gt;` to start staking with the corresponding key.\n&quot;</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_secret_keys &lt;your secret key&gt;` to start staking with the corresponding key.\n&quot;</span>);
                 }
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
 
             Command::wallet_remove_addresses =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">match </span>wallet.remove_addresses(<span class="kw-2">&amp;</span>addresses) {
@@ -2163,8 +1991,6 @@
             }
 
             Command::buy_rolls =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">if </span>parameters.len() != <span class="number">3 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2203,7 +2029,7 @@
                     }
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(staked_keys) = client.private.get_staking_addresses().<span class="kw">await </span>{
                         <span class="kw">if </span>!staked_keys.contains(<span class="kw-2">&amp;</span>addr) {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;You are buying rolls with an address not registered for staking. Don&#39;t forget to run &#39;node_start_staking &lt;address&gt;&#39;&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">&quot;You are buying rolls with an address not registered for staking. Don&#39;t forget to run &#39;node_add_staking_secret_keys &lt;your_secret_key&#39;&quot;</span>);
                         }
                     }
                 }
@@ -2219,8 +2045,6 @@
             </span>}
 
             Command::sell_rolls =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">if </span>parameters.len() != <span class="number">3 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2255,8 +2079,6 @@
             </span>}
 
             Command::send_transaction =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">if </span>parameters.len() != <span class="number">4 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2320,8 +2142,6 @@
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
             Command::execute_smart_contract =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">if </span>parameters.len() != <span class="number">4 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2370,8 +2190,6 @@
                 .<span class="kw">await
             </span>}
             Command::call_smart_contract =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">if </span>parameters.len() != <span class="number">7 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
@@ -2425,8 +2243,6 @@
                 .<span class="kw">await
             </span>}
             Command::wallet_sign =&gt; {
-                <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
-
                 <span class="kw">if </span>parameters.len() != <span class="number">2 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
