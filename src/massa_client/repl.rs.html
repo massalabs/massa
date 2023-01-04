@@ -372,7 +372,7 @@
 <span class="kw">use </span>rustyline::{CompletionType, Config, Editor};
 <span class="kw">use </span>rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
 <span class="kw">use </span>std::net::IpAddr;
-<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::str;
 <span class="kw">use </span>strum::IntoEnumIterator;
 <span class="kw">use </span>strum::ParseError;
@@ -448,7 +448,7 @@
     </span>validator: MatchingBracketValidator,
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(client: <span class="kw-2">&amp;</span>Client, wallet_path: <span class="kw-2">&amp;</span>PathBuf) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(client: <span class="kw-2">&amp;</span>Client, wallet_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="macro">massa_fancy_ascii_art_logo!</span>();
     <span class="macro">println!</span>(<span class="string">&quot;Use &#39;exit&#39; or &#39;CTRL+D or CTRL+C&#39; to quit the prompt&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Use the Up/Down arrows to scroll through history&quot;</span>);
