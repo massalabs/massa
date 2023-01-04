@@ -652,7 +652,7 @@ impl Command {
                     .map(|addr| wallet.get_full_wallet().get(addr))
                     .filter(|kp| kp.is_some())
                     .collect();
-                let public_keys: Vec<_> = keypair
+                let _public_keys: Vec<_> = keypair
                     .iter()
                     .map(|kp| kp.unwrap().get_public_key())
                     .collect();
@@ -671,7 +671,7 @@ impl Command {
                     .map(|addr| wallet.get_full_wallet().get(addr))
                     .filter(|kp| kp.is_some())
                     .collect();
-                let secret_keys: Vec<_> = keypair.iter().map(|kp| kp.unwrap()).collect();
+                let _secret_keys: Vec<_> = keypair.iter().map(|kp| kp.unwrap()).collect();
 
                 Ok(Box::new(wallet.clone()))
             }
