@@ -867,6 +867,9 @@
 <a href="#867" id="867">867</a>
 <a href="#868" id="868">868</a>
 <a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1678,6 +1681,9 @@
                     ConsensusEvent::NeedSync =&gt; {
                         <span class="macro">warn!</span>(<span class="string">&quot;in response to a desynchronization, the node is going to bootstrap again&quot;</span>);
                         <span class="kw">break </span><span class="bool-val">true</span>;
+                    }
+                    ConsensusEvent::Stop =&gt; {
+                        <span class="kw">break </span><span class="bool-val">false</span>;
                     }
                 },
                 <span class="prelude-val">Err</span>(TryRecvError::Disconnected) =&gt; {
