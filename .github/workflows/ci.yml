@@ -149,7 +149,7 @@ jobs:
           path: massa-as-sdk
           ref: main
       - name: "Use the current branch as dependency for gas-calibration"
-        run: cd gas-calibration && sed -i 's/main/${{ github.head_ref || github.ref_name }}/g' Cargo.toml && sed -i 's/git = "https://github.com/massalabs/massa-sc-runtime",/git = "https://github.com/massalabs/massa-sc-runtime", branch = "${{ github.head_ref || github.ref_name }}", /g' Cargo.toml && cat Cargo.toml
+        run: cd gas-calibration && sed -i 's/main/${{ github.head_ref || github.ref_name }}/g' Cargo.toml && sed -i 's/git = "https:\/\/github.com\/massalabs\/massa-sc-runtime",/git = "https:\/\/github.com\/massalabs\/massa-sc-runtime", branch = "add_check_gas_calibration",/g' Cargo.toml && cat Cargo.toml
       #- name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
       #  run: cd gas-calibration && cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts
       
