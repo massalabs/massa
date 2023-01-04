@@ -1331,6 +1331,16 @@
 <a href="#1331" id="1331">1331</a>
 <a href="#1332" id="1332">1332</a>
 <a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1510,18 +1520,14 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(
-            args = <span class="string">&quot;Address&quot;
-        </span>),
+        props(args = <span class="string">&quot;Address&quot;</span>),
         message = <span class="string">&quot;get public key of an address&quot;
     </span>)]
     </span>get_public_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(
-            args = <span class="string">&quot;Address&quot;
-        </span>),
+        props(args = <span class="string">&quot;Address&quot;</span>),
         message = <span class="string">&quot;get secret key of an address&quot;
     </span>)]
     </span>get_secret_key,
@@ -1984,10 +1990,16 @@
             Command::get_public_key =&gt; {
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>keypair : Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses.iter().
-                map(|addr| wallet.get_full_wallet().get(addr)).filter(|kp| kp.is_some()).collect();
-                <span class="kw">let </span>public_keys: Vec&lt;<span class="kw">_</span>&gt; = keypair.iter().map(|kp| kp.unwrap().get_public_key()).collect();
-                
+                <span class="kw">let </span>keypair: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
+                    .iter()
+                    .map(|addr| wallet.get_full_wallet().get(addr))
+                    .filter(|kp| kp.is_some())
+                    .collect();
+                <span class="kw">let </span>public_keys: Vec&lt;<span class="kw">_</span>&gt; = keypair
+                    .iter()
+                    .map(|kp| kp.unwrap().get_public_key())
+                    .collect();
+
                 <span class="prelude-val">Ok</span>(Box::new(wallet.clone()))
             }
 
@@ -1997,23 +2009,29 @@
                 }
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>keypair : Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses.iter().
-                map(|addr| wallet.get_full_wallet().get(addr)).filter(|kp| kp.is_some()).collect();
+                <span class="kw">let </span>keypair: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
+                    .iter()
+                    .map(|addr| wallet.get_full_wallet().get(addr))
+                    .filter(|kp| kp.is_some())
+                    .collect();
                 <span class="kw">let </span>secret_keys: Vec&lt;<span class="kw">_</span>&gt; = keypair.iter().map(|kp| kp.unwrap()).collect();
-                
+
                 <span class="prelude-val">Ok</span>(Box::new(wallet.clone()))
             }
 
             Command::node_start_staking =&gt; {
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
-                <span class="kw">let </span>secret: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses.iter().map(|addr| wallet.get_full_wallet().get(addr)).collect();
-                <span class="kw">let </span>secret_str = secret.iter().filter(|a| a.is_some()).map(|s| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, s.unwrap())).collect();
+                <span class="kw">let </span>secret: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
+                    .iter()
+                    .map(|addr| wallet.get_full_wallet().get(addr))
+                    .collect();
+                <span class="kw">let </span>secret_str = secret
+                    .iter()
+                    .filter(|a| a.is_some())
+                    .map(|s| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, s.unwrap()))
+                    .collect();
 
-                <span class="kw">match </span>client
-                    .private
-                    .add_staking_secret_keys(secret_str)
-                    .<span class="kw">await
-                </span>{
+                <span class="kw">match </span>client.private.add_staking_secret_keys(secret_str).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
                             <span class="macro">println!</span>(<span class="string">&quot;Keys successfully added!&quot;</span>)
@@ -2044,7 +2062,9 @@
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
                 } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, ad);
-                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_start_staking &lt;address&gt;` to start staking with this address.\n&quot;</span>);
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;Type `node_start_staking &lt;address&gt;` to start staking with this address.\n&quot;
+                    </span>);
                     <span class="prelude-val">Ok</span>(Box::new(()))
                 }
             }
