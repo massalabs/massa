@@ -651,7 +651,7 @@ impl Command {
                     .await
                 {
                     Ok(addresses_info) => {
-                        Ok(Box::new(ExtendedWallet::new(&wallet, &addresses_info)?))
+                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
                     }
                     Err(_) => Ok(Box::new(wallet.clone())), // FIXME
                 }
@@ -829,7 +829,7 @@ impl Command {
                 }
                 send_operation(
                     client,
-                    &wallet,
+                    wallet,
                     OperationType::RollBuy { roll_count },
                     fee,
                     addr,
@@ -865,7 +865,7 @@ impl Command {
 
                 send_operation(
                     client,
-                    &wallet,
+                    wallet,
                     OperationType::RollSell { roll_count },
                     fee,
                     addr,
@@ -902,7 +902,7 @@ impl Command {
 
                 send_operation(
                     client,
-                    &wallet,
+                    wallet,
                     OperationType::Transaction {
                         recipient_address,
                         amount,
@@ -977,7 +977,7 @@ impl Command {
 
                 send_operation(
                     client,
-                    &wallet,
+                    wallet,
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
@@ -1030,7 +1030,7 @@ impl Command {
                 };
                 send_operation(
                     client,
-                    &wallet,
+                    wallet,
                     OperationType::CallSC {
                         target_addr,
                         target_func,
