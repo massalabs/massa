@@ -124,6 +124,7 @@ jobs:
     steps:
       - run: exit 0
 
+  # Maybe launch it only in testnet branches
   gas-costs-check:
     if: github.ref != 'refs/heads/staging'
     runs-on: ubuntu-latest
@@ -142,8 +143,11 @@ jobs:
           repository: massalabs/gas-calibration
           path: gas-calibration
           ref: main
-      - name: "test"
-        run: echo ${{ github.head_ref || github.ref_name }} 
+      - uses: actions/checkout@v3
+        with:
+          repository: massalabs/massa-as-sdk
+          path: massa-as-sdk
+          ref: main
       - name: "Use the current branch as dependency for gas-calibration"
         run: ls && cd gas-calibration && sed -i 's/main/${{ github.head_ref || github.ref_name }}/g' Cargo.toml && cat Cargo.toml
       
