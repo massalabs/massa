@@ -1286,6 +1286,61 @@
 <a href="#1286" id="1286">1286</a>
 <a href="#1287" id="1287">1287</a>
 <a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1368,16 +1423,16 @@
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
-        message = <span class="string">&quot;remove staking addresses&quot;
+        message = <span class="string">&quot;starts staking with the given addresses&quot;
     </span>)]
-    </span>node_remove_staking_addresses,
+    </span>node_start_staking,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SecretKey1 SecretKey2 ...&quot;</span>),
-        message = <span class="string">&quot;add staking secret keys&quot;
+        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
+        message = <span class="string">&quot;stops staking with the given addresses&quot;
     </span>)]
-    </span>node_add_staking_secret_keys,
+    </span>node_stop_staking,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -1459,9 +1514,23 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        message = <span class="string">&quot;show wallet info (keys, addresses, balances ...)&quot;
+        message = <span class="string">&quot;show wallet info (addresses, balances ...)&quot;
     </span>)]
     </span>wallet_info,
+
+    <span class="attr">#[strum(
+        ascii_case_insensitive,
+        props(args = <span class="string">&quot;Address&quot;</span>),
+        message = <span class="string">&quot;get public key of an address&quot;
+    </span>)]
+    </span>get_public_key,
+
+    <span class="attr">#[strum(
+        ascii_case_insensitive,
+        props(args = <span class="string">&quot;Address&quot;</span>),
+        message = <span class="string">&quot;get secret key of an address&quot;
+    </span>)]
+    </span>get_secret_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -1781,35 +1850,6 @@
                 }
             }
 
-            Command::node_remove_staking_addresses =&gt; {
-                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
-                <span class="kw">match </span>client.private.remove_staking_addresses(addresses).<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(()) =&gt; {
-                        <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Addresses successfully removed!&quot;</span>)
-                        }
-                    }
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
-                }
-                <span class="prelude-val">Ok</span>(Box::new(()))
-            }
-
-            Command::node_add_staking_secret_keys =&gt; {
-                <span class="kw">match </span>client
-                    .private
-                    .add_staking_secret_keys(parameters.to_vec())
-                    .<span class="kw">await
-                </span>{
-                    <span class="prelude-val">Ok</span>(()) =&gt; {
-                        <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Keys successfully added!&quot;</span>)
-                        }
-                    }
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
-                };
-                <span class="prelude-val">Ok</span>(Box::new(()))
-            }
-
             Command::node_testnet_rewards_program_ownership_proof =&gt; {
                 <span class="kw">if </span>parameters.len() != <span class="number">2 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
@@ -1947,6 +1987,74 @@
                 </span>}
             }
 
+            Command::get_public_key =&gt; {
+                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>keypair: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
+                    .iter()
+                    .map(|addr| wallet.get_full_wallet().get(addr))
+                    .filter(|kp| kp.is_some())
+                    .collect();
+                <span class="kw">let </span>_public_keys: Vec&lt;<span class="kw">_</span>&gt; = keypair
+                    .iter()
+                    .map(|kp| kp.unwrap().get_public_key())
+                    .collect();
+
+                <span class="prelude-val">Ok</span>(Box::new(wallet.clone()))
+            }
+
+            Command::get_secret_key =&gt; {
+                <span class="kw">if </span>!json {
+                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your key&quot;</span>);
+                }
+                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>keypair: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
+                    .iter()
+                    .map(|addr| wallet.get_full_wallet().get(addr))
+                    .filter(|kp| kp.is_some())
+                    .collect();
+                <span class="kw">let </span>_secret_keys: Vec&lt;<span class="kw">_</span>&gt; = keypair.iter().map(|kp| kp.unwrap()).collect();
+
+                <span class="prelude-val">Ok</span>(Box::new(wallet.clone()))
+            }
+
+            Command::node_start_staking =&gt; {
+                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
+                <span class="kw">let </span>secret: Vec&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPair&gt;&gt; = addresses
+                    .iter()
+                    .map(|addr| wallet.get_full_wallet().get(addr))
+                    .collect();
+                <span class="kw">let </span>secret_str = secret
+                    .iter()
+                    .filter(|a| a.is_some())
+                    .map(|s| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, s.unwrap()))
+                    .collect();
+
+                <span class="kw">match </span>client.private.add_staking_secret_keys(secret_str).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if </span>!json {
+                            <span class="macro">println!</span>(<span class="string">&quot;Keys successfully added!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
+                };
+                <span class="prelude-val">Ok</span>(Box::new(()))
+            }
+
+            Command::node_stop_staking =&gt; {
+                <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
+                <span class="kw">match </span>client.private.remove_staking_addresses(addresses).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if </span>!json {
+                            <span class="macro">println!</span>(<span class="string">&quot;Addresses successfully removed!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
+                }
+                <span class="prelude-val">Ok</span>(Box::new(()))
+            }
+
             Command::wallet_generate_secret_key =&gt; {
                 <span class="kw">let </span>key = KeyPair::generate();
                 <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
@@ -1954,7 +2062,9 @@
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
                 } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, ad);
-                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_secret_keys &lt;your secret key&gt;` to start staking with this key.\n&quot;</span>);
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;Type `node_start_staking &lt;address&gt;` to start staking with this address.\n&quot;
+                    </span>);
                     <span class="prelude-val">Ok</span>(Box::new(()))
                 }
             }
@@ -1968,7 +2078,7 @@
                     <span class="kw">for </span>address <span class="kw">in </span>addresses {
                         <span class="macro">println!</span>(<span class="string">&quot;Derived and added address {} to the wallet.&quot;</span>, address);
                     }
-                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_secret_keys &lt;your secret key&gt;` to start staking with the corresponding key.\n&quot;</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_start_staking &lt;address&gt;` to start staking with the corresponding key.\n&quot;</span>);
                 }
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
@@ -2029,7 +2139,7 @@
                     }
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(staked_keys) = client.private.get_staking_addresses().<span class="kw">await </span>{
                         <span class="kw">if </span>!staked_keys.contains(<span class="kw-2">&amp;</span>addr) {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;You are buying rolls with an address not registered for staking. Don&#39;t forget to run &#39;node_add_staking_secret_keys &lt;your_secret_key&#39;&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">&quot;You are buying rolls with an address not registered for staking. Don&#39;t forget to run &#39;node_start_staking &lt;address&gt;&#39;&quot;</span>);
                         }
                     }
                 }
