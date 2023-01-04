@@ -2393,6 +2393,31 @@
                 },
                 "additionalProperties": false
             },
+            "Operation": {
+                "title": "Operation",
+                "description": "Operation",
+                "required": [
+                    "fee",
+                    "expire_period",
+                    "op"
+                ],
+                "type": "object",
+                "properties": {
+                    "fee": {
+                        "description": "the fee they have decided for this operation",
+                        "type": "string"
+                    },
+                    "expire_period": {
+                        "description": "after `expire_period` slot the operation won't be included in a block",
+                        "type": "number"
+                    },
+                    "op": {
+                        "$ref": "#/components/schemas/OperationType",
+                        "description": "the type specific operation part"
+                    }
+                },
+                "additionalProperties": false
+            },
             "OperationId": {
                 "description": "Operation id",
                 "type": "string"
@@ -2971,6 +2996,14 @@
                 "description": "A NodeStatus object",
                 "schema": {
                     "$ref": "#/components/schemas/NodeStatus"
+                }
+            },
+            "Operation": {
+                "name": "Operation",
+                "summary": "Operation",
+                "description": "A Operation object",
+                "schema": {
+                    "$ref": "#/components/schemas/Operation"
                 }
             },
             "OperationId": {
