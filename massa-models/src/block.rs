@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::config::THREAD_COUNT;
 use crate::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
 use crate::prehash::PreHashed;
 use crate::secure_share::{
@@ -715,34 +716,44 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
         let (rest, (slot, parents, operation_merkle_root)): (&[u8], (Slot, Vec<BlockId>, Hash)) =
-            context(
-                "Failed BlockHeader deserialization",
-                tuple((
-                    context("Failed slot deserialization", |input| {
-                        self.slot_deserializer.deserialize(input)
-                    }),
-                    context(
-                        "Failed parents deserialization",
-                        alt((
-                            preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
-                            preceded(
-                                tag(&[1]),
-                                count(
-                                    context("Failed block_id deserialization", |input| {
-                                        self.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    self.thread_count as usize,
-                                ),
+            context("Failed BlockHeader deserialization", |input| {
+                let (rest, slot) = context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                })
+                .parse(input)?;
+                let (rest, parents) = context(
+                    "Failed parents deserialization",
+                    alt((
+                        preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
+                        preceded(
+                            tag(&[1]),
+                            count(
+                                context("Failed block_id deserialization", |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                                self.thread_count as usize,
                             ),
-                        )),
-                    ),
-                    context("Failed operation_merkle_root", |input| {
-                        self.hash_deserializer.deserialize(input)
-                    }),
-                )),
-            )
+                        ),
+                    )),
+                )
+                .parse(rest)?;
+
+                // todo: check slots agains parents before parsing the merkle, and add the failure context to the top-level context
+
+                if slot.period == 0 && !parents.is_empty() {
+                    // todo: exit with a verbose context error "Genesis block cannot contain parents"
+                } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
+                    // todo: exit with a verbose context error "Non-genesis block must have THREAD_COUNT parents"
+                }
+
+                let (rest, markle) = context("Failed operation_merkle_root", |input| {
+                    self.hash_deserializer.deserialize(input)
+                })
+                .parse(rest)?;
+                Ok((rest, (slot, parents, markle)))
+            })
             .parse(buffer)?;
 
         if parents.is_empty() {
