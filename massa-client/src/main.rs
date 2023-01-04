@@ -52,9 +52,6 @@ struct Args {
     /// Enable a mode where input/output are serialized as JSON
     #[structopt(short = "j", long = "json")]
     json: bool,
-    #[structopt(short = "p", long = "pwd")]
-    /// Wallet password
-    password: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -64,7 +61,7 @@ struct JsonError {
 
 /// Ask for the wallet password
 /// If the wallet does not exist, it will require password confirmation
-fn ask_password(wallet_path: &Path) -> String {
+pub(crate) fn ask_password(wallet_path: &Path) -> String {
     if wallet_path.is_file() {
         Password::new()
             .with_prompt("Enter wallet password")
@@ -131,18 +128,25 @@ async fn run(args: Args) -> Result<()> {
         std::process::exit(1);
     }));
 
-    // ...
-    let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
-    let mut wallet = Wallet::new(args.wallet, password)?;
     let client = Client::new(address, public_port, private_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &mut wallet).await?;
+        repl::run(&client, &args.wallet).await?;
     } else {
         // Non-Interactive mode
+
+        let mut wallet_opt = match args.command.is_pwd_needed() {
+            true => {
+                let password = ask_password(&args.wallet);
+                let wallet = Wallet::new(args.wallet, password)?;
+                Some(wallet)
+            }
+            false => None,
+        };
+
         match args
             .command
-            .run(&client, &mut wallet, &args.parameters, args.json)
+            .run(&client, &mut wallet_opt, &args.parameters, args.json)
             .await
         {
             Ok(output) => {

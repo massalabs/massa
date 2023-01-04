@@ -171,82 +171,87 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(pwd_needed = "true"),
         message = "show wallet info (addresses, balances ...)"
     )]
     wallet_info,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address"),
+        props(args = "Address", pwd_needed = "true"),
         message = "get public key of an address"
     )]
     get_public_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address"),
+        props(args = "Address", pwd_needed = "true"),
         message = "get secret key of an address"
     )]
     get_secret_key,
 
     #[strum(
         ascii_case_insensitive,
+        props(pwd_needed = "true"),
         message = "generate a secret key and add it into the wallet"
     )]
     wallet_generate_secret_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SecretKey1 SecretKey2 ..."),
+        props(args = "SecretKey1 SecretKey2 ...", pwd_needed = "true"),
         message = "add a list of secret keys to the wallet"
     )]
     wallet_add_secret_keys,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ..."),
+        props(args = "Address1 Address2 ...", pwd_needed = "true"),
         message = "remove a list of addresses from the wallet"
     )]
     wallet_remove_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address string"),
+        props(args = "Address string", pwd_needed = "true"),
         message = "sign provided string with given address (address must be in the wallet)"
     )]
     wallet_sign,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address RollCount Fee"),
+        props(args = "Address RollCount Fee", pwd_needed = "true"),
         message = "buy rolls with wallet address"
     )]
     buy_rolls,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address RollCount Fee"),
+        props(args = "Address RollCount Fee", pwd_needed = "true"),
         message = "sell rolls with wallet address"
     )]
     sell_rolls,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress ReceiverAddress Amount Fee"),
+        props(args = "SenderAddress ReceiverAddress Amount Fee", pwd_needed = "true"),
         message = "send coins from a wallet address"
     )]
     send_transaction,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress PathToBytecode MaxGas Fee",),
+        props(args = "SenderAddress PathToBytecode MaxGas Fee", pwd_needed = "true"),
         message = "create and send an operation containing byte code"
     )]
     execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee",),
+        props(
+            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee",
+            pwd_needed = "true"
+        ),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,
@@ -402,6 +407,10 @@ impl Command {
         )
     }
 
+    pub(crate) fn is_pwd_needed(&self) -> bool {
+        self.get_str("pwd_needed").is_some() && self.get_str("pwd_needed").unwrap() == "true"
+    }
+
     /// run a given command
     ///
     /// # parameters
@@ -413,7 +422,7 @@ impl Command {
     pub(crate) async fn run(
         &self,
         client: &Client,
-        wallet: &mut Wallet,
+        wallet_opt: &mut Option<Wallet>,
         parameters: &[String],
         json: bool,
     ) -> Result<Box<dyn Output>> {
@@ -508,6 +517,8 @@ impl Command {
             }
 
             Command::node_testnet_rewards_program_ownership_proof => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 2 {
                     bail!("wrong number of parameters");
                 }
@@ -629,6 +640,8 @@ impl Command {
             }
 
             Command::wallet_info => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if !json {
                     client_warning!("do not share your key");
                 }
@@ -638,13 +651,15 @@ impl Command {
                     .await
                 {
                     Ok(addresses_info) => {
-                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
+                        Ok(Box::new(ExtendedWallet::new(&wallet, &addresses_info)?))
                     }
                     Err(_) => Ok(Box::new(wallet.clone())), // FIXME
                 }
             }
 
             Command::get_public_key => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let addresses = parse_vec::<Address>(parameters)?;
 
                 let keypair: Vec<Option<&KeyPair>> = addresses
@@ -661,6 +676,8 @@ impl Command {
             }
 
             Command::get_secret_key => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if !json {
                     client_warning!("do not share your key");
                 }
@@ -677,6 +694,8 @@ impl Command {
             }
 
             Command::node_start_staking => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let addresses = parse_vec::<Address>(parameters)?;
                 let secret: Vec<Option<&KeyPair>> = addresses
                     .iter()
@@ -713,6 +732,8 @@ impl Command {
             }
 
             Command::wallet_generate_secret_key => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let key = KeyPair::generate();
                 let ad = wallet.add_keypairs(vec![key])?[0];
                 if json {
@@ -727,6 +748,8 @@ impl Command {
             }
 
             Command::wallet_add_secret_keys => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let keypairs = parse_vec::<KeyPair>(parameters)?;
                 let addresses = wallet.add_keypairs(keypairs)?;
                 if json {
@@ -741,6 +764,8 @@ impl Command {
             }
 
             Command::wallet_remove_addresses => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let mut res = "".to_string();
                 let addresses = parse_vec::<Address>(parameters)?;
                 match wallet.remove_addresses(&addresses) {
@@ -758,6 +783,8 @@ impl Command {
             }
 
             Command::buy_rolls => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
@@ -802,7 +829,7 @@ impl Command {
                 }
                 send_operation(
                     client,
-                    wallet,
+                    &wallet,
                     OperationType::RollBuy { roll_count },
                     fee,
                     addr,
@@ -812,6 +839,8 @@ impl Command {
             }
 
             Command::sell_rolls => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
@@ -836,7 +865,7 @@ impl Command {
 
                 send_operation(
                     client,
-                    wallet,
+                    &wallet,
                     OperationType::RollSell { roll_count },
                     fee,
                     addr,
@@ -846,6 +875,8 @@ impl Command {
             }
 
             Command::send_transaction => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
@@ -871,7 +902,7 @@ impl Command {
 
                 send_operation(
                     client,
-                    wallet,
+                    &wallet,
                     OperationType::Transaction {
                         recipient_address,
                         amount,
@@ -909,6 +940,8 @@ impl Command {
                 Ok(Box::new(()))
             }
             Command::execute_smart_contract => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
@@ -944,7 +977,7 @@ impl Command {
 
                 send_operation(
                     client,
-                    wallet,
+                    &wallet,
                     OperationType::ExecuteSC {
                         data,
                         max_gas,
@@ -957,6 +990,8 @@ impl Command {
                 .await
             }
             Command::call_smart_contract => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 7 {
                     bail!("wrong number of parameters");
                 }
@@ -995,7 +1030,7 @@ impl Command {
                 };
                 send_operation(
                     client,
-                    wallet,
+                    &wallet,
                     OperationType::CallSC {
                         target_addr,
                         target_func,
@@ -1010,6 +1045,8 @@ impl Command {
                 .await
             }
             Command::wallet_sign => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 2 {
                     bail!("wrong number of parameters");
                 }
