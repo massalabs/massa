@@ -22,7 +22,7 @@ use rustyline::validate::MatchingBracketValidator;
 use rustyline::{CompletionType, Config, Editor};
 use rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
 use std::net::IpAddr;
-use std::path::PathBuf;
+use std::path::Path;
 use std::str;
 use strum::IntoEnumIterator;
 use strum::ParseError;
@@ -98,7 +98,7 @@ struct MyHelper {
     validator: MatchingBracketValidator,
 }
 
-pub(crate) async fn run(client: &Client, wallet_path: &PathBuf) -> Result<()> {
+pub(crate) async fn run(client: &Client, wallet_path: &Path) -> Result<()> {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' or 'CTRL+D or CTRL+C' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
