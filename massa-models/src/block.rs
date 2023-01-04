@@ -953,7 +953,7 @@ mod test {
         // create block header
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
-                slot: Slot::new(1, 1),
+                slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
@@ -1018,7 +1018,7 @@ mod test {
 
         // Genesis block do not have any parents and thus cannot embed endorsements
         let endorsement = Endorsement {
-            slot: Slot::new(1, 1),
+            slot: Slot::new(0, 1),
             index: 1,
             endorsed_block: BlockId(Hash::compute_from(&[1])),
         };
@@ -1026,7 +1026,7 @@ mod test {
         // create block header
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
-                slot: Slot::new(1, 1),
+                slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![Endorsement::new_verifiable(
