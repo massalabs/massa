@@ -79,14 +79,14 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ...")
+        props(args = "Address1 Address2 ..."),
         message = "starts staking with the given addresses"
     )]
     node_start_staking,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ...")
+        props(args = "Address1 Address2 ..."),
         message = "stops staking with the given addresses"
     )]
     node_stop_staking,
@@ -511,35 +511,6 @@ impl Command {
                 }
             }
 
-            Command::node_remove_staking_addresses => {
-                let addresses = parse_vec::<Address>(parameters)?;
-                match client.private.remove_staking_addresses(addresses).await {
-                    Ok(()) => {
-                        if !json {
-                            println!("Addresses successfully removed!")
-                        }
-                    }
-                    Err(e) => rpc_error!(e),
-                }
-                Ok(Box::new(()))
-            }
-
-            Command::node_add_staking_secret_keys => {
-                match client
-                    .private
-                    .add_staking_secret_keys(parameters.to_vec())
-                    .await
-                {
-                    Ok(()) => {
-                        if !json {
-                            println!("Keys successfully added!")
-                        }
-                    }
-                    Err(e) => rpc_error!(e),
-                };
-                Ok(Box::new(()))
-            }
-
             Command::node_testnet_rewards_program_ownership_proof => {
                 if parameters.len() != 2 {
                     bail!("wrong number of parameters");
@@ -679,35 +650,25 @@ impl Command {
 
             Command::get_public_key => {
                 let addresses = parse_vec::<Address>(parameters)?;
-                if !json {
-                    client_warning!("do not share your key");
-                }
-                match client
-                    .public
-                    .get_addresses(addresses)
-                    .await
-                {
-                    Ok(addresses_info) => {
-                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
-                    }
-                    Err(_) => Ok(Box::new(wallet.clone())), // FIXME
-                }
+
+                let keypair : Vec<Option<&KeyPair>> = addresses.iter().
+                map(|addr| wallet.get_full_wallet().get(addr)).filter(|kp| kp.is_some()).collect();
+                let public_keys: Vec<_> = keypair.iter().map(|kp| kp.unwrap().get_public_key()).collect();
+                
+                Ok(Box::new(wallet.clone()))
             }
 
             Command::get_secret_key => {
                 if !json {
                     client_warning!("do not share your key");
                 }
-                match client
-                    .public
-                    .get_addresses(wallet.get_full_wallet().keys().copied().collect())
-                    .await
-                {
-                    Ok(addresses_info) => {
-                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
-                    }
-                    Err(_) => Ok(Box::new(wallet.clone())), // FIXME
-                }
+                let addresses = parse_vec::<Address>(parameters)?;
+
+                let keypair : Vec<Option<&KeyPair>> = addresses.iter().
+                map(|addr| wallet.get_full_wallet().get(addr)).filter(|kp| kp.is_some()).collect();
+                let secret_keys: Vec<_> = keypair.iter().map(|kp| kp.unwrap()).collect();
+                
+                Ok(Box::new(wallet.clone()))
             }
 
             Command::node_start_staking => {
