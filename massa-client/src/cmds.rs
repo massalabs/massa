@@ -644,9 +644,8 @@ impl Command {
             }
 
             Command::wallet_info => {
-
                 let show_keys = parameters.len() == 1 && parameters[0] == "show-all-keys";
-                
+
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 if !json && show_keys {
@@ -657,14 +656,14 @@ impl Command {
                     .get_addresses(wallet.get_full_wallet().keys().copied().collect())
                     .await
                 {
-                    Ok(addresses_info) => {
-                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info, show_keys)?))
-                    }
-                    Err(_) => {
-                        match show_keys {
-                            true => {Ok(Box::new(wallet.clone()))},
-                            false => {Ok(Box::new(wallet.get_wallet_address_list()))}
-                        }
+                    Ok(addresses_info) => Ok(Box::new(ExtendedWallet::new(
+                        wallet,
+                        &addresses_info,
+                        show_keys,
+                    )?)),
+                    Err(_) => match show_keys {
+                        true => Ok(Box::new(wallet.clone())),
+                        false => Ok(Box::new(wallet.get_wallet_address_list())),
                     }, // FIXME
                 }
             }
