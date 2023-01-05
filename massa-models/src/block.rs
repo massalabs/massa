@@ -744,8 +744,10 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
                 if slot.period == 0 && !parents.is_empty() {
                     // todo: exit with a verbose context error "Genesis block cannot contain parents"
+                    panic!("change this panic to a context rich failure")
                 } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
                     // todo: exit with a verbose context error "Non-genesis block must have THREAD_COUNT parents"
+                    panic!("change this panic to a context rich failure")
                 }
 
                 let (rest, markle) = context("Failed operation_merkle_root", |input| {
