@@ -15,6 +15,7 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{address::Address, operation::OperationId};
 use massa_sdk::Client;
+use massa_signature::{KeyPair, PublicKey};
 use massa_wallet::Wallet;
 use rustyline::completion::{Completer, FilenameCompleter, Pair};
 use rustyline::error::ReadlineError;
@@ -232,6 +233,26 @@ impl Output for Wallet {
 impl Output for ExtendedWallet {
     fn pretty_print(&self) {
         println!("{}", self);
+    }
+}
+
+impl Output for Vec<(Address, PublicKey)> {
+    fn pretty_print(&self) {
+        for address_pubkey in self {
+            println!("Address: {}", address_pubkey.0);
+            println!("Public key: {}", address_pubkey.1);
+            println!();
+        }
+    }
+}
+
+impl Output for Vec<(Address, KeyPair)> {
+    fn pretty_print(&self) {
+        for address_pubkey in self {
+            println!("Address: {}", address_pubkey.0);
+            println!("Secret key: {}", address_pubkey.1);
+            println!();
+        }
     }
 }
 

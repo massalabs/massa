@@ -178,15 +178,15 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address", pwd_needed = "true"),
-        message = "get public key of an address"
+        props(args = "Address1 Address2 ..", pwd_needed = "true"),
+        message = "get public key of the given addresses"
     )]
     get_public_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address", pwd_needed = "true"),
-        message = "get secret key of an address"
+        props(args = "Address1 Address2 ...", pwd_needed = "true"),
+        message = "get secret key of the given addresses"
     )]
     get_secret_key,
 
@@ -662,17 +662,18 @@ impl Command {
 
                 let addresses = parse_vec::<Address>(parameters)?;
 
-                let keypair: Vec<Option<&KeyPair>> = addresses
+                let keypair: Vec<(&Address, Option<&KeyPair>)> = addresses
                     .iter()
-                    .map(|addr| wallet.get_full_wallet().get(addr))
-                    .filter(|kp| kp.is_some())
-                    .collect();
-                let _public_keys: Vec<_> = keypair
-                    .iter()
-                    .map(|kp| kp.unwrap().get_public_key())
+                    .map(|addr| (addr, wallet.get_full_wallet().get(addr)))
+                    .filter(|kp| kp.1.is_some())
                     .collect();
 
-                Ok(Box::new(wallet.clone()))
+                let addr_public_keys: Vec<_> = keypair
+                    .iter()
+                    .map(|kp| (*kp.0, kp.1.unwrap().get_public_key()))
+                    .collect();
+
+                Ok(Box::new(addr_public_keys))
             }
 
             Command::get_secret_key => {
@@ -681,16 +682,21 @@ impl Command {
                 if !json {
                     client_warning!("do not share your key");
                 }
+
                 let addresses = parse_vec::<Address>(parameters)?;
 
-                let keypair: Vec<Option<&KeyPair>> = addresses
+                let keypair: Vec<(&Address, Option<&KeyPair>)> = addresses
                     .iter()
-                    .map(|addr| wallet.get_full_wallet().get(addr))
-                    .filter(|kp| kp.is_some())
+                    .map(|addr| (addr, wallet.get_full_wallet().get(addr)))
+                    .filter(|kp| kp.1.is_some())
                     .collect();
-                let _secret_keys: Vec<_> = keypair.iter().map(|kp| kp.unwrap()).collect();
 
-                Ok(Box::new(wallet.clone()))
+                let addr_secret_keys: Vec<_> = keypair
+                    .iter()
+                    .map(|kp| (*kp.0, kp.1.unwrap().to_owned()))
+                    .collect();
+
+                Ok(Box::new(addr_secret_keys))
             }
 
             Command::node_start_staking => {
