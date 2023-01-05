@@ -148,6 +148,8 @@ jobs:
           repository: massalabs/massa-as-sdk
           path: massa-as-sdk
           ref: main
+      # Replace the branch in the dependencies in gas-calibration project by the current branch
+      # Special case for massa-sc-runtime: we use the branch referenced in the Cargo.toml of massa-execution-worker.
       - name: "Use the current branch as dependency for gas-calibration"
         run: > 
           cd gas-calibration && 
