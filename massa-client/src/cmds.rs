@@ -171,7 +171,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(pwd_needed = "true"),
+        props(args = "show-all-keys", pwd_needed = "true"),
         message = "show wallet info (addresses, balances ...)"
     )]
     wallet_info,
@@ -332,12 +332,15 @@ struct ExtendedWalletEntry {
     pub keypair: KeyPair,
     /// address and balance information
     pub address_info: CompactAddressInfo,
+    pub show_keys: bool,
 }
 
 impl Display for ExtendedWalletEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Secret key: {}", self.keypair)?;
-        writeln!(f, "Public key: {}", self.keypair.get_public_key())?;
+        if self.show_keys {
+            writeln!(f, "Secret key: {}", self.keypair)?;
+            writeln!(f, "Public key: {}", self.keypair.get_public_key())?;
+        }
         writeln!(f, "{}", self.address_info)?;
         writeln!(f, "\n=====\n")?;
         Ok(())
@@ -351,7 +354,7 @@ pub struct ExtendedWallet(PreHashMap<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     /// Reorganize everything into an extended wallet
-    fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {
+    fn new(wallet: &Wallet, addresses_info: &[AddressInfo], show_keys: bool) -> Result<Self> {
         Ok(ExtendedWallet(
             addresses_info
                 .iter()
@@ -365,6 +368,7 @@ impl ExtendedWallet {
                         ExtendedWalletEntry {
                             keypair: keypair.clone(),
                             address_info: x.compact(),
+                            show_keys,
                         },
                     ))
                 })
@@ -415,7 +419,7 @@ impl Command {
     ///
     /// # parameters
     /// - client: the RPC client
-    /// - wallet: an access to the wallet
+    /// - wallet_opt: an optional access to the wallet
     /// - parameters: the parsed parameters
     /// - json: true if --json was passed as an option
     ///     it means that we don't want to print anything we just want the json output
@@ -640,9 +644,12 @@ impl Command {
             }
 
             Command::wallet_info => {
+
+                let show_keys = parameters.len() == 1 && parameters[0] == "show-all-keys";
+                
                 let wallet = wallet_opt.as_mut().unwrap();
 
-                if !json {
+                if !json && show_keys {
                     client_warning!("do not share your key");
                 }
                 match client
@@ -651,9 +658,14 @@ impl Command {
                     .await
                 {
                     Ok(addresses_info) => {
-                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
+                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info, show_keys)?))
                     }
-                    Err(_) => Ok(Box::new(wallet.clone())), // FIXME
+                    Err(_) => {
+                        match show_keys {
+                            true => {Ok(Box::new(wallet.clone()))},
+                            false => {Ok(Box::new(wallet.get_wallet_address_list()))}
+                        }
+                    }, // FIXME
                 }
             }
 
