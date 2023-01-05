@@ -743,11 +743,17 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 // todo: check slots agains parents before parsing the merkle, and add the failure context to the top-level context
 
                 if slot.period == 0 && !parents.is_empty() {
-                    // todo: exit with a verbose context error "Genesis block cannot contain parents"
-                    panic!("change this panic to a context rich failure")
+                    return Err(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        "Genesis block cannot contain parents",
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
                 } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
-                    // todo: exit with a verbose context error "Non-genesis block must have THREAD_COUNT parents"
-                    panic!("change this panic to a context rich failure")
+                    return Err(nom::Err::Failure(ContextError::add_context(
+                        rest,
+                        "Non-genesis block must have THREAD_COUNT parents",
+                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                    )));
                 }
 
                 let (rest, markle) = context("Failed operation_merkle_root", |input| {
