@@ -449,6 +449,7 @@ impl Deserializer<Block> for BlockDeserializer {
                 context("Failed header deserialization", |input| {
                     self.header_deserializer.deserialize(input)
                 }),
+                // TODO(perf): Return here with fail instead of error if header fails deser
                 context("Failed operations deserialization", |input| {
                     self.op_ids_deserializer.deserialize(input)
                 }),
@@ -1069,14 +1070,17 @@ mod test {
         )
         .deserialize::<DeserializeError>(&ser_block);
 
+        // TODO: Catch an failed deser being a fail, instead of a recoverable error
         assert!(res.is_err());
+        // let nom::Err::Failure(_) = res.unwrap_err() else {
+        //     panic!("Deserialisation with invalid endorsements should be total fail");
+        // };
     }
     #[test]
     #[serial]
     fn test_invalid_genesis_block_serialization_with_parents() {
         let keypair = KeyPair::generate();
         // Genesis block cannot have parents
-
         let parents = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
