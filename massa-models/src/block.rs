@@ -1020,7 +1020,7 @@ mod test {
 
     #[test]
     #[serial]
-    fn test_invalid_genesis_block_serialization() {
+    fn test_invalid_genesis_block_serialization_with_endorsements() {
         let keypair = KeyPair::generate();
         let parents: Vec<BlockId> = vec![];
 
@@ -1065,6 +1065,95 @@ mod test {
 
         // deserialize
         let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block);
+
+        assert!(res.is_err());
+    }
+    #[test]
+    #[serial]
+    fn test_invalid_genesis_block_serialization_with_parents() {
+        let keypair = KeyPair::generate();
+        // Genesis block cannot have parents
+
+        let parents = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
+
+        // create block header
+        let orig_header = BlockHeader::new_wrapped(
+            BlockHeader {
+                slot: Slot::new(0, 1),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![],
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&wrapped_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let res: Result<(&[u8], WrappedBlock), _> = WrappedDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block);
+
+        assert!(res.is_err());
+    }
+    #[test]
+    #[serial]
+    fn test_invalid_block_serialization_with_wrong_parent_count() {
+        let keypair = KeyPair::generate();
+        // Non genesis block must have THREAD_COUNT parents
+        let parents = (1..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
+
+        // create block header
+        let orig_header = BlockHeader::new_wrapped(
+            BlockHeader {
+                slot: Slot::new(1, 1),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![],
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&wrapped_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let res: Result<(&[u8], WrappedBlock), _> = WrappedDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::<DeserializeError>(&ser_block);
