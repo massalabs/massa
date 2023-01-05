@@ -508,15 +508,25 @@ pub struct BlockHeader {
 
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
-    fn assert_invariants(&self) {
+    fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::config::ENDORSEMENT_COUNT;
 
         if self.slot.period == 0 {
-            assert!(self.parents.is_empty());
-            assert!(self.endorsements.is_empty());
+            if !self.parents.is_empty() {
+                return Err("Invariant broken: genesis block with parent(s)".into());
+            }
+            if !self.endorsements.is_empty() {
+                return Err("Invariant broken: genesis block with endorsement(s)".into());
+            }
         } else {
-            assert_eq!(self.parents.len(), crate::config::THREAD_COUNT as usize);
-            assert!(self.endorsements.len() <= crate::config::ENDORSEMENT_COUNT as usize);
+            if self.parents.len() != crate::config::THREAD_COUNT as usize {
+                return Err(
+                    "Invariant broken: non-genesis block with incorrect number of parents".into(),
+                );
+            }
+            if self.endorsements.len() > crate::config::ENDORSEMENT_COUNT as usize {
+                return Err("Invariant broken: endorsement count too high".into());
+            }
         }
 
         // assert that the endorsement indexes are all unique
@@ -524,14 +534,19 @@ impl BlockHeader {
             .endorsements
             .iter()
             .map(|endo| {
-                endo.verify_signature().expect(&format!("{:#?}", endo));
-                assert!(endo.content.index < ENDORSEMENT_COUNT);
-                endo.content.index
+                endo.verify_signature()?;
+                if endo.content.index >= ENDORSEMENT_COUNT {
+                    return Err::<u32, Box<dyn std::error::Error>>(
+                        "Invariant broken: endorsement index out of bounds".into(),
+                    );
+                }
+                Ok(endo.content.index)
             })
-            .collect::<std::collections::HashSet<_>>()
+            .try_collect::<std::collections::HashSet<_>>()?
             .len()
             == self.endorsements.len();
         assert!(is_idx_set);
+        Ok(())
     }
 }
 
@@ -557,9 +572,10 @@ impl SecuredHeader {
     }
 
     #[cfg(any(test, feature = "testing"))]
-    fn assert_invariants(&self) {
-        // self.content.assert_invariants();
-        self.verify_signature().expect(&format!("{:?}", self));
+    fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self.content.assert_invariants()?;
+        self.verify_signature()
+            .map_err(|er| format!("{}", er).into())
     }
 }
 
@@ -841,7 +857,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
         {
             #[cfg(any(test, feature = "testing"))]
-            header.assert_invariants();
+            assert!(header.assert_invariants().is_ok());
         }
 
         Ok((rest, header))
@@ -988,7 +1004,7 @@ mod test {
             ed.verify_signature().unwrap();
         }
 
-        res_block.content.header.assert_invariants();
+        res_block.content.header.assert_invariants().unwrap();
     }
 
     #[test]
@@ -1031,7 +1047,7 @@ mod test {
         .deserialize::<DeserializeError>(&ser_block)
         .unwrap();
 
-        res_block.content.header.assert_invariants();
+        res_block.content.header.assert_invariants().unwrap();
 
         // check equality
 

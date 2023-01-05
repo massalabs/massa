@@ -5,6 +5,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(bound_map)]
 #![feature(int_roundings)]
+#![feature(iterator_try_collect)]
 #![feature(iter_intersperse)]
 
 extern crate lazy_static;
