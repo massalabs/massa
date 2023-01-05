@@ -33,7 +33,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
-          save-if: ${{ github.ref_name == 'testnet_19' }}
+          save-if: ${{ github.ref_name == 'add_check_*' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -55,7 +55,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
-          save-if: ${{ github.ref_name == 'testnet_19' }}
+          save-if: ${{ github.ref_name == 'add_check_*' }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -78,7 +78,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
-          save-if: ${{ github.ref_name == 'testnet_19' }}
+          save-if: ${{ github.ref_name == 'add_check_*' }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -108,7 +108,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          save-if: ${{ github.ref_name == 'testnet_19' }}
+          save-if: ${{ github.ref_name == 'add_check_*' }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -149,9 +149,14 @@ jobs:
           path: massa-as-sdk
           ref: main
       - name: "Use the current branch as dependency for gas-calibration"
-        run: cd gas-calibration && sed -i 's/main/${{ github.head_ref || github.ref_name }}/g' Cargo.toml && sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep massa-sc-runtime | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml && cat Cargo.toml
+        run: > 
+          cd gas-calibration && 
+          sed -i 's/main/${{ github.head_ref || github.ref_name }}/g' Cargo.toml && 
+          sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep massa-sc-runtime | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml
       - name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
-        run: cd gas-calibration && cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
+        run: >
+          cd gas-calibration && 
+          cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
       
 
   doc:
@@ -169,7 +174,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
-          save-if: ${{ github.ref_name == 'testnet_19' }}
+          save-if: ${{ github.ref_name == 'add_check_*' }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc
