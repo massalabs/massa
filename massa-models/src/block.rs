@@ -506,6 +506,35 @@ pub struct BlockHeader {
     pub endorsements: Vec<SecureShareEndorsement>,
 }
 
+#[cfg(any(test, feature = "testing"))]
+impl BlockHeader {
+    fn assert_invariants(&self) {
+        use crate::config::ENDORSEMENT_COUNT;
+
+        if self.slot.period == 0 {
+            assert!(self.parents.is_empty());
+            assert!(self.endorsements.is_empty());
+        } else {
+            assert_eq!(self.parents.len(), crate::config::THREAD_COUNT as usize);
+            assert!(self.endorsements.len() <= crate::config::ENDORSEMENT_COUNT as usize);
+        }
+
+        // assert that the endorsement indexes are all unique
+        let is_idx_set = self
+            .endorsements
+            .iter()
+            .map(|endo| {
+                endo.verify_signature().expect(&format!("{:#?}", endo));
+                assert!(endo.content.index < ENDORSEMENT_COUNT);
+                endo.content.index
+            })
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+            == self.endorsements.len();
+        assert!(is_idx_set);
+    }
+}
+
 // NOTE: TODO
 // impl Signable<BlockId> for BlockHeader {
 //     fn get_signature_message(&self) -> Result<Hash, ModelsError> {
@@ -525,6 +554,12 @@ impl SecuredHeader {
     /// gets the header fitness
     pub fn get_fitness(&self) -> u64 {
         (self.content.endorsements.len() as u64) + 1
+    }
+
+    #[cfg(any(test, feature = "testing"))]
+    fn assert_invariants(&self) {
+        // self.content.assert_invariants();
+        self.verify_signature().expect(&format!("{:?}", self));
     }
 }
 
@@ -784,7 +819,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 parents[slot.thread as usize],
             ));
 
-        let (rest, endorsements) = context(
+        let (rest, endorsements): (&[u8], Vec<Wrapped<Endorsement, EndorsementId>>) = context(
             "Failed endorsements deserialization",
             length_count::<&[u8], SecureShare<Endorsement, EndorsementId>, u32, E, _, _>(
                 context("Failed length deserialization", |input| {
@@ -797,15 +832,19 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         )
         .parse(rest)?;
 
-        Ok((
-            rest,
-            BlockHeader {
-                slot,
-                parents,
-                operation_merkle_root,
-                endorsements,
-            },
-        ))
+        let header = BlockHeader {
+            slot,
+            parents,
+            operation_merkle_root,
+            endorsements,
+        };
+
+        {
+            #[cfg(any(test, feature = "testing"))]
+            header.assert_invariants();
+        }
+
+        Ok((rest, header))
     }
 }
 
@@ -848,6 +887,7 @@ impl std::fmt::Display for BlockHeader {
 
 #[cfg(test)]
 mod test {
+
     use super::*;
     use crate::{
         config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
@@ -947,10 +987,8 @@ mod test {
         for ed in orig_block.header.content.endorsements.iter() {
             ed.verify_signature().unwrap();
         }
-        res_block.content.header.verify_signature().unwrap();
-        for ed in res_block.content.header.content.endorsements.iter() {
-            ed.verify_signature().unwrap();
-        }
+
+        res_block.content.header.assert_invariants();
     }
 
     #[test]
@@ -992,6 +1030,8 @@ mod test {
         )
         .deserialize::<DeserializeError>(&ser_block)
         .unwrap();
+
+        res_block.content.header.assert_invariants();
 
         // check equality
 
