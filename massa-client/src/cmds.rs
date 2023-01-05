@@ -37,44 +37,60 @@ use strum_macros::{Display, EnumIter, EnumString};
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
-    #[strum(ascii_case_insensitive, message = "display this help")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "display this help"
+    )]
     help,
 
-    #[strum(ascii_case_insensitive, message = "exit the prompt")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "exit the prompt"
+    )]
     exit,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "IpAddr1 IpAddr2 ..."),
+        props(args = "IpAddr1 IpAddr2 ...", pwd_not_needed = "true"),
         message = "unban given IP address(es)"
     )]
     node_unban_by_ip,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Id1 Id2 ..."),
+        props(args = "Id1 Id2 ...", pwd_not_needed = "true"),
         message = "unban given id(s)"
     )]
     node_unban_by_id,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "IpAddr1 IpAddr2 ..."),
+        props(args = "IpAddr1 IpAddr2 ...", pwd_not_needed = "true"),
         message = "ban given IP address(es)"
     )]
     node_ban_by_ip,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Id1 Id2 ..."),
+        props(args = "Id1 Id2 ...", pwd_not_needed = "true"),
         message = "ban given id(s)"
     )]
     node_ban_by_id,
 
-    #[strum(ascii_case_insensitive, message = "stops the node")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "stops the node"
+    )]
     node_stop,
 
-    #[strum(ascii_case_insensitive, message = "show staking addresses")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "show staking addresses"
+    )]
     node_get_staking_addresses,
 
     #[strum(
@@ -100,62 +116,63 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "(add, remove or allow-all) [IpAddr]"),
-        message = "Manage boostrap whitelist IP address(es).No args returns the whitelist blacklist"
+        props(args = "(add, remove or allow-all) [IpAddr]", pwd_not_needed = "true"),
+        message = "Manage boostrap whitelist IP address(es). No args returns the whitelist blacklist"
     )]
     node_bootsrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "(add or remove) [IpAddr]"),
+        props(args = "(add or remove) [IpAddr]", pwd_not_needed = "true"),
         message = "Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist"
     )]
     node_bootsrap_blacklist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "(add or remove) [IpAddr]"),
+        props(args = "(add or remove) [IpAddr]", pwd_not_needed = "true"),
         message = "Manage peers whitelist IP address(es). No args returns the peers whitelist"
     )]
     node_peers_whitelist,
 
     #[strum(
         ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
         message = "show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)"
     )]
     get_status,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ..."),
+        props(args = "Address1 Address2 ...", pwd_not_needed = "true"),
         message = "get info about a list of addresses (balances, block creation, ...)"
     )]
     get_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address Key"),
+        props(args = "Address Key", pwd_not_needed = "true"),
         message = "get a datastore entry (key must be UTF-8)"
     )]
     get_datastore_entry,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "BlockId"),
+        props(args = "BlockId", pwd_not_needed = "true"),
         message = "show info about a block (content, finality ...)"
     )]
     get_blocks,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "EndorsementId1 EndorsementId2 ..."),
+        props(args = "EndorsementId1 EndorsementId2 ...", pwd_not_needed = "true"),
         message = "show info about a list of endorsements (content, finality ...)"
     )]
     get_endorsements,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "OperationId1 OperationId2 ..."),
+        props(args = "OperationId1 OperationId2 ...", pwd_not_needed = "true"),
         message = "show info about a list of operations(content, finality ...) "
     )]
     get_operations,
@@ -163,7 +180,8 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool"
+            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool",
+            pwd_not_needed = "true"
         ),
         message = "show events emitted by smart contracts with various filters"
     )]
@@ -171,112 +189,116 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "show-all-keys", pwd_needed = "true"),
+        props(args = "show-all-keys"),
         message = "show wallet info (addresses, balances ...)"
     )]
     wallet_info,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ..", pwd_needed = "true"),
+        props(args = "Address1 Address2 .."),
         message = "get public key of the given addresses"
     )]
     get_public_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ...", pwd_needed = "true"),
+        props(args = "Address1 Address2 ..."),
         message = "get secret key of the given addresses"
     )]
     get_secret_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(pwd_needed = "true"),
         message = "generate a secret key and add it into the wallet"
     )]
     wallet_generate_secret_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SecretKey1 SecretKey2 ...", pwd_needed = "true"),
+        props(args = "SecretKey1 SecretKey2 ..."),
         message = "add a list of secret keys to the wallet"
     )]
     wallet_add_secret_keys,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ...", pwd_needed = "true"),
+        props(args = "Address1 Address2 ..."),
         message = "remove a list of addresses from the wallet"
     )]
     wallet_remove_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address string", pwd_needed = "true"),
+        props(args = "Address string"),
         message = "sign provided string with given address (address must be in the wallet)"
     )]
     wallet_sign,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address RollCount Fee", pwd_needed = "true"),
+        props(args = "Address RollCount Fee"),
         message = "buy rolls with wallet address"
     )]
     buy_rolls,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address RollCount Fee", pwd_needed = "true"),
+        props(args = "Address RollCount Fee"),
         message = "sell rolls with wallet address"
     )]
     sell_rolls,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress ReceiverAddress Amount Fee", pwd_needed = "true"),
+        props(args = "SenderAddress ReceiverAddress Amount Fee"),
         message = "send coins from a wallet address"
     )]
     send_transaction,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress PathToBytecode MaxGas Fee", pwd_needed = "true"),
+        props(args = "SenderAddress PathToBytecode MaxGas Fee"),
         message = "create and send an operation containing byte code"
     )]
     execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(
-            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee",
-            pwd_needed = "true"
-        ),
+        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee"),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas Address",),
+        props(args = "PathToBytecode MaxGas Address", pwd_not_needed = "true"),
         message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
     read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress",),
+        props(
+            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress",
+            pwd_not_needed = "true"
+        ),
         message = "call a smart contract function, sender address is optional. Nothing is really executed on chain"
     )]
     read_only_call,
 
     #[strum(
         ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
         message = "show time remaining to end of current episode"
     )]
     when_episode_ends,
 
-    #[strum(ascii_case_insensitive, message = "tells you when moon")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "tells you when moon"
+    )]
     when_moon,
 }
 
@@ -412,7 +434,8 @@ impl Command {
     }
 
     pub(crate) fn is_pwd_needed(&self) -> bool {
-        self.get_str("pwd_needed").is_some() && self.get_str("pwd_needed").unwrap() == "true"
+        !(self.get_str("pwd_not_needed").is_some()
+            && self.get_str("pwd_not_needed").unwrap() == "true")
     }
 
     /// run a given command
