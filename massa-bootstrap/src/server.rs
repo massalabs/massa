@@ -20,11 +20,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use tokio::{
-    sync::mpsc,
-    task::JoinHandle,
-    time::{sleep, sleep_until},
-};
+use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -160,9 +156,8 @@ impl BootstrapServer {
             &self.bootstrap_config.bootstrap_whitelist_path,
             &self.bootstrap_config.bootstrap_blacklist_path,
         )?;
-        let cache_timer = sleep(cache_timeout);
+        let mut cache_interval = tokio::time::interval(cache_timeout);
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        tokio::pin!(cache_timer);
         /*
             select! without the "biased" modifier will randomly select the 1st branch to check,
             then will check the next ones in the order they are written.
@@ -182,10 +177,8 @@ impl BootstrapServer {
                 },
 
                 // Whitelist cache timeout
-                _ = &mut cache_timer => {
+                _ = cache_interval.tick() => {
                     (whitelist, blacklist) = reload_whitelist_blacklist(&self.bootstrap_config.bootstrap_whitelist_path, &self.bootstrap_config.bootstrap_blacklist_path)?;
-                    let instant = tokio::time::Instant::now().checked_add(self.bootstrap_config.per_ip_min_interval.to_duration()).ok_or(BootstrapError::GeneralError("Fail to setup cache timeout".to_string()))?;
-                    cache_timer.set(sleep_until(instant));
                 }
 
                 // bootstrap session finished
