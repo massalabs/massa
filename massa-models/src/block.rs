@@ -449,7 +449,6 @@ impl Deserializer<Block> for BlockDeserializer {
                 context("Failed header deserialization", |input| {
                     self.header_deserializer.deserialize(input)
                 }),
-                // TODO(perf): Return here with fail instead of error if header fails deser
                 context("Failed operations deserialization", |input| {
                     self.op_ids_deserializer.deserialize(input)
                 }),
@@ -799,8 +798,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 )
                 .parse(rest)?;
 
-                // todo: check slots agains parents before parsing the merkle, and add the failure context to the top-level context
-
+                // validate the parent/slot invariats before moving on to other fields
                 if slot.period == 0 && !parents.is_empty() {
                     return Err(nom::Err::Failure(ContextError::add_context(
                         rest,
@@ -815,11 +813,11 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                     )));
                 }
 
-                let (rest, markle) = context("Failed operation_merkle_root", |input| {
+                let (rest, merkle) = context("Failed operation_merkle_root", |input| {
                     self.hash_deserializer.deserialize(input)
                 })
                 .parse(rest)?;
-                Ok((rest, (slot, parents, markle)))
+                Ok((rest, (slot, parents, merkle)))
             })
             .parse(buffer)?;
 
