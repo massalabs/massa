@@ -135,6 +135,7 @@ async fn run(args: Args) -> Result<()> {
     } else {
         // Non-Interactive mode
 
+        // Only prompt for password if the command needs wallet access.
         let mut wallet_opt = match args.command.is_pwd_needed() {
             true => {
                 let password = ask_password(&args.wallet);

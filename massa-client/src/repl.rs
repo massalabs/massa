@@ -139,6 +139,7 @@ pub(crate) async fn run(client: &Client, wallet_path: &Path) -> Result<()> {
                 // Print result of evaluated command
                 match cmd {
                     Ok(command) => {
+                        // Check if we need to prompt the user for their wallet password
                         if command.is_pwd_needed() && wallet_opt.is_none() {
                             let password = ask_password(wallet_path);
                             let wallet = Wallet::new(wallet_path.to_path_buf(), password)?;

@@ -34,6 +34,8 @@ use strum_macros::{Display, EnumIter, EnumString};
 /// All the client commands
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
+/// Use props(pwd_not_needed = "true") if the command does not need an access to the wallet, to avoid unnecessary
+/// prompting of the user.
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
@@ -354,6 +356,7 @@ struct ExtendedWalletEntry {
     pub keypair: KeyPair,
     /// address and balance information
     pub address_info: CompactAddressInfo,
+    /// whether to display the public/secret keys or just the address info
     pub show_keys: bool,
 }
 
@@ -433,6 +436,7 @@ impl Command {
         )
     }
 
+    /// Returns true if the command needs wallet access
     pub(crate) fn is_pwd_needed(&self) -> bool {
         !(self.get_str("pwd_not_needed").is_some()
             && self.get_str("pwd_not_needed").unwrap() == "true")
