@@ -16,10 +16,15 @@ use parking_lot::RwLock;
 use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
+    path::PathBuf,
     sync::Arc,
-    time::{Duration, Instant}, path::PathBuf,
+    time::{Duration, Instant},
 };
-use tokio::{sync::mpsc, task::JoinHandle, time::{sleep, sleep_until}};
+use tokio::{
+    sync::mpsc,
+    task::JoinHandle,
+    time::{sleep, sleep_until},
+};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -110,9 +115,7 @@ fn reload_whitelist_blacklist(
     whitelist_path: &PathBuf,
     blacklist_path: &PathBuf,
 ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
-    let whitelist = if let Ok(whitelist) =
-    std::fs::read_to_string(whitelist_path)
-    {
+    let whitelist = if let Ok(whitelist) = std::fs::read_to_string(whitelist_path) {
         Some(
             serde_json::from_str::<HashSet<IpAddr>>(whitelist.as_str())
                 .map_err(|_| {
@@ -128,9 +131,7 @@ fn reload_whitelist_blacklist(
         None
     };
 
-    let blacklist = if let Ok(blacklist) =
-        std::fs::read_to_string(blacklist_path)
-    {
+    let blacklist = if let Ok(blacklist) = std::fs::read_to_string(blacklist_path) {
         Some(
             serde_json::from_str::<HashSet<IpAddr>>(blacklist.as_str())
                 .map_err(|_| {
