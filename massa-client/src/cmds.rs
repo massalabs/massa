@@ -23,7 +23,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
@@ -700,7 +700,9 @@ impl Command {
 
                 let addresses = parse_vec::<Address>(parameters)?;
 
-                let keypair: Vec<(&Address, Option<&KeyPair>)> = addresses
+                let hashset: HashSet<_> = addresses.into_iter().collect();
+
+                let keypair: Vec<(&Address, Option<&KeyPair>)> = hashset
                     .iter()
                     .map(|addr| (addr, wallet.get_full_wallet().get(addr)))
                     .filter(|kp| kp.1.is_some())
@@ -723,7 +725,9 @@ impl Command {
 
                 let addresses = parse_vec::<Address>(parameters)?;
 
-                let keypair: Vec<(&Address, Option<&KeyPair>)> = addresses
+                let hashset: HashSet<_> = addresses.into_iter().collect();
+
+                let keypair: Vec<(&Address, Option<&KeyPair>)> = hashset
                     .iter()
                     .map(|addr| (addr, wallet.get_full_wallet().get(addr)))
                     .filter(|kp| kp.1.is_some())
