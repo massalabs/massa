@@ -618,6 +618,8 @@
 <a href="#618" id="618">618</a>
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
 </pre><pre class="rust"><code><span class="kw">use </span>futures::stream::FuturesUnordered;
 <span class="kw">use </span>futures::StreamExt;
 <span class="kw">use </span>humantime::format_duration;
@@ -636,7 +638,6 @@
 <span class="kw">use </span>std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -687,6 +688,42 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bind) = bootstrap_config.bind {
         <span class="kw">let </span>(manager_tx, manager_rx) = mpsc::channel::&lt;()&gt;(<span class="number">1</span>);
 
+        <span class="kw">let </span>whitelist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(whitelist) =
+            std::fs::read_to_string(<span class="kw-2">&amp;</span>bootstrap_config.bootstrap_whitelist_path)
+        {
+            <span class="prelude-val">Some</span>(
+                serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(whitelist.as_str())
+                    .map_err(|<span class="kw">_</span>| {
+                        BootstrapError::GeneralError(String::from(
+                            <span class="string">&quot;Failed to parse bootstrap whitelist&quot;</span>,
+                        ))
+                    })<span class="question-mark">?
+                    </span>.into_iter()
+                    .map(normalize_ip)
+                    .collect(),
+            )
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+
+        <span class="kw">let </span>blacklist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(blacklist) =
+            std::fs::read_to_string(<span class="kw-2">&amp;</span>bootstrap_config.bootstrap_blacklist_path)
+        {
+            <span class="prelude-val">Some</span>(
+                serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(blacklist.as_str())
+                    .map_err(|<span class="kw">_</span>| {
+                        BootstrapError::GeneralError(String::from(
+                            <span class="string">&quot;Failed to parse bootstrap blacklist&quot;</span>,
+                        ))
+                    })<span class="question-mark">?
+                    </span>.into_iter()
+                    .map(normalize_ip)
+                    .collect(),
+            )
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+
         <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
             BootstrapServer {
                 consensus_controller,
@@ -697,6 +734,8 @@
                 bind,
                 keypair,
                 version,
+                whitelist,
+                blacklist,
                 ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
                 bootstrap_config,
             }
@@ -722,47 +761,9 @@
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
+    blacklist: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
+    whitelist: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
     ip_hist_map: HashMap&lt;IpAddr, Instant&gt;,
-}
-
-<span class="attr">#[allow(clippy::result_large_err)]
-#[allow(clippy::type_complexity)]
-</span><span class="kw">fn </span>reload_whitelist_blacklist(
-    whitelist_path: <span class="kw-2">&amp;</span>PathBuf,
-    blacklist_path: <span class="kw-2">&amp;</span>PathBuf,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), BootstrapError&gt; {
-    <span class="kw">let </span>whitelist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(whitelist) = std::fs::read_to_string(whitelist_path) {
-        <span class="prelude-val">Some</span>(
-            serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(whitelist.as_str())
-                .map_err(|<span class="kw">_</span>| {
-                    BootstrapError::GeneralError(String::from(
-                        <span class="string">&quot;Failed to parse bootstrap whitelist&quot;</span>,
-                    ))
-                })<span class="question-mark">?
-                </span>.into_iter()
-                .map(normalize_ip)
-                .collect(),
-        )
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
-
-    <span class="kw">let </span>blacklist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(blacklist) = std::fs::read_to_string(blacklist_path) {
-        <span class="prelude-val">Some</span>(
-            serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(blacklist.as_str())
-                .map_err(|<span class="kw">_</span>| {
-                    BootstrapError::GeneralError(String::from(
-                        <span class="string">&quot;Failed to parse bootstrap blacklist&quot;</span>,
-                    ))
-                })<span class="question-mark">?
-                </span>.into_iter()
-                .map(normalize_ip)
-                .collect(),
-        )
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
-    <span class="prelude-val">Ok</span>((whitelist, blacklist))
 }
 
 <span class="kw">impl </span>BootstrapServer {
@@ -771,14 +772,16 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run&quot;</span>, {});
         <span class="kw">let </span><span class="kw-2">mut </span>listener = <span class="self">self</span>.establisher.get_listener(<span class="self">self</span>.bind).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>bootstrap_sessions = FuturesUnordered::new();
-        <span class="kw">let </span>cache_timeout = <span class="self">self</span>.bootstrap_config.cache_duration.to_duration();
-        <span class="kw">let </span>(<span class="kw-2">mut </span>whitelist, <span class="kw-2">mut </span>blacklist) = reload_whitelist_blacklist(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_whitelist_path,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_blacklist_path,
-        )<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>cache_interval = tokio::time::interval(cache_timeout);
-        <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
-        <span class="comment">/*
+        <span class="comment">// let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
+        // let mut bootstrap_data: Option&lt;(
+        //     BootstrapableGraph,
+        //     BootstrapPeers,
+        //     Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        // )&gt; = None;
+        // let cache_timer = sleep(cache_timeout);
+        </span><span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
+        <span class="comment">// tokio::pin!(cache_timer);
+        /*
             select! without the &quot;biased&quot; modifier will randomly select the 1st branch to check,
             then will check the next ones in the order they are written.
             We choose this order:
@@ -796,18 +799,19 @@
                     <span class="kw">break
                 </span>},
 
-                <span class="comment">// Whitelist cache timeout
-                </span><span class="kw">_ </span>= cache_interval.tick() =&gt; {
-                    (whitelist, blacklist) = reload_whitelist_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_whitelist_path, <span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_blacklist_path)<span class="question-mark">?</span>;
-                }
+                <span class="comment">// cache cleanup timeout
+                // _ = &amp;mut cache_timer, if bootstrap_data.is_some() =&gt; {
+                //     massa_trace!(&quot;bootstrap.lib.run.cache_unload&quot;, {});
+                //     bootstrap_data = None;
+                // }
 
-                <span class="comment">// bootstrap session finished
+                // bootstrap session finished
                 </span><span class="prelude-val">Some</span>(<span class="kw">_</span>) = bootstrap_sessions.next() =&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: bootstrap_sessions.len()});
                 }
 
                 <span class="comment">// listener
-                </span>res_connection = listener.accept(<span class="kw-2">&amp;</span>whitelist, <span class="kw-2">&amp;</span>blacklist) =&gt; {
+                </span>res_connection = listener.accept(<span class="kw-2">&amp;</span><span class="self">self</span>.whitelist, <span class="kw-2">&amp;</span><span class="self">self</span>.blacklist) =&gt; {
                     <span class="kw">let </span>(dplx, remote_addr) = <span class="kw">if </span>res_connection.is_ok() {
                         res_connection.unwrap()
                     } <span class="kw">else </span>{
