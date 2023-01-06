@@ -527,6 +527,13 @@ impl BlockHeader {
             if self.endorsements.len() > crate::config::ENDORSEMENT_COUNT as usize {
                 return Err("Invariant broken: endorsement count too high".into());
             }
+
+            let parent_id = self.parents[self.slot.thread as usize];
+            for endo in self.endorsements.iter() {
+                if endo.content.endorsed_block != parent_id {
+                    return Err("Invariant broken: endorsement doesn't match parent".into());
+                }
+            }
         }
 
         // assert that the endorsement indexes are all unique
