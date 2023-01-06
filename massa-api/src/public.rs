@@ -127,6 +127,7 @@ impl MassaRpcServer for API<Public> {
             address,
             bytecode,
             operation_datastore,
+            is_final,
         } in reqs
         {
             let address = address.unwrap_or_else(|| {
@@ -170,6 +171,7 @@ impl MassaRpcServer for API<Public> {
                     owned_addresses: vec![address],
                     operation_datastore: op_datastore,
                 }],
+                is_final,
             };
 
             // run
@@ -211,6 +213,7 @@ impl MassaRpcServer for API<Public> {
             target_function,
             parameter,
             caller_address,
+            is_final,
         } in reqs
         {
             let caller_address = caller_address.unwrap_or_else(|| {
@@ -245,6 +248,7 @@ impl MassaRpcServer for API<Public> {
                         operation_datastore: None, // should always be None
                     },
                 ],
+                is_final,
             };
 
             // run

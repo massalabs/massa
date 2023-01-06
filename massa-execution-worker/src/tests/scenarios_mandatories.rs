@@ -70,6 +70,7 @@ fn test_readonly_execution() {
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
+            is_final: None,
         })
         .expect("readonly execution failed");
 

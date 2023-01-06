@@ -1024,10 +1024,15 @@ impl ExecutionState {
         }
 
         // set the execution slot to be the one after the latest executed active slot
-        let slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow in readonly execution");
+        let slot = if req.is_final.is_some() {
+            self.final_cursor
+                .get_next_slot(self.config.thread_count)
+                .expect("slot overflow in readonly execution")
+        } else {
+            self.active_cursor
+                .get_next_slot(self.config.thread_count)
+                .expect("slot overflow in readonly execution")
+        };
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
