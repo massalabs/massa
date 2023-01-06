@@ -1391,14 +1391,14 @@
         props(args = <span class="string">&quot;(add, remove or allow-all) [IpAddr]&quot;</span>),
         message = <span class="string">&quot;Manage boostrap whitelist IP address(es).No args returns the whitelist blacklist&quot;
     </span>)]
-    </span>node_bootsrap_whitelist,
+    </span>node_bootstrap_whitelist,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(args = <span class="string">&quot;(add or remove) [IpAddr]&quot;</span>),
         message = <span class="string">&quot;Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist&quot;
     </span>)]
-    </span>node_bootsrap_blacklist,
+    </span>node_bootstrap_blacklist,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -2310,10 +2310,10 @@
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
                 }
             }
-            Command::node_bootsrap_blacklist =&gt; {
+            Command::node_bootstrap_blacklist =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
                     <span class="kw">match </span>client.private.node_bootstrap_blacklist().<span class="kw">await </span>{
-                        <span class="prelude-val">Ok</span>(bootsraplist_ips) =&gt; <span class="prelude-val">Ok</span>(Box::new(bootsraplist_ips)),
+                        <span class="prelude-val">Ok</span>(bootstraplist_ips) =&gt; <span class="prelude-val">Ok</span>(Box::new(bootstraplist_ips)),
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
                     }
                 } <span class="kw">else </span>{
@@ -2334,7 +2334,7 @@
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
                                         <span class="macro">println!</span>(
-                                            <span class="string">&quot;Request of bootsrap blacklisting successfully sent!&quot;
+                                            <span class="string">&quot;Request of bootstrap blacklisting successfully sent!&quot;
                                         </span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
@@ -2350,7 +2350,7 @@
                             </span>{
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
-                                        <span class="macro">println!</span>(<span class="string">&quot;Request of remove from bootsrap blacklist successfully sent!&quot;</span>)
+                                        <span class="macro">println!</span>(<span class="string">&quot;Request of remove from bootstrap blacklist successfully sent!&quot;</span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
                                 }
@@ -2364,12 +2364,12 @@
                     res
                 }
             }
-            Command::node_bootsrap_whitelist =&gt; {
+            Command::node_bootstrap_whitelist =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
                     <span class="kw">match </span>client.private.node_bootstrap_whitelist().<span class="kw">await </span>{
-                        <span class="prelude-val">Ok</span>(bootsraplist_ips) =&gt; <span class="prelude-val">Ok</span>(Box::new(bootsraplist_ips)),
+                        <span class="prelude-val">Ok</span>(bootstraplist_ips) =&gt; <span class="prelude-val">Ok</span>(Box::new(bootstraplist_ips)),
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;if bootsrap whitelist configuration file does&#39;t exists, bootsrap is allowed for everyone !!!&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">&quot;if bootstrap whitelist configuration file does&#39;t exists, bootstrap is allowed for everyone !!!&quot;</span>);
                             <span class="macro">rpc_error!</span>(e)
                         }
                     }
@@ -2394,7 +2394,7 @@
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
                                         <span class="macro">println!</span>(
-                                            <span class="string">&quot;Request of bootsrap whitelisting successfully sent!&quot;
+                                            <span class="string">&quot;Request of bootstrap whitelisting successfully sent!&quot;
                                         </span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
@@ -2413,7 +2413,7 @@
                             </span>{
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
-                                        <span class="macro">println!</span>(<span class="string">&quot;Request of remove from bootsrap whitelist successfully sent!&quot;</span>)
+                                        <span class="macro">println!</span>(<span class="string">&quot;Request of remove from bootstrap whitelist successfully sent!&quot;</span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
                                 }
@@ -2425,7 +2425,7 @@
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
                                         <span class="macro">println!</span>(
-                                            <span class="string">&quot;Request of bootsrap whitelisting everyone successfully sent!&quot;
+                                            <span class="string">&quot;Request of bootstrap whitelisting everyone successfully sent!&quot;
                                         </span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
