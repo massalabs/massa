@@ -14,7 +14,7 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    operation::{OperationPrefixIds, WrappedOperation},
+    operation::{OperationPrefixIds, SecureShareOperation},
     prehash::CapacityAllocator,
 };
 use massa_protocol_exports::ProtocolError;
@@ -141,7 +141,7 @@ impl ProtocolWorker {
     pub(crate) async fn on_operations_received(
         &mut self,
         node_id: NodeId,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
         op_timer: &mut Pin<&mut Sleep>,
     ) {
         if let Err(err) = self
@@ -209,7 +209,7 @@ impl ProtocolWorker {
             return Ok(());
         }
 
-        let mut ops: Vec<WrappedOperation> = Vec::with_capacity(op_pre_ids.len());
+        let mut ops: Vec<SecureShareOperation> = Vec::with_capacity(op_pre_ids.len());
         {
             // Scope the lock because of the async call to `send_operations` below.
             let stored_ops = self.storage.read_operations();

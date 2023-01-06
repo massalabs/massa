@@ -10,11 +10,11 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
 use massa_models::{
     block::Block,
-    block::{BlockId, BlockSerializer, WrappedHeader},
+    block::{BlockId, BlockSerializer, SecuredHeader},
     node::NodeId,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},
-    wrapped::{Id, Wrapped},
+    secure_share::{Id, SecureShare},
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
 use massa_protocol_exports::ProtocolError;
@@ -238,7 +238,7 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        header: WrappedHeader,
+        header: SecuredHeader,
     ) -> Result<(), ProtocolError> {
         if let Some(info) = self.block_wishlist.get(&block_id) {
             if info.header.is_some() {
@@ -410,7 +410,7 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        mut operations: Vec<WrappedOperation>,
+        mut operations: Vec<SecureShareOperation>,
         op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         if let Err(err) = self
@@ -495,10 +495,10 @@ impl ProtocolWorker {
                         .unwrap();
 
                     // wrap block
-                    let wrapped_block = Wrapped {
+                    let wrapped_block = SecureShare {
                         signature: header.signature,
-                        creator_public_key: header.creator_public_key,
-                        creator_address: header.creator_address,
+                        content_creator_pub_key: header.content_creator_pub_key,
+                        content_creator_address: header.content_creator_address,
                         id: block_id,
                         content: block,
                         serialized_data: content_serialized,

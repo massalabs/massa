@@ -9,15 +9,15 @@ use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
 use massa_models::operation::Operation;
+use massa_models::secure_share::Id;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
-use massa_models::wrapped::Id;
 use massa_models::{
-    block::{BlockId, WrappedHeader},
-    endorsement::{EndorsementId, WrappedEndorsement},
+    block::{BlockId, SecuredHeader},
+    endorsement::{EndorsementId, SecureShareEndorsement},
     node::NodeId,
     operation::OperationPrefixId,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
@@ -96,7 +96,7 @@ pub async fn start_protocol_controller(
 #[derive(Debug, Clone)]
 pub(crate) struct BlockInfo {
     /// The header of the block.
-    pub(crate) header: Option<WrappedHeader>,
+    pub(crate) header: Option<SecuredHeader>,
     /// Operations ids. None if not received yet
     pub(crate) operation_ids: Option<Vec<OperationId>>,
     /// Operations and endorsements contained in the block,
@@ -107,7 +107,7 @@ pub(crate) struct BlockInfo {
 }
 
 impl BlockInfo {
-    fn new(header: Option<WrappedHeader>, storage: Storage) -> Self {
+    fn new(header: Option<SecuredHeader>, storage: Storage) -> Self {
         BlockInfo {
             header,
             operation_ids: None,
@@ -145,7 +145,7 @@ pub struct ProtocolWorker {
     /// Cache of processed operations
     pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
-    pub(crate) checked_headers: LinearHashCacheMap<BlockId, WrappedHeader>,
+    pub(crate) checked_headers: LinearHashCacheMap<BlockId, SecuredHeader>,
     /// List of ids of operations that we asked to the nodes
     pub(crate) asked_operations: PreHashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -378,7 +378,7 @@ impl ProtocolWorker {
             { "endorsements": storage.get_endorsement_refs() }
         );
         for (node, node_info) in self.active_nodes.iter_mut() {
-            let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
+            let new_endorsements: PreHashMap<EndorsementId, SecureShareEndorsement> = {
                 let endorsements_reader = storage.read_endorsements();
                 storage
                     .get_endorsement_refs()
@@ -779,7 +779,7 @@ impl ProtocolWorker {
     /// - Block matches that of the block.
     pub(crate) async fn note_header_from_node(
         &mut self,
-        header: &WrappedHeader,
+        header: &SecuredHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
@@ -894,7 +894,7 @@ impl ProtocolWorker {
     /// - Valid signature
     pub(crate) async fn note_operations_from_node(
         &mut self,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
         source_node_id: &NodeId,
         op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
@@ -925,7 +925,7 @@ impl ProtocolWorker {
         verify_sigs_batch(
             &new_operations
                 .iter()
-                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.creator_public_key))
+                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.content_creator_pub_key))
                 .collect::<Vec<_>>(),
         )?;
 
@@ -1001,7 +1001,7 @@ impl ProtocolWorker {
     /// - Valid signature.
     pub(crate) async fn note_endorsements_from_node(
         &mut self,
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(), ProtocolError> {
@@ -1028,7 +1028,7 @@ impl ProtocolWorker {
                     (
                         *endorsement_id.get_hash(),
                         endorsement.signature,
-                        endorsement.creator_public_key,
+                        endorsement.content_creator_pub_key,
                     )
                 })
                 .collect::<Vec<_>>(),

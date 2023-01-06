@@ -11,12 +11,12 @@ use crate::NetworkEvent;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::wrapped::WrappedContent;
+use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
     amount::Amount,
     block::BlockId,
-    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     version::Version,
 };
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
@@ -324,7 +324,7 @@ pub async fn incoming_message_drain_stop(
     join_handle.await.expect("could not join message drain")
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
+pub fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
     let sender_keypair = KeyPair::generate();
 
     let recv_keypair = KeyPair::generate();
@@ -339,7 +339,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
         expire_period,
     };
 
-    Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
+    Operation::secure(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.

@@ -9,10 +9,10 @@ use massa_models::{
     clique::Clique,
     operation::{Operation, OperationId},
     prehash::PreHashSet,
+    secure_share::SecureShare,
     slot::Slot,
     stats::ConsensusStats,
     streaming_step::StreamingStep,
-    wrapped::Wrapped,
 };
 use massa_storage::Storage;
 use parking_lot::RwLock;
@@ -228,7 +228,7 @@ impl ConsensusController for ConsensusControllerImpl {
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
         if self.broadcast_enabled {
             if let Some(wrapped_block) = block_storage.read_blocks().get(&block_id) {
-                let operations: Vec<(OperationId, Option<Wrapped<Operation, OperationId>>)> =
+                let operations: Vec<(OperationId, Option<SecureShare<Operation, OperationId>>)> =
                     wrapped_block
                         .content
                         .operations
@@ -271,7 +271,7 @@ impl ConsensusController for ConsensusControllerImpl {
         }
     }
 
-    fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
+    fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if self.broadcast_enabled {
             let _ = self
                 .channels
@@ -286,7 +286,7 @@ impl ConsensusController for ConsensusControllerImpl {
         }
     }
 
-    fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
+    fn mark_invalid_block(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::MarkInvalidBlock(block_id, header))

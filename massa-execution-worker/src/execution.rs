@@ -27,7 +27,7 @@ use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
     block::BlockId,
-    operation::{OperationId, OperationType, WrappedOperation},
+    operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
@@ -192,7 +192,7 @@ impl ExecutionState {
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     pub fn execute_operation(
         &self,
-        operation: &WrappedOperation,
+        operation: &SecureShareOperation,
         block_slot: Slot,
         remaining_block_gas: &mut u64,
         block_credits: &mut Amount,
@@ -214,7 +214,7 @@ impl ExecutionState {
         })?;
 
         // get the operation's sender address
-        let sender_addr = operation.creator_address;
+        let sender_addr = operation.content_creator_address;
 
         // get the thread to which the operation belongs
         let op_thread = sender_addr.get_thread(self.config.thread_count);
@@ -270,7 +270,7 @@ impl ExecutionState {
             context.max_gas = operation.get_gas_usage();
 
             // set the creator address
-            context.creator_address = Some(operation.creator_address);
+            context.creator_address = Some(operation.content_creator_address);
 
             // set the context origin operation ID
             context.origin_operation_id = Some(operation_id);
@@ -780,7 +780,7 @@ impl ExecutionState {
                     .content
                     .endorsements
                     .iter()
-                    .map(|endo| (endo.creator_address, endo.content.endorsed_block))
+                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
                     .unzip();
 
             // deduce endorsement target block creators
@@ -792,7 +792,7 @@ impl ExecutionState {
                         blocks
                             .get(b_id)
                             .expect("endorsed block absent from storage")
-                            .creator_address
+                            .content_creator_address
                     })
                     .collect::<Vec<_>>()
             };
@@ -820,7 +820,7 @@ impl ExecutionState {
             }
 
             // Get block creator address
-            let block_creator_addr = stored_block.creator_address;
+            let block_creator_addr = stored_block.content_creator_address;
 
             // acquire lock on execution context
             let mut context = context_guard!(self);
