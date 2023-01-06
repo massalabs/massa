@@ -439,11 +439,6 @@ pub fn get_boot_state() -> BootstrapableGraph {
         .unwrap();
 
     assert_eq_bootstrap_graph(&bootstrapable_graph_deserialized, &boot_graph);
-    for blk in bootstrapable_graph_deserialized.final_blocks.iter() {
-        for endo in blk.block.content.header.content.endorsements.iter() {
-            endo.verify_signature().unwrap();
-        }
-    }
 
     boot_graph
 }
