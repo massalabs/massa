@@ -22,6 +22,7 @@ use rustyline::error::ReadlineError;
 use rustyline::validate::MatchingBracketValidator;
 use rustyline::{CompletionType, Config, Editor};
 use rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
+use std::env;
 use std::net::IpAddr;
 use std::path::Path;
 use std::str;
@@ -99,7 +100,11 @@ struct MyHelper {
     validator: MatchingBracketValidator,
 }
 
-pub(crate) async fn run(client: &Client, wallet_path: &Path) -> Result<()> {
+pub(crate) async fn run(
+    client: &Client,
+    wallet_path: &Path,
+    args_password: Option<String>,
+) -> Result<()> {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' or 'CTRL+D or CTRL+C' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
@@ -141,7 +146,13 @@ pub(crate) async fn run(client: &Client, wallet_path: &Path) -> Result<()> {
                     Ok(command) => {
                         // Check if we need to prompt the user for their wallet password
                         if command.is_pwd_needed() && wallet_opt.is_none() {
-                            let password = ask_password(wallet_path);
+                            let password =
+                                match (args_password.clone(), env::var("MASSA_CLIENT_PASSWORD")) {
+                                    (Some(pwd), _) => pwd,
+                                    (_, Ok(pwd)) => pwd,
+                                    _ => ask_password(wallet_path),
+                                };
+
                             let wallet = Wallet::new(wallet_path.to_path_buf(), password)?;
                             wallet_opt = Some(wallet);
                         }

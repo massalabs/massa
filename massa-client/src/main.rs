@@ -12,6 +12,7 @@ use dialoguer::Password;
 use massa_sdk::{Client, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
+use std::env;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -52,6 +53,9 @@ struct Args {
     /// Enable a mode where input/output are serialized as JSON
     #[structopt(short = "j", long = "json")]
     json: bool,
+    #[structopt(short = "p", long = "pwd")]
+    /// Wallet password
+    password: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -131,14 +135,19 @@ async fn run(args: Args) -> Result<()> {
     let client = Client::new(address, public_port, private_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &args.wallet).await?;
+        repl::run(&client, &args.wallet, args.password).await?;
     } else {
         // Non-Interactive mode
 
         // Only prompt for password if the command needs wallet access.
         let mut wallet_opt = match args.command.is_pwd_needed() {
             true => {
-                let password = ask_password(&args.wallet);
+                let password = match (args.password, env::var("MASSA_CLIENT_PASSWORD")) {
+                    (Some(pwd), _) => pwd,
+                    (_, Ok(pwd)) => pwd,
+                    _ => ask_password(&args.wallet),
+                };
+
                 let wallet = Wallet::new(args.wallet, password)?;
                 Some(wallet)
             }
