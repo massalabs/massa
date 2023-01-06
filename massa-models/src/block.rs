@@ -842,7 +842,18 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                     self.length_endorsements_deserializer.deserialize(input)
                 }),
                 context("Failed endorsement deserialization", |input| {
-                    endorsement_deserializer.deserialize_with(&self.endorsement_serializer, input)
+                    let (rest, endo) = endorsement_deserializer
+                        .deserialize_with(&self.endorsement_serializer, input)?;
+
+                    if endo.verify_signature().is_err() {
+                        Err(nom::Err::Failure(ContextError::add_context(
+                            rest,
+                            "Endorsement signature invalid",
+                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                        )))
+                    } else {
+                        Ok((rest, endo))
+                    }
                 }),
             ),
         )
