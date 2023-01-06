@@ -859,6 +859,17 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         )
         .parse(rest)?;
 
+        let parent_id = parents[slot.thread as usize];
+        for endo in endorsements.iter() {
+            if endo.content.endorsed_block != parent_id {
+                return Err(nom::Err::Failure(ContextError::add_context(
+                    rest,
+                    "Endorsement does not match block parents",
+                    ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                )));
+            }
+        }
+
         let header = BlockHeader {
             slot,
             parents,
