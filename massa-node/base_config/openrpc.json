@@ -503,8 +503,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_blacklist",
-            "summary": "Add to bootsrap blacklist given IP address(es)",
-            "description": "Add to bootsrap blacklist given IP address(es)."
+            "summary": "Add to bootstrap blacklist given IP address(es)",
+            "description": "Add to bootstrap blacklist given IP address(es)."
         },
         {
             "tags": [
@@ -533,8 +533,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_whitelist",
-            "summary": "Add to bootsrap whitelist given IP address(es)",
-            "description": "Add to bootsrap whitelist given IP address(es)."
+            "summary": "Add to bootstrap whitelist given IP address(es)",
+            "description": "Add to bootstrap whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -644,8 +644,8 @@
                 }
             },
             "name": "node_bootstrap_blacklist",
-            "summary": "Returns bootsrap blacklist IP address(es)",
-            "description": "Returns bootsrap blacklist IP address(es)."
+            "summary": "Returns bootstrap blacklist IP address(es)",
+            "description": "Returns bootstrap blacklist IP address(es)."
         },
         {
             "tags": [
@@ -667,8 +667,8 @@
                 }
             },
             "name": "node_bootstrap_whitelist",
-            "summary": "Returns bootsrap whitelist IP address(es)",
-            "description": "Returns bootsrap whitelist IP address(es)."
+            "summary": "Returns bootstrap whitelist IP address(es)",
+            "description": "Returns bootstrap whitelist IP address(es)."
         },
         {
             "tags": [
@@ -684,8 +684,8 @@
                 "schema": false
             },
             "name": "node_bootstrap_whitelist_allow_all",
-            "summary": "Allow everyone to bootsrap from the node",
-            "description": "Allow everyone to bootsrap from the node. Remove bootsrap whitelist configuration file."
+            "summary": "Allow everyone to bootstrap from the node",
+            "description": "Allow everyone to bootstrap from the node. Remove bootstrap whitelist configuration file."
         },
         {
             "tags": [
@@ -737,8 +737,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_blacklist",
-            "summary": "Remove from bootsrap blacklist given IP address(es)",
-            "description": "Remove from bootsrap blacklist given IP address(es)."
+            "summary": "Remove from bootstrap blacklist given IP address(es)",
+            "description": "Remove from bootstrap blacklist given IP address(es)."
         },
         {
             "tags": [
@@ -767,8 +767,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_whitelist",
-            "summary": "Remove from bootsrap whitelist given IP address(es)",
-            "description": "Remove from bootsrap whitelist given IP address(es)."
+            "summary": "Remove from bootstrap whitelist given IP address(es)",
+            "description": "Remove from bootstrap whitelist given IP address(es)."
         },
         {
             "tags": [
