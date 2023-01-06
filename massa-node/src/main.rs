@@ -810,6 +810,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
                         warn!("in response to a desynchronization, the node is going to bootstrap again");
                         break true;
                     }
+                    ConsensusEvent::Stop => {
+                        break false;
+                    }
                 },
                 Err(TryRecvError::Disconnected) => {
                     error!("consensus_event_receiver.wait_event disconnected");
