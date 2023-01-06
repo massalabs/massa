@@ -5,7 +5,7 @@
     },
     AttackBlockDetected(BlockId),
     WishlistDelta {
-        new: PreHashMap&lt;BlockId, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;WrappedHeader&gt;&gt;,
+        new: PreHashMap&lt;BlockId, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;SecuredHeader&gt;&gt;,
         remove: PreHashSet&lt;BlockId&gt;,
     },
     PropagateOperations(Storage),
@@ -15,7 +15,7 @@
 </div></div><div class="sub-variant-field"><span id="variant.IntegratedBlock.field.storage" class="small-section-header"><a href="#variant.IntegratedBlock.field.storage" class="anchor field">§</a><code>storage:&nbsp;Storage</code></span><div class="docblock"><p>block storage</p>
 </div></div></div><div class="docblock"><p>Notify block integration of a given block.</p>
 </div><section id="variant.AttackBlockDetected" class="variant"><a href="#variant.AttackBlockDetected" class="anchor">§</a><h3 class="code-header">AttackBlockDetected(BlockId)</h3></section><div class="docblock"><p>A block, or it’s header, amounted to an attempted attack.</p>
-</div><section id="variant.WishlistDelta" class="variant"><a href="#variant.WishlistDelta" class="anchor">§</a><h3 class="code-header">WishlistDelta</h3></section><div class="sub-variant" id="variant.WishlistDelta.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.WishlistDelta.field.new" class="small-section-header"><a href="#variant.WishlistDelta.field.new" class="anchor field">§</a><code>new:&nbsp;PreHashMap&lt;BlockId, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;WrappedHeader&gt;&gt;</code></span><div class="docblock"><p>add to wish list</p>
+</div><section id="variant.WishlistDelta" class="variant"><a href="#variant.WishlistDelta" class="anchor">§</a><h3 class="code-header">WishlistDelta</h3></section><div class="sub-variant" id="variant.WishlistDelta.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.WishlistDelta.field.new" class="small-section-header"><a href="#variant.WishlistDelta.field.new" class="anchor field">§</a><code>new:&nbsp;PreHashMap&lt;BlockId, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;SecuredHeader&gt;&gt;</code></span><div class="docblock"><p>add to wish list</p>
 </div></div><div class="sub-variant-field"><span id="variant.WishlistDelta.field.remove" class="small-section-header"><a href="#variant.WishlistDelta.field.remove" class="anchor field">§</a><code>remove:&nbsp;PreHashSet&lt;BlockId&gt;</code></span><div class="docblock"><p>remove from wish list</p>
 </div></div></div><div class="docblock"><p>Wish list delta</p>
 </div><section id="variant.PropagateOperations" class="variant"><a href="#variant.PropagateOperations" class="anchor">§</a><h3 class="code-header">PropagateOperations(Storage)</h3></section><div class="docblock"><p>Propagate operations (send batches)

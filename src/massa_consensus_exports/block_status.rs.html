@@ -121,7 +121,7 @@
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{Block, BlockId, WrappedHeader},
+    block::{Block, BlockId, SecuredHeader},
     prehash::PreHashSet,
     slot::Slot,
 };
@@ -131,7 +131,7 @@
 <span class="attr">#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>HeaderOrBlock {
-    Header(WrappedHeader),
+    Header(SecuredHeader),
     Block {
         id: BlockId,
         slot: Slot,
@@ -220,7 +220,7 @@
 </span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>ExportCompiledBlock {
     <span class="doccomment">/// Header of the corresponding block.
-    </span><span class="kw">pub </span>header: WrappedHeader,
+    </span><span class="kw">pub </span>header: SecuredHeader,
     <span class="doccomment">/// For (i, set) in children,
     /// set contains the headers&#39; hashes
     /// of blocks referencing exported block as a parent,

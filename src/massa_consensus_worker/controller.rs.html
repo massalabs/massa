@@ -310,10 +310,10 @@
     clique::Clique,
     operation::{Operation, OperationId},
     prehash::PreHashSet,
+    secure_share::SecureShare,
     slot::Slot,
     stats::ConsensusStats,
     streaming_step::StreamingStep,
-    wrapped::Wrapped,
 };
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -529,7 +529,7 @@
     <span class="kw">fn </span>register_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
         <span class="kw">if </span><span class="self">self</span>.broadcast_enabled {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = block_storage.read_blocks().get(<span class="kw-2">&amp;</span>block_id) {
-                <span class="kw">let </span>operations: Vec&lt;(OperationId, <span class="prelude-ty">Option</span>&lt;Wrapped&lt;Operation, OperationId&gt;&gt;)&gt; =
+                <span class="kw">let </span>operations: Vec&lt;(OperationId, <span class="prelude-ty">Option</span>&lt;SecureShare&lt;Operation, OperationId&gt;&gt;)&gt; =
                     wrapped_block
                         .content
                         .operations
@@ -572,7 +572,7 @@
         }
     }
 
-    <span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: Wrapped&lt;BlockHeader, BlockId&gt;) {
+    <span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;) {
         <span class="kw">if </span><span class="self">self</span>.broadcast_enabled {
             <span class="kw">let _ </span>= <span class="self">self
                 </span>.channels
@@ -587,7 +587,7 @@
         }
     }
 
-    <span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: Wrapped&lt;BlockHeader, BlockId&gt;) {
+    <span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;) {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
             </span>.command_sender
             .try_send(ConsensusCommand::MarkInvalidBlock(block_id, header))
