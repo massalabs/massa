@@ -251,7 +251,7 @@ impl Output for ExtendedWallet {
 impl Output for Vec<(Address, PublicKey)> {
     fn pretty_print(&self) {
         match self.len() {
-            1 => println!("Public key: {}", self[0].1),
+            1 => println!("{}", self[0].1),
             _ => {
                 for address_pubkey in self {
                     println!("Address: {}", address_pubkey.0);
@@ -266,7 +266,7 @@ impl Output for Vec<(Address, PublicKey)> {
 impl Output for Vec<(Address, KeyPair)> {
     fn pretty_print(&self) {
         match self.len() {
-            1 => println!("Secret key: {}", self[0].1),
+            1 => println!("{}", self[0].1),
             _ => {
                 for address_seckey in self {
                     println!("Address: {}", address_seckey.0);
