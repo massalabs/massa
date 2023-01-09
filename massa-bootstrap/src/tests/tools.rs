@@ -28,6 +28,7 @@ use massa_models::config::{
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
+use massa_models::node::NodeId;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -272,7 +273,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
     priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
-pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
+pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),

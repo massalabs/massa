@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_signature::PublicKey;
+use massa_models::node::NodeId;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::{net::SocketAddr, path::PathBuf};
@@ -9,7 +9,7 @@ use std::{net::SocketAddr, path::PathBuf};
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
-    pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    pub bootstrap_list: Vec<(SocketAddr, NodeId)>,
     /// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
     pub bootstrap_whitelist_path: PathBuf,
     /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
