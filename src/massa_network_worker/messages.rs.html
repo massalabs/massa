@@ -606,18 +606,18 @@
 
 </span><span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
-    block::{BlockHeader, BlockHeaderDeserializer, BlockId, WrappedHeader},
+    block::{BlockHeader, BlockHeaderDeserializer, BlockId, SecuredHeader},
     config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
-    endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     operation::{
         OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIds,
         OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationsDeserializer,
-        OperationsSerializer, WrappedOperation,
+        OperationsSerializer, SecureShareOperation,
     },
+    secure_share::{SecureShareDeserializer, SecureShareSerializer},
     serialization::array_from_slice,
     serialization::{IpAddrDeserializer, IpAddrSerializer},
     version::{Version, VersionDeserializer, VersionSerializer},
-    wrapped::{WrappedDeserializer, WrappedSerializer},
 };
 <span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, BlockInfoReply};
 <span class="kw">use </span>massa_serialization::{
@@ -656,7 +656,7 @@
         </span>signature: Signature,
     },
     <span class="doccomment">/// Block header
-    </span>BlockHeader(WrappedHeader),
+    </span>BlockHeader(SecuredHeader),
     <span class="doccomment">/// Message asking the peer for info on a list of blocks.
     </span>AskForBlocks(Vec&lt;(BlockId, AskForBlocksInfo)&gt;),
     <span class="doccomment">/// Message replying with info on a list of blocks.
@@ -673,9 +673,9 @@
     <span class="doccomment">/// Someone ask for operations.
     </span>AskForOperations(OperationPrefixIds),
     <span class="doccomment">/// A list of operations
-    </span>Operations(Vec&lt;WrappedOperation&gt;),
+    </span>Operations(Vec&lt;SecureShareOperation&gt;),
     <span class="doccomment">/// Endorsements
-    </span>Endorsements(Vec&lt;WrappedEndorsement&gt;),
+    </span>Endorsements(Vec&lt;SecureShareEndorsement&gt;),
 }
 
 <span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -707,7 +707,7 @@
 </span><span class="kw">pub struct </span>MessageSerializer {
     version_serializer: VersionSerializer,
     u32_serializer: U32VarIntSerializer,
-    wrapped_serializer: WrappedSerializer,
+    secure_serializer: SecureShareSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_ids_serializer: OperationIdsSerializer,
     operations_serializer: OperationsSerializer,
@@ -720,7 +720,7 @@
         MessageSerializer {
             version_serializer: VersionSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
-            wrapped_serializer: WrappedSerializer::new(),
+            secure_serializer: SecureShareSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_ids_serializer: OperationIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
@@ -759,7 +759,7 @@
             Message::BlockHeader(header) =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::BlockHeader <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.wrapped_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.secure_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
             }
             Message::AskForBlocks(list) =&gt; {
                 <span class="self">self</span>.u32_serializer
@@ -796,7 +796,7 @@
                     <span class="self">self</span>.u32_serializer
                         .serialize(<span class="kw-2">&amp;</span>u32::from(info_type), buffer)<span class="question-mark">?</span>;
                     <span class="kw">if let </span>BlockInfoReply::Header(header) = info {
-                        <span class="self">self</span>.wrapped_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.secure_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
                     }
                     <span class="kw">if let </span>BlockInfoReply::Operations(ops) = info {
                         <span class="self">self</span>.operations_serializer.serialize(ops, buffer)<span class="question-mark">?</span>;
@@ -842,7 +842,7 @@
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>(endorsements.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
                 <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements {
-                    <span class="self">self</span>.wrapped_serializer.serialize(endorsement, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.secure_serializer.serialize(endorsement, buffer)<span class="question-mark">?</span>;
                 }
             }
         }
@@ -860,9 +860,9 @@
     peer_list_length_deserializer: U32VarIntDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
-    block_header_deserializer: WrappedDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
+    block_header_deserializer: SecureShareDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
     endorsements_length_deserializer: U32VarIntDeserializer,
-    endorsement_deserializer: WrappedDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
+    endorsement_deserializer: SecureShareDeserializer&lt;Endorsement, EndorsementDeserializer&gt;,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
     infos_deserializer: OperationIdsDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
@@ -909,7 +909,7 @@
                 max_op_datastore_value_length,
             ),
             hash_deserializer: HashDeserializer::new(),
-            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+            block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),
@@ -917,7 +917,7 @@
                 Included(<span class="number">0</span>),
                 Excluded(max_endorsements_per_message),
             ),
-            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
+            endorsement_deserializer: SecureShareDeserializer::new(EndorsementDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),

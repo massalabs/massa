@@ -351,6 +351,8 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
     error::ConsensusError,
@@ -410,7 +412,7 @@
                     ))
                 })<span class="question-mark">?</span>;
                 block_slot = block.content.header.content.slot;
-                block_creator = block.creator_address;
+                block_creator = block.content_creator_address;
                 block_parents = block.content.header.content.parents.clone();
             };
 
@@ -654,15 +656,17 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(reason) = reason_opt {
                     <span class="comment">// add to stats if reason is Stale
                     </span><span class="kw">if </span>reason == DiscardReason::Stale {
-                        <span class="self">self</span>.new_stale_blocks
-                            .insert(block_id, (header.creator_address, header.content.slot));
+                        <span class="self">self</span>.new_stale_blocks.insert(
+                            block_id,
+                            (header.content_creator_address, header.content.slot),
+                        );
                     }
                     <span class="comment">// transition to Discarded only if there is a reason
                     </span><span class="self">self</span>.block_statuses.insert(
                         block_id,
                         BlockStatus::Discarded {
                             slot: header.content.slot,
-                            creator: header.creator_address,
+                            creator: header.content_creator_address,
                             parents: header.content.parents.clone(),
                             reason,
                             sequence_number: {
