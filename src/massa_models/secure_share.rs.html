@@ -350,6 +350,9 @@
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
@@ -376,17 +379,20 @@
     </span>T: Display + SecureShareContent,
     ID: Id,
 {
-    <span class="doccomment">/// The conanical data. All other fields are meta-data
+    <span class="doccomment">/// Reference contents. Not required for the the security protocols.
+    ///
+    /// Use the Lightweight equivilant structures when you need verifiable
+    /// serialized data, but do not need to read the values directly (such as when sending)
     </span><span class="kw">pub </span>content: T,
     <span class="attr">#[serde(skip)]
-    </span><span class="doccomment">/// Content serialized
+    </span><span class="doccomment">/// Content in sharable, deserializable form. Is used in the secure verification protocols.
     </span><span class="kw">pub </span>serialized_data: Vec&lt;u8&gt;,
 
-    <span class="doccomment">/// Part of the verification process using [Self::verify_signature]. See the white paper for more info
+    <span class="doccomment">/// A cryptographically generated value using `serialized_data` and a public key.
     </span><span class="kw">pub </span>signature: Signature,
-    <span class="attr">#[allow(missing_docs)]
+    <span class="doccomment">/// The public-key component used in the generation of the signature
     </span><span class="kw">pub </span>content_creator_pub_key: PublicKey,
-    <span class="attr">#[allow(missing_docs)]
+    <span class="doccomment">/// Derived from the same public key used to generate the signature
     </span><span class="kw">pub </span>content_creator_address: Address,
     <span class="doccomment">/// A secure hash of the data. See also [massa_hash::Hash]
     </span><span class="kw">pub </span>id: ID,
