@@ -528,6 +528,7 @@
 <a href="#528" id="528">528</a>
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -971,7 +972,8 @@
     <span class="kw">let </span><span class="kw-2">mut </span>filtered_bootstrap_list: Vec&lt;(SocketAddr, PublicKey)&gt; =
         bootstrap_config.bootstrap_list.clone();
 
-    <span class="kw">match </span><span class="kw-2">&amp;</span>bootstrap_config.bootstrap_protocol {
+    <span class="comment">// We filter the bootstrap list to keep only the ip addresses we are compatible with
+    </span><span class="kw">match </span><span class="kw-2">&amp;</span>bootstrap_config.bootstrap_protocol {
         <span class="prelude-val">Some</span>(s) <span class="kw">if </span>s.as_str() == <span class="string">&quot;ipv4&quot; </span>=&gt; {
             filtered_bootstrap_list = filtered_bootstrap_list
                 .clone()
@@ -986,7 +988,7 @@
                 .filter(|<span class="kw-2">&amp;</span>(addr, _pubkey)| addr.is_ipv6())
                 .collect()
         }
-        <span class="kw">_ </span>=&gt; filtered_bootstrap_list = filtered_bootstrap_list.clone(),
+        <span class="kw">_ </span>=&gt; {}
     };
 
     <span class="comment">// we are after genesis =&gt; bootstrap
@@ -997,19 +999,19 @@
         ));
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>shuffled_list = filtered_bootstrap_list.clone();
-    shuffled_list.shuffle(<span class="kw-2">&amp;mut </span>StdRng::from_entropy());
+    filtered_bootstrap_list.shuffle(<span class="kw-2">&amp;mut </span>StdRng::from_entropy());
 
-    <span class="comment">// we only keep one IP for each Public key.
-    </span><span class="kw">let </span>shuffled_hashmap: HashMap&lt;PublicKey, SocketAddr&gt; = shuffled_list
+    <span class="comment">// we remove the duplicated public keys (if a bootstrap server appears both with its IPv4 and IPv6 address)
+    </span><span class="kw">let </span>shuffled_hashmap: HashMap&lt;PublicKey, SocketAddr&gt; = filtered_bootstrap_list
         .clone()
         .into_iter()
         .map(|(addr, pub_key)| (pub_key, addr))
         .collect();
-    shuffled_list = shuffled_hashmap
+    <span class="kw">let </span><span class="kw-2">mut </span>shuffled_list: Vec&lt;(SocketAddr, PublicKey)&gt; = shuffled_hashmap
         .iter()
         .map(|(<span class="kw-2">&amp;</span>pub_key, <span class="kw-2">&amp;</span>addr)| (addr, pub_key))
         .collect();
+
     shuffled_list.shuffle(<span class="kw-2">&amp;mut </span>StdRng::from_entropy());
 
     <span class="kw">let </span><span class="kw-2">mut </span>next_bootstrap_message: BootstrapClientMessage =
