@@ -76,8 +76,10 @@ async fn test_binders() {
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         CONSENSUS_BOOTSTRAP_PART_SIZE,
     );
-    let mut client =
-        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -170,8 +172,10 @@ async fn test_binders_double_send_server_works() {
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         CONSENSUS_BOOTSTRAP_PART_SIZE,
     );
-    let mut client =
-        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -249,8 +253,10 @@ async fn test_binders_try_double_send_client_works() {
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         CONSENSUS_BOOTSTRAP_PART_SIZE,
     );
-    let mut client =
-        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
