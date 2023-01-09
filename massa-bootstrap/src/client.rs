@@ -441,6 +441,7 @@ pub async fn get_state(
     let mut filtered_bootstrap_list: Vec<(SocketAddr, PublicKey)> =
         bootstrap_config.bootstrap_list.clone();
 
+    // We filter the bootstrap list to keep only the ip addresses we are compatible with
     match &bootstrap_config.bootstrap_protocol {
         Some(s) if s.as_str() == "ipv4" => {
             filtered_bootstrap_list = filtered_bootstrap_list
@@ -456,7 +457,7 @@ pub async fn get_state(
                 .filter(|&(addr, _pubkey)| addr.is_ipv6())
                 .collect()
         }
-        _ => filtered_bootstrap_list = filtered_bootstrap_list.clone(),
+        _ => {}
     };
 
     // we are after genesis => bootstrap
@@ -467,19 +468,19 @@ pub async fn get_state(
         ));
     }
 
-    let mut shuffled_list = filtered_bootstrap_list.clone();
-    shuffled_list.shuffle(&mut StdRng::from_entropy());
+    filtered_bootstrap_list.shuffle(&mut StdRng::from_entropy());
 
-    // we only keep one IP for each Public key.
-    let shuffled_hashmap: HashMap<PublicKey, SocketAddr> = shuffled_list
+    // we remove the duplicated public keys (if a bootstrap server appears both with its IPv4 and IPv6 address)
+    let shuffled_hashmap: HashMap<PublicKey, SocketAddr> = filtered_bootstrap_list
         .clone()
         .into_iter()
         .map(|(addr, pub_key)| (pub_key, addr))
         .collect();
-    shuffled_list = shuffled_hashmap
+    let mut shuffled_list: Vec<(SocketAddr, PublicKey)> = shuffled_hashmap
         .iter()
         .map(|(&pub_key, &addr)| (addr, pub_key))
         .collect();
+
     shuffled_list.shuffle(&mut StdRng::from_entropy());
 
     let mut next_bootstrap_message: BootstrapClientMessage =
