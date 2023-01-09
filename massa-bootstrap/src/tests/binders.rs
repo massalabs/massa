@@ -16,6 +16,7 @@ use massa_models::config::{
     MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
     MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
 };
+use massa_models::node::NodeId;
 use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
 use serial_test::serial;
@@ -24,7 +25,7 @@ use tokio::io::duplex;
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
         let keypair = KeyPair::generate();
-        (get_bootstrap_config(keypair.get_public_key()), keypair)
+        (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };
 }
 
