@@ -2216,7 +2216,6 @@ dependencies = [
  "massa_pos_worker",
  "massa_protocol_exports",
  "massa_protocol_worker",
- "massa_signature",
  "massa_storage",
  "massa_time",
  "massa_wallet",
