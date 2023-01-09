@@ -18,11 +18,12 @@ use massa_execution_exports::{
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
+use massa_hash::Hash;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
@@ -31,12 +32,13 @@ use massa_models::{
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::Interface;
+use massa_sc_runtime::{init_engine, Interface};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
+use wasmer::{Engine, Module};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -70,6 +72,8 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     // execution statistics
     stats_counter: ExecutionStatsCounter,
+    // TODO
+    sc_cache: PreHashMap<Hash, Module>,
 }
 
 impl ExecutionState {
@@ -116,7 +120,27 @@ impl ExecutionState {
             final_cursor: last_final_slot,
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             config,
+            sc_cache: PreHashMap::default(),
         }
+    }
+
+    /// Internal function that creates the engine and retrieves the bytcode for a runtime call
+    fn init_runtime_execution(
+        &mut self,
+        bytecode: &[u8],
+        max_gas: u64,
+    ) -> Result<(Engine, Module), ExecutionError> {
+        // IMPORTANT TODO: update error type to handle this
+        let engine = init_engine(self.config.gas_costs.clone(), max_gas).unwrap();
+        let key = Hash::compute_from(bytecode);
+        let binary_module = if let Some(module) = self.sc_cache.get(&key) {
+            module.clone()
+        } else {
+            let module = Module::new(&engine, bytecode).unwrap();
+            self.sc_cache.insert(key, module.clone());
+            module
+        };
+        Ok((engine, binary_module))
     }
 
     /// Get execution statistics
@@ -191,7 +215,7 @@ impl ExecutionState {
     /// * `remaining_block_gas`: mutable reference towards the remaining gas in the block
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     pub fn execute_operation(
-        &self,
+        &mut self,
         operation: &SecureShareOperation,
         block_slot: Slot,
         remaining_block_gas: &mut u64,
@@ -471,7 +495,7 @@ impl ExecutionState {
     /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
     /// * `sender_addr`: address of the sender
     pub fn execute_executesc_op(
-        &self,
+        &mut self,
         operation: &OperationType,
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
@@ -502,11 +526,14 @@ impl ExecutionState {
             }];
         };
 
+        // init runtime engine and retrieve the binary module
+        let (engine, binary_module) = self.init_runtime_execution(bytecode, *max_gas)?;
+
         // run the VM on the bytecode contained in the operation
         match massa_sc_runtime::run_main(
-            bytecode,
-            *max_gas,
             &*self.execution_interface,
+            &engine,
+            binary_module,
             self.config.gas_costs.clone(),
         ) {
             Ok(_response) => {}
@@ -531,7 +558,7 @@ impl ExecutionState {
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
     pub fn execute_callsc_op(
-        &self,
+        &mut self,
         operation: &OperationType,
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
@@ -596,13 +623,16 @@ impl ExecutionState {
             bytecode = context.get_bytecode(&target_addr).unwrap_or_default();
         }
 
-        // run the VM on the bytecode loaded from the target address
+        // init runtime engine and retrieve the binary module
+        let (engine, binary_module) = self.init_runtime_execution(&bytecode, max_gas)?;
+
+        // run the VM on the bytecode contained in the operation
         match massa_sc_runtime::run_function(
-            &bytecode,
-            max_gas,
-            target_func,
-            param,
             &*self.execution_interface,
+            &engine,
+            binary_module,
+            &target_func,
+            &param,
             self.config.gas_costs.clone(),
         ) {
             Ok(_response) => {}
@@ -625,7 +655,7 @@ impl ExecutionState {
     /// * message: message information
     /// * bytecode: executable target bytecode, or None if unavailable
     pub fn execute_async_message(
-        &self,
+        &mut self,
         message: AsyncMessage,
         bytecode: Option<Vec<u8>>,
     ) -> Result<(), ExecutionError> {
@@ -686,13 +716,16 @@ impl ExecutionState {
             bytecode
         };
 
-        // run the target function
+        // init runtime engine and retrieve the binary module
+        let (engine, binary_module) = self.init_runtime_execution(&bytecode, message.max_gas)?;
+
+        // run the VM on the bytecode contained in the operation
         if let Err(err) = massa_sc_runtime::run_function(
-            &bytecode,
-            message.max_gas,
+            &*self.execution_interface,
+            &engine,
+            binary_module,
             &message.handler,
             &message.data,
-            &*self.execution_interface,
             self.config.gas_costs.clone(),
         ) {
             // execution failed: reset context to snapshot and reimburse sender
@@ -720,7 +753,7 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(
-        &self,
+        &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
         selector: Box<dyn SelectorController>,
@@ -1009,7 +1042,7 @@ impl ExecutionState {
     /// # Returns
     ///  `ExecutionOutput` describing the output of the execution, or an error
     pub(crate) fn execute_readonly_request(
-        &self,
+        &mut self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
@@ -1045,11 +1078,15 @@ impl ExecutionState {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
+                // init runtime engine and retrieve the binary module
+                let (engine, binary_module) =
+                    self.init_runtime_execution(&bytecode, req.max_gas)?;
+
                 // run the bytecode's main function
                 massa_sc_runtime::run_main(
-                    &bytecode,
-                    req.max_gas,
                     &*self.execution_interface,
+                    &engine,
+                    binary_module,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
@@ -1067,13 +1104,17 @@ impl ExecutionState {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
+                // init runtime engine and retrieve the binary module
+                let (engine, binary_module) =
+                    self.init_runtime_execution(&bytecode, req.max_gas)?;
+
                 // run the target function in the bytecode
                 massa_sc_runtime::run_function(
-                    &bytecode,
-                    req.max_gas,
+                    &*self.execution_interface,
+                    &engine,
+                    binary_module,
                     &target_func,
                     &parameter,
-                    &*self.execution_interface,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?

@@ -2232,7 +2232,6 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime#04082b4986753160f9c3a075daf9f6f772d73c29"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2464,6 +2463,7 @@ dependencies = [
  "serial_test 0.10.0",
  "tempfile",
  "tracing",
+ "wasmer",
 ]
 
 [[package]]
