@@ -275,6 +275,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
     BootstrapConfig {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
+        bootstrap_protocol: Some(String::from("both")),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
         max_ping: MassaTime::from_millis(500),

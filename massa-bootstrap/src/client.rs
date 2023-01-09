@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration, collections::HashMap};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
@@ -437,15 +437,39 @@ pub async fn get_state(
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
+
+    let mut filtered_bootstrap_list:Vec<(SocketAddr, PublicKey)> = bootstrap_config.bootstrap_list.clone();
+    
+    match &bootstrap_config.bootstrap_protocol {
+        Some(s) if *s == String::from("ipv4") => {
+            filtered_bootstrap_list = filtered_bootstrap_list.clone().into_iter()
+            .filter(|&(addr, _pubkey)| addr.is_ipv4())
+            .collect()
+        },
+        Some(s) if *s == String::from("ipv6") => {
+            filtered_bootstrap_list = filtered_bootstrap_list.clone().into_iter()
+            .filter(|&(addr, _pubkey)| addr.is_ipv6())
+            .collect()
+        },
+        _ => {filtered_bootstrap_list = filtered_bootstrap_list.clone() }
+    };
+
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
-    if bootstrap_config.bootstrap_list.is_empty() {
+    if filtered_bootstrap_list.is_empty() {
         return Err(BootstrapError::GeneralError(
             "no bootstrap nodes found in list".into(),
         ));
     }
-    let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
+
+    let mut shuffled_list = filtered_bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
+
+    // we only keep one IP for each Public key.
+    let shuffled_hashmap: HashMap<PublicKey, SocketAddr> = shuffled_list.clone().into_iter().map(|(addr, pub_key)| (pub_key, addr) ).collect();
+    shuffled_list = shuffled_hashmap.iter().map(|(&pub_key, &addr)| (addr, pub_key)).collect();
+    shuffled_list.shuffle(&mut StdRng::from_entropy());
+
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
@@ -457,6 +481,7 @@ pub async fn get_state(
             last_consensus_step: StreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
+
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {

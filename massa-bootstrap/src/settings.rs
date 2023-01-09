@@ -10,6 +10,8 @@ use std::{net::SocketAddr, path::PathBuf};
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    /// Ip address of our bootstrap nodes and their public key.
+    pub bootstrap_protocol: Option<String>,
     /// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
     pub bootstrap_whitelist_path: PathBuf,
     /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.

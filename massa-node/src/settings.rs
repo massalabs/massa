@@ -76,6 +76,7 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    pub bootstrap_protocol: Option<String>,
     pub bootstrap_whitelist_path: PathBuf,
     pub bootstrap_blacklist_path: PathBuf,
     pub bind: Option<SocketAddr>,
