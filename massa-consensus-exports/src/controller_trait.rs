@@ -6,9 +6,9 @@ use massa_models::{
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
     clique::Clique,
+    secure_share::SecureShare,
     slot::Slot,
     stats::ConsensusStats,
-    wrapped::Wrapped,
 };
 use massa_storage::Storage;
 
@@ -107,14 +107,14 @@ pub trait ConsensusController: Send + Sync {
     /// # Arguments
     /// * `block_id`: the id of the block to register
     /// * `header`: the header of the block to register
-    fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>);
+    fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>);
 
     /// Mark a block as invalid in the graph
     ///
     /// # Arguments
     /// * `block_id`: the id of the block to mark as invalid
     /// * `header`: the header of the block to mark as invalid
-    fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>);
+    fn mark_invalid_block(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>);
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ConsensusController>`.

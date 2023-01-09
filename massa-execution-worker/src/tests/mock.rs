@@ -19,10 +19,10 @@ use tempfile::TempDir;
 
 #[cfg(feature = "testing")]
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
-    operation::WrappedOperation,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, SecureShareBlock},
+    operation::SecureShareOperation,
+    secure_share::SecureShareContent,
     slot::Slot,
-    wrapped::WrappedContent,
 };
 
 #[cfg(feature = "testing")]
@@ -139,16 +139,16 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
 #[cfg(feature = "testing")]
 pub fn create_block(
     creator_keypair: KeyPair,
-    operations: Vec<WrappedOperation>,
+    operations: Vec<SecureShareOperation>,
     slot: Slot,
-) -> Result<WrappedBlock, ExecutionError> {
+) -> Result<SecureShareBlock, ExecutionError> {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.serialized_data.clone()].concat()
         })[..],
     );
 
-    let header = BlockHeader::new_wrapped(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: vec![],
@@ -159,7 +159,7 @@ pub fn create_block(
         &creator_keypair,
     )?;
 
-    Ok(Block::new_wrapped(
+    Ok(Block::new_verifiable(
         Block {
             header,
             operations: operations.into_iter().map(|op| op.id).collect(),

@@ -13,8 +13,8 @@ use massa_models::{
     api::EventFilter,
     block::BlockId,
     datastore::Datastore,
-    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
-    wrapped::WrappedContent,
+    operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
+    secure_share::SecureShareContent,
 };
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -684,7 +684,7 @@ pub fn send_and_receive_transaction() {
         KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let (recipient_address, _keypair) = get_random_address_full();
     // create the operation
-    let operation = Operation::new_wrapped(
+    let operation = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -761,7 +761,7 @@ pub fn roll_buy() {
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
     // create the operation
-    let operation = Operation::new_wrapped(
+    let operation = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -840,7 +840,7 @@ pub fn roll_sell() {
     let roll_sell_2 = 1;
 
     // create operation 1
-    let operation1 = Operation::new_wrapped(
+    let operation1 = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -852,7 +852,7 @@ pub fn roll_sell() {
         &keypair,
     )
     .unwrap();
-    let operation2 = Operation::new_wrapped(
+    let operation2 = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -1283,13 +1283,13 @@ fn create_execute_sc_operation(
     sender_keypair: &KeyPair,
     data: &[u8],
     datastore: Datastore,
-) -> Result<WrappedOperation, ExecutionError> {
+) -> Result<SecureShareOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 1_000_000,
         datastore,
     };
-    let op = Operation::new_wrapped(
+    let op = Operation::new_verifiable(
         Operation {
             fee: Amount::from_mantissa_scale(10, 0),
             expire_period: 10,
@@ -1310,7 +1310,7 @@ fn create_call_sc_operation(
     target_addr: Address,
     target_func: String,
     param: Vec<u8>,
-) -> Result<WrappedOperation, ExecutionError> {
+) -> Result<SecureShareOperation, ExecutionError> {
     let op = OperationType::CallSC {
         max_gas,
         target_addr,
@@ -1318,7 +1318,7 @@ fn create_call_sc_operation(
         target_func,
         param,
     };
-    let op = Operation::new_wrapped(
+    let op = Operation::new_verifiable(
         Operation {
             fee,
             expire_period: 10,

@@ -2,7 +2,7 @@ use std::collections::hash_map;
 
 use massa_models::{
     address::Address,
-    endorsement::{EndorsementId, WrappedEndorsement},
+    endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
 
@@ -11,7 +11,7 @@ use massa_models::{
 #[derive(Default)]
 pub struct EndorsementIndexes {
     /// Endorsements structure container
-    endorsements: PreHashMap<EndorsementId, WrappedEndorsement>,
+    endorsements: PreHashMap<EndorsementId, SecureShareEndorsement>,
     /// Structure mapping creators with the created endorsements
     index_by_creator: PreHashMap<Address, PreHashSet<EndorsementId>>,
 }
@@ -20,11 +20,11 @@ impl EndorsementIndexes {
     /// Insert an endorsement and populate the indexes.
     /// Arguments:
     /// - endorsement: the endorsement to insert
-    pub(crate) fn insert(&mut self, endorsement: WrappedEndorsement) {
+    pub(crate) fn insert(&mut self, endorsement: SecureShareEndorsement) {
         if let Ok(e) = self.endorsements.try_insert(endorsement.id, endorsement) {
             // update creator index
             self.index_by_creator
-                .entry(e.creator_address)
+                .entry(e.content_creator_address)
                 .or_default()
                 .insert(e.id);
         }
@@ -33,11 +33,14 @@ impl EndorsementIndexes {
     /// Remove a endorsement, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
     /// * `endorsement_id`: the endorsement id to remove
-    pub(crate) fn remove(&mut self, endorsement_id: &EndorsementId) -> Option<WrappedEndorsement> {
+    pub(crate) fn remove(
+        &mut self,
+        endorsement_id: &EndorsementId,
+    ) -> Option<SecureShareEndorsement> {
         if let Some(e) = self.endorsements.remove(endorsement_id) {
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =
-                self.index_by_creator.entry(e.creator_address)
+                self.index_by_creator.entry(e.content_creator_address)
             {
                 occ.get_mut().remove(&e.id);
                 if occ.get().is_empty() {
@@ -50,7 +53,7 @@ impl EndorsementIndexes {
     }
 
     /// Gets a reference to a stored endorsement, if any.
-    pub fn get(&self, id: &EndorsementId) -> Option<&WrappedEndorsement> {
+    pub fn get(&self, id: &EndorsementId) -> Option<&SecureShareEndorsement> {
         self.endorsements.get(id)
     }
 

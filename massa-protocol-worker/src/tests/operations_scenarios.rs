@@ -574,7 +574,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let op_1 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_2 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_thread = op_1
-                .creator_address
+                .content_creator_address
                 .get_thread(protocol_config.thread_count);
             let mut block = tools::create_block_with_operations(
                 &node_a.keypair,
