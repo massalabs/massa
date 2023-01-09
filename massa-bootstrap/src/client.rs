@@ -3,7 +3,7 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{streaming_step::StreamingStep, version::Version};
+use massa_models::{streaming_step::StreamingStep, version::Version, node::NodeId};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -438,7 +438,7 @@ pub async fn get_state(
         return Ok(GlobalBootstrapState::new(final_state));
     }
 
-    let mut filtered_bootstrap_list: Vec<(SocketAddr, PublicKey)> =
+    let mut filtered_bootstrap_list =
         bootstrap_config.bootstrap_list.clone();
 
     // We filter the bootstrap list to keep only the ip addresses we are compatible with
@@ -447,14 +447,14 @@ pub async fn get_state(
             filtered_bootstrap_list = filtered_bootstrap_list
                 .clone()
                 .into_iter()
-                .filter(|&(addr, _pubkey)| addr.is_ipv4())
+                .filter(|&(addr, _)| addr.is_ipv4())
                 .collect()
         }
         Some(s) if s.as_str() == "ipv6" => {
             filtered_bootstrap_list = filtered_bootstrap_list
                 .clone()
                 .into_iter()
-                .filter(|&(addr, _pubkey)| addr.is_ipv6())
+                .filter(|&(addr, _)| addr.is_ipv6())
                 .collect()
         }
         _ => {}
@@ -471,14 +471,14 @@ pub async fn get_state(
     filtered_bootstrap_list.shuffle(&mut StdRng::from_entropy());
 
     // we remove the duplicated public keys (if a bootstrap server appears both with its IPv4 and IPv6 address)
-    let shuffled_hashmap: HashMap<PublicKey, SocketAddr> = filtered_bootstrap_list
+    let shuffled_hashmap: HashMap<NodeId, SocketAddr> = filtered_bootstrap_list
         .clone()
         .into_iter()
-        .map(|(addr, pub_key)| (pub_key, addr))
+        .map(|(addr, node_id)| (node_id, addr))
         .collect();
-    let mut shuffled_list: Vec<(SocketAddr, PublicKey)> = shuffled_hashmap
+    let mut shuffled_list: Vec<(SocketAddr, NodeId)> = shuffled_hashmap
         .iter()
-        .map(|(&pub_key, &addr)| (addr, pub_key))
+        .map(|(&node_id, &addr)| (addr, node_id))
         .collect();
 
     shuffled_list.shuffle(&mut StdRng::from_entropy());
