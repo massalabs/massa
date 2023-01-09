@@ -994,6 +994,10 @@
 <a href="#994" id="994">994</a>
 <a href="#995" id="995">995</a>
 <a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1123,6 +1127,7 @@
             address,
             bytecode,
             operation_datastore,
+            is_final,
         } <span class="kw">in </span>reqs
         {
             <span class="kw">let </span>address = address.unwrap_or_else(|| {
@@ -1166,6 +1171,7 @@
                     owned_addresses: <span class="macro">vec!</span>[address],
                     operation_datastore: op_datastore,
                 }],
+                is_final,
             };
 
             <span class="comment">// run
@@ -1207,6 +1213,7 @@
             target_function,
             parameter,
             caller_address,
+            is_final,
         } <span class="kw">in </span>reqs
         {
             <span class="kw">let </span>caller_address = caller_address.unwrap_or_else(|| {
@@ -1241,6 +1248,7 @@
                         operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
                     </span>},
                 ],
+                is_final,
             };
 
             <span class="comment">// run
