@@ -400,14 +400,14 @@
     </span><span class="kw">fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash;
 }
 
-<span class="doccomment">/// Trait that define a structure that can be wrapped.
+<span class="doccomment">/// Trait that define a structure that can be signed for secure sharing.
 </span><span class="kw">pub trait </span>SecureShareContent
 <span class="kw">where
     </span><span class="self">Self</span>: Sized + Display,
 {
-    <span class="doccomment">/// Using the provided key-pair, generates values the are used
-    /// by the trust-free data sharing protocols.
-    </span><span class="kw">fn </span>secure&lt;Ser: Serializer&lt;<span class="self">Self</span>&gt;, ID: Id&gt;(
+    <span class="doccomment">/// Using the provided key-pair, applies a cryptographic signature, and packages
+    /// the data required to share and verify the data in a trust-free network of peers.
+    </span><span class="kw">fn </span>new_verifiable&lt;Ser: Serializer&lt;<span class="self">Self</span>&gt;, ID: Id&gt;(
         content: <span class="self">Self</span>,
         content_serializer: Ser,
         keypair: <span class="kw-2">&amp;</span>KeyPair,
@@ -430,7 +430,7 @@
         })
     }
 
-    <span class="doccomment">/// Serialize the wrapped structure
+    <span class="doccomment">/// Serialize the secured structure
     </span><span class="kw">fn </span>serialize(
         signature: <span class="kw-2">&amp;</span>Signature,
         creator_public_key: <span class="kw-2">&amp;</span>PublicKey,
@@ -443,7 +443,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Deserialize the wrapped structure
+    <span class="doccomment">/// Deserialize the secured structure
     </span><span class="kw">fn </span>deserialize&lt;
         <span class="lifetime">&#39;a</span>,
         E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;,
@@ -457,7 +457,7 @@
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SecureShare&lt;<span class="self">Self</span>, ID&gt;, E&gt; {
         <span class="kw">let </span>(serialized_data, (signature, creator_public_key)) = context(
-            <span class="string">&quot;Failed wrapped deserialization&quot;</span>,
+            <span class="string">&quot;Failed SecureShare deserialization&quot;</span>,
             tuple((
                 context(<span class="string">&quot;Failed signature deserialization&quot;</span>, |input| {
                     signature_deserializer.deserialize(input)
@@ -637,7 +637,7 @@
     /// * `buffer`: buffer of serialized data to be deserialized
     ///
     /// # Returns:
-    /// A rest and the wrapped structure with coherent fields.
+    /// A rest (data left over from deserialization) and structure wrapped up with signature verification data as coherent fields.
     </span><span class="kw">pub fn </span>deserialize_with&lt;
         <span class="lifetime">&#39;a</span>,
         E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;,
@@ -677,7 +677,7 @@
     ///    endorsed_block: BlockId(Hash::compute_from(&quot;blk&quot;.as_bytes())),
     /// };
     /// let keypair = KeyPair::generate();
-    /// let secured: SecureShare&lt;Endorsement, BlockId&gt; = Endorsement::secure(
+    /// let secured: SecureShare&lt;Endorsement, BlockId&gt; = Endorsement::new_verifiable(
     ///    content,
     ///    EndorsementSerializer::new(),
     ///    &amp;keypair

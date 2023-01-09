@@ -313,7 +313,7 @@
         <span class="kw">let </span>sender_keypair = <span class="self">self
             </span>.find_associated_keypair(<span class="kw-2">&amp;</span>address)
             .ok_or_else(|| WalletError::MissingKeyError(address))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(Operation::secure(content, OperationSerializer::new(), sender_keypair).unwrap())
+        <span class="prelude-val">Ok</span>(Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
 }
 

@@ -16,7 +16,7 @@
   op,
   expire_period: <span class="number">50</span>,
 };
-<span class="kw">let </span>op_secured = Operation::secure(content, OperationSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+<span class="kw">let </span>op_secured = Operation::new_verifiable(content, OperationSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
 <span class="kw">let </span>operations = <span class="macro">vec!</span>[op_secured.clone(), op_secured.clone()];
 <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
 OperationsSerializer::new().serialize(<span class="kw-2">&amp;</span>operations, <span class="kw-2">&amp;mut </span>buffer).unwrap();

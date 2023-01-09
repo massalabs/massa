@@ -32,7 +32,7 @@ Range: <code>(op.expire_period - cfg.operation_validity_period) -&gt; op.expire_
    endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
 };
 <span class="kw">let </span>keypair = KeyPair::generate();
-<span class="kw">let </span>secured: SecureShare&lt;Endorsement, BlockId&gt; = Endorsement::secure(
+<span class="kw">let </span>secured: SecureShare&lt;Endorsement, BlockId&gt; = Endorsement::new_verifiable(
    content,
    EndorsementSerializer::new(),
    <span class="kw-2">&amp;</span>keypair

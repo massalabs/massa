@@ -454,7 +454,7 @@
         );
 
         <span class="comment">// create header
-        </span><span class="kw">let </span>header: SecuredHeader = BlockHeader::secure::&lt;BlockHeaderSerializer, BlockId&gt;(
+        </span><span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
             BlockHeader {
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
@@ -467,7 +467,7 @@
         .expect(<span class="string">&quot;error while producing block header&quot;</span>);
 
         <span class="comment">// create block
-        </span><span class="kw">let </span>block = Block::secure(
+        </span><span class="kw">let </span>block = Block::new_verifiable(
             Block {
                 header,
                 operations: op_ids.into_iter().collect(),

@@ -350,7 +350,7 @@
     thread_number: u8,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShareBlock, ConsensusError&gt; {
     <span class="kw">let </span>keypair = <span class="kw-2">&amp;</span>cfg.genesis_key;
-    <span class="kw">let </span>header = BlockHeader::secure(
+    <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(<span class="number">0</span>, thread_number),
             parents: Vec::new(),
@@ -361,7 +361,7 @@
         keypair,
     )<span class="question-mark">?</span>;
 
-    <span class="prelude-val">Ok</span>(Block::secure(
+    <span class="prelude-val">Ok</span>(Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),

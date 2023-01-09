@@ -394,7 +394,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements: Vec&lt;SecureShareEndorsement&gt; =
             Vec::with_capacity(producers_indices.len());
         <span class="kw">for </span>(keypair, index) <span class="kw">in </span>producers_indices {
-            <span class="kw">let </span>endorsement = Endorsement::secure(
+            <span class="kw">let </span>endorsement = Endorsement::new_verifiable(
                 Endorsement {
                     slot,
                     index: index <span class="kw">as </span>u32,

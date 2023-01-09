@@ -1584,7 +1584,7 @@
         <span class="kw">let </span>blocks = ids
             .into_iter()
             .filter_map(|id| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(verifiable_block) = storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(graph_status) = consensus_controller
                         .get_block_statuses(<span class="kw-2">&amp;</span>[id])
                         .into_iter()
@@ -1604,7 +1604,7 @@
                                 is_in_blockclique,
                                 is_candidate,
                                 is_discarded,
-                                block: wrapped_block.content,
+                                block: verifiable_block.content,
                             }),
                         });
                     }

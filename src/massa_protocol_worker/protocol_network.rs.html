@@ -755,9 +755,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>all_blocks_info = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(hash, info_wanted) <span class="kw">in </span><span class="kw-2">&amp;</span>list {
             <span class="kw">let </span>(header, operations_ids) = <span class="kw">match </span><span class="self">self</span>.storage.read_blocks().get(hash) {
-                <span class="prelude-val">Some</span>(wrapped_block) =&gt; (
-                    wrapped_block.content.header.clone(),
-                    wrapped_block.content.operations.clone(),
+                <span class="prelude-val">Some</span>(signed_block) =&gt; (
+                    signed_block.content.header.clone(),
+                    signed_block.content.operations.clone(),
                 ),
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="comment">// let the node know we don&#39;t have the block.
@@ -1079,7 +1079,7 @@
                         .unwrap();
 
                     <span class="comment">// wrap block
-                    </span><span class="kw">let </span>wrapped_block = SecureShare {
+                    </span><span class="kw">let </span>signed_block = SecureShare {
                         signature: header.signature,
                         content_creator_pub_key: header.content_creator_pub_key,
                         content_creator_address: header.content_creator_address,
@@ -1093,11 +1093,11 @@
                     <span class="comment">// add endorsements to local storage and claim ref
                     // TODO change this if we make endorsements separate from block header
                     </span>block_storage.store_endorsements(
-                        wrapped_block.content.header.content.endorsements.clone(),
+                        signed_block.content.header.content.endorsements.clone(),
                     );
-                    <span class="kw">let </span>slot = wrapped_block.content.header.content.slot;
+                    <span class="kw">let </span>slot = signed_block.content.header.content.slot;
                     <span class="comment">// add block to local storage and claim ref
-                    </span>block_storage.store_block(wrapped_block);
+                    </span>block_storage.store_block(signed_block);
 
                     <span class="comment">// Send to consensus
                     </span><span class="self">self</span>.consensus_controller

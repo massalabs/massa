@@ -707,7 +707,7 @@
 </span><span class="kw">pub struct </span>MessageSerializer {
     version_serializer: VersionSerializer,
     u32_serializer: U32VarIntSerializer,
-    wrapped_serializer: SecureShareSerializer,
+    secure_serializer: SecureShareSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_ids_serializer: OperationIdsSerializer,
     operations_serializer: OperationsSerializer,
@@ -720,7 +720,7 @@
         MessageSerializer {
             version_serializer: VersionSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
-            wrapped_serializer: SecureShareSerializer::new(),
+            secure_serializer: SecureShareSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_ids_serializer: OperationIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
@@ -759,7 +759,7 @@
             Message::BlockHeader(header) =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::BlockHeader <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.wrapped_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.secure_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
             }
             Message::AskForBlocks(list) =&gt; {
                 <span class="self">self</span>.u32_serializer
@@ -796,7 +796,7 @@
                     <span class="self">self</span>.u32_serializer
                         .serialize(<span class="kw-2">&amp;</span>u32::from(info_type), buffer)<span class="question-mark">?</span>;
                     <span class="kw">if let </span>BlockInfoReply::Header(header) = info {
-                        <span class="self">self</span>.wrapped_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.secure_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
                     }
                     <span class="kw">if let </span>BlockInfoReply::Operations(ops) = info {
                         <span class="self">self</span>.operations_serializer.serialize(ops, buffer)<span class="question-mark">?</span>;
@@ -842,7 +842,7 @@
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>(endorsements.len() <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
                 <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements {
-                    <span class="self">self</span>.wrapped_serializer.serialize(endorsement, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.secure_serializer.serialize(endorsement, buffer)<span class="question-mark">?</span>;
                 }
             }
         }

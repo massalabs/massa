@@ -429,6 +429,8 @@
 <a href="#429" id="429">429</a>
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
@@ -817,7 +819,8 @@
             endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
         };
         <span class="kw">let </span>endorsement: SecureShareEndorsement =
-            Endorsement::secure(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+            Endorsement::new_verifiable(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>sender_keypair)
+                .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_endorsement: Vec&lt;u8&gt; = Vec::new();
         <span class="kw">let </span>serializer = SecureShareSerializer::new();
@@ -841,7 +844,8 @@
             endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
         };
         <span class="kw">let </span>endorsement: SecureShareEndorsement =
-            Endorsement::secure(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+            Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>sender_keypair)
+                .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_endorsement: Vec&lt;u8&gt; = Vec::new();
         <span class="kw">let </span>serializer = SecureShareSerializer::new();

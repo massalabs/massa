@@ -348,7 +348,7 @@
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
 </span><span class="kw">pub fn </span>create_block(keypair: <span class="kw-2">&amp;</span>KeyPair) -&gt; SecureShareBlock {
-    <span class="kw">let </span>header = BlockHeader::secure(
+    <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
             parents: <span class="macro">vec!</span>[
@@ -363,7 +363,7 @@
     )
     .unwrap();
 
-    Block::secure(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -389,7 +389,7 @@
             [acc, v.id.to_bytes().to_vec()].concat()
         })[..],
     );
-    <span class="kw">let </span>header = BlockHeader::secure(
+    <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: <span class="macro">vec!</span>[
@@ -405,7 +405,7 @@
     .unwrap();
 
     <span class="kw">let </span>op_ids = operations.into_iter().map(|op| op.id).collect();
-    Block::secure(
+    Block::new_verifiable(
         Block {
             header,
             operations: op_ids,
@@ -426,7 +426,7 @@
     slot: Slot,
     endorsements: Vec&lt;SecureShareEndorsement&gt;,
 ) -&gt; SecureShareBlock {
-    <span class="kw">let </span>header = BlockHeader::secure(
+    <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: <span class="macro">vec!</span>[
@@ -441,7 +441,7 @@
     )
     .unwrap();
 
-    Block::secure(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -462,7 +462,7 @@
         index: <span class="number">0</span>,
         endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[])),
     };
-    Endorsement::secure(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>keypair).unwrap()
+    Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>keypair).unwrap()
 }
 
 <span class="doccomment">/// Create an operation, from a specific sender, and with a specific expire period.
@@ -481,7 +481,7 @@
         op,
         expire_period,
     };
-    Operation::secure(content, OperationSerializer::new(), keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 <span class="macro">lazy_static::lazy_static! </span>{

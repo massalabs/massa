@@ -1264,7 +1264,7 @@
 </span><span class="kw">pub type </span>SecureShareBlock = SecureShare&lt;Block, BlockId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Block {
-    <span class="kw">fn </span>secure&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
+    <span class="kw">fn </span>new_verifiable&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
         content: <span class="self">Self</span>,
         content_serializer: SC,
         _keypair: <span class="kw-2">&amp;</span>KeyPair,
@@ -1352,13 +1352,13 @@
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::secure(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -1368,7 +1368,7 @@
     ///                 &amp;keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -1434,13 +1434,13 @@
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::secure(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -1450,7 +1450,7 @@
     ///                 &amp;keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -1571,7 +1571,7 @@
 //     }
 // }
 
-</span><span class="doccomment">/// wrapped header
+</span><span class="doccomment">/// BlockHeader wrapped up alongside verification data
 </span><span class="kw">pub type </span>SecuredHeader = SecureShare&lt;BlockHeader, BlockId&gt;;
 
 <span class="kw">impl </span>SecuredHeader {
@@ -1629,7 +1629,7 @@
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///   endorsements: vec![
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
@@ -1639,7 +1639,7 @@
     ///     &amp;keypair,
     ///     )
     ///     .unwrap(),
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
@@ -1735,7 +1735,7 @@
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///   endorsements: vec![
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
@@ -1745,7 +1745,7 @@
     ///     &amp;keypair,
     ///     )
     ///     .unwrap(),
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
@@ -1907,7 +1907,7 @@
             })
             .collect();
 
-        <span class="kw">let </span>endo = Endorsement::secure(
+        <span class="kw">let </span>endo = Endorsement::new_verifiable(
             Endorsement {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">1</span>,
@@ -1922,7 +1922,7 @@
         .unwrap();
 
         <span class="comment">// create block header
-        </span><span class="kw">let </span>orig_header = BlockHeader::secure(
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
@@ -1942,7 +1942,7 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::secure(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -1995,7 +1995,7 @@
         <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// create block header
-        </span><span class="kw">let </span>orig_header = BlockHeader::secure(
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
@@ -2015,7 +2015,7 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::secure(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2068,12 +2068,12 @@
         };
 
         <span class="comment">// create block header
-        </span><span class="kw">let </span>orig_header = BlockHeader::secure(
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
-                endorsements: <span class="macro">vec!</span>[Endorsement::secure(
+                endorsements: <span class="macro">vec!</span>[Endorsement::new_verifiable(
                     endorsement,
                     EndorsementSerializer::new(),
                     <span class="kw-2">&amp;</span>keypair,
@@ -2093,7 +2093,7 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::secure(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)

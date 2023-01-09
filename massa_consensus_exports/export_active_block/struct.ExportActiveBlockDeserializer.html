@@ -14,13 +14,13 @@
     .collect();
 
 <span class="comment">// create block header
-</span><span class="kw">let </span>orig_header = BlockHeader::secure(
+</span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
     BlockHeader {
         slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
         parents,
         operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
         endorsements: <span class="macro">vec!</span>[
-            Endorsement::secure(
+            Endorsement::new_verifiable(
                 Endorsement {
                     slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                     index: <span class="number">1</span>,
@@ -30,7 +30,7 @@
                 <span class="kw-2">&amp;</span>keypair,
             )
             .unwrap(),
-            Endorsement::secure(
+            Endorsement::new_verifiable(
                 Endorsement {
                     slot: Slot::new(<span class="number">4</span>, <span class="number">0</span>),
                     index: <span class="number">3</span>,
@@ -53,7 +53,7 @@
     operations: Vec::new(),
 };
 
-<span class="kw">let </span>full_block = Block::secure(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+<span class="kw">let </span>full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
 <span class="kw">let </span>export_active_block = ExportActiveBlock {
    block: full_block.clone(),
    parents: <span class="macro">vec!</span>[],
