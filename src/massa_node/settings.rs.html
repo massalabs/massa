@@ -227,13 +227,15 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
 </span><span class="kw">use </span>std::path::PathBuf;
 
 <span class="kw">use </span>enum_map::EnumMap;
-<span class="kw">use </span>massa_models::{config::build_massa_settings, node::NodeId};
+<span class="kw">use </span>massa_models::config::build_massa_settings;
+<span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
@@ -303,7 +305,7 @@
 <span class="doccomment">/// Bootstrap configuration.
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>BootstrapSettings {
-    <span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, NodeId)&gt;,
+    <span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, PublicKey)&gt;,
     <span class="kw">pub </span>bootstrap_whitelist_path: PathBuf,
     <span class="kw">pub </span>bootstrap_blacklist_path: PathBuf,
     <span class="kw">pub </span>bind: <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;,
