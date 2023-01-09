@@ -1023,7 +1023,7 @@ impl ExecutionState {
             )));
         }
 
-        // set the execution slot to be the one after the latest executed active slot
+        // set the execution slot to be the one after the latest executed active or final slot
         let slot = if req.is_final.map_or(false, |is_final| is_final) {
             self.final_cursor
                 .get_next_slot(self.config.thread_count)
