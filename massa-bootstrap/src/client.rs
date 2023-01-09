@@ -3,7 +3,7 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{streaming_step::StreamingStep, version::Version, node::NodeId};
+use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -438,8 +438,7 @@ pub async fn get_state(
         return Ok(GlobalBootstrapState::new(final_state));
     }
 
-    let mut filtered_bootstrap_list =
-        bootstrap_config.bootstrap_list.clone();
+    let mut filtered_bootstrap_list = bootstrap_config.bootstrap_list.clone();
 
     // We filter the bootstrap list to keep only the ip addresses we are compatible with
     match &bootstrap_config.bootstrap_protocol {
