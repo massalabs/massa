@@ -588,7 +588,7 @@ impl MassaRpcServer for API<Public> {
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                if let Some(wrapped_block) = storage.read_blocks().get(&id).cloned() {
+                if let Some(verifiable_block) = storage.read_blocks().get(&id).cloned() {
                     if let Some(graph_status) = consensus_controller
                         .get_block_statuses(&[id])
                         .into_iter()
@@ -608,7 +608,7 @@ impl MassaRpcServer for API<Public> {
                                 is_in_blockclique,
                                 is_candidate,
                                 is_discarded,
-                                block: wrapped_block.content,
+                                block: verifiable_block.content,
                             }),
                         });
                     }

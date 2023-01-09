@@ -103,7 +103,7 @@ pub(crate) enum BlockInfoType {
 pub struct MessageSerializer {
     version_serializer: VersionSerializer,
     u32_serializer: U32VarIntSerializer,
-    wrapped_serializer: SecureShareSerializer,
+    secure_serializer: SecureShareSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_ids_serializer: OperationIdsSerializer,
     operations_serializer: OperationsSerializer,
@@ -116,7 +116,7 @@ impl MessageSerializer {
         MessageSerializer {
             version_serializer: VersionSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
-            wrapped_serializer: SecureShareSerializer::new(),
+            secure_serializer: SecureShareSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_ids_serializer: OperationIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
@@ -155,7 +155,7 @@ impl Serializer<Message> for MessageSerializer {
             Message::BlockHeader(header) => {
                 self.u32_serializer
                     .serialize(&(MessageTypeId::BlockHeader as u32), buffer)?;
-                self.wrapped_serializer.serialize(header, buffer)?;
+                self.secure_serializer.serialize(header, buffer)?;
             }
             Message::AskForBlocks(list) => {
                 self.u32_serializer
@@ -192,7 +192,7 @@ impl Serializer<Message> for MessageSerializer {
                     self.u32_serializer
                         .serialize(&u32::from(info_type), buffer)?;
                     if let BlockInfoReply::Header(header) = info {
-                        self.wrapped_serializer.serialize(header, buffer)?;
+                        self.secure_serializer.serialize(header, buffer)?;
                     }
                     if let BlockInfoReply::Operations(ops) = info {
                         self.operations_serializer.serialize(ops, buffer)?;
@@ -238,7 +238,7 @@ impl Serializer<Message> for MessageSerializer {
                 self.u32_serializer
                     .serialize(&(endorsements.len() as u32), buffer)?;
                 for endorsement in endorsements {
-                    self.wrapped_serializer.serialize(endorsement, buffer)?;
+                    self.secure_serializer.serialize(endorsement, buffer)?;
                 }
             }
         }

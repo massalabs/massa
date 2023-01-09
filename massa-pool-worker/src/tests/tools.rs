@@ -40,7 +40,7 @@ pub fn create_operation_with_expire_period(
     Operation::secure(content, OperationSerializer::new(), keypair).unwrap()
 }
 
-/// Return `n` wrapped operations
+/// Return `n` signed operations
 pub fn create_some_operations(
     n: usize,
     keypair: &KeyPair,

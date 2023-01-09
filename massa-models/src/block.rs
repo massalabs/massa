@@ -516,7 +516,7 @@ pub struct BlockHeader {
 //     }
 // }
 
-/// wrapped header
+/// BlockHeader wrapped up alongside verification data
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
 impl SecuredHeader {

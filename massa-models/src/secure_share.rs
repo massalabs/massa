@@ -48,7 +48,7 @@ pub trait Id {
     fn get_hash(&self) -> &Hash;
 }
 
-/// Trait that define a structure that can be wrapped.
+/// Trait that define a structure that can be signed for secure sharing.
 pub trait SecureShareContent
 where
     Self: Sized + Display,
@@ -78,7 +78,7 @@ where
         })
     }
 
-    /// Serialize the wrapped structure
+    /// Serialize the secured structure
     fn serialize(
         signature: &Signature,
         creator_public_key: &PublicKey,
@@ -91,7 +91,7 @@ where
         Ok(())
     }
 
-    /// Deserialize the wrapped structure
+    /// Deserialize the secured structure
     fn deserialize<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
@@ -105,7 +105,7 @@ where
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], SecureShare<Self, ID>, E> {
         let (serialized_data, (signature, creator_public_key)) = context(
-            "Failed wrapped deserialization",
+            "Failed SecureShare deserialization",
             tuple((
                 context("Failed signature deserialization", |input| {
                     signature_deserializer.deserialize(input)
@@ -285,7 +285,7 @@ where
     /// * `buffer`: buffer of serialized data to be deserialized
     ///
     /// # Returns:
-    /// A rest and the wrapped structure with coherent fields.
+    /// A rest (data left over from deserialization) and structure wrapped up with signature verification data as coherent fields.
     pub fn deserialize_with<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,

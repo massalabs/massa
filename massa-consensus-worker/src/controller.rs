@@ -227,15 +227,17 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
         if self.broadcast_enabled {
-            if let Some(wrapped_block) = block_storage.read_blocks().get(&block_id) {
+            if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
                 let operations: Vec<(OperationId, Option<SecureShare<Operation, OperationId>>)> =
-                    wrapped_block
+                    verifiable_block
                         .content
                         .operations
                         .iter()
                         .map(|operation_id| {
                             match block_storage.read_operations().get(operation_id).cloned() {
-                                Some(wrapped_operation) => (*operation_id, Some(wrapped_operation)),
+                                Some(verifiable_operation) => {
+                                    (*operation_id, Some(verifiable_operation))
+                                }
                                 None => (*operation_id, None),
                             }
                         })
@@ -244,10 +246,10 @@ impl ConsensusController for ConsensusControllerImpl {
                 let _block_receivers_count = self
                     .channels
                     .block_sender
-                    .send(wrapped_block.content.clone());
+                    .send(verifiable_block.content.clone());
                 let _filled_block_receivers_count =
                     self.channels.filled_block_sender.send(FilledBlock {
-                        header: wrapped_block.content.header.clone(),
+                        header: verifiable_block.content.header.clone(),
                         operations,
                     });
             } else {

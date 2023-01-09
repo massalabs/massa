@@ -171,9 +171,9 @@ impl ProtocolWorker {
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
             let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
-                Some(wrapped_block) => (
-                    wrapped_block.content.header.clone(),
-                    wrapped_block.content.operations.clone(),
+                Some(signed_block) => (
+                    signed_block.content.header.clone(),
+                    signed_block.content.operations.clone(),
                 ),
                 None => {
                     // let the node know we don't have the block.
@@ -495,7 +495,7 @@ impl ProtocolWorker {
                         .unwrap();
 
                     // wrap block
-                    let wrapped_block = SecureShare {
+                    let signed_block = SecureShare {
                         signature: header.signature,
                         content_creator_pub_key: header.content_creator_pub_key,
                         content_creator_address: header.content_creator_address,
@@ -509,11 +509,11 @@ impl ProtocolWorker {
                     // add endorsements to local storage and claim ref
                     // TODO change this if we make endorsements separate from block header
                     block_storage.store_endorsements(
-                        wrapped_block.content.header.content.endorsements.clone(),
+                        signed_block.content.header.content.endorsements.clone(),
                     );
-                    let slot = wrapped_block.content.header.content.slot;
+                    let slot = signed_block.content.header.content.slot;
                     // add block to local storage and claim ref
-                    block_storage.store_block(wrapped_block);
+                    block_storage.store_block(signed_block);
 
                     // Send to consensus
                     self.consensus_controller
