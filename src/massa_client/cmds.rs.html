@@ -2526,7 +2526,7 @@
     <span class="kw">match </span>client
         .public
         .send_operations(<span class="macro">vec!</span>[OperationInput {
-            creator_public_key: op.content_creator_pub_key,
+            creator_public_key: op.creator_public_key,
             serialized_content: op.serialized_data,
             signature: op.signature,
         }])

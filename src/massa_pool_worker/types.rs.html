@@ -69,7 +69,7 @@
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
-    operation::{OperationId, SecureShareOperation},
+    operation::{OperationId, WrappedOperation},
 };
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>std::cmp::Reverse;
@@ -108,7 +108,7 @@
 
 <span class="kw">impl </span>OperationInfo {
     <span class="kw">pub fn </span>from_op(
-        op: <span class="kw-2">&amp;</span>SecureShareOperation,
+        op: <span class="kw-2">&amp;</span>WrappedOperation,
         operation_validity_periods: u64,
         roll_price: Amount,
         thread_count: u8,
@@ -118,9 +118,9 @@
             cursor: build_operation_cursor(op),
             size: op.serialized_size(),
             max_gas: op.get_gas_usage(),
-            creator_address: op.content_creator_address,
+            creator_address: op.creator_address,
             fee: op.content.fee,
-            thread: op.content_creator_address.get_thread(thread_count),
+            thread: op.creator_address.get_thread(thread_count),
             validity_period_range: op.get_validity_range(operation_validity_periods),
             max_spending: op.get_max_spending(roll_price),
         }
@@ -128,7 +128,7 @@
 }
 
 <span class="doccomment">/// build a cursor from an operation
-</span><span class="kw">fn </span>build_operation_cursor(op: <span class="kw-2">&amp;</span>SecureShareOperation) -&gt; PoolOperationCursor {
+</span><span class="kw">fn </span>build_operation_cursor(op: <span class="kw-2">&amp;</span>WrappedOperation) -&gt; PoolOperationCursor {
     <span class="kw">let </span>quality = Ratio::new(op.content.fee.to_raw(), op.serialized_size() <span class="kw">as </span>u64);
     <span class="kw">let </span>inner = (Reverse(quality), op.id);
     <span class="comment">// TODO take into account max_gas as well in the future (multi-dimensional packing)

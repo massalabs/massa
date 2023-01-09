@@ -145,9 +145,9 @@
     api::BlockGraphStatus,
     block::{BlockHeader, BlockId},
     clique::Clique,
-    secure_share::SecureShare,
     slot::Slot,
     stats::ConsensusStats,
+    wrapped::Wrapped,
 };
 <span class="kw">use </span>massa_storage::Storage;
 
@@ -246,14 +246,14 @@
     /// # Arguments
     /// * `block_id`: the id of the block to register
     /// * `header`: the header of the block to register
-    </span><span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;);
+    </span><span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: Wrapped&lt;BlockHeader, BlockId&gt;);
 
     <span class="doccomment">/// Mark a block as invalid in the graph
     ///
     /// # Arguments
     /// * `block_id`: the id of the block to mark as invalid
     /// * `header`: the header of the block to mark as invalid
-    </span><span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;);
+    </span><span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: Wrapped&lt;BlockHeader, BlockId&gt;);
 
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Useful to allow cloning `Box&lt;dyn ConsensusController&gt;`.

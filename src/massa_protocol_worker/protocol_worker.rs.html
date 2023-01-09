@@ -1177,15 +1177,15 @@
 <span class="kw">use </span>massa_logging::massa_trace;
 
 <span class="kw">use </span>massa_models::operation::Operation;
-<span class="kw">use </span>massa_models::secure_share::Id;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
+<span class="kw">use </span>massa_models::wrapped::Id;
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, SecuredHeader},
-    endorsement::{EndorsementId, SecureShareEndorsement},
+    block::{BlockId, WrappedHeader},
+    endorsement::{EndorsementId, WrappedEndorsement},
     node::NodeId,
     operation::OperationPrefixId,
-    operation::{OperationId, SecureShareOperation},
+    operation::{OperationId, WrappedOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
 <span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
@@ -1264,7 +1264,7 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockInfo {
     <span class="doccomment">/// The header of the block.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) header: <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) header: <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;,
     <span class="doccomment">/// Operations ids. None if not received yet
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) operation_ids: <span class="prelude-ty">Option</span>&lt;Vec&lt;OperationId&gt;&gt;,
     <span class="doccomment">/// Operations and endorsements contained in the block,
@@ -1275,7 +1275,7 @@
 }
 
 <span class="kw">impl </span>BlockInfo {
-    <span class="kw">fn </span>new(header: <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;, storage: Storage) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>new(header: <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;, storage: Storage) -&gt; <span class="self">Self </span>{
         BlockInfo {
             header,
             operation_ids: <span class="prelude-val">None</span>,
@@ -1313,7 +1313,7 @@
     <span class="doccomment">/// Cache of processed operations
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) checked_operations: CheckedOperations,
     <span class="doccomment">/// List of processed headers
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) checked_headers: LinearHashCacheMap&lt;BlockId, SecuredHeader&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) checked_headers: LinearHashCacheMap&lt;BlockId, WrappedHeader&gt;,
     <span class="doccomment">/// List of ids of operations that we asked to the nodes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) asked_operations: PreHashMap&lt;OperationPrefixId, (Instant, Vec&lt;NodeId&gt;)&gt;,
     <span class="doccomment">/// Buffer for operations that we want later
@@ -1546,7 +1546,7 @@
             { <span class="string">&quot;endorsements&quot;</span>: storage.get_endorsement_refs() }
         );
         <span class="kw">for </span>(node, node_info) <span class="kw">in </span><span class="self">self</span>.active_nodes.iter_mut() {
-            <span class="kw">let </span>new_endorsements: PreHashMap&lt;EndorsementId, SecureShareEndorsement&gt; = {
+            <span class="kw">let </span>new_endorsements: PreHashMap&lt;EndorsementId, WrappedEndorsement&gt; = {
                 <span class="kw">let </span>endorsements_reader = storage.read_endorsements();
                 storage
                     .get_endorsement_refs()
@@ -1947,7 +1947,7 @@
     /// - Block matches that of the block.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_header_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        header: <span class="kw-2">&amp;</span>SecuredHeader,
+        header: <span class="kw-2">&amp;</span>WrappedHeader,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, bool)&gt;, ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_header_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;header&quot;</span>: header });
@@ -2062,7 +2062,7 @@
     /// - Valid signature
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_operations_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        operations: Vec&lt;SecureShareOperation&gt;,
+        operations: Vec&lt;WrappedOperation&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
         op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
@@ -2093,7 +2093,7 @@
         </span>verify_sigs_batch(
             <span class="kw-2">&amp;</span>new_operations
                 .iter()
-                .map(|(op_id, op)| (<span class="kw-2">*</span>op_id.get_hash(), op.signature, op.content_creator_pub_key))
+                .map(|(op_id, op)| (<span class="kw-2">*</span>op_id.get_hash(), op.signature, op.creator_public_key))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         )<span class="question-mark">?</span>;
 
@@ -2169,7 +2169,7 @@
     /// - Valid signature.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_endorsements_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        endorsements: Vec&lt;SecureShareEndorsement&gt;,
+        endorsements: Vec&lt;WrappedEndorsement&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
         propagate: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
@@ -2196,7 +2196,7 @@
                     (
                         <span class="kw-2">*</span>endorsement_id.get_hash(),
                         endorsement.signature,
-                        endorsement.content_creator_pub_key,
+                        endorsement.creator_public_key,
                     )
                 })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
