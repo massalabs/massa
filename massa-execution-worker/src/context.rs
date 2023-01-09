@@ -686,6 +686,9 @@ impl ExecutionContext {
     pub fn settle_slot(&mut self) -> ExecutionOutput {
         let slot = self.slot;
 
+        // execute the deferred credits coming from roll sells
+        self.execute_deferred_credits(&slot);
+
         // settle emitted async messages and reimburse the senders of deleted messages
         let ledger_changes = self.speculative_ledger.take();
         let deleted_messages = self
@@ -694,9 +697,6 @@ impl ExecutionContext {
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
         }
-
-        // execute the deferred credits coming from roll sells
-        self.execute_deferred_credits(&slot);
 
         // if the current slot is last in cycle check the production stats and act accordingly
         if self

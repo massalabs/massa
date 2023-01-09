@@ -2,9 +2,9 @@ use crate::start_protocol_controller;
 use futures::Future;
 use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
-    block::{BlockId, WrappedBlock},
+    block::{BlockId, SecureShareBlock},
     node::NodeId,
-    operation::WrappedOperation,
+    operation::SecureShareOperation,
     prehash::PreHashSet,
 };
 use massa_network_exports::BlockInfoReply;
@@ -164,10 +164,10 @@ where
 /// send a block and assert it has been propagate (or not)
 pub async fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
-    block: WrappedBlock,
+    block: SecureShareBlock,
     source_node_id: NodeId,
     protocol_command_sender: &mut ProtocolCommandSender,
-    operations: Vec<WrappedOperation>,
+    operations: Vec<SecureShareOperation>,
 ) {
     network_controller
         .send_header(source_node_id, block.content.header.clone())

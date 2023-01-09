@@ -2,11 +2,15 @@
 
 use crate::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
 use crate::prehash::PreHashed;
-use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
+use crate::secure_share::{
+    Id, SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
+};
 use crate::{
-    endorsement::{Endorsement, EndorsementDeserializerLW, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementDeserializerLW, SecureShareEndorsement},
     error::ModelsError,
-    operation::{OperationId, OperationIdsDeserializer, OperationIdsSerializer, WrappedOperation},
+    operation::{
+        OperationId, OperationIdsDeserializer, OperationIdsSerializer, SecureShareOperation,
+    },
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_hash::{Hash, HashDeserializer};
@@ -187,7 +191,7 @@ impl Deserializer<BlockId> for BlockIdDeserializer {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     /// signed header
-    pub header: WrappedHeader,
+    pub header: SecuredHeader,
     /// operations ids
     pub operations: Vec<OperationId>,
 }
@@ -196,26 +200,26 @@ pub struct Block {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilledBlock {
     /// signed header
-    pub header: WrappedHeader,
+    pub header: SecuredHeader,
     /// operations
-    pub operations: Vec<(OperationId, Option<WrappedOperation>)>,
+    pub operations: Vec<(OperationId, Option<SecureShareOperation>)>,
 }
 
-/// Wrapped Block
-pub type WrappedBlock = Wrapped<Block, BlockId>;
+/// Block with assosciated meta-data and interfaces allowing trust of data in untrusted network
+pub type SecureShareBlock = SecureShare<Block, BlockId>;
 
-impl WrappedContent for Block {
-    fn new_wrapped<SC: Serializer<Self>, U: Id>(
+impl SecureShareContent for Block {
+    fn new_verifiable<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
         _keypair: &KeyPair,
-    ) -> Result<Wrapped<Self, U>, ModelsError> {
+    ) -> Result<SecureShare<Self, U>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
-        Ok(Wrapped {
+        Ok(SecureShare {
             signature: content.header.signature,
-            creator_public_key: content.header.creator_public_key,
-            creator_address: content.header.creator_address,
+            content_creator_pub_key: content.header.content_creator_pub_key,
+            content_creator_address: content.header.content_creator_address,
             id: U::new(*content.header.id.get_hash()),
             content,
             serialized_data: content_serialized,
@@ -243,14 +247,14 @@ impl WrappedContent for Block {
         _creator_public_key_deserializer: &massa_signature::PublicKeyDeserializer,
         content_deserializer: &DC,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
+    ) -> IResult<&'a [u8], SecureShare<Self, U>, E> {
         let (rest, content) = content_deserializer.deserialize(buffer)?;
         Ok((
             rest,
-            Wrapped {
+            SecureShare {
                 signature: content.header.signature,
-                creator_public_key: content.header.creator_public_key,
-                creator_address: content.header.creator_address,
+                content_creator_pub_key: content.header.content_creator_pub_key,
+                content_creator_address: content.header.content_creator_address,
                 id: U::new(*content.header.id.get_hash()),
                 content,
                 serialized_data: buffer[..buffer.len() - rest.len()].to_vec(),
@@ -260,7 +264,7 @@ impl WrappedContent for Block {
 }
 /// Serializer for `Block`
 pub struct BlockSerializer {
-    header_serializer: WrappedSerializer,
+    header_serializer: SecureShareSerializer,
     op_ids_serializer: OperationIdsSerializer,
 }
 
@@ -268,7 +272,7 @@ impl BlockSerializer {
     /// Creates a new `BlockSerializer`
     pub fn new() -> Self {
         BlockSerializer {
-            header_serializer: WrappedSerializer::new(),
+            header_serializer: SecureShareSerializer::new(),
             op_ids_serializer: OperationIdsSerializer::new(),
         }
     }
@@ -283,7 +287,7 @@ impl Default for BlockSerializer {
 impl Serializer<Block> for BlockSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockId, BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, wrapped::WrappedContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockId, BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -293,13 +297,13 @@ impl Serializer<Block> for BlockSerializer {
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::new_wrapped(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -309,7 +313,7 @@ impl Serializer<Block> for BlockSerializer {
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -345,7 +349,7 @@ impl Serializer<Block> for BlockSerializer {
 
 /// Deserializer for `Block`
 pub struct BlockDeserializer {
-    header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
+    header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
     op_ids_deserializer: OperationIdsDeserializer,
 }
 
@@ -353,7 +357,7 @@ impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
     pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -> Self {
         BlockDeserializer {
-            header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+            header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),
@@ -365,7 +369,7 @@ impl BlockDeserializer {
 impl Deserializer<Block> for BlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockId,BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, wrapped::WrappedContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockId,BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -375,13 +379,13 @@ impl Deserializer<Block> for BlockDeserializer {
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::new_wrapped(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -391,7 +395,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -454,14 +458,14 @@ impl Deserializer<Block> for BlockDeserializer {
     }
 }
 
-impl WrappedBlock {
+impl SecureShareBlock {
     /// size in bytes of the whole block
     pub fn bytes_count(&self) -> u64 {
         self.serialized_data.len() as u64
     }
 
     /// true if given operation is included in the block
-    pub fn contains_operation(&self, op: WrappedOperation) -> bool {
+    pub fn contains_operation(&self, op: SecureShareOperation) -> bool {
         self.content.operations.contains(&op.id)
     }
 
@@ -497,7 +501,7 @@ pub struct BlockHeader {
     /// all operations hash
     pub operation_merkle_root: Hash,
     /// endorsements
-    pub endorsements: Vec<WrappedEndorsement>,
+    pub endorsements: Vec<SecureShareEndorsement>,
 }
 
 // NOTE: TODO
@@ -512,22 +516,22 @@ pub struct BlockHeader {
 //     }
 // }
 
-/// wrapped header
-pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
+/// BlockHeader wrapped up alongside verification data
+pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
-impl WrappedHeader {
+impl SecuredHeader {
     /// gets the header fitness
     pub fn get_fitness(&self) -> u64 {
         (self.content.endorsements.len() as u64) + 1
     }
 }
 
-impl WrappedContent for BlockHeader {}
+impl SecureShareContent for BlockHeader {}
 
 /// Serializer for `BlockHeader`
 pub struct BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
-    endorsement_serializer: WrappedSerializer,
+    endorsement_serializer: SecureShareSerializer,
     endorsement_content_serializer: EndorsementSerializerLW,
     u32_serializer: U32VarIntSerializer,
 }
@@ -537,7 +541,7 @@ impl BlockHeaderSerializer {
     pub fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
-            endorsement_serializer: WrappedSerializer::new(),
+            endorsement_serializer: SecureShareSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
             endorsement_content_serializer: EndorsementSerializerLW::new(),
         }
@@ -555,7 +559,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// ```rust
     /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderSerializer};
     /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
-    /// use massa_models::wrapped::WrappedContent;
+    /// use massa_models::secure_share::SecureShareContent;
     /// use massa_models::{config::THREAD_COUNT, slot::Slot};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
@@ -570,7 +574,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
-    ///     Endorsement::new_wrapped(
+    ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
@@ -580,7 +584,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///     &keypair,
     ///     )
     ///     .unwrap(),
-    ///     Endorsement::new_wrapped(
+    ///     Endorsement::new_verifiable(
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
@@ -661,7 +665,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
-    /// use massa_models::{config::THREAD_COUNT, slot::Slot, wrapped::WrappedContent};
+    /// use massa_models::{config::THREAD_COUNT, slot::Slot, secure_share::SecureShareContent};
     /// use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
@@ -676,7 +680,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
-    ///     Endorsement::new_wrapped(
+    ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
@@ -686,7 +690,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///     &keypair,
     ///     )
     ///     .unwrap(),
-    ///     Endorsement::new_wrapped(
+    ///     Endorsement::new_verifiable(
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
@@ -753,15 +757,16 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             ));
         }
         // Now deser the endorsements (which were: lw serialized)
-        let endorsement_deserializer = WrappedDeserializer::new(EndorsementDeserializerLW::new(
-            self.endorsement_count,
-            slot,
-            parents[slot.thread as usize],
-        ));
+        let endorsement_deserializer =
+            SecureShareDeserializer::new(EndorsementDeserializerLW::new(
+                self.endorsement_count,
+                slot,
+                parents[slot.thread as usize],
+            ));
 
         let (rest, endorsements) = context(
             "Failed endorsements deserialization",
-            length_count::<&[u8], Wrapped<Endorsement, EndorsementId>, u32, E, _, _>(
+            length_count::<&[u8], SecureShare<Endorsement, EndorsementId>, u32, E, _, _>(
                 context("Failed length deserialization", |input| {
                     self.length_endorsements_deserializer.deserialize(input)
                 }),
@@ -806,7 +811,11 @@ impl std::fmt::Display for BlockHeader {
             writeln!(f, "\t\tId: {}", ed.id)?;
             writeln!(f, "\t\tIndex: {}", ed.content.index)?;
             writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
-            writeln!(f, "\t\tEndorser's public key: {}", ed.creator_public_key)?;
+            writeln!(
+                f,
+                "\t\tEndorser's public key: {}",
+                ed.content_creator_pub_key
+            )?;
             writeln!(f, "\t\tEndorsed block: {}", ed.content.endorsed_block)?;
             writeln!(f, "\t\tSignature: {}", ed.signature)?;
         }
@@ -843,7 +852,7 @@ mod test {
             })
             .collect();
 
-        let endo = Endorsement::new_wrapped(
+        let endo = Endorsement::new_verifiable(
             Endorsement {
                 slot: Slot::new(1, 0),
                 index: 1,
@@ -858,7 +867,7 @@ mod test {
         .unwrap();
 
         // create block header
-        let orig_header = BlockHeader::new_wrapped(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 0),
                 parents,
@@ -877,15 +886,15 @@ mod test {
         };
 
         // serialize block
-        let wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(&wrapped_block, &mut ser_block)
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
             .unwrap();
 
         // deserialize
-        let (rest, res_block): (&[u8], WrappedBlock) = WrappedDeserializer::new(
+        let (rest, res_block): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::<DeserializeError>(&ser_block)
@@ -931,7 +940,7 @@ mod test {
         let parents: Vec<BlockId> = vec![];
 
         // create block header
-        let orig_header = BlockHeader::new_wrapped(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
                 parents,
@@ -950,15 +959,15 @@ mod test {
         };
 
         // serialize block
-        let wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(&wrapped_block, &mut ser_block)
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
             .unwrap();
 
         // deserialize
-        let (rest, res_block): (&[u8], WrappedBlock) = WrappedDeserializer::new(
+        let (rest, res_block): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::<DeserializeError>(&ser_block)
@@ -1004,12 +1013,12 @@ mod test {
         };
 
         // create block header
-        let orig_header = BlockHeader::new_wrapped(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-                endorsements: vec![Endorsement::new_wrapped(
+                endorsements: vec![Endorsement::new_verifiable(
                     endorsement,
                     EndorsementSerializer::new(),
                     &keypair,
@@ -1028,15 +1037,15 @@ mod test {
         };
 
         // serialize block
-        let wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(&wrapped_block, &mut ser_block)
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], WrappedBlock), _> = WrappedDeserializer::new(
+        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::<DeserializeError>(&ser_block);

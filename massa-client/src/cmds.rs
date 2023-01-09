@@ -1238,7 +1238,7 @@ async fn send_operation(
     match client
         .public
         .send_operations(vec![OperationInput {
-            creator_public_key: op.creator_public_key,
+            creator_public_key: op.content_creator_pub_key,
             serialized_content: op.serialized_data,
             signature: op.signature,
         }])

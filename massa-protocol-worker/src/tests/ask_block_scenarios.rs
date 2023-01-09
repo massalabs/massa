@@ -40,7 +40,7 @@ async fn test_full_ask_block_workflow() {
             let op_1 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_2 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_thread = op_1
-                .creator_address
+                .content_creator_address
                 .get_thread(protocol_config.thread_count);
             let block = tools::create_block_with_operations(
                 &node_a.keypair,

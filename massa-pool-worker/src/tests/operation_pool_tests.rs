@@ -23,10 +23,10 @@ use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{
     address::Address,
     amount::Amount,
-    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     prehash::PreHashMap,
+    secure_share::SecureShareContent,
     slot::Slot,
-    wrapped::WrappedContent,
 };
 use massa_pool_exports::PoolConfig;
 use massa_signature::KeyPair;
@@ -56,7 +56,7 @@ fn test_add_irrelevant_operation() {
     });
 }
 
-fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
+fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
     let sender_keypair = KeyPair::generate();
 
     let recv_keypair = KeyPair::generate();
@@ -70,7 +70,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
         op,
         expire_period,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// TODO refactor old tests
@@ -105,7 +105,9 @@ fn test_pool() {
         //TODO: compare
         //assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
 
-        let op_thread = op.creator_address.get_thread(pool_config.thread_count);
+        let op_thread = op
+            .content_creator_address
+            .get_thread(pool_config.thread_count);
         thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
     }
 
@@ -185,7 +187,9 @@ fn test_pool() {
         pool.add_operations(storage);
         //TODO: compare
         //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
-        let op_thread = op.creator_address.get_thread(pool_config.thread_count);
+        let op_thread = op
+            .content_creator_address
+            .get_thread(pool_config.thread_count);
         let (ids, _) = pool.get_block_operations(&Slot::new(expire_period - 1, op_thread));
         assert!(ids.is_empty());
     }

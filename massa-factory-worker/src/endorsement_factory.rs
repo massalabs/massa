@@ -3,10 +3,10 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
     block::BlockId,
-    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
+    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-    wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -167,9 +167,10 @@ impl EndorsementFactoryWorker {
             .get_latest_blockclique_block_at_slot(slot);
 
         // produce endorsements
-        let mut endorsements: Vec<WrappedEndorsement> = Vec::with_capacity(producers_indices.len());
+        let mut endorsements: Vec<SecureShareEndorsement> =
+            Vec::with_capacity(producers_indices.len());
         for (keypair, index) in producers_indices {
-            let endorsement = Endorsement::new_wrapped(
+            let endorsement = Endorsement::new_verifiable(
                 Endorsement {
                     slot,
                     index: index as u32,
@@ -183,7 +184,7 @@ impl EndorsementFactoryWorker {
             // log endorsement creation
             debug!(
                 "endorsement {} created at slot {} by address {}",
-                endorsement.id, endorsement.content.slot, endorsement.creator_address
+                endorsement.id, endorsement.content.slot, endorsement.content_creator_address
             );
 
             endorsements.push(endorsement);

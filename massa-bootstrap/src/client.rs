@@ -496,14 +496,21 @@ pub async fn get_state(
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
 
     loop {
-        for (addr, pub_key) in shuffled_list.iter() {
+        for (addr, node_id) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
                 if MassaTime::now().expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(&mut establisher, bootstrap_config, addr, pub_key).await {
+            match connect_to_server(
+                &mut establisher,
+                bootstrap_config,
+                addr,
+                &node_id.get_public_key(),
+            )
+            .await
+            {
                 Ok(mut client) => {
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable

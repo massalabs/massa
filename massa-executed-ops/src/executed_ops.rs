@@ -8,9 +8,9 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
+    secure_share::Id,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
-    wrapped::Id,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -164,7 +164,7 @@ impl ExecutedOps {
 #[test]
 fn test_executed_ops_xor_computing() {
     use massa_models::prehash::PreHashMap;
-    use massa_models::wrapped::Id;
+    use massa_models::secure_share::Id;
 
     // initialize the executed ops config
     let config = ExecutedOpsConfig {

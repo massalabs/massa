@@ -28,6 +28,7 @@ use massa_models::config::{
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
+use massa_models::node::NodeId;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -37,9 +38,9 @@ use massa_models::{
     endorsement::EndorsementSerializer,
     operation::OperationId,
     prehash::PreHashMap,
+    secure_share::Id,
+    secure_share::SecureShareContent,
     slot::Slot,
-    wrapped::Id,
-    wrapped::WrappedContent,
 };
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
@@ -272,7 +273,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
     priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
-pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
+pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         bootstrap_protocol: Some(String::from("both")),
@@ -369,15 +370,17 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 pub fn get_boot_state() -> BootstrapableGraph {
     let keypair = KeyPair::generate();
 
-    let block = Block::new_wrapped(
+    let block = Block::new_verifiable(
         Block {
-            header: BlockHeader::new_wrapped(
+            header: BlockHeader::new_verifiable(
                 BlockHeader {
-                    slot: Slot::new(1, 1),
+                    // associated slot
+                    // all header endorsements are supposed to point towards this one
+                    slot: Slot::new(1, 0),
                     parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
-                        Endorsement::new_wrapped(
+                        Endorsement::new_verifiable(
                             Endorsement {
                                 slot: Slot::new(1, 0),
                                 index: 1,
@@ -387,9 +390,9 @@ pub fn get_boot_state() -> BootstrapableGraph {
                             &keypair,
                         )
                         .unwrap(),
-                        Endorsement::new_wrapped(
+                        Endorsement::new_verifiable(
                             Endorsement {
-                                slot: Slot::new(4, 1),
+                                slot: Slot::new(1, 0),
                                 index: 3,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
