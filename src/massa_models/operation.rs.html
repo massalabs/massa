@@ -1505,6 +1505,15 @@
 <a href="#1505" id="1505">1505</a>
 <a href="#1506" id="1506">1506</a>
 <a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
@@ -2767,7 +2776,16 @@
                     <span class="self">self</span>.length_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed operation deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.signed_op_deserializer.deserialize(input)
+                    <span class="kw">let </span>(rest, op) = <span class="self">self</span>.signed_op_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                    <span class="kw">if </span>op.verify_signature().is_err() {
+                        <span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+                            input,
+                            <span class="string">&quot;Operations signature failed&quot;</span>,
+                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                        )))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Ok</span>((rest, op))
+                    }
                 }),
             ),
         )
