@@ -443,18 +443,38 @@ pub async fn get_state(
     // We filter the bootstrap list to keep only the ip addresses we are compatible with
     match &bootstrap_config.bootstrap_protocol {
         Some(s) if s.as_str() == "ipv4" => {
+            let prev_bootstrap_list_len = filtered_bootstrap_list.len();
+
             filtered_bootstrap_list = filtered_bootstrap_list
                 .clone()
                 .into_iter()
                 .filter(|&(addr, _)| addr.is_ipv4())
-                .collect()
+                .collect();
+
+            let new_bootstrap_list_len = filtered_bootstrap_list.len();
+
+            debug!(
+                "Filtered out {} IPv6 bootstrap addresses out of a total of {} bootstrap servers.",
+                prev_bootstrap_list_len as i32 - new_bootstrap_list_len as i32,
+                prev_bootstrap_list_len
+            );
         }
         Some(s) if s.as_str() == "ipv6" => {
+            let prev_bootstrap_list_len = filtered_bootstrap_list.len();
+
             filtered_bootstrap_list = filtered_bootstrap_list
                 .clone()
                 .into_iter()
                 .filter(|&(addr, _)| addr.is_ipv6())
-                .collect()
+                .collect();
+
+            let new_bootstrap_list_len = filtered_bootstrap_list.len();
+
+            debug!(
+                "Filtered out {} IPv4 bootstrap addresses out of a total of {} bootstrap servers.",
+                prev_bootstrap_list_len as i32 - new_bootstrap_list_len as i32,
+                prev_bootstrap_list_len
+            );
         }
         _ => {}
     };
