@@ -339,7 +339,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
         expire_period,
     };
 
-    Operation::secure(content, OperationSerializer::new(), &sender_keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.

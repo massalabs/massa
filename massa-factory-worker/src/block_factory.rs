@@ -197,7 +197,7 @@ impl BlockFactoryWorker {
         );
 
         // create header
-        let header: SecuredHeader = BlockHeader::secure::<BlockHeaderSerializer, BlockId>(
+        let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
@@ -210,7 +210,7 @@ impl BlockFactoryWorker {
         .expect("error while producing block header");
 
         // create block
-        let block = Block::secure(
+        let block = Block::new_verifiable(
             Block {
                 header,
                 operations: op_ids.into_iter().collect(),

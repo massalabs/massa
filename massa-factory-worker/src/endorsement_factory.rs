@@ -170,7 +170,7 @@ impl EndorsementFactoryWorker {
         let mut endorsements: Vec<SecureShareEndorsement> =
             Vec::with_capacity(producers_indices.len());
         for (keypair, index) in producers_indices {
-            let endorsement = Endorsement::secure(
+            let endorsement = Endorsement::new_verifiable(
                 Endorsement {
                     slot,
                     index: index as u32,

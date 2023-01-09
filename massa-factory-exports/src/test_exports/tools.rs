@@ -8,7 +8,7 @@ use massa_signature::KeyPair;
 
 /// Create an empty block for testing. Can be used to generate genesis blocks.
 pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
-    let header = BlockHeader::secure(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: *slot,
             parents: Vec::new(),
@@ -20,7 +20,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
     )
     .unwrap();
 
-    Block::secure(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),

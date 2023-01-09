@@ -218,7 +218,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
-                    let header = BlockHeader::secure(
+                    let header = BlockHeader::new_verifiable(
                         BlockHeader {
                             slot: Slot::new(1, op_thread),
                             parents: Vec::new(),
@@ -230,7 +230,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     )
                     .unwrap();
 
-                    Block::secure(
+                    Block::new_verifiable(
                         Block {
                             header,
                             operations: vec![op.clone()].into_iter().map(|op| op.id).collect(),

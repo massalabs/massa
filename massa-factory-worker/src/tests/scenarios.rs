@@ -29,7 +29,8 @@ fn basic_creation_with_operation() {
         expire_period: 2,
         op: OperationType::RollBuy { roll_count: 1 },
     };
-    let operation = Operation::secure(content, OperationSerializer::new(), &keypair).unwrap();
+    let operation =
+        Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     let (block_id, storage) = test_factory.get_next_created_block(Some(vec![operation]), None);
 
     let block = storage.read_blocks().get(&block_id).unwrap().clone();
@@ -51,7 +52,8 @@ fn basic_creation_with_multiple_operations() {
         expire_period: 2,
         op: OperationType::RollBuy { roll_count: 1 },
     };
-    let operation = Operation::secure(content, OperationSerializer::new(), &keypair).unwrap();
+    let operation =
+        Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     let (block_id, storage) =
         test_factory.get_next_created_block(Some(vec![operation.clone(), operation]), None);
 

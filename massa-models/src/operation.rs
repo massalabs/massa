@@ -1164,7 +1164,7 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::secure(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
@@ -1237,7 +1237,7 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::secure(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
@@ -1333,7 +1333,7 @@ mod tests {
 
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::secure(content, op_serializer, &sender_keypair).unwrap();
+        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()
@@ -1407,7 +1407,7 @@ mod tests {
         assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::secure(content, op_serializer, &sender_keypair).unwrap();
+        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()
@@ -1483,7 +1483,7 @@ mod tests {
         assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::secure(content, op_serializer, &sender_keypair).unwrap();
+        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()

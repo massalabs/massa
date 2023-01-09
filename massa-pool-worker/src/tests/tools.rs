@@ -37,7 +37,7 @@ pub fn create_operation_with_expire_period(
         op,
         expire_period,
     };
-    Operation::secure(content, OperationSerializer::new(), keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 /// Return `n` signed operations
@@ -93,7 +93,7 @@ pub fn _get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
         op,
         expire_period,
     };
-    Operation::secure(content, OperationSerializer::new(), &sender_keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// Creates an endorsement for use in pool tests.
@@ -105,7 +105,7 @@ pub fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blabla".as_bytes())),
     };
-    Endorsement::secure(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
+    Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
 }
 
 pub fn _get_transaction_with_addresses(
@@ -123,5 +123,5 @@ pub fn _get_transaction_with_addresses(
         op,
         expire_period,
     };
-    Operation::secure(content, OperationSerializer::new(), sender_keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap()
 }

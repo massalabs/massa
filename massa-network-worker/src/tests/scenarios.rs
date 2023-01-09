@@ -1197,7 +1197,7 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Endorsement::secure(
+            let endorsement = Endorsement::new_verifiable(
                 content.clone(),
                 EndorsementSerializer::new(),
                 &sender_keypair,
@@ -1233,7 +1233,7 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Endorsement::secure(
+            let endorsement = Endorsement::new_verifiable(
                 content.clone(),
                 EndorsementSerializer::new(),
                 &sender_keypair,

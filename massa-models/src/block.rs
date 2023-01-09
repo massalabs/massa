@@ -209,7 +209,7 @@ pub struct FilledBlock {
 pub type SecureShareBlock = SecureShare<Block, BlockId>;
 
 impl SecureShareContent for Block {
-    fn secure<SC: Serializer<Self>, U: Id>(
+    fn new_verifiable<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
         _keypair: &KeyPair,
@@ -297,13 +297,13 @@ impl Serializer<Block> for BlockSerializer {
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::secure(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -313,7 +313,7 @@ impl Serializer<Block> for BlockSerializer {
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -379,13 +379,13 @@ impl Deserializer<Block> for BlockDeserializer {
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::secure(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -395,7 +395,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -574,7 +574,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
@@ -584,7 +584,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///     &keypair,
     ///     )
     ///     .unwrap(),
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
@@ -680,7 +680,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
@@ -690,7 +690,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///     &keypair,
     ///     )
     ///     .unwrap(),
-    ///     Endorsement::secure(
+    ///     Endorsement::new_verifiable(
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
@@ -852,7 +852,7 @@ mod test {
             })
             .collect();
 
-        let endo = Endorsement::secure(
+        let endo = Endorsement::new_verifiable(
             Endorsement {
                 slot: Slot::new(1, 0),
                 index: 1,
@@ -867,7 +867,7 @@ mod test {
         .unwrap();
 
         // create block header
-        let orig_header = BlockHeader::secure(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 0),
                 parents,
@@ -887,7 +887,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::secure(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -940,7 +940,7 @@ mod test {
         let parents: Vec<BlockId> = vec![];
 
         // create block header
-        let orig_header = BlockHeader::secure(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
                 parents,
@@ -960,7 +960,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::secure(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1013,12 +1013,12 @@ mod test {
         };
 
         // create block header
-        let orig_header = BlockHeader::secure(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-                endorsements: vec![Endorsement::secure(
+                endorsements: vec![Endorsement::new_verifiable(
                     endorsement,
                     EndorsementSerializer::new(),
                     &keypair,
@@ -1038,7 +1038,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::secure(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)

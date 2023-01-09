@@ -386,7 +386,8 @@ mod tests {
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
         let endorsement: SecureShareEndorsement =
-            Endorsement::secure(content, EndorsementSerializer::new(), &sender_keypair).unwrap();
+            Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair)
+                .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
         let serializer = SecureShareSerializer::new();
@@ -410,7 +411,8 @@ mod tests {
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
         let endorsement: SecureShareEndorsement =
-            Endorsement::secure(content, EndorsementSerializerLW::new(), &sender_keypair).unwrap();
+            Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), &sender_keypair)
+                .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
         let serializer = SecureShareSerializer::new();

@@ -146,7 +146,7 @@ impl Wallet {
         let sender_keypair = self
             .find_associated_keypair(&address)
             .ok_or_else(|| WalletError::MissingKeyError(address))?;
-        Ok(Operation::secure(content, OperationSerializer::new(), sender_keypair).unwrap())
+        Ok(Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
 }
 

@@ -70,7 +70,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
         op,
         expire_period,
     };
-    Operation::secure(content, OperationSerializer::new(), &sender_keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// TODO refactor old tests

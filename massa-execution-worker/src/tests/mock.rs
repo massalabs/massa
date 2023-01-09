@@ -148,7 +148,7 @@ pub fn create_block(
         })[..],
     );
 
-    let header = BlockHeader::secure(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: vec![],
@@ -159,7 +159,7 @@ pub fn create_block(
         &creator_keypair,
     )?;
 
-    Ok(Block::secure(
+    Ok(Block::new_verifiable(
         Block {
             header,
             operations: operations.into_iter().map(|op| op.id).collect(),

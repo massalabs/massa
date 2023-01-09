@@ -168,13 +168,13 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::secure(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -184,7 +184,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::secure(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -207,7 +207,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///     operations: Vec::new(),
     /// };
     ///
-    /// let full_block = Block::secure(orig_block, BlockSerializer::new(), &keypair).unwrap();
+    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
     ///    parents: vec![],

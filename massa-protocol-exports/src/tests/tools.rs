@@ -58,7 +58,7 @@ pub async fn create_and_connect_nodes(
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
 pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
-    let header = BlockHeader::secure(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(1, 0),
             parents: vec![
@@ -73,7 +73,7 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     )
     .unwrap();
 
-    Block::secure(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -99,7 +99,7 @@ pub fn create_block_with_operations(
             [acc, v.id.to_bytes().to_vec()].concat()
         })[..],
     );
-    let header = BlockHeader::secure(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: vec![
@@ -115,7 +115,7 @@ pub fn create_block_with_operations(
     .unwrap();
 
     let op_ids = operations.into_iter().map(|op| op.id).collect();
-    Block::secure(
+    Block::new_verifiable(
         Block {
             header,
             operations: op_ids,
@@ -136,7 +136,7 @@ pub fn create_block_with_endorsements(
     slot: Slot,
     endorsements: Vec<SecureShareEndorsement>,
 ) -> SecureShareBlock {
-    let header = BlockHeader::secure(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: vec![
@@ -151,7 +151,7 @@ pub fn create_block_with_endorsements(
     )
     .unwrap();
 
-    Block::secure(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -172,7 +172,7 @@ pub fn create_endorsement() -> SecureShareEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Endorsement::secure(content, EndorsementSerializerLW::new(), &keypair).unwrap()
+    Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), &keypair).unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
@@ -191,7 +191,7 @@ pub fn create_operation_with_expire_period(
         op,
         expire_period,
     };
-    Operation::secure(content, OperationSerializer::new(), keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 lazy_static::lazy_static! {

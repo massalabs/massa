@@ -40,7 +40,7 @@ pub fn create_genesis_block(
     thread_number: u8,
 ) -> Result<SecureShareBlock, ConsensusError> {
     let keypair = &cfg.genesis_key;
-    let header = BlockHeader::secure(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
@@ -51,7 +51,7 @@ pub fn create_genesis_block(
         keypair,
     )?;
 
-    Ok(Block::secure(
+    Ok(Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),

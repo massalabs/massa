@@ -53,9 +53,9 @@ pub trait SecureShareContent
 where
     Self: Sized + Display,
 {
-    /// Using the provided key-pair, generates values the are used
-    /// by the trust-free data sharing protocols.
-    fn secure<Ser: Serializer<Self>, ID: Id>(
+    /// Using the provided key-pair, applies a cryptographic signature, and packages
+    /// the data required to share and verify the data in a trust-free network of peers.
+    fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
         content: Self,
         content_serializer: Ser,
         keypair: &KeyPair,
@@ -325,7 +325,7 @@ where
     ///    endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     /// };
     /// let keypair = KeyPair::generate();
-    /// let secured: SecureShare<Endorsement, BlockId> = Endorsement::secure(
+    /// let secured: SecureShare<Endorsement, BlockId> = Endorsement::new_verifiable(
     ///    content,
     ///    EndorsementSerializer::new(),
     ///    &keypair
