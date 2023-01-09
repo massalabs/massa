@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use std::{net::SocketAddr, sync::Arc, time::Duration, collections::HashMap};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
@@ -438,20 +438,25 @@ pub async fn get_state(
         return Ok(GlobalBootstrapState::new(final_state));
     }
 
-    let mut filtered_bootstrap_list:Vec<(SocketAddr, PublicKey)> = bootstrap_config.bootstrap_list.clone();
-    
+    let mut filtered_bootstrap_list: Vec<(SocketAddr, PublicKey)> =
+        bootstrap_config.bootstrap_list.clone();
+
     match &bootstrap_config.bootstrap_protocol {
-        Some(s) if *s == String::from("ipv4") => {
-            filtered_bootstrap_list = filtered_bootstrap_list.clone().into_iter()
-            .filter(|&(addr, _pubkey)| addr.is_ipv4())
-            .collect()
-        },
-        Some(s) if *s == String::from("ipv6") => {
-            filtered_bootstrap_list = filtered_bootstrap_list.clone().into_iter()
-            .filter(|&(addr, _pubkey)| addr.is_ipv6())
-            .collect()
-        },
-        _ => {filtered_bootstrap_list = filtered_bootstrap_list.clone() }
+        Some(s) if s.as_str() == "ipv4" => {
+            filtered_bootstrap_list = filtered_bootstrap_list
+                .clone()
+                .into_iter()
+                .filter(|&(addr, _pubkey)| addr.is_ipv4())
+                .collect()
+        }
+        Some(s) if s.as_str() == "ipv6" => {
+            filtered_bootstrap_list = filtered_bootstrap_list
+                .clone()
+                .into_iter()
+                .filter(|&(addr, _pubkey)| addr.is_ipv6())
+                .collect()
+        }
+        _ => filtered_bootstrap_list = filtered_bootstrap_list.clone(),
     };
 
     // we are after genesis => bootstrap
@@ -466,8 +471,15 @@ pub async fn get_state(
     shuffled_list.shuffle(&mut StdRng::from_entropy());
 
     // we only keep one IP for each Public key.
-    let shuffled_hashmap: HashMap<PublicKey, SocketAddr> = shuffled_list.clone().into_iter().map(|(addr, pub_key)| (pub_key, addr) ).collect();
-    shuffled_list = shuffled_hashmap.iter().map(|(&pub_key, &addr)| (addr, pub_key)).collect();
+    let shuffled_hashmap: HashMap<PublicKey, SocketAddr> = shuffled_list
+        .clone()
+        .into_iter()
+        .map(|(addr, pub_key)| (pub_key, addr))
+        .collect();
+    shuffled_list = shuffled_hashmap
+        .iter()
+        .map(|(&pub_key, &addr)| (addr, pub_key))
+        .collect();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
 
     let mut next_bootstrap_message: BootstrapClientMessage =
