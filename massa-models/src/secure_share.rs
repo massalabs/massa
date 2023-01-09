@@ -24,17 +24,20 @@ where
     T: Display + SecureShareContent,
     ID: Id,
 {
-    /// The conanical data. All other fields are meta-data
+    /// Reference contents. Not required for the the security protocols.
+    ///
+    /// Use the Lightweight equivilant structures when you need verifiable
+    /// serialized data, but do not need to read the values directly (such as when sending)
     pub content: T,
     #[serde(skip)]
-    /// Content serialized
+    /// Content in sharable, deserializable form. Is used in the secure verification protocols.
     pub serialized_data: Vec<u8>,
 
-    /// Part of the verification process using [Self::verify_signature]. See the white paper for more info
+    /// A cryptographically generated value using `serialized_data` and a public key.
     pub signature: Signature,
-    #[allow(missing_docs)]
+    /// The public-key component used in the generation of the signature
     pub content_creator_pub_key: PublicKey,
-    #[allow(missing_docs)]
+    /// Derived from the same public key used to generate the signature
     pub content_creator_address: Address,
     /// A secure hash of the data. See also [massa_hash::Hash]
     pub id: ID,
