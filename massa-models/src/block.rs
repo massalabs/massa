@@ -840,7 +840,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 parents[slot.thread as usize],
             ));
 
-        let (rest, endorsements): (&[u8], Vec<Wrapped<Endorsement, EndorsementId>>) = context(
+        let (rest, endorsements): (&[u8], Vec<SecureShare<Endorsement, EndorsementId>>) = context(
             "Failed endorsements deserialization",
             length_count::<&[u8], SecureShare<Endorsement, EndorsementId>, u32, E, _, _>(
                 context("Failed length deserialization", |input| {
@@ -1169,7 +1169,7 @@ mod test {
             .collect();
 
         // create block header
-        let orig_header = BlockHeader::new_wrapped(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(0, 1),
                 parents,
@@ -1188,15 +1188,15 @@ mod test {
         };
 
         // serialize block
-        let wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(&wrapped_block, &mut ser_block)
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], WrappedBlock), _> = WrappedDeserializer::new(
+        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::<DeserializeError>(&ser_block);
@@ -1213,7 +1213,7 @@ mod test {
             .collect();
 
         // create block header
-        let orig_header = BlockHeader::new_wrapped(
+        let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
                 parents,
@@ -1232,15 +1232,15 @@ mod test {
         };
 
         // serialize block
-        let wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(&wrapped_block, &mut ser_block)
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], WrappedBlock), _> = WrappedDeserializer::new(
+        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::<DeserializeError>(&ser_block);
