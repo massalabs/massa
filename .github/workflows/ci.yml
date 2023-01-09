@@ -153,7 +153,7 @@ jobs:
       - name: "Use the current branch as dependency for gas-calibration"
         run: > 
           cd gas-calibration && 
-          sed -i 's/main/${{ github.head_ref || github.ref_name }}/g' Cargo.toml && 
+          sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml && 
           sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep massa-sc-runtime | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml
       - name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
         run: >
