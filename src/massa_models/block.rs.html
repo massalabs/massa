@@ -1240,6 +1240,9 @@
 <a href="#1240" id="1240">1240</a>
 <a href="#1241" id="1241">1241</a>
 <a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
@@ -2051,7 +2054,10 @@
                 } <span class="kw">else if </span>slot.period != <span class="number">0 </span>&amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                         rest,
-                        <span class="string">&quot;Non-genesis block must have THREAD_COUNT parents&quot;</span>,
+                        <span class="macro">const_format::formatcp!</span>(
+                            <span class="string">&quot;Non-genesis block must have {} parents&quot;</span>,
+                            THREAD_COUNT
+                        ),
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
                 }
@@ -2075,7 +2081,7 @@
                 },
             ));
         }
-        <span class="comment">// Now deser the endorsements (which were: lw serialized)
+        <span class="comment">// Now deser the endorsements (which were: light-weight serialized)
         </span><span class="kw">let </span>endorsement_deserializer =
             SecureShareDeserializer::new(EndorsementDeserializerLW::new(
                 <span class="self">self</span>.endorsement_count,
@@ -2118,7 +2124,7 @@
 
         {
             <span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-            </span><span class="macro">assert!</span>(header.assert_invariants().is_ok());
+            </span>header.assert_invariants().unwrap();
         }
 
         <span class="prelude-val">Ok</span>((rest, header))
