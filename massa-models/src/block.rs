@@ -809,7 +809,10 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
                     return Err(nom::Err::Failure(ContextError::add_context(
                         rest,
-                        "Non-genesis block must have THREAD_COUNT parents",
+                        const_format::formatcp!(
+                            "Non-genesis block must have {} parents",
+                            THREAD_COUNT
+                        ),
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
                 }
@@ -833,7 +836,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 },
             ));
         }
-        // Now deser the endorsements (which were: lw serialized)
+        // Now deser the endorsements (which were: light-weight serialized)
         let endorsement_deserializer =
             SecureShareDeserializer::new(EndorsementDeserializerLW::new(
                 self.endorsement_count,
@@ -876,7 +879,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
         {
             #[cfg(any(test, feature = "testing"))]
-            assert!(header.assert_invariants().is_ok());
+            header.assert_invariants().unwrap();
         }
 
         Ok((rest, header))
