@@ -297,6 +297,14 @@ impl Output for Vec<OperationInfo> {
     }
 }
 
+impl Output for Vec<BlockInfo> {
+    fn pretty_print(&self) {
+        for block_info in self {
+            println!("{}", block_info);
+        }
+    }
+}
+
 impl Output for Vec<OperationId> {
     fn pretty_print(&self) {
         for operation_id in self {
