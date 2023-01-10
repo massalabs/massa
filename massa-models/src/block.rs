@@ -535,12 +535,13 @@ impl BlockHeader {
             }
         }
 
-        // assert that the endorsement indexes are all unique
+        // assert that the endorsement indexes are all unique...
         let is_idx_set = self
             .endorsements
             .iter()
             .map(|endo| {
                 endo.verify_signature()?;
+                // ..and that they are within range
                 if endo.content.index >= ENDORSEMENT_COUNT {
                     return Err::<u32, Box<dyn std::error::Error>>(
                         "Invariant broken: endorsement index out of bounds".into(),
@@ -840,6 +841,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 parents[slot.thread as usize],
             ));
 
+        let parent_id = parents[slot.thread as usize];
         let (rest, endorsements): (&[u8], Vec<SecureShare<Endorsement, EndorsementId>>) = context(
             "Failed endorsements deserialization",
             length_count::<&[u8], SecureShare<Endorsement, EndorsementId>, u32, E, _, _>(
@@ -850,30 +852,20 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                     let (rest, endo) = endorsement_deserializer
                         .deserialize_with(&self.endorsement_serializer, input)?;
 
-                    if endo.verify_signature().is_err() {
-                        Err(nom::Err::Failure(ContextError::add_context(
+                    if endo.content.endorsed_block != parent_id {
+                        return Err(nom::Err::Failure(ContextError::add_context(
                             rest,
-                            "Endorsement signature invalid",
+                            "Endorsement does not match block parents",
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )))
-                    } else {
-                        Ok((rest, endo))
+                        )));
                     }
+
+                    // have already received the block with the same endorsement, why force a re-verify?
+                    Ok((rest, endo))
                 }),
             ),
         )
         .parse(rest)?;
-
-        let parent_id = parents[slot.thread as usize];
-        for endo in endorsements.iter() {
-            if endo.content.endorsed_block != parent_id {
-                return Err(nom::Err::Failure(ContextError::add_context(
-                    rest,
-                    "Endorsement does not match block parents",
-                    ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                )));
-            }
-        }
 
         let header = BlockHeader {
             slot,
