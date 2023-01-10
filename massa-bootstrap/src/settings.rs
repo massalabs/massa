@@ -5,13 +5,24 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::{net::SocketAddr, path::PathBuf};
 
+/// Bootstrap IP protocol version setting.
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub enum IpType {
+    /// Bootstrap with both IPv4 and IPv6 protocols (default).
+    Both,
+    /// Bootstrap only with IPv4.
+    IPv4,
+    /// Bootstrap only with IPv6.
+    IPv6,
+}
+
 /// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, NodeId)>,
-    /// IP version filter for bootstrap list, targeting "ipv4", "ipv6" or "both".
-    pub bootstrap_protocol: Option<String>,
+    /// IP version filter for bootstrap list, targeting IpType::IPv4, IpType::IPv6 or IpType::Both. Defaults to IpType::Both.
+    pub bootstrap_protocol: IpType,
     /// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
     pub bootstrap_whitelist_path: PathBuf,
     /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.

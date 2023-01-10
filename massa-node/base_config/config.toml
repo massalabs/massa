@@ -208,10 +208,10 @@
         ["[2001:41d0:1004:67::]:31245", "N12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j"],
         ["[2001:41d0:a:7f7d::]:31245", "N12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq"],
         ["[2001:41d0:602:db1::]:31245", "N1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
-        ["[2001:41d0:602:21e4::]:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
+        ["[2001:41d0:602:21e4::]:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"],
     ]
-    # [optional] force the bootstrap protocol to use: "ipv4", "ipv6". Defaults to using both protocols.
-    bootstrap_protocol = "both"
+    # force the bootstrap protocol to use: "IPv4", "IPv6", or "Both". Defaults to using both protocols.
+    bootstrap_protocol = "Both"
     # path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
     bootstrap_whitelist_path = "base_config/bootstrap_whitelist.json"
     # path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.

@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 
 use enum_map::EnumMap;
+use massa_bootstrap::IpType;
 use massa_models::{config::build_massa_settings, node::NodeId};
 use massa_time::MassaTime;
 use serde::Deserialize;
@@ -75,7 +76,7 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     pub bootstrap_list: Vec<(SocketAddr, NodeId)>,
-    pub bootstrap_protocol: Option<String>,
+    pub bootstrap_protocol: IpType,
     pub bootstrap_whitelist_path: PathBuf,
     pub bootstrap_blacklist_path: PathBuf,
     pub bind: Option<SocketAddr>,
