@@ -608,7 +608,7 @@ pub enum ScrudOperation {
     Delete,
 }
 
-/// Bootsrap lists types
+/// bootstrap lists types
 #[derive(Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum ListType {

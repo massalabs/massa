@@ -103,14 +103,14 @@ pub enum Command {
         props(args = "(add, remove or allow-all) [IpAddr]"),
         message = "Manage boostrap whitelist IP address(es).No args returns the whitelist blacklist"
     )]
-    node_bootsrap_whitelist,
+    node_bootstrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "(add or remove) [IpAddr]"),
         message = "Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist"
     )]
-    node_bootsrap_blacklist,
+    node_bootstrap_blacklist,
 
     #[strum(
         ascii_case_insensitive,
@@ -1022,10 +1022,10 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-            Command::node_bootsrap_blacklist => {
+            Command::node_bootstrap_blacklist => {
                 if parameters.is_empty() {
                     match client.private.node_bootstrap_blacklist().await {
-                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Ok(bootstraplist_ips) => Ok(Box::new(bootstraplist_ips)),
                         Err(e) => rpc_error!(e),
                     }
                 } else {
@@ -1046,7 +1046,7 @@ impl Command {
                                 Ok(()) => {
                                     if !json {
                                         println!(
-                                            "Request of bootsrap blacklisting successfully sent!"
+                                            "Request of bootstrap blacklisting successfully sent!"
                                         )
                                     }
                                     Ok(Box::new(()))
@@ -1062,7 +1062,7 @@ impl Command {
                             {
                                 Ok(()) => {
                                     if !json {
-                                        println!("Request of remove from bootsrap blacklist successfully sent!")
+                                        println!("Request of remove from bootstrap blacklist successfully sent!")
                                     }
                                     Ok(Box::new(()))
                                 }
@@ -1076,12 +1076,12 @@ impl Command {
                     res
                 }
             }
-            Command::node_bootsrap_whitelist => {
+            Command::node_bootstrap_whitelist => {
                 if parameters.is_empty() {
                     match client.private.node_bootstrap_whitelist().await {
-                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Ok(bootstraplist_ips) => Ok(Box::new(bootstraplist_ips)),
                         Err(e) => {
-                            client_warning!("if bootsrap whitelist configuration file does't exists, bootsrap is allowed for everyone !!!");
+                            client_warning!("if bootstrap whitelist configuration file does't exists, bootstrap is allowed for everyone !!!");
                             rpc_error!(e)
                         }
                     }
@@ -1106,7 +1106,7 @@ impl Command {
                                 Ok(()) => {
                                     if !json {
                                         println!(
-                                            "Request of bootsrap whitelisting successfully sent!"
+                                            "Request of bootstrap whitelisting successfully sent!"
                                         )
                                     }
                                     Ok(Box::new(()))
@@ -1125,7 +1125,7 @@ impl Command {
                             {
                                 Ok(()) => {
                                     if !json {
-                                        println!("Request of remove from bootsrap whitelist successfully sent!")
+                                        println!("Request of remove from bootstrap whitelist successfully sent!")
                                     }
                                     Ok(Box::new(()))
                                 }
@@ -1137,7 +1137,7 @@ impl Command {
                                 Ok(()) => {
                                     if !json {
                                         println!(
-                                            "Request of bootsrap whitelisting everyone successfully sent!"
+                                            "Request of bootstrap whitelisting everyone successfully sent!"
                                         )
                                     }
                                     Ok(Box::new(()))
