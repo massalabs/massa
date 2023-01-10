@@ -483,7 +483,6 @@ pub async fn get_state(
 
     // we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
     let shuffled_hashmap: HashMap<NodeId, SocketAddr> = filtered_bootstrap_list
-        .clone()
         .into_iter()
         .map(|(addr, node_id)| (node_id, addr))
         .collect();
