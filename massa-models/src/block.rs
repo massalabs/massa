@@ -1155,6 +1155,7 @@ mod test {
         .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
         assert!(res.is_err());
         // let nom::Err::Failure(_) = res.unwrap_err() else {
         //     panic!("Deserialisation with invalid endorsements should be total fail");
@@ -1164,7 +1165,6 @@ mod test {
     #[serial]
     fn test_invalid_genesis_block_serialization_with_parents() {
         let keypair = KeyPair::generate();
-        // Genesis block cannot have parents
         let parents = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
@@ -1202,11 +1202,169 @@ mod test {
         )
         .deserialize::<DeserializeError>(&ser_block);
 
+        // TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
         assert!(res.is_err());
     }
     #[test]
     #[serial]
-    fn test_invalid_block_serialization_with_wrong_parent_count() {
+    fn test_invalid_block_serialization_no_parents() {
+        let keypair = KeyPair::generate();
+        // Non genesis block must have THREAD_COUNT parents
+
+        // create block header
+        let orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(1, 1),
+                parents: vec![],
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![],
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block);
+
+        // TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        assert!(res.is_err());
+    }
+    #[test]
+    #[serial]
+    fn test_invalid_block_serialization_obo_high_parent_count() {
+        let keypair = KeyPair::generate();
+        // Non genesis block must have THREAD_COUNT parents
+        let parents = (0..=THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
+
+        // create block header
+        let orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(1, 1),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![],
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block);
+
+        // TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        assert!(res.is_err());
+    }
+
+    #[test]
+    #[serial]
+    fn test_block_serialization_max_endo_count() {
+        let keypair =
+            KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
+        let endorsed = BlockId(
+            Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf").unwrap(),
+        );
+        let fillers = (1..THREAD_COUNT).map(|i| BlockId(Hash::compute_from(&[i])));
+        let parents = std::iter::once(endorsed).chain(fillers).collect();
+
+        let endorsements = (0..ENDORSEMENT_COUNT)
+            .map(|i| {
+                Endorsement::new_verifiable(
+                    Endorsement {
+                        slot: Slot::new(1, 0),
+                        index: i,
+                        endorsed_block: BlockId(
+                            Hash::from_bs58_check(
+                                "bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf",
+                            )
+                            .unwrap(),
+                        ),
+                    },
+                    EndorsementSerializer::new(),
+                    &keypair,
+                )
+                .unwrap()
+            })
+            .collect();
+        // create block header
+        let orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(1, 0),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements,
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let (_, res): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block)
+        .unwrap();
+
+        res.content.header.assert_invariants().unwrap();
+    }
+    #[test]
+    #[serial]
+    fn test_invalid_block_serialization_obo_low_parent_count() {
         let keypair = KeyPair::generate();
         // Non genesis block must have THREAD_COUNT parents
         let parents = (1..THREAD_COUNT)
@@ -1246,6 +1404,68 @@ mod test {
         )
         .deserialize::<DeserializeError>(&ser_block);
 
+        // TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        assert!(res.is_err());
+    }
+    #[test]
+    #[serial]
+    fn test_invalid_block_serialization_obo_high_endo_count() {
+        let keypair = KeyPair::generate();
+        // Non genesis block must have THREAD_COUNT parents
+        let parents = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
+
+        let endorsements = (0..=ENDORSEMENT_COUNT)
+            .map(|i| {
+                Endorsement::new_verifiable(
+                    Endorsement {
+                        slot: Slot::new(0, 1),
+                        index: i,
+                        endorsed_block: BlockId(Hash::compute_from(&[i as u8])),
+                    },
+                    EndorsementSerializer::new(),
+                    &keypair,
+                )
+                .unwrap()
+            })
+            .collect();
+        // create block header
+        let orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(1, 1),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements,
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        // serialize block
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
+            .unwrap();
+
+        // deserialize
+        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block);
+
+        // TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: see issue #3400
         assert!(res.is_err());
     }
 }
