@@ -1248,6 +1248,7 @@
 <a href="#1248" id="1248">1248</a>
 <a href="#1249" id="1249">1249</a>
 <a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
@@ -1829,7 +1830,8 @@
         (<span class="self">self</span>.content.endorsements.len() <span class="kw">as </span>u64) + <span class="number">1
     </span>}
     <span class="comment">// TODO: gh-issue #3398
-    </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
+    </span><span class="attr">#[allow(dead_code)]
+    #[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
     </span><span class="kw">fn </span>assert_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="self">self</span>.content.assert_invariants()<span class="question-mark">?</span>;
         <span class="self">self</span>.verify_signature()
