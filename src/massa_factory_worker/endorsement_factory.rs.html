@@ -221,15 +221,16 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
 <span class="kw">use </span>massa_models::{
     block::BlockId,
-    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
+    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-    wrapped::WrappedContent,
 };
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -390,9 +391,10 @@
             .get_latest_blockclique_block_at_slot(slot);
 
         <span class="comment">// produce endorsements
-        </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements: Vec&lt;WrappedEndorsement&gt; = Vec::with_capacity(producers_indices.len());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements: Vec&lt;SecureShareEndorsement&gt; =
+            Vec::with_capacity(producers_indices.len());
         <span class="kw">for </span>(keypair, index) <span class="kw">in </span>producers_indices {
-            <span class="kw">let </span>endorsement = Endorsement::new_wrapped(
+            <span class="kw">let </span>endorsement = Endorsement::new_verifiable(
                 Endorsement {
                     slot,
                     index: index <span class="kw">as </span>u32,
@@ -406,7 +408,7 @@
             <span class="comment">// log endorsement creation
             </span><span class="macro">debug!</span>(
                 <span class="string">&quot;endorsement {} created at slot {} by address {}&quot;</span>,
-                endorsement.id, endorsement.content.slot, endorsement.creator_address
+                endorsement.id, endorsement.content.slot, endorsement.content_creator_address
             );
 
             endorsements.push(endorsement);

@@ -166,7 +166,7 @@
 
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, WrappedHeader},
+    block::{BlockId, SecuredHeader},
     endorsement::EndorsementId,
     operation::OperationId,
 };
@@ -201,7 +201,7 @@
     <span class="doccomment">/// Wish list delta
     </span>WishlistDelta {
         <span class="doccomment">/// add to wish list
-        </span>new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;,
+        </span>new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
         <span class="doccomment">/// remove from wish list
         </span>remove: PreHashSet&lt;BlockId&gt;,
     },
@@ -255,7 +255,7 @@
     <span class="doccomment">/// update the block wish list
     </span><span class="kw">pub fn </span>send_wishlist_delta(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;,
+        new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
         remove: PreHashSet&lt;BlockId&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
