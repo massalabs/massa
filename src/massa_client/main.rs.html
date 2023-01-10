@@ -169,6 +169,11 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attr">#![feature(str_split_whitespace_as_str)]
@@ -180,7 +185,7 @@
 <span class="kw">use </span>cmds::Command;
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>dialoguer::Password;
-<span class="kw">use </span>massa_sdk::{Client, HttpConfig};
+<span class="kw">use </span>massa_sdk::{Client, ClientConfig, HttpConfig};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::net::IpAddr;
@@ -266,14 +271,19 @@
 }
 
 <span class="kw">async fn </span>run(args: Args) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span>client_config = ClientConfig {
+        max_request_body_size: SETTINGS.client.max_request_body_size,
+        request_timeout: SETTINGS.client.request_timeout,
+        max_concurrent_requests: SETTINGS.client.max_concurrent_requests,
+        certificate_store: SETTINGS.client.certificate_store.clone(),
+        id_kind: SETTINGS.client.id_kind.clone(),
+        max_log_length: SETTINGS.client.max_log_length,
+        headers: SETTINGS.client.headers.clone(),
+    };
+
     <span class="kw">let </span>http_config = HttpConfig {
-        max_request_body_size: SETTINGS.http.max_request_body_size,
-        request_timeout: SETTINGS.http.request_timeout,
-        max_concurrent_requests: SETTINGS.http.max_concurrent_requests,
-        certificate_store: SETTINGS.http.certificate_store.clone(),
-        id_kind: SETTINGS.http.id_kind.clone(),
-        max_log_length: SETTINGS.http.max_log_length,
-        headers: SETTINGS.http.headers.clone(),
+        client_config,
+        enabled: SETTINGS.client.http.enabled,
     };
 
     <span class="comment">// TODO: move settings loading in another crate ... see #1277
