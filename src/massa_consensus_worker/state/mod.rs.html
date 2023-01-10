@@ -535,7 +535,7 @@
     active_block::ActiveBlock,
     address::Address,
     api::BlockGraphStatus,
-    block::{BlockId, SecuredHeader},
+    block::{BlockId, WrappedHeader},
     clique::Clique,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
@@ -608,7 +608,7 @@
     <span class="doccomment">/// the time span considered for desynchronization detection
     </span><span class="kw">pub </span>stats_desync_detection_timespan: MassaTime,
     <span class="doccomment">/// blocks we want
-    </span><span class="kw">pub </span>wishlist: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
+    </span><span class="kw">pub </span>wishlist: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;,
     <span class="doccomment">/// previous blockclique notified to Execution
     </span><span class="kw">pub </span>prev_blockclique: PreHashMap&lt;BlockId, Slot&gt;,
 }
@@ -988,8 +988,8 @@
     <span class="doccomment">/// get the current block wish list, including the operations hash.
     </span><span class="kw">pub fn </span>get_block_wishlist(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;, ConsensusError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>wishlist = PreHashMap::&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;::default();
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;, ConsensusError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>wishlist = PreHashMap::&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt;::default();
         <span class="kw">for </span>block_id <span class="kw">in </span><span class="self">self</span>.waiting_for_dependencies_index.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,

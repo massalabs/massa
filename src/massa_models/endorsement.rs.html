@@ -430,12 +430,11 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
-<span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShare, SecureShareContent};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
+<span class="kw">use </span><span class="kw">crate</span>::wrapped::{Id, Wrapped, WrappedContent};
 <span class="kw">use crate</span>::{block::BlockId, error::ModelsError};
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
 <span class="kw">use </span>massa_serialization::{
@@ -579,9 +578,9 @@
 }
 
 <span class="doccomment">/// Wrapped endorsement
-</span><span class="kw">pub type </span>SecureShareEndorsement = SecureShare&lt;Endorsement, EndorsementId&gt;;
+</span><span class="kw">pub type </span>WrappedEndorsement = Wrapped&lt;Endorsement, EndorsementId&gt;;
 
-<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Endorsement {}
+<span class="kw">impl </span>WrappedContent <span class="kw">for </span>Endorsement {}
 
 <span class="doccomment">/// Serializer for `Endorsement`
 </span><span class="attr">#[derive(Clone)]
@@ -802,7 +801,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span><span class="kw">crate</span>::secure_share::{SecureShareDeserializer, SecureShareSerializer};
+    <span class="kw">use </span><span class="kw">crate</span>::wrapped::{WrappedDeserializer, WrappedSerializer};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>massa_serialization::DeserializeError;
@@ -818,17 +817,17 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>endorsement: SecureShareEndorsement =
-            Endorsement::new_verifiable(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>sender_keypair)
+        <span class="kw">let </span>endorsement: WrappedEndorsement =
+            Endorsement::new_wrapped(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>sender_keypair)
                 .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_endorsement: Vec&lt;u8&gt; = Vec::new();
-        <span class="kw">let </span>serializer = SecureShareSerializer::new();
+        <span class="kw">let </span>serializer = WrappedSerializer::new();
         serializer
             .serialize(<span class="kw-2">&amp;</span>endorsement, <span class="kw-2">&amp;mut </span>ser_endorsement)
             .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) =
-            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">1</span>))
+        <span class="kw">let </span>(<span class="kw">_</span>, res_endorsement): (<span class="kw-2">&amp;</span>[u8], WrappedEndorsement) =
+            WrappedDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">1</span>))
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_endorsement)
                 .unwrap();
         <span class="macro">assert_eq!</span>(res_endorsement, endorsement);
@@ -843,23 +842,22 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>endorsement: SecureShareEndorsement =
-            Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>sender_keypair)
+        <span class="kw">let </span>endorsement: WrappedEndorsement =
+            Endorsement::new_wrapped(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>sender_keypair)
                 .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_endorsement: Vec&lt;u8&gt; = Vec::new();
-        <span class="kw">let </span>serializer = SecureShareSerializer::new();
+        <span class="kw">let </span>serializer = WrappedSerializer::new();
         serializer
             .serialize(<span class="kw-2">&amp;</span>endorsement, <span class="kw-2">&amp;mut </span>ser_endorsement)
             .unwrap();
 
         <span class="kw">let </span>parent = BlockId(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes()));
 
-        <span class="kw">let </span>(<span class="kw">_</span>, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) = SecureShareDeserializer::new(
-            EndorsementDeserializerLW::new(<span class="number">1</span>, Slot::new(<span class="number">10</span>, <span class="number">1</span>), parent),
-        )
-        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_endorsement)
-        .unwrap();
+        <span class="kw">let </span>(<span class="kw">_</span>, res_endorsement): (<span class="kw-2">&amp;</span>[u8], WrappedEndorsement) =
+            WrappedDeserializer::new(EndorsementDeserializerLW::new(<span class="number">1</span>, Slot::new(<span class="number">10</span>, <span class="number">1</span>), parent))
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_endorsement)
+                .unwrap();
         <span class="comment">// Test only endorsement index as with the lw ser. we only process this field
         </span><span class="macro">assert_eq!</span>(res_endorsement.content.index, endorsement.content.index);
     }
