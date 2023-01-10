@@ -260,12 +260,12 @@
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedHeader},
-    endorsement::WrappedEndorsement,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecuredHeader},
+    endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
+    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-    wrapped::WrappedContent,
 };
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_wallet::Wallet;
@@ -428,7 +428,7 @@
             .get_block_endorsements(<span class="kw-2">&amp;</span>same_thread_parent_id, <span class="kw-2">&amp;</span>slot);
 
         <span class="comment">//TODO: Do we want ot populate only with endorsement id in the future ?
-        </span><span class="kw">let </span>endorsements: Vec&lt;WrappedEndorsement&gt; = {
+        </span><span class="kw">let </span>endorsements: Vec&lt;SecureShareEndorsement&gt; = {
             <span class="kw">let </span>endo_read = endo_storage.read_endorsements();
             endorsements_ids
                 .into_iter()
@@ -454,7 +454,7 @@
         );
 
         <span class="comment">// create header
-        </span><span class="kw">let </span>header: WrappedHeader = BlockHeader::new_wrapped::&lt;BlockHeaderSerializer, BlockId&gt;(
+        </span><span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
             BlockHeader {
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
@@ -467,7 +467,7 @@
         .expect(<span class="string">&quot;error while producing block header&quot;</span>);
 
         <span class="comment">// create block
-        </span><span class="kw">let </span>block = Block::new_wrapped(
+        </span><span class="kw">let </span>block = Block::new_verifiable(
             Block {
                 header,
                 operations: op_ids.into_iter().collect(),

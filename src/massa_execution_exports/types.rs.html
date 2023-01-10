@@ -127,6 +127,18 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -198,6 +210,12 @@
     </span><span class="kw">pub </span>call_stack: Vec&lt;ExecutionStackElement&gt;,
     <span class="doccomment">/// Target of the request
     </span><span class="kw">pub </span>target: ReadOnlyExecutionTarget,
+    <span class="doccomment">/// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="doccomment">/// structure describing different possible targets of a read-only execution request
@@ -230,6 +248,12 @@
     </span><span class="kw">pub </span>target_func: String,
     <span class="doccomment">/// Parameter to pass to the target function
     </span><span class="kw">pub </span>parameter: String,
+    <span class="doccomment">/// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="doccomment">/// Structure describing an element of the execution stack.
