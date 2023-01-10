@@ -692,7 +692,7 @@
     <span class="kw">async fn </span>node_bootstrap_whitelist_allow_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
         remove_file(<span class="self">self</span>.<span class="number">0</span>.api_settings.bootstrap_whitelist_path.clone()).map_err(|e| {
             ApiError::InternalServerError(<span class="macro">format!</span>(
-                <span class="string">&quot;failed to delete bootsrap whitelist configuration file: {}&quot;</span>,
+                <span class="string">&quot;failed to delete bootstrap whitelist configuration file: {}&quot;</span>,
                 e
             ))
             .into()
@@ -747,7 +747,7 @@
     }
 }
 
-<span class="doccomment">/// Run Search, Create, Read, Update, Delete operation on bootsrap list of IP(s)
+<span class="doccomment">/// Run Search, Create, Read, Update, Delete operation on bootstrap list of IP(s)
 </span><span class="kw">fn </span>run_scrud_operation(
     bootstrap_list_file: PathBuf,
     ips: Vec&lt;IpAddr&gt;,
@@ -772,7 +772,7 @@
             .and_then(|length| {
                 <span class="kw">if </span>length == <span class="number">0 </span>{
                     <span class="prelude-val">Err</span>(ApiError::InternalServerError(<span class="macro">format!</span>(
-                        <span class="string">&quot;failed, bootsrap {} configuration file is empty&quot;</span>,
+                        <span class="string">&quot;failed, bootstrap {} configuration file is empty&quot;</span>,
                         list_type
                     ))
                     .into())
@@ -782,7 +782,7 @@
                         .and_then(|<span class="kw-2">mut </span>list_ips: BTreeSet&lt;IpAddr&gt;| {
                             <span class="kw">if </span>list_ips.is_empty() {
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InternalServerError(<span class="macro">format!</span>(
-                                    <span class="string">&quot;failed to execute delete operation, bootsrap {} is empty&quot;</span>,
+                                    <span class="string">&quot;failed to execute delete operation, bootstrap {} is empty&quot;</span>,
                                     list_type
                                 ))
                                 .into());
@@ -815,7 +815,7 @@
         .open(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(<span class="macro">format!</span>(
-                <span class="string">&quot;failed to read bootsrap {} configuration file: {}&quot;</span>,
+                <span class="string">&quot;failed to read bootstrap {} configuration file: {}&quot;</span>,
                 list_type, e
             ))
             .into()
@@ -823,14 +823,14 @@
         .and_then(|file| <span class="kw">match </span>file.metadata() {
             <span class="prelude-val">Ok</span>(metadata) =&gt; <span class="prelude-val">Ok</span>(metadata.len()),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(ApiError::InternalServerError(<span class="macro">format!</span>(
-                <span class="string">&quot;failed to read bootsrap {} configuration file metadata: {}&quot;</span>,
+                <span class="string">&quot;failed to read bootstrap {} configuration file metadata: {}&quot;</span>,
                 list_type, e
             ))
             .into()),
         })
 }
 
-<span class="doccomment">/// Read bootsrap list IP(s) from json file
+<span class="doccomment">/// Read bootstrap list IP(s) from json file
 </span><span class="kw">fn </span>read_ips_from_jsonfile(
     bootstrap_list_file: PathBuf,
     list_type: <span class="kw-2">&amp;</span>ListType,
@@ -838,15 +838,15 @@
     std::fs::read_to_string(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(<span class="macro">format!</span>(
-                <span class="string">&quot;failed to read bootsrap {} configuration file: {}&quot;</span>,
+                <span class="string">&quot;failed to read bootstrap {} configuration file: {}&quot;</span>,
                 list_type, e
             ))
             .into()
         })
-        .and_then(|bootsrap_list_str| {
-            serde_json::from_str(<span class="kw-2">&amp;</span>bootsrap_list_str).map_err(|e| {
+        .and_then(|bootstrap_list_str| {
+            serde_json::from_str(<span class="kw-2">&amp;</span>bootstrap_list_str).map_err(|e| {
                 ApiError::InternalServerError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to parse bootsrap {} configuration file: {}&quot;</span>,
+                    <span class="string">&quot;failed to parse bootstrap {} configuration file: {}&quot;</span>,
                     list_type, e
                 ))
                 .into()
@@ -854,7 +854,7 @@
         })
 }
 
-<span class="doccomment">/// Write bootsrap list IP(s) from json file
+<span class="doccomment">/// Write bootstrap list IP(s) from json file
 </span><span class="kw">fn </span>write_ips_to_jsonfile(
     bootstrap_list_file: PathBuf,
     ips: BTreeSet&lt;IpAddr&gt;,
@@ -867,7 +867,7 @@
         .open(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(<span class="macro">format!</span>(
-                <span class="string">&quot;failed to create bootsrap {} configuration file: {}&quot;</span>,
+                <span class="string">&quot;failed to create bootstrap {} configuration file: {}&quot;</span>,
                 list_type, e
             ))
             .into()
@@ -875,7 +875,7 @@
         .and_then(|file| {
             serde_json::to_writer_pretty(file, <span class="kw-2">&amp;</span>ips).map_err(|e| {
                 ApiError::InternalServerError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to write bootsrap {} configuration file: {}&quot;</span>,
+                    <span class="string">&quot;failed to write bootstrap {} configuration file: {}&quot;</span>,
                     list_type, e
                 ))
                 .into()
