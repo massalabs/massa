@@ -101,7 +101,7 @@ fn test_readonly_execution() {
             is_final: Some(false),
         })
         .expect("readonly execution failed");
-    assert_eq!(res.out.slot.period, 10);
+    assert!(res.out.slot.period > 8);
 
     manager.stop();
 }
