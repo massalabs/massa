@@ -1319,7 +1319,7 @@
 <span class="kw">use </span>massa_models::{
     address::Address,
     block::BlockId,
-    operation::{OperationId, OperationType, WrappedOperation},
+    operation::{OperationId, OperationType, SecureShareOperation},
 };
 <span class="kw">use </span>massa_models::{amount::Amount, slot::Slot};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
@@ -1484,7 +1484,7 @@
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     </span><span class="kw">pub fn </span>execute_operation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        operation: <span class="kw-2">&amp;</span>WrappedOperation,
+        operation: <span class="kw-2">&amp;</span>SecureShareOperation,
         block_slot: Slot,
         remaining_block_gas: <span class="kw-2">&amp;mut </span>u64,
         block_credits: <span class="kw-2">&amp;mut </span>Amount,
@@ -1506,7 +1506,7 @@
         })<span class="question-mark">?</span>;
 
         <span class="comment">// get the operation&#39;s sender address
-        </span><span class="kw">let </span>sender_addr = operation.creator_address;
+        </span><span class="kw">let </span>sender_addr = operation.content_creator_address;
 
         <span class="comment">// get the thread to which the operation belongs
         </span><span class="kw">let </span>op_thread = sender_addr.get_thread(<span class="self">self</span>.config.thread_count);
@@ -1562,7 +1562,7 @@
             </span>context.max_gas = operation.get_gas_usage();
 
             <span class="comment">// set the creator address
-            </span>context.creator_address = <span class="prelude-val">Some</span>(operation.creator_address);
+            </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
 
             <span class="comment">// set the context origin operation ID
             </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
@@ -2072,7 +2072,7 @@
                     .content
                     .endorsements
                     .iter()
-                    .map(|endo| (endo.creator_address, endo.content.endorsed_block))
+                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
                     .unzip();
 
             <span class="comment">// deduce endorsement target block creators
@@ -2084,7 +2084,7 @@
                         blocks
                             .get(b_id)
                             .expect(<span class="string">&quot;endorsed block absent from storage&quot;</span>)
-                            .creator_address
+                            .content_creator_address
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             };
@@ -2112,7 +2112,7 @@
             }
 
             <span class="comment">// Get block creator address
-            </span><span class="kw">let </span>block_creator_addr = stored_block.creator_address;
+            </span><span class="kw">let </span>block_creator_addr = stored_block.content_creator_address;
 
             <span class="comment">// acquire lock on execution context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);

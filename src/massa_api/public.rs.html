@@ -1013,10 +1013,10 @@
 };
 <span class="kw">use </span>massa_models::execution::ReadOnlyResult;
 <span class="kw">use </span>massa_models::operation::OperationDeserializer;
-<span class="kw">use </span>massa_models::wrapped::WrappedDeserializer;
+<span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_models::{
-    block::Block, endorsement::WrappedEndorsement, error::ModelsError, operation::WrappedOperation,
-    timeslots,
+    block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
+    operation::SecureShareOperation, timeslots,
 };
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
@@ -1421,7 +1421,7 @@
 
     <span class="kw">async fn </span>get_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, ops: Vec&lt;OperationId&gt;) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
         <span class="comment">// get the operations and the list of blocks that contain them from storage
-        </span><span class="kw">let </span>storage_info: Vec&lt;(WrappedOperation, PreHashSet&lt;BlockId&gt;)&gt; = {
+        </span><span class="kw">let </span>storage_info: Vec&lt;(SecureShareOperation, PreHashSet&lt;BlockId&gt;)&gt; = {
             <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
             <span class="kw">let </span>read_ops = <span class="self">self</span>.<span class="number">0</span>.storage.read_operations();
             ops.iter()
@@ -1499,7 +1499,7 @@
 
     <span class="kw">async fn </span>get_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, eds: Vec&lt;EndorsementId&gt;) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
         <span class="comment">// get the endorsements and the list of blocks that contain them from storage
-        </span><span class="kw">let </span>storage_info: Vec&lt;(WrappedEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = {
+        </span><span class="kw">let </span>storage_info: Vec&lt;(SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = {
             <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
             <span class="kw">let </span>read_endos = <span class="self">self</span>.<span class="number">0</span>.storage.read_endorsements();
             eds.iter()
@@ -1584,7 +1584,7 @@
         <span class="kw">let </span>blocks = ids
             .into_iter()
             .filter_map(|id| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(verifiable_block) = storage.read_blocks().get(<span class="kw-2">&amp;</span>id).cloned() {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(graph_status) = consensus_controller
                         .get_block_statuses(<span class="kw-2">&amp;</span>[id])
                         .into_iter()
@@ -1604,7 +1604,7 @@
                                 is_in_blockclique,
                                 is_candidate,
                                 is_discarded,
-                                block: wrapped_block.content,
+                                block: verifiable_block.content,
                             }),
                         });
                     }
@@ -1673,7 +1673,7 @@
                 is_stale: <span class="bool-val">false</span>,
                 is_in_blockclique: blockclique.block_ids.contains(<span class="kw-2">&amp;</span>id),
                 slot: exported_block.header.content.slot,
-                creator: exported_block.header.creator_address,
+                creator: exported_block.header.content_creator_address,
                 parents: exported_block.header.content.parents,
             });
         }
@@ -1855,7 +1855,7 @@
         <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
         }
-        <span class="kw">let </span>operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
+        <span class="kw">let </span>operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
             api_cfg.max_datastore_value_length,
             api_cfg.max_function_name_length,
             api_cfg.max_parameter_size,
@@ -1870,7 +1870,7 @@
                 op_serialized.extend(op_input.signature.to_bytes());
                 op_serialized.extend(op_input.creator_public_key.to_bytes());
                 op_serialized.extend(op_input.serialized_content);
-                <span class="kw">let </span>(rest, op): (<span class="kw-2">&amp;</span>[u8], WrappedOperation) = operation_deserializer
+                <span class="kw">let </span>(rest, op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = operation_deserializer
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized)
                     .map_err(|err| {
                         ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
@@ -1894,7 +1894,7 @@
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
             })
-            .collect::&lt;RpcResult&lt;Vec&lt;WrappedOperation&gt;&gt;&gt;()<span class="question-mark">?</span>;
+            .collect::&lt;RpcResult&lt;Vec&lt;SecureShareOperation&gt;&gt;&gt;()<span class="question-mark">?</span>;
         to_send.store_operations(verified_ops.clone());
         <span class="kw">let </span>ids: Vec&lt;OperationId&gt; = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());

@@ -274,9 +274,9 @@
 <span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, BlockId, WrappedBlock},
+    block::{Block, BlockDeserializer, BlockId, SecureShareBlock},
     prehash::PreHashMap,
-    wrapped::{WrappedDeserializer, WrappedSerializer},
+    secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -299,7 +299,7 @@
 </span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>ExportActiveBlock {
     <span class="doccomment">/// The block.
-    </span><span class="kw">pub </span>block: WrappedBlock,
+    </span><span class="kw">pub </span>block: SecureShareBlock,
     <span class="doccomment">/// one `(block id, period)` per thread ( if not genesis )
     </span><span class="kw">pub </span>parents: Vec&lt;(BlockId, u64)&gt;,
     <span class="doccomment">/// for example has its fitness reached the given threshold
@@ -341,7 +341,7 @@
 
         // create ActiveBlock
         </span><span class="kw">let </span>active_block = ActiveBlock {
-            creator_address: <span class="self">self</span>.block.creator_address,
+            creator_address: <span class="self">self</span>.block.content_creator_address,
             block_id: <span class="self">self</span>.block.id,
             parents: <span class="self">self</span>.parents.clone(),
             children: <span class="macro">vec!</span>[PreHashMap::default(); thread_count <span class="kw">as </span>usize], <span class="comment">// will be computed once the full graph is available
@@ -361,7 +361,7 @@
 <span class="doccomment">/// Basic serializer of `ExportActiveBlock`
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>ExportActiveBlockSerializer {
-    wrapped_serializer: WrappedSerializer,
+    sec_share_serializer: SecureShareSerializer,
     period_serializer: U64VarIntSerializer,
 }
 
@@ -369,7 +369,7 @@
     <span class="doccomment">/// Create a new `ExportActiveBlockSerializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         ExportActiveBlockSerializer {
-            wrapped_serializer: WrappedSerializer::new(),
+            sec_share_serializer: SecureShareSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
         }
     }
@@ -382,7 +382,7 @@
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="comment">// block
-        </span><span class="self">self</span>.wrapped_serializer.serialize(<span class="kw-2">&amp;</span>value.block, buffer)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.sec_share_serializer.serialize(<span class="kw-2">&amp;</span>value.block, buffer)<span class="question-mark">?</span>;
 
         <span class="comment">// parents with periods
         // note: there should be no parents for genesis blocks
@@ -401,7 +401,7 @@
 
 <span class="doccomment">/// Basic deserializer of `ExportActiveBlock`
 </span><span class="kw">pub struct </span>ExportActiveBlockDeserializer {
-    wrapped_block_deserializer: WrappedDeserializer&lt;Block, BlockDeserializer&gt;,
+    sec_share_block_deserializer: SecureShareDeserializer&lt;Block, BlockDeserializer&gt;,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
     thread_count: u8,
@@ -412,7 +412,7 @@
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(thread_count: u8, endorsement_count: u32, max_operations_per_block: u32) -&gt; <span class="self">Self </span>{
         ExportActiveBlockDeserializer {
-            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
+            sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
                 thread_count,
                 max_operations_per_block,
                 endorsement_count,
@@ -428,7 +428,7 @@
     <span class="doccomment">/// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, wrapped::WrappedContent};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;
@@ -440,13 +440,13 @@
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::new_wrapped(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -456,7 +456,7 @@
     ///                 &amp;keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -479,7 +479,7 @@
     ///     operations: Vec::new(),
     /// };
     ///
-    /// let full_block = Block::new_wrapped(orig_block, BlockSerializer::new(), &amp;keypair).unwrap();
+    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair).unwrap();
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
     ///    parents: vec![],
@@ -502,7 +502,7 @@
             tuple((
                 <span class="comment">// block
                 </span>context(<span class="string">&quot;Failed block deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.wrapped_block_deserializer.deserialize(input)
+                    <span class="self">self</span>.sec_share_block_deserializer.deserialize(input)
                 }),
                 <span class="comment">// parents
                 </span>context(

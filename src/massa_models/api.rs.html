@@ -620,10 +620,10 @@
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::ExecutionAddressCycleInfo;
-<span class="kw">use </span><span class="kw">crate</span>::endorsement::{EndorsementId, WrappedEndorsement};
+<span class="kw">use </span><span class="kw">crate</span>::endorsement::{EndorsementId, SecureShareEndorsement};
 <span class="kw">use </span><span class="kw">crate</span>::ledger_models::LedgerData;
 <span class="kw">use </span><span class="kw">crate</span>::node::NodeId;
-<span class="kw">use </span><span class="kw">crate</span>::operation::{OperationId, WrappedOperation};
+<span class="kw">use </span><span class="kw">crate</span>::operation::{OperationId, SecureShareOperation};
 <span class="kw">use </span><span class="kw">crate</span>::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 <span class="kw">use crate</span>::{
     address::Address, amount::Amount, block::Block, block::BlockId, config::CompactConfig,
@@ -738,7 +738,7 @@
     <span class="doccomment">/// true if the operation is final (for example in a final block)
     </span><span class="kw">pub </span>is_final: bool,
     <span class="doccomment">/// the operation itself
-    </span><span class="kw">pub </span>operation: WrappedOperation,
+    </span><span class="kw">pub </span>operation: SecureShareOperation,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationInfo {
@@ -999,7 +999,7 @@
     <span class="doccomment">/// true if the endorsement is final (for example in a final block)
     </span><span class="kw">pub </span>is_final: bool,
     <span class="doccomment">/// the endorsement itself
-    </span><span class="kw">pub </span>endorsement: WrappedEndorsement,
+    </span><span class="kw">pub </span>endorsement: SecureShareEndorsement,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>EndorsementInfo {
@@ -1227,7 +1227,7 @@
     </span>Delete,
 }
 
-<span class="doccomment">/// bootstrap lists types
+<span class="doccomment">/// Bootsrap lists types
 </span><span class="attr">#[derive(Display)]
 #[strum(serialize_all = <span class="string">&quot;snake_case&quot;</span>)]
 </span><span class="kw">pub enum </span>ListType {
