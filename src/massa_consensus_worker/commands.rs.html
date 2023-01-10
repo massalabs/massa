@@ -13,16 +13,16 @@
 <a href="#13" id="13">13</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block::{BlockHeader, BlockId},
-    secure_share::SecureShare,
     slot::Slot,
+    wrapped::Wrapped,
 };
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="attr">#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>ConsensusCommand {
     RegisterBlock(BlockId, Slot, Storage, bool),
-    RegisterBlockHeader(BlockId, SecureShare&lt;BlockHeader, BlockId&gt;),
-    MarkInvalidBlock(BlockId, SecureShare&lt;BlockHeader, BlockId&gt;),
+    RegisterBlockHeader(BlockId, Wrapped&lt;BlockHeader, BlockId&gt;),
+    MarkInvalidBlock(BlockId, Wrapped&lt;BlockHeader, BlockId&gt;),
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>

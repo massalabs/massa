@@ -250,7 +250,7 @@
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     node::NodeId,
-    operation::{OperationPrefixIds, SecureShareOperation},
+    operation::{OperationPrefixIds, WrappedOperation},
     prehash::CapacityAllocator,
 };
 <span class="kw">use </span>massa_protocol_exports::ProtocolError;
@@ -377,7 +377,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>on_operations_received(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         node_id: NodeId,
-        operations: Vec&lt;SecureShareOperation&gt;,
+        operations: Vec&lt;WrappedOperation&gt;,
         op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
@@ -445,7 +445,7 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>ops: Vec&lt;SecureShareOperation&gt; = Vec::with_capacity(op_pre_ids.len());
+        <span class="kw">let </span><span class="kw-2">mut </span>ops: Vec&lt;WrappedOperation&gt; = Vec::with_capacity(op_pre_ids.len());
         {
             <span class="comment">// Scope the lock because of the async call to `send_operations` below.
             </span><span class="kw">let </span>stored_ops = <span class="self">self</span>.storage.read_operations();

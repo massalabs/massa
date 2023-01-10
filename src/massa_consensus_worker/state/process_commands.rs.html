@@ -194,7 +194,7 @@
 };
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, SecuredHeader},
+    block::{BlockId, WrappedHeader},
     slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
@@ -216,7 +216,7 @@
     </span><span class="kw">pub fn </span>register_block_header(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_id: BlockId,
-        header: SecuredHeader,
+        header: WrappedHeader,
         current_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="comment">// ignore genesis blocks
@@ -352,7 +352,7 @@
     /// # Arguments:
     /// * `block_id`: Block id of the block to mark as invalid
     /// * `header`: Header of the block to mark as invalid
-    </span><span class="kw">pub fn </span>mark_invalid_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId, header: SecuredHeader) {
+    </span><span class="kw">pub fn </span>mark_invalid_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId, header: WrappedHeader) {
         <span class="kw">let </span>reason = DiscardReason::Invalid(<span class="string">&quot;invalid&quot;</span>.to_string());
         <span class="self">self</span>.maybe_note_attack_attempt(<span class="kw-2">&amp;</span>reason, block_id);
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.invalid_block&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason});
@@ -362,7 +362,7 @@
             <span class="kw-2">*</span>block_id,
             BlockStatus::Discarded {
                 slot: header.content.slot,
-                creator: header.content_creator_address,
+                creator: header.creator_address,
                 parents: header.content.parents,
                 reason,
                 sequence_number: {
