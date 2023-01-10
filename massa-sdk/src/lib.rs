@@ -270,7 +270,7 @@ impl RpcClient {
     }
 
     /// Returns block(s) information associated to a given list of block(s) ID(s)
-    pub async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<BlockInfo> {
+    pub async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
         self.http_client
             .request("get_blocks", rpc_params![block_ids])
             .await
