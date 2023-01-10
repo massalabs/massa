@@ -1871,8 +1871,8 @@
             }
 
             Command::get_blocks =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">1 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong param numbers, expecting at least one IP address&quot;</span>)
+                <span class="kw">if </span>parameters.is_empty() {
+                    <span class="macro">bail!</span>(<span class="string">&quot;wrong param numbers, expecting at least one block id&quot;</span>)
                 }
                 <span class="kw">let </span>block_ids = parse_vec::&lt;BlockId&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">match </span>client.public.get_blocks(block_ids).<span class="kw">await </span>{

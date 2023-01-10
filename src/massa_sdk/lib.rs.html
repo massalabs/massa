@@ -664,7 +664,7 @@
     </span>}
 
     <span class="doccomment">/// Returns block(s) information associated to a given list of block(s) ID(s)
-    </span><span class="kw">pub async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, block_ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;BlockInfo&gt; {
+    </span><span class="kw">pub async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, block_ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_blocks&quot;</span>, <span class="macro">rpc_params!</span>[block_ids])
             .<span class="kw">await
