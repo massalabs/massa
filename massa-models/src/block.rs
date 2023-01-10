@@ -505,6 +505,7 @@ pub struct BlockHeader {
     pub endorsements: Vec<SecureShareEndorsement>,
 }
 
+// TODO: gh-issue #3398
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
     fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -577,7 +578,7 @@ impl SecuredHeader {
     pub fn get_fitness(&self) -> u64 {
         (self.content.endorsements.len() as u64) + 1
     }
-
+    // TODO: gh-issue #3398
     #[cfg(any(test, feature = "testing"))]
     fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.content.assert_invariants()?;
@@ -826,17 +827,23 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             .parse(buffer)?;
 
         if parents.is_empty() {
+            let res = BlockHeader {
+                slot,
+                parents,
+                operation_merkle_root,
+                endorsements: Vec::new(),
+            };
+
+            // TODO: gh-issue #3398
+            #[cfg(any(test, feature = "testing"))]
+            res.assert_invariants().unwrap();
+
             return Ok((
                 &rest[1..], // Because there is 0 endorsements, we have a remaining 0 in rest and we don't need it
-                BlockHeader {
-                    slot,
-                    parents,
-                    operation_merkle_root,
-                    endorsements: Vec::new(),
-                },
+                res,
             ));
         }
-        // Now deser the endorsements (which were: light-weight serialized)
+        // Now deser the endorsements (which were light-weight serialized)
         let endorsement_deserializer =
             SecureShareDeserializer::new(EndorsementDeserializerLW::new(
                 self.endorsement_count,
@@ -863,7 +870,6 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                         )));
                     }
 
-                    // have already received the block with the same endorsement, why force a re-verify?
                     Ok((rest, endo))
                 }),
             ),
@@ -877,10 +883,9 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             endorsements,
         };
 
-        {
-            #[cfg(any(test, feature = "testing"))]
-            header.assert_invariants().unwrap();
-        }
+        // TODO: gh-issue #3398
+        #[cfg(any(test, feature = "testing"))]
+        header.assert_invariants().unwrap();
 
         Ok((rest, header))
     }
