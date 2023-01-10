@@ -579,6 +579,7 @@ impl SecuredHeader {
         (self.content.endorsements.len() as u64) + 1
     }
     // TODO: gh-issue #3398
+    #[allow(dead_code)]
     #[cfg(any(test, feature = "testing"))]
     fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.content.assert_invariants()?;
