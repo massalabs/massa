@@ -510,8 +510,6 @@ pub struct BlockHeader {
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
     fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        use crate::config::ENDORSEMENT_COUNT;
-
         if self.slot.period == 0 {
             if !self.parents.is_empty() {
                 return Err("Invariant broken: genesis block with parent(s)".into());
@@ -538,30 +536,16 @@ impl BlockHeader {
         }
 
         // assert that the endorsement indexes are all unique...
-        let collection = self
-            .endorsements
-            .iter()
-            .map(|endo| {
-                endo.verify_signature()?;
-                // ..and that they are within range
-                if endo.content.index >= ENDORSEMENT_COUNT {
-                    return Err::<u32, Box<dyn std::error::Error>>(
-                        "Invariant broken: endorsement index out of bounds".into(),
-                    );
-                }
-                Ok(endo.content.index)
-            })
-            .try_collect::<std::collections::HashSet<_>>();
-        match collection {
-            Ok(set) => {
-                if set.len() == self.endorsements.len() {
-                    Ok(())
-                } else {
-                    Err("duplicate endorsement index found".into())
-                }
+        let mut set = HashSet::new();
+        for endo in self.endorsements.iter() {
+            // ...and check signatures + invariants while at it
+            endo.check_invariants()?;
+
+            if !set.insert(endo.content.index) {
+                return Err("Endorsement duplicate index found".into());
             }
-            Err(other) => Err(other),
         }
+        Ok(())
     }
 }
 

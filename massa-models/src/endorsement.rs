@@ -145,6 +145,24 @@ pub struct Endorsement {
     pub endorsed_block: BlockId,
 }
 
+#[cfg(any(test, feature = "testing"))]
+impl SecureShareEndorsement {
+    // TODO: gh-issue #3398
+    /// Used under testing conditions to validate an instance of Self
+    pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+        if let Err(e) = self.verify_signature() {
+            return Err(e.into());
+        }
+        if self.content.slot.thread >= crate::config::THREAD_COUNT {
+            Err("Endorsement slot on non-existant thread".into())
+        } else if self.content.index >= crate::config::ENDORSEMENT_COUNT {
+            Err("Endorsement index out of range".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
 /// Wrapped endorsement
 pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
 
