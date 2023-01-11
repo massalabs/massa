@@ -1260,16 +1260,7 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
                     self.length_deserializer.deserialize(input)
                 }),
                 context("Failed operation deserialization", |input| {
-                    let (rest, op) = self.signed_op_deserializer.deserialize(input)?;
-                    if op.verify_signature().is_err() {
-                        Err(nom::Err::Failure(ContextError::add_context(
-                            input,
-                            "Operations signature failed",
-                            ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                        )))
-                    } else {
-                        Ok((rest, op))
-                    }
+                    self.signed_op_deserializer.deserialize(input)
                 }),
             ),
         )
