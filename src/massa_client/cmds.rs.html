@@ -1298,21 +1298,23 @@
 <a href="#1298" id="1298">1298</a>
 <a href="#1299" id="1299">1299</a>
 <a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
 <span class="kw">use </span>anyhow::{anyhow, bail, Error, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>console::style;
-<span class="kw">use </span>massa_models::api::{
-    AddressInfo, CompactAddressInfo, DatastoreEntryInput, EventFilter, OperationInput,
+<span class="kw">use </span>massa_api_exports::{
+    AddressInfo, CompactAddressInfo, DatastoreEntryInput, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall,
 };
-<span class="kw">use </span>massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::timeslots::get_current_latest_block_slot;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
+    api::EventFilter,
     block::BlockId,
     endorsement::EndorsementId,
     operation::{Operation, OperationId, OperationType},

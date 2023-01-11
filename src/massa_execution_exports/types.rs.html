@@ -138,7 +138,6 @@
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -210,11 +209,10 @@
     </span><span class="kw">pub </span>call_stack: Vec&lt;ExecutionStackElement&gt;,
     <span class="doccomment">/// Target of the request
     </span><span class="kw">pub </span>target: ReadOnlyExecutionTarget,
-    <span class="doccomment">/// optional event status
+    <span class="doccomment">/// (optional) execution start state
     ///
-    /// Some(true) means final
-    /// Some(false) means candidate
-    /// None means final _and_ candidate
+    /// Some(true) means start execution from final state
+    /// Some(false) or None means start execution from active state
     </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
