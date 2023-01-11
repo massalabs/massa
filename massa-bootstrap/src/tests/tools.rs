@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_establisher::Duplex;
-use crate::settings::BootstrapConfig;
+use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_async_pool::{AsyncPoolChanges, Change};
@@ -276,6 +276,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
 pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
+        bootstrap_protocol: IpType::Both,
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
         max_ping: MassaTime::from_millis(500),
