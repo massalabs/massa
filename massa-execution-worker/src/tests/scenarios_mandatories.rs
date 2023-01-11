@@ -84,7 +84,7 @@ fn test_readonly_execution() {
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
-            is_final: Some(true),
+            is_final: true,
         })
         .expect("readonly execution failed");
     assert_eq!(res.out.slot, Slot::new(1, 0));
@@ -98,7 +98,7 @@ fn test_readonly_execution() {
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
-            is_final: Some(false),
+            is_final: false,
         })
         .expect("readonly execution failed");
     assert!(res.out.slot.period > 8);
