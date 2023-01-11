@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_final_state::StateChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::IndexedSlot;
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
@@ -478,6 +479,8 @@ pub struct ExecuteReadOnlyResponse {
     pub output_events: VecDeque<SCOutputEvent>,
     /// The gas cost for the execution
     pub gas_cost: u64,
+    /// state changes caused by the execution step
+    pub state_changes: StateChanges,
 }
 
 impl Display for ExecuteReadOnlyResponse {
@@ -492,6 +495,7 @@ impl Display for ExecuteReadOnlyResponse {
                 ReadOnlyResult::Ok(ret) => format!("success, returned value: {:?}", ret),
             }
         )?;
+        writeln!(f, "Gas cost: {}", self.gas_cost)?;
         if !self.output_events.is_empty() {
             writeln!(f, "Generated events:",)?;
             for event in self.output_events.iter() {
@@ -557,6 +561,11 @@ pub struct ReadOnlyBytecodeExecution {
     pub address: Option<Address>,
     /// Operation datastore, optional
     pub operation_datastore: Option<Vec<u8>>,
+    /// (optional) execution start state
+    ///
+    /// Some(true) means start execution from final state
+    /// Some(false) or None means start execution from active state
+    pub is_final: Option<bool>,
 }
 
 /// read SC call request
@@ -572,6 +581,11 @@ pub struct ReadOnlyCall {
     pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
+    /// (optional) execution start state
+    ///
+    /// Some(true) means start execution from final state
+    /// Some(false) or None means start execution from active state
+    pub is_final: Option<bool>,
 }
 
 /// SCRUD operations

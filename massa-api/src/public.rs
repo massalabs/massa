@@ -187,7 +187,9 @@ impl MassaRpcServer for API<Public> {
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().take()),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
@@ -264,7 +266,9 @@ impl MassaRpcServer for API<Public> {
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().take()),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);

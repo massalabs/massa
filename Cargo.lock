@@ -2293,6 +2293,7 @@ dependencies = [
 name = "massa_api_exports"
 version = "0.1.0"
 dependencies = [
+ "massa_final_state",
  "massa_models",
  "massa_signature",
  "massa_time",
@@ -2545,6 +2546,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "nom",
+ "serde",
  "thiserror",
  "tracing",
 ]
