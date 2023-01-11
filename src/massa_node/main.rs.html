@@ -870,6 +870,7 @@
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1044,6 +1045,7 @@
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
         bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
         bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         bind: SETTINGS.bootstrap.bind,
