@@ -998,6 +998,9 @@
 <a href="#998" id="998">998</a>
 <a href="#999" id="999">999</a>
 <a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1006,20 +1009,19 @@
 <span class="kw">use crate</span>::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
+<span class="kw">use </span>massa_api_exports::{
+    DatastoreEntryInput, DatastoreEntryOutput, OperationInput, ReadOnlyBytecodeExecution,
+    ReadOnlyCall, ReadOnlyResult, SlotAmount,
+};
 <span class="kw">use </span>massa_consensus_exports::block_status::DiscardReason;
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-<span class="kw">use </span>massa_models::api::{
-    BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
-};
-<span class="kw">use </span>massa_models::execution::ReadOnlyResult;
 <span class="kw">use </span>massa_models::operation::OperationDeserializer;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_models::{
-    block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
+    api::BlockGraphStatus, block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
     operation::SecureShareOperation, timeslots,
 };
 <span class="kw">use </span>massa_pos_exports::SelectorController;
@@ -1027,19 +1029,19 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 
 <span class="kw">use </span>itertools::{izip, Itertools};
+<span class="kw">use </span>massa_api_exports::{
+    AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
+    ExecuteReadOnlyResponse, NodeStatus, OperationInfo, TimeInterval,
+};
 <span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    api::{
-        AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
-        NodeStatus, OperationInfo, TimeInterval,
-    },
+    api::EventFilter,
     block::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
     endorsement::EndorsementId,
-    execution::ExecuteReadOnlyResponse,
     node::NodeId,
     operation::OperationId,
     output_event::SCOutputEvent,
@@ -1188,7 +1190,9 @@
                 ),
                 gas_cost: result.as_ref().map_or_else(|<span class="kw">_</span>| <span class="number">0</span>, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|<span class="kw">_</span>| Default::default(), |<span class="kw-2">mut </span>v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|<span class="kw">_</span>| Default::default(), |v| v.out.events.clone().take()),
+                state_changes: result.map_or_else(|<span class="kw">_</span>| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
@@ -1265,7 +1269,9 @@
                 ),
                 gas_cost: result.as_ref().map_or_else(|<span class="kw">_</span>| <span class="number">0</span>, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|<span class="kw">_</span>| Default::default(), |<span class="kw-2">mut </span>v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|<span class="kw">_</span>| Default::default(), |v| v.out.events.clone().take()),
+                state_changes: result.map_or_else(|<span class="kw">_</span>| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
