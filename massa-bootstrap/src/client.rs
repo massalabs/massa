@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
@@ -479,19 +479,12 @@ pub async fn get_state(
         ));
     }
 
+    // we shuffle the list
     filtered_bootstrap_list.shuffle(&mut StdRng::from_entropy());
 
     // we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
-    let shuffled_hashmap: HashMap<NodeId, SocketAddr> = filtered_bootstrap_list
-        .into_iter()
-        .map(|(addr, node_id)| (node_id, addr))
-        .collect();
-    let mut shuffled_list: Vec<(SocketAddr, NodeId)> = shuffled_hashmap
-        .iter()
-        .map(|(&node_id, &addr)| (addr, node_id))
-        .collect();
-
-    shuffled_list.shuffle(&mut StdRng::from_entropy());
+    let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
+    filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
 
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
@@ -506,7 +499,7 @@ pub async fn get_state(
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
 
     loop {
-        for (addr, node_id) in shuffled_list.iter() {
+        for (addr, node_id) in filtered_bootstrap_list.iter() {
             if let Some(end) = end_timestamp {
                 if MassaTime::now().expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
