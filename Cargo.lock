@@ -2167,6 +2167,7 @@ dependencies = [
  "dialoguer",
  "erased-serde",
  "lazy_static",
+ "massa_api_exports",
  "massa_models",
  "massa_sdk",
  "massa_signature",
@@ -2263,6 +2264,7 @@ dependencies = [
  "hyper",
  "itertools",
  "jsonrpsee",
+ "massa_api_exports",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_hash",
@@ -2285,6 +2287,18 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+]
+
+[[package]]
+name = "massa_api_exports"
+version = "0.1.0"
+dependencies = [
+ "massa_models",
+ "massa_signature",
+ "massa_time",
+ "serde",
+ "serial_test 0.10.0",
+ "strum",
 ]
 
 [[package]]
@@ -2612,7 +2626,6 @@ dependencies = [
  "serde",
  "serde_with",
  "serial_test 0.10.0",
- "strum",
  "thiserror",
 ]
 
@@ -2782,6 +2795,7 @@ version = "0.1.0"
 dependencies = [
  "http",
  "jsonrpsee",
+ "massa_api_exports",
  "massa_models",
  "massa_time",
 ]

@@ -3,16 +3,17 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Error, Result};
 use console::style;
-use massa_models::api::{
-    AddressInfo, CompactAddressInfo, DatastoreEntryInput, EventFilter, OperationInput,
+use massa_api_exports::{
+    AddressInfo, CompactAddressInfo, DatastoreEntryInput, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall,
 };
-use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
 use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
     address::Address,
     amount::Amount,
+    api::EventFilter,
     block::BlockId,
     endorsement::EndorsementId,
     operation::{Operation, OperationId, OperationType},

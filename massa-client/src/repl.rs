@@ -6,11 +6,11 @@ use crate::settings::SETTINGS;
 use anyhow::Result;
 use console::style;
 use erased_serde::{Serialize, Serializer};
-use massa_models::api::{
-    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, NodeStatus, OperationInfo,
+use massa_api_exports::{
+    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, ExecuteReadOnlyResponse,
+    NodeStatus, OperationInfo,
 };
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{address::Address, operation::OperationId};

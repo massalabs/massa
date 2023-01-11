@@ -7,20 +7,20 @@ use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use itertools::Itertools;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
-use massa_execution_exports::ExecutionController;
-use massa_models::api::{
+use massa_api_exports::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, ListType, NodeStatus, OperationInfo, OperationInput,
+    EndorsementInfo, ExecuteReadOnlyResponse, ListType, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
 };
+use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
     address::Address,
+    api::EventFilter,
     block::{Block, BlockId},
     endorsement::EndorsementId,
     operation::OperationId,

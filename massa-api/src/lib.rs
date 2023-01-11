@@ -10,22 +10,22 @@ use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
-use massa_consensus_exports::{ConsensusChannels, ConsensusController};
-use massa_execution_exports::ExecutionController;
-use massa_models::api::{
+use massa_api_exports::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
+    EndorsementInfo, ExecuteReadOnlyResponse, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
+use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
     address::Address,
+    api::EventFilter,
     block::{Block, BlockId},
     endorsement::EndorsementId,
     slot::Slot,

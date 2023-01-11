@@ -13,22 +13,24 @@ use jsonrpsee::rpc_params;
 use jsonrpsee::types::error::CallError;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
-use massa_models::api::{
+use massa_api_exports::ExecuteReadOnlyResponse;
+use massa_api_exports::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    EndorsementInfo, NodeStatus, OperationInfo, OperationInput, ReadOnlyBytecodeExecution,
+    ReadOnlyCall, TimeInterval,
 };
-use massa_models::block::{BlockHeader, FilledBlock};
-use massa_models::clique::Clique;
-use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::node::NodeId;
-use massa_models::operation::Operation;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashMap, PreHashSet};
-use massa_models::version::Version;
 use massa_models::{
-    address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
+    address::Address,
+    api::EventFilter,
+    block::{BlockHeader, BlockId, FilledBlock},
+    clique::Clique,
+    composite::PubkeySig,
+    endorsement::EndorsementId,
+    node::NodeId,
+    operation::{Operation, OperationId},
+    output_event::SCOutputEvent,
+    prehash::{PreHashMap, PreHashSet},
+    version::Version,
 };
 
 use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};

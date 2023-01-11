@@ -31,8 +31,6 @@ pub mod datastore;
 pub mod endorsement;
 /// models error
 pub mod error;
-/// execution related structures
-pub mod execution;
 /// ledger related structures
 pub mod ledger_models;
 /// node related structure

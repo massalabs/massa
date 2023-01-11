@@ -69,11 +69,10 @@ pub struct ReadOnlyExecutionRequest {
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target of the request
     pub target: ReadOnlyExecutionTarget,
-    /// optional event status
+    /// (optional) execution start state
     ///
-    /// Some(true) means final
-    /// Some(false) means candidate
-    /// None means final _and_ candidate
+    /// Some(true) means start execution from final state
+    /// Some(false) or None means start execution from active state
     pub is_final: Option<bool>,
 }
 
