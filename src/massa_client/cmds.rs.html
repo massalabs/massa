@@ -1286,6 +1286,18 @@
 <a href="#1286" id="1286">1286</a>
 <a href="#1287" id="1287">1287</a>
 <a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1527,15 +1539,15 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;PathToBytecode MaxGas Address&quot;</span>,),
-        message = <span class="string">&quot;execute byte code, address is optional. Nothing is really executed on chain&quot;
+        props(args = <span class="string">&quot;PathToBytecode MaxGas Address IsFinal&quot;</span>,),
+        message = <span class="string">&quot;execute byte code, address is optional, is_final is optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_execute_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress&quot;</span>,),
-        message = <span class="string">&quot;call a smart contract function, sender address is optional. Nothing is really executed on chain&quot;
+        props(args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal&quot;</span>,),
+        message = <span class="string">&quot;call a smart contract function, sender address is optional, is_final is optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_call,
 
@@ -2255,7 +2267,7 @@
                 }
             }
             Command::read_only_execute_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">2 </span>&amp;&amp; parameters.len() != <span class="number">3 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">2 </span>&amp;&amp; parameters.len() &lt;= <span class="number">4 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2263,6 +2275,11 @@
                 <span class="kw">let </span>max_gas = parameters[<span class="number">1</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">2</span>) {
                     <span class="prelude-val">Some</span>(adr.parse::&lt;Address&gt;()<span class="question-mark">?</span>)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>};
+                <span class="kw">let </span>is_final = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">3</span>) {
+                    <span class="prelude-val">Some</span>(adr.parse::&lt;bool&gt;()<span class="question-mark">?</span>)
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>};
@@ -2274,7 +2291,8 @@
                         bytecode,
                         address,
                         operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// TODO - #3072
-                    </span>})
+                        </span>is_final,
+                    })
                     .<span class="kw">await
                 </span>{
                     <span class="prelude-val">Ok</span>(res) =&gt; <span class="prelude-val">Ok</span>(Box::new(res)),
@@ -2282,7 +2300,7 @@
                 }
             }
             Command::read_only_call =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">4 </span>&amp;&amp; parameters.len() != <span class="number">5 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">4 </span>&amp;&amp; parameters.len() &lt;= <span class="number">6 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2295,6 +2313,11 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>};
+                <span class="kw">let </span>is_final = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">5</span>) {
+                    <span class="prelude-val">Some</span>(adr.parse::&lt;bool&gt;()<span class="question-mark">?</span>)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>};
                 <span class="kw">match </span>client
                     .public
                     .execute_read_only_call(ReadOnlyCall {
@@ -2303,6 +2326,7 @@
                         target_function,
                         parameter,
                         max_gas,
+                        is_final,
                     })
                     .<span class="kw">await
                 </span>{
