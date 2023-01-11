@@ -2281,9 +2281,9 @@
                     <span class="prelude-val">None
                 </span>};
                 <span class="kw">let </span>is_final = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">3</span>) {
-                    <span class="prelude-val">Some</span>(adr.parse::&lt;bool&gt;()<span class="question-mark">?</span>)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
+                    adr.parse::&lt;bool&gt;()<span class="question-mark">?
+                </span>} <span class="kw">else </span>{
+                    <span class="bool-val">false
                 </span>};
                 <span class="kw">let </span>bytecode = get_file_as_byte_vec(<span class="kw-2">&amp;</span>path).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="kw">match </span>client
@@ -2316,9 +2316,9 @@
                     <span class="prelude-val">None
                 </span>};
                 <span class="kw">let </span>is_final = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">5</span>) {
-                    <span class="prelude-val">Some</span>(adr.parse::&lt;bool&gt;()<span class="question-mark">?</span>)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
+                    adr.parse::&lt;bool&gt;()<span class="question-mark">?
+                </span>} <span class="kw">else </span>{
+                    <span class="bool-val">false
                 </span>};
                 <span class="kw">match </span>client
                     .public
