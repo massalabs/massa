@@ -642,32 +642,32 @@
     </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_peers_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_remove_from_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Returns node bootstrap whitelist IP address(es).
+    <span class="doccomment">/// Returns node bootsrap whitelist IP address(es).
     </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt;;
 
-    <span class="doccomment">/// Allow everyone to bootstrap from the node.
-    /// remove bootstrap whitelist configuration file.
+    <span class="doccomment">/// Allow everyone to bootsrap from the node.
+    /// remove bootsrap whitelist configuration file.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_whitelist_allow_all&quot;</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_whitelist_allow_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Add IP address(es) to node bootstrap whitelist.
+    <span class="doccomment">/// Add IP address(es) to node bootsrap whitelist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_add_to_bootstrap_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_add_to_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Remove IP address(es) to bootstrap whitelist.
+    <span class="doccomment">/// Remove IP address(es) to bootsrap whitelist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_bootstrap_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_remove_from_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Returns node bootstrap blacklist IP address(es).
+    <span class="doccomment">/// Returns node bootsrap blacklist IP address(es).
     </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_blacklist&quot;</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt;;
 
-    <span class="doccomment">/// Add IP address(es) to node bootstrap blacklist.
+    <span class="doccomment">/// Add IP address(es) to node bootsrap blacklist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_add_to_bootstrap_blacklist&quot;</span>)]
     </span><span class="kw">async fn </span>node_add_to_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Remove IP address(es) to bootstrap blacklist.
+    <span class="doccomment">/// Remove IP address(es) to bootsrap blacklist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_bootstrap_blacklist&quot;</span>)]
     </span><span class="kw">async fn </span>node_remove_from_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
