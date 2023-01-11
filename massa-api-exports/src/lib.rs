@@ -561,11 +561,10 @@ pub struct ReadOnlyBytecodeExecution {
     pub address: Option<Address>,
     /// Operation datastore, optional
     pub operation_datastore: Option<Vec<u8>>,
-    /// (optional) execution start state
+    /// execution start state
     ///
-    /// Some(true) means start execution from final state
-    /// Some(false) or None means start execution from active state
-    pub is_final: Option<bool>,
+    /// Whether to start execution from final or active state
+    pub is_final: bool,
 }
 
 /// read SC call request
@@ -581,11 +580,10 @@ pub struct ReadOnlyCall {
     pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
-    /// (optional) execution start state
+    /// execution start state
     ///
-    /// Some(true) means start execution from final state
-    /// Some(false) or None means start execution from active state
-    pub is_final: Option<bool>,
+    /// Whether to start execution from final or active state
+    pub is_final: bool,
 }
 
 /// SCRUD operations

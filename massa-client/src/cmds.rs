@@ -1123,9 +1123,9 @@ impl Command {
                     None
                 };
                 let is_final = if let Some(adr) = parameters.get(3) {
-                    Some(adr.parse::<bool>()?)
+                    adr.parse::<bool>()?
                 } else {
-                    None
+                    false
                 };
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
@@ -1158,9 +1158,9 @@ impl Command {
                     None
                 };
                 let is_final = if let Some(adr) = parameters.get(5) {
-                    Some(adr.parse::<bool>()?)
+                    adr.parse::<bool>()?
                 } else {
-                    None
+                    false
                 };
                 match client
                     .public
