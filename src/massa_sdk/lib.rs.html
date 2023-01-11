@@ -593,8 +593,6 @@
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -610,24 +608,22 @@
 <span class="kw">use </span>jsonrpsee::types::error::CallError;
 <span class="kw">use </span>jsonrpsee::types::ErrorObject;
 <span class="kw">use </span>jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
-<span class="kw">use </span>massa_api_exports::ExecuteReadOnlyResponse;
-<span class="kw">use </span>massa_api_exports::{
+<span class="kw">use </span>massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, NodeStatus, OperationInfo, OperationInput, ReadOnlyBytecodeExecution,
-    ReadOnlyCall, TimeInterval,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
+<span class="kw">use </span>massa_models::block::{BlockHeader, FilledBlock};
+<span class="kw">use </span>massa_models::clique::Clique;
+<span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
+<span class="kw">use </span>massa_models::node::NodeId;
+<span class="kw">use </span>massa_models::operation::Operation;
+<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
+<span class="kw">use </span>massa_models::version::Version;
 <span class="kw">use </span>massa_models::{
-    address::Address,
-    api::EventFilter,
-    block::{BlockHeader, BlockId, FilledBlock},
-    clique::Clique,
-    composite::PubkeySig,
-    endorsement::EndorsementId,
-    node::NodeId,
-    operation::{Operation, OperationId},
-    output_event::SCOutputEvent,
-    prehash::{PreHashMap, PreHashSet},
-    version::Version,
+    address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
 };
 
 <span class="kw">use </span>jsonrpsee::{core::Error <span class="kw">as </span>JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
