@@ -769,28 +769,29 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ) -> IResult<&'a [u8], BlockHeader, E> {
         let (rest, (slot, parents, operation_merkle_root)): (&[u8], (Slot, Vec<BlockId>, Hash)) =
             context("Failed BlockHeader deserialization", |input| {
-                let (rest, slot) = context("Failed slot deserialization", |input| {
-                    self.slot_deserializer.deserialize(input)
-                })
-                .parse(input)?;
-                let (rest, parents) = context(
-                    "Failed parents deserialization",
-                    alt((
-                        preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
-                        preceded(
-                            tag(&[1]),
-                            count(
-                                context("Failed block_id deserialization", |input| {
-                                    self.hash_deserializer
-                                        .deserialize(input)
-                                        .map(|(rest, hash)| (rest, BlockId(hash)))
-                                }),
-                                self.thread_count as usize,
+                let (rest, (slot, parents)) = tuple((
+                    context("Failed slot deserialization", |input| {
+                        self.slot_deserializer.deserialize(input)
+                    }),
+                    context(
+                        "Failed parents deserialization",
+                        alt((
+                            preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
+                            preceded(
+                                tag(&[1]),
+                                count(
+                                    context("Failed block_id deserialization", |input| {
+                                        self.hash_deserializer
+                                            .deserialize(input)
+                                            .map(|(rest, hash)| (rest, BlockId(hash)))
+                                    }),
+                                    self.thread_count as usize,
+                                ),
                             ),
-                        ),
-                    )),
-                )
-                .parse(rest)?;
+                        )),
+                    ),
+                ))
+                .parse(input)?;
 
                 // validate the parent/slot invariats before moving on to other fields
                 if slot.period == 0 && !parents.is_empty() {
