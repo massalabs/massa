@@ -2,7 +2,7 @@
 </div></details><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-ExportActiveBlockDeserializer" class="impl has-srclink"><a class="srclink rightside" href="../../src/massa_consensus_exports/export_active_block.rs.html#138-153">source</a><a href="#impl-ExportActiveBlockDeserializer" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.ExportActiveBlockDeserializer.html" title="struct massa_consensus_exports::export_active_block::ExportActiveBlockDeserializer">ExportActiveBlockDeserializer</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.new" class="method has-srclink"><a class="srclink rightside" href="../../src/massa_consensus_exports/export_active_block.rs.html#141-152">source</a><h4 class="code-header">pub fn <a href="#method.new" class="fn">new</a>(<br>&nbsp;&nbsp;&nbsp;&nbsp;thread_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;endorsement_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;max_operations_per_block: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a><br>) -&gt; Self</h4></section></summary><div class="docblock"><p>Create a new <code>ExportActiveBlockDeserializer</code></p>
 </div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor">§</a></h2><div id="trait-implementations-list"><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-Deserializer%3CExportActiveBlock%3E-for-ExportActiveBlockDeserializer" class="impl has-srclink"><a class="srclink rightside" href="../../src/massa_consensus_exports/export_active_block.rs.html#155-272">source</a><a href="#impl-Deserializer%3CExportActiveBlock%3E-for-ExportActiveBlockDeserializer" class="anchor">§</a><h3 class="code-header">impl Deserializer&lt;<a class="struct" href="struct.ExportActiveBlock.html" title="struct massa_consensus_exports::export_active_block::ExportActiveBlock">ExportActiveBlock</a>&gt; for <a class="struct" href="struct.ExportActiveBlockDeserializer.html" title="struct massa_consensus_exports::export_active_block::ExportActiveBlockDeserializer">ExportActiveBlockDeserializer</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.deserialize" class="method trait-impl has-srclink"><a class="srclink rightside" href="../../src/massa_consensus_exports/export_active_block.rs.html#224-271">source</a><a href="#method.deserialize" class="anchor">§</a><h4 class="code-header">fn <a class="fn">deserialize</a>&lt;'a, E:&nbsp;ParseError&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]&gt; + ContextError&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]&gt;&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;&amp;self,<br>&nbsp;&nbsp;&nbsp;&nbsp;buffer: &amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]<br>) -&gt; IResult&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>], <a class="struct" href="struct.ExportActiveBlock.html" title="struct massa_consensus_exports::export_active_block::ExportActiveBlock">ExportActiveBlock</a>, E&gt;</h4></section></summary><div class="docblock"><h6 id="example"><a href="#example">Example:</a></h6>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-<span class="kw">use </span>massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
+<span class="kw">use </span>massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>massa_signature::KeyPair;
@@ -24,19 +24,19 @@
                 Endorsement {
                     slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                     index: <span class="number">1</span>,
-                    endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>])),
+                    endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
                 },
-                EndorsementSerializer::new(),
+                EndorsementSerializerLW::new(),
                 <span class="kw-2">&amp;</span>keypair,
             )
             .unwrap(),
             Endorsement::new_verifiable(
                 Endorsement {
-                    slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                    slot: Slot::new(<span class="number">4</span>, <span class="number">0</span>),
                     index: <span class="number">3</span>,
-                    endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>])),
+                    endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
                 },
-                EndorsementSerializer::new(),
+                EndorsementSerializerLW::new(),
                 <span class="kw-2">&amp;</span>keypair,
             )
             .unwrap(),
