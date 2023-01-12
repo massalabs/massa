@@ -3,7 +3,7 @@
 use super::tools::protocol_test;
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
-use massa_models::{block::BlockId, slot::Slot};
+use massa_models::{block_id::BlockId, slot::Slot};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};
@@ -51,11 +51,11 @@ async fn test_full_ask_block_workflow() {
 
             // Send header via node_a
             network_controller
-                .send_header(node_a.id, block.content.header.clone())
+                .send_header(node_a.id, block.content.header().clone())
                 .await;
 
             // Send wishlist
-            let header = block.content.header.clone();
+            let header = block.content.header().clone();
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
@@ -95,7 +95,7 @@ async fn test_full_ask_block_workflow() {
             if let AskForBlocksInfo::Operations(ops) = asked {
                 assert_eq!(ops.len(), 2);
                 for op in ops {
-                    assert!(block.content.operations.contains(&op));
+                    assert!(block.content.operations().contains(&op));
                 }
             } else {
                 panic!("Unexpected ask for blocks.");
@@ -121,13 +121,13 @@ async fn test_full_ask_block_workflow() {
                                 block_storage,
                                 created: _,
                             } => {
-                                assert_eq!(slot, block.content.header.content.slot);
+                                assert_eq!(slot, block.content.header().content.slot);
                                 assert_eq!(block_id, block.id);
                                 let received_block =
                                     block_storage.read_blocks().get(&block_id).cloned().unwrap();
                                 assert_eq!(
-                                    received_block.content.operations,
-                                    block.content.operations
+                                    received_block.content.operations(),
+                                    block.content.operations()
                                 );
                                 Some(())
                             }
@@ -192,11 +192,11 @@ async fn test_empty_block() {
 
             // Send header via node_a
             network_controller
-                .send_header(node_a.id, block.content.header.clone())
+                .send_header(node_a.id, block.content.header().clone())
                 .await;
 
             // send wishlist
-            let header = block.content.header.clone();
+            let header = block.content.header().clone();
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
@@ -248,13 +248,13 @@ async fn test_empty_block() {
                                 block_storage,
                                 created: _,
                             } => {
-                                assert_eq!(slot, block.content.header.content.slot);
+                                assert_eq!(slot, block.content.header().content.slot);
                                 assert_eq!(block_id, block.id);
                                 let received_block =
                                     block_storage.read_blocks().get(&block_id).cloned().unwrap();
                                 assert_eq!(
-                                    received_block.content.operations,
-                                    block.content.operations
+                                    received_block.content.operations(),
+                                    block.content.operations()
                                 );
                                 Some(())
                             }
@@ -323,7 +323,7 @@ async fn test_someone_knows_it() {
 
             // node c must know about block
             network_controller
-                .send_header(node_c.id, block.content.header.clone())
+                .send_header(node_c.id, block.content.header().clone())
                 .await;
 
             let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
@@ -343,7 +343,7 @@ async fn test_someone_knows_it() {
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(hash_1, Some(block.content.header.clone()))]
+                        vec![(hash_1, Some(block.content.header().clone()))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),
@@ -381,7 +381,7 @@ async fn test_someone_knows_it() {
             assert_eq!(hash_1, hash);
             if let AskForBlocksInfo::Operations(ops) = asked {
                 for op in ops {
-                    assert!(block.content.operations.contains(&op));
+                    assert!(block.content.operations().contains(&op));
                 }
             } else {
                 panic!("Unexpected ask for blocks.");
@@ -433,7 +433,7 @@ async fn test_dont_want_it_anymore() {
             protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(hash_1, Some(block.content.header.clone()))]
+                        vec![(hash_1, Some(block.content.header().clone()))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),
@@ -518,7 +518,7 @@ async fn test_no_one_has_it() {
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(hash_1, Some(block.content.header.clone()))]
+                        vec![(hash_1, Some(block.content.header().clone()))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),
@@ -611,8 +611,8 @@ async fn test_multiple_blocks_without_a_priori() {
                 protocol_command_sender
                     .send_wishlist_delta(
                         vec![
-                            (hash_1, Some(block_1.content.header.clone())),
-                            (hash_2, Some(block_2.content.header.clone())),
+                            (hash_1, Some(block_1.content.header().clone())),
+                            (hash_2, Some(block_2.content.header().clone())),
                         ]
                         .into_iter()
                         .collect(),

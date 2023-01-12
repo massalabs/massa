@@ -287,7 +287,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Send the header,
             // this should note the node as knowing about the endorsement.
             network_controller
-                .send_header(nodes[0].id, block.content.header)
+                .send_header(nodes[0].id, block.content.header().clone())
                 .await;
 
             // Send the endorsement to protocol
@@ -361,7 +361,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Send the header,
             // this should note the node as knowing about the endorsement.
             network_controller
-                .send_header(nodes[0].id, block.content.header)
+                .send_header(nodes[0].id, block.content.header().clone())
                 .await;
 
             // Send the endorsement to protocol
@@ -437,7 +437,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Node 1 sends header, resulting in protocol using the block info to determine
             // the node knows about the endorsements contained in the block header.
             network_controller
-                .send_header(nodes[0].id, block.content.header.clone())
+                .send_header(nodes[0].id, block.content.header().clone())
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -518,11 +518,11 @@ async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_ins
             let mut block = tools::create_block(&creator_node.keypair);
 
             // 3. Add endorsement to block
-            block.content.header.content.endorsements = vec![endorsement.clone()];
+            block.content.header_mut().content.endorsements = vec![endorsement.clone()];
 
             // 4. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, block.content.header.clone())
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
 
             let expected_endorsement_id = endorsement.id;

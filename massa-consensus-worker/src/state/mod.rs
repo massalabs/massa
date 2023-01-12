@@ -13,7 +13,8 @@ use massa_models::{
     active_block::ActiveBlock,
     address::Address,
     api::BlockGraphStatus,
-    block::{BlockId, SecuredHeader},
+    block_id::BlockId,
+    block_header::SecuredHeader,
     clique::Clique,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
@@ -424,7 +425,7 @@ impl ConsensusState {
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
-                                header: stored_block.content.header,
+                                header: stored_block.content.header().clone(),
                                 children: a_block
                                     .children
                                     .iter()

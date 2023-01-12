@@ -7,7 +7,8 @@ use massa_models::operation::OperationId;
 use massa_models::secure_share::{Id, SecureShareContent};
 use massa_models::{
     address::Address,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer},
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer},
     slot::Slot,
 };
 use massa_network_exports::NetworkCommand;
@@ -18,6 +19,7 @@ use massa_protocol_exports::tests::tools::{
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
+use massa_models::block_v0::BlockV0;
 
 #[tokio::test]
 #[serial]
@@ -220,6 +222,8 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
                     let header = BlockHeader::new_verifiable(
                         BlockHeader {
+                            block_version_current: 0,
+                            block_version_next: 0,
                             slot: Slot::new(1, op_thread),
                             parents: Vec::new(),
                             operation_merkle_root,
@@ -231,10 +235,10 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     .unwrap();
 
                     Block::new_verifiable(
-                        Block {
+                        Block::V0(BlockV0{
                             header,
                             operations: vec![op.clone()].into_iter().map(|op| op.id).collect(),
-                        },
+                        }),
                         BlockSerializer::new(),
                         &creator_node.keypair,
                     )

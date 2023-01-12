@@ -14,7 +14,7 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::ExecutionStats;
 use massa_models::{address::Address, amount::Amount, operation::OperationId};
-use massa_models::{block::BlockId, slot::Slot};
+use massa_models::{block_id::BlockId, slot::Slot};
 use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeMap, HashMap};

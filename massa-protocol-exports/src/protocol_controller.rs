@@ -5,7 +5,8 @@ use massa_logging::massa_trace;
 
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
-    block::{BlockId, SecuredHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     endorsement::EndorsementId,
     operation::OperationId,
 };

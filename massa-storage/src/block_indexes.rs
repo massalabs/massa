@@ -2,7 +2,8 @@ use std::{collections::hash_map, collections::HashMap};
 
 use massa_models::{
     address::Address,
-    block::{BlockId, SecureShareBlock},
+    block_id::BlockId,
+    block::SecureShareBlock,
     endorsement::EndorsementId,
     operation::OperationId,
     prehash::{PreHashMap, PreHashSet},
@@ -39,17 +40,17 @@ impl BlockIndexes {
 
             // update slot index
             self.index_by_slot
-                .entry(b.content.header.content.slot)
+                .entry(b.content.header().content.slot)
                 .or_default()
                 .insert(b.id);
 
             // update index_by_op
-            for op in &b.content.operations {
+            for op in b.content.operations() {
                 self.index_by_op.entry(*op).or_default().insert(b.id);
             }
 
             // update index_by_endorsement
-            for ed in &b.content.header.content.endorsements {
+            for ed in &b.content.header().content.endorsements {
                 self.index_by_endorsement
                     .entry(ed.id)
                     .or_default()
@@ -75,7 +76,7 @@ impl BlockIndexes {
 
             // update slot index
             if let hash_map::Entry::Occupied(mut occ) =
-                self.index_by_slot.entry(b.content.header.content.slot)
+                self.index_by_slot.entry(b.content.header().content.slot)
             {
                 occ.get_mut().remove(&b.id);
                 if occ.get().is_empty() {
@@ -84,7 +85,7 @@ impl BlockIndexes {
             }
 
             // update index_by_op
-            for op in &b.content.operations {
+            for op in b.content.operations() {
                 if let hash_map::Entry::Occupied(mut occ) = self.index_by_op.entry(*op) {
                     occ.get_mut().remove(&b.id);
                     if occ.get().is_empty() {
@@ -94,7 +95,7 @@ impl BlockIndexes {
             }
 
             // update index_by_endorsement
-            for ed in &b.content.header.content.endorsements {
+            for ed in &b.content.header().content.endorsements {
                 if let hash_map::Entry::Occupied(mut occ) = self.index_by_endorsement.entry(ed.id) {
                     occ.get_mut().remove(&b.id);
                     if occ.get().is_empty() {

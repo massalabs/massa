@@ -11,7 +11,7 @@ use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
     api::EventFilter,
-    block::BlockId,
+    block_id::BlockId,
     datastore::Datastore,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     secure_share::SecureShareContent,
@@ -179,7 +179,7 @@ fn test_nested_call_gas_usage() {
 
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -241,7 +241,7 @@ fn test_nested_call_gas_usage() {
     storage.store_block(block.clone());
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -322,7 +322,7 @@ fn send_and_receive_async_message() {
 
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -408,7 +408,7 @@ fn local_execution() {
 
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -501,7 +501,7 @@ fn sc_deployment() {
 
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -593,10 +593,10 @@ fn send_and_receive_async_message_with_trigger() {
 
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
-    blockclique_blocks.insert(block.content.header.content.slot, block.id);
+    blockclique_blocks.insert(block.content.header().content.slot, block.id);
     controller.update_blockclique_status(
         finalized_blocks.clone(),
         Some(blockclique_blocks.clone()),
@@ -629,10 +629,10 @@ fn send_and_receive_async_message_with_trigger() {
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
-    blockclique_blocks.insert(block.content.header.content.slot, block.id);
+    blockclique_blocks.insert(block.content.header().content.slot, block.id);
     controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
     // sleep for 10ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(10));
@@ -662,10 +662,10 @@ fn send_and_receive_async_message_with_trigger() {
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
-    blockclique_blocks.insert(block.content.header.content.slot, block.id);
+    blockclique_blocks.insert(block.content.header().content.slot, block.id);
     controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
     // sleep for 1000ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(1000));
@@ -731,7 +731,7 @@ pub fn send_and_receive_transaction() {
     storage.store_block(block.clone());
     // set our block as a final block so the transaction is processed
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -805,7 +805,7 @@ pub fn roll_buy() {
     storage.store_block(block.clone());
     // set our block as a final block so the purchase is processed
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -906,7 +906,7 @@ pub fn roll_sell() {
     storage.store_block(block.clone());
     // set the block as final so the sell and credits are processed
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -999,7 +999,7 @@ fn sc_execution_error() {
     storage.store_block(block.clone());
     // set our block as a final block
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -1064,7 +1064,7 @@ fn sc_datastore() {
     storage.store_block(block.clone());
     // set our block as a final block
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(finalized_blocks, Some(Default::default()), block_storage);
@@ -1123,7 +1123,7 @@ fn set_bytecode_error() {
     storage.store_block(block.clone());
     // set our block as a final block
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(
@@ -1183,7 +1183,7 @@ fn datastore_manipulations() {
     storage.store_block(block.clone());
     // set our block as a final block
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let block_store = vec![(block.id, storage.clone())].into_iter().collect();
     controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
     std::thread::sleep(
@@ -1410,7 +1410,7 @@ fn sc_builtins() {
     storage.store_block(block.clone());
     // set our block as a final block
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    finalized_blocks.insert(block.content.header().content.slot, block.id);
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(

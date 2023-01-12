@@ -7,8 +7,10 @@ use massa_models::{
     active_block::ActiveBlock,
     address::Address,
     block::{
-        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecureShareBlock,
+        Block, BlockSerializer, SecureShareBlock,
     },
+    block_id::BlockId,
+    block_header::{BlockHeader, BlockHeaderSerializer},
     prehash::PreHashMap,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -22,6 +24,7 @@ use std::{
     sync::{mpsc, Arc},
 };
 use tracing::log::info;
+use massa_models::block_v0::BlockV0;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -40,8 +43,11 @@ pub fn create_genesis_block(
     thread_number: u8,
 ) -> Result<SecureShareBlock, ConsensusError> {
     let keypair = &cfg.genesis_key;
+    // TODO / FIXME: Genesis block are always v0 block?
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            block_version_current: 0,
+            block_version_next: 0,
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
@@ -52,10 +58,10 @@ pub fn create_genesis_block(
     )?;
 
     Ok(Block::new_verifiable(
-        Block {
+        Block::V0(BlockV0 {
             header,
             operations: Default::default(),
-        },
+        }),
         BlockSerializer::new(),
         keypair,
     )?)
@@ -110,7 +116,7 @@ impl ConsensusWorker {
                         descendants: Default::default(),
                         is_final: true,
                         block_id: block.id,
-                        slot: block.content.header.content.slot,
+                        slot: block.content.header().content.slot,
                         fitness: block.get_fitness(),
                     }),
                     storage,

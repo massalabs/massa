@@ -1,7 +1,9 @@
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{Block, BlockId, SecuredHeader},
+    block::{Block},
+    block_id::{BlockId},
+    block_header::{SecuredHeader},
     prehash::PreHashSet,
     slot::Slot,
 };

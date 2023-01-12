@@ -3,7 +3,7 @@
 use crate::prehash::PreHashed;
 use crate::secure_share::{Id, SecureShare, SecureShareContent};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
-use crate::{block::BlockId, error::ModelsError};
+use crate::{block_id::BlockId, error::ModelsError};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,

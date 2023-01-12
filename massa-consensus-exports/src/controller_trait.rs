@@ -4,7 +4,8 @@ use massa_models::prehash::PreHashSet;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     api::BlockGraphStatus,
-    block::{BlockHeader, BlockId},
+    block_header::BlockHeader,
+    block_id::BlockId,
     clique::Clique,
     secure_share::SecureShare,
     slot::Slot,

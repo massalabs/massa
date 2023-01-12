@@ -10,7 +10,8 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
 use massa_models::{
     block::Block,
-    block::{BlockId, BlockSerializer, SecuredHeader},
+    block_header::{SecuredHeader},
+    block_id::{BlockId},
     node::NodeId,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},
@@ -23,6 +24,9 @@ use massa_storage::Storage;
 use std::pin::Pin;
 use tokio::time::{Instant, Sleep};
 use tracing::{info, warn};
+use massa_models::block::BlockSerializer;
+use massa_models::block_v0::BlockV0;
+use massa_models::block_v1::BlockV1;
 
 // static tracing messages
 static NEW_CONN: &str = "protocol.protocol_worker.on_network_event.new_connection";
@@ -172,8 +176,8 @@ impl ProtocolWorker {
         for (hash, info_wanted) in &list {
             let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
                 Some(signed_block) => (
-                    signed_block.content.header.clone(),
-                    signed_block.content.operations.clone(),
+                    signed_block.content.header().clone(),
+                    signed_block.content.operations().clone(),
                 ),
                 None => {
                     // let the node know we don't have the block.
@@ -483,10 +487,17 @@ impl ProtocolWorker {
                         return Ok(());
                     }
 
-                    // Re-constitute block.
-                    let block = Block {
-                        header: header.clone(),
-                        operations: block_operation_ids.clone(),
+                    // FIXME: denunciations vec?
+                    let block = match header.content.block_version_current {
+                        0 => Block::V0(BlockV0 {
+                            header: header.clone(),
+                            operations: block_operation_ids.clone(),
+                        }),
+                        _ => Block::V1(BlockV1 {
+                            header: header.clone(),
+                            denunciations: vec![],
+                            operations: block_operation_ids.clone(),
+                        }),
                     };
 
                     let mut content_serialized = Vec::new();
@@ -509,9 +520,9 @@ impl ProtocolWorker {
                     // add endorsements to local storage and claim ref
                     // TODO change this if we make endorsements separate from block header
                     block_storage.store_endorsements(
-                        signed_block.content.header.content.endorsements.clone(),
+                        signed_block.content.header().content.endorsements.clone(),
                     );
-                    let slot = signed_block.content.header.content.slot;
+                    let slot = signed_block.content.header().content.slot;
                     // add block to local storage and claim ref
                     block_storage.store_block(signed_block);
 

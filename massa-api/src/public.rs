@@ -34,7 +34,7 @@ use massa_models::{
         AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
         NodeStatus, OperationInfo, TimeInterval,
     },
-    block::BlockId,
+    block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,

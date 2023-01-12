@@ -2,7 +2,7 @@
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
-    block::BlockId,
+    block_id::BlockId,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     secure_share::SecureShareContent,
     slot::Slot,

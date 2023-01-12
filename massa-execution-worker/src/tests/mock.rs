@@ -19,7 +19,8 @@ use tempfile::TempDir;
 
 #[cfg(feature = "testing")]
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, SecureShareBlock},
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
     operation::SecureShareOperation,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -30,6 +31,7 @@ use massa_execution_exports::ExecutionError;
 
 #[cfg(feature = "testing")]
 use massa_hash::Hash;
+use massa_models::block_v0::BlockV0;
 
 fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let file = NamedTempFile::new().unwrap();
@@ -150,6 +152,8 @@ pub fn create_block(
 
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            block_version_current: 0,
+            block_version_next: 0,
             slot,
             parents: vec![],
             operation_merkle_root,
@@ -160,10 +164,10 @@ pub fn create_block(
     )?;
 
     Ok(Block::new_verifiable(
-        Block {
+        Block::V0(BlockV0 {
             header,
             operations: operations.into_iter().map(|op| op.id).collect(),
-        },
+        }),
         BlockSerializer::new(),
         &creator_keypair,
     )?)

@@ -80,7 +80,8 @@ pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
     use massa_models::{
-        block::{BlockId, SecuredHeader},
+        block_id::{BlockId},
+        block_header::{SecuredHeader},
         endorsement::SecureShareEndorsement,
         node::NodeId,
         operation::{OperationPrefixIds, SecureShareOperation},

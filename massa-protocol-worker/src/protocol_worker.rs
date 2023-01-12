@@ -13,7 +13,8 @@ use massa_models::secure_share::Id;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
-    block::{BlockId, SecuredHeader},
+    block_id::{BlockId},
+    block_header::{SecuredHeader},
     endorsement::{EndorsementId, SecureShareEndorsement},
     node::NodeId,
     operation::OperationPrefixId,
@@ -424,7 +425,7 @@ impl ProtocolWorker {
                     let blocks = storage.read_blocks();
                     blocks
                         .get(&block_id)
-                        .map(|block| block.content.header.clone())
+                        .map(|block| block.content.header().clone())
                         .ok_or_else(|| {
                             ProtocolError::ContainerInconsistencyError(format!(
                                 "header of id {} not found.",

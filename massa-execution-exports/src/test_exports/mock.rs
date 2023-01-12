@@ -11,7 +11,7 @@ use massa_models::{
     address::Address,
     amount::Amount,
     api::EventFilter,
-    block::BlockId,
+    block_id::BlockId,
     operation::OperationId,
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},

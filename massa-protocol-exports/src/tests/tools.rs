@@ -10,7 +10,13 @@ use massa_models::{
     address::Address,
     amount::Amount,
     block::{
-        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecureShareBlock,
+        Block, BlockSerializer, SecureShareBlock,
+    },
+    block_id::{
+        BlockId,
+    },
+    block_header::{
+        BlockHeader, BlockHeaderSerializer
     },
     endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
     operation::{Operation, OperationType, SecureShareOperation},
@@ -21,6 +27,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
+use massa_models::block_v0::BlockV0;
 
 /// test utility structures
 /// keeps keypair and associated node id
@@ -60,6 +67,8 @@ pub async fn create_and_connect_nodes(
 pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            block_version_current: 0,
+            block_version_next: 0,
             slot: Slot::new(1, 0),
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -74,10 +83,10 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     .unwrap();
 
     Block::new_verifiable(
-        Block {
+        Block::V0(BlockV0 {
             header,
             operations: Default::default(),
-        },
+        }),
         BlockSerializer::new(),
         keypair,
     )
@@ -101,6 +110,8 @@ pub fn create_block_with_operations(
     );
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            block_version_current: 0,
+            block_version_next: 0,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -116,10 +127,10 @@ pub fn create_block_with_operations(
 
     let op_ids = operations.into_iter().map(|op| op.id).collect();
     Block::new_verifiable(
-        Block {
+        Block::V0(BlockV0 {
             header,
             operations: op_ids,
-        },
+        }),
         BlockSerializer::new(),
         keypair,
     )
@@ -138,6 +149,8 @@ pub fn create_block_with_endorsements(
 ) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            block_version_current: 0,
+            block_version_next: 0,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -152,10 +165,10 @@ pub fn create_block_with_endorsements(
     .unwrap();
 
     Block::new_verifiable(
-        Block {
+        Block::V0(BlockV0 {
             header,
             operations: Default::default(),
-        },
+        }),
         BlockSerializer::new(),
         keypair,
     )

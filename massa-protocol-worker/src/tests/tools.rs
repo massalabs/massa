@@ -2,7 +2,8 @@ use crate::start_protocol_controller;
 use futures::Future;
 use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
-    block::{BlockId, SecureShareBlock},
+    block::{SecureShareBlock},
+    block_id::{BlockId},
     node::NodeId,
     operation::SecureShareOperation,
     prehash::PreHashSet,
@@ -170,14 +171,16 @@ pub async fn send_and_propagate_block(
     operations: Vec<SecureShareOperation>,
 ) {
     network_controller
-        .send_header(source_node_id, block.content.header.clone())
+        .send_header(source_node_id, block.content.header().clone())
         .await;
 
     let mut protocol_sender = protocol_command_sender.clone();
+
+    let block_header = block.content.header().clone();
     tokio::task::spawn_blocking(move || {
         protocol_sender
             .send_wishlist_delta(
-                vec![(block.id, Some(block.content.header.clone()))]
+                vec![(block.id, Some(block_header))]
                     .into_iter()
                     .collect(),
                 PreHashSet::<BlockId>::default(),
@@ -188,9 +191,10 @@ pub async fn send_and_propagate_block(
     .unwrap();
 
     // Send block info to protocol.
+    let block_operations = block.content.operations().clone();
     let info = vec![(
         block.id,
-        BlockInfoReply::Info(block.content.operations.clone()),
+        BlockInfoReply::Info(block_operations),
     )];
     network_controller
         .send_block_info(source_node_id, info)

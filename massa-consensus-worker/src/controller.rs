@@ -5,7 +5,9 @@ use massa_consensus_exports::{
 };
 use massa_models::{
     api::BlockGraphStatus,
-    block::{BlockHeader, BlockId, FilledBlock},
+    block::{FilledBlock},
+    block_header::{BlockHeader},
+    block_id::{BlockId},
     clique::Clique,
     operation::{Operation, OperationId},
     prehash::PreHashSet,
@@ -18,6 +20,7 @@ use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
 use tracing::log::warn;
+use massa_models::block_v0::FilledBlockV0;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -231,7 +234,7 @@ impl ConsensusController for ConsensusControllerImpl {
                 let operations: Vec<(OperationId, Option<SecureShare<Operation, OperationId>>)> =
                     verifiable_block
                         .content
-                        .operations
+                        .operations()
                         .iter()
                         .map(|operation_id| {
                             match block_storage.read_operations().get(operation_id).cloned() {
@@ -247,11 +250,15 @@ impl ConsensusController for ConsensusControllerImpl {
                     .channels
                     .block_sender
                     .send(verifiable_block.content.clone());
+                // FIXME: for now, return only V0
+
+                let filled_block = FilledBlock::V0(FilledBlockV0 {
+                    header: verifiable_block.content.header().clone(),
+                    operations,
+                });
+
                 let _filled_block_receivers_count =
-                    self.channels.filled_block_sender.send(FilledBlock {
-                        header: verifiable_block.content.header.clone(),
-                        operations,
-                    });
+                    self.channels.filled_block_sender.send(filled_block);
             } else {
                 warn!(
                     "error no ws event sent, block with id {} not found",

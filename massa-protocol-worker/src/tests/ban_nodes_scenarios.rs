@@ -6,7 +6,7 @@ use massa_hash::Hash;
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::secure_share::Id;
-use massa_models::{block::BlockId, slot::Slot};
+use massa_models::{block_id::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools;
@@ -36,11 +36,11 @@ async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             let mut block = tools::create_block(&creator_node.keypair);
 
             // 2. Change the id.
-            block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
+            block.content.header_mut().id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, block.content.header.clone())
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
 
             // The node is banned.
@@ -204,7 +204,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(to_ban_node.id, block.content.header.clone())
+                .send_header(to_ban_node.id, block.content.header().clone())
                 .await;
 
             let mut protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
@@ -224,7 +224,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(block.id, Some(block.content.header))]
+                        vec![(block.id, Some(block.content.header().clone()))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),
@@ -263,7 +263,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 
             // 3. Send header to protocol, via the banned node.
             network_controller
-                .send_header(to_ban_node.id, block.content.header)
+                .send_header(to_ban_node.id, block.content.header().clone())
                 .await;
 
             // Check protocol does not send block to consensus.
@@ -324,7 +324,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 
             // 2. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, block.content.header.clone())
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
 
             // Check protocol sends header to consensus.
@@ -353,9 +353,9 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             // New keypair to avoid getting same block id
             let keypair = KeyPair::generate();
             let mut block = tools::create_block(&keypair);
-            block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
+            block.content.header_mut().id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller
-                .send_header(creator_node.id, block.content.header.clone())
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
@@ -363,7 +363,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(expected_hash, Some(block.content.header.clone()))]
+                        vec![(expected_hash, Some(block.content.header().clone()))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),
@@ -426,9 +426,9 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             // 3. Get one node banned.
             let mut bad_block = tools::create_block(&nodes[1].keypair);
-            bad_block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
+            bad_block.content.header_mut().id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller
-                .send_header(nodes[1].id, bad_block.content.header.clone())
+                .send_header(nodes[1].id, bad_block.content.header().clone())
                 .await;
             tools::assert_banned_nodes(vec![nodes[1].id], &mut network_controller).await;
 
@@ -506,7 +506,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             for (idx, creator_node) in nodes.iter().enumerate() {
                 // Send block to protocol.
                 network_controller
-                    .send_header(creator_node.id, block.content.header.clone())
+                    .send_header(creator_node.id, block.content.header().clone())
                     .await;
 
                 let (old_protocol_consensus_event_receiver, optional_block_id) =
@@ -603,9 +603,9 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
 
             // Get the node banned.
             let mut block = tools::create_block(&creator_node.keypair);
-            block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
+            block.content.header_mut().id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller
-                .send_header(creator_node.id, block.content.header)
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
 
@@ -618,7 +618,7 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
             // The node is not banned anymore.
             let block = tools::create_block(&creator_node.keypair);
             network_controller
-                .send_header(creator_node.id, block.content.header.clone())
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
 
             // Check protocol sends header to consensus.

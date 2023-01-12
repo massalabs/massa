@@ -2,7 +2,8 @@ use crate::error::ConsensusError;
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, BlockId, SecureShareBlock},
+    block::{Block, BlockDeserializer, SecureShareBlock},
+    block_id::BlockId,
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
@@ -63,7 +64,7 @@ impl ExportActiveBlock {
 
         // add endorsements to storage and claim refs
         // TODO change if we decide that endorsements are stored separately
-        storage.store_endorsements(self.block.content.header.content.endorsements.clone());
+        storage.store_endorsements(self.block.content.header().content.endorsements.clone());
 
         // Note: the block's parents are not claimed in the block's storage here but on graph inclusion
 
@@ -75,7 +76,7 @@ impl ExportActiveBlock {
             children: vec![PreHashMap::default(); thread_count as usize], // will be computed once the full graph is available
             descendants: Default::default(), // will be computed once the full graph is available
             is_final: self.is_final,
-            slot: self.block.content.header.content.slot,
+            slot: self.block.content.header().content.slot,
             fitness: self.block.get_fitness(),
         };
 

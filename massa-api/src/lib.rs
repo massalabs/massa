@@ -26,7 +26,8 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
     address::Address,
-    block::{Block, BlockId},
+    block::{Block},
+    block_id::{BlockId},
     endorsement::EndorsementId,
     slot::Slot,
     version::Version,

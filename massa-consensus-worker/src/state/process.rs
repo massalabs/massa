@@ -11,7 +11,8 @@ use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{BlockId, SecuredHeader},
+    block_id::{BlockId},
+    block_header::{SecuredHeader},
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
@@ -226,7 +227,7 @@ impl ConsensusState {
 
                 match self.check_header(
                     &block_id,
-                    &stored_block.content.header,
+                    &stored_block.content.header(),
                     current_slot,
                     self,
                 )? {
@@ -241,7 +242,7 @@ impl ConsensusState {
                             "block_id": block_id
                         });
                         (
-                            stored_block.content.header.content_creator_pub_key,
+                            stored_block.content.header().content_creator_pub_key,
                             slot,
                             parents_hash_period,
                             incompatibilities,
@@ -301,8 +302,8 @@ impl ConsensusState {
                             self.new_stale_blocks.insert(
                                 block_id,
                                 (
-                                    stored_block.content.header.content_creator_address,
-                                    stored_block.content.header.content.slot,
+                                    stored_block.content.header().content_creator_address,
+                                    stored_block.content.header().content.slot,
                                 ),
                             );
                         }
@@ -310,9 +311,9 @@ impl ConsensusState {
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                slot: stored_block.content.header.content.slot,
+                                slot: stored_block.content.header().content.slot,
                                 creator: stored_block.content_creator_address,
-                                parents: stored_block.content.header.content.parents.clone(),
+                                parents: stored_block.content.header().content.parents.clone(),
                                 reason,
                                 sequence_number: {
                                     self.sequence_counter += 1;

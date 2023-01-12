@@ -5,7 +5,7 @@ use massa_consensus_exports::{
 use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
-    block::BlockId,
+    block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
 };
@@ -56,9 +56,9 @@ impl ConsensusState {
                         discard_active_h
                     ))
                 })?;
-                block_slot = block.content.header.content.slot;
+                block_slot = block.content.header().content.slot;
                 block_creator = block.content_creator_address;
-                block_parents = block.content.header.content.parents.clone();
+                block_parents = block.content.header().content.parents.clone();
             };
 
             let discarded_active = if let Some(BlockStatus::Active {
@@ -293,7 +293,7 @@ impl ConsensusState {
                             ))
                         })?
                         .content
-                        .header
+                        .header()
                         .clone(),
                 };
                 massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});

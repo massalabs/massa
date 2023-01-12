@@ -1,7 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    block::{BlockId, SecuredHeader},
+    block_id::BlockId,
+    block_header::SecuredHeader,
     endorsement::SecureShareEndorsement,
 };
 use massa_models::{

@@ -18,7 +18,8 @@ use massa_models::api::{
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
-use massa_models::block::{BlockHeader, FilledBlock};
+use massa_models::block_header::BlockHeader;
+use massa_models::block::FilledBlock;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
@@ -28,7 +29,7 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::version::Version;
 use massa_models::{
-    address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
+    address::Address, block_id::BlockId, endorsement::EndorsementId, operation::OperationId,
 };
 
 use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};

@@ -4,7 +4,7 @@
 
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
 use massa_protocol_exports::tests::tools;
@@ -44,7 +44,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, block.content.header.clone())
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
 
             // Check protocol sends header to consensus.
@@ -72,7 +72,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(expected_hash, Some(block.content.header.clone()))]
+                        vec![(expected_hash, Some(block.content.header().clone()))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),
@@ -241,7 +241,7 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, ref_block.content.header.clone())
+                .send_header(creator_node.id, ref_block.content.header().clone())
                 .await;
 
             // node[1] asks for that block
@@ -271,7 +271,7 @@ async fn test_protocol_propagates_block_to_all_nodes_including_those_who_asked_f
                 .await;
 
             // 5. Propagate header.
-            let _op_ids = ref_block.content.operations.clone();
+            let _op_ids = ref_block.content.operations().clone();
             protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .integrated_block(ref_hash, storage.clone())
@@ -362,7 +362,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, ref_block.content.header.clone())
+                .send_header(creator_node.id, ref_block.content.header().clone())
                 .await;
 
             // node[1] asks for that block
@@ -386,7 +386,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_onl
 
             storage.store_block(ref_block.clone());
             // 5. Propagate header.
-            let _op_ids = ref_block.content.operations.clone();
+            let _op_ids = ref_block.content.operations().clone();
             protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .integrated_block(ref_hash, storage.clone())

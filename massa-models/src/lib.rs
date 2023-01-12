@@ -59,6 +59,16 @@ pub mod streaming_step;
 pub mod timeslots;
 /// versions
 pub mod version;
+/// denunciations
+pub mod denunciation;
+/// block v1
+pub mod block_v0;
+/// block v2
+pub mod block_v1;
+/// block header
+pub mod block_header;
+/// block id
+pub mod block_id;
 
 /// Test utils
 #[cfg(feature = "testing")]

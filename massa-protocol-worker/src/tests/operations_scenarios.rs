@@ -5,7 +5,7 @@
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
-use massa_models::{self, address::Address, amount::Amount, block::BlockId, slot::Slot};
+use massa_models::{self, address::Address, amount::Amount, block_id::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools::{self, assert_hash_asked_to_node};
@@ -13,6 +13,7 @@ use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
+use massa_models::operation::OperationId;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
@@ -452,7 +453,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             );
 
             network_controller
-                .send_header(nodes[0].id, block.content.header.clone())
+                .send_header(nodes[0].id, block.content.header().clone())
                 .await;
 
             let protocol_consensus_event_receiver = tokio::task::spawn_blocking(move || {
@@ -472,7 +473,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(block.id, Some(block.content.header.clone()))]
+                        vec![(block.id, Some(block.content.header().clone()))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),
@@ -583,17 +584,20 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             );
 
             // Change the root operation hash
-            block.content.operations = vec![op_2.clone()].into_iter().map(|op| op.id).collect();
+            block.content.operations_mut().clear();
+            block.content.operations_mut().extend_from_slice(
+                &vec![op_2.clone()].into_iter().map(|op| op.id).collect::<Vec<OperationId>>()
+            );
 
             // Send header via node_a
             network_controller
-                .send_header(node_a.id, block.content.header.clone())
+                .send_header(node_a.id, block.content.header().clone())
                 .await;
 
             // Send wishlist
             protocol_command_sender
                 .send_wishlist_delta(
-                    vec![(block.id, Some(block.content.header))]
+                    vec![(block.id, Some(block.content.header().clone()))]
                         .into_iter()
                         .collect(),
                     PreHashSet::<BlockId>::default(),
@@ -703,7 +707,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
 
             // 4. Send block to protocol.
             network_controller
-                .send_header(creator_node.id, block.content.header.clone())
+                .send_header(creator_node.id, block.content.header().clone())
                 .await;
 
             // 5. Check that the operation included in the block is not propagated.

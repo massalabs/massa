@@ -6,7 +6,7 @@ use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
 use massa_models::datastore::Datastore;
 use massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block::BlockId,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
     slot::Slot,
 };
 use std::collections::{BTreeMap, BTreeSet};

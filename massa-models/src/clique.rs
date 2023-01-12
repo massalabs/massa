@@ -17,7 +17,7 @@ use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
-use crate::block::BlockId;
+use crate::block_id::BlockId;
 use crate::prehash::PreHashSet;
 use std::ops::Bound::{Excluded, Included};
 

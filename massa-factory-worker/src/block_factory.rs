@@ -3,7 +3,9 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecuredHeader},
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
+    block_id::BlockId,
     endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
@@ -19,6 +21,7 @@ use std::{
     time::Instant,
 };
 use tracing::{info, warn};
+use massa_models::block_v0::BlockV0;
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
@@ -199,6 +202,8 @@ impl BlockFactoryWorker {
         // create header
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
+                block_version_current: 0,
+                block_version_next: 0,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
@@ -211,10 +216,10 @@ impl BlockFactoryWorker {
 
         // create block
         let block = Block::new_verifiable(
-            Block {
+            Block::V0(BlockV0 {
                 header,
                 operations: op_ids.into_iter().collect(),
-            },
+            }),
             BlockSerializer::new(), // TODO reuse self.block_serializer
             block_producer_keypair,
         )

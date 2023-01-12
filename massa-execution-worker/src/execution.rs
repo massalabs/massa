@@ -26,7 +26,7 @@ use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
-    block::BlockId,
+    block_id::BlockId,
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};
@@ -762,7 +762,7 @@ impl ExecutionState {
                 let ops = block_store.read_operations();
                 stored_block
                     .content
-                    .operations
+                    .operations()
                     .into_iter()
                     .map(|op_id| {
                         ops.get(&op_id)
@@ -776,7 +776,7 @@ impl ExecutionState {
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
                 &stored_block
                     .content
-                    .header
+                    .header()
                     .content
                     .endorsements
                     .iter()
@@ -808,7 +808,7 @@ impl ExecutionState {
             for operation in operations.into_iter() {
                 if let Err(err) = self.execute_operation(
                     &operation,
-                    stored_block.content.header.content.slot,
+                    stored_block.content.header().content.slot,
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {

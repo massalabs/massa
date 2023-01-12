@@ -24,7 +24,8 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    block::{BlockId, SecuredHeader},
+    block_id::{BlockId},
+    block_header::{SecuredHeader},
     composite::PubkeySig,
     endorsement::SecureShareEndorsement,
     node::NodeId,

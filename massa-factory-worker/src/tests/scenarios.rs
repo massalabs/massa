@@ -34,10 +34,10 @@ fn basic_creation_with_operation() {
     let (block_id, storage) = test_factory.get_next_created_block(Some(vec![operation]), None);
 
     let block = storage.read_blocks().get(&block_id).unwrap().clone();
-    for op_id in block.content.operations.iter() {
+    for op_id in block.content.operations().iter() {
         storage.read_operations().get(op_id).unwrap();
     }
-    assert_eq!(block.content.operations.len(), 1);
+    assert_eq!(block.content.operations().len(), 1);
 }
 
 /// Creates a block with a multiple operations in it.
@@ -58,8 +58,8 @@ fn basic_creation_with_multiple_operations() {
         test_factory.get_next_created_block(Some(vec![operation.clone(), operation]), None);
 
     let block = storage.read_blocks().get(&block_id).unwrap().clone();
-    for op_id in block.content.operations.iter() {
+    for op_id in block.content.operations().iter() {
         storage.read_operations().get(op_id).unwrap();
     }
-    assert_eq!(block.content.operations.len(), 2);
+    assert_eq!(block.content.operations().len(), 2);
 }

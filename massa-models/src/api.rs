@@ -7,7 +7,7 @@ use crate::node::NodeId;
 use crate::operation::{OperationId, SecureShareOperation};
 use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use crate::{
-    address::Address, amount::Amount, block::Block, block::BlockId, config::CompactConfig,
+    address::Address, amount::Amount, block::Block, block_id::BlockId, config::CompactConfig,
     slot::Slot, version::Version,
 };
 use massa_signature::{PublicKey, Signature};
