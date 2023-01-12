@@ -12,6 +12,7 @@ use dialoguer::Password;
 use massa_sdk::{Client, ClientConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
+use std::env;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -64,7 +65,7 @@ struct JsonError {
 
 /// Ask for the wallet password
 /// If the wallet does not exist, it will require password confirmation
-fn ask_password(wallet_path: &Path) -> String {
+pub(crate) fn ask_password(wallet_path: &Path) -> String {
     if wallet_path.is_file() {
         Password::new()
             .with_prompt("Enter wallet password")
@@ -136,18 +137,31 @@ async fn run(args: Args) -> Result<()> {
         std::process::exit(1);
     }));
 
-    // ...
-    let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
-    let mut wallet = Wallet::new(args.wallet, password)?;
     let client = Client::new(address, public_port, private_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &mut wallet).await?;
+        repl::run(&client, &args.wallet, args.password).await?;
     } else {
         // Non-Interactive mode
+
+        // Only prompt for password if the command needs wallet access.
+        let mut wallet_opt = match args.command.is_pwd_needed() {
+            true => {
+                let password = match (args.password, env::var("MASSA_CLIENT_PASSWORD")) {
+                    (Some(pwd), _) => pwd,
+                    (_, Ok(pwd)) => pwd,
+                    _ => ask_password(&args.wallet),
+                };
+
+                let wallet = Wallet::new(args.wallet, password)?;
+                Some(wallet)
+            }
+            false => None,
+        };
+
         match args
             .command
-            .run(&client, &mut wallet, &args.parameters, args.json)
+            .run(&client, &mut wallet_opt, &args.parameters, args.json)
             .await
         {
             Ok(output) => {

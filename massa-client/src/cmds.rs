@@ -23,7 +23,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
@@ -34,62 +34,80 @@ use strum_macros::{Display, EnumIter, EnumString};
 /// All the client commands
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
+/// Use props(pwd_not_needed = "true") if the command does not need an access to the wallet, to avoid unnecessary
+/// prompting of the user.
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
-    #[strum(ascii_case_insensitive, message = "display this help")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "display this help"
+    )]
     help,
 
-    #[strum(ascii_case_insensitive, message = "exit the prompt")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "exit the prompt"
+    )]
     exit,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "IpAddr1 IpAddr2 ..."),
+        props(args = "IpAddr1 IpAddr2 ...", pwd_not_needed = "true"),
         message = "unban given IP address(es)"
     )]
     node_unban_by_ip,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Id1 Id2 ..."),
+        props(args = "Id1 Id2 ...", pwd_not_needed = "true"),
         message = "unban given id(s)"
     )]
     node_unban_by_id,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "IpAddr1 IpAddr2 ..."),
+        props(args = "IpAddr1 IpAddr2 ...", pwd_not_needed = "true"),
         message = "ban given IP address(es)"
     )]
     node_ban_by_ip,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Id1 Id2 ..."),
+        props(args = "Id1 Id2 ...", pwd_not_needed = "true"),
         message = "ban given id(s)"
     )]
     node_ban_by_id,
 
-    #[strum(ascii_case_insensitive, message = "stops the node")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "stops the node"
+    )]
     node_stop,
 
-    #[strum(ascii_case_insensitive, message = "show staking addresses")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "show staking addresses"
+    )]
     node_get_staking_addresses,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "Address1 Address2 ..."),
-        message = "remove staking addresses"
+        message = "starts staking with the given addresses"
     )]
-    node_remove_staking_addresses,
+    node_start_staking,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SecretKey1 SecretKey2 ..."),
-        message = "add staking secret keys"
+        props(args = "Address1 Address2 ..."),
+        message = "stops staking with the given addresses"
     )]
-    node_add_staking_secret_keys,
+    node_stop_staking,
 
     #[strum(
         ascii_case_insensitive,
@@ -100,62 +118,63 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "(add, remove or allow-all) [IpAddr]"),
-        message = "Manage boostrap whitelist IP address(es).No args returns the whitelist blacklist"
+        props(args = "(add, remove or allow-all) [IpAddr]", pwd_not_needed = "true"),
+        message = "Manage boostrap whitelist IP address(es). No args returns the whitelist blacklist"
     )]
     node_bootsrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "(add or remove) [IpAddr]"),
+        props(args = "(add or remove) [IpAddr]", pwd_not_needed = "true"),
         message = "Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist"
     )]
     node_bootsrap_blacklist,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "(add or remove) [IpAddr]"),
+        props(args = "(add or remove) [IpAddr]", pwd_not_needed = "true"),
         message = "Manage peers whitelist IP address(es). No args returns the peers whitelist"
     )]
     node_peers_whitelist,
 
     #[strum(
         ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
         message = "show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)"
     )]
     get_status,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address1 Address2 ..."),
+        props(args = "Address1 Address2 ...", pwd_not_needed = "true"),
         message = "get info about a list of addresses (balances, block creation, ...)"
     )]
     get_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address Key"),
+        props(args = "Address Key", pwd_not_needed = "true"),
         message = "get a datastore entry (key must be UTF-8)"
     )]
     get_datastore_entry,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "BlockId"),
+        props(args = "BlockId", pwd_not_needed = "true"),
         message = "show info about a block (content, finality ...)"
     )]
     get_blocks,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "EndorsementId1 EndorsementId2 ..."),
+        props(args = "EndorsementId1 EndorsementId2 ...", pwd_not_needed = "true"),
         message = "show info about a list of endorsements (content, finality ...)"
     )]
     get_endorsements,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "OperationId1 OperationId2 ..."),
+        props(args = "OperationId1 OperationId2 ...", pwd_not_needed = "true"),
         message = "show info about a list of operations(content, finality ...) "
     )]
     get_operations,
@@ -163,7 +182,8 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool"
+            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool",
+            pwd_not_needed = "true"
         ),
         message = "show events emitted by smart contracts with various filters"
     )]
@@ -171,9 +191,24 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        message = "show wallet info (keys, addresses, balances ...)"
+        props(args = "show-all-keys"),
+        message = "show wallet info (addresses, balances ...)"
     )]
     wallet_info,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Address1 Address2 .."),
+        message = "get public key of the given addresses"
+    )]
+    wallet_get_public_key,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Address1 Address2 ..."),
+        message = "get secret key of the given addresses"
+    )]
+    wallet_get_secret_key,
 
     #[strum(
         ascii_case_insensitive,
@@ -225,39 +260,50 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress PathToBytecode MaxGas Fee",),
+        props(args = "SenderAddress PathToBytecode MaxGas Fee"),
         message = "create and send an operation containing byte code"
     )]
     execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee",),
+        props(args = "SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee"),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas Address IsFinal",),
+        props(
+            args = "PathToBytecode MaxGas Address IsFinal",
+            pwd_not_needed = "true"
+        ),
         message = "execute byte code, address is optional, is_final is optional. Nothing is really executed on chain"
     )]
     read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal",),
+        props(
+            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal",
+            pwd_not_needed = "true"
+        ),
         message = "call a smart contract function, sender address is optional, is_final is optional. Nothing is really executed on chain"
     )]
     read_only_call,
 
     #[strum(
         ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
         message = "show time remaining to end of current episode"
     )]
     when_episode_ends,
 
-    #[strum(ascii_case_insensitive, message = "tells you when moon")]
+    #[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = "true"),
+        message = "tells you when moon"
+    )]
     when_moon,
 }
 
@@ -313,12 +359,16 @@ struct ExtendedWalletEntry {
     pub keypair: KeyPair,
     /// address and balance information
     pub address_info: CompactAddressInfo,
+    /// whether to display the public/secret keys or just the address info
+    pub show_keys: bool,
 }
 
 impl Display for ExtendedWalletEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Secret key: {}", self.keypair)?;
-        writeln!(f, "Public key: {}", self.keypair.get_public_key())?;
+        if self.show_keys {
+            writeln!(f, "Secret key: {}", self.keypair)?;
+            writeln!(f, "Public key: {}", self.keypair.get_public_key())?;
+        }
         writeln!(f, "{}", self.address_info)?;
         writeln!(f, "\n=====\n")?;
         Ok(())
@@ -332,7 +382,7 @@ pub struct ExtendedWallet(PreHashMap<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     /// Reorganize everything into an extended wallet
-    fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {
+    fn new(wallet: &Wallet, addresses_info: &[AddressInfo], show_keys: bool) -> Result<Self> {
         Ok(ExtendedWallet(
             addresses_info
                 .iter()
@@ -346,6 +396,7 @@ impl ExtendedWallet {
                         ExtendedWalletEntry {
                             keypair: keypair.clone(),
                             address_info: x.compact(),
+                            show_keys,
                         },
                     ))
                 })
@@ -388,18 +439,24 @@ impl Command {
         )
     }
 
+    /// Returns true if the command needs wallet access
+    pub(crate) fn is_pwd_needed(&self) -> bool {
+        !(self.get_str("pwd_not_needed").is_some()
+            && self.get_str("pwd_not_needed").unwrap() == "true")
+    }
+
     /// run a given command
     ///
     /// # parameters
     /// - client: the RPC client
-    /// - wallet: an access to the wallet
+    /// - wallet_opt: an optional access to the wallet
     /// - parameters: the parsed parameters
     /// - json: true if --json was passed as an option
     ///     it means that we don't want to print anything we just want the json output
     pub(crate) async fn run(
         &self,
         client: &Client,
-        wallet: &mut Wallet,
+        wallet_opt: &mut Option<Wallet>,
         parameters: &[String],
         json: bool,
     ) -> Result<Box<dyn Output>> {
@@ -493,36 +550,9 @@ impl Command {
                 }
             }
 
-            Command::node_remove_staking_addresses => {
-                let addresses = parse_vec::<Address>(parameters)?;
-                match client.private.remove_staking_addresses(addresses).await {
-                    Ok(()) => {
-                        if !json {
-                            println!("Addresses successfully removed!")
-                        }
-                    }
-                    Err(e) => rpc_error!(e),
-                }
-                Ok(Box::new(()))
-            }
-
-            Command::node_add_staking_secret_keys => {
-                match client
-                    .private
-                    .add_staking_secret_keys(parameters.to_vec())
-                    .await
-                {
-                    Ok(()) => {
-                        if !json {
-                            println!("Keys successfully added!")
-                        }
-                    }
-                    Err(e) => rpc_error!(e),
-                };
-                Ok(Box::new(()))
-            }
-
             Command::node_testnet_rewards_program_ownership_proof => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 2 {
                     bail!("wrong number of parameters");
                 }
@@ -644,34 +674,133 @@ impl Command {
             }
 
             Command::wallet_info => {
-                if !json {
-                    client_warning!("do not share your key");
+                let show_keys = parameters.len() == 1 && parameters[0] == "show-all-keys";
+
+                let wallet = wallet_opt.as_mut().unwrap();
+
+                if !json && show_keys {
+                    client_warning!("do not share your secret key");
                 }
                 match client
                     .public
                     .get_addresses(wallet.get_full_wallet().keys().copied().collect())
                     .await
                 {
-                    Ok(addresses_info) => {
-                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
-                    }
-                    Err(_) => Ok(Box::new(wallet.clone())), // FIXME
+                    Ok(addresses_info) => Ok(Box::new(ExtendedWallet::new(
+                        wallet,
+                        &addresses_info,
+                        show_keys,
+                    )?)),
+                    Err(_) => match show_keys {
+                        true => Ok(Box::new(wallet.clone())),
+                        false => Ok(Box::new(wallet.get_wallet_address_list())),
+                    }, // FIXME
                 }
             }
 
+            Command::wallet_get_public_key => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
+                let addresses = parse_vec::<Address>(parameters)?;
+
+                let hashset: HashSet<_> = addresses.into_iter().collect();
+
+                let keypair: Vec<(&Address, Option<&KeyPair>)> = hashset
+                    .iter()
+                    .map(|addr| (addr, wallet.get_full_wallet().get(addr)))
+                    .filter(|kp| kp.1.is_some())
+                    .collect();
+
+                let addr_public_keys: Vec<_> = keypair
+                    .iter()
+                    .map(|kp| (*kp.0, kp.1.unwrap().get_public_key()))
+                    .collect();
+
+                Ok(Box::new(addr_public_keys))
+            }
+
+            Command::wallet_get_secret_key => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
+                if !json {
+                    client_warning!("do not share your secret key");
+                }
+
+                let addresses = parse_vec::<Address>(parameters)?;
+
+                let hashset: HashSet<_> = addresses.into_iter().collect();
+
+                let keypair: Vec<(&Address, Option<&KeyPair>)> = hashset
+                    .iter()
+                    .map(|addr| (addr, wallet.get_full_wallet().get(addr)))
+                    .filter(|kp| kp.1.is_some())
+                    .collect();
+
+                let addr_secret_keys: Vec<_> = keypair
+                    .iter()
+                    .map(|kp| (*kp.0, kp.1.unwrap().to_owned()))
+                    .collect();
+
+                Ok(Box::new(addr_secret_keys))
+            }
+
+            Command::node_start_staking => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
+                let addresses = parse_vec::<Address>(parameters)?;
+                let secret: Vec<Option<&KeyPair>> = addresses
+                    .iter()
+                    .map(|addr| wallet.get_full_wallet().get(addr))
+                    .collect();
+                let secret_str = secret
+                    .iter()
+                    .filter(|a| a.is_some())
+                    .map(|s| format!("{}", s.unwrap()))
+                    .collect();
+
+                match client.private.add_staking_secret_keys(secret_str).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Keys successfully added!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                };
+                Ok(Box::new(()))
+            }
+
+            Command::node_stop_staking => {
+                let addresses = parse_vec::<Address>(parameters)?;
+                match client.private.remove_staking_addresses(addresses).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Addresses successfully removed!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
+
             Command::wallet_generate_secret_key => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let key = KeyPair::generate();
                 let ad = wallet.add_keypairs(vec![key])?[0];
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
-                    println!("Type `node_add_staking_secret_keys <your secret key>` to start staking with this key.\n");
+                    println!(
+                        "Type `node_start_staking <address>` to start staking with this address.\n"
+                    );
                     Ok(Box::new(()))
                 }
             }
 
             Command::wallet_add_secret_keys => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let keypairs = parse_vec::<KeyPair>(parameters)?;
                 let addresses = wallet.add_keypairs(keypairs)?;
                 if json {
@@ -680,12 +809,14 @@ impl Command {
                     for address in addresses {
                         println!("Derived and added address {} to the wallet.", address);
                     }
-                    println!("Type `node_add_staking_secret_keys <your secret key>` to start staking with the corresponding key.\n");
+                    println!("Type `node_start_staking <address>` to start staking with the corresponding key.\n");
                 }
                 Ok(Box::new(()))
             }
 
             Command::wallet_remove_addresses => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 let mut res = "".to_string();
                 let addresses = parse_vec::<Address>(parameters)?;
                 match wallet.remove_addresses(&addresses) {
@@ -703,6 +834,8 @@ impl Command {
             }
 
             Command::buy_rolls => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
@@ -741,7 +874,7 @@ impl Command {
                     }
                     if let Ok(staked_keys) = client.private.get_staking_addresses().await {
                         if !staked_keys.contains(&addr) {
-                            client_warning!("You are buying rolls with an address not registered for staking. Don't forget to run 'node_add_staking_secret_keys <your_secret_key'");
+                            client_warning!("You are buying rolls with an address not registered for staking. Don't forget to run 'node_start_staking <address>'");
                         }
                     }
                 }
@@ -757,6 +890,8 @@ impl Command {
             }
 
             Command::sell_rolls => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
@@ -791,6 +926,8 @@ impl Command {
             }
 
             Command::send_transaction => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
@@ -854,6 +991,8 @@ impl Command {
                 Ok(Box::new(()))
             }
             Command::execute_smart_contract => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
@@ -902,6 +1041,8 @@ impl Command {
                 .await
             }
             Command::call_smart_contract => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 7 {
                     bail!("wrong number of parameters");
                 }
@@ -955,6 +1096,8 @@ impl Command {
                 .await
             }
             Command::wallet_sign => {
+                let wallet = wallet_opt.as_mut().unwrap();
+
                 if parameters.len() != 2 {
                     bail!("wrong number of parameters");
                 }
