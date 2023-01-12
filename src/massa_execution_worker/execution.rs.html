@@ -2321,14 +2321,14 @@
         }
 
         <span class="comment">// set the execution slot to be the one after the latest executed active or final slot
-        </span><span class="kw">let </span>slot = <span class="kw">if </span>req.is_final {
+        </span><span class="kw">let </span>slot = <span class="kw">if </span>req.is_final.map_or(<span class="bool-val">false</span>, |is_final| is_final) {
             <span class="self">self</span>.final_cursor
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;slot overflow in readonly execution from final slot&quot;</span>)
+                .expect(<span class="string">&quot;slot overflow in readonly execution&quot;</span>)
         } <span class="kw">else </span>{
             <span class="self">self</span>.active_cursor
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;slot overflow in readonly execution from active slot&quot;</span>)
+                .expect(<span class="string">&quot;slot overflow in readonly execution&quot;</span>)
         };
 
         <span class="comment">// create a readonly execution context

@@ -428,7 +428,7 @@
     <span class="doccomment">/// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;
@@ -450,19 +450,19 @@
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
+    ///                     endorsed_block: BlockId(Hash::compute_from(&amp;[1])),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
-    ///                     slot: Slot::new(4, 0),
+    ///                     slot: Slot::new(1, 1),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
+    ///                     endorsed_block: BlockId(Hash::compute_from(&amp;[1])),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
     ///             )
     ///             .unwrap(),

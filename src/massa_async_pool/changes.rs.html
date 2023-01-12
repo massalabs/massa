@@ -271,7 +271,6 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="kw">use </span>massa_serialization::{
@@ -283,7 +282,6 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
@@ -294,7 +292,7 @@
 };
 
 <span class="doccomment">/// Enum representing a value U with identifier T being added or deleted
-</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Change&lt;T, U&gt; {
     <span class="doccomment">/// an item with identifier T and value U is added
     </span>Add(T, U),
@@ -314,7 +312,7 @@
 }
 
 <span class="doccomment">/// represents a list of additions and deletions to the asynchronous message pool
-</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>AsyncPoolChanges(<span class="kw">pub </span>Vec&lt;Change&lt;AsyncMessageId, AsyncMessage&gt;&gt;);
 
 <span class="doccomment">/// `AsyncPoolChanges` serializer
