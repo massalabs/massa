@@ -158,7 +158,7 @@ async fn launch(
     .expect("could not start selector worker");
 
     // Create final state
-    let final_state = Arc::new(parking_lot::RwLock::new(
+    let final_state = Arc::new(RwLock::new(
         FinalState::new(
             final_state_config,
             Box::new(ledger),
@@ -539,10 +539,13 @@ async fn launch(
 
     // spawn Massa API
     let api = API::<ApiV2>::new(
+        execution_controller.clone(),
+        selector_controller.clone(),
         consensus_channels,
         pool_channels,
         api_config.clone(),
         *VERSION,
+        shared_storage.clone(),
     );
     let api_handle = api
         .serve(&SETTINGS.api.bind_api, &api_config)
@@ -594,7 +597,7 @@ async fn launch(
         let thread_builder = thread::Builder::new().name("deadlock-detection".into());
         thread_builder
             .spawn(move || loop {
-                thread::sleep(Duration::from_secs(10));
+                sleep(Duration::from_secs(10));
                 let deadlocks = deadlock::check_deadlock();
                 println!("deadlocks check");
 
@@ -781,7 +784,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         default_panic(info);
-        std::process::exit(1);
+        process::exit(1);
     }));
 
     // load or create wallet, asking for password if necessary
@@ -836,7 +839,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     info!("stop command received from private API");
                     break false;
                 }
-                Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                Err(mpsc::error::TryRecvError::Disconnected) => {
                     error!("api_private_stop_rx disconnected");
                     break false;
                 }
@@ -847,7 +850,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     info!("interrupt signal received");
                     break false;
                 }
-                Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                Err(TryRecvError::Disconnected) => {
                     error!("interrupt_signal_listener disconnected");
                     break false;
                 }

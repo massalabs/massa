@@ -4,6 +4,10 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 use api_trait::MassaApiServer;
+
+use crate::api_trait::MassaApiServer;
+use crate::error::ApiError::WrongAPI;
+use crate::proxy::MassaProxyGetRequestLayer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
@@ -55,7 +59,11 @@ use tracing::{info, warn};
 mod api;
 mod api_trait;
 mod private;
+mod proxy;
 mod public;
+
+
+pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
@@ -99,6 +107,10 @@ pub struct Private {
 
 /// API v2 content
 pub struct ApiV2 {
+    /// link to the execution component
+    pub execution_controller: Box<dyn ExecutionController>,
+    /// link to the selector component
+    pub selector_controller: Box<dyn SelectorController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
     /// link(channels) to the pool component
@@ -107,6 +119,8 @@ pub struct ApiV2 {
     pub api_settings: APIConfig,
     /// node version
     pub version: Version,
+    /// Massa storage
+    pub storage: Storage,
 }
 
 /// The API wrapper
@@ -173,7 +187,10 @@ async fn serve<T>(
         .allow_origin(Any)
         .allow_headers([hyper::header::CONTENT_TYPE]);
 
-    let middleware = tower::ServiceBuilder::new().layer(cors);
+    let middleware = tower::ServiceBuilder::new().layer(cors).layer(
+        MassaProxyGetRequestLayer::new("/addresses", "get_addresses")
+            .expect("Error when create MassaProxyGetRequestLayer"),
+    );
 
     let server = server_builder
         .set_middleware(middleware)

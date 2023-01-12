@@ -2,6 +2,8 @@
 //! Json RPC API for a massa-node
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use massa_models::address::Address;
+use massa_models::api::AddressInfo;
 use massa_models::version::Version;
 
 /// Exposed API methods
@@ -42,4 +44,8 @@ pub trait MassaApi {
 		item = Operation
 	)]
     fn subscribe_new_operations(&self);
+
+    // todo comment
+    #[method(name = "get_addresses")]
+    async fn get_addresses(&self, arg: Vec<Address>) -> RpcResult<Vec<AddressInfo>>;
 }
