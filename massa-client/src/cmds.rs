@@ -679,7 +679,7 @@ impl Command {
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 if !json && show_keys {
-                    client_warning!("do not share your key");
+                    client_warning!("do not share your secret key");
                 }
                 match client
                     .public
@@ -723,7 +723,7 @@ impl Command {
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 if !json {
-                    client_warning!("do not share your key");
+                    client_warning!("do not share your secret key");
                 }
 
                 let addresses = parse_vec::<Address>(parameters)?;
