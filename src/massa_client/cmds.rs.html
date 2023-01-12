@@ -1644,14 +1644,14 @@
         props(args = <span class="string">&quot;Address1 Address2 ..&quot;</span>),
         message = <span class="string">&quot;get public key of the given addresses&quot;
     </span>)]
-    </span>get_public_key,
+    </span>wallet_get_public_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
         message = <span class="string">&quot;get secret key of the given addresses&quot;
     </span>)]
-    </span>get_secret_key,
+    </span>wallet_get_secret_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -2141,7 +2141,7 @@
                 </span>}
             }
 
-            Command::get_public_key =&gt; {
+            Command::wallet_get_public_key =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
@@ -2162,7 +2162,7 @@
                 <span class="prelude-val">Ok</span>(Box::new(addr_public_keys))
             }
 
-            Command::get_secret_key =&gt; {
+            Command::wallet_get_secret_key =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>!json {
