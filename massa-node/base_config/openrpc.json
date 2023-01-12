@@ -1942,7 +1942,8 @@
                     "executed_at",
                     "output_events",
                     "result",
-                    "gas_cost"
+                    "gas_cost",
+                    "state_changes"
                 ],
                 "type": "object",
                 "properties": {
@@ -1961,6 +1962,9 @@
                     "gas_cost": {
                         "description": "The gas cost for the execution",
                         "type": "number"
+                    },
+                    "state_changes": {
+                        "$ref": "#/components/schemas/StateChanges"
                     }
                 },
                 "additionalProperties": false
@@ -2804,6 +2808,35 @@
                     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": "Number",
                     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": "Number"
                 }
+            },
+            "StateChanges": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "ledger_changes": {
+                        "description": "ledger changes",
+                        "type": "object"
+                    },
+                    "async_pool_changes": {
+                        "description": "async pool changes",
+                        "type": "array"
+                    },
+                    "pos_changes": {
+                        "description": "pos changes",
+                        "type": "object"
+                    },
+                    "executed_ops_changes": {
+                        "description": "executed operations changes",
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "async_pool_changes",
+                    "executed_ops_changes",
+                    "ledger_changes",
+                    "pos_changes"
+                ],
+                "title": "StateChanges"
             },
             "Transaction": {
                 "title": "Transaction",
