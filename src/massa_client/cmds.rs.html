@@ -1439,6 +1439,8 @@
 <a href="#1439" id="1439">1439</a>
 <a href="#1440" id="1440">1440</a>
 <a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -1715,8 +1717,10 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;PathToBytecode MaxGas Address IsFinal&quot;</span>,
-            pwd_not_needed = <span class="string">&quot;true&quot;</span>),
+        props(
+            args = <span class="string">&quot;PathToBytecode MaxGas Address IsFinal&quot;</span>,
+            pwd_not_needed = <span class="string">&quot;true&quot;
+        </span>),
         message = <span class="string">&quot;execute byte code, address is optional, is_final is optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_execute_smart_contract,
