@@ -1323,7 +1323,7 @@
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    block_id::BlockId,
+    block::BlockId,
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 <span class="kw">use </span>massa_models::{amount::Amount, slot::Slot};
@@ -2059,7 +2059,7 @@
                 <span class="kw">let </span>ops = block_store.read_operations();
                 stored_block
                     .content
-                    .operations()
+                    .operations
                     .into_iter()
                     .map(|op_id| {
                         ops.get(<span class="kw-2">&amp;</span>op_id)
@@ -2073,7 +2073,7 @@
             </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
                 <span class="kw-2">&amp;</span>stored_block
                     .content
-                    .header()
+                    .header
                     .content
                     .endorsements
                     .iter()
@@ -2105,7 +2105,7 @@
             </span><span class="kw">for </span>operation <span class="kw">in </span>operations.into_iter() {
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.execute_operation(
                     <span class="kw-2">&amp;</span>operation,
-                    stored_block.content.header().content.slot,
+                    stored_block.content.header.content.slot,
                     <span class="kw-2">&amp;mut </span>remaining_block_gas,
                     <span class="kw-2">&amp;mut </span>block_credits,
                 ) {

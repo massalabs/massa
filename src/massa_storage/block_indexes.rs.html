@@ -162,13 +162,11 @@
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::hash_map, collections::HashMap};
 
 <span class="kw">use </span>massa_models::{
     address::Address,
-    block_id::BlockId,
-    block::SecureShareBlock,
+    block::{BlockId, SecureShareBlock},
     endorsement::EndorsementId,
     operation::OperationId,
     prehash::{PreHashMap, PreHashSet},
@@ -205,17 +203,17 @@
 
             <span class="comment">// update slot index
             </span><span class="self">self</span>.index_by_slot
-                .entry(b.content.header().content.slot)
+                .entry(b.content.header.content.slot)
                 .or_default()
                 .insert(b.id);
 
             <span class="comment">// update index_by_op
-            </span><span class="kw">for </span>op <span class="kw">in </span>b.content.operations() {
+            </span><span class="kw">for </span>op <span class="kw">in </span><span class="kw-2">&amp;</span>b.content.operations {
                 <span class="self">self</span>.index_by_op.entry(<span class="kw-2">*</span>op).or_default().insert(b.id);
             }
 
             <span class="comment">// update index_by_endorsement
-            </span><span class="kw">for </span>ed <span class="kw">in </span><span class="kw-2">&amp;</span>b.content.header().content.endorsements {
+            </span><span class="kw">for </span>ed <span class="kw">in </span><span class="kw-2">&amp;</span>b.content.header.content.endorsements {
                 <span class="self">self</span>.index_by_endorsement
                     .entry(ed.id)
                     .or_default()
@@ -241,7 +239,7 @@
 
             <span class="comment">// update slot index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
-                <span class="self">self</span>.index_by_slot.entry(b.content.header().content.slot)
+                <span class="self">self</span>.index_by_slot.entry(b.content.header.content.slot)
             {
                 occ.get_mut().remove(<span class="kw-2">&amp;</span>b.id);
                 <span class="kw">if </span>occ.get().is_empty() {
@@ -250,7 +248,7 @@
             }
 
             <span class="comment">// update index_by_op
-            </span><span class="kw">for </span>op <span class="kw">in </span>b.content.operations() {
+            </span><span class="kw">for </span>op <span class="kw">in </span><span class="kw-2">&amp;</span>b.content.operations {
                 <span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) = <span class="self">self</span>.index_by_op.entry(<span class="kw-2">*</span>op) {
                     occ.get_mut().remove(<span class="kw-2">&amp;</span>b.id);
                     <span class="kw">if </span>occ.get().is_empty() {
@@ -260,7 +258,7 @@
             }
 
             <span class="comment">// update index_by_endorsement
-            </span><span class="kw">for </span>ed <span class="kw">in </span><span class="kw-2">&amp;</span>b.content.header().content.endorsements {
+            </span><span class="kw">for </span>ed <span class="kw">in </span><span class="kw-2">&amp;</span>b.content.header.content.endorsements {
                 <span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) = <span class="self">self</span>.index_by_endorsement.entry(ed.id) {
                     occ.get_mut().remove(<span class="kw-2">&amp;</span>b.id);
                     <span class="kw">if </span>occ.get().is_empty() {

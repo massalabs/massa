@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":[["BlockHeader","block header"],["BlockHeaderDeserializer","Deserializer for `BlockHeader`"],["BlockHeaderSerializer","Serializer for `BlockHeader`"]],"type":[["SecuredHeader","BlockHeader wrapped up alongside verification data"]]};

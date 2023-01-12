@@ -270,13 +270,11 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ConsensusError;
 <span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, SecureShareBlock},
-    block_id::BlockId,
+    block::{Block, BlockDeserializer, BlockId, SecureShareBlock},
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
@@ -337,7 +335,7 @@
 
         <span class="comment">// add endorsements to storage and claim refs
         // TODO change if we decide that endorsements are stored separately
-        </span>storage.store_endorsements(<span class="self">self</span>.block.content.header().content.endorsements.clone());
+        </span>storage.store_endorsements(<span class="self">self</span>.block.content.header.content.endorsements.clone());
 
         <span class="comment">// Note: the block&#39;s parents are not claimed in the block&#39;s storage here but on graph inclusion
 
@@ -349,7 +347,7 @@
             children: <span class="macro">vec!</span>[PreHashMap::default(); thread_count <span class="kw">as </span>usize], <span class="comment">// will be computed once the full graph is available
             </span>descendants: Default::default(), <span class="comment">// will be computed once the full graph is available
             </span>is_final: <span class="self">self</span>.is_final,
-            slot: <span class="self">self</span>.block.content.header().content.slot,
+            slot: <span class="self">self</span>.block.content.header.content.slot,
             fitness: <span class="self">self</span>.block.get_fitness(),
         };
 
