@@ -274,8 +274,10 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas Address IsFinal",
-            pwd_not_needed = "true"),
+        props(
+            args = "PathToBytecode MaxGas Address IsFinal",
+            pwd_not_needed = "true"
+        ),
         message = "execute byte code, address is optional, is_final is optional. Nothing is really executed on chain"
     )]
     read_only_execute_smart_contract,
