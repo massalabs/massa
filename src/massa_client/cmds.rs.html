@@ -2122,7 +2122,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>!json &amp;&amp; show_keys {
-                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your key&quot;</span>);
+                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your secret key&quot;</span>);
                 }
                 <span class="kw">match </span>client
                     .public
@@ -2166,7 +2166,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>!json {
-                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your key&quot;</span>);
+                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your secret key&quot;</span>);
                 }
 
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
