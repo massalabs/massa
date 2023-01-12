@@ -174,20 +174,6 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attr">#![feature(str_split_whitespace_as_str)]
@@ -202,7 +188,6 @@
 <span class="kw">use </span>massa_sdk::{Client, ClientConfig, HttpConfig};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>serde::Serialize;
-<span class="kw">use </span>std::env;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::path::{Path, PathBuf};
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
@@ -255,7 +240,7 @@
 
 <span class="doccomment">/// Ask for the wallet password
 /// If the wallet does not exist, it will require password confirmation
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ask_password(wallet_path: <span class="kw-2">&amp;</span>Path) -&gt; String {
+</span><span class="kw">fn </span>ask_password(wallet_path: <span class="kw-2">&amp;</span>Path) -&gt; String {
     <span class="kw">if </span>wallet_path.is_file() {
         Password::new()
             .with_prompt(<span class="string">&quot;Enter wallet password&quot;</span>)
@@ -327,31 +312,18 @@
         std::process::exit(<span class="number">1</span>);
     }));
 
+    <span class="comment">// ...
+    </span><span class="kw">let </span>password = args.password.unwrap_or_else(|| ask_password(<span class="kw-2">&amp;</span>args.wallet));
+    <span class="kw">let </span><span class="kw-2">mut </span>wallet = Wallet::new(args.wallet, password)<span class="question-mark">?</span>;
     <span class="kw">let </span>client = Client::new(address, public_port, private_port, <span class="kw-2">&amp;</span>http_config).<span class="kw">await</span>;
     <span class="kw">if </span>atty::is(Stream::Stdout) &amp;&amp; args.command == Command::help &amp;&amp; !args.json {
         <span class="comment">// Interactive mode
-        </span>repl::run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;</span>args.wallet, args.password).<span class="kw">await</span><span class="question-mark">?</span>;
+        </span>repl::run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;mut </span>wallet).<span class="kw">await</span><span class="question-mark">?</span>;
     } <span class="kw">else </span>{
         <span class="comment">// Non-Interactive mode
-
-        // Only prompt for password if the command needs wallet access.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>wallet_opt = <span class="kw">match </span>args.command.is_pwd_needed() {
-            <span class="bool-val">true </span>=&gt; {
-                <span class="kw">let </span>password = <span class="kw">match </span>(args.password, env::var(<span class="string">&quot;MASSA_CLIENT_PASSWORD&quot;</span>)) {
-                    (<span class="prelude-val">Some</span>(pwd), <span class="kw">_</span>) =&gt; pwd,
-                    (<span class="kw">_</span>, <span class="prelude-val">Ok</span>(pwd)) =&gt; pwd,
-                    <span class="kw">_ </span>=&gt; ask_password(<span class="kw-2">&amp;</span>args.wallet),
-                };
-
-                <span class="kw">let </span>wallet = Wallet::new(args.wallet, password)<span class="question-mark">?</span>;
-                <span class="prelude-val">Some</span>(wallet)
-            }
-            <span class="bool-val">false </span>=&gt; <span class="prelude-val">None</span>,
-        };
-
-        <span class="kw">match </span>args
+        </span><span class="kw">match </span>args
             .command
-            .run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;mut </span>wallet_opt, <span class="kw-2">&amp;</span>args.parameters, args.json)
+            .run(<span class="kw-2">&amp;</span>client, <span class="kw-2">&amp;mut </span>wallet, <span class="kw-2">&amp;</span>args.parameters, args.json)
             .<span class="kw">await
         </span>{
             <span class="prelude-val">Ok</span>(output) =&gt; {
