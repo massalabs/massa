@@ -316,7 +316,6 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
@@ -333,13 +332,12 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="kw">const </span>DEFERRED_CREDITS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
-<span class="attr">#[derive(Debug, Clone, Deserialize, Serialize)]
+<span class="attr">#[derive(Debug, Clone)]
 </span><span class="doccomment">/// Structure containing all the PoS deferred credits information
 </span><span class="kw">pub struct </span>DeferredCredits {
     <span class="doccomment">/// Deferred credits

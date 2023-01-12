@@ -339,11 +339,11 @@
 <span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>erased_serde::{Serialize, Serializer};
-<span class="kw">use </span>massa_api_exports::{
-    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, ExecuteReadOnlyResponse,
-    NodeStatus, OperationInfo,
+<span class="kw">use </span>massa_models::api::{
+    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, NodeStatus, OperationInfo,
 };
 <span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{address::Address, operation::OperationId};

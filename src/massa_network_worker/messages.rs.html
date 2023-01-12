@@ -602,11 +602,13 @@
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
-    block::{BlockHeader, BlockHeaderDeserializer, BlockId, SecuredHeader},
+    block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
+    block_id::BlockId,
     config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
     endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     operation::{

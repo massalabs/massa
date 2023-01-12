@@ -308,6 +308,12 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -317,8 +323,10 @@
     active_block::ActiveBlock,
     address::Address,
     block::{
-        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecureShareBlock,
+        Block, BlockSerializer, SecureShareBlock,
     },
+    block_id::BlockId,
+    block_header::{BlockHeader, BlockHeaderSerializer},
     prehash::PreHashMap,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -332,6 +340,7 @@
     sync::{mpsc, Arc},
 };
 <span class="kw">use </span>tracing::log::info;
+<span class="kw">use </span>massa_models::block_v0::BlockV0;
 
 <span class="kw">use crate</span>::{commands::ConsensusCommand, state::ConsensusState};
 
@@ -350,8 +359,11 @@
     thread_number: u8,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShareBlock, ConsensusError&gt; {
     <span class="kw">let </span>keypair = <span class="kw-2">&amp;</span>cfg.genesis_key;
-    <span class="kw">let </span>header = BlockHeader::new_verifiable(
+    <span class="comment">// TODO / FIXME: Genesis block are always v0 block?
+    </span><span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
+            block_version_current: <span class="number">0</span>,
+            block_version_next: <span class="number">0</span>,
             slot: Slot::new(<span class="number">0</span>, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
@@ -362,10 +374,10 @@
     )<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(Block::new_verifiable(
-        Block {
+        Block::V0(BlockV0 {
             header,
             operations: Default::default(),
-        },
+        }),
         BlockSerializer::new(),
         keypair,
     )<span class="question-mark">?</span>)
@@ -420,7 +432,7 @@
                         descendants: Default::default(),
                         is_final: <span class="bool-val">true</span>,
                         block_id: block.id,
-                        slot: block.content.header.content.slot,
+                        slot: block.content.header().content.slot,
                         fitness: block.get_fitness(),
                     }),
                     storage,

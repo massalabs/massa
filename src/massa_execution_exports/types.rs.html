@@ -135,6 +135,10 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -143,7 +147,7 @@
 <span class="kw">use </span>massa_final_state::StateChanges;
 <span class="kw">use </span>massa_models::datastore::Datastore;
 <span class="kw">use </span>massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block::BlockId,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
     slot::Slot,
 };
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -206,10 +210,12 @@
     </span><span class="kw">pub </span>call_stack: Vec&lt;ExecutionStackElement&gt;,
     <span class="doccomment">/// Target of the request
     </span><span class="kw">pub </span>target: ReadOnlyExecutionTarget,
-    <span class="doccomment">/// execution start state
+    <span class="doccomment">/// optional event status
     ///
-    /// Whether to start execution from final or active state
-    </span><span class="kw">pub </span>is_final: bool,
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="doccomment">/// structure describing different possible targets of a read-only execution request
@@ -242,10 +248,12 @@
     </span><span class="kw">pub </span>target_func: String,
     <span class="doccomment">/// Parameter to pass to the target function
     </span><span class="kw">pub </span>parameter: String,
-    <span class="doccomment">/// execution start state
+    <span class="doccomment">/// optional event status
     ///
-    /// Whether to start execution from final or active state
-    </span><span class="kw">pub </span>is_final: bool,
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    </span><span class="kw">pub </span>is_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="doccomment">/// Structure describing an element of the execution stack.
