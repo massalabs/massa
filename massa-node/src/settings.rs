@@ -4,8 +4,8 @@
 use std::path::PathBuf;
 
 use enum_map::EnumMap;
-use massa_models::config::build_massa_settings;
-use massa_signature::PublicKey;
+use massa_bootstrap::IpType;
+use massa_models::{config::build_massa_settings, node::NodeId};
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
@@ -75,7 +75,8 @@ pub struct NetworkSettings {
 /// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
-    pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    pub bootstrap_list: Vec<(SocketAddr, NodeId)>,
+    pub bootstrap_protocol: IpType,
     pub bootstrap_whitelist_path: PathBuf,
     pub bootstrap_blacklist_path: PathBuf,
     pub bind: Option<SocketAddr>,
@@ -219,7 +220,7 @@ pub struct ProtocolSettings {
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
-    /// operations sender sender(channel) capacity
+    /// operations sender(channel) capacity
     pub broadcast_operations_capacity: usize,
 }
 

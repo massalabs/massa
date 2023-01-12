@@ -13,8 +13,8 @@ use massa_models::{
     api::EventFilter,
     block::BlockId,
     datastore::Datastore,
-    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
-    wrapped::WrappedContent,
+    operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
+    secure_share::SecureShareContent,
 };
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -57,12 +57,26 @@ fn test_sending_command() {
 #[test]
 #[serial]
 fn test_readonly_execution() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        cursor_delay: 0.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+    // init the storage
+    let storage = Storage::create_root();
+    // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        ExecutionConfig::default(),
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
+    std::thread::sleep(Duration::from_millis(1000));
+
     let mut res = controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
@@ -70,11 +84,24 @@ fn test_readonly_execution() {
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
+            is_final: Some(true),
         })
         .expect("readonly execution failed");
-
+    assert_eq!(res.out.slot, Slot::new(1, 0));
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
+
+    let res = controller
+        .execute_readonly_request(ReadOnlyExecutionRequest {
+            max_gas: 1_000_000,
+            call_stack: vec![],
+            target: ReadOnlyExecutionTarget::BytecodeExecution(
+                include_bytes!("./wasm/event_test.wasm").to_vec(),
+            ),
+            is_final: Some(false),
+        })
+        .expect("readonly execution failed");
+    assert!(res.out.slot.period > 8);
 
     manager.stop();
 }
@@ -684,7 +711,7 @@ pub fn send_and_receive_transaction() {
         KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let (recipient_address, _keypair) = get_random_address_full();
     // create the operation
-    let operation = Operation::new_wrapped(
+    let operation = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -761,7 +788,7 @@ pub fn roll_buy() {
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
     // create the operation
-    let operation = Operation::new_wrapped(
+    let operation = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -834,13 +861,16 @@ pub fn roll_sell() {
     let keypair = KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
 
+    // get initial balance
+    let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
+
     // get initial roll count
     let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
     let roll_sell_1 = 10;
     let roll_sell_2 = 1;
 
     // create operation 1
-    let operation1 = Operation::new_wrapped(
+    let operation1 = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -852,7 +882,7 @@ pub fn roll_sell() {
         &keypair,
     )
     .unwrap();
-    let operation2 = Operation::new_wrapped(
+    let operation2 = Operation::new_verifiable(
         Operation {
             fee: Amount::zero(),
             expire_period: 10,
@@ -913,6 +943,20 @@ pub fn roll_sell() {
             .pos_state
             .get_deferred_credits_at(&Slot::new(8, 1)),
         credits
+    );
+
+    // Now check balance
+    let balances = controller.get_final_and_candidate_balance(&[address]);
+    let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+    assert_eq!(
+        candidate_balance,
+        exec_cfg
+            .roll_price
+            .checked_mul_u64(roll_sell_1 + roll_sell_2)
+            .unwrap()
+            .checked_add(balance_initial)
+            .unwrap()
     );
 
     // stop the execution controller
@@ -1283,13 +1327,13 @@ fn create_execute_sc_operation(
     sender_keypair: &KeyPair,
     data: &[u8],
     datastore: Datastore,
-) -> Result<WrappedOperation, ExecutionError> {
+) -> Result<SecureShareOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: 1_000_000,
         datastore,
     };
-    let op = Operation::new_wrapped(
+    let op = Operation::new_verifiable(
         Operation {
             fee: Amount::from_mantissa_scale(10, 0),
             expire_period: 10,
@@ -1310,7 +1354,7 @@ fn create_call_sc_operation(
     target_addr: Address,
     target_func: String,
     param: Vec<u8>,
-) -> Result<WrappedOperation, ExecutionError> {
+) -> Result<SecureShareOperation, ExecutionError> {
     let op = OperationType::CallSC {
         max_gas,
         target_addr,
@@ -1318,7 +1362,7 @@ fn create_call_sc_operation(
         target_func,
         param,
     };
-    let op = Operation::new_wrapped(
+    let op = Operation::new_verifiable(
         Operation {
             fee,
             expire_period: 10,

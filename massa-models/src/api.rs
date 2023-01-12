@@ -1,10 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::ExecutionAddressCycleInfo;
-use crate::endorsement::{EndorsementId, WrappedEndorsement};
+use crate::endorsement::{EndorsementId, SecureShareEndorsement};
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
-use crate::operation::{OperationId, WrappedOperation};
+use crate::operation::{OperationId, SecureShareOperation};
 use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use crate::{
     address::Address, amount::Amount, block::Block, block::BlockId, config::CompactConfig,
@@ -119,7 +119,7 @@ pub struct OperationInfo {
     /// true if the operation is final (for example in a final block)
     pub is_final: bool,
     /// the operation itself
-    pub operation: WrappedOperation,
+    pub operation: SecureShareOperation,
 }
 
 impl std::fmt::Display for OperationInfo {
@@ -380,7 +380,7 @@ pub struct EndorsementInfo {
     /// true if the endorsement is final (for example in a final block)
     pub is_final: bool,
     /// the endorsement itself
-    pub endorsement: WrappedEndorsement,
+    pub endorsement: SecureShareEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {
@@ -575,6 +575,12 @@ pub struct ReadOnlyBytecodeExecution {
     pub address: Option<Address>,
     /// Operation datastore, optional
     pub operation_datastore: Option<Vec<u8>>,
+    /// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    pub is_final: Option<bool>,
 }
 
 /// read SC call request
@@ -590,6 +596,12 @@ pub struct ReadOnlyCall {
     pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
+    /// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    pub is_final: Option<bool>,
 }
 
 /// SCRUD operations

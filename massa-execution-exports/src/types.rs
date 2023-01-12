@@ -69,6 +69,12 @@ pub struct ReadOnlyExecutionRequest {
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target of the request
     pub target: ReadOnlyExecutionTarget,
+    /// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    pub is_final: Option<bool>,
 }
 
 /// structure describing different possible targets of a read-only execution request
@@ -101,6 +107,12 @@ pub struct ReadOnlyCallRequest {
     pub target_func: String,
     /// Parameter to pass to the target function
     pub parameter: String,
+    /// optional event status
+    ///
+    /// Some(true) means final
+    /// Some(false) means candidate
+    /// None means final _and_ candidate
+    pub is_final: Option<bool>,
 }
 
 /// Structure describing an element of the execution stack.

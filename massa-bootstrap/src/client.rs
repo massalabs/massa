@@ -1,9 +1,9 @@
 use humantime::format_duration;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{streaming_step::StreamingStep, version::Version};
+use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -18,6 +18,7 @@ use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
+    settings::IpType,
     BootstrapConfig, Establisher, GlobalBootstrapState,
 };
 
@@ -407,6 +408,32 @@ async fn connect_to_server(
     ))
 }
 
+fn filter_bootstrap_list(
+    bootstrap_list: Vec<(SocketAddr, NodeId)>,
+    ip_type: IpType,
+) -> Vec<(SocketAddr, NodeId)> {
+    let ip_filter: fn(&(SocketAddr, NodeId)) -> bool = match ip_type {
+        IpType::IPv4 => |&(addr, _)| addr.is_ipv4(),
+        IpType::IPv6 => |&(addr, _)| addr.is_ipv6(),
+        IpType::Both => |_| true,
+    };
+
+    let prev_bootstrap_list_len = bootstrap_list.len();
+
+    let filtered_bootstrap_list: Vec<_> = bootstrap_list.into_iter().filter(ip_filter).collect();
+
+    let new_bootstrap_list_len = filtered_bootstrap_list.len();
+
+    debug!(
+        "Keeping {:?} bootstrap ips. Filtered out {} bootstrap addresses out of a total of {} bootstrap servers.",
+        ip_type,
+        prev_bootstrap_list_len as i32 - new_bootstrap_list_len as i32,
+        prev_bootstrap_list_len
+    );
+
+    filtered_bootstrap_list
+}
+
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
 pub async fn get_state(
@@ -437,15 +464,28 @@ pub async fn get_state(
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
+
+    // we filter the bootstrap list to keep only the ip addresses we are compatible with
+    let mut filtered_bootstrap_list = filter_bootstrap_list(
+        bootstrap_config.bootstrap_list.clone(),
+        bootstrap_config.bootstrap_protocol,
+    );
+
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
-    if bootstrap_config.bootstrap_list.is_empty() {
+    if filtered_bootstrap_list.is_empty() {
         return Err(BootstrapError::GeneralError(
             "no bootstrap nodes found in list".into(),
         ));
     }
-    let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
-    shuffled_list.shuffle(&mut StdRng::from_entropy());
+
+    // we shuffle the list
+    filtered_bootstrap_list.shuffle(&mut StdRng::from_entropy());
+
+    // we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
+    let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
+    filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
+
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
@@ -457,15 +497,23 @@ pub async fn get_state(
             last_consensus_step: StreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
+
     loop {
-        for (addr, pub_key) in shuffled_list.iter() {
+        for (addr, node_id) in filtered_bootstrap_list.iter() {
             if let Some(end) = end_timestamp {
                 if MassaTime::now().expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(&mut establisher, bootstrap_config, addr, pub_key).await {
+            match connect_to_server(
+                &mut establisher,
+                bootstrap_config,
+                addr,
+                &node_id.get_public_key(),
+            )
+            .await
+            {
                 Ok(mut client) => {
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable

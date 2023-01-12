@@ -37,6 +37,7 @@ pub use messages::{
 };
 pub use server::{start_bootstrap_server, BootstrapManager};
 pub use settings::BootstrapConfig;
+pub use settings::IpType;
 
 #[cfg(test)]
 pub mod tests;

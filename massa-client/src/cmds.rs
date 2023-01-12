@@ -274,18 +274,19 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas Address", pwd_not_needed = "true"),
-        message = "execute byte code, address is optional. Nothing is really executed on chain"
+        props(args = "PathToBytecode MaxGas Address IsFinal",
+            pwd_not_needed = "true"),
+        message = "execute byte code, address is optional, is_final is optional. Nothing is really executed on chain"
     )]
     read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress",
+            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal",
             pwd_not_needed = "true"
         ),
-        message = "call a smart contract function, sender address is optional. Nothing is really executed on chain"
+        message = "call a smart contract function, sender address is optional, is_final is optional. Nothing is really executed on chain"
     )]
     read_only_call,
 
@@ -1107,7 +1108,7 @@ impl Command {
                 }
             }
             Command::read_only_execute_smart_contract => {
-                if parameters.len() != 2 && parameters.len() != 3 {
+                if parameters.len() != 2 && parameters.len() <= 4 {
                     bail!("wrong number of parameters");
                 }
 
@@ -1115,6 +1116,11 @@ impl Command {
                 let max_gas = parameters[1].parse::<u64>()?;
                 let address = if let Some(adr) = parameters.get(2) {
                     Some(adr.parse::<Address>()?)
+                } else {
+                    None
+                };
+                let is_final = if let Some(adr) = parameters.get(3) {
+                    Some(adr.parse::<bool>()?)
                 } else {
                     None
                 };
@@ -1126,6 +1132,7 @@ impl Command {
                         bytecode,
                         address,
                         operation_datastore: None, // TODO - #3072
+                        is_final,
                     })
                     .await
                 {
@@ -1134,7 +1141,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() != 4 && parameters.len() != 5 {
+                if parameters.len() != 4 && parameters.len() <= 6 {
                     bail!("wrong number of parameters");
                 }
 
@@ -1147,6 +1154,11 @@ impl Command {
                 } else {
                     None
                 };
+                let is_final = if let Some(adr) = parameters.get(5) {
+                    Some(adr.parse::<bool>()?)
+                } else {
+                    None
+                };
                 match client
                     .public
                     .execute_read_only_call(ReadOnlyCall {
@@ -1155,6 +1167,7 @@ impl Command {
                         target_function,
                         parameter,
                         max_gas,
+                        is_final,
                     })
                     .await
                 {
@@ -1378,7 +1391,7 @@ async fn send_operation(
     match client
         .public
         .send_operations(vec![OperationInput {
-            creator_public_key: op.creator_public_key,
+            creator_public_key: op.content_creator_pub_key,
             serialized_content: op.serialized_data,
             signature: op.signature,
         }])

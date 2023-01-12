@@ -5,7 +5,7 @@ use massa_logging::massa_trace;
 
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
-    block::{BlockId, WrappedHeader},
+    block::{BlockId, SecuredHeader},
     endorsement::EndorsementId,
     operation::OperationId,
 };
@@ -40,7 +40,7 @@ pub enum ProtocolCommand {
     /// Wish list delta
     WishlistDelta {
         /// add to wish list
-        new: PreHashMap<BlockId, Option<WrappedHeader>>,
+        new: PreHashMap<BlockId, Option<SecuredHeader>>,
         /// remove from wish list
         remove: PreHashSet<BlockId>,
     },
@@ -94,7 +94,7 @@ impl ProtocolCommandSender {
     /// update the block wish list
     pub fn send_wishlist_delta(
         &mut self,
-        new: PreHashMap<BlockId, Option<WrappedHeader>>,
+        new: PreHashMap<BlockId, Option<SecuredHeader>>,
         remove: PreHashSet<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });

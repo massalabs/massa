@@ -1,7 +1,7 @@
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{Block, BlockId, WrappedHeader},
+    block::{Block, BlockId, SecuredHeader},
     prehash::PreHashSet,
     slot::Slot,
 };
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum HeaderOrBlock {
-    Header(WrappedHeader),
+    Header(SecuredHeader),
     Block {
         id: BlockId,
         slot: Slot,
@@ -100,7 +100,7 @@ pub enum ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub header: WrappedHeader,
+    pub header: SecuredHeader,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,

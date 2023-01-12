@@ -9,7 +9,7 @@ use atty::Stream;
 use cmds::Command;
 use console::style;
 use dialoguer::Password;
-use massa_sdk::{Client, HttpConfig};
+use massa_sdk::{Client, ClientConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::env;
@@ -96,14 +96,19 @@ fn main(args: Args) -> anyhow::Result<()> {
 }
 
 async fn run(args: Args) -> Result<()> {
+    let client_config = ClientConfig {
+        max_request_body_size: SETTINGS.client.max_request_body_size,
+        request_timeout: SETTINGS.client.request_timeout,
+        max_concurrent_requests: SETTINGS.client.max_concurrent_requests,
+        certificate_store: SETTINGS.client.certificate_store.clone(),
+        id_kind: SETTINGS.client.id_kind.clone(),
+        max_log_length: SETTINGS.client.max_log_length,
+        headers: SETTINGS.client.headers.clone(),
+    };
+
     let http_config = HttpConfig {
-        max_request_body_size: SETTINGS.http.max_request_body_size,
-        request_timeout: SETTINGS.http.request_timeout,
-        max_concurrent_requests: SETTINGS.http.max_concurrent_requests,
-        certificate_store: SETTINGS.http.certificate_store.clone(),
-        id_kind: SETTINGS.http.id_kind.clone(),
-        max_log_length: SETTINGS.http.max_log_length,
-        headers: SETTINGS.http.headers.clone(),
+        client_config,
+        enabled: SETTINGS.client.http.enabled,
     };
 
     // TODO: move settings loading in another crate ... see #1277

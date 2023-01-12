@@ -6,7 +6,7 @@ use super::{
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
-use massa_models::{node::NodeId, wrapped::Id};
+use massa_models::{node::NodeId, secure_share::Id};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
 };

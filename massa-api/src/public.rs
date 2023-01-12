@@ -17,10 +17,10 @@ use massa_models::api::{
 };
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
-use massa_models::wrapped::WrappedDeserializer;
+use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::{
-    block::Block, endorsement::WrappedEndorsement, error::ModelsError, operation::WrappedOperation,
-    timeslots,
+    block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
+    operation::SecureShareOperation, timeslots,
 };
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
@@ -127,6 +127,7 @@ impl MassaRpcServer for API<Public> {
             address,
             bytecode,
             operation_datastore,
+            is_final,
         } in reqs
         {
             let address = address.unwrap_or_else(|| {
@@ -170,6 +171,7 @@ impl MassaRpcServer for API<Public> {
                     owned_addresses: vec![address],
                     operation_datastore: op_datastore,
                 }],
+                is_final,
             };
 
             // run
@@ -211,6 +213,7 @@ impl MassaRpcServer for API<Public> {
             target_function,
             parameter,
             caller_address,
+            is_final,
         } in reqs
         {
             let caller_address = caller_address.unwrap_or_else(|| {
@@ -245,6 +248,7 @@ impl MassaRpcServer for API<Public> {
                         operation_datastore: None, // should always be None
                     },
                 ],
+                is_final,
             };
 
             // run
@@ -425,7 +429,7 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
         // get the operations and the list of blocks that contain them from storage
-        let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
+        let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
             let read_ops = self.0.storage.read_operations();
             ops.iter()
@@ -503,7 +507,7 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_endorsements(&self, eds: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>> {
         // get the endorsements and the list of blocks that contain them from storage
-        let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
+        let storage_info: Vec<(SecureShareEndorsement, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
             let read_endos = self.0.storage.read_endorsements();
             eds.iter()
@@ -588,7 +592,7 @@ impl MassaRpcServer for API<Public> {
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                if let Some(wrapped_block) = storage.read_blocks().get(&id).cloned() {
+                if let Some(verifiable_block) = storage.read_blocks().get(&id).cloned() {
                     if let Some(graph_status) = consensus_controller
                         .get_block_statuses(&[id])
                         .into_iter()
@@ -608,7 +612,7 @@ impl MassaRpcServer for API<Public> {
                                 is_in_blockclique,
                                 is_candidate,
                                 is_discarded,
-                                block: wrapped_block.content,
+                                block: verifiable_block.content,
                             }),
                         });
                     }
@@ -677,7 +681,7 @@ impl MassaRpcServer for API<Public> {
                 is_stale: false,
                 is_in_blockclique: blockclique.block_ids.contains(&id),
                 slot: exported_block.header.content.slot,
-                creator: exported_block.header.creator_address,
+                creator: exported_block.header.content_creator_address,
                 parents: exported_block.header.content.parents,
             });
         }
@@ -859,7 +863,7 @@ impl MassaRpcServer for API<Public> {
         if ops.len() as u64 > api_cfg.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
-        let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
+        let operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
             api_cfg.max_datastore_value_length,
             api_cfg.max_function_name_length,
             api_cfg.max_parameter_size,
@@ -874,7 +878,7 @@ impl MassaRpcServer for API<Public> {
                 op_serialized.extend(op_input.signature.to_bytes());
                 op_serialized.extend(op_input.creator_public_key.to_bytes());
                 op_serialized.extend(op_input.serialized_content);
-                let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
+                let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
                     .deserialize::<DeserializeError>(&op_serialized)
                     .map_err(|err| {
                         ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
@@ -898,7 +902,7 @@ impl MassaRpcServer for API<Public> {
                 }
                 Err(e) => Err(e),
             })
-            .collect::<RpcResult<Vec<WrappedOperation>>>()?;
+            .collect::<RpcResult<Vec<SecureShareOperation>>>()?;
         to_send.store_operations(verified_ops.clone());
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());
