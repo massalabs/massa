@@ -201,14 +201,14 @@ pub enum Command {
         props(args = "Address1 Address2 .."),
         message = "get public key of the given addresses"
     )]
-    get_public_key,
+    wallet_get_public_key,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "Address1 Address2 ..."),
         message = "get secret key of the given addresses"
     )]
-    get_secret_key,
+    wallet_get_secret_key,
 
     #[strum(
         ascii_case_insensitive,
@@ -698,7 +698,7 @@ impl Command {
                 }
             }
 
-            Command::get_public_key => {
+            Command::wallet_get_public_key => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let addresses = parse_vec::<Address>(parameters)?;
@@ -719,7 +719,7 @@ impl Command {
                 Ok(Box::new(addr_public_keys))
             }
 
-            Command::get_secret_key => {
+            Command::wallet_get_secret_key => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 if !json {
