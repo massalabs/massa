@@ -391,14 +391,6 @@
 <a href="#391" id="391">391</a>
 <a href="#392" id="392">392</a>
 <a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ask_password;
@@ -407,11 +399,11 @@
 <span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>erased_serde::{Serialize, Serializer};
-<span class="kw">use </span>massa_models::api::{
-    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, NodeStatus, OperationInfo,
+<span class="kw">use </span>massa_api_exports::{
+    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, ExecuteReadOnlyResponse,
+    NodeStatus, OperationInfo,
 };
 <span class="kw">use </span>massa_models::composite::PubkeySig;
-<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{address::Address, operation::OperationId};
@@ -753,14 +745,6 @@
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>operation_info <span class="kw">in </span><span class="self">self </span>{
             <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, operation_info);
-        }
-    }
-}
-
-<span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;BlockInfo&gt; {
-    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for </span>block_info <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, block_info);
         }
     }
 }

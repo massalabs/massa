@@ -593,6 +593,8 @@
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -608,22 +610,24 @@
 <span class="kw">use </span>jsonrpsee::types::error::CallError;
 <span class="kw">use </span>jsonrpsee::types::ErrorObject;
 <span class="kw">use </span>jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
-<span class="kw">use </span>massa_models::api::{
+<span class="kw">use </span>massa_api_exports::ExecuteReadOnlyResponse;
+<span class="kw">use </span>massa_api_exports::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    EndorsementInfo, NodeStatus, OperationInfo, OperationInput, ReadOnlyBytecodeExecution,
+    ReadOnlyCall, TimeInterval,
 };
-<span class="kw">use </span>massa_models::block::{BlockHeader, FilledBlock};
-<span class="kw">use </span>massa_models::clique::Clique;
-<span class="kw">use </span>massa_models::composite::PubkeySig;
-<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
-<span class="kw">use </span>massa_models::node::NodeId;
-<span class="kw">use </span>massa_models::operation::Operation;
-<span class="kw">use </span>massa_models::output_event::SCOutputEvent;
-<span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
-<span class="kw">use </span>massa_models::version::Version;
 <span class="kw">use </span>massa_models::{
-    address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
+    address::Address,
+    api::EventFilter,
+    block::{BlockHeader, BlockId, FilledBlock},
+    clique::Clique,
+    composite::PubkeySig,
+    endorsement::EndorsementId,
+    node::NodeId,
+    operation::{Operation, OperationId},
+    output_event::SCOutputEvent,
+    prehash::{PreHashMap, PreHashSet},
+    version::Version,
 };
 
 <span class="kw">use </span>jsonrpsee::{core::Error <span class="kw">as </span>JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
@@ -764,50 +768,50 @@
             .<span class="kw">await
     </span>}
 
-    <span class="doccomment">/// Returns node bootstrap whitelist IP address(es).
+    <span class="doccomment">/// Returns node bootsrap whitelist IP address(es).
     </span><span class="kw">pub async fn </span>node_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_bootstrap_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
     </span>}
 
-    <span class="doccomment">/// Allow everyone to bootstrap from the node.
-    /// remove bootstrap whitelist configuration file.
+    <span class="doccomment">/// Allow everyone to bootsrap from the node.
+    /// remove bootsrap whitelist configuration file.
     </span><span class="kw">pub async fn </span>node_bootstrap_whitelist_allow_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_bootstrap_whitelist_allow_all&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
     </span>}
 
-    <span class="doccomment">/// Add IP address(es) to node bootstrap whitelist.
+    <span class="doccomment">/// Add IP address(es) to node bootsrap whitelist.
     </span><span class="kw">pub async fn </span>node_add_to_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_add_to_bootstrap_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
     </span>}
 
-    <span class="doccomment">/// Remove IP address(es) to bootstrap whitelist.
+    <span class="doccomment">/// Remove IP address(es) to bootsrap whitelist.
     </span><span class="kw">pub async fn </span>node_remove_from_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_remove_from_bootstrap_whitelist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
     </span>}
 
-    <span class="doccomment">/// Returns node bootstrap blacklist IP address(es).
+    <span class="doccomment">/// Returns node bootsrap blacklist IP address(es).
     </span><span class="kw">pub async fn </span>node_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_bootstrap_blacklist&quot;</span>, <span class="macro">rpc_params!</span>[])
             .<span class="kw">await
     </span>}
 
-    <span class="doccomment">/// Add IP address(es) to node bootstrap blacklist.
+    <span class="doccomment">/// Add IP address(es) to node bootsrap blacklist.
     </span><span class="kw">pub async fn </span>node_add_to_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_add_to_bootstrap_blacklist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
             .<span class="kw">await
     </span>}
 
-    <span class="doccomment">/// Remove IP address(es) to bootstrap blacklist.
+    <span class="doccomment">/// Remove IP address(es) to bootsrap blacklist.
     </span><span class="kw">pub async fn </span>node_remove_from_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;node_remove_from_bootstrap_blacklist&quot;</span>, <span class="macro">rpc_params!</span>[ips])
@@ -857,7 +861,7 @@
     </span>}
 
     <span class="doccomment">/// Returns block(s) information associated to a given list of block(s) ID(s)
-    </span><span class="kw">pub async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, block_ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt; {
+    </span><span class="kw">pub async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, block_ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;BlockInfo&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_blocks&quot;</span>, <span class="macro">rpc_params!</span>[block_ids])
             .<span class="kw">await
