@@ -47,7 +47,7 @@ use massa_models::config::constants::{
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool_exports::{PoolConfig, PoolManager};
+use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -354,9 +354,20 @@ async fn launch(
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
     };
-    let (pool_manager, pool_controller) =
-        start_pool_controller(pool_config, &shared_storage, execution_controller.clone());
+
+    let pool_channels = PoolChannels {
+        operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
+    };
+
+    let (pool_manager, pool_controller) = start_pool_controller(
+        pool_config,
+        &shared_storage,
+        execution_controller.clone(),
+        pool_channels.clone(),
+    );
 
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
@@ -441,13 +452,10 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-        broadcast_enabled: SETTINGS.api.enable_ws,
-        broadcast_operations_capacity: SETTINGS.protocol.broadcast_operations_capacity,
     };
 
     let protocol_senders = ProtocolSenders {
         network_command_sender: network_command_sender.clone(),
-        operation_sender: broadcast::channel(protocol_config.broadcast_operations_capacity).0,
     };
 
     let protocol_receivers = ProtocolReceivers {
@@ -531,7 +539,7 @@ async fn launch(
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_channels,
-        protocol_senders,
+        pool_channels,
         api_config.clone(),
         *VERSION,
     );

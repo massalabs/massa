@@ -2669,6 +2669,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "serde",
+ "tokio",
 ]
 
 [[package]]

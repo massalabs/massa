@@ -32,9 +32,9 @@ use massa_models::{
     version::Version,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
-use massa_pool_exports::PoolController;
+use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::{ProtocolCommandSender, ProtocolSenders};
+use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -98,8 +98,8 @@ pub struct Private {
 pub struct ApiV2 {
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
-    /// link(channels) to the protocol component
-    pub protocol_senders: ProtocolSenders,
+    /// link(channels) to the pool component
+    pub pool_channels: PoolChannels,
     /// API settings
     pub api_settings: APIConfig,
     /// node version

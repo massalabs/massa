@@ -8,7 +8,6 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
-use massa_models::operation::Operation;
 use massa_models::secure_share::Id;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -69,7 +68,6 @@ pub async fn start_protocol_controller(
                 network_event_receiver: receivers.network_event_receiver,
                 controller_command_rx: receivers.protocol_command_receiver,
                 controller_manager_rx,
-                operation_sender: senders.operation_sender,
             },
             consensus_controller,
             pool_controller,
@@ -133,8 +131,6 @@ pub struct ProtocolWorker {
     controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
-    /// Broadcast sender(channel) for new operations
-    operation_sender: tokio::sync::broadcast::Sender<Operation>,
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
@@ -166,8 +162,6 @@ pub struct ProtocolWorkerChannels {
     pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// protocol management command receiver
     pub controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
-    /// Broadcast sender(channel) for new operations
-    pub operation_sender: tokio::sync::broadcast::Sender<Operation>,
 }
 
 impl ProtocolWorker {
@@ -186,7 +180,6 @@ impl ProtocolWorker {
             network_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_sender,
         }: ProtocolWorkerChannels,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
@@ -200,7 +193,6 @@ impl ProtocolWorker {
             pool_controller,
             controller_command_rx,
             controller_manager_rx,
-            operation_sender,
             active_nodes: Default::default(),
             block_wishlist: Default::default(),
             checked_endorsements: LinearHashCacheSet::new(config.max_known_endorsements_size),
@@ -511,17 +503,8 @@ impl ProtocolWorker {
                 self.checked_operations
                     .extend(operation_ids.iter().copied());
 
-                let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
-                // Broadcast operations to active sender(channel) subscribers.
-                if self.config.broadcast_enabled {
-                    for op_id in to_announce.clone() {
-                        if let Some(s_operation) = storage.read_operations().get(&op_id) {
-                            let _ = self.operation_sender.send(s_operation.content.clone());
-                        };
-                    }
-                }
-
                 // Announce operations to active nodes not knowing about it.
+                let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
                 self.note_operations_to_announce(&to_announce, op_timer)
                     .await;
             }
@@ -948,13 +931,6 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
-            // Broadcast operations to active sender(channel) subscribers.
-            if self.config.broadcast_enabled {
-                for op in new_operations.clone() {
-                    let _ = self.operation_sender.send(op.1.content);
-                }
-            }
-
             // Store operation, claim locally
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
