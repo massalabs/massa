@@ -71,8 +71,8 @@
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
-    block_id::BlockId,
     block_header::SecuredHeader,
+    block_id::BlockId,
     composite::PubkeySig,
     endorsement::SecureShareEndorsement,
     node::NodeId,

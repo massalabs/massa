@@ -3,21 +3,16 @@
 use super::mock_network_controller::MockNetworkController;
 use crate::ProtocolConfig;
 use massa_hash::Hash;
+use massa_models::block_v0::BlockV0;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
 use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::{
-        Block, BlockSerializer, SecureShareBlock,
-    },
-    block_id::{
-        BlockId,
-    },
-    block_header::{
-        BlockHeader, BlockHeaderSerializer
-    },
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
     endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
@@ -27,7 +22,6 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
-use massa_models::block_v0::BlockV0;
 
 /// test utility structures
 /// keeps keypair and associated node id

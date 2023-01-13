@@ -25,11 +25,7 @@ use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address,
-    block::{Block},
-    block_id::{BlockId},
-    endorsement::EndorsementId,
-    slot::Slot,
+    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId, slot::Slot,
     version::Version,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};

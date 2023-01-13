@@ -3,6 +3,7 @@
 use super::tools::{protocol_test, send_and_propagate_block};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_hash::Hash;
+use massa_models::block_v0::BlockV0;
 use massa_models::operation::OperationId;
 use massa_models::secure_share::{Id, SecureShareContent};
 use massa_models::{
@@ -19,7 +20,6 @@ use massa_protocol_exports::tests::tools::{
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
-use massa_models::block_v0::BlockV0;
 
 #[tokio::test]
 #[serial]
@@ -235,7 +235,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     .unwrap();
 
                     Block::new_verifiable(
-                        Block::V0(BlockV0{
+                        Block::V0(BlockV0 {
                             header,
                             operations: vec![op.clone()].into_iter().map(|op| op.id).collect(),
                         }),

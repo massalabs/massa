@@ -6,8 +6,8 @@ use crate::{
     BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
 use massa_models::{
-    block_id::BlockId,
     block_header::SecuredHeader,
+    block_id::BlockId,
     composite::PubkeySig,
     endorsement::SecureShareEndorsement,
     node::NodeId,

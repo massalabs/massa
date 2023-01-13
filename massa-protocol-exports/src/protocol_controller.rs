@@ -5,9 +5,7 @@ use massa_logging::massa_trace;
 
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
-    block_header::SecuredHeader,
-    block_id::BlockId,
-    endorsement::EndorsementId,
+    block_header::SecuredHeader, block_id::BlockId, endorsement::EndorsementId,
     operation::OperationId,
 };
 use massa_network_exports::NetworkEventReceiver;

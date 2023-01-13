@@ -426,7 +426,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             // 3. Get one node banned.
             let mut bad_block = tools::create_block(&nodes[1].keypair);
-            bad_block.content.header_mut().id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
+            bad_block.content.header_mut().id =
+                BlockId::new(Hash::compute_from("invalid".as_bytes()));
             network_controller
                 .send_header(nodes[1].id, bad_block.content.header().clone())
                 .await;

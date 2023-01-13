@@ -17,6 +17,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::block_v0::BlockV0;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
@@ -32,10 +33,10 @@ use massa_models::node::NodeId;
 use massa_models::{
     address::Address,
     amount::Amount,
+    block::Block,
     block::BlockSerializer,
-    block::{Block},
     block_header::{BlockHeader, BlockHeaderSerializer},
-    block_id::{BlockId},
+    block_id::BlockId,
     endorsement::Endorsement,
     endorsement::EndorsementSerializer,
     operation::OperationId,
@@ -60,7 +61,6 @@ use std::{
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
-use massa_models::block_v0::BlockV0;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 

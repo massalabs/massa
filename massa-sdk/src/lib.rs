@@ -18,8 +18,8 @@ use massa_models::api::{
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
-use massa_models::block_header::BlockHeader;
 use massa_models::block::FilledBlock;
+use massa_models::block_header::BlockHeader;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;

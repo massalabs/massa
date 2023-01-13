@@ -344,9 +344,7 @@ async fn test_someone_knows_it() {
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(hash_1, Some(block_header))]
-                            .into_iter()
-                            .collect(),
+                        vec![(hash_1, Some(block_header))].into_iter().collect(),
                         PreHashSet::<BlockId>::default(),
                     )
                     .unwrap();

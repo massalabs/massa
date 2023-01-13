@@ -4,6 +4,7 @@
 
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
+use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::{self, address::Address, amount::Amount, block_id::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
@@ -13,7 +14,6 @@ use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
-use massa_models::operation::OperationId;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
@@ -587,7 +587,10 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let mut op_mut = block.content.operations_mut();
             op_mut.clear();
             op_mut.extend_from_slice(
-                &vec![op_2.clone()].into_iter().map(|op| op.id).collect::<Vec<OperationId>>()
+                &vec![op_2.clone()]
+                    .into_iter()
+                    .map(|op| op.id)
+                    .collect::<Vec<OperationId>>(),
             );
 
             // Send header via node_a

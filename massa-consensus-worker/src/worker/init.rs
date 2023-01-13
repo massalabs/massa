@@ -3,14 +3,13 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_hash::Hash;
+use massa_models::block_v0::BlockV0;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{
-        Block, BlockSerializer, SecureShareBlock,
-    },
-    block_id::BlockId,
+    block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
     prehash::PreHashMap,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -24,7 +23,6 @@ use std::{
     sync::{mpsc, Arc},
 };
 use tracing::log::info;
-use massa_models::block_v0::BlockV0;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 

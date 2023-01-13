@@ -1,17 +1,22 @@
-use std::ops::Bound::{Excluded, Included};
-use nom::error::{context, ContextError, ParseError};
-use nom::{IResult, Parser};
-use nom::sequence::tuple;
 use nom::bytes::complete::take;
+use nom::error::{context, ContextError, ParseError};
+use nom::sequence::tuple;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::{Excluded, Included};
 // use massa_hash::HashDeserializer;
 
-use massa_serialization::{Deserializer, SerializeError, Serializer,
-                          // U32VarIntDeserializer, U32VarIntSerializer
-                          };
-use massa_signature::{PublicKey, PublicKeyDeserializer,
-                      // SignatureDeserializer
-                      };
+use massa_serialization::{
+    Deserializer,
+    SerializeError,
+    Serializer,
+    // U32VarIntDeserializer, U32VarIntSerializer
+};
+use massa_signature::{
+    PublicKey,
+    PublicKeyDeserializer,
+    // SignatureDeserializer
+};
 
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
@@ -126,7 +131,8 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
                     take(1usize)(input)
                 }),
             )),
-        ).parse(buffer)?;
+        )
+        .parse(buffer)?;
 
         /*
         let de_kind = DenunciationKind::try_from(is_for_block[0]).map_err(|_| {
@@ -193,6 +199,13 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
             0 => false,
             _ => true,
         };
-        Ok((rem, Denunciation { slot, pub_key, proof: proof_}))
+        Ok((
+            rem,
+            Denunciation {
+                slot,
+                pub_key,
+                proof: proof_,
+            },
+        ))
     }
 }

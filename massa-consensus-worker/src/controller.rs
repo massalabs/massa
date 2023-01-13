@@ -3,11 +3,12 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
 };
+use massa_models::block_v0::FilledBlockV0;
 use massa_models::{
     api::BlockGraphStatus,
-    block::{FilledBlock},
-    block_header::{BlockHeader},
-    block_id::{BlockId},
+    block::FilledBlock,
+    block_header::BlockHeader,
+    block_id::BlockId,
     clique::Clique,
     operation::{Operation, OperationId},
     prehash::PreHashSet,
@@ -20,7 +21,6 @@ use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::{mpsc::SyncSender, Arc};
 use tracing::log::warn;
-use massa_models::block_v0::FilledBlockV0;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 

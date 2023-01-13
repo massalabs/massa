@@ -5,11 +5,7 @@ use massa_consensus_exports::{
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
-use massa_models::{
-    block_id::BlockId,
-    block_header::SecuredHeader,
-    slot::Slot,
-};
+use massa_models::{block_header::SecuredHeader, block_id::BlockId, slot::Slot};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::debug;

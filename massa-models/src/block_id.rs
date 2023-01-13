@@ -1,7 +1,7 @@
-use std::ops::Bound::Included;
-use std::str::FromStr;
 use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
+use std::ops::Bound::Included;
+use std::str::FromStr;
 
 //use serde::{
 //    Deserialize,
@@ -10,7 +10,10 @@ use nom::IResult;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 
 use massa_hash::{Hash, HashDeserializer};
-use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+use massa_serialization::{
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
+};
 
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
@@ -21,7 +24,7 @@ const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// block id
 #[derive(
-Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
 )]
 pub struct BlockId(pub Hash);
 

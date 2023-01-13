@@ -2,6 +2,7 @@
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
+use massa_models::block_v0::BlockV0;
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
@@ -21,7 +22,6 @@ use std::{
     time::Instant,
 };
 use tracing::{info, warn};
-use massa_models::block_v0::BlockV0;
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {

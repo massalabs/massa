@@ -8,10 +8,13 @@ use crate::node_info::NodeInfo;
 use crate::protocol_worker::ProtocolWorker;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
+use massa_models::block::BlockSerializer;
+use massa_models::block_v0::BlockV0;
+use massa_models::block_v1::BlockV1;
 use massa_models::{
     block::Block,
-    block_header::{SecuredHeader},
-    block_id::{BlockId},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     node::NodeId,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},
@@ -24,9 +27,6 @@ use massa_storage::Storage;
 use std::pin::Pin;
 use tokio::time::{Instant, Sleep};
 use tracing::{info, warn};
-use massa_models::block::BlockSerializer;
-use massa_models::block_v0::BlockV0;
-use massa_models::block_v1::BlockV1;
 
 // static tracing messages
 static NEW_CONN: &str = "protocol.protocol_worker.on_network_event.new_connection";
