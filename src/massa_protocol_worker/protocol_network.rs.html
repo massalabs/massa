@@ -582,17 +582,6 @@
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -603,13 +592,9 @@
 <span class="kw">use </span><span class="kw">crate</span>::protocol_worker::ProtocolWorker;
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::block::BlockSerializer;
-<span class="kw">use </span>massa_models::block_v0::BlockV0;
-<span class="kw">use </span>massa_models::block_v1::BlockV1;
 <span class="kw">use </span>massa_models::{
     block::Block,
-    block_header::SecuredHeader,
-    block_id::BlockId,
+    block::{BlockId, BlockSerializer, SecuredHeader},
     node::NodeId,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},
@@ -771,8 +756,8 @@
         <span class="kw">for </span>(hash, info_wanted) <span class="kw">in </span><span class="kw-2">&amp;</span>list {
             <span class="kw">let </span>(header, operations_ids) = <span class="kw">match </span><span class="self">self</span>.storage.read_blocks().get(hash) {
                 <span class="prelude-val">Some</span>(signed_block) =&gt; (
-                    signed_block.content.header().clone(),
-                    signed_block.content.operations().clone(),
+                    signed_block.content.header.clone(),
+                    signed_block.content.operations.clone(),
                 ),
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="comment">// let the node know we don&#39;t have the block.
@@ -1082,17 +1067,10 @@
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                     }
 
-                    <span class="comment">// FIXME: denunciations vec?
-                    </span><span class="kw">let </span>block = <span class="kw">match </span>header.content.block_version_current {
-                        <span class="number">0 </span>=&gt; Block::V0(BlockV0 {
-                            header: header.clone(),
-                            operations: block_operation_ids.clone(),
-                        }),
-                        <span class="kw">_ </span>=&gt; Block::V1(BlockV1 {
-                            header: header.clone(),
-                            denunciations: <span class="macro">vec!</span>[],
-                            operations: block_operation_ids.clone(),
-                        }),
+                    <span class="comment">// Re-constitute block.
+                    </span><span class="kw">let </span>block = Block {
+                        header: header.clone(),
+                        operations: block_operation_ids.clone(),
                     };
 
                     <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
@@ -1115,9 +1093,9 @@
                     <span class="comment">// add endorsements to local storage and claim ref
                     // TODO change this if we make endorsements separate from block header
                     </span>block_storage.store_endorsements(
-                        signed_block.content.header().content.endorsements.clone(),
+                        signed_block.content.header.content.endorsements.clone(),
                     );
-                    <span class="kw">let </span>slot = signed_block.content.header().content.slot;
+                    <span class="kw">let </span>slot = signed_block.content.header.content.slot;
                     <span class="comment">// add block to local storage and claim ref
                     </span>block_storage.store_block(signed_block);
 

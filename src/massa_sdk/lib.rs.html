@@ -593,7 +593,6 @@
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -614,8 +613,7 @@
     EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
-<span class="kw">use </span>massa_models::block::FilledBlock;
-<span class="kw">use </span>massa_models::block_header::BlockHeader;
+<span class="kw">use </span>massa_models::block::{BlockHeader, FilledBlock};
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
 <span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
@@ -625,7 +623,7 @@
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::version::Version;
 <span class="kw">use </span>massa_models::{
-    address::Address, block_id::BlockId, endorsement::EndorsementId, operation::OperationId,
+    address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
 };
 
 <span class="kw">use </span>jsonrpsee::{core::Error <span class="kw">as </span>JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};

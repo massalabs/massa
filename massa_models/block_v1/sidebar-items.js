@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":[["BlockV1","block"],["BlockV1Deserializer","Deserializer for `Block`"],["BlockV1Serializer","Serializer for `Block`"],["FilledBlockV1","filled block"]],"type":[["SecureShareBlock","Block with assosciated meta-data and interfaces allowing trust of data in untrusted network"]]};

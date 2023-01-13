@@ -158,6 +158,7 @@
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
@@ -165,7 +166,8 @@
 
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::{
-    block_header::SecuredHeader, block_id::BlockId, endorsement::EndorsementId,
+    block::{BlockId, SecuredHeader},
+    endorsement::EndorsementId,
     operation::OperationId,
 };
 <span class="kw">use </span>massa_network_exports::NetworkEventReceiver;

@@ -370,6 +370,9 @@
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
@@ -397,13 +400,16 @@
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{
-    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId, slot::Slot,
+    address::Address,
+    block::{Block, BlockId},
+    endorsement::EndorsementId,
+    slot::Slot,
     version::Version,
 };
 <span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkConfig};
-<span class="kw">use </span>massa_pool_exports::PoolController;
+<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_protocol_exports::{ProtocolCommandSender, ProtocolSenders};
+<span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -467,8 +473,8 @@
 </span><span class="kw">pub struct </span>ApiV2 {
     <span class="doccomment">/// link(channels) to the consensus component
     </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
-    <span class="doccomment">/// link(channels) to the protocol component
-    </span><span class="kw">pub </span>protocol_senders: ProtocolSenders,
+    <span class="doccomment">/// link(channels) to the pool component
+    </span><span class="kw">pub </span>pool_channels: PoolChannels,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,
     <span class="doccomment">/// node version

@@ -312,7 +312,6 @@
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -321,8 +320,7 @@
     BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
 <span class="kw">use </span>massa_models::{
-    block_header::SecuredHeader,
-    block_id::BlockId,
+    block::{BlockId, SecuredHeader},
     composite::PubkeySig,
     endorsement::SecureShareEndorsement,
     node::NodeId,
