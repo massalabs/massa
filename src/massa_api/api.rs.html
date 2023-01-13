@@ -102,7 +102,7 @@
 <span class="kw">use </span>jsonrpsee::SubscriptionSink;
 <span class="kw">use </span>massa_consensus_exports::ConsensusChannels;
 <span class="kw">use </span>massa_models::version::Version;
-<span class="kw">use </span>massa_pool_exports::PoolChannels;
+<span class="kw">use </span>massa_protocol_exports::ProtocolSenders;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>tokio_stream::wrappers::BroadcastStream;
 
@@ -110,13 +110,13 @@
     <span class="doccomment">/// generate a new massa API
     </span><span class="kw">pub fn </span>new(
         consensus_channels: ConsensusChannels,
-        pool_channels: PoolChannels,
+        protocol_senders: ProtocolSenders,
         api_settings: APIConfig,
         version: Version,
     ) -&gt; <span class="self">Self </span>{
         API(ApiV2 {
             consensus_channels,
-            pool_channels,
+            protocol_senders,
             api_settings,
             version,
         })
@@ -157,7 +157,7 @@
     }
 
     <span class="kw">fn </span>subscribe_new_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, sink: SubscriptionSink) -&gt; SubscriptionResult {
-        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.pool_channels.operation_sender.clone(), sink);
+        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.protocol_senders.operation_sender.clone(), sink);
         <span class="prelude-val">Ok</span>(())
     }
 }

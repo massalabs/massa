@@ -205,7 +205,7 @@
 <span class="kw">use </span>async_speed_limit::clock::StandardClock;
 <span class="kw">use </span>async_speed_limit::{Limiter, Resource};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_hash::HASH_SIZE_BYTES;
+<span class="kw">use </span>massa_hash::HASHV1_SIZE_BYTES;
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 <span class="kw">use </span>massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -305,7 +305,7 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_message) = <span class="self">self</span>.prev_message {
                 <span class="comment">// there was a previous message: sign(prev_msg_hash + msg)
                 </span><span class="kw">let </span><span class="kw-2">mut </span>signed_data =
-                    Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_len <span class="kw">as </span>usize));
+                    Vec::with_capacity(HASHV1_SIZE_BYTES.saturating_add(msg_len <span class="kw">as </span>usize));
                 signed_data.extend(prev_message.to_bytes());
                 signed_data.extend(<span class="kw-2">&amp;</span>msg_bytes);
                 <span class="self">self</span>.local_keypair.sign(<span class="kw-2">&amp;</span>Hash::compute_from(<span class="kw-2">&amp;</span>signed_data))<span class="question-mark">?
@@ -339,7 +339,7 @@
         <span class="comment">// read prev hash
         </span><span class="kw">let </span>received_prev_hash = {
             <span class="kw">if </span><span class="self">self</span>.prev_message.is_some() {
-                <span class="kw">let </span><span class="kw-2">mut </span>hash_bytes = [<span class="number">0u8</span>; HASH_SIZE_BYTES];
+                <span class="kw">let </span><span class="kw-2">mut </span>hash_bytes = [<span class="number">0u8</span>; HASHV1_SIZE_BYTES];
                 <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>hash_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="prelude-val">Some</span>(Hash::from_bytes(<span class="kw-2">&amp;</span>hash_bytes))
             } <span class="kw">else </span>{
@@ -369,7 +369,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(prev_hash) = received_prev_hash {
             <span class="comment">// there was a previous message: hash(prev_hash + message)
             </span><span class="kw">let </span><span class="kw-2">mut </span>hashed_bytes =
-                Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
+                Vec::with_capacity(HASHV1_SIZE_BYTES.saturating_add(msg_bytes.len()));
             hashed_bytes.extend(prev_hash.to_bytes());
             hashed_bytes.extend(<span class="kw-2">&amp;</span>msg_bytes);
             <span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>hashed_bytes));

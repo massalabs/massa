@@ -351,7 +351,7 @@
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::MassaHashError;
-<span class="kw">use </span><span class="kw">crate</span>::settings::HASH_SIZE_BYTES;
+<span class="kw">use </span><span class="kw">crate</span>::settings::HASHV1_SIZE_BYTES;
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
@@ -409,7 +409,7 @@
             .map(|(x, y)| x ^ y)
             .collect();
         <span class="comment">// unwrap won&#39;t fail because of the intial byte arrays size
-        </span><span class="kw">let </span>input_bytes: [u8; HASH_SIZE_BYTES] = xored_bytes.try_into().unwrap();
+        </span><span class="kw">let </span>input_bytes: [u8; HASHV1_SIZE_BYTES] = xored_bytes.try_into().unwrap();
         Hash::from_bytes(<span class="kw-2">&amp;</span>input_bytes)
     }
 }
@@ -446,7 +446,7 @@
     /// let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());
     /// let serialized = hash.to_bytes();
     /// ```
-    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; HASH_SIZE_BYTES] {
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; HASHV1_SIZE_BYTES] {
         <span class="self">self</span>.<span class="number">0</span>.as_bytes()
     }
 
@@ -458,7 +458,7 @@
     /// let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());
     /// let serialized = hash.into_bytes();
     /// ```
-    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; [u8; HASH_SIZE_BYTES] {
+    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; [u8; HASHV1_SIZE_BYTES] {
         <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.as_bytes()
     }
 
@@ -495,7 +495,7 @@
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&amp;serialized);
     /// ```
-    </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; HASH_SIZE_BYTES]) -&gt; Hash {
+    </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; HASHV1_SIZE_BYTES]) -&gt; Hash {
         Hash(blake3::Hash::from(<span class="kw-2">*</span>data))
     }
 }
@@ -546,15 +546,15 @@
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Hash, E&gt; {
         context(<span class="string">&quot;Failed hash deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
-            <span class="kw">if </span>buffer.len() &lt; HASH_SIZE_BYTES {
+            <span class="kw">if </span>buffer.len() &lt; HASHV1_SIZE_BYTES {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                     input,
                     nom::error::ErrorKind::LengthValue,
                 )));
             }
             <span class="prelude-val">Ok</span>((
-                <span class="kw-2">&amp;</span>buffer[HASH_SIZE_BYTES..],
-                Hash::from_bytes(<span class="kw-2">&amp;</span>buffer[..HASH_SIZE_BYTES].try_into().map_err(|<span class="kw">_</span>| {
+                <span class="kw-2">&amp;</span>buffer[HASHV1_SIZE_BYTES..],
+                Hash::from_bytes(<span class="kw-2">&amp;</span>buffer[..HASHV1_SIZE_BYTES].try_into().map_err(|<span class="kw">_</span>| {
                     nom::Err::Error(ParseError::from_error_kind(
                         input,
                         nom::error::ErrorKind::Fail,
@@ -691,7 +691,7 @@
     </span><span class="kw">fn </span>test_hash() {
         <span class="kw">let </span>data = <span class="string">&quot;abc&quot;</span>.as_bytes();
         <span class="kw">let </span>hash = Hash::compute_from(data);
-        <span class="kw">let </span>hash_ref: [u8; HASH_SIZE_BYTES] = [
+        <span class="kw">let </span>hash_ref: [u8; HASHV1_SIZE_BYTES] = [
             <span class="number">100</span>, <span class="number">55</span>, <span class="number">179</span>, <span class="number">172</span>, <span class="number">56</span>, <span class="number">70</span>, <span class="number">81</span>, <span class="number">51</span>, <span class="number">255</span>, <span class="number">182</span>, <span class="number">59</span>, <span class="number">117</span>, <span class="number">39</span>, <span class="number">58</span>, <span class="number">141</span>, <span class="number">181</span>, <span class="number">72</span>, <span class="number">197</span>, <span class="number">88</span>,
             <span class="number">70</span>, <span class="number">93</span>, <span class="number">121</span>, <span class="number">219</span>, <span class="number">3</span>, <span class="number">253</span>, <span class="number">53</span>, <span class="number">156</span>, <span class="number">108</span>, <span class="number">213</span>, <span class="number">189</span>, <span class="number">157</span>, <span class="number">133</span>,
         ];
