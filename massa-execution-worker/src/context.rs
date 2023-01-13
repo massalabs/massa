@@ -402,7 +402,7 @@ impl ExecutionContext {
             data.push(1u8);
         }
         // hash the seed to get a unique address
-        
+
         let address = Address::AddressV2(AddressV2(massa_hash::HashV2::compute_from(&data)));
 
         // add this address with its bytecode to the speculative ledger

@@ -150,7 +150,7 @@ impl FromStr for AddressV1 {
 
 #[test]
 fn test_address_v1_str_format() {
-   /*  use massa_signature::KeyPair;
+    /*  use massa_signature::KeyPair;
 
     let keypair = KeyPair::generate();
     let address = AddressV1::from_public_key(&keypair.get_public_key());
@@ -284,4 +284,3 @@ impl Deserializer<AddressV1> for AddressV1Deserializer {
         .parse(buffer)
     }
 }
-

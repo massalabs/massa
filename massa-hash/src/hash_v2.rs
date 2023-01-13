@@ -7,14 +7,14 @@ use nom::{
     error::{context, ContextError, ParseError},
     IResult,
 };
+use std::hash::Hash;
 use std::{
     convert::TryInto,
     ops::{BitXor, BitXorAssign},
     str::FromStr,
 };
-use std::hash::Hash;
 
-use sha2::{Sha512, Digest};
+use sha2::{Digest, Sha512};
 
 /// Hash wrapper, the underlying hash type is `Sha512`
 #[derive(Eq, PartialEq, PartialOrd, Ord, Hash, Copy, Clone, Debug)]
@@ -57,7 +57,6 @@ impl HashV2 {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// ```
     pub fn compute_from(data: &[u8]) -> Self {
-
         // same for Sha512
         let mut hasher = Sha512::new();
         hasher.update(data);
@@ -331,10 +330,11 @@ mod tests {
     fn test_hash() {
         let data = "abc".as_bytes();
         let hash = HashV2::compute_from(data);
-        let hash_ref: [u8; HASHV2_SIZE_BYTES] = [221, 175, 53, 161, 147, 97, 122, 186, 204, 65, 115, 73, 174, 32,
-        65, 49, 18, 230, 250, 78, 137, 169, 126, 162, 10, 158, 238, 230, 75, 85, 211, 154, 33, 146, 153, 42, 39,
-        79, 193, 168, 54, 186, 60, 35, 163, 254, 235, 189, 69, 77, 68, 35, 100, 60, 232, 14, 42, 154, 201, 79,
-        165, 76, 164, 159
+        let hash_ref: [u8; HASHV2_SIZE_BYTES] = [
+            221, 175, 53, 161, 147, 97, 122, 186, 204, 65, 115, 73, 174, 32, 65, 49, 18, 230, 250,
+            78, 137, 169, 126, 162, 10, 158, 238, 230, 75, 85, 211, 154, 33, 146, 153, 42, 39, 79,
+            193, 168, 54, 186, 60, 35, 163, 254, 235, 189, 69, 77, 68, 35, 100, 60, 232, 14, 42,
+            154, 201, 79, 165, 76, 164, 159,
         ];
         assert_eq!(hash.into_bytes(), hash_ref);
     }

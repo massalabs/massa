@@ -1,4 +1,3 @@
-
 mod address_v1;
 mod address_v2;
 
@@ -14,10 +13,8 @@ pub use crate::address::address_v2::ADDRESSV2_SIZE_BYTES;
 pub const ADDRESS_MAX_SIZE_BYTES: usize = ADDRESSV2_SIZE_BYTES;
 
 use crate::error::ModelsError;
-use massa_hash::{Hash, HashV2, HashDeserializer, HashV2Deserializer};
-use massa_serialization::{
-    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer,
-};
+use massa_hash::{Hash, HashDeserializer, HashV2, HashV2Deserializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntDeserializer};
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
@@ -31,7 +28,7 @@ pub enum Address {
     /// Address Version 1 (Hash)
     AddressV1(AddressV1),
     /// Address Version 2 (HashV2)
-    AddressV2(AddressV2)
+    AddressV2(AddressV2),
 }
 
 impl PreHashed for Address {}
@@ -40,10 +37,9 @@ const ADDRESS_PREFIX: char = 'A';
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-
         match &self {
             Address::AddressV1(addr1) => addr1.fmt(f),
-            Address::AddressV2(addr2) => addr2.fmt(f)
+            Address::AddressV2(addr2) => addr2.fmt(f),
         }
     }
 }
@@ -109,7 +105,7 @@ impl<'de> ::serde::Deserialize<'de> for Address {
                 where
                     E: ::serde::de::Error,
                 {
-                    Ok(Address::from_bytes(v.try_into().map_err(E::custom)?))
+                    Ok(Address::from_bytes(v))
                 }
             }
 
@@ -147,19 +143,15 @@ impl FromStr for Address {
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::AddressParseError)?;
                 match version {
-                    1 => { 
-                        Ok(Address::AddressV1(AddressV1(Hash::from_bytes(
+                    1 => Ok(Address::AddressV1(AddressV1(Hash::from_bytes(
                         rest.try_into()
                             .map_err(|_| ModelsError::AddressParseError)?,
-                        ))))
-                    },
-                    2 => { 
-                        Ok(Address::AddressV2(AddressV2(HashV2::from_bytes(
-                            rest.try_into()
-                                .map_err(|_| ModelsError::AddressParseError)?,
-                        ))))
-                    },
-                    _ => Err(ModelsError::AddressParseError)
+                    )))),
+                    2 => Ok(Address::AddressV2(AddressV2(HashV2::from_bytes(
+                        rest.try_into()
+                            .map_err(|_| ModelsError::AddressParseError)?,
+                    )))),
+                    _ => Err(ModelsError::AddressParseError),
                 }
             }
             _ => Err(ModelsError::AddressParseError),
@@ -189,11 +181,11 @@ impl Address {
     /// Computes address associated with given public key
     pub fn from_public_key_versioned(public_key: &PublicKey, version: u32) -> Self {
         match version {
-            1 => {Address::AddressV1(AddressV1(Hash::compute_from(public_key.to_bytes())))},
-            _ => {Address::AddressV2(AddressV2(HashV2::compute_from(public_key.to_bytes())))},
+            1 => Address::AddressV1(AddressV1(Hash::compute_from(public_key.to_bytes()))),
+            _ => Address::AddressV2(AddressV2(HashV2::compute_from(public_key.to_bytes()))),
         }
     }
-    
+
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
         Self::from_public_key_versioned(public_key, 2)
@@ -212,10 +204,9 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn to_bytes(&self) -> &[u8] {
-
         match &self {
-            Address::AddressV1(addr1) => {addr1.0.to_bytes()},
-            Address::AddressV2(addr2) => {addr2.0.to_bytes()},
+            Address::AddressV1(addr1) => addr1.0.to_bytes(),
+            Address::AddressV2(addr2) => addr2.0.to_bytes(),
         }
     }
 
@@ -251,17 +242,18 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_bytes(data: &[u8]) -> Address {
-        
         match data.len() {
             ADDRESSV1_SIZE_BYTES => {
                 let sized_data = &data[0..ADDRESSV1_SIZE_BYTES];
                 Address::AddressV1(AddressV1::from_bytes(sized_data.try_into().unwrap()))
-            },
+            }
             ADDRESSV2_SIZE_BYTES => {
                 let sized_data = &data[0..ADDRESSV2_SIZE_BYTES];
                 Address::AddressV2(AddressV2::from_bytes(sized_data.try_into().unwrap()))
-            },
-            _ => {panic!("err")}
+            }
+            _ => {
+                panic!("err")
+            }
         }
     }
 }
@@ -323,31 +315,26 @@ impl Deserializer<Address> for AddressDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
         let addr1_res = context("Failed Address deserialization", |input| {
-            self.hash_deserializer.deserialize::<DeserializeError>(input)
+            self.hash_deserializer
+                .deserialize::<DeserializeError>(input)
         })
         .map(AddressV1)
         .parse(buffer);
 
         let addr2_res = context("Failed Address deserialization", |input| {
-            self.hash_v2_deserializer.deserialize::<DeserializeError>(input)
+            self.hash_v2_deserializer
+                .deserialize::<DeserializeError>(input)
         })
         .map(AddressV2)
         .parse(buffer);
 
         match (addr1_res, addr2_res) {
-            (_, Ok((rest, addr2))) if rest.len() == 0 => {
-                Ok((rest, Address::AddressV2(addr2)))
-            },
-            (Ok((rest, addr1)), _) if rest.len() == 0 => {
-                Ok((rest, Address::AddressV1(addr1)))
-            },
-            (_,_) => {
-                Err(nom::Err::Error(ParseError::from_error_kind(
-                    buffer,
-                    nom::error::ErrorKind::LengthValue,
-                )))
-            }
-                
+            (_, Ok((rest, addr2))) if rest.is_empty() => Ok((rest, Address::AddressV2(addr2))),
+            (Ok((rest, addr1)), _) if rest.is_empty() => Ok((rest, Address::AddressV1(addr1))),
+            (_, _) => Err(nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            ))),
         }
     }
 }
