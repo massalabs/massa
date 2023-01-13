@@ -872,6 +872,7 @@
 <a href="#872" id="872">872</a>
 <a href="#873" id="873">873</a>
 <a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -885,7 +886,8 @@
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{BlockId, SecuredHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
@@ -1100,7 +1102,7 @@
 
                 <span class="kw">match </span><span class="self">self</span>.check_header(
                     <span class="kw-2">&amp;</span>block_id,
-                    <span class="kw-2">&amp;</span>stored_block.content.header,
+                    <span class="kw-2">&amp;</span>stored_block.content.header(),
                     current_slot,
                     <span class="self">self</span>,
                 )<span class="question-mark">? </span>{
@@ -1115,7 +1117,7 @@
                             <span class="string">&quot;block_id&quot;</span>: block_id
                         });
                         (
-                            stored_block.content.header.content_creator_pub_key,
+                            stored_block.content.header().content_creator_pub_key,
                             slot,
                             parents_hash_period,
                             incompatibilities,
@@ -1175,8 +1177,8 @@
                             <span class="self">self</span>.new_stale_blocks.insert(
                                 block_id,
                                 (
-                                    stored_block.content.header.content_creator_address,
-                                    stored_block.content.header.content.slot,
+                                    stored_block.content.header().content_creator_address,
+                                    stored_block.content.header().content.slot,
                                 ),
                             );
                         }
@@ -1184,9 +1186,9 @@
                         </span><span class="self">self</span>.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                slot: stored_block.content.header.content.slot,
+                                slot: stored_block.content.header().content.slot,
                                 creator: stored_block.content_creator_address,
-                                parents: stored_block.content.header.content.parents.clone(),
+                                parents: stored_block.content.header().content.parents.clone(),
                                 reason,
                                 sequence_number: {
                                     <span class="self">self</span>.sequence_counter += <span class="number">1</span>;

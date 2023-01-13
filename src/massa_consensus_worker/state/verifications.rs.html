@@ -408,8 +408,6 @@
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -418,9 +416,7 @@
 };
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, SecuredHeader},
-    prehash::PreHashSet,
-    slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
 };
 
 <span class="doccomment">/// Possible output of a header check
@@ -722,7 +718,7 @@
                             ))
                         })<span class="question-mark">?
                         </span>.content
-                        .header
+                        .header()
                         .content
                         .parents[header.content.slot.thread <span class="kw">as </span>usize]
                 };
