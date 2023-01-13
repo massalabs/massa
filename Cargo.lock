@@ -2684,6 +2684,7 @@ dependencies = [
  "massa_storage",
  "num",
  "parking_lot",
+ "tokio",
  "tracing",
 ]
 

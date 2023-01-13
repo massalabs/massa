@@ -28,10 +28,11 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_pool_exports::PoolConfig;
+use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use std::str::FromStr;
+use tokio::sync::broadcast;
 
 #[test]
 fn test_add_operation() {
@@ -80,7 +81,13 @@ fn test_pool() {
     let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_config = PoolConfig::default();
     let storage_base = Storage::create_root();
-    let mut pool = OperationPool::init(pool_config, &storage_base, execution_controller);
+    let operation_sender = broadcast::channel(pool_config.broadcast_operations_capacity).0;
+    let mut pool = OperationPool::init(
+        pool_config,
+        &storage_base,
+        execution_controller,
+        PoolChannels { operation_sender },
+    );
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
     for i in 0..18 {
