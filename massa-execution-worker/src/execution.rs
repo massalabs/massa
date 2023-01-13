@@ -22,7 +22,7 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashSet};
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
@@ -604,8 +604,8 @@ impl ExecutionState {
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             &bytecode,
-            &target_func,
-            &param,
+            target_func,
+            param,
             self.module_cache.clone(),
             max_gas,
             self.config.gas_costs.clone(),
