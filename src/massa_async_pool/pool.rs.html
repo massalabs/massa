@@ -375,6 +375,10 @@
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -719,38 +723,42 @@
 
 <span class="attr">#[test]
 </span><span class="kw">fn </span>test_take_batch() {
-    <span class="comment">/*use massa_hash::HashV2;
-    use massa_models::{address::Address, amount::Amount, slot::Slot};
-    use std::str::FromStr;
-
-    let config = AsyncPoolConfig {
-        thread_count: 2,
-        max_length: 10,
-        max_async_message_data: 1_000_000,
-        bootstrap_part_size: 100,
+    <span class="kw">use </span>massa_hash::HashV2;
+    <span class="kw">use </span>massa_models::{
+        address::{Address, AddressV2},
+        amount::Amount,
+        slot::Slot,
     };
-    let mut pool = AsyncPool::new(config);
-    let address = Address(HashV2::compute_from(b&quot;abc&quot;));
-    for i in 1..10 {
-        let message = AsyncMessage::new_with_hash(
-            Slot::new(0, 0),
-            0,
+    <span class="kw">use </span>std::str::FromStr;
+
+    <span class="kw">let </span>config = AsyncPoolConfig {
+        thread_count: <span class="number">2</span>,
+        max_length: <span class="number">10</span>,
+        max_async_message_data: <span class="number">1_000_000</span>,
+        bootstrap_part_size: <span class="number">100</span>,
+    };
+    <span class="kw">let </span><span class="kw-2">mut </span>pool = AsyncPool::new(config);
+    <span class="kw">let </span>address = Address::AddressV2(AddressV2(HashV2::compute_from(<span class="string">b&quot;abc&quot;</span>)));
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..<span class="number">10 </span>{
+        <span class="kw">let </span>message = AsyncMessage::new_with_hash(
+            Slot::new(<span class="number">0</span>, <span class="number">0</span>),
+            <span class="number">0</span>,
             address,
             address,
-            &quot;function&quot;.to_string(),
+            <span class="string">&quot;function&quot;</span>.to_string(),
             i,
-            Amount::from_str(&quot;0.1&quot;).unwrap(),
-            Amount::from_str(&quot;0.3&quot;).unwrap(),
-            Slot::new(1, 0),
-            Slot::new(3, 0),
+            Amount::from_str(<span class="string">&quot;0.1&quot;</span>).unwrap(),
+            Amount::from_str(<span class="string">&quot;0.3&quot;</span>).unwrap(),
+            Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+            Slot::new(<span class="number">3</span>, <span class="number">0</span>),
             Vec::new(),
-            None,
+            <span class="prelude-val">None</span>,
         );
         pool.messages.insert(message.compute_id(), message);
     }
-    assert_eq!(pool.messages.len(), 9);
-    pool.take_batch_to_execute(Slot::new(2, 0), 19);
-    assert_eq!(pool.messages.len(), 4);*/
-</span>}
+    <span class="macro">assert_eq!</span>(pool.messages.len(), <span class="number">9</span>);
+    pool.take_batch_to_execute(Slot::new(<span class="number">2</span>, <span class="number">0</span>), <span class="number">19</span>);
+    <span class="macro">assert_eq!</span>(pool.messages.len(), <span class="number">4</span>);
+}
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
