@@ -180,7 +180,7 @@
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
-    address::{Address, AddressDeserializer, ADDRESS_MAX_SIZE_BYTES},
+    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
@@ -269,9 +269,9 @@
     /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
     /// ```
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="kw">let </span>limit = ADDRESS_MAX_SIZE_BYTES + <span class="number">1</span>;
+        <span class="kw">let </span>limit = ADDRESS_SIZE_BYTES + <span class="number">1</span>;
         buffer.extend(<span class="kw-2">&amp;</span>value[..limit]);
-        <span class="kw">if </span>value[ADDRESS_MAX_SIZE_BYTES] == DATASTORE_IDENT {
+        <span class="kw">if </span>value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
             <span class="kw">if </span>value.len() &gt; limit {
                 <span class="self">self</span>.vec_u8_serializer
                     .serialize(<span class="kw-2">&amp;</span>value[limit..].to_vec(), buffer)<span class="question-mark">?</span>;

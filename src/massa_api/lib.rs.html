@@ -407,9 +407,9 @@
     version::Version,
 };
 <span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkConfig};
-<span class="kw">use </span>massa_pool_exports::PoolController;
+<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_protocol_exports::{ProtocolCommandSender, ProtocolSenders};
+<span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -473,8 +473,8 @@
 </span><span class="kw">pub struct </span>ApiV2 {
     <span class="doccomment">/// link(channels) to the consensus component
     </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
-    <span class="doccomment">/// link(channels) to the protocol component
-    </span><span class="kw">pub </span>protocol_senders: ProtocolSenders,
+    <span class="doccomment">/// link(channels) to the pool component
+    </span><span class="kw">pub </span>pool_channels: PoolChannels,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,
     <span class="doccomment">/// node version

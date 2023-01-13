@@ -401,7 +401,7 @@
 </span><span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
-<span class="kw">use </span>massa_hash::{Hash, HASHV1_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
@@ -429,7 +429,7 @@
     </span><span class="kw">pub </span>final_state_hash: Hash,
 }
 
-<span class="kw">const </span>FINAL_STATE_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASHV1_SIZE_BYTES];
+<span class="kw">const </span>FINAL_STATE_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="kw">impl </span>FinalState {
     <span class="doccomment">/// Initializes a new `FinalState`

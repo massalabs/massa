@@ -18,11 +18,7 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_models::operation::Operation;
-<span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkEventReceiver};
+</pre><pre class="rust"><code><span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkEventReceiver};
 <span class="kw">use </span>tokio::sync::mpsc;
 
 <span class="kw">use </span><span class="kw">crate</span>::ProtocolCommand;
@@ -33,8 +29,6 @@
 </span><span class="kw">pub struct </span>ProtocolSenders {
     <span class="doccomment">/// network command sender
     </span><span class="kw">pub </span>network_command_sender: NetworkCommandSender,
-    <span class="doccomment">/// Broadcast sender(channel) for new operations
-    </span><span class="kw">pub </span>operation_sender: tokio::sync::broadcast::Sender&lt;Operation&gt;,
 }
 
 <span class="doccomment">/// Contains channels(receivers) used by the protocol worker
