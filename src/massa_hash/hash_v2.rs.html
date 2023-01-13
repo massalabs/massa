@@ -348,14 +348,14 @@
     error::{context, ContextError, ParseError},
     IResult,
 };
+<span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::{
     convert::TryInto,
     ops::{BitXor, BitXorAssign},
     str::FromStr,
 };
-<span class="kw">use </span>std::hash::Hash;
 
-<span class="kw">use </span>sha2::{Sha512, Digest};
+<span class="kw">use </span>sha2::{Digest, Sha512};
 
 <span class="doccomment">/// Hash wrapper, the underlying hash type is `Sha512`
 </span><span class="attr">#[derive(Eq, PartialEq, PartialOrd, Ord, Hash, Copy, Clone, Debug)]
@@ -398,7 +398,6 @@
     /// let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());
     /// ```
     </span><span class="kw">pub fn </span>compute_from(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
-
         <span class="comment">// same for Sha512
         </span><span class="kw">let </span><span class="kw-2">mut </span>hasher = Sha512::new();
         hasher.update(data);
@@ -672,11 +671,12 @@
     </span><span class="kw">fn </span>test_hash() {
         <span class="kw">let </span>data = <span class="string">&quot;abc&quot;</span>.as_bytes();
         <span class="kw">let </span>hash = HashV2::compute_from(data);
-        <span class="kw">let </span>hash_ref: [u8; HASHV2_SIZE_BYTES] = [<span class="number">221</span>, <span class="number">175</span>, <span class="number">53</span>, <span class="number">161</span>, <span class="number">147</span>, <span class="number">97</span>, <span class="number">122</span>, <span class="number">186</span>, <span class="number">204</span>, <span class="number">65</span>, <span class="number">115</span>, <span class="number">73</span>, <span class="number">174</span>, <span class="number">32</span>,
-        <span class="number">65</span>, <span class="number">49</span>, <span class="number">18</span>, <span class="number">230</span>, <span class="number">250</span>, <span class="number">78</span>, <span class="number">137</span>, <span class="number">169</span>, <span class="number">126</span>, <span class="number">162</span>, <span class="number">10</span>, <span class="number">158</span>, <span class="number">238</span>, <span class="number">230</span>, <span class="number">75</span>, <span class="number">85</span>, <span class="number">211</span>, <span class="number">154</span>, <span class="number">33</span>, <span class="number">146</span>, <span class="number">153</span>, <span class="number">42</span>, <span class="number">39</span>,
-        <span class="number">79</span>, <span class="number">193</span>, <span class="number">168</span>, <span class="number">54</span>, <span class="number">186</span>, <span class="number">60</span>, <span class="number">35</span>, <span class="number">163</span>, <span class="number">254</span>, <span class="number">235</span>, <span class="number">189</span>, <span class="number">69</span>, <span class="number">77</span>, <span class="number">68</span>, <span class="number">35</span>, <span class="number">100</span>, <span class="number">60</span>, <span class="number">232</span>, <span class="number">14</span>, <span class="number">42</span>, <span class="number">154</span>, <span class="number">201</span>, <span class="number">79</span>,
-        <span class="number">165</span>, <span class="number">76</span>, <span class="number">164</span>, <span class="number">159
-        </span>];
+        <span class="kw">let </span>hash_ref: [u8; HASHV2_SIZE_BYTES] = [
+            <span class="number">221</span>, <span class="number">175</span>, <span class="number">53</span>, <span class="number">161</span>, <span class="number">147</span>, <span class="number">97</span>, <span class="number">122</span>, <span class="number">186</span>, <span class="number">204</span>, <span class="number">65</span>, <span class="number">115</span>, <span class="number">73</span>, <span class="number">174</span>, <span class="number">32</span>, <span class="number">65</span>, <span class="number">49</span>, <span class="number">18</span>, <span class="number">230</span>, <span class="number">250</span>,
+            <span class="number">78</span>, <span class="number">137</span>, <span class="number">169</span>, <span class="number">126</span>, <span class="number">162</span>, <span class="number">10</span>, <span class="number">158</span>, <span class="number">238</span>, <span class="number">230</span>, <span class="number">75</span>, <span class="number">85</span>, <span class="number">211</span>, <span class="number">154</span>, <span class="number">33</span>, <span class="number">146</span>, <span class="number">153</span>, <span class="number">42</span>, <span class="number">39</span>, <span class="number">79</span>,
+            <span class="number">193</span>, <span class="number">168</span>, <span class="number">54</span>, <span class="number">186</span>, <span class="number">60</span>, <span class="number">35</span>, <span class="number">163</span>, <span class="number">254</span>, <span class="number">235</span>, <span class="number">189</span>, <span class="number">69</span>, <span class="number">77</span>, <span class="number">68</span>, <span class="number">35</span>, <span class="number">100</span>, <span class="number">60</span>, <span class="number">232</span>, <span class="number">14</span>, <span class="number">42</span>,
+            <span class="number">154</span>, <span class="number">201</span>, <span class="number">79</span>, <span class="number">165</span>, <span class="number">76</span>, <span class="number">164</span>, <span class="number">159</span>,
+        ];
         <span class="macro">assert_eq!</span>(hash.into_bytes(), hash_ref);
     }
 }
