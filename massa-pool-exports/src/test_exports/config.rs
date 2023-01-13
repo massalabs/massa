@@ -19,6 +19,8 @@ impl Default for PoolConfig {
             max_endorsements_pool_size_per_thread: 1000,
             max_block_endorsement_count: ENDORSEMENT_COUNT,
             channels_size: 1024,
+            broadcast_enabled: false,
+            broadcast_operations_capacity: 5000,
         }
     }
 }

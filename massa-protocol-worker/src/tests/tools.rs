@@ -14,7 +14,7 @@ use massa_protocol_exports::{
     ProtocolManager, ProtocolReceivers, ProtocolSenders,
 };
 use massa_storage::Storage;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 
 pub async fn protocol_test<F, V>(protocol_config: &ProtocolConfig, test: F)
 where
@@ -117,7 +117,6 @@ where
 
     let protocol_senders = ProtocolSenders {
         network_command_sender: network_command_sender.clone(),
-        operation_sender: broadcast::channel(protocol_config.broadcast_operations_capacity).0,
     };
 
     let protocol_receivers = ProtocolReceivers {
