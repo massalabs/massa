@@ -449,20 +449,20 @@
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
-<span class="kw">use </span>massa_api_exports::{
+<span class="kw">use </span>massa_execution_exports::ExecutionController;
+<span class="kw">use </span>massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, ExecuteReadOnlyResponse, ListType, NodeStatus, OperationInfo, OperationInput,
+    EndorsementInfo, EventFilter, ListType, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
 };
-<span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    api::EventFilter,
     block::{Block, BlockId},
     endorsement::EndorsementId,
     operation::OperationId,
