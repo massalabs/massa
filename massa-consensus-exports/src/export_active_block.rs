@@ -157,9 +157,12 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{Block, BlockSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::block_id::BlockId;
+    /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
+    /// use massa_models::block_v0::BlockV0;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -171,7 +174,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
-    ///         slot: Slot::new(1, 1),
+    ///         block_version_current: 0,block_version_next: 0,slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
@@ -203,10 +206,10 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// .unwrap();
     ///
     /// // create block
-    /// let orig_block = Block {
+    /// let orig_block = Block::V0(BlockV0 {
     ///     header: orig_header,
     ///     operations: Vec::new(),
-    /// };
+    /// });
     ///
     /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
     /// let export_active_block = ExportActiveBlock {

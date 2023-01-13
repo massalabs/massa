@@ -340,10 +340,11 @@ async fn test_someone_knows_it() {
             .unwrap();
 
             // send wishlist
+            let block_header = block.content.header().clone();
             let protocol_command_sender = tokio::task::spawn_blocking(move || {
                 protocol_command_sender
                     .send_wishlist_delta(
-                        vec![(hash_1, Some(block.content.header().clone()))]
+                        vec![(hash_1, Some(block_header))]
                             .into_iter()
                             .collect(),
                         PreHashSet::<BlockId>::default(),

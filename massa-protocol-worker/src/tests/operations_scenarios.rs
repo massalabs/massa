@@ -584,8 +584,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             );
 
             // Change the root operation hash
-            block.content.operations_mut().clear();
-            block.content.operations_mut().extend_from_slice(
+            let mut op_mut = block.content.operations_mut();
+            op_mut.clear();
+            op_mut.extend_from_slice(
                 &vec![op_2.clone()].into_iter().map(|op| op.id).collect::<Vec<OperationId>>()
             );
 

@@ -2,22 +2,28 @@ use std::fmt::Formatter;
 use std::ops::Bound::{Excluded, Included};
 
 use nom::branch::alt;
-use nom::error::{context, ContextError, ParseError};
-use nom::IResult;
-use nom::sequence::{preceded, tuple};
 use nom::bytes::complete::tag;
+use nom::error::{context, ContextError, ParseError};
 use nom::multi::{count, length_count};
+use nom::sequence::{preceded, tuple};
+use nom::IResult;
 use nom::Parser;
 use serde::{Deserialize, Serialize};
 
 use crate::block_id::BlockId;
-use crate::endorsement::{Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer, EndorsementSerializerLW, SecureShareEndorsement};
-use crate::secure_share::{SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
+use crate::endorsement::{
+    Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
+    EndorsementSerializerLW, SecureShareEndorsement,
+};
+use crate::secure_share::{
+    SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
+};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
 use massa_hash::{Hash, HashDeserializer};
-use massa_serialization::{Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer};
-
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
 
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +95,7 @@ impl Default for BlockHeaderSerializer {
 impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderSerializer};
+    /// use massa_models::{block_id::BlockId, block_header::BlockHeader, block_header::BlockHeaderSerializer};
     /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
     /// use massa_models::secure_share::SecureShareContent;
     /// use massa_models::{config::THREAD_COUNT, slot::Slot};
@@ -102,7 +108,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
-    ///   slot: Slot::new(1, 1),
+    ///   block_version_current: 0,block_version_next: 0,slot: Slot::new(1, 1),
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
@@ -132,9 +138,10 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
     /// ```
     fn serialize(&self, value: &BlockHeader, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-
-        self.u32_serializer.serialize(&value.block_version_current, buffer)?;
-        self.u32_serializer.serialize(&value.block_version_next, buffer)?;
+        self.u32_serializer
+            .serialize(&value.block_version_current, buffer)?;
+        self.u32_serializer
+            .serialize(&value.block_version_next, buffer)?;
 
         self.slot_serializer.serialize(&value.slot, buffer)?;
         // parents (note: there should be none if slot period=0)
@@ -200,7 +207,8 @@ impl BlockHeaderDeserializer {
 impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
+    /// use massa_models::block_id::BlockId;
+    /// use massa_models::block_header::{BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
     /// use massa_models::{config::THREAD_COUNT, slot::Slot, secure_share::SecureShareContent};
     /// use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
     /// use massa_hash::Hash;
@@ -212,7 +220,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
-    ///   slot: Slot::new(1, 1),
+    ///   block_version_current: 0,block_version_next: 0,slot: Slot::new(1, 1),
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
@@ -250,42 +258,44 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        let (rest, (version_cur, version_next, slot, parents, operation_merkle_root)): (&[u8], (u32, u32, Slot, Vec<BlockId>, Hash)) =
-            context(
-                "Failed BlockHeader deserialization",
-                tuple((
-                    context("Failed current version deserialization", |input| {
-                        self.length_endorsements_deserializer.deserialize(input)
-                    }),
-                    context("Failed next version deserialization", |input| {
-                        self.length_endorsements_deserializer.deserialize(input)
-                    }),
-                    context("Failed slot deserialization", |input| {
-                        self.slot_deserializer.deserialize(input)
-                    }),
-                    context(
-                        "Failed parents deserialization",
-                        alt((
-                            preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
-                            preceded(
-                                tag(&[1]),
-                                count(
-                                    context("Failed block_id deserialization", |input| {
-                                        self.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    self.thread_count as usize,
-                                ),
+        let (rest, (version_cur, version_next, slot, parents, operation_merkle_root)): (
+            &[u8],
+            (u32, u32, Slot, Vec<BlockId>, Hash),
+        ) = context(
+            "Failed BlockHeader deserialization",
+            tuple((
+                context("Failed current version deserialization", |input| {
+                    self.length_endorsements_deserializer.deserialize(input)
+                }),
+                context("Failed next version deserialization", |input| {
+                    self.length_endorsements_deserializer.deserialize(input)
+                }),
+                context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed parents deserialization",
+                    alt((
+                        preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
+                        preceded(
+                            tag(&[1]),
+                            count(
+                                context("Failed block_id deserialization", |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                                self.thread_count as usize,
                             ),
-                        )),
-                    ),
-                    context("Failed operation_merkle_root", |input| {
-                        self.hash_deserializer.deserialize(input)
-                    }),
-                )),
-            )
-                .parse(buffer)?;
+                        ),
+                    )),
+                ),
+                context("Failed operation_merkle_root", |input| {
+                    self.hash_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .parse(buffer)?;
 
         if parents.is_empty() {
             return Ok((
@@ -319,7 +329,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 }),
             ),
         )
-            .parse(rest)?;
+        .parse(rest)?;
 
         Ok((
             rest,

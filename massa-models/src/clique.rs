@@ -64,7 +64,7 @@ impl Serializer<Clique> for CliqueSerializer {
     /// ## Example
     /// ```rust
     /// # use massa_models::clique::{Clique, CliqueSerializer};
-    /// # use massa_models::block::BlockId;
+    /// # use massa_models::block_id::BlockId;
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # use massa_serialization::Serializer;
@@ -117,7 +117,7 @@ impl Deserializer<Clique> for CliqueDeserializer {
     /// ## Example
     /// ```rust
     /// # use massa_models::clique::{Clique, CliqueDeserializer, CliqueSerializer};
-    /// # use massa_models::block::BlockId;
+    /// # use massa_models::block_id::BlockId;
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};

@@ -14,15 +14,15 @@ use crate::{
     // slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 // use massa_hash::{Hash, HashDeserializer};
-use massa_serialization::{Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
 use massa_signature::{KeyPair, PublicKey, Signature};
 // use nom::branch::alt;
 // use nom::bytes::complete::tag;
 use nom::error::context;
 // use nom::multi::{count, length_count};
-use nom::sequence::{
-    // preceded,
-    tuple};
+use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
     error::{ContextError, ParseError},
@@ -31,17 +31,17 @@ use nom::{
 use serde::{Deserialize, Serialize};
 // use serde_with::{DeserializeFromStr, SerializeDisplay};
 // use std::convert::TryInto;
+use nom::multi::length_count;
 use std::fmt::Formatter;
 use std::ops::Bound::Included;
-use nom::multi::length_count;
 // use serde::de::value::U32Deserializer;
 // use std::ops::Bound::{Excluded, Included};
 // use std::str::FromStr;
 use crate::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 
 // temp for compile
-use crate::block_id::BlockId;
 use crate::block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader};
+use crate::block_id::BlockId;
 
 /// block
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,9 +151,11 @@ impl Default for BlockV1Serializer {
 impl Serializer<BlockV1> for BlockV1Serializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockId}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::block_id::BlockId;
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
+    /// use massa_models::block_v0::BlockV0;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
@@ -164,7 +166,7 @@ impl Serializer<BlockV1> for BlockV1Serializer {
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
-    ///         slot: Slot::new(1, 1),
+    ///         block_version_current: 0,block_version_next: 0,slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
@@ -196,10 +198,10 @@ impl Serializer<BlockV1> for BlockV1Serializer {
     /// .unwrap();
     ///
     /// // create block
-    /// let orig_block = Block {
+    /// let orig_block = Block::V0(BlockV0 {
     ///     header: orig_header,
     ///     operations: Vec::new(),
-    /// };
+    /// });
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
@@ -252,9 +254,11 @@ impl BlockV1Deserializer {
 impl Deserializer<BlockV1> for BlockV1Deserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockId}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::block_id::BlockId;
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
+    /// use massa_models::block_v0::BlockV0;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
@@ -265,7 +269,7 @@ impl Deserializer<BlockV1> for BlockV1Deserializer {
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
-    ///         slot: Slot::new(1, 1),
+    ///         block_version_current: 0,block_version_next: 0,slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
@@ -297,10 +301,10 @@ impl Deserializer<BlockV1> for BlockV1Deserializer {
     /// .unwrap();
     ///
     /// // create block
-    /// let orig_block = Block {
+    /// let orig_block = Block::V0(BlockV0 {
     ///     header: orig_header,
     ///     operations: Vec::new(),
-    /// };
+    /// });
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
@@ -308,18 +312,18 @@ impl Deserializer<BlockV1> for BlockV1Deserializer {
     ///
     /// assert!(rest.is_empty());
     /// // check equality
-    /// assert_eq!(orig_block.header.id, res_block.header.id);
+    /// assert_eq!(orig_block.header().id, res_block.header().id);
     /// assert_eq!(
-    ///     orig_block.header.content.slot,
-    ///     res_block.header.content.slot
+    ///     orig_block.header().content.slot,
+    ///     res_block.header().content.slot
     /// );
     /// assert_eq!(
-    ///     orig_block.header.serialized_data,
-    ///     res_block.header.serialized_data
+    ///     orig_block.header().serialized_data,
+    ///     res_block.header().serialized_data
     /// );
     /// assert_eq!(
-    ///     orig_block.header.signature,
-    ///     res_block.header.signature
+    ///     orig_block.header().signature,
+    ///     res_block.header().signature
     /// );
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -345,7 +349,11 @@ impl Deserializer<BlockV1> for BlockV1Deserializer {
                 }),
             )),
         )
-        .map(|(header, denunciations, operations)| BlockV1 { header, denunciations, operations })
+        .map(|(header, denunciations, operations)| BlockV1 {
+            header,
+            denunciations,
+            operations,
+        })
         .parse(buffer)
     }
 }
