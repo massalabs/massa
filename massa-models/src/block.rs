@@ -376,7 +376,7 @@ impl Deserializer<Block> for BlockDeserializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
+    /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();
     ///
@@ -384,14 +384,14 @@ impl Deserializer<Block> for BlockDeserializer {
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
-    ///         parents,
+    ///         parents: parents.clone(),
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
-    ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///                     index: 0,
+    ///                     endorsed_block: parents[1].clone(),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
@@ -399,9 +399,9 @@ impl Deserializer<Block> for BlockDeserializer {
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
-    ///                     slot: Slot::new(4, 0),
-    ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///                     slot: Slot::new(1, 1),
+    ///                     index: 1,
+    ///                     endorsed_block: parents[1].clone(),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
@@ -719,37 +719,37 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// ```rust
     /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
     /// use massa_models::{config::THREAD_COUNT, slot::Slot, secure_share::SecureShareContent};
-    /// use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
+    /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
+    /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
     ///   slot: Slot::new(1, 1),
-    ///   parents,
+    ///   parents: parents.clone(),
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
     ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
-    ///          index: 1,
-    ///          endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///          index: 0,
+    ///          endorsed_block: parents[1].clone(),
     ///        },
-    ///     EndorsementSerializerLW::new(),
+    ///     EndorsementSerializer::new(),
     ///     &keypair,
     ///     )
     ///     .unwrap(),
     ///     Endorsement::new_verifiable(
     ///       Endorsement {
-    ///         slot: Slot::new(4, 0),
-    ///         index: 3,
-    ///         endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///         slot: Slot::new(1, 1),
+    ///         index: 1,
+    ///         endorsed_block: parents[1].clone(),
     ///       },
-    ///     EndorsementSerializerLW::new(),
+    ///     EndorsementSerializer::new(),
     ///     &keypair,
     ///     )
     ///     .unwrap(),
