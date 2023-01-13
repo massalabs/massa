@@ -270,16 +270,11 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ConsensusError;
 <span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, SecureShareBlock},
-    block_id::BlockId,
+    block::{Block, BlockDeserializer, BlockId, SecureShareBlock},
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
@@ -340,7 +335,7 @@
 
         <span class="comment">// add endorsements to storage and claim refs
         // TODO change if we decide that endorsements are stored separately
-        </span>storage.store_endorsements(<span class="self">self</span>.block.content.header().content.endorsements.clone());
+        </span>storage.store_endorsements(<span class="self">self</span>.block.content.header.content.endorsements.clone());
 
         <span class="comment">// Note: the block&#39;s parents are not claimed in the block&#39;s storage here but on graph inclusion
 
@@ -352,7 +347,7 @@
             children: <span class="macro">vec!</span>[PreHashMap::default(); thread_count <span class="kw">as </span>usize], <span class="comment">// will be computed once the full graph is available
             </span>descendants: Default::default(), <span class="comment">// will be computed once the full graph is available
             </span>is_final: <span class="self">self</span>.is_final,
-            slot: <span class="self">self</span>.block.content.header().content.slot,
+            slot: <span class="self">self</span>.block.content.header.content.slot,
             fitness: <span class="self">self</span>.block.get_fitness(),
         };
 
@@ -433,12 +428,9 @@
     <span class="doccomment">/// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{Block, BlockSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
-    /// use massa_models::block_id::BlockId;
-    /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
-    /// use massa_models::block_v0::BlockV0;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -450,7 +442,7 @@
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
-    ///         block_version_current: 0,block_version_next: 0,slot: Slot::new(1, 1),
+    ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///         endorsements: vec![
@@ -482,10 +474,10 @@
     /// .unwrap();
     ///
     /// // create block
-    /// let orig_block = Block::V0(BlockV0 {
+    /// let orig_block = Block {
     ///     header: orig_header,
     ///     operations: Vec::new(),
-    /// });
+    /// };
     ///
     /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair).unwrap();
     /// let export_active_block = ExportActiveBlock {

@@ -255,19 +255,12 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
-    block::{Block, BlockSerializer},
-    block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
-    block_id::BlockId,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecuredHeader},
     endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
@@ -283,7 +276,6 @@
     time::Instant,
 };
 <span class="kw">use </span>tracing::{info, warn};
-<span class="kw">use </span>massa_models::block_v0::BlockV0;
 
 <span class="doccomment">/// Structure gathering all elements needed by the factory thread
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockFactoryWorker {
@@ -464,8 +456,6 @@
         <span class="comment">// create header
         </span><span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
             BlockHeader {
-                block_version_current: <span class="number">0</span>,
-                block_version_next: <span class="number">0</span>,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
@@ -478,10 +468,10 @@
 
         <span class="comment">// create block
         </span><span class="kw">let </span>block = Block::new_verifiable(
-            Block::V0(BlockV0 {
+            Block {
                 header,
                 operations: op_ids.into_iter().collect(),
-            }),
+            },
             BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
             </span>block_producer_keypair,
         )
