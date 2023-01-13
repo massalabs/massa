@@ -511,8 +511,17 @@ impl ProtocolWorker {
                 self.checked_operations
                     .extend(operation_ids.iter().copied());
 
-                // Announce operations to active nodes not knowing about it.
                 let to_announce: Vec<OperationId> = operation_ids.iter().copied().collect();
+                // Broadcast operations to active sender(channel) subscribers.
+                if self.config.broadcast_enabled {
+                    for op_id in to_announce.clone() {
+                        if let Some(s_operation) = storage.read_operations().get(&op_id) {
+                            let _ = self.operation_sender.send(s_operation.content.clone());
+                        };
+                    }
+                }
+
+                // Announce operations to active nodes not knowing about it.
                 self.note_operations_to_announce(&to_announce, op_timer)
                     .await;
             }
@@ -939,11 +948,13 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
+            // Broadcast operations to active sender(channel) subscribers.
             if self.config.broadcast_enabled {
                 for op in new_operations.clone() {
                     let _ = self.operation_sender.send(op.1.content);
                 }
             }
+
             // Store operation, claim locally
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
