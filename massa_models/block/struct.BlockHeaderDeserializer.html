@@ -3,37 +3,37 @@
 </div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor">§</a></h2><div id="trait-implementations-list"><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-Deserializer%3CBlockHeader%3E-for-BlockHeaderDeserializer" class="impl has-srclink"><a class="srclink rightside" href="../../src/massa_models/block.rs.html#717-897">source</a><a href="#impl-Deserializer%3CBlockHeader%3E-for-BlockHeaderDeserializer" class="anchor">§</a><h3 class="code-header">impl Deserializer&lt;<a class="struct" href="struct.BlockHeader.html" title="struct massa_models::block::BlockHeader">BlockHeader</a>&gt; for <a class="struct" href="struct.BlockHeaderDeserializer.html" title="struct massa_models::block::BlockHeaderDeserializer">BlockHeaderDeserializer</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.deserialize" class="method trait-impl has-srclink"><a class="srclink rightside" href="../../src/massa_models/block.rs.html#766-896">source</a><a href="#method.deserialize" class="anchor">§</a><h4 class="code-header">fn <a class="fn">deserialize</a>&lt;'a, E:&nbsp;ParseError&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]&gt; + ContextError&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]&gt;&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;&amp;self,<br>&nbsp;&nbsp;&nbsp;&nbsp;buffer: &amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>]<br>) -&gt; IResult&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>], <a class="struct" href="struct.BlockHeader.html" title="struct massa_models::block::BlockHeader">BlockHeader</a>, E&gt;</h4></section></summary><div class="docblock"><h6 id="example"><a href="#example">Example:</a></h6>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_models::block::{BlockId, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
 <span class="kw">use </span>massa_models::{config::THREAD_COUNT, slot::Slot, secure_share::SecureShareContent};
-<span class="kw">use </span>massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
+<span class="kw">use </span>massa_models::endorsement::{Endorsement, EndorsementSerializer};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_serialization::{Serializer, Deserializer, DeserializeError};
 
 <span class="kw">let </span>keypair = KeyPair::generate();
-<span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
+<span class="kw">let </span>parents: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
   .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
   .collect();
 <span class="kw">let </span>header = BlockHeader {
   slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
-  parents,
+  parents: parents.clone(),
   operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
   endorsements: <span class="macro">vec!</span>[
     Endorsement::new_verifiable(
        Endorsement {
          slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
-         index: <span class="number">1</span>,
-         endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
+         index: <span class="number">0</span>,
+         endorsed_block: parents[<span class="number">1</span>].clone(),
        },
-    EndorsementSerializerLW::new(),
+    EndorsementSerializer::new(),
     <span class="kw-2">&amp;</span>keypair,
     )
     .unwrap(),
     Endorsement::new_verifiable(
       Endorsement {
-        slot: Slot::new(<span class="number">4</span>, <span class="number">0</span>),
-        index: <span class="number">3</span>,
-        endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
+        slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+        index: <span class="number">1</span>,
+        endorsed_block: parents[<span class="number">1</span>].clone(),
       },
-    EndorsementSerializerLW::new(),
+    EndorsementSerializer::new(),
     <span class="kw-2">&amp;</span>keypair,
     )
     .unwrap(),
