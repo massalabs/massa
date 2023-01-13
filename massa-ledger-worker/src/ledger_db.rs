@@ -2,10 +2,10 @@
 
 //! Module to interact with the disk ledger
 
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES},
+    address::{Address, ADDRESS_MAX_SIZE_BYTES},
     amount::AmountSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -40,7 +40,7 @@ const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
 const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
 const LEDGER_HASH_KEY: &[u8; 1] = b"h";
-const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASHV1_SIZE_BYTES];
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -343,7 +343,7 @@ impl LedgerDB {
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
             .flatten()
-            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
+            .map(|(key, _)| key.split_at(ADDRESS_MAX_SIZE_BYTES + 1).1.to_vec())
             .collect()
     }
 
@@ -612,7 +612,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
+                    key.split_at(ADDRESS_MAX_SIZE_BYTES + 1).1.to_vec(),
                     data.to_vec(),
                 )
             })

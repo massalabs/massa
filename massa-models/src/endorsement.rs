@@ -22,7 +22,7 @@ use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
 
 /// Endorsement ID size in bytes
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASHV1_SIZE_BYTES;
 
 /// endorsement id
 #[derive(

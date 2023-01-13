@@ -5,6 +5,7 @@ use std::hash::{BuildHasherDefault, Hasher};
 use std::marker::PhantomData;
 
 impl PreHashed for massa_hash::Hash {}
+impl PreHashed for massa_hash::HashV2 {}
 
 /// A trait indicating that its carrier is already a hash with at least 64 bits
 /// and doesn't need to be re-hashed for hash-table purposes

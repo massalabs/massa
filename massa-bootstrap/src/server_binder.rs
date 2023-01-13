@@ -9,7 +9,7 @@ use crate::messages::{
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
-use massa_hash::HASH_SIZE_BYTES;
+use massa_hash::HASHV1_SIZE_BYTES;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -109,7 +109,7 @@ impl BootstrapServerBinder {
             if let Some(prev_message) = self.prev_message {
                 // there was a previous message: sign(prev_msg_hash + msg)
                 let mut signed_data =
-                    Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_len as usize));
+                    Vec::with_capacity(HASHV1_SIZE_BYTES.saturating_add(msg_len as usize));
                 signed_data.extend(prev_message.to_bytes());
                 signed_data.extend(&msg_bytes);
                 self.local_keypair.sign(&Hash::compute_from(&signed_data))?
@@ -143,7 +143,7 @@ impl BootstrapServerBinder {
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
-                let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
+                let mut hash_bytes = [0u8; HASHV1_SIZE_BYTES];
                 self.duplex.read_exact(&mut hash_bytes).await?;
                 Some(Hash::from_bytes(&hash_bytes))
             } else {
@@ -173,7 +173,7 @@ impl BootstrapServerBinder {
         if let Some(prev_hash) = received_prev_hash {
             // there was a previous message: hash(prev_hash + message)
             let mut hashed_bytes =
-                Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
+                Vec::with_capacity(HASHV1_SIZE_BYTES.saturating_add(msg_bytes.len()));
             hashed_bytes.extend(prev_hash.to_bytes());
             hashed_bytes.extend(&msg_bytes);
             self.prev_message = Some(Hash::compute_from(&hashed_bytes));

@@ -1,4 +1,4 @@
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -17,7 +17,7 @@ use nom::{
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included};
 
-const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASHV1_SIZE_BYTES];
 
 #[derive(Debug, Clone)]
 /// Structure containing all the PoS deferred credits information

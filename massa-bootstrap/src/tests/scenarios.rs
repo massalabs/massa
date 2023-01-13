@@ -25,7 +25,7 @@ use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
     FinalState, FinalStateConfig, StateChanges,
 };
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_models::{
     address::Address, node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version,
@@ -125,7 +125,7 @@ async fn test_bootstrap_server() {
             "",
             &rolls_path,
             server_selector_controller.clone(),
-            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+            Hash::from_bytes(&[0; HASHV1_SIZE_BYTES]),
         )
         .unwrap(),
         final_state_local_config.clone(),
@@ -136,7 +136,7 @@ async fn test_bootstrap_server() {
             "",
             &rolls_path,
             client_selector_controller.clone(),
-            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+            Hash::from_bytes(&[0; HASHV1_SIZE_BYTES]),
         )
         .unwrap(),
         final_state_local_config,

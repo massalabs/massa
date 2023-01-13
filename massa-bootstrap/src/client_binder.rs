@@ -8,7 +8,7 @@ use crate::messages::{
 };
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -179,15 +179,15 @@ impl BootstrapClientBinder {
         let message = {
             if let Some(prev_message) = self.prev_message {
                 self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
-                let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
-                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
+                let mut sig_msg_bytes = vec![0u8; HASHV1_SIZE_BYTES + (msg_len as usize)];
+                sig_msg_bytes[..HASHV1_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
                 self.duplex
-                    .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])
+                    .read_exact(&mut sig_msg_bytes[HASHV1_SIZE_BYTES..])
                     .await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
-                    .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
+                    .deserialize::<DeserializeError>(&sig_msg_bytes[HASHV1_SIZE_BYTES..])
                     .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
                 msg
             } else {

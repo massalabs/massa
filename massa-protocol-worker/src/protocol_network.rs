@@ -6,7 +6,7 @@ use std::collections::hash_map::Entry;
 
 use crate::node_info::NodeInfo;
 use crate::protocol_worker::ProtocolWorker;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_logging::massa_trace;
 use massa_models::{
     block::Block,
@@ -344,7 +344,7 @@ impl ProtocolWorker {
         }
 
         let mut total_hash: Vec<u8> =
-            Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
+            Vec::with_capacity(operation_ids.len().saturating_mul(HASHV1_SIZE_BYTES));
         operation_ids.iter().for_each(|op_id| {
             let op_hash = op_id.get_hash().into_bytes();
             total_hash.extend(op_hash);

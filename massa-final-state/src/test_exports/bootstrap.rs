@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
 use massa_executed_ops::ExecutedOps;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
@@ -31,7 +31,7 @@ pub fn create_final_state(
         changes_history,
         pos_state,
         executed_ops,
-        final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+        final_state_hash: Hash::from_bytes(&[0; HASHV1_SIZE_BYTES]),
     }
 }
 

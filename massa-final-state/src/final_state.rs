@@ -8,7 +8,7 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
@@ -36,7 +36,7 @@ pub struct FinalState {
     pub final_state_hash: Hash,
 }
 
-const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASHV1_SIZE_BYTES];
 
 impl FinalState {
     /// Initializes a new `FinalState`

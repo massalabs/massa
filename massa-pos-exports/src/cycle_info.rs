@@ -1,5 +1,5 @@
 use bitvec::vec::BitVec;
-use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer, HashSerializer, HASHV1_SIZE_BYTES};
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
@@ -25,7 +25,7 @@ use std::ops::Bound::Included;
 
 use crate::PoSChanges;
 
-const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASHV1_SIZE_BYTES];
 
 struct CycleInfoHashComputer {
     u64_ser: U64VarIntSerializer,
@@ -241,7 +241,7 @@ fn test_cycle_info_hash_computation() {
         BitVec::default(),
         PreHashMap::default(),
     );
-    let addr = Address::from_bytes(&[0u8; 32]);
+    let addr = Address::from_bytes(&[0u8; massa_models::address::ADDRESS_MAX_SIZE_BYTES]);
 
     // add changes
     let mut roll_changes = PreHashMap::default();

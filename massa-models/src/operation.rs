@@ -34,7 +34,7 @@ use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
 /// Size in bytes of the serialized operation ID
-pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASHV1_SIZE_BYTES;
 
 /// Size in bytes of the serialized operation ID prefix
 pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;

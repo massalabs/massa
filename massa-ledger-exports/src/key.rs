@@ -1,5 +1,5 @@
 use massa_models::{
-    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
+    address::{Address, AddressDeserializer, ADDRESS_MAX_SIZE_BYTES},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
@@ -88,9 +88,9 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        let limit = ADDRESS_SIZE_BYTES + 1;
+        let limit = ADDRESS_MAX_SIZE_BYTES + 1;
         buffer.extend(&value[..limit]);
-        if value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
+        if value[ADDRESS_MAX_SIZE_BYTES] == DATASTORE_IDENT {
             if value.len() > limit {
                 self.vec_u8_serializer
                     .serialize(&value[limit..].to_vec(), buffer)?;

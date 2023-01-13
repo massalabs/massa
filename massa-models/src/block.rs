@@ -37,7 +37,7 @@ use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 
 /// Size in bytes of a serialized block ID
-const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASHV1_SIZE_BYTES;
 
 /// block id
 #[derive(

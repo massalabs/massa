@@ -4,7 +4,7 @@
 //! Used to detect operation reuse.
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HASHV1_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
@@ -26,7 +26,7 @@ use std::{
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
-const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASHV1_SIZE_BYTES];
 
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone)]
