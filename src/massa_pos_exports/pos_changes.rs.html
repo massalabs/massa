@@ -177,7 +177,6 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
     ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
@@ -194,10 +193,9 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// Recap of all PoS changes
-</span><span class="attr">#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Default, Debug, Clone)]
 </span><span class="kw">pub struct </span>PoSChanges {
     <span class="doccomment">/// extra block seed bits added
     </span><span class="kw">pub </span>seed_bits: BitVec&lt;u8&gt;,

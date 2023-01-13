@@ -440,6 +440,7 @@
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::APIConfig;
@@ -449,21 +450,22 @@
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
-<span class="kw">use </span>massa_api_exports::{
+<span class="kw">use </span>massa_execution_exports::ExecutionController;
+<span class="kw">use </span>massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, ExecuteReadOnlyResponse, ListType, NodeStatus, OperationInfo, OperationInput,
+    EndorsementInfo, EventFilter, ListType, NodeStatus, OperationInfo, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
 };
-<span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    api::EventFilter,
-    block::{Block, BlockId},
+    block::{Block},
+    block_id::{BlockId},
     endorsement::EndorsementId,
     operation::OperationId,
     slot::Slot,

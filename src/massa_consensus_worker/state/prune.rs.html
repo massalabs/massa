@@ -360,7 +360,7 @@
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
-    block::BlockId,
+    block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
 };
@@ -411,9 +411,9 @@
                         discard_active_h
                     ))
                 })<span class="question-mark">?</span>;
-                block_slot = block.content.header.content.slot;
+                block_slot = block.content.header().content.slot;
                 block_creator = block.content_creator_address;
-                block_parents = block.content.header.content.parents.clone();
+                block_parents = block.content.header().content.parents.clone();
             };
 
             <span class="kw">let </span>discarded_active = <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
@@ -648,7 +648,7 @@
                             ))
                         })<span class="question-mark">?
                         </span>.content
-                        .header
+                        .header()
                         .clone(),
                 };
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.prune_waiting_for_dependencies&quot;</span>, {<span class="string">&quot;hash&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason_opt});
