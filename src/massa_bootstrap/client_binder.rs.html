@@ -256,7 +256,7 @@
 };
 <span class="kw">use </span>async_speed_limit::clock::StandardClock;
 <span class="kw">use </span>async_speed_limit::{Limiter, Resource};
-<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HASHV1_SIZE_BYTES};
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 <span class="kw">use </span>massa_models::version::{Version, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -427,15 +427,15 @@
         <span class="kw">let </span>message = {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_message) = <span class="self">self</span>.prev_message {
                 <span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>sig.to_bytes()));
-                <span class="kw">let </span><span class="kw-2">mut </span>sig_msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; HASH_SIZE_BYTES + (msg_len <span class="kw">as </span>usize)];
-                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
+                <span class="kw">let </span><span class="kw-2">mut </span>sig_msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; HASHV1_SIZE_BYTES + (msg_len <span class="kw">as </span>usize)];
+                sig_msg_bytes[..HASHV1_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
                 <span class="self">self</span>.duplex
-                    .read_exact(<span class="kw-2">&amp;mut </span>sig_msg_bytes[HASH_SIZE_BYTES..])
+                    .read_exact(<span class="kw-2">&amp;mut </span>sig_msg_bytes[HASHV1_SIZE_BYTES..])
                     .<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="kw">let </span>msg_hash = Hash::compute_from(<span class="kw-2">&amp;</span>sig_msg_bytes);
                 <span class="self">self</span>.remote_pubkey.verify_signature(<span class="kw-2">&amp;</span>msg_hash, <span class="kw-2">&amp;</span>sig)<span class="question-mark">?</span>;
                 <span class="kw">let </span>(<span class="kw">_</span>, msg) = message_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>sig_msg_bytes[HASH_SIZE_BYTES..])
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>sig_msg_bytes[HASHV1_SIZE_BYTES..])
                     .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
                 msg
             } <span class="kw">else </span>{

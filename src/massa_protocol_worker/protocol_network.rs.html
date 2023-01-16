@@ -590,7 +590,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::node_info::NodeInfo;
 <span class="kw">use </span><span class="kw">crate</span>::protocol_worker::ProtocolWorker;
-<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HASHV1_SIZE_BYTES};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     block::Block,
@@ -928,7 +928,7 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>total_hash: Vec&lt;u8&gt; =
-            Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
+            Vec::with_capacity(operation_ids.len().saturating_mul(HASHV1_SIZE_BYTES));
         operation_ids.iter().for_each(|op_id| {
             <span class="kw">let </span>op_hash = op_id.get_hash().into_bytes();
             total_hash.extend(op_hash);
