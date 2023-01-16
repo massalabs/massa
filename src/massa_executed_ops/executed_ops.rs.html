@@ -341,7 +341,7 @@
 //! Used to detect operation reuse.
 
 </span><span class="kw">use crate</span>::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HASHV1_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
@@ -363,7 +363,7 @@
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
-<span class="kw">const </span>EXECUTED_OPS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+<span class="kw">const </span>EXECUTED_OPS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASHV1_SIZE_BYTES];
 
 <span class="doccomment">/// A structure to list and prune previously executed operations
 </span><span class="attr">#[derive(Debug, Clone)]

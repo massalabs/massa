@@ -80,6 +80,7 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{HashMap, HashSet};
@@ -87,6 +88,7 @@
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">impl </span>PreHashed <span class="kw">for </span>massa_hash::Hash {}
+<span class="kw">impl </span>PreHashed <span class="kw">for </span>massa_hash::HashV2 {}
 
 <span class="doccomment">/// A trait indicating that its carrier is already a hash with at least 64 bits
 /// and doesn&#39;t need to be re-hashed for hash-table purposes

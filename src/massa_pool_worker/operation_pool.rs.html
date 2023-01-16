@@ -263,16 +263,6 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -283,7 +273,7 @@
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
 };
-<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig};
+<span class="kw">use </span>massa_pool_exports::PoolConfig;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::BTreeSet;
 
@@ -310,9 +300,6 @@
 
     <span class="doccomment">/// last consensus final periods, per thread
     </span>last_cs_final_periods: Vec&lt;u64&gt;,
-
-    <span class="doccomment">/// channels used by the pool worker
-    </span>channels: PoolChannels,
 }
 
 <span class="kw">impl </span>OperationPool {
@@ -320,7 +307,6 @@
         config: PoolConfig,
         storage: <span class="kw-2">&amp;</span>Storage,
         execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
-        channels: PoolChannels,
     ) -&gt; <span class="self">Self </span>{
         OperationPool {
             operations: Default::default(),
@@ -330,7 +316,6 @@
             config,
             storage: storage.clone_without_refs(),
             execution_controller,
-            channels,
         }
     }
 
@@ -392,15 +377,10 @@
         </span>{
             <span class="kw">let </span>ops = ops_storage.read_operations();
             <span class="kw">for </span>op_id <span class="kw">in </span>items {
-                <span class="kw">let </span>op = ops
-                    .get(<span class="kw-2">&amp;</span>op_id)
-                    .expect(<span class="string">&quot;attempting to add operation to pool, but it is absent from storage&quot;</span>);
-                <span class="comment">// Broadcast operation to active sender(channel) subscribers.
-                </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                    <span class="kw">let _ </span>= <span class="self">self</span>.channels.operation_sender.send(op.content.clone());
-                }
                 <span class="kw">let </span>op_info = OperationInfo::from_op(
-                    op,
+                    ops.get(<span class="kw-2">&amp;</span>op_id).expect(
+                        <span class="string">&quot;attempting to add operation to pool, but it is absent from storage&quot;</span>,
+                    ),
                     <span class="self">self</span>.config.operation_validity_periods,
                     <span class="self">self</span>.config.roll_price,
                     <span class="self">self</span>.config.thread_count,

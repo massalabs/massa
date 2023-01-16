@@ -631,7 +631,7 @@
 <a href="#631" id="631">631</a>
 <a href="#632" id="632">632</a>
 </pre><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
-<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASHV1_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
@@ -657,7 +657,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::PoSChanges;
 
-<span class="kw">const </span>CYCLE_INFO_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+<span class="kw">const </span>CYCLE_INFO_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASHV1_SIZE_BYTES];
 
 <span class="kw">struct </span>CycleInfoHashComputer {
     u64_ser: U64VarIntSerializer,
@@ -873,7 +873,7 @@
         BitVec::default(),
         PreHashMap::default(),
     );
-    <span class="kw">let </span>addr = Address::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">32</span>]);
+    <span class="kw">let </span>addr = Address::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>; massa_models::address::ADDRESS_MAX_SIZE_BYTES]);
 
     <span class="comment">// add changes
     </span><span class="kw">let </span><span class="kw-2">mut </span>roll_changes = PreHashMap::default();
