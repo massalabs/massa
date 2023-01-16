@@ -12,8 +12,7 @@ use massa_consensus_exports::{
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    api::BlockGraphStatus,
-    block::{BlockId, SecuredHeader},
+    block::{BlockGraphStatus, BlockId, SecuredHeader},
     clique::Clique,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,

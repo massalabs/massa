@@ -15,9 +15,9 @@ use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
     address::Address,
     amount::Amount,
-    api::EventFilter,
     block::BlockId,
     endorsement::EndorsementId,
+    execution::EventFilter,
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };

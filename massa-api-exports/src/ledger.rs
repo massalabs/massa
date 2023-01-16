@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::amount::Amount;
-use massa_models::ledger_models::LedgerData;
+use massa_models::ledger::LedgerData;
 
 use serde::{Deserialize, Serialize};
 

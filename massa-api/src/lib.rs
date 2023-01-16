@@ -31,9 +31,9 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
     address::Address,
-    api::EventFilter,
     block::{Block, BlockId},
     endorsement::EndorsementId,
+    execution::EventFilter,
     slot::Slot,
     version::Version,
 };

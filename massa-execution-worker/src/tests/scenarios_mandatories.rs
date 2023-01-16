@@ -10,9 +10,9 @@ use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_S
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
-    api::EventFilter,
     block::BlockId,
     datastore::Datastore,
+    execution::EventFilter,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     secure_share::SecureShareContent,
 };

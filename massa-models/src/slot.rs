@@ -329,3 +329,18 @@ impl Slot {
             .saturating_sub(s.thread as u64))
     }
 }
+
+/// When an address is drawn to create an endorsement it is selected for a specific index
+#[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
+pub struct IndexedSlot {
+    /// slot
+    pub slot: Slot,
+    /// endorsement index in the slot
+    pub index: usize,
+}
+
+impl std::fmt::Display for IndexedSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Slot: {}, Index: {}", self.slot, self.index)
+    }
+}

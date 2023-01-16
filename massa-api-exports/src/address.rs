@@ -1,10 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::api::IndexedSlot;
 use massa_models::endorsement::EndorsementId;
 use massa_models::operation::OperationId;
-use massa_models::slot::Slot;
+use massa_models::slot::{IndexedSlot, Slot};
 use massa_models::{address::Address, amount::Amount, block::BlockId};
 use serde::{Deserialize, Serialize};
 

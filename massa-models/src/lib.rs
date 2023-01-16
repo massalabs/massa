@@ -15,8 +15,6 @@ pub mod active_block;
 pub mod address;
 /// amount related structures
 pub mod amount;
-/// structure use by the API
-pub mod api;
 /// block-related structures
 pub mod block;
 /// clique
@@ -31,8 +29,10 @@ pub mod datastore;
 pub mod endorsement;
 /// models error
 pub mod error;
+/// execution related structures
+pub mod execution;
 /// ledger related structures
-pub mod ledger_models;
+pub mod ledger;
 /// node related structure
 pub mod node;
 /// operations

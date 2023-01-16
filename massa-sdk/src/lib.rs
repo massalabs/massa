@@ -25,11 +25,11 @@ use massa_api_exports::{
 };
 use massa_models::{
     address::Address,
-    api::EventFilter,
     block::{BlockHeader, BlockId, FilledBlock},
     clique::Clique,
     composite::PubkeySig,
     endorsement::EndorsementId,
+    execution::EventFilter,
     node::NodeId,
     operation::{Operation, OperationId},
     output_event::SCOutputEvent,

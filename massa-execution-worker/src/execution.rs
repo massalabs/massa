@@ -20,7 +20,7 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::api::EventFilter;
+use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;

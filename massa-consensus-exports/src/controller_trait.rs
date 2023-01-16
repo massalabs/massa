@@ -3,8 +3,7 @@ use crate::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
 use massa_models::prehash::PreHashSet;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{
-    api::BlockGraphStatus,
-    block::{BlockHeader, BlockId},
+    block::{BlockGraphStatus, BlockHeader, BlockId},
     clique::Clique,
     secure_share::SecureShare,
     slot::Slot,

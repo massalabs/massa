@@ -25,8 +25,11 @@ use massa_execution_exports::{
 use massa_models::operation::OperationDeserializer;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::{
-    api::BlockGraphStatus, block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
-    operation::SecureShareOperation, timeslots,
+    block::{Block, BlockGraphStatus},
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
+    operation::SecureShareOperation,
+    timeslots,
 };
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
@@ -36,12 +39,12 @@ use itertools::{izip, Itertools};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
-    api::EventFilter,
     block::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
     endorsement::EndorsementId,
+    execution::EventFilter,
     node::NodeId,
     operation::OperationId,
     output_event::SCOutputEvent,
