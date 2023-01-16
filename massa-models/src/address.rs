@@ -8,6 +8,8 @@ pub use crate::address::address_v2::*;
 
 pub use crate::address::address_v1::ADDRESSV1_SIZE_BYTES;
 pub use crate::address::address_v2::ADDRESSV2_SIZE_BYTES;
+pub use crate::address::address_v1::ADDRESSV1_VERSION;
+pub use crate::address::address_v2::ADDRESSV2_VERSION;
 
 /// Max Size of a serialized Address, in bytes
 pub const ADDRESS_MAX_SIZE_BYTES: usize = ADDRESSV2_SIZE_BYTES;
@@ -21,6 +23,8 @@ use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
 use std::str::FromStr;
+
+use tracing::debug;
 
 /// Derived from a public key
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -52,10 +56,10 @@ impl std::fmt::Debug for Address {
 
 impl ::serde::Serialize for Address {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        if s.is_human_readable() {
-            s.collect_str(&self.to_string())
-        } else {
-            s.serialize_bytes(self.to_bytes())
+
+        match &self {
+            Address::AddressV1(addr1) => addr1.serialize(s),
+            Address::AddressV2(addr2) => addr2.serialize(s),
         }
     }
 }
@@ -130,9 +134,13 @@ impl FromStr for Address {
     /// assert_eq!(address, res_addr);
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+
+        debug!("Address::from_str(s) with s = {}", s);
+
         let mut chars = s.chars();
         match chars.next() {
             Some(prefix) if prefix == ADDRESS_PREFIX => {
+                
                 let data = chars.collect::<String>();
                 let decoded_bs58_check = bs58::decode(data)
                     .with_check(None)
@@ -142,12 +150,15 @@ impl FromStr for Address {
                 let (rest, version) = u64_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::AddressParseError)?;
+
+                debug!("Deserialized version = {}", version);
+
                 match version {
-                    1 => Ok(Address::AddressV1(AddressV1(Hash::from_bytes(
+                    ADDRESSV1_VERSION => Ok(Address::AddressV1(AddressV1(Hash::from_bytes(
                         rest.try_into()
                             .map_err(|_| ModelsError::AddressParseError)?,
                     )))),
-                    2 => Ok(Address::AddressV2(AddressV2(HashV2::from_bytes(
+                    ADDRESSV2_VERSION => Ok(Address::AddressV2(AddressV2(HashV2::from_bytes(
                         rest.try_into()
                             .map_err(|_| ModelsError::AddressParseError)?,
                     )))),
@@ -252,7 +263,7 @@ impl Address {
                 Address::AddressV2(AddressV2::from_bytes(sized_data.try_into().unwrap()))
             }
             _ => {
-                panic!("err")
+                panic!("unexpected address length")
             }
         }
     }

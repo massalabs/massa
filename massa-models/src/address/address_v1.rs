@@ -20,7 +20,7 @@ pub const ADDRESSV1_SIZE_BYTES: usize = massa_hash::HASHV1_SIZE_BYTES;
 pub struct AddressV1(pub Hash);
 
 const ADDRESSV1_PREFIX: char = 'A';
-const ADDRESSV1_VERSION: u64 = 0;
+pub const ADDRESSV1_VERSION: u64 = 0;
 
 impl std::fmt::Display for AddressV1 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

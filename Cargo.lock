@@ -2615,6 +2615,7 @@ dependencies = [
  "serial_test 0.10.0",
  "strum",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

@@ -20,7 +20,7 @@ pub const ADDRESSV2_SIZE_BYTES: usize = massa_hash::HASHV2_SIZE_BYTES;
 pub struct AddressV2(pub HashV2);
 
 const ADDRESSV2_PREFIX: char = 'A';
-const ADDRESSV2_VERSION: u64 = 0;
+pub const ADDRESSV2_VERSION: u64 = 1;
 
 impl std::fmt::Display for AddressV2 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
