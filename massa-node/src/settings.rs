@@ -111,6 +111,8 @@ pub struct PoolSettings {
     pub max_operation_future_validity_start_periods: u64,
     pub max_endorsement_count: u64,
     pub max_item_return_count: usize,
+    /// operations sender(channel) capacity
+    pub broadcast_operations_capacity: usize,
 }
 
 /// API and server configuration, read from a file configuration.
@@ -220,8 +222,6 @@ pub struct ProtocolSettings {
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
-    /// operations sender(channel) capacity
-    pub broadcast_operations_capacity: usize,
 }
 
 #[cfg(test)]

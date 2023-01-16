@@ -132,8 +132,6 @@
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
-    # operations sender(channel) capacity
-    broadcast_operations_capacity = 5000
 
 [network]
     # port on which to listen for protocol communication
@@ -254,6 +252,8 @@
     max_endorsement_count = 10000
     # max number of items returned per query
     max_item_return_count = 100
+    # operations sender(channel) capacity
+    broadcast_operations_capacity = 5000
 
 [selector]
     # maximum number of computed cycle's draws we keep in cache
