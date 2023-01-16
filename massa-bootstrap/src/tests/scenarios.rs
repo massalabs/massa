@@ -63,7 +63,7 @@ async fn test_bootstrap_server() {
     let periods_per_cycle = 2;
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
-    let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
+    let genesis_address = Address::from_public_key_versioned(&KeyPair::generate().get_public_key(), 1);
 
     let (consensus_controller, mut consensus_event_receiver) =
         MockConsensusController::new_with_receiver();

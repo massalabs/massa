@@ -268,7 +268,7 @@ pub fn get_random_public_key() -> PublicKey {
 
 pub fn get_random_address() -> Address {
     let priv_key = KeyPair::generate();
-    Address::from_public_key(&priv_key.get_public_key())
+    Address::from_public_key_versioned(&priv_key.get_public_key(), 1)
 }
 
 pub fn get_dummy_signature(s: &str) -> Signature {

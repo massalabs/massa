@@ -191,7 +191,7 @@ impl Address {
 
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Self::from_public_key_versioned(public_key, 2)
+        Self::from_public_key_versioned(public_key, 1)
     }
 
     /// ## Example
@@ -258,6 +258,21 @@ impl Address {
                 panic!("unexpected address length")
             }
         }
+    }
+
+    /// Gets the version without matching for the length of the byte array
+    pub fn get_version_from_bytes(data: &[u8]) -> Option<u64> {
+
+        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+        let result = u64_deserializer
+            .deserialize::<DeserializeError>(&data[..])
+            .map_err(|_| ModelsError::AddressParseError);
+        
+        match result {
+            Ok((_rest, version)) => { Some(version)},
+            _ => None
+        }
+
     }
 }
 

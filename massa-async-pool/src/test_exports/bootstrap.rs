@@ -21,7 +21,7 @@ pub fn create_async_pool(
 
 fn get_random_address() -> Address {
     let keypair = KeyPair::generate();
-    Address::from_public_key(&keypair.get_public_key())
+    Address::from_public_key_versioned(&keypair.get_public_key(), 1)
 }
 
 pub fn get_random_message(fee: Option<Amount>) -> AsyncMessage {

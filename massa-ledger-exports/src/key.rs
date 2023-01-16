@@ -1,5 +1,5 @@
 use massa_models::{
-    address::{Address, AddressDeserializer, ADDRESS_MAX_SIZE_BYTES},
+    address::{Address, AddressDeserializer, ADDRESSV1_SIZE_BYTES, ADDRESSV2_SIZE_BYTES},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
@@ -88,18 +88,49 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        let limit = ADDRESS_MAX_SIZE_BYTES + 1;
-        buffer.extend(&value[..limit]);
-        if value[ADDRESS_MAX_SIZE_BYTES] == DATASTORE_IDENT {
-            if value.len() > limit {
-                self.vec_u8_serializer
-                    .serialize(&value[limit..].to_vec(), buffer)?;
-            } else {
+
+        let version = Address::get_version_from_bytes(value.as_slice());
+        
+        match version {
+            Some(0) => { 
+                let limit = ADDRESSV1_SIZE_BYTES + 1;
+                buffer.extend(&value[..limit]);
+                if value[ADDRESSV1_SIZE_BYTES] == DATASTORE_IDENT {
+                    if value.len() > limit {
+                        self.vec_u8_serializer
+                            .serialize(&value[limit..].to_vec(), buffer)?;
+                    } else {
+                        return Err(SerializeError::GeneralError(
+                            "datastore keys can not be empty".to_string(),
+                        ));
+                    }
+                }
+
+            },
+            Some(1) => { 
+                let limit = ADDRESSV2_SIZE_BYTES + 1;
+                buffer.extend(&value[..limit]);
+                if value[ADDRESSV2_SIZE_BYTES] == DATASTORE_IDENT {
+                    if value.len() > limit {
+                        self.vec_u8_serializer
+                            .serialize(&value[limit..].to_vec(), buffer)?;
+                    } else {
+                        return Err(SerializeError::GeneralError(
+                            "datastore keys can not be empty".to_string(),
+                        ));
+                    }
+                }
+
+            },
+            _ => { 
                 return Err(SerializeError::GeneralError(
                     "datastore keys can not be empty".to_string(),
                 ));
-            }
+            },
+
+
         }
+
         Ok(())
     }
 }
