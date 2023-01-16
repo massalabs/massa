@@ -504,7 +504,7 @@ impl RpcClientV2 {
         }
     }
 
-    /// New received only operations.
+    /// New produced operations.
     pub async fn subscribe_new_operations(
         &self,
     ) -> Result<Subscription<Operation>, jsonrpsee::core::Error> {

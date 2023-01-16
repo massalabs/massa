@@ -35,7 +35,7 @@ pub trait MassaApi {
 	)]
     fn subscribe_new_filled_blocks(&self);
 
-    /// New received only operations.
+    /// New produced operations.
     #[subscription(
 		name = "subscribe_new_operations" => "new_operations",
 		unsubscribe = "unsubscribe_new_operations",

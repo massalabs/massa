@@ -1150,8 +1150,8 @@
                 "name": "Operation"
             },
             "name": "subscribe_new_operations",
-            "summary": "Subscribe to new received operations",
-            "description": "Subscribe to new received operations."
+            "summary": "Subscribe to new operations",
+            "description": "Subscribe to new operations."
         },
         {
             "tags": [
