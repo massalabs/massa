@@ -6,7 +6,7 @@ use std::sync::{
 };
 
 use massa_models::{
-    block::{BlockHeader, BlockId, BlockGraphStatus},
+    block::{BlockGraphStatus, BlockHeader, BlockId},
     clique::Clique,
     prehash::PreHashSet,
     secure_share::SecureShare,
