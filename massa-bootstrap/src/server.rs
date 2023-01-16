@@ -260,16 +260,23 @@ impl BootstrapServer {
 
                         bootstrap_sessions.push(async move {
                             let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
-                            match manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender).await {
-                                Ok(_) => {
-                                    info!("bootstrapped peer {}", remote_addr)
-                                },
-                                Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
-                                Err(err) => {
-                                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                            match tokio::time::timeout(Duration::from_secs(20*60), manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender)).await {
+                                Ok(mgmt) => match mgmt {
+                                    Ok(_) => {
+                                        info!("bootstrapped peer {}", remote_addr)
+                                    },
+                                    Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
+                                    Err(err) => {
+                                        debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                                        let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
+                                    },
+                                }
+                                Err(_timeout) => {
+                                    debug!("bootstrap timeout for peer {}", remote_addr);
                                     // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
-                                },
+                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: "Bootstrap process timedout".to_string() })).await;
+                                }
                             }
 
                         });
