@@ -440,29 +440,39 @@
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::config::APIConfig;
-<span class="kw">use </span><span class="kw">crate</span>::error::ApiError;
-<span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
+</span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
-<span class="kw">use </span>massa_execution_exports::ExecutionController;
-<span class="kw">use </span>massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, ListType, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
+<span class="kw">use </span>massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    ListType, ScrudOperation, TimeInterval,
 };
+<span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
-<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{
     address::Address,
+    api::EventFilter,
     block::{Block, BlockId},
     endorsement::EndorsementId,
     operation::OperationId,
