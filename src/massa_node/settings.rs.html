@@ -342,6 +342,8 @@
     <span class="kw">pub </span>max_operation_future_validity_start_periods: u64,
     <span class="kw">pub </span>max_endorsement_count: u64,
     <span class="kw">pub </span>max_item_return_count: usize,
+    <span class="doccomment">/// operations sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_operations_capacity: usize,
 }
 
 <span class="doccomment">/// API and server configuration, read from a file configuration.
@@ -451,8 +453,6 @@
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// Time threshold after which operation are not propagated
     </span><span class="kw">pub </span>max_endorsements_propagation_time: MassaTime,
-    <span class="doccomment">/// operations sender(channel) capacity
-    </span><span class="kw">pub </span>broadcast_operations_capacity: usize,
 }
 
 <span class="attr">#[cfg(test)]
