@@ -31,9 +31,10 @@ use massa_models::{
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{Interface, RuntimeModule};
+use massa_sc_runtime::{GasCosts, Interface, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
+use schnellru::{ByLength, LruMap};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -117,34 +118,36 @@ impl ExecutionState {
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
-            module_cache: Arc::new(RwLock::new(ModuleCache::new(config.max_module_cache_size))),
+            module_cache: LruMap::new(ByLength::new(config.max_module_cache_size)),
             config,
         }
     }
 
-    // /// If the module is contained in the cache:
-    // /// * retrieve a copy of it
-    // /// * move it up in the LRU cache
-    // ///
-    // /// If the module is not contained in the cache:
-    // /// * create the module
-    // /// * save the module in the cache
-    // /// * retrieve a copy of it
-    // pub(crate) fn get_module(
-    //     &mut self,
-    //     bytecode: &[u8],
-    //     limit: u64,
-    //     gas_costs: GasCosts,
-    // ) -> Result<Module, CompileError> {
-    //     let module = if let Some(cached_module) = self.module_cache.get(bytecode) {
-    //         cached_module.clone()
-    //     } else {
-    //         let new_module = Module::new(engine, bytecode)?;
-    //         self.module_cache.insert(bytecode.to_vec(), new_module.clone());
-    //         new_module
-    //     };
-    //     Ok(module)
-    // }
+    /// If the module is contained in the cache:
+    /// * retrieve a copy of it
+    /// * move it up in the LRU cache
+    ///
+    /// If the module is not contained in the cache:
+    /// * create the module
+    /// * save the module in the cache
+    /// * retrieve a copy of it
+    pub(crate) fn get_module(
+        &mut self,
+        bytecode: &[u8],
+        limit: u64,
+        gas_costs: GasCosts,
+    ) -> Result<(), ExecutionError> {
+        let module = if let Some(cached_module) = self.module_cache.get_mut(bytecode) {
+            cached_module.reinitialize_metadata(limit, gas_costs);
+            cached_module.clone()
+        } else {
+            let new_module = RuntimeModule::new(bytecode, limit, gas_costs)?;
+            self.module_cache
+                .insert(bytecode.to_vec(), new_module.clone());
+            new_module
+        };
+        Ok(module)
+    }
 
     /// Get execution statistics
     pub fn get_stats(&self) -> ExecutionStats {
@@ -532,9 +535,7 @@ impl ExecutionState {
         // run the VM on the bytecode contained in the operation
         match massa_sc_runtime::run_main(
             &*self.execution_interface,
-            &bytecode,
-            self.module_cache.clone(),
-            *max_gas,
+            module,
             self.config.gas_costs.clone(),
         ) {
             Ok(_response) => {}
@@ -627,11 +628,9 @@ impl ExecutionState {
         // run the VM on the bytecode loaded from the target address
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
-            &bytecode,
+            module,
             target_func,
             param,
-            self.module_cache.clone(),
-            max_gas,
             self.config.gas_costs.clone(),
         ) {
             Ok(_response) => {}
@@ -718,11 +717,9 @@ impl ExecutionState {
         // run the VM on the bytecode contained in the operation
         if let Err(err) = massa_sc_runtime::run_function(
             &*self.execution_interface,
-            &bytecode,
+            module,
             &message.handler,
             &message.data,
-            self.module_cache.clone(),
-            message.max_gas,
             self.config.gas_costs.clone(),
         ) {
             // execution failed: reset context to snapshot and reimburse sender
@@ -1078,9 +1075,7 @@ impl ExecutionState {
                 // run the bytecode's main function
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
-                    &bytecode,
-                    self.module_cache.clone(),
-                    req.max_gas,
+                    module,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
@@ -1101,11 +1096,9 @@ impl ExecutionState {
                 // run the target function in the bytecode
                 massa_sc_runtime::run_function(
                     &*self.execution_interface,
-                    &bytecode,
+                    module,
                     &target_func,
                     &parameter,
-                    self.module_cache.clone(),
-                    req.max_gas,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
