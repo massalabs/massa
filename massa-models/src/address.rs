@@ -6,11 +6,6 @@ use crate::prehash::PreHashed;
 pub use crate::address::address_v1::*;
 pub use crate::address::address_v2::*;
 
-pub use crate::address::address_v1::ADDRESSV1_SIZE_BYTES;
-pub use crate::address::address_v2::ADDRESSV2_SIZE_BYTES;
-pub use crate::address::address_v1::ADDRESSV1_VERSION;
-pub use crate::address::address_v2::ADDRESSV2_VERSION;
-
 /// Max Size of a serialized Address, in bytes
 pub const ADDRESS_MAX_SIZE_BYTES: usize = ADDRESSV2_SIZE_BYTES;
 
@@ -56,7 +51,6 @@ impl std::fmt::Debug for Address {
 
 impl ::serde::Serialize for Address {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-
         match &self {
             Address::AddressV1(addr1) => addr1.serialize(s),
             Address::AddressV2(addr2) => addr2.serialize(s),
@@ -134,13 +128,11 @@ impl FromStr for Address {
     /// assert_eq!(address, res_addr);
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-
         debug!("Address::from_str(s) with s = {}", s);
 
         let mut chars = s.chars();
         match chars.next() {
             Some(prefix) if prefix == ADDRESS_PREFIX => {
-                
                 let data = chars.collect::<String>();
                 let decoded_bs58_check = bs58::decode(data)
                     .with_check(None)
