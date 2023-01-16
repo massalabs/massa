@@ -31,7 +31,7 @@ use massa_models::{
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{Interface, ModuleCache};
+use massa_sc_runtime::{Interface, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
@@ -71,7 +71,7 @@ pub(crate) struct ExecutionState {
     // execution statistics
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
-    module_cache: Arc<RwLock<ModuleCache>>,
+    module_cache: LruMap<Vec<u8>, RuntimeModule>,
 }
 
 impl ExecutionState {
@@ -121,6 +121,30 @@ impl ExecutionState {
             config,
         }
     }
+
+    // /// If the module is contained in the cache:
+    // /// * retrieve a copy of it
+    // /// * move it up in the LRU cache
+    // ///
+    // /// If the module is not contained in the cache:
+    // /// * create the module
+    // /// * save the module in the cache
+    // /// * retrieve a copy of it
+    // pub(crate) fn get_module(
+    //     &mut self,
+    //     bytecode: &[u8],
+    //     limit: u64,
+    //     gas_costs: GasCosts,
+    // ) -> Result<Module, CompileError> {
+    //     let module = if let Some(cached_module) = self.module_cache.get(bytecode) {
+    //         cached_module.clone()
+    //     } else {
+    //         let new_module = Module::new(engine, bytecode)?;
+    //         self.module_cache.insert(bytecode.to_vec(), new_module.clone());
+    //         new_module
+    //     };
+    //     Ok(module)
+    // }
 
     /// Get execution statistics
     pub fn get_stats(&self) -> ExecutionStats {
