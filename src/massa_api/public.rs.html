@@ -1004,6 +1004,9 @@
 <a href="#1004" id="1004">1004</a>
 <a href="#1005" id="1005">1005</a>
 <a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1031,8 +1034,11 @@
 <span class="kw">use </span>massa_models::operation::OperationDeserializer;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_models::{
-    api::BlockGraphStatus, block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
-    operation::SecureShareOperation, timeslots,
+    block::{Block, BlockGraphStatus},
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
+    operation::SecureShareOperation,
+    timeslots,
 };
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
@@ -1042,12 +1048,12 @@
 <span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    api::EventFilter,
     block::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
     endorsement::EndorsementId,
+    execution::EventFilter,
     node::NodeId,
     operation::OperationId,
     output_event::SCOutputEvent,

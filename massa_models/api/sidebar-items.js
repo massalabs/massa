@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":[["BlockGraphStatus","Block status within the graph"]],"struct":[["EventFilter","filter used when retrieving SC output events"],["IndexedSlot","When an address is drawn to create an endorsement it is selected for a specific index"]]};

@@ -1053,6 +1053,27 @@
 <a href="#1053" id="1053">1053</a>
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
@@ -1879,6 +1900,27 @@
         }
         <span class="prelude-val">Ok</span>(())
     }
+}
+
+<span class="doccomment">/// Block status within the graph
+</span><span class="attr">#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub enum </span>BlockGraphStatus {
+    <span class="doccomment">/// received but not yet graph-processed
+    </span>Incoming,
+    <span class="doccomment">/// waiting for its slot
+    </span>WaitingForSlot,
+    <span class="doccomment">/// waiting for a missing dependency
+    </span>WaitingForDependencies,
+    <span class="doccomment">/// active in alternative cliques
+    </span>ActiveInAlternativeCliques,
+    <span class="doccomment">/// active in blockclique
+    </span>ActiveInBlockclique,
+    <span class="doccomment">/// forever applies
+    </span>Final,
+    <span class="doccomment">/// discarded for any reason
+    </span>Discarded,
+    <span class="doccomment">/// not found in graph
+    </span>NotFound,
 }
 
 <span class="attr">#[cfg(test)]
