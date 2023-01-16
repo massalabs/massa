@@ -2195,6 +2195,7 @@ dependencies = [
  "enum-map",
  "lazy_static",
  "massa_api",
+ "massa_api_exports",
  "massa_async_pool",
  "massa_bootstrap",
  "massa_consensus_exports",
@@ -2260,14 +2261,12 @@ name = "massa_api"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "displaydoc",
  "hyper",
  "itertools",
  "jsonrpsee",
  "massa_api_exports",
  "massa_consensus_exports",
  "massa_execution_exports",
- "massa_hash",
  "massa_models",
  "massa_network_exports",
  "massa_pool_exports",
@@ -2281,7 +2280,6 @@ dependencies = [
  "parking_lot",
  "serde",
  "serde_json",
- "thiserror",
  "tokio",
  "tokio-stream",
  "tower",
@@ -2293,13 +2291,22 @@ dependencies = [
 name = "massa_api_exports"
 version = "0.1.0"
 dependencies = [
+ "displaydoc",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
+ "massa_consensus_exports",
+ "massa_execution_exports",
  "massa_final_state",
+ "massa_hash",
  "massa_models",
+ "massa_network_exports",
+ "massa_protocol_exports",
  "massa_signature",
  "massa_time",
+ "massa_wallet",
  "serde",
- "serial_test 0.10.0",
  "strum",
+ "thiserror",
 ]
 
 [[package]]

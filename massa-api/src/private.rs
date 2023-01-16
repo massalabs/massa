@@ -1,16 +1,21 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
 use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
 use itertools::Itertools;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, ExecuteReadOnlyResponse, ListType, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    ListType, ScrudOperation, TimeInterval,
 };
 use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;

@@ -1,14 +1,21 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
-    DatastoreEntryInput, DatastoreEntryOutput, OperationInput, ReadOnlyBytecodeExecution,
-    ReadOnlyCall, ReadOnlyResult, SlotAmount,
+    address::AddressInfo,
+    block::{BlockInfo, BlockInfoContent, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    slot::SlotAmount,
+    TimeInterval,
 };
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
@@ -26,10 +33,6 @@ use massa_protocol_exports::ProtocolCommandSender;
 use massa_serialization::{DeserializeError, Deserializer};
 
 use itertools::{izip, Itertools};
-use massa_api_exports::{
-    AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-    ExecuteReadOnlyResponse, NodeStatus, OperationInfo, TimeInterval,
-};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
@@ -188,7 +191,7 @@ impl MassaRpcServer for API<Public> {
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
                     .as_ref()
-                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().take()),
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
                 state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
@@ -267,7 +270,7 @@ impl MassaRpcServer for API<Public> {
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
                     .as_ref()
-                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().take()),
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
                 state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 

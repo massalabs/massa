@@ -7,8 +7,9 @@ use anyhow::Result;
 use console::style;
 use erased_serde::{Serialize, Serializer};
 use massa_api_exports::{
-    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, ExecuteReadOnlyResponse,
-    NodeStatus, OperationInfo,
+    address::AddressInfo, block::BlockInfo, datastore::DatastoreEntryOutput,
+    endorsement::EndorsementInfo, execution::ExecuteReadOnlyResponse, node::NodeStatus,
+    operation::OperationInfo,
 };
 use massa_models::composite::PubkeySig;
 use massa_models::output_event::SCOutputEvent;

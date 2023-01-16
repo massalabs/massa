@@ -4,8 +4,10 @@ use crate::repl::Output;
 use anyhow::{anyhow, bail, Error, Result};
 use console::style;
 use massa_api_exports::{
-    AddressInfo, CompactAddressInfo, DatastoreEntryInput, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall,
+    address::{AddressInfo, CompactAddressInfo},
+    datastore::DatastoreEntryInput,
+    execution::{ReadOnlyBytecodeExecution, ReadOnlyCall},
+    operation::OperationInput,
 };
 use massa_models::node::NodeId;
 use massa_models::prehash::PreHashMap;

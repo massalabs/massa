@@ -13,11 +13,15 @@ use jsonrpsee::rpc_params;
 use jsonrpsee::types::error::CallError;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
-use massa_api_exports::ExecuteReadOnlyResponse;
 use massa_api_exports::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, NodeStatus, OperationInfo, OperationInput, ReadOnlyBytecodeExecution,
-    ReadOnlyCall, TimeInterval,
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    TimeInterval,
 };
 use massa_models::{
     address::Address,
