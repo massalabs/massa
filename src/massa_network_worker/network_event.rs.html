@@ -362,11 +362,11 @@
     <span class="kw">use </span><span class="kw">crate</span>::network_worker::NetworkWorker;
     <span class="kw">use </span>massa_logging::massa_trace;
     <span class="kw">use </span>massa_models::{
-        block::{BlockId, SecuredHeader},
-        endorsement::SecureShareEndorsement,
+        block::{BlockId, WrappedHeader},
+        endorsement::WrappedEndorsement,
         node::NodeId,
-        operation::{OperationPrefixIds, SecureShareOperation},
-        secure_share::Id,
+        operation::{OperationPrefixIds, WrappedOperation},
+        wrapped::Id,
     };
     <span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NodeCommand};
     <span class="kw">use </span>massa_network_exports::{NetworkError, NetworkEvent};
@@ -410,7 +410,7 @@
     <span class="kw">pub async fn </span>on_received_block_header(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
-        header: SecuredHeader,
+        header: WrappedHeader,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader&quot;</span>,
@@ -477,7 +477,7 @@
     </span><span class="kw">pub async fn </span>on_received_operations(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
-        operations: Vec&lt;SecureShareOperation&gt;,
+        operations: Vec&lt;WrappedOperation&gt;,
     ) {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedOperations&quot;</span>,
@@ -544,7 +544,7 @@
     <span class="kw">pub async fn </span>on_received_endorsements(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
-        endorsements: Vec&lt;SecureShareEndorsement&gt;,
+        endorsements: Vec&lt;WrappedEndorsement&gt;,
     ) {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements&quot;</span>,

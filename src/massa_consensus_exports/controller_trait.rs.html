@@ -136,16 +136,18 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_graph_export::BlockGraphExport;
 <span class="kw">use crate</span>::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::streaming_step::StreamingStep;
 <span class="kw">use </span>massa_models::{
-    block::{BlockGraphStatus, BlockHeader, BlockId},
+    api::BlockGraphStatus,
+    block::{BlockHeader, BlockId},
     clique::Clique,
-    secure_share::SecureShare,
     slot::Slot,
     stats::ConsensusStats,
+    wrapped::Wrapped,
 };
 <span class="kw">use </span>massa_storage::Storage;
 
@@ -244,14 +246,14 @@
     /// # Arguments
     /// * `block_id`: the id of the block to register
     /// * `header`: the header of the block to register
-    </span><span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;);
+    </span><span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: Wrapped&lt;BlockHeader, BlockId&gt;);
 
     <span class="doccomment">/// Mark a block as invalid in the graph
     ///
     /// # Arguments
     /// * `block_id`: the id of the block to mark as invalid
     /// * `header`: the header of the block to mark as invalid
-    </span><span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;);
+    </span><span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: Wrapped&lt;BlockHeader, BlockId&gt;);
 
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Useful to allow cloning `Box&lt;dyn ConsensusController&gt;`.

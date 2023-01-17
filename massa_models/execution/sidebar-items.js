@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["EventFilter","filter used when retrieving SC output events"]]};
+window.SIDEBAR_ITEMS = {"enum":[["ReadOnlyResult","The result of the read-only execution."]],"struct":[["ExecuteReadOnlyResponse","The response to a request for a read-only execution."]]};
