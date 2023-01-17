@@ -67,7 +67,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
     .await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial]
 async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
