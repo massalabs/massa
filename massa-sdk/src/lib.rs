@@ -13,22 +13,28 @@ use jsonrpsee::rpc_params;
 use jsonrpsee::types::error::CallError;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
-use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    TimeInterval,
 };
-use massa_models::block::{BlockHeader, FilledBlock};
-use massa_models::clique::Clique;
-use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::node::NodeId;
-use massa_models::operation::Operation;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashMap, PreHashSet};
-use massa_models::version::Version;
 use massa_models::{
-    address::Address, block::BlockId, endorsement::EndorsementId, operation::OperationId,
+    address::Address,
+    block::{BlockHeader, BlockId, FilledBlock},
+    clique::Clique,
+    composite::PubkeySig,
+    endorsement::EndorsementId,
+    execution::EventFilter,
+    node::NodeId,
+    operation::{Operation, OperationId},
+    output_event::SCOutputEvent,
+    prehash::{PreHashMap, PreHashSet},
+    version::Version,
 };
 
 use jsonrpsee::{core::Error as JsonRpseeError, core::RpcResult, http_client::HttpClientBuilder};
@@ -498,7 +504,7 @@ impl RpcClientV2 {
         }
     }
 
-    /// New received only operations.
+    /// New produced operations.
     pub async fn subscribe_new_operations(
         &self,
     ) -> Result<Subscription<Operation>, jsonrpsee::core::Error> {

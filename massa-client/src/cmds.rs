@@ -3,10 +3,12 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Error, Result};
 use console::style;
-use massa_models::api::{
-    AddressInfo, CompactAddressInfo, DatastoreEntryInput, EventFilter, OperationInput,
+use massa_api_exports::{
+    address::{AddressInfo, CompactAddressInfo},
+    datastore::DatastoreEntryInput,
+    execution::{ReadOnlyBytecodeExecution, ReadOnlyCall},
+    operation::OperationInput,
 };
-use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
 use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::get_current_latest_block_slot;
@@ -15,6 +17,7 @@ use massa_models::{
     amount::Amount,
     block::BlockId,
     endorsement::EndorsementId,
+    execution::EventFilter,
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
@@ -1122,9 +1125,9 @@ impl Command {
                     None
                 };
                 let is_final = if let Some(adr) = parameters.get(3) {
-                    Some(adr.parse::<bool>()?)
+                    adr.parse::<bool>()?
                 } else {
-                    None
+                    false
                 };
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
@@ -1157,9 +1160,9 @@ impl Command {
                     None
                 };
                 let is_final = if let Some(adr) = parameters.get(5) {
-                    Some(adr.parse::<bool>()?)
+                    adr.parse::<bool>()?
                 } else {
-                    None
+                    false
                 };
                 match client
                     .public

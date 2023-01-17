@@ -24,6 +24,7 @@ paw = "1.0"
 structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.10"
 # custom modules
+massa_api_exports = { path = "../massa-api-exports" }
 massa_api = { path = "../massa-api" }
 massa_async_pool = { path = "../massa-async-pool" }
 massa_bootstrap = { path = "../massa-bootstrap" }

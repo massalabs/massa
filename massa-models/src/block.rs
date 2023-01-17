@@ -826,6 +826,27 @@ impl std::fmt::Display for BlockHeader {
     }
 }
 
+/// Block status within the graph
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+pub enum BlockGraphStatus {
+    /// received but not yet graph-processed
+    Incoming,
+    /// waiting for its slot
+    WaitingForSlot,
+    /// waiting for a missing dependency
+    WaitingForDependencies,
+    /// active in alternative cliques
+    ActiveInAlternativeCliques,
+    /// active in blockclique
+    ActiveInBlockclique,
+    /// forever applies
+    Final,
+    /// discarded for any reason
+    Discarded,
+    /// not found in graph
+    NotFound,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

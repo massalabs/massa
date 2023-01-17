@@ -14,12 +14,13 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included};
 
 const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 /// Structure containing all the PoS deferred credits information
 pub struct DeferredCredits {
     /// Deferred credits

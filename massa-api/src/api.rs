@@ -3,12 +3,13 @@
 use std::net::SocketAddr;
 
 use crate::api_trait::MassaApiServer;
-use crate::{APIConfig, ApiServer, ApiV2, StopHandle, API};
+use crate::{ApiServer, ApiV2, StopHandle, API};
 use async_trait::async_trait;
 use jsonrpsee::core::error::SubscriptionClosed;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
+use massa_api_exports::config::APIConfig;
 use massa_consensus_exports::ConsensusChannels;
 use massa_models::version::Version;
 use massa_pool_exports::PoolChannels;

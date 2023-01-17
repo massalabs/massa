@@ -1,21 +1,25 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
 use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
 use itertools::Itertools;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
-use massa_execution_exports::ExecutionController;
-use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, ListType, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    ListType, ScrudOperation, TimeInterval,
 };
+use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
@@ -23,6 +27,7 @@ use massa_models::{
     address::Address,
     block::{Block, BlockId},
     endorsement::EndorsementId,
+    execution::EventFilter,
     operation::OperationId,
     slot::Slot,
 };

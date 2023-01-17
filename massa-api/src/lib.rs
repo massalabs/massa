@@ -3,23 +3,28 @@
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-use crate::api_trait::MassaApiServer;
-use crate::error::ApiError::WrongAPI;
+use api_trait::MassaApiServer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError::WrongAPI,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    TimeInterval,
+};
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
-use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
-};
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
@@ -28,6 +33,7 @@ use massa_models::{
     address::Address,
     block::{Block, BlockId},
     endorsement::EndorsementId,
+    execution::EventFilter,
     slot::Slot,
     version::Version,
 };
@@ -48,11 +54,8 @@ use tracing::{info, warn};
 
 mod api;
 mod api_trait;
-mod config;
-mod error;
 mod private;
 mod public;
-pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {

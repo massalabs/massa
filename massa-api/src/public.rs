@@ -1,26 +1,35 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockInfoContent, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    slot::SlotAmount,
+    TimeInterval,
+};
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_models::api::{
-    BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
-};
-use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::{
-    block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
-    operation::SecureShareOperation, timeslots,
+    block::{Block, BlockGraphStatus},
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
+    operation::SecureShareOperation,
+    timeslots,
 };
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
@@ -30,16 +39,12 @@ use itertools::{izip, Itertools};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
-    api::{
-        AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
-        NodeStatus, OperationInfo, TimeInterval,
-    },
     block::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
     endorsement::EndorsementId,
-    execution::ExecuteReadOnlyResponse,
+    execution::EventFilter,
     node::NodeId,
     operation::OperationId,
     output_event::SCOutputEvent,
@@ -188,7 +193,9 @@ impl MassaRpcServer for API<Public> {
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
@@ -265,7 +272,9 @@ impl MassaRpcServer for API<Public> {
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);

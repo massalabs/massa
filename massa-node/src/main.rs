@@ -8,7 +8,8 @@ use crate::settings::SETTINGS;
 
 use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
-use massa_api::{APIConfig, ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
+use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
+use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_consensus_exports::events::ConsensusEvent;

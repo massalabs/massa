@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "massa-api",
+  "massa-api-exports",
   "massa-async-pool",
   "massa-bootstrap",
   "massa-client",

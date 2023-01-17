@@ -10,9 +10,9 @@ use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_S
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
-    api::EventFilter,
     block::BlockId,
     datastore::Datastore,
+    execution::EventFilter,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     secure_share::SecureShareContent,
 };
@@ -84,7 +84,7 @@ fn test_readonly_execution() {
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
-            is_final: Some(true),
+            is_final: true,
         })
         .expect("readonly execution failed");
     assert_eq!(res.out.slot, Slot::new(1, 0));
@@ -98,7 +98,7 @@ fn test_readonly_execution() {
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
-            is_final: Some(false),
+            is_final: false,
         })
         .expect("readonly execution failed");
     assert!(res.out.slot.period > 8);

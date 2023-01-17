@@ -20,6 +20,7 @@ use nom::{
     IResult, Parser,
 };
 use num::rational::Ratio;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
@@ -450,7 +451,7 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
 }
 
 /// Block production statistics
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ProductionStats {
     /// Number of successfully created blocks
     pub block_success_count: u64,

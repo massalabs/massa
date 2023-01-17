@@ -10,8 +10,8 @@ use massa_ledger_exports::LedgerEntry;
 use massa_models::{
     address::Address,
     amount::Amount,
-    api::EventFilter,
     block::BlockId,
+    execution::EventFilter,
     operation::OperationId,
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},

@@ -20,7 +20,7 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::api::EventFilter;
+use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
@@ -1024,14 +1024,14 @@ impl ExecutionState {
         }
 
         // set the execution slot to be the one after the latest executed active or final slot
-        let slot = if req.is_final.map_or(false, |is_final| is_final) {
+        let slot = if req.is_final {
             self.final_cursor
                 .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution")
+                .expect("slot overflow in readonly execution from final slot")
         } else {
             self.active_cursor
                 .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution")
+                .expect("slot overflow in readonly execution from active slot")
         };
 
         // create a readonly execution context
