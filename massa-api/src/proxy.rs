@@ -6,6 +6,7 @@ use hyper::http::HeaderValue;
 use hyper::{Body, Method, Request, Response, StatusCode, Uri};
 use jsonrpsee::core::error::Error as RpcError;
 use std::error::Error;
+use tower::{Layer, Service};
 // use std::error::Error;
 use jsonrpsee::core::params::ArrayParams;
 use jsonrpsee::core::traits::ToRpcParams;
@@ -15,9 +16,12 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use hyper::body::HttpBody;
-use tower::{Layer, Service};
 use urlencoding::decode;
+
+pub const URI_ADDRESSES: &str = "/addresses";
+pub const URI_BLOCKS: &str = "/blocks";
+pub const URI_ENDORSEMENTS: &str = "/endorsements";
+pub const URI_OPERATIONS: &str = "/operations";
 
 /// Layer that applies [`MassaProxyGetRequest`] which proxies the `GET /path` requests to
 /// specific RPC method calls and that strips the response.
@@ -121,7 +125,12 @@ where
 
         let mut params = ArrayParams::new();
 
-        if path.eq("/addresses") && (req.method() == Method::GET) {
+        if req.method() == Method::GET
+            && (path.eq(URI_ADDRESSES)
+                || path.eq(URI_BLOCKS)
+                || path.eq(URI_ENDORSEMENTS)
+                || path.eq(URI_OPERATIONS))
+        {
             if let Some(query) = req.uri().query() {
                 // If this line is reached
                 // Extract addresses list from query params
@@ -131,12 +140,15 @@ where
                     .to_string();
 
                 for param in decoded_query.split('&') {
-                    // param:"ids=["Address1", "Address2"]"
+                    // example param:"ids=["Address1", "Address2"]"
                     let kv: Vec<&str> = param.splitn(2, '=').collect();
                     if kv.len() == 2 {
-                        let value: Value = serde_json::from_str(kv[1])
-                            .expect("Error when deserialize params query for GET /addresses");
-                        params.insert(value).expect("TODO: panic message");
+                        let value: Value = serde_json::from_str(kv[1]).unwrap_or_else(|_| {
+                            panic!("Error when deserialize params query for GET {}", path)
+                        });
+                        params
+                            .insert(value)
+                            .expect("Error when insert into ArrayParams");
                         modify = true;
                     }
                 }
