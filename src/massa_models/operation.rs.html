@@ -1503,15 +1503,11 @@
 <a href="#1503" id="1503">1503</a>
 <a href="#1504" id="1504">1504</a>
 <a href="#1505" id="1505">1505</a>
-<a href="#1506" id="1506">1506</a>
-<a href="#1507" id="1507">1507</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::prehash::{PreHashSet, PreHashed};
-<span class="kw">use </span><span class="kw">crate</span>::secure_share::{
-    Id, SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
-};
+<span class="kw">use </span><span class="kw">crate</span>::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 <span class="kw">use crate</span>::{
     address::{Address, AddressDeserializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -1771,9 +1767,9 @@
 }
 
 <span class="doccomment">/// signed operation
-</span><span class="kw">pub type </span>SecureShareOperation = SecureShare&lt;Operation, OperationId&gt;;
+</span><span class="kw">pub type </span>WrappedOperation = Wrapped&lt;Operation, OperationId&gt;;
 
-<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Operation {}
+<span class="kw">impl </span>WrappedContent <span class="kw">for </span>Operation {}
 
 <span class="doccomment">/// Serializer for `Operation`
 </span><span class="kw">pub struct </span>OperationSerializer {
@@ -2299,7 +2295,7 @@
     }
 }
 
-<span class="kw">impl </span>SecureShareOperation {
+<span class="kw">impl </span>WrappedOperation {
     <span class="doccomment">/// get the range of periods during which an operation is valid
     /// Range: `(op.expire_period - cfg.operation_validity_period) -&gt; op.expire_period` (included)
     </span><span class="kw">pub fn </span>get_validity_range(<span class="kw-2">&amp;</span><span class="self">self</span>, operation_validity_period: u64) -&gt; RangeInclusive&lt;u64&gt; {
@@ -2324,7 +2320,7 @@
     <span class="doccomment">/// get the addresses that are involved in this operation from a ledger point of view
     </span><span class="kw">pub fn </span>get_ledger_involved_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PreHashSet&lt;Address&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>res = PreHashSet::&lt;Address&gt;::default();
-        <span class="kw">let </span>emitter_address = Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.content_creator_pub_key);
+        <span class="kw">let </span>emitter_address = Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.creator_public_key);
         res.insert(emitter_address);
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.content.op {
             OperationType::Transaction {
@@ -2363,10 +2359,10 @@
         <span class="kw">match </span><span class="self">self</span>.content.op {
             OperationType::Transaction { .. } =&gt; {}
             OperationType::RollBuy { .. } =&gt; {
-                res.insert(Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.content_creator_pub_key));
+                res.insert(Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.creator_public_key));
             }
             OperationType::RollSell { .. } =&gt; {
-                res.insert(Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.content_creator_pub_key));
+                res.insert(Address::from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>.creator_public_key));
             }
             OperationType::ExecuteSC { .. } =&gt; {}
             OperationType::CallSC { .. } =&gt; {}
@@ -2634,7 +2630,7 @@
 <span class="doccomment">/// Serializer for `Operations`
 </span><span class="kw">pub struct </span>OperationsSerializer {
     u32_serializer: U32VarIntSerializer,
-    signed_op_serializer: SecureShareSerializer,
+    signed_op_serializer: WrappedSerializer,
 }
 
 <span class="kw">impl </span>OperationsSerializer {
@@ -2642,7 +2638,7 @@
     </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
-            signed_op_serializer: SecureShareSerializer::new(),
+            signed_op_serializer: WrappedSerializer::new(),
         }
     }
 }
@@ -2653,10 +2649,10 @@
     }
 }
 
-<span class="kw">impl </span>Serializer&lt;Vec&lt;SecureShareOperation&gt;&gt; <span class="kw">for </span>OperationsSerializer {
+<span class="kw">impl </span>Serializer&lt;Vec&lt;WrappedOperation&gt;&gt; <span class="kw">for </span>OperationsSerializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{WrappedOperation, Operation, OperationType, OperationsSerializer, OperationSerializer}, wrapped::WrappedContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -2671,14 +2667,14 @@
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair).unwrap();
-    /// let operations = vec![op_secured.clone(), op_secured.clone()];
+    /// let op_wrapped = Operation::new_wrapped(content, OperationSerializer::new(), &amp;keypair).unwrap();
+    /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
     /// ```
     </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        value: <span class="kw-2">&amp;</span>Vec&lt;SecureShareOperation&gt;,
+        value: <span class="kw-2">&amp;</span>Vec&lt;WrappedOperation&gt;,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>list_len: u32 = value.len().try_into().map_err(|<span class="kw">_</span>| {
@@ -2695,7 +2691,7 @@
 <span class="doccomment">/// Deserializer for `Operations`
 </span><span class="kw">pub struct </span>OperationsDeserializer {
     length_deserializer: U32VarIntDeserializer,
-    signed_op_deserializer: SecureShareDeserializer&lt;Operation, OperationDeserializer&gt;,
+    signed_op_deserializer: WrappedDeserializer&lt;Operation, OperationDeserializer&gt;,
 }
 
 <span class="kw">impl </span>OperationsDeserializer {
@@ -2714,7 +2710,7 @@
                 Included(<span class="number">0</span>),
                 Included(max_operations_per_message),
             ),
-            signed_op_deserializer: SecureShareDeserializer::new(OperationDeserializer::new(
+            signed_op_deserializer: WrappedDeserializer::new(OperationDeserializer::new(
                 max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
@@ -2726,10 +2722,10 @@
     }
 }
 
-<span class="kw">impl </span>Deserializer&lt;Vec&lt;SecureShareOperation&gt;&gt; <span class="kw">for </span>OperationsDeserializer {
+<span class="kw">impl </span>Deserializer&lt;Vec&lt;WrappedOperation&gt;&gt; <span class="kw">for </span>OperationsDeserializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{WrappedOperation, Operation, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, wrapped::WrappedContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -2744,22 +2740,22 @@
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair).unwrap();
-    /// let operations = vec![op_secured.clone(), op_secured.clone()];
+    /// let op_wrapped = Operation::new_wrapped(content, OperationSerializer::new(), &amp;keypair).unwrap();
+    /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
     /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);
-    ///     assert_eq!(operation1.content_creator_pub_key, operation2.content_creator_pub_key);
+    ///     assert_eq!(operation1.creator_public_key, operation2.creator_public_key);
     ///     assert_eq!(operation1.content.fee, operation2.content.fee);
     /// }
     /// ```
     </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Vec&lt;SecureShareOperation&gt;, E&gt; {
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Vec&lt;WrappedOperation&gt;, E&gt; {
         context(
             <span class="string">&quot;Failed Operations deserialization&quot;</span>,
             length_count(
@@ -2840,14 +2836,14 @@
 
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+        <span class="kw">let </span>op = Operation::new_wrapped(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
-        SecureShareSerializer::new()
+        WrappedSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
             .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
@@ -2914,14 +2910,14 @@
         <span class="macro">assert_eq!</span>(res_content, content);
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+        <span class="kw">let </span>op = Operation::new_wrapped(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
-        SecureShareSerializer::new()
+        WrappedSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
             .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
@@ -2990,14 +2986,14 @@
         <span class="macro">assert_eq!</span>(res_content, content);
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+        <span class="kw">let </span>op = Operation::new_wrapped(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
-        SecureShareSerializer::new()
+        WrappedSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
             .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,

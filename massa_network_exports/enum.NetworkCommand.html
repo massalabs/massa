@@ -8,7 +8,7 @@
     },
     SendBlockHeader {
         node: NodeId,
-        header: SecuredHeader,
+        header: WrappedHeader,
     },
     GetPeers(Sender&lt;<a class="struct" href="struct.Peers.html" title="struct massa_network_exports::Peers">Peers</a>&gt;),
     GetBootstrapPeers(Sender&lt;<a class="struct" href="struct.BootstrapPeers.html" title="struct massa_network_exports::BootstrapPeers">BootstrapPeers</a>&gt;),
@@ -18,7 +18,7 @@
     NodeUnbanByIps(<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/std/net/ip_addr/enum.IpAddr.html" title="enum std::net::ip_addr::IpAddr">IpAddr</a>&gt;),
     SendEndorsements {
         node: NodeId,
-        endorsements: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;SecureShareEndorsement&gt;,
+        endorsements: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;WrappedEndorsement&gt;,
     },
     NodeSignMessage {
         msg: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;,
@@ -29,7 +29,7 @@
     },
     SendOperations {
         node: NodeId,
-        operations: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;SecureShareOperation&gt;,
+        operations: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;WrappedOperation&gt;,
     },
     SendOperationAnnouncements {
         to_node: NodeId,
@@ -48,7 +48,7 @@
 </div></div><div class="sub-variant-field"><span id="variant.SendBlockInfo.field.info" class="small-section-header"><a href="#variant.SendBlockInfo.field.info" class="anchor field">§</a><code>info:&nbsp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(BlockId, <a class="enum" href="enum.BlockInfoReply.html" title="enum massa_network_exports::BlockInfoReply">BlockInfoReply</a>)&gt;</code></span><div class="docblock"><p>block id</p>
 </div></div></div><div class="docblock"><p>Send info about the content of a block to a node.</p>
 </div><section id="variant.SendBlockHeader" class="variant"><a href="#variant.SendBlockHeader" class="anchor">§</a><h3 class="code-header">SendBlockHeader</h3></section><div class="sub-variant" id="variant.SendBlockHeader.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.SendBlockHeader.field.node" class="small-section-header"><a href="#variant.SendBlockHeader.field.node" class="anchor field">§</a><code>node:&nbsp;NodeId</code></span><div class="docblock"><p>to node id</p>
-</div></div><div class="sub-variant-field"><span id="variant.SendBlockHeader.field.header" class="small-section-header"><a href="#variant.SendBlockHeader.field.header" class="anchor field">§</a><code>header:&nbsp;SecuredHeader</code></span><div class="docblock"><p>block id</p>
+</div></div><div class="sub-variant-field"><span id="variant.SendBlockHeader.field.header" class="small-section-header"><a href="#variant.SendBlockHeader.field.header" class="anchor field">§</a><code>header:&nbsp;WrappedHeader</code></span><div class="docblock"><p>block id</p>
 </div></div></div><div class="docblock"><p>Send a header to a node.</p>
 </div><section id="variant.GetPeers" class="variant"><a href="#variant.GetPeers" class="anchor">§</a><h3 class="code-header">GetPeers(Sender&lt;<a class="struct" href="struct.Peers.html" title="struct massa_network_exports::Peers">Peers</a>&gt;)</h3></section><div class="docblock"><p><code>(PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list</code> of associated Id nodes in connection out (true)</p>
 </div><section id="variant.GetBootstrapPeers" class="variant"><a href="#variant.GetBootstrapPeers" class="anchor">§</a><h3 class="code-header">GetBootstrapPeers(Sender&lt;<a class="struct" href="struct.BootstrapPeers.html" title="struct massa_network_exports::BootstrapPeers">BootstrapPeers</a>&gt;)</h3></section><div class="docblock"><p>get peers for bootstrap server</p>
@@ -57,7 +57,7 @@
 </div><section id="variant.NodeUnbanByIds" class="variant"><a href="#variant.NodeUnbanByIds" class="anchor">§</a><h3 class="code-header">NodeUnbanByIds(<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;NodeId&gt;)</h3></section><div class="docblock"><p>Unban a list of peer by their node id</p>
 </div><section id="variant.NodeUnbanByIps" class="variant"><a href="#variant.NodeUnbanByIps" class="anchor">§</a><h3 class="code-header">NodeUnbanByIps(<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/std/net/ip_addr/enum.IpAddr.html" title="enum std::net::ip_addr::IpAddr">IpAddr</a>&gt;)</h3></section><div class="docblock"><p>Unban a list of peer by their ip address</p>
 </div><section id="variant.SendEndorsements" class="variant"><a href="#variant.SendEndorsements" class="anchor">§</a><h3 class="code-header">SendEndorsements</h3></section><div class="sub-variant" id="variant.SendEndorsements.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.SendEndorsements.field.node" class="small-section-header"><a href="#variant.SendEndorsements.field.node" class="anchor field">§</a><code>node:&nbsp;NodeId</code></span><div class="docblock"><p>to node id</p>
-</div></div><div class="sub-variant-field"><span id="variant.SendEndorsements.field.endorsements" class="small-section-header"><a href="#variant.SendEndorsements.field.endorsements" class="anchor field">§</a><code>endorsements:&nbsp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;SecureShareEndorsement&gt;</code></span><div class="docblock"><p>endorsements</p>
+</div></div><div class="sub-variant-field"><span id="variant.SendEndorsements.field.endorsements" class="small-section-header"><a href="#variant.SendEndorsements.field.endorsements" class="anchor field">§</a><code>endorsements:&nbsp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;WrappedEndorsement&gt;</code></span><div class="docblock"><p>endorsements</p>
 </div></div></div><div class="docblock"><p>Send endorsements to a node</p>
 </div><section id="variant.NodeSignMessage" class="variant"><a href="#variant.NodeSignMessage" class="anchor">§</a><h3 class="code-header">NodeSignMessage</h3></section><div class="sub-variant" id="variant.NodeSignMessage.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.NodeSignMessage.field.msg" class="small-section-header"><a href="#variant.NodeSignMessage.field.msg" class="anchor field">§</a><code>msg:&nbsp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;</code></span><div class="docblock"><p>arbitrary message</p>
 </div></div><div class="sub-variant-field"><span id="variant.NodeSignMessage.field.response_tx" class="small-section-header"><a href="#variant.NodeSignMessage.field.response_tx" class="anchor field">§</a><code>response_tx:&nbsp;Sender&lt;PubkeySig&gt;</code></span><div class="docblock"><p>response channels</p>
@@ -66,7 +66,7 @@
 </div><section id="variant.GetStats" class="variant"><a href="#variant.GetStats" class="anchor">§</a><h3 class="code-header">GetStats</h3></section><div class="sub-variant" id="variant.GetStats.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.GetStats.field.response_tx" class="small-section-header"><a href="#variant.GetStats.field.response_tx" class="anchor field">§</a><code>response_tx:&nbsp;Sender&lt;NetworkStats&gt;</code></span><div class="docblock"><p>response channels</p>
 </div></div></div><div class="docblock"><p>gets network stats</p>
 </div><section id="variant.SendOperations" class="variant"><a href="#variant.SendOperations" class="anchor">§</a><h3 class="code-header">SendOperations</h3></section><div class="sub-variant" id="variant.SendOperations.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.SendOperations.field.node" class="small-section-header"><a href="#variant.SendOperations.field.node" class="anchor field">§</a><code>node:&nbsp;NodeId</code></span><div class="docblock"><p>to node id</p>
-</div></div><div class="sub-variant-field"><span id="variant.SendOperations.field.operations" class="small-section-header"><a href="#variant.SendOperations.field.operations" class="anchor field">§</a><code>operations:&nbsp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;SecureShareOperation&gt;</code></span><div class="docblock"><p>operations</p>
+</div></div><div class="sub-variant-field"><span id="variant.SendOperations.field.operations" class="small-section-header"><a href="#variant.SendOperations.field.operations" class="anchor field">§</a><code>operations:&nbsp;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;WrappedOperation&gt;</code></span><div class="docblock"><p>operations</p>
 </div></div></div><div class="docblock"><p>Send a batch of full operations</p>
 </div><section id="variant.SendOperationAnnouncements" class="variant"><a href="#variant.SendOperationAnnouncements" class="anchor">§</a><h3 class="code-header">SendOperationAnnouncements</h3></section><div class="sub-variant" id="variant.SendOperationAnnouncements.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.SendOperationAnnouncements.field.to_node" class="small-section-header"><a href="#variant.SendOperationAnnouncements.field.to_node" class="anchor field">§</a><code>to_node:&nbsp;NodeId</code></span><div class="docblock"><p>to node id</p>
 </div></div><div class="sub-variant-field"><span id="variant.SendOperationAnnouncements.field.batch" class="small-section-header"><a href="#variant.SendOperationAnnouncements.field.batch" class="anchor field">§</a><code>batch:&nbsp;OperationPrefixIds</code></span><div class="docblock"><p>batch of operation ids</p>
