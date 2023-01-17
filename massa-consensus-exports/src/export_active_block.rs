@@ -156,7 +156,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;
@@ -178,19 +178,19 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///                     endorsed_block: BlockId(Hash::compute_from(&[1])),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
-    ///                     slot: Slot::new(4, 0),
+    ///                     slot: Slot::new(1, 1),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///                     endorsed_block: BlockId(Hash::compute_from(&[1])),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),

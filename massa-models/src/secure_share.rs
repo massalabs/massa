@@ -288,7 +288,7 @@ where
     /// * `buffer`: buffer of serialized data to be deserialized
     ///
     /// # Returns:
-    /// A rest (data left over from deserialization) and structure wrapped up with signature verification data as coherent fields.
+    /// A rest (data left over from deserialization), an instance of `T`, and the data enabling signature verification
     pub fn deserialize_with<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
