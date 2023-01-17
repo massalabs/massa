@@ -1522,6 +1522,9 @@
     </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ExecutionOutput {
         <span class="kw">let </span>slot = <span class="self">self</span>.slot;
 
+        <span class="comment">// execute the deferred credits coming from roll sells
+        </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
+
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
         </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
         <span class="kw">let </span>deleted_messages = <span class="self">self
@@ -1530,9 +1533,6 @@
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
             <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg);
         }
-
-        <span class="comment">// execute the deferred credits coming from roll sells
-        </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
         <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
         </span><span class="kw">if </span><span class="self">self

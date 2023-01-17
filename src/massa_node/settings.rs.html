@@ -228,14 +228,17 @@
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
 </span><span class="kw">use </span>std::path::PathBuf;
 
 <span class="kw">use </span>enum_map::EnumMap;
-<span class="kw">use </span>massa_models::config::build_massa_settings;
-<span class="kw">use </span>massa_signature::PublicKey;
+<span class="kw">use </span>massa_bootstrap::IpType;
+<span class="kw">use </span>massa_models::{config::build_massa_settings, node::NodeId};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
@@ -305,7 +308,8 @@
 <span class="doccomment">/// Bootstrap configuration.
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>BootstrapSettings {
-    <span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, PublicKey)&gt;,
+    <span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, NodeId)&gt;,
+    <span class="kw">pub </span>bootstrap_protocol: IpType,
     <span class="kw">pub </span>bootstrap_whitelist_path: PathBuf,
     <span class="kw">pub </span>bootstrap_blacklist_path: PathBuf,
     <span class="kw">pub </span>bind: <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;,
@@ -322,6 +326,8 @@
     <span class="kw">pub </span>per_ip_min_interval: MassaTime,
     <span class="kw">pub </span>ip_list_max_size: usize,
     <span class="kw">pub </span>max_bytes_read_write: f64,
+    <span class="doccomment">/// Allocated time with which to manage the bootstrap process
+    </span><span class="kw">pub </span>bootstrap_timeout: MassaTime,
 }
 
 <span class="doccomment">/// Factory settings
@@ -340,6 +346,8 @@
     <span class="kw">pub </span>max_operation_future_validity_start_periods: u64,
     <span class="kw">pub </span>max_endorsement_count: u64,
     <span class="kw">pub </span>max_item_return_count: usize,
+    <span class="doccomment">/// operations sender(channel) capacity
+    </span><span class="kw">pub </span>broadcast_operations_capacity: usize,
 }
 
 <span class="doccomment">/// API and server configuration, read from a file configuration.
@@ -449,8 +457,6 @@
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// Time threshold after which operation are not propagated
     </span><span class="kw">pub </span>max_endorsements_propagation_time: MassaTime,
-    <span class="doccomment">/// operations sender sender(channel) capacity
-    </span><span class="kw">pub </span>broadcast_operations_capacity: usize,
 }
 
 <span class="attr">#[cfg(test)]

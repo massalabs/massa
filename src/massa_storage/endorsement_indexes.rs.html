@@ -72,11 +72,14 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map;
 
 <span class="kw">use </span>massa_models::{
     address::Address,
-    endorsement::{EndorsementId, WrappedEndorsement},
+    endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
 
@@ -85,7 +88,7 @@
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>EndorsementIndexes {
     <span class="doccomment">/// Endorsements structure container
-    </span>endorsements: PreHashMap&lt;EndorsementId, WrappedEndorsement&gt;,
+    </span>endorsements: PreHashMap&lt;EndorsementId, SecureShareEndorsement&gt;,
     <span class="doccomment">/// Structure mapping creators with the created endorsements
     </span>index_by_creator: PreHashMap&lt;Address, PreHashSet&lt;EndorsementId&gt;&gt;,
 }
@@ -94,11 +97,11 @@
     <span class="doccomment">/// Insert an endorsement and populate the indexes.
     /// Arguments:
     /// - endorsement: the endorsement to insert
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsement: WrappedEndorsement) {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsement: SecureShareEndorsement) {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(e) = <span class="self">self</span>.endorsements.try_insert(endorsement.id, endorsement) {
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
-                .entry(e.creator_address)
+                .entry(e.content_creator_address)
                 .or_default()
                 .insert(e.id);
         }
@@ -107,11 +110,14 @@
     <span class="doccomment">/// Remove a endorsement, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
     /// * `endorsement_id`: the endorsement id to remove
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsement_id: <span class="kw-2">&amp;</span>EndorsementId) -&gt; <span class="prelude-ty">Option</span>&lt;WrappedEndorsement&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        endorsement_id: <span class="kw-2">&amp;</span>EndorsementId,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareEndorsement&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = <span class="self">self</span>.endorsements.remove(endorsement_id) {
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
-                <span class="self">self</span>.index_by_creator.entry(e.creator_address)
+                <span class="self">self</span>.index_by_creator.entry(e.content_creator_address)
             {
                 occ.get_mut().remove(<span class="kw-2">&amp;</span>e.id);
                 <span class="kw">if </span>occ.get().is_empty() {
@@ -124,7 +130,7 @@
     </span>}
 
     <span class="doccomment">/// Gets a reference to a stored endorsement, if any.
-    </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>EndorsementId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>WrappedEndorsement&gt; {
+    </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>EndorsementId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SecureShareEndorsement&gt; {
         <span class="self">self</span>.endorsements.get(id)
     }
 

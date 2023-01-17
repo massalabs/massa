@@ -258,6 +258,7 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -276,9 +277,10 @@
     sequence::tuple,
     IResult, Parser,
 };
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// represents changes that can be applied to the execution state
-</span><span class="attr">#[derive(Default, Debug, Clone)]
+</span><span class="attr">#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>StateChanges {
     <span class="doccomment">/// ledger changes
     </span><span class="kw">pub </span>ledger_changes: LedgerChanges,
