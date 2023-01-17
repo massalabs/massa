@@ -5,8 +5,7 @@
 #![warn(unused_crate_dependencies)]
 use api_trait::MassaApiServer;
 
-use crate::api_trait::MassaApiServer;
-use crate::error::ApiError::WrongAPI;
+
 use crate::proxy::MassaProxyGetRequestLayer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
@@ -44,7 +43,7 @@ use massa_models::{
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::ProtocolCommandSender;
+use massa_protocol_exports::{ProtocolCommandSender, ProtocolSenders};
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -62,8 +61,6 @@ mod private;
 mod proxy;
 mod public;
 
-
-pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
@@ -107,12 +104,18 @@ pub struct Private {
 
 /// API v2 content
 pub struct ApiV2 {
+    /// link to the consensus component
+    pub consensus_controller: Box<dyn ConsensusController>,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
     /// link to the selector component
     pub selector_controller: Box<dyn SelectorController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
+    /// link(channels) to the protocol component
+    pub protocol_senders: ProtocolSenders,
+    /// link to the pool component
+    pub pool_command_sender: Box<dyn PoolController>,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
     /// API settings
@@ -187,10 +190,24 @@ async fn serve<T>(
         .allow_origin(Any)
         .allow_headers([hyper::header::CONTENT_TYPE]);
 
-    let middleware = tower::ServiceBuilder::new().layer(cors).layer(
-        MassaProxyGetRequestLayer::new("/addresses", "get_addresses")
-            .expect("Error when create MassaProxyGetRequestLayer"),
-    );
+    let middleware = tower::ServiceBuilder::new()
+        .layer(cors)
+        .layer(
+            MassaProxyGetRequestLayer::new(proxy::URI_ADDRESSES, "get_addresses")
+                .expect("Error when create MassaProxyGetRequestLayer"),
+        )
+        .layer(
+            MassaProxyGetRequestLayer::new(proxy::URI_BLOCKS, "get_blocks")
+                .expect("Error when create MassaProxyGetRequestLayer"),
+        )
+        .layer(
+            MassaProxyGetRequestLayer::new(proxy::URI_OPERATIONS, "get_operations")
+                .expect("Error when create MassaProxyGetRequestLayer"),
+        )
+        .layer(
+            MassaProxyGetRequestLayer::new(proxy::URI_ENDORSEMENTS, "get_endorsements")
+                .expect("Error when create MassaProxyGetRequestLayer"),
+        );
 
     let server = server_builder
         .set_middleware(middleware)

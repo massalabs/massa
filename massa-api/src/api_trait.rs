@@ -2,8 +2,14 @@
 //! Json RPC API for a massa-node
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use massa_api_exports::address::AddressInfo;
+use massa_api_exports::block::BlockInfo;
+use massa_api_exports::endorsement::EndorsementInfo;
+use massa_api_exports::operation::OperationInfo;
 use massa_models::address::Address;
-use massa_models::api::AddressInfo;
+use massa_models::block::BlockId;
+use massa_models::endorsement::EndorsementId;
+use massa_models::operation::OperationId;
 use massa_models::version::Version;
 
 /// Exposed API methods
@@ -11,7 +17,7 @@ use massa_models::version::Version;
 pub trait MassaApi {
     /// Get Massa node version.
     #[method(name = "get_version")]
-    async fn get_version(&self) -> RpcResult<Version>;
+    fn get_version(&self) -> RpcResult<Version>;
 
     /// New produced block.
     #[subscription(
@@ -45,7 +51,19 @@ pub trait MassaApi {
 	)]
     fn subscribe_new_operations(&self);
 
-    // todo comment
+    // Get AddressInfo list from ids
     #[method(name = "get_addresses")]
-    async fn get_addresses(&self, arg: Vec<Address>) -> RpcResult<Vec<AddressInfo>>;
+    fn get_addresses(&self, arg: Vec<Address>) -> RpcResult<Vec<AddressInfo>>;
+
+    /// Get BlockInfo list from ids
+    #[method(name = "get_blocks")]
+    fn get_blocks(&self, ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>>;
+
+    /// Get EndorsementInfo list from ids
+    #[method(name = "get_endorsements")]
+    fn get_endorsements(&self, ids: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>>;
+
+    /// Get OperationInfo list from ids
+    #[method(name = "get_operations")]
+    fn get_operations(&self, ids: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>>;
 }
