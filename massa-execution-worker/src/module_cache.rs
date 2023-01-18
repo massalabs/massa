@@ -1,4 +1,4 @@
-use massa_execution_exports::{runtime_error, ExecutionError};
+use massa_execution_exports::ExecutionError;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use schnellru::{ByLength, LruMap};
 
@@ -31,8 +31,13 @@ impl ModuleCache {
         let module = if let Some(cached_module) = self.cache.get(bytecode) {
             cached_module.clone()
         } else {
-            let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone())
-                .map_err(runtime_error)?;
+            let new_module =
+                RuntimeModule::new(bytecode, limit, self.gas_costs.clone()).map_err(|err| {
+                    Err(ExecutionError::RuntimeError(format!(
+                        "compilation of missing cache module failed: {}",
+                        err
+                    )))
+                })?;
             self.cache.insert(bytecode.to_vec(), new_module.clone());
             new_module
         };

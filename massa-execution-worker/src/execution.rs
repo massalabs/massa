@@ -15,9 +15,8 @@ use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    runtime_error, EventStore, ExecutionConfig, ExecutionError, ExecutionOutput,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget,
+    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -516,14 +515,26 @@ impl ExecutionState {
 
         // run the VM on the bytecode contained in the operation
         let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
-            .map_err(runtime_error)?;
-        massa_sc_runtime::run_main(
+            .map_err(|err| {
+                Err(ExecutionError::RuntimeError(format!(
+                    "compilation error in execute_executesc_op: {}",
+                    err
+                )))
+            })?;
+        match massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
             *max_gas,
             self.config.gas_costs.clone(),
-        )
-        .map_err(runtime_error)?;
+        ) {
+            Ok(_response) => {}
+            Err(err) => {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "module execution error in execute_executesc_op: {}",
+                    err
+                )));
+            }
+        }
 
         Ok(())
     }
@@ -604,15 +615,22 @@ impl ExecutionState {
 
         // run the VM on the bytecode loaded from the target address
         let module = self.module_cache.write().get_module(&bytecode, max_gas)?;
-        massa_sc_runtime::run_function(
+        match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
             target_func,
             param,
             max_gas,
             self.config.gas_costs.clone(),
-        )
-        .map_err(runtime_error)?;
+        ) {
+            Ok(_response) => {}
+            Err(err) => {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "module execution error in execute_callsc_op: {}",
+                    err
+                )));
+            }
+        }
 
         Ok(())
     }
@@ -1053,14 +1071,19 @@ impl ExecutionState {
                 // run the bytecode's main function
                 let module =
                     RuntimeModule::new(&bytecode, req.max_gas, self.config.gas_costs.clone())
-                        .map_err(runtime_error)?;
+                        .map_err(|err| {
+                            Err(ExecutionError::RuntimeError(format!(
+                                "compilation error in execute_readonly_request: {}",
+                                err
+                            )))
+                        })?;
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
                 )
-                .map_err(runtime_error)?
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1088,7 +1111,7 @@ impl ExecutionState {
                     req.max_gas,
                     self.config.gas_costs.clone(),
                 )
-                .map_err(runtime_error)?
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
             }
         };
 
