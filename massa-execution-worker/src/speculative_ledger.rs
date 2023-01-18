@@ -455,9 +455,12 @@ impl SpeculativeLedger {
                 .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(_entry) => true,
-                HistorySearchResult::NoInfo => {
-                    self.final_state.read().ledger.has_data_entry(addr, key)
-                }
+                HistorySearchResult::NoInfo => self
+                    .final_state
+                    .read()
+                    .ledger
+                    .get_data_entry(addr, key)
+                    .is_some(),
                 HistorySearchResult::Absent => false,
             }
         })
