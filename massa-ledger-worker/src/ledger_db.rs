@@ -193,9 +193,13 @@ impl LedgerDB {
     /// Get the current disk ledger hash
     pub fn get_ledger_hash(&self) -> Hash {
         let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
-        if let Some(ledger_hash_bytes) = self.db.get_cf(handle, LEDGER_HASH_KEY).expect(CRUD_ERROR)
+        if let Some(ledger_hash_bytes) = self
+            .db
+            .get_pinned_cf(handle, LEDGER_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
         {
-            Hash::from_bytes(&ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
+            Hash::from_bytes(ledger_hash_bytes.try_into().expect(LEDGER_HASH_ERROR))
         } else {
             // initial ledger_hash value to avoid matching an option in every XOR operation
             // because of a one time case being an empty ledger
@@ -373,7 +377,7 @@ impl LedgerDB {
             .write_batch
             .put_cf(handle, SLOT_KEY, slot_bytes.clone());
         // XOR previous slot and new one
-        if let Some(prev_bytes) = self.db.get_cf(handle, SLOT_KEY).expect(CRUD_ERROR) {
+        if let Some(prev_bytes) = self.db.get_pinned_cf(handle, SLOT_KEY).expect(CRUD_ERROR) {
             batch.ledger_hash ^= Hash::compute_from(&prev_bytes);
         }
         batch.ledger_hash ^= Hash::compute_from(&slot_bytes);
@@ -437,7 +441,7 @@ impl LedgerDB {
             .expect(KEY_LEN_SER_ERROR);
         if let Some(added_hash) = batch.aeh_list.get(key) {
             batch.ledger_hash ^= *added_hash;
-        } else if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
+        } else if let Some(prev_bytes) = self.db.get_pinned_cf(handle, key).expect(CRUD_ERROR) {
             batch.ledger_hash ^= Hash::compute_from(&[&len_bytes, key, &prev_bytes].concat());
         }
         let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
@@ -489,7 +493,7 @@ impl LedgerDB {
     fn delete_key(&self, handle: &ColumnFamily, batch: &mut LedgerBatch, key: &[u8]) {
         if let Some(added_hash) = batch.aeh_list.get(key) {
             batch.ledger_hash ^= *added_hash;
-        } else if let Some(prev_bytes) = self.db.get_cf(handle, key).expect(CRUD_ERROR) {
+        } else if let Some(prev_bytes) = self.db.get_pinned_cf(handle, key).expect(CRUD_ERROR) {
             let mut len_bytes = Vec::new();
             self.len_serializer
                 .serialize(&(key.len() as u64), &mut len_bytes)
