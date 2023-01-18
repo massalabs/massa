@@ -202,7 +202,7 @@ impl ExecutionState {
     /// * `remaining_block_gas`: mutable reference towards the remaining gas in the block
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     pub fn execute_operation(
-        &mut self,
+        &self,
         operation: &SecureShareOperation,
         block_slot: Slot,
         remaining_block_gas: &mut u64,
@@ -482,7 +482,7 @@ impl ExecutionState {
     /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
     /// * `sender_addr`: address of the sender
     pub fn execute_executesc_op(
-        &mut self,
+        &self,
         operation: &OperationType,
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
@@ -544,7 +544,7 @@ impl ExecutionState {
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
     pub fn execute_callsc_op(
-        &mut self,
+        &self,
         operation: &OperationType,
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
@@ -639,7 +639,7 @@ impl ExecutionState {
     /// * message: message information
     /// * bytecode: executable target bytecode, or None if unavailable
     pub fn execute_async_message(
-        &mut self,
+        &self,
         message: AsyncMessage,
         bytecode: Option<Vec<u8>>,
     ) -> Result<(), ExecutionError> {
@@ -738,7 +738,7 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(
-        &mut self,
+        &self,
         slot: &Slot,
         exec_target: Option<&(BlockId, Storage)>,
         selector: Box<dyn SelectorController>,
@@ -1028,7 +1028,7 @@ impl ExecutionState {
     /// # Returns
     ///  `ExecutionOutput` describing the output of the execution, or an error
     pub(crate) fn execute_readonly_request(
-        &mut self,
+        &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
