@@ -134,20 +134,6 @@ impl LedgerController for FinalLedger {
             .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
     }
 
-    /// Checks for the existence of a datastore entry for a given address.
-    ///
-    /// # Arguments
-    /// * `addr`: target address
-    /// * `key`: datastore key
-    ///
-    /// # Returns
-    /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
-    fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool {
-        self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
-            .is_some()
-    }
-
     /// Get every key of the datastore for a given address.
     ///
     /// # Returns
