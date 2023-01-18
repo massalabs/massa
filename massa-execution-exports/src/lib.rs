@@ -51,7 +51,7 @@ mod settings;
 mod types;
 
 pub use controller_traits::{ExecutionController, ExecutionManager};
-pub use error::ExecutionError;
+pub use error::{runtime_error, ExecutionError};
 pub use event_store::EventStore;
 pub use massa_sc_runtime::GasCosts;
 pub use settings::{ExecutionConfig, StorageCostsConstants};

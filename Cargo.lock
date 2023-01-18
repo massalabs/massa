@@ -2440,6 +2440,7 @@ dependencies = [
 name = "massa_execution_exports"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "displaydoc",
  "massa-sc-runtime",
  "massa_final_state",

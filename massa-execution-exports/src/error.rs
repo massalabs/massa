@@ -45,3 +45,8 @@ pub enum ExecutionError {
     /// Include operation error: {0}
     IncludeOperationError(String),
 }
+
+/// Creates an `ExecutionError::RuntimeError` from a `massa-sc-runtime` anyhow error
+pub fn runtime_error(error: anyhow::Error) -> ExecutionError {
+    ExecutionError::RuntimeError(error.to_string())
+}
