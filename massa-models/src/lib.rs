@@ -12,6 +12,7 @@ extern crate lazy_static;
 /// active blocks related structures
 pub mod active_block;
 /// address related structures
+#[macro_use]
 pub mod address;
 /// amount related structures
 pub mod amount;
