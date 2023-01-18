@@ -154,7 +154,7 @@ impl LedgerController for FinalLedger {
     /// A `BTreeSet` of the datastore keys
     fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
         match self.entry_exists(addr) {
-            true => Some(self.sorted_ledger.get_datastore_keys(addr)),
+            true => Some(self.sorted_ledger.get_datastore_keys(addr)).flatten(),
             false => None,
         }
     }
