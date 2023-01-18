@@ -365,7 +365,7 @@
     /// A `BTreeSet` of the datastore keys
     </span><span class="kw">fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">match </span><span class="self">self</span>.entry_exists(addr) {
-            <span class="bool-val">true </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.sorted_ledger.get_datastore_keys(addr)),
+            <span class="bool-val">true </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.sorted_ledger.get_datastore_keys(addr)).flatten(),
             <span class="bool-val">false </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
