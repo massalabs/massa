@@ -14,6 +14,7 @@ use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
+use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
@@ -168,6 +169,16 @@ impl Interface for InterfaceImpl {
         }
 
         Ok(())
+    }
+
+    /// Get the module from cache if possible, compile it if not
+    ///
+    /// # Returns
+    /// A `massa-sc-runtime` compiled module
+    fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<RuntimeModule> {
+        let context = context_guard!(self);
+        let module = context.module_cache.write().get_module(bytecode, limit)?;
+        Ok(module)
     }
 
     /// Gets the balance of the current address address (top of the stack).

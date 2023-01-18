@@ -11,6 +11,7 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
+use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
@@ -34,7 +35,6 @@ use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use schnellru::{ByLength, LruMap};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -72,7 +72,7 @@ pub(crate) struct ExecutionState {
     // execution statistics
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
-    module_cache: LruMap<Vec<u8>, RuntimeModule>,
+    module_cache: Arc<RwLock<ModuleCache>>,
 }
 
 impl ExecutionState {
@@ -92,11 +92,18 @@ impl ExecutionState {
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
 
+        // Initialize the SC module cache
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(
+            config.gas_costs.clone(),
+            config.max_module_cache_size,
+        )));
+
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
+            module_cache.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -118,34 +125,9 @@ impl ExecutionState {
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
-            module_cache: LruMap::new(ByLength::new(config.max_module_cache_size)),
+            module_cache,
             config,
         }
-    }
-
-    /// If the module is contained in the cache:
-    /// * retrieve a copy of it
-    /// * move it up in the LRU cache
-    ///
-    /// If the module is not contained in the cache:
-    /// * create the module
-    /// * save the module in the cache
-    /// * retrieve a copy of it
-    pub(crate) fn get_module(
-        &mut self,
-        bytecode: &[u8],
-        limit: u64,
-    ) -> Result<RuntimeModule, ExecutionError> {
-        let module = if let Some(cached_module) = self.module_cache.get(bytecode) {
-            cached_module.clone()
-        } else {
-            let new_module = RuntimeModule::new(bytecode, limit, self.config.gas_costs.clone())
-                .expect("BIG TODO");
-            self.module_cache
-                .insert(bytecode.to_vec(), new_module.clone());
-            new_module
-        };
-        Ok(module)
     }
 
     /// Get execution statistics
@@ -628,7 +610,7 @@ impl ExecutionState {
         }
 
         // run the VM on the bytecode loaded from the target address
-        let module = self.get_module(&bytecode, max_gas)?;
+        let module = self.module_cache.write().get_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -719,7 +701,10 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let module = self.get_module(&bytecode, message.max_gas)?;
+        let module = self
+            .module_cache
+            .write()
+            .get_module(&bytecode, message.max_gas)?;
         if let Err(err) = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -765,6 +750,7 @@ impl ExecutionState {
             exec_target.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
+            self.module_cache.clone(),
         );
 
         // Get asynchronous messages to execute
@@ -1070,6 +1056,7 @@ impl ExecutionState {
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
+            self.module_cache.clone(),
         );
 
         // run the interpreter according to the target type
@@ -1104,7 +1091,10 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the target function in the bytecode
-                let module = self.get_module(&bytecode, req.max_gas)?;
+                let module = self
+                    .module_cache
+                    .write()
+                    .get_module(&bytecode, req.max_gas)?;
                 massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module,
