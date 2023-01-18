@@ -153,6 +153,7 @@ pub struct Settings {
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
+    pub grpc: GrpcSettings,
 }
 
 /// Consensus configuration
@@ -226,6 +227,28 @@ pub struct ProtocolSettings {
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
     pub max_endorsements_propagation_time: MassaTime,
+}
+
+/// gRPC settings.
+/// the gRPC settings
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcSettings {
+    /// whether to enable gRPC.
+    pub enabled: bool,
+    /// whether to accept HTTP/1.1 requests.
+    pub accept_http1: bool,
+    /// whether to enable gRPC reflection(introspection).
+    pub enable_reflection: bool,
+    /// bind for the Massa gRPC API
+    pub bind: SocketAddr,
+    /// which compression encodings does the server accept for requests.
+    pub accept_compressed: Option<String>,
+    /// which compression encodings might the server use for responses.
+    pub send_compressed: Option<String>,
+    /// limits the maximum size of a decoded message. Defaults to 4MB.
+    pub max_decoding_message_size: usize,
+    /// limits the maximum size of an encoded message. Defaults to 4MB.
+    pub max_encoding_message_size: usize,
 }
 
 #[cfg(test)]

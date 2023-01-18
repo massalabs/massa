@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package massa.api.v1;
+
+import "endorsement.proto";
+import "operation.proto";
+import "slot.proto";
+
+option cc_enable_arenas = true;
+option csharp_namespace = "Massa.Api.V1";
+option go_package = "google.golang.org/genproto/massa/api/v1/block;block";
+option java_multiple_files = true;
+option java_package = "com.massa.api.v1";
+option objc_class_prefix = "BLOCK";
+option php_namespace = "Massa\\Api\\V1";
+
+
+// region Block
+    // message struct
+    message Block {
+      // object field
+      SecureShareBlockHeader header = 1;
+      // object field
+      repeated string operations = 2;
+    }
+
+    // message struct
+    message BlockInfo {
+      // string field
+      string id = 1;
+      // object field field
+      BlockInfoContent content = 2;
+    }
+
+    // message struct
+    message BlockInfoContent {
+      // bool field
+      bool is_final = 1;
+      // bool field
+      bool is_stale = 2;
+      // bool field
+      bool is_in_blockclique = 3;
+      // object field
+      Block block = 4;
+    }
+
+    // message struct
+    message BlockHeader {
+      // object field
+      Slot slot = 1;
+      // string field
+      repeated string parents = 2;
+      // string field
+      string operation_merkle_root = 3;
+      // object field
+      repeated SecureShareEndorsement endorsements = 4;
+    }
+
+    // message struct
+    message FilledBlock {
+      // object field
+      SecureShareBlockHeader header = 1;
+      // object field
+      repeated OperationInfo operations = 2;
+    }
+    
+    // message struct
+    message FilledBlockInfo {
+      // string field
+      string id = 1;
+      // object field
+      FilledBlockInfoContent content = 2;
+    }
+
+    // message struct
+    message FilledBlockInfoContent {
+      // bool field
+      bool is_final = 1;
+      // bool field
+      bool is_stale = 2;
+      // bool field
+      bool is_in_blockclique = 3;
+      // object field
+      FilledBlock block = 4;
+    }
+
+    // message struct
+    message SecureShareBlockHeader {
+      // object field
+      BlockHeader content = 1;
+      // string field
+      string signature = 2;
+      // string field
+      string content_creator_pub_key = 3;
+      // string field
+      string content_creator_address = 4;
+      // string field
+      string id = 5;
+    }

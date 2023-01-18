@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package massa.api.v1;
+
+option cc_enable_arenas = true;
+option csharp_namespace = "Massa.Api.V1";
+option go_package = "google.golang.org/genproto/massa/api/v1/common;common";
+option java_multiple_files = true;
+option java_package = "com.massa.api.v1";
+option objc_class_prefix = "COMMON";
+option php_namespace = "Massa\\Api\\V1";
+
+// commons
+    // message struct
+    message Version {
+      // string field
+      string version = 1;
+    }
+
+    // message struct
+    message SecureSharePayload {
+      /// The public key of the content creator 
+      string creator_public_key = 1;
+      /// The signature of the content
+      string signature  = 2;
+      /// The serialized version of the content
+      bytes serialized_content  = 3;
+    }

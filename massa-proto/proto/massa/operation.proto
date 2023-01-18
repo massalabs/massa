@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package massa.api.v1;
+
+option cc_enable_arenas = true;
+option csharp_namespace = "Massa.Api.V1";
+option go_package = "google.golang.org/genproto/massa/api/v1/operation;operation";
+option java_multiple_files = true;
+option java_package = "com.massa.api.v1";
+option objc_class_prefix = "OPERATION";
+option php_namespace = "Massa\\Api\\V1";
+
+// region Operation
+    // message struct
+    message OperationInfo {
+      // string field
+      string id = 1;
+      // string field
+      repeated string in_blocks = 2;
+      // bool field
+      bool in_pool = 3;
+      // bool field
+      bool is_final = 4;
+      // object field
+      SecureShareOperation operation = 5;
+    }
+
+    // message struct
+    message Roll {
+      // int64 field
+      int64 roll_count = 1;
+    }
+
+    // message struct
+    message OperationId {
+      // string field
+      string value = 1;
+    }
+
+    // message struct
+    message OperationType {
+      // object field
+      Transaction transaction = 1;
+      // object field
+      ExecuteSC execut_sc = 2;
+      // object field
+      CallSC call_sc = 3;
+      // object field
+      RollBuy roll_buy = 4;
+      // object field
+      RollSell roll_sell = 5;
+    }
+
+    // message struct
+    message Transaction {
+      // string field
+      string amount = 1;
+      // string field
+      string recipient_address = 2;
+    }
+
+    // message struct
+    message CallSC {
+      // string field
+      string target_addr = 1;
+      // string field
+      string target_func = 2;
+      // string field
+      string param = 3;
+      // float field
+      float max_gas = 4;
+      // float field
+      float sequential_coins = 5;
+      // float field
+      float parallel_coins = 6;
+      // float field
+      float gas_price = 7;
+    }
+
+    // message struct
+    message ExecuteSC {
+      // float field
+      repeated float data = 1;
+      // float field
+      float max_gas = 2;
+      // string field
+      string coins = 3;
+      // string field
+      string gas_price = 4;
+    }
+
+    // message struct
+    message RollBuy {
+      // float field
+      float roll_count = 1;
+    }
+
+    // message struct
+    message RollSell {
+      // float field
+      float roll_count = 1;
+    }
+
+    // message struct
+    message OperationInput {
+      // string field
+      string content_creator_pub_key = 1;
+      // string field
+      string signature = 2;
+      // string field
+      repeated string serialized_content = 3;
+    }
+
+    // message struct
+    message SecureShareOperation {
+      // object field
+      OperationType content = 1;
+      // string field
+      string signature = 2;
+      // string field
+      string content_creator_pub_key = 3;
+      // string field
+      string content_creator_address = 4;
+      // string field
+      string id = 5;
+    }
+

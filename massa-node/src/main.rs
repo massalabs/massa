@@ -21,6 +21,8 @@ use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
+use massa_grpc::api::MassaService;
+use massa_grpc::config::GrpcConfig;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -92,6 +94,7 @@ async fn launch(
     StopHandle,
     StopHandle,
     StopHandle,
+    Option<massa_grpc::api::StopHandle>,
 ) {
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
@@ -552,9 +555,9 @@ async fn launch(
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_controller.clone(),
-        consensus_channels,
+        consensus_channels.clone(),
         execution_controller.clone(),
-        pool_channels,
+        pool_channels.clone(),
         api_config.clone(),
         *VERSION,
     );
@@ -566,6 +569,39 @@ async fn launch(
     // Disable WebSockets for Private and Public API's
     let mut api_config = api_config.clone();
     api_config.enable_ws = false;
+
+    // Wheter to spawn gRPC API
+    let grpc_handle = if SETTINGS.grpc.enabled {
+        let grpc_config = GrpcConfig {
+            enabled: SETTINGS.grpc.enabled,
+            accept_http1: SETTINGS.grpc.accept_http1,
+            enable_reflection: SETTINGS.grpc.enable_reflection,
+            bind: SETTINGS.grpc.bind,
+            accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
+            send_compressed: SETTINGS.grpc.send_compressed.clone(),
+            max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
+            max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
+        };
+
+        let grpc_api = MassaService {
+            consensus_controller: consensus_controller.clone(),
+            consensus_channels: consensus_channels.clone(),
+            pool_channels,
+            protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+            storage: shared_storage.clone(),
+            grpc_config: grpc_config.clone(),
+            version: *VERSION,
+        };
+
+        let stop_handle = grpc_api
+            .serve(&grpc_config)
+            .await
+            .expect("failed to configure GRPC API");
+
+        Some(stop_handle)
+    } else {
+        None
+    };
 
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
@@ -641,6 +677,7 @@ async fn launch(
         api_private_handle,
         api_public_handle,
         api_handle,
+        grpc_handle,
     )
 }
 
@@ -670,6 +707,7 @@ async fn stop(
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
+    grpc_handle: Option<massa_grpc::api::StopHandle>,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -687,6 +725,11 @@ async fn stop(
 
     // stop Massa API
     api_handle.stop();
+
+    // stop Massa gRPC API
+    if let Some(handle) = grpc_handle {
+        handle.stop();
+    }
 
     // stop factory
     factory_manager.stop();
@@ -829,6 +872,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
+            grpc_handle,
         ) = launch(&args, node_wallet.clone()).await;
 
         // interrupt signal listener
@@ -897,6 +941,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
+            grpc_handle,
         )
         .await;
 

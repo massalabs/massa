@@ -1,0 +1,33 @@
+[package]
+name = "massa_grpc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+displaydoc = "0.2"
+thiserror = "1.0"
+tonic = { git = "https://github.com/hyperium/tonic", branch = "master", features = ["gzip"] }
+tonic-web = { git = "https://github.com/hyperium/tonic", branch = "master" }
+tonic-reflection = { git = "https://github.com/hyperium/tonic", branch = "master" }
+tonic-health = { git = "https://github.com/hyperium/tonic", branch = "master" }
+futures-util = "0.3.25"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
+tokio-stream = "0.1.12"
+h2 = "0.3.15"
+tracing = "0.1"
+# custom modules
+massa_consensus_exports = { path = "../massa-consensus-exports" }
+massa_hash = { path = "../massa-hash" }
+massa_models = { path = "../massa-models" }
+massa_network_exports = { path = "../massa-network-exports" }
+massa_pool_exports = { path = "../massa-pool-exports" }
+massa_protocol_exports = { path = "../massa-protocol-exports" }
+massa_execution_exports = { path = "../massa-execution-exports" }
+massa_storage = { path = "../massa-storage" }
+massa_time = { path = "../massa-time" }
+massa_wallet = { path = "../massa-wallet" }
+massa_serialization = { path = "../massa-serialization" }
+massa_proto = { path = "../massa-proto" }
