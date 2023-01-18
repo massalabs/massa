@@ -516,10 +516,10 @@ impl ExecutionState {
         // run the VM on the bytecode contained in the operation
         let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
             .map_err(|err| {
-                Err(ExecutionError::RuntimeError(format!(
+                ExecutionError::RuntimeError(format!(
                     "compilation error in execute_executesc_op: {}",
                     err
-                )))
+                ))
             })?;
         match massa_sc_runtime::run_main(
             &*self.execution_interface,
@@ -1072,10 +1072,10 @@ impl ExecutionState {
                 let module =
                     RuntimeModule::new(&bytecode, req.max_gas, self.config.gas_costs.clone())
                         .map_err(|err| {
-                            Err(ExecutionError::RuntimeError(format!(
+                            ExecutionError::RuntimeError(format!(
                                 "compilation error in execute_readonly_request: {}",
                                 err
-                            )))
+                            ))
                         })?;
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,

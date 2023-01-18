@@ -33,10 +33,10 @@ impl ModuleCache {
         } else {
             let new_module =
                 RuntimeModule::new(bytecode, limit, self.gas_costs.clone()).map_err(|err| {
-                    Err(ExecutionError::RuntimeError(format!(
+                    ExecutionError::RuntimeError(format!(
                         "compilation of missing cache module failed: {}",
                         err
-                    )))
+                    ))
                 })?;
             self.cache.insert(bytecode.to_vec(), new_module.clone());
             new_module
