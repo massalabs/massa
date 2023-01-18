@@ -2482,6 +2482,7 @@ dependencies = [
  "serial_test 0.10.0",
  "tempfile",
  "tracing",
+ "wasmer",
 ]
 
 [[package]]

@@ -32,12 +32,13 @@ use massa_models::{
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{Interface, RuntimeModule};
+use massa_sc_runtime::{init_engine, Interface, RuntimeModule, ASModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
+use wasmer::{Engine, Module};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -514,17 +515,21 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
-            .map_err(|err| {
-                ExecutionError::RuntimeError(format!(
-                    "compilation error in execute_executesc_op: {}",
-                    err
-                ))
-            })?;
+        // let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
+        //     .map_err(|err| {
+        //         ExecutionError::RuntimeError(format!(
+        //             "compilation error in execute_executesc_op: {}",
+        //             err
+        //         ))
+        //     })?;
+        let engine = init_engine(*max_gas, self.config.gas_costs.clone()).unwrap();
+        let binary_module = Module::new(&engine, bytecode).unwrap();
+        let module = RuntimeModule::ASModule(ASModule { binary_module });
         match massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
             *max_gas,
+            Some(engine),
             self.config.gas_costs.clone(),
         ) {
             Ok(_response) => {}
@@ -1081,6 +1086,7 @@ impl ExecutionState {
                     &*self.execution_interface,
                     module,
                     req.max_gas,
+                    None,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?

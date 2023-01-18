@@ -1,6 +1,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use schnellru::{ByLength, LruMap};
+use tracing::warn;
 
 pub struct ModuleCache {
     gas_costs: GasCosts,
@@ -29,8 +30,10 @@ impl ModuleCache {
         limit: u64,
     ) -> Result<RuntimeModule, ExecutionError> {
         let module = if let Some(cached_module) = self.cache.get(bytecode) {
+            warn!("(CACHE) module found");
             cached_module.clone()
         } else {
+            warn!("(CACHE) module saved");
             let new_module =
                 RuntimeModule::new(bytecode, limit, self.gas_costs.clone()).map_err(|err| {
                     ExecutionError::RuntimeError(format!(
