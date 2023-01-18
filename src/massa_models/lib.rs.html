@@ -61,8 +61,6 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! All the structures that are used everywhere
 //!
@@ -80,8 +78,6 @@
 </span><span class="kw">pub mod </span>address;
 <span class="doccomment">/// amount related structures
 </span><span class="kw">pub mod </span>amount;
-<span class="doccomment">/// structure use by the API
-</span><span class="kw">pub mod </span>api;
 <span class="doccomment">/// block-related structures
 </span><span class="kw">pub mod </span>block;
 <span class="doccomment">/// clique
@@ -99,7 +95,7 @@
 <span class="doccomment">/// execution related structures
 </span><span class="kw">pub mod </span>execution;
 <span class="doccomment">/// ledger related structures
-</span><span class="kw">pub mod </span>ledger_models;
+</span><span class="kw">pub mod </span>ledger;
 <span class="doccomment">/// node related structure
 </span><span class="kw">pub mod </span>node;
 <span class="doccomment">/// operations
@@ -110,6 +106,8 @@
 </span><span class="kw">pub mod </span>prehash;
 <span class="doccomment">/// rolls
 </span><span class="kw">pub mod </span>rolls;
+<span class="doccomment">/// trait for [Signature] secured data-structs
+</span><span class="kw">pub mod </span>secure_share;
 <span class="doccomment">/// serialization
 </span><span class="kw">pub mod </span>serialization;
 <span class="doccomment">/// slots
@@ -122,8 +120,6 @@
 </span><span class="kw">pub mod </span>timeslots;
 <span class="doccomment">/// versions
 </span><span class="kw">pub mod </span>version;
-<span class="doccomment">/// trait for signed structure
-</span><span class="kw">pub mod </span>wrapped;
 
 <span class="doccomment">/// Test utils
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]

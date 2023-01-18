@@ -870,6 +870,17 @@
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -880,7 +891,8 @@
 
 <span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
 <span class="kw">use </span>dialoguer::Password;
-<span class="kw">use </span>massa_api::{APIConfig, ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
+<span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
+<span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
 <span class="kw">use </span>massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
@@ -919,7 +931,7 @@
 <span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
-<span class="kw">use </span>massa_pool_exports::{PoolConfig, PoolManager};
+<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 <span class="kw">use </span>massa_pos_worker::start_selector_worker;
@@ -1044,10 +1056,12 @@
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
         bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
         bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
+        bootstrap_timeout: SETTINGS.bootstrap.bootstrap_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
         write_timeout: SETTINGS.bootstrap.write_timeout,
         read_error_timeout: SETTINGS.bootstrap.read_error_timeout,
@@ -1225,9 +1239,20 @@
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
     };
-    <span class="kw">let </span>(pool_manager, pool_controller) =
-        start_pool_controller(pool_config, <span class="kw-2">&amp;</span>shared_storage, execution_controller.clone());
+
+    <span class="kw">let </span>pool_channels = PoolChannels {
+        operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).<span class="number">0</span>,
+    };
+
+    <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
+        pool_config,
+        <span class="kw-2">&amp;</span>shared_storage,
+        execution_controller.clone(),
+        pool_channels.clone(),
+    );
 
     <span class="kw">let </span>(protocol_command_sender, protocol_command_receiver) =
         mpsc::channel::&lt;ProtocolCommand&gt;(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
@@ -1312,13 +1337,10 @@
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-        broadcast_enabled: SETTINGS.api.enable_ws,
-        broadcast_operations_capacity: SETTINGS.protocol.broadcast_operations_capacity,
     };
 
     <span class="kw">let </span>protocol_senders = ProtocolSenders {
         network_command_sender: network_command_sender.clone(),
-        operation_sender: broadcast::channel(protocol_config.broadcast_operations_capacity).<span class="number">0</span>,
     };
 
     <span class="kw">let </span>protocol_receivers = ProtocolReceivers {
@@ -1402,7 +1424,7 @@
     <span class="comment">// spawn Massa API
     </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(
         consensus_channels,
-        protocol_senders,
+        pool_channels,
         api_config.clone(),
         <span class="kw-2">*</span>VERSION,
     );

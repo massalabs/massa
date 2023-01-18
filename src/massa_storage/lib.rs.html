@@ -509,11 +509,11 @@
 <span class="kw">use </span>block_indexes::BlockIndexes;
 <span class="kw">use </span>endorsement_indexes::EndorsementIndexes;
 <span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
-<span class="kw">use </span>massa_models::wrapped::Id;
+<span class="kw">use </span>massa_models::secure_share::Id;
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, WrappedBlock},
-    endorsement::{EndorsementId, WrappedEndorsement},
-    operation::{OperationId, WrappedOperation},
+    block::{BlockId, SecureShareBlock},
+    endorsement::{EndorsementId, SecureShareEndorsement},
+    operation::{OperationId, SecureShareOperation},
 };
 <span class="kw">use </span>operation_indexes::OperationIndexes;
 <span class="kw">use </span>parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -767,7 +767,7 @@
 
     <span class="doccomment">/// Store a block
     /// Note that this also claims a local reference to the block
-    </span><span class="kw">pub fn </span>store_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: WrappedBlock) {
+    </span><span class="kw">pub fn </span>store_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: SecureShareBlock) {
         <span class="kw">let </span>id = block.id;
         <span class="kw">let </span><span class="kw-2">mut </span>owners = <span class="self">self</span>.block_owners.write();
         <span class="kw">let </span><span class="kw-2">mut </span>blocks = <span class="self">self</span>.blocks.write();
@@ -851,7 +851,7 @@
 
     <span class="doccomment">/// Store operations
     /// Claims a local reference to the added operation
-    </span><span class="kw">pub fn </span>store_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operations: Vec&lt;WrappedOperation&gt;) {
+    </span><span class="kw">pub fn </span>store_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operations: Vec&lt;SecureShareOperation&gt;) {
         <span class="kw">if </span>operations.is_empty() {
             <span class="kw">return</span>;
         }
@@ -949,7 +949,7 @@
 
     <span class="doccomment">/// Store endorsements
     /// Claims local references to the added endorsements
-    </span><span class="kw">pub fn </span>store_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsements: Vec&lt;WrappedEndorsement&gt;) {
+    </span><span class="kw">pub fn </span>store_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsements: Vec&lt;SecureShareEndorsement&gt;) {
         <span class="kw">if </span>endorsements.is_empty() {
             <span class="kw">return</span>;
         }
