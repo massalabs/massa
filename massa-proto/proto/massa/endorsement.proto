@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package massa.api.v1;
+
+import "slot.proto";
+
+option cc_enable_arenas = true;
+option csharp_namespace = "Massa.Api.V1";
+option go_package = "google.golang.org/genproto/massa/api/v1/endorsement;endorsement";
+option java_multiple_files = true;
+option java_package = "com.massa.api.v1";
+option objc_class_prefix = "ENDORSEMENT";
+option php_namespace = "Massa\\Api\\V1";
+
+// region Endorsement
+    // message struct
+    message EndorsementInfo {
+      // string field
+      string id = 1;
+      // bool field
+      bool in_pool = 2;
+      // string field
+      repeated string in_blocks = 3;
+      // bool field
+      bool is_final = 4;
+      // object field
+      Endorsement endorsement = 5;
+    }
+
+    // message struct
+    message Endorsement {
+      // object field
+      Slot slot = 1;
+      // string field
+      uint32 index = 2;
+      // string field
+      string endorsed_block = 3;
+    }
+
+    // message struct
+    message EndorsementContent {
+      // string field
+      string sender_public_key = 1;
+      // object field
+      Slot slot = 2;
+      // float field
+      uint32 index = 3;
+      // string field
+      string endorsed_block = 4;
+    }
+
+    // message struct
+    message EndorsementId {
+      // string field
+      string value = 1;
+    }
+
+    // message struct
+    message SecureShareEndorsement {
+      // object field
+      Endorsement content = 1;
+      // string field
+      string signature = 2;
+      // string field
+      string content_creator_pub_key = 3;
+      // string field
+      string content_creator_address = 4;
+      // string field
+      string id = 5;
+    }
