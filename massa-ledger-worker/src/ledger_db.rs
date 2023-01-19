@@ -231,24 +231,19 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(helpers::end_prefix(data_prefix!(addr)).unwrap());
+        opt.set_iterate_range(
+            data_prefix!(addr).clone()..helpers::end_prefix(data_prefix!(addr)).unwrap(),
+        );
 
-        let set: BTreeSet<_> = self
+        let mut iter = self
             .db
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(data_prefix!(addr), Direction::Forward),
-            )
+            .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
             .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
-            .collect();
+            .peekable();
 
-        if set.is_empty() {
-            None
-        } else {
-            Some(set)
-        }
+        iter.peek()?;
+        Some(iter.collect())
     }
 
     /// Get a part of the disk Ledger.
