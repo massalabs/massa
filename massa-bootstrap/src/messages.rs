@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::settings::BootstrapServerMessageDeserializerArgs;
 use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncPoolDeserializer, AsyncPoolSerializer,
@@ -10,6 +11,7 @@ use massa_consensus_exports::bootstrapable_graph::{
 use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+// use massa_models::block::BlockDeserializerArgs;
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
@@ -277,28 +279,7 @@ pub struct BootstrapServerMessageDeserializer {
 impl BootstrapServerMessageDeserializer {
     /// Creates a new `BootstrapServerMessageDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_advertise_length: u32,
-        max_bootstrap_blocks: u32,
-        max_operations_per_block: u32,
-        max_bootstrap_final_state_parts_size: u64,
-        max_async_pool_changes: u64,
-        max_async_pool_length: u64,
-        max_async_message_data: u64,
-        max_ledger_changes_count: u64,
-        max_datastore_key_length: u8,
-        max_datastore_value_length: u64,
-        max_datastore_entry_count: u64,
-        max_bootstrap_error_length: u64,
-        max_changes_slot_count: u64,
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-        max_credits_length: u64,
-        max_executed_ops_length: u64,
-        max_ops_changes_length: u64,
-    ) -> Self {
+    pub fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -306,65 +287,63 @@ impl BootstrapServerMessageDeserializer {
                 Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
+            peers_deserializer: BootstrapPeersDeserializer::new(args.max_advertise_length),
             state_changes_deserializer: StateChangesDeserializer::new(
-                thread_count,
-                max_async_pool_changes,
-                max_async_message_data,
-                max_ledger_changes_count,
-                max_datastore_key_length,
-                max_datastore_value_length,
-                max_datastore_entry_count,
-                max_rolls_length,
-                max_production_stats_length,
-                max_credits_length,
-                max_ops_changes_length,
+                args.thread_count,
+                args.max_async_pool_changes,
+                args.max_async_message_data,
+                args.max_ledger_changes_count,
+                args.max_datastore_key_length,
+                args.max_datastore_value_length,
+                args.max_datastore_entry_count,
+                args.max_rolls_length,
+                args.max_production_stats_length,
+                args.max_credits_length,
+                args.max_ops_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
-                Included(max_changes_slot_count),
+                Included(args.max_changes_slot_count),
             ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_bootstrap_blocks,
-                max_operations_per_block,
+                (&args).into(),
+                args.max_bootstrap_blocks,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
                 BlockIdDeserializer::new(),
                 Included(0),
-                Included(max_bootstrap_blocks as u64),
+                Included(args.max_bootstrap_blocks as u64),
             ),
             ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(max_bootstrap_final_state_parts_size),
+                Included(args.max_bootstrap_final_state_parts_size),
             ),
             length_bootstrap_error: U64VarIntDeserializer::new(
                 Included(0),
-                Included(max_bootstrap_error_length),
+                Included(args.max_bootstrap_error_length),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(args.thread_count)),
             ),
             async_pool_deserializer: AsyncPoolDeserializer::new(
-                thread_count,
-                max_async_pool_length,
-                max_async_message_data,
-                max_datastore_key_length as u32,
+                args.thread_count,
+                args.max_async_pool_length,
+                args.max_async_message_data,
+                args.max_datastore_key_length as u32,
             ),
             opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
-                max_rolls_length,
-                max_production_stats_length,
+                args.max_rolls_length,
+                args.max_production_stats_length,
             )),
             pos_credits_deserializer: DeferredCreditsDeserializer::new(
-                thread_count,
-                max_credits_length,
+                args.thread_count,
+                args.max_credits_length,
             ),
             exec_ops_deserializer: ExecutedOpsDeserializer::new(
-                thread_count,
-                max_executed_ops_length,
-                max_operations_per_block as u64,
+                args.thread_count,
+                args.max_executed_ops_length,
+                args.max_operations_per_block as u64,
             ),
         }
     }

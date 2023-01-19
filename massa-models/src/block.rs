@@ -206,6 +206,16 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
+///
+pub struct BlockDeserializerArgs {
+    ///
+    pub thread_count: u8,
+    ///
+    pub max_operations_per_block: u32,
+    ///
+    pub endorsement_count: u32,
+}
+
 /// Deserializer for `Block`
 pub struct BlockDeserializer {
     header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
@@ -214,13 +224,14 @@ pub struct BlockDeserializer {
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -> Self {
+    // pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -> Self {
+    pub fn new(args: BlockDeserializerArgs) -> Self {
         BlockDeserializer {
             header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
-                thread_count,
-                endorsement_count,
+                args.thread_count,
+                args.endorsement_count,
             )),
-            op_ids_deserializer: OperationIdsDeserializer::new(max_operations_per_block),
+            op_ids_deserializer: OperationIdsDeserializer::new(args.max_operations_per_block),
         }
     }
 }

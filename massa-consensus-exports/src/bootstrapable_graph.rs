@@ -1,6 +1,7 @@
 use crate::export_active_block::{
     ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
 };
+use massa_models::block::BlockDeserializerArgs;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -80,22 +81,13 @@ pub struct BootstrapableGraphDeserializer {
 impl BootstrapableGraphDeserializer {
     /// Creates a `BootstrapableGraphDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_bootstrap_blocks: u32,
-        max_operations_per_block: u32,
-    ) -> Self {
+    pub fn new(block_der_args: BlockDeserializerArgs, max_bootstrap_blocks: u32) -> Self {
         Self {
             block_count_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_bootstrap_blocks),
             ),
-            export_active_block_deserializer: ExportActiveBlockDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_operations_per_block,
-            ),
+            export_active_block_deserializer: ExportActiveBlockDeserializer::new(block_der_args),
         }
     }
 }

@@ -2,7 +2,7 @@ use crate::error::ConsensusError;
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, SecureShareBlock},
+    block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
     block_id::BlockId,
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
@@ -138,13 +138,13 @@ pub struct ExportActiveBlockDeserializer {
 
 impl ExportActiveBlockDeserializer {
     /// Create a new `ExportActiveBlockDeserializer`
+    // TODO: check if we can remove this?
     #[allow(clippy::too_many_arguments)]
-    pub fn new(thread_count: u8, endorsement_count: u32, max_operations_per_block: u32) -> Self {
+    pub fn new(block_der_args: BlockDeserializerArgs) -> Self {
+        let thread_count = block_der_args.thread_count;
         ExportActiveBlockDeserializer {
             sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
-                thread_count,
-                max_operations_per_block,
-                endorsement_count,
+                block_der_args,
             )),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
