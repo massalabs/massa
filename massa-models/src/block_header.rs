@@ -1,20 +1,27 @@
-use std::fmt::Formatter;
-use massa_serialization::{Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer};
-use nom::error::{context, ContextError, ParseError};
-use nom::{IResult, Parser};
-use massa_hash::{Hash, HashDeserializer};
-use nom::sequence::{preceded, tuple};
-use nom::branch::alt;
-use nom::bytes::complete::tag;
-use nom::multi::{count, length_count};
-use std::collections::HashSet;
-use serde::{Deserialize, Serialize};
-use std::collections::Bound::{Excluded, Included};
 use crate::block_id::BlockId;
 use crate::config::THREAD_COUNT;
-use crate::endorsement::{Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer, EndorsementSerializerLW, SecureShareEndorsement};
-use crate::secure_share::{SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
+use crate::endorsement::{
+    Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
+    EndorsementSerializerLW, SecureShareEndorsement,
+};
+use crate::secure_share::{
+    SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
+};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
+use massa_hash::{Hash, HashDeserializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
+use nom::branch::alt;
+use nom::bytes::complete::tag;
+use nom::error::{context, ContextError, ParseError};
+use nom::multi::{count, length_count};
+use nom::sequence::{preceded, tuple};
+use nom::{IResult, Parser};
+use serde::{Deserialize, Serialize};
+use std::collections::Bound::{Excluded, Included};
+use std::collections::HashSet;
+use std::fmt::Formatter;
 
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]

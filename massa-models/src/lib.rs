@@ -17,10 +17,10 @@ pub mod address;
 pub mod amount;
 /// block structure
 pub mod block;
-/// block-related structure: block_id
-pub mod block_id;
 /// block-related structure: block_header
 pub mod block_header;
+/// block-related structure: block_id
+pub mod block_id;
 /// clique
 pub mod clique;
 /// various structures

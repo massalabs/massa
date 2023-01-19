@@ -12,8 +12,8 @@ use massa_models::secure_share::Id;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
-    block_id::BlockId,
     block_header::SecuredHeader,
+    block_id::BlockId,
     endorsement::{EndorsementId, SecureShareEndorsement},
     node::NodeId,
     operation::OperationPrefixId,

@@ -24,13 +24,8 @@ use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address,
-    block::Block,
-    block_id::BlockId,
-    endorsement::EndorsementId,
-    execution::EventFilter,
-    operation::OperationId,
-    slot::Slot,
+    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
+    execution::EventFilter, operation::OperationId, slot::Slot,
 };
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;

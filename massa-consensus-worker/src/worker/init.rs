@@ -6,9 +6,7 @@ use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{
-        Block, BlockSerializer, SecureShareBlock,
-    },
+    block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
     prehash::PreHashMap,

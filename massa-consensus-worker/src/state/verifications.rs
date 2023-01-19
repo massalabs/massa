@@ -6,10 +6,7 @@ use massa_consensus_exports::{
 };
 use massa_logging::massa_trace;
 use massa_models::{
-    block_id::BlockId,
-    block_header::SecuredHeader,
-    prehash::PreHashSet,
-    slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
 };
 
 /// Possible output of a header check

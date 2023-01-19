@@ -1,14 +1,17 @@
-use massa_hash::{Hash, HashDeserializer};
-use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
-use nom::error::{context, ContextError, ParseError};
-use std::str::FromStr;
-use std::collections::Bound::Included;
-use serde_with::{DeserializeFromStr, SerializeDisplay};
-use std::convert::TryInto;
-use nom::IResult;
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
 use crate::secure_share::Id;
+use massa_hash::{Hash, HashDeserializer};
+use massa_serialization::{
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
+};
+use nom::error::{context, ContextError, ParseError};
+use nom::IResult;
+use serde_with::{DeserializeFromStr, SerializeDisplay};
+use std::collections::Bound::Included;
+use std::convert::TryInto;
+use std::str::FromStr;
 
 /// Size in bytes of a serialized block ID
 const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;

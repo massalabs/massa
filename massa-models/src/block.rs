@@ -17,7 +17,9 @@ use crate::{
 // use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     // DeserializeError,
-    Deserializer, SerializeError, Serializer,
+    Deserializer,
+    SerializeError,
+    Serializer,
     // U32VarIntDeserializer,
     // U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -26,10 +28,7 @@ use massa_signature::{KeyPair, PublicKey, Signature};
 // use nom::bytes::complete::tag;
 use nom::error::context;
 // use nom::multi::{count, length_count};
-use nom::sequence::{
-    // preceded,
-    tuple
-};
+use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
     error::{ContextError, ParseError},
@@ -388,19 +387,19 @@ pub enum BlockGraphStatus {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
     use super::*;
     use crate::{
+        block_header::BlockHeaderSerializer,
         config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
         endorsement::Endorsement,
         endorsement::EndorsementSerializer,
-        block_header::BlockHeaderSerializer,
         slot::Slot,
     };
+    use massa_hash::Hash;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
-    use massa_hash::Hash;
     use serial_test::serial;
+    use std::str::FromStr;
 
     #[test]
     #[serial]
