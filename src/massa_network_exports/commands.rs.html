@@ -309,6 +309,7 @@
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by
 //! `massa-network` that allow external communication with other nodes.
 //!
@@ -382,7 +383,8 @@
 
 </span><span class="kw">use crate</span>::{BootstrapPeers, ConnectionClosureReason, Peers};
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, SecuredHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     composite::PubkeySig,
     endorsement::SecureShareEndorsement,
     node::NodeId,

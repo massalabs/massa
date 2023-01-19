@@ -6,7 +6,7 @@
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::{BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 <span class="kw">use </span>massa_serialization::{Deserializer, Serializer, DeserializeError};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::{prehash::PreHashMap, block::BlockId, config::THREAD_COUNT};
+<span class="kw">use </span>massa_models::{prehash::PreHashMap, block_id::BlockId, config::THREAD_COUNT};
 <span class="kw">let </span><span class="kw-2">mut </span>bootstrapable_graph = BootstrapableGraph {
   final_blocks: Vec::new(),
 };
@@ -21,7 +21,7 @@ BootstrapableGraphSerializer::new().serialize(<span class="kw-2">&amp;</span>boo
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::{BootstrapableGraph, BootstrapableGraphSerializer};
 <span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::{prehash::PreHashMap, block::BlockId, config::THREAD_COUNT};
+<span class="kw">use </span>massa_models::{prehash::PreHashMap, block_id::BlockId, config::THREAD_COUNT};
 <span class="kw">let </span><span class="kw-2">mut </span>bootstrapable_graph = BootstrapableGraph {
   final_blocks: Vec::new(),
 };

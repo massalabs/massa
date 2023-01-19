@@ -186,6 +186,7 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, BTreeSet};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -194,7 +195,8 @@
 };
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, SecuredHeader},
+    block_id::BlockId,
+    block_header::SecuredHeader,
     slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;

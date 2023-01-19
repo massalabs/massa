@@ -376,6 +376,7 @@
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
@@ -409,7 +410,8 @@
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    block::{Block, BlockId},
+    block::Block,
+    block_id::BlockId,
     endorsement::EndorsementId,
     execution::EventFilter,
     slot::Slot,

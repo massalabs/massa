@@ -454,6 +454,7 @@
 <a href="#454" id="454">454</a>
 <a href="#455" id="455">455</a>
 <a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
 </pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation
 //!
 //! All following function take by default a reference to the `NetworkWorker`
@@ -480,7 +481,8 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, SecuredHeader},
+    block_id::BlockId,
+    block_header::SecuredHeader,
     composite::PubkeySig,
     endorsement::SecureShareEndorsement,
     node::NodeId,
