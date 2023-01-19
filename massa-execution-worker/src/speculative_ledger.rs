@@ -120,7 +120,12 @@ impl SpeculativeLedger {
         self.added_changes.get_bytecode_or_else(addr, || {
             match self.active_history.read().fetch_bytecode(addr) {
                 HistorySearchResult::Present(bytecode) => Some(bytecode),
-                HistorySearchResult::NoInfo => self.final_state.read().ledger.get_bytecode(addr),
+                HistorySearchResult::NoInfo => self
+                    .final_state
+                    .read()
+                    .ledger
+                    .get_bytecode(addr)
+                    .map(|res| res.deref().to_vec()),
                 HistorySearchResult::Absent => None,
             }
         })
@@ -430,9 +435,12 @@ impl SpeculativeLedger {
                 .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(entry) => Some(entry),
-                HistorySearchResult::NoInfo => {
-                    self.final_state.read().ledger.get_data_entry(addr, key)
-                }
+                HistorySearchResult::NoInfo => self
+                    .final_state
+                    .read()
+                    .ledger
+                    .get_data_entry(addr, key)
+                    .map(|res| res.deref().to_vec()),
                 HistorySearchResult::Absent => None,
             }
         })

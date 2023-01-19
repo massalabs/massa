@@ -53,7 +53,13 @@ pub fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
                 *addr,
                 LedgerEntry {
                     balance: *balance,
-                    bytecode: v1.get_bytecode(addr).unwrap_or_default(),
+                    bytecode: {
+                        let ref this = v1;
+                        let pinned = this
+                            .sorted_ledger
+                            .get_sub_entry(addr, LedgerSubEntry::Bytecode);
+                    }
+                    .unwrap_or_default(),
                     datastore: v1.get_entire_datastore(addr),
                 },
             )
@@ -67,7 +73,13 @@ pub fn assert_eq_ledger(v1: &dyn LedgerController, v2: &dyn LedgerController) {
                 *addr,
                 LedgerEntry {
                     balance: *balance,
-                    bytecode: v2.get_bytecode(addr).unwrap_or_default(),
+                    bytecode: {
+                        let ref this = v2;
+                        let pinned = this
+                            .sorted_ledger
+                            .get_sub_entry(addr, LedgerSubEntry::Bytecode);
+                    }
+                    .unwrap_or_default(),
                     datastore: v2.get_entire_datastore(addr),
                 },
             )

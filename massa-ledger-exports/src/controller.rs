@@ -2,8 +2,8 @@ use massa_hash::Hash;
 use massa_models::{
     address::Address, amount::Amount, error::ModelsError, slot::Slot, streaming_step::StreamingStep,
 };
-use std::collections::BTreeSet;
 use std::fmt::Debug;
+use std::{collections::BTreeSet, ops::Deref};
 
 use crate::{LedgerChanges, LedgerError};
 
@@ -24,7 +24,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
-    fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>>;
+    fn get_bytecode(&self, addr: &Address) -> Option<Box<dyn Deref<Target = [u8]> + '_>>;
 
     /// Checks if a ledger entry exists
     ///
@@ -40,7 +40,11 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
-    fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>>;
+    fn get_data_entry(
+        &self,
+        addr: &Address,
+        key: &[u8],
+    ) -> Option<Box<dyn Deref<Target = [u8]> + '_>>;
 
     /// Get every key of the datastore for a given address.
     ///

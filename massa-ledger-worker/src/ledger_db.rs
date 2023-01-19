@@ -20,8 +20,8 @@ use massa_serialization::{Deserializer, Serializer, U64VarIntSerializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
 use rocksdb::{
-    ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
-    WriteBatch, DB,
+    ColumnFamily, ColumnFamilyDescriptor, DBPinnableSlice, Direction, IteratorMode, Options,
+    ReadOptions, WriteBatch, DB,
 };
 use std::ops::Bound;
 use std::path::PathBuf;
@@ -216,10 +216,14 @@ impl LedgerDB {
     ///
     /// # Returns
     /// An Option of the sub-entry value as bytes
-    pub fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
+    pub(crate) fn get_sub_entry(
+        &self,
+        addr: &Address,
+        ty: LedgerSubEntry,
+    ) -> Option<DBPinnableSlice> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         self.db
-            .get_cf(handle, ty.derive_key(addr))
+            .get_pinned_cf(handle, ty.derive_key(addr))
             .expect(CRUD_ERROR)
     }
 

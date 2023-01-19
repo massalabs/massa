@@ -16,8 +16,11 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer};
 use nom::AsBytes;
-use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound::Included;
+use std::{
+    collections::{BTreeSet, HashMap},
+    ops::Deref,
+};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -106,9 +109,10 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
-    fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
+    fn get_bytecode(&self, addr: &Address) -> Option<Box<(dyn Deref<Target = [u8]> + '_)>> {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Bytecode)
+            .map(|res| Box::new(res) as Box<dyn Deref<Target = [u8]>>)
     }
 
     /// Checks if a ledger entry exists
@@ -129,9 +133,14 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
-    fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>> {
+    fn get_data_entry(
+        &self,
+        addr: &Address,
+        key: &[u8],
+    ) -> Option<Box<(dyn Deref<Target = [u8]> + '_)>> {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
+            .map(|res| Box::new(res) as Box<dyn Deref<Target = [u8]>>)
     }
 
     /// Get every key of the datastore for a given address.

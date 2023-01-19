@@ -1128,16 +1128,17 @@ impl ExecutionState {
         address: &Address,
         key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        let binding = self.final_state.read();
+        let final_entry = binding.ledger.get_data_entry(address, key);
         let search_result = self
             .active_history
             .read()
             .fetch_active_history_data_entry(address, key);
         (
-            final_entry.clone(),
+            final_entry.as_ref().map(|res| res.deref().to_vec()),
             match search_result {
                 HistorySearchResult::Present(active_entry) => Some(active_entry),
-                HistorySearchResult::NoInfo => final_entry,
+                HistorySearchResult::NoInfo => final_entry.map(|res| res.deref().to_vec()),
                 HistorySearchResult::Absent => None,
             },
         )
