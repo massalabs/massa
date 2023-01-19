@@ -454,7 +454,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
 <span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShare, SecureShareContent};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
-<span class="kw">use crate</span>::{block_id::BlockId, error::ModelsError};
+<span class="kw">use crate</span>::{block::BlockId, error::ModelsError};
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
 <span class="kw">use </span>massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
@@ -645,7 +645,7 @@
 <span class="kw">impl </span>Serializer&lt;Endorsement&gt; <span class="kw">for </span>EndorsementSerializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializer}};
+    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializer}};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     ///
@@ -692,7 +692,7 @@
 <span class="kw">impl </span>Deserializer&lt;Endorsement&gt; <span class="kw">for </span>EndorsementDeserializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}};
+    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_hash::Hash;
     ///
@@ -761,7 +761,7 @@
 <span class="kw">impl </span>Serializer&lt;Endorsement&gt; <span class="kw">for </span>EndorsementSerializerLW {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializerLW}};
+    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializerLW}};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     ///
@@ -803,7 +803,7 @@
 <span class="kw">impl </span>Deserializer&lt;Endorsement&gt; <span class="kw">for </span>EndorsementDeserializerLW {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializerLW, EndorsementDeserializerLW}};
+    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializerLW, EndorsementDeserializerLW}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_hash::Hash;
     ///

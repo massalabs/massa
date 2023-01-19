@@ -270,15 +270,11 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ConsensusError;
 <span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, SecureShareBlock},
-    block_id::BlockId,
+    block::{Block, BlockDeserializer, BlockId, SecureShareBlock},
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
@@ -432,9 +428,7 @@
     <span class="doccomment">/// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{Block, BlockSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
-    /// use massa_models::block_id::BlockId;
-    /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
+    /// use massa_models::{ledger::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;

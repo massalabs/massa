@@ -286,8 +286,6 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">super</span>::mock_network_controller::MockNetworkController;
@@ -300,10 +298,8 @@
     address::Address,
     amount::Amount,
     block::{
-        Block, BlockSerializer, SecureShareBlock,
+        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecureShareBlock,
     },
-    block_id::BlockId,
-    block_header::{BlockHeader, BlockHeaderSerializer},
     endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,

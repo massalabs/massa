@@ -599,8 +599,6 @@
 <a href="#599" id="599">599</a>
 <a href="#600" id="600">600</a>
 <a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -628,9 +626,7 @@
 };
 <span class="kw">use </span>massa_models::{
     address::Address,
-    block::FilledBlock,
-    block_header::BlockHeader,
-    block_id::BlockId,
+    block::{BlockHeader, BlockId, FilledBlock},
     clique::Clique,
     composite::PubkeySig,
     endorsement::EndorsementId,

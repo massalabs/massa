@@ -445,7 +445,6 @@
 <a href="#445" id="445">445</a>
 <a href="#446" id="446">446</a>
 <a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -473,8 +472,7 @@
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    block::Block,
-    block_id::BlockId,
+    block::{Block, BlockId},
     endorsement::EndorsementId,
     execution::EventFilter,
     operation::OperationId,

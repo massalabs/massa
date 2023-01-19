@@ -582,7 +582,6 @@
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -594,9 +593,8 @@
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block::{Block, BlockSerializer},
-    block_id::BlockId,
-    block_header::SecuredHeader,
+    block::Block,
+    block::{BlockId, BlockSerializer, SecuredHeader},
     node::NodeId,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},
