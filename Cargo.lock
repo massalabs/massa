@@ -4768,6 +4768,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+ "unsigned-varint",
 ]
 
 [[package]]
