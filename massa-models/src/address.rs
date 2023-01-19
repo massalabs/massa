@@ -26,18 +26,18 @@ const ADDRESS_PREFIX: char = 'A';
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        //DispatchVersions!(self, fmt(f));
+        //CallVersions!(self, fmt(f));
         //TODO: https://stackoverflow.com/questions/75171139/use-macro-in-match-branch
         match self {
             Address::AddressV1(address) => address.fmt(f),
-            Address::AddressV2(address) => address.fmt(f),
+            Address::AddressV2(address) => address.fmt(f)
         }
     }
 }
 
 impl ::serde::Serialize for Address {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        //DispatchVersions!(self, serialize(s));
+        //CallVersions!(self, serialize(s));
         //TODO: https://stackoverflow.com/questions/75171139/use-macro-in-match-branch
         match self {
             Address::AddressV1(address) => address.serialize(s),
@@ -136,11 +136,11 @@ impl FromStr for Address {
                     .map_err(|_| ModelsError::AddressParseError)?;
                 //TODO: Make it function like macro from address big structure
                 match version {
-                    1 => Ok(AddressVariant!["1"](<Address!["1"]>::from_bytes(
+                    <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](<Address!["1"]>::from_bytes(
                         rest.try_into()
                             .map_err(|_| ModelsError::AddressParseError)?,
                     )?)),
-                    2 => Ok(AddressVariant!["2"](<Address!["2"]>::from_bytes(
+                    <Address!["1"]>::VERSION => Ok(AddressVariant!["2"](<Address!["2"]>::from_bytes(
                         rest.try_into()
                             .map_err(|_| ModelsError::AddressParseError)?,
                     )?)),
@@ -212,7 +212,6 @@ fn test_address_str_format() {
     use massa_signature::KeyPair;
 
     let keypair = KeyPair::generate();
-    //TODO: Macro to not write this variant
     let address = Address::from_public_key(1, &keypair.get_public_key()).unwrap();
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
@@ -275,6 +274,11 @@ impl Address {
 
 #[transition::impl_version(versions("1", "2"), structure = "Address")]
 impl Address {
+
+    pub fn get_version(&self) -> u64 {
+        Self::VERSION
+    }
+
     /// Gets the associated thread. Depends on the `thread_count`
     pub fn get_thread(&self, thread_count: u8) -> u8 {
         (self.into_bytes()[0])
@@ -325,17 +329,7 @@ impl Address {
                 version
             )));
         } else {
-            Ok(Address(Hash::from_bytes(
-                &data[Self::VERSION_VARINT_SIZE_BYTES..]
-                    .try_into()
-                    .map_err(|_| {
-                        ModelsError::BufferError(format!(
-                            "expected a buffer of size {}, but found a size of {}",
-                            HASH_SIZE_BYTES,
-                            &data[Self::VERSION_VARINT_SIZE_BYTES..].len()
-                        ))
-                    })?,
-            )))
+            Ok(Address::from_bytes_without_version(rest)?)
         }
     }
 
@@ -354,12 +348,16 @@ impl Address {
 
 /// Serializer for `Address`
 #[derive(Default, Clone)]
-pub struct AddressSerializer;
+pub struct AddressSerializer {
+    version_serializer: U64VarIntSerializer,
+}
 
 impl AddressSerializer {
     /// Serializes an `Address` into a `Vec<u8>`
     pub fn new() -> Self {
-        Self
+        Self {
+            version_serializer: U64VarIntSerializer::new()
+        }
     }
 }
 
@@ -375,6 +373,7 @@ impl Serializer<Address> for AddressSerializer {
 #[transition::impl_version(versions("1", "2"), structure = "Address")]
 impl Serializer<Address> for AddressSerializer {
     fn serialize(&self, value: &Address, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.version_serializer.serialize(&value.get_version(), buffer)?;
         buffer.extend_from_slice(&value.into_bytes());
         Ok(())
     }
