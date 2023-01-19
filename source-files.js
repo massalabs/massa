@@ -15,7 +15,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]],\
 "massa_hash":["",[],["error.rs","hash.rs","lib.rs","settings.rs"]],\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","types.rs"]],\
-"massa_ledger_worker":["",[],["ledger.rs","ledger_db.rs","lib.rs"]],\
+"massa_ledger_worker":["",[["ledger_db",[],["constants.rs","helpers.rs"]]],["ledger.rs","ledger_db.rs","lib.rs"]],\
 "massa_logging":["",[],["lib.rs"]],\
 "massa_models":["",[["config",[],["compact_config.rs","constants.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","block.rs","block_header.rs","block_id.rs","clique.rs","composite.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","version.rs"]],\
 "massa_network_exports":["",[],["commands.rs","common.rs","error.rs","establisher.rs","lib.rs","network_controller.rs","peers.rs","settings.rs"]],\
