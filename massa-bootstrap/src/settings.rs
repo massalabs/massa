@@ -19,7 +19,7 @@ pub enum IpType {
 /// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapConfig {
-    /// Ip address of our bootstrap nodes and their public key.
+    /// Ip address of our bootstrap nodes and their NodeId.
     pub bootstrap_list: Vec<(SocketAddr, NodeId)>,
     /// IP version filter for bootstrap list, targeting IpType::IPv4, IpType::IPv6 or IpType::Both. Defaults to IpType::Both.
     pub bootstrap_protocol: IpType,
