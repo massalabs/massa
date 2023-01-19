@@ -9,8 +9,9 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
 use massa_models::{
-    block::Block,
-    block::{BlockId, BlockSerializer, SecuredHeader},
+    block::{Block, BlockSerializer},
+    block_id::BlockId,
+    block_header::SecuredHeader,
     node::NodeId,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},

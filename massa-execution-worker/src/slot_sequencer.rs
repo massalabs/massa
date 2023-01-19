@@ -6,7 +6,7 @@ use std::collections::{HashMap, VecDeque};
 
 use massa_execution_exports::ExecutionConfig;
 use massa_models::{
-    block::BlockId,
+    block_id::BlockId,
     prehash::PreHashMap,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},

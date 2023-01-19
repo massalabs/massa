@@ -1,6 +1,7 @@
 use massa_hash::Hash;
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, SecureShareBlock},
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
     secure_share::SecureShareContent,
     slot::Slot,
 };

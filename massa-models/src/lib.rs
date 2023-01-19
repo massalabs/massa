@@ -15,8 +15,12 @@ pub mod active_block;
 pub mod address;
 /// amount related structures
 pub mod amount;
-/// block-related structures
+/// block structure
 pub mod block;
+/// block-related structure: block_id
+pub mod block_id;
+/// block-related structure: block_header
+pub mod block_header;
 /// clique
 pub mod clique;
 /// various structures

@@ -22,7 +22,8 @@ use endorsement_indexes::EndorsementIndexes;
 use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
 use massa_models::secure_share::Id;
 use massa_models::{
-    block::{BlockId, SecureShareBlock},
+    block::SecureShareBlock,
+    block_id::BlockId,
     endorsement::{EndorsementId, SecureShareEndorsement},
     operation::{OperationId, SecureShareOperation},
 };

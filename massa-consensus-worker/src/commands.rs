@@ -1,5 +1,6 @@
 use massa_models::{
-    block::{BlockHeader, BlockId},
+    block_header::BlockHeader,
+    block_id::BlockId,
     secure_share::SecureShare,
     slot::Slot,
 };

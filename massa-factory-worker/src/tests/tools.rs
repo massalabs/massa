@@ -12,7 +12,7 @@ use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
 use massa_models::{
-    address::Address, block::BlockId, config::ENDORSEMENT_COUNT,
+    address::Address, block_id::BlockId, config::ENDORSEMENT_COUNT,
     endorsement::SecureShareEndorsement, operation::SecureShareOperation, prehash::PreHashMap,
     slot::Slot, test_exports::get_next_slot_instant,
 };

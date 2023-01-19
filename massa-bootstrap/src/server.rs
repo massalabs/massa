@@ -6,7 +6,7 @@ use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, Consensus
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{
-    block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
+    block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
 };
 use massa_network_exports::NetworkCommandSender;

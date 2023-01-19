@@ -2,7 +2,8 @@ use crate::error::ConsensusError;
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, BlockId, SecureShareBlock},
+    block::{Block, BlockDeserializer, SecureShareBlock},
+    block_id::BlockId,
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
@@ -156,7 +157,9 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::{ledger::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{Block, BlockSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::block_id::BlockId;
+    /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;

@@ -2,7 +2,8 @@
 
 use massa_hash::HashDeserializer;
 use massa_models::{
-    block::{BlockHeader, BlockHeaderDeserializer, BlockId, SecuredHeader},
+    block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
+    block_id::BlockId,
     config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
     endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     operation::{

@@ -11,7 +11,8 @@ use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{BlockId, SecuredHeader},
+    block_id::BlockId,
+    block_header::SecuredHeader,
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,

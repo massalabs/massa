@@ -25,7 +25,9 @@ use massa_api_exports::{
 };
 use massa_models::{
     address::Address,
-    block::{BlockHeader, BlockId, FilledBlock},
+    block::FilledBlock,
+    block_header::BlockHeader,
+    block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     endorsement::EndorsementId,

@@ -10,8 +10,10 @@ use massa_models::{
     address::Address,
     amount::Amount,
     block::{
-        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecureShareBlock,
+        Block, BlockSerializer, SecureShareBlock,
     },
+    block_id::BlockId,
+    block_header::{BlockHeader, BlockHeaderSerializer},
     endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
