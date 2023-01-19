@@ -6,12 +6,8 @@ use std::sync::{
 };
 
 use massa_models::{
-    block::{BlockGraphStatus, BlockHeader, BlockId},
-    clique::Clique,
-    prehash::PreHashSet,
-    secure_share::SecureShare,
-    slot::Slot,
-    stats::ConsensusStats,
+    block::BlockGraphStatus, block_header::BlockHeader, block_id::BlockId, clique::Clique,
+    prehash::PreHashSet, secure_share::SecureShare, slot::Slot, stats::ConsensusStats,
     streaming_step::StreamingStep,
 };
 use massa_storage::Storage;

@@ -32,8 +32,10 @@ use massa_models::node::NodeId;
 use massa_models::{
     address::Address,
     amount::Amount,
+    block::Block,
     block::BlockSerializer,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
     endorsement::Endorsement,
     endorsement::EndorsementSerializer,
     operation::OperationId,

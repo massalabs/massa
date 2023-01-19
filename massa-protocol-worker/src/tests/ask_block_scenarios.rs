@@ -3,7 +3,7 @@
 use super::tools::protocol_test;
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
-use massa_models::{block::BlockId, slot::Slot};
+use massa_models::{block_id::BlockId, slot::Slot};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};

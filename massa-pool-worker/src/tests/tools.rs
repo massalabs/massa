@@ -8,7 +8,7 @@ use massa_hash::Hash;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::BlockId,
+    block_id::BlockId,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     secure_share::SecureShareContent,

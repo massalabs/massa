@@ -7,7 +7,8 @@ use massa_models::operation::OperationId;
 use massa_models::secure_share::{Id, SecureShareContent};
 use massa_models::{
     address::Address,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer},
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer},
     slot::Slot,
 };
 use massa_network_exports::NetworkCommand;

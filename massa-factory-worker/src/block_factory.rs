@@ -3,7 +3,9 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecuredHeader},
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
+    block_id::BlockId,
     endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
     secure_share::SecureShareContent,

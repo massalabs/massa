@@ -5,7 +5,7 @@ use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
-    address::Address, amount::Amount, block::BlockId, prehash::PreHashMap, slot::Slot,
+    address::Address, amount::Amount, block_id::BlockId, prehash::PreHashMap, slot::Slot,
 };
 use massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 use num::rational::Ratio;

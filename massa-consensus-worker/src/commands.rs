@@ -1,7 +1,5 @@
 use massa_models::{
-    block::{BlockHeader, BlockId},
-    secure_share::SecureShare,
-    slot::Slot,
+    block_header::BlockHeader, block_id::BlockId, secure_share::SecureShare, slot::Slot,
 };
 use massa_storage::Storage;
 

@@ -2,7 +2,8 @@ use std::{collections::hash_map, collections::HashMap};
 
 use massa_models::{
     address::Address,
-    block::{BlockId, SecureShareBlock},
+    block::SecureShareBlock,
+    block_id::BlockId,
     endorsement::EndorsementId,
     operation::OperationId,
     prehash::{PreHashMap, PreHashSet},

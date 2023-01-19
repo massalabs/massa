@@ -316,7 +316,8 @@ where
     Deser: Deserializer<T>,
 {
     /// ```
-    /// # use massa_models::{block::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}, slot::Slot, secure_share::{SecureShare, SecureShareSerializer, SecureShareDeserializer, SecureShareContent}};
+    /// # use massa_models::{endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}, slot::Slot, secure_share::{SecureShare, SecureShareSerializer, SecureShareDeserializer, SecureShareContent}};
+    /// use massa_models::block_id::BlockId;
     /// # use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
     /// # use massa_signature::KeyPair;
     /// # use std::ops::Bound::Included;

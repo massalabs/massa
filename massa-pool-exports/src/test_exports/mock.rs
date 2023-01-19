@@ -6,7 +6,7 @@ use std::sync::{
 };
 
 use massa_models::{
-    block::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+    block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;

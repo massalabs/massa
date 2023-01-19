@@ -5,7 +5,7 @@ use massa_consensus_exports::{
 use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
-    block::BlockId,
+    block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
 };

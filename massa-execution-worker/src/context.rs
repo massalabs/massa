@@ -22,7 +22,7 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::BlockId,
+    block_id::BlockId,
     operation::OperationId,
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,

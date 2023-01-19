@@ -26,7 +26,7 @@ use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
-    block::BlockId,
+    block_id::BlockId,
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};

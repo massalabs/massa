@@ -9,9 +9,9 @@ use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::{
-        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecureShareBlock,
-    },
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
     endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,

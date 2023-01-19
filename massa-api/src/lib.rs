@@ -30,12 +30,8 @@ use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address,
-    block::{Block, BlockId},
-    endorsement::EndorsementId,
-    execution::EventFilter,
-    slot::Slot,
-    version::Version,
+    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
+    execution::EventFilter, slot::Slot, version::Version,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::{PoolChannels, PoolController};

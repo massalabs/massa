@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{address::Address, block::Block, block::BlockId, slot::Slot};
+use massa_models::{address::Address, block::Block, block_id::BlockId, slot::Slot};
 
 use serde::{Deserialize, Serialize};
 
