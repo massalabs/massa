@@ -2,6 +2,7 @@
 //! Json RPC API for a massa-node
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use massa_models::block_id::BlockId;
 use massa_models::version::Version;
 
 /// Exposed API methods
@@ -10,6 +11,10 @@ pub trait MassaApi {
     /// Get Massa node version.
     #[method(name = "get_version")]
     async fn get_version(&self) -> RpcResult<Version>;
+
+    /// Get the id of best parents for the next block to be produced along with their period
+    #[method(name = "get_best_parents")]
+    fn get_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>>;
 
     /// New produced block.
     #[subscription(

@@ -541,6 +541,7 @@ async fn launch(
 
     // spawn Massa API
     let api = API::<ApiV2>::new(
+        consensus_controller.clone(),
         consensus_channels,
         pool_channels,
         api_config.clone(),

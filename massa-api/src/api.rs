@@ -10,7 +10,8 @@ use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
 use massa_api_exports::config::APIConfig;
-use massa_consensus_exports::ConsensusChannels;
+use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_models::block_id::BlockId;
 use massa_models::version::Version;
 use massa_pool_exports::PoolChannels;
 use serde::Serialize;
@@ -19,12 +20,14 @@ use tokio_stream::wrappers::BroadcastStream;
 impl API<ApiV2> {
     /// generate a new massa API
     pub fn new(
+        consensus_controller: Box<dyn ConsensusController>,
         consensus_channels: ConsensusChannels,
         pool_channels: PoolChannels,
         api_settings: APIConfig,
         version: Version,
     ) -> Self {
         API(ApiV2 {
+            consensus_controller,
             consensus_channels,
             pool_channels,
             api_settings,
@@ -49,6 +52,15 @@ impl ApiServer for API<ApiV2> {
 impl MassaApiServer for API<ApiV2> {
     async fn get_version(&self) -> RpcResult<Version> {
         Ok(self.0.version)
+    }
+
+    fn get_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>> {
+        Ok(self
+            .0
+            .consensus_controller
+            .get_best_parents()
+            .into_iter()
+            .collect())
     }
 
     fn subscribe_new_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {
