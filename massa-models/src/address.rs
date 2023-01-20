@@ -11,16 +11,19 @@ use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
-use std::fmt::Error;
 use std::ops::Bound::Included;
 use std::str::FromStr;
 
 /// Size of a serialized address, in bytes
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
+/// Captures the context of an address. For now, codebase assumes it's always User
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Address {
+    ///
     User(UserAddress),
+    #[deprecated(since = "0.0.0", note = "this is a work in progress")]
+    ///
     SC(SCAddress),
 }
 /// Derived from a public key
@@ -33,6 +36,8 @@ impl UserAddress {
     }
 }
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[allow(deprecated)]
+///
 pub struct SCAddress {
     slot: Slot,
     idx: usize,
@@ -50,6 +55,7 @@ impl std::fmt::Display for Address {
             self.variant_prefix(),
             match self {
                 Address::User(addr) => addr,
+                #[allow(deprecated)]
                 Address::SC(_addr) => unimplemented!(),
             }
         )
@@ -159,10 +165,9 @@ impl FromStr for Address {
             return Err(ModelsError::AddressParseError);
         };
         match chars.next() {
-            Some('U') => Ok(Self::User(UserAddress::from_str(
-                chars.collect::<String>().as_str(),
-            )?)),
-            Some('S') => Ok(Self::SC(todo!())),
+            Some('U') => Ok(Self::User(UserAddress::from_str(&s[1..])?)),
+            #[allow(deprecated)]
+            Some('S') => Ok(Self::SC(SCAddress::from_bytes(s[1..].as_bytes()))),
             Some(_) | None => Err(ModelsError::AddressParseError),
         }
     }
@@ -271,8 +276,14 @@ impl Address {
     const fn variant_prefix(&self) -> char {
         match self {
             Address::User(_) => 'U',
+            #[allow(deprecated)]
             Address::SC(_) => 'S',
         }
+    }
+}
+impl SCAddress {
+    fn from_bytes(_data: &[u8]) -> Self {
+        todo!()
     }
 }
 
