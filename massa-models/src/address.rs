@@ -1,17 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::config::THREAD_COUNT;
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use crate::slot::Slot;
+use crate::slot::{Slot, SlotDeserializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
+use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 
 /// Size of a serialized address, in bytes
@@ -40,7 +42,7 @@ impl UserAddress {
 ///
 pub struct SCAddress {
     slot: Slot,
-    idx: usize,
+    idx: u64,
     read_only: bool,
 }
 
@@ -164,10 +166,14 @@ impl FromStr for Address {
         let Some('A') = chars.next() else {
             return Err(ModelsError::AddressParseError);
         };
-        match chars.next() {
-            Some('U') => Ok(Self::User(UserAddress::from_str(&s[1..])?)),
+        let prefix = chars.next();
+        match prefix {
+            Some('U') => Ok(Self::User(UserAddress::from_str(dbg!(&s[2..]))?)),
             #[allow(deprecated)]
-            Some('S') => Ok(Self::SC(SCAddress::from_bytes(s[1..].as_bytes()))),
+            Some('S' | 's') => Ok(
+                SCAddress::from_bytes(s[1..].as_bytes(), prefix == Some('S'))
+                    .expect("todo: bubble up error"),
+            ),
             Some(_) | None => Err(ModelsError::AddressParseError),
         }
     }
@@ -277,13 +283,27 @@ impl Address {
         match self {
             Address::User(_) => 'U',
             #[allow(deprecated)]
-            Address::SC(_) => 'S',
+            Address::SC(SCAddress {
+                slot: _,
+                idx: _,
+                read_only: true,
+            }) => 'S',
+            #[allow(deprecated)]
+            Address::SC(SCAddress {
+                slot: _,
+                idx: _,
+                read_only: false,
+            }) => 's',
         }
     }
 }
 impl SCAddress {
-    fn from_bytes(_data: &[u8]) -> Self {
-        todo!()
+    fn from_bytes(data: &[u8], read_and_write: bool) -> Result<Address, ModelsError> {
+        let deser = SCAddressDeserializer::new(read_and_write);
+        let ([], sc_address): (&[u8], Address) = deser.deserialize::<DeserializeError>(data).map_err(|er| ModelsError::DeserializeError(er.to_string()))? else {
+            return Err( ModelsError::DeserializeError("leftover bytes".to_string()));
+        };
+        Ok(sc_address)
     }
 }
 
@@ -347,6 +367,69 @@ impl Deserializer<Address> for AddressDeserializer {
         })
         .map(|addr| Address::User(UserAddress(addr)))
         .parse(buffer)
+    }
+}
+/// Deserializer for `SCAddress`
+#[derive(Clone)]
+pub struct SCAddressDeserializer {
+    slot: SlotDeserializer,
+    idx: U64VarIntDeserializer,
+    read_and_write: bool,
+}
+
+impl SCAddressDeserializer {
+    /// Creates a new deserializer for `Address`
+    pub const fn new(read_and_write: bool) -> Self {
+        Self {
+            slot: SlotDeserializer::new(
+                (Included(u64::MIN), Included(u64::MAX)),
+                (Included(0), Excluded(THREAD_COUNT)),
+            ),
+            idx: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            read_and_write,
+        }
+    }
+}
+
+impl Deserializer<Address> for SCAddressDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_models::address::{SCAddress, Address, SCDeserializer};
+    /// use massa_serialization::{Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let sc_address = todo!()
+    /// let address = Address::SC(sc_address);
+    /// let bytes = address.into_bytes();
+    /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// assert_eq!(rest.len(), 0);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Address, E> {
+        context("SCAddress", |input| {
+            {
+                tuple((
+                    context("Slot", |input| self.slot.deserialize(input)),
+                    context("index", |input| self.idx.deserialize(input)),
+                ))
+            }
+            .parse(input)
+        })
+        .parse(buffer)
+        .map(|(rest, (slot, idx))| {
+            (
+                rest,
+                #[allow(deprecated)]
+                Address::SC(SCAddress {
+                    slot,
+                    idx,
+                    read_only: !self.read_and_write,
+                }),
+            )
+        })
     }
 }
 
