@@ -380,6 +380,7 @@ impl ExecutionContext {
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
     pub fn create_new_sc_address(&mut self, bytecode: Vec<u8>) -> Result<Address, ExecutionError> {
+        todo!("refine me when Address::SC is implimented");
         // TODO: collision problem:
         //  prefix addresses to know if they are SCs or normal,
         //  otherwise people can already create new accounts by sending coins to the right hash
@@ -402,7 +403,7 @@ impl ExecutionContext {
             data.push(1u8);
         }
         // hash the seed to get a unique address
-        let address = Address(massa_hash::Hash::compute_from(&data));
+        let address = unimplemented!("blocked by SCADress"); // SCAddress(massa_hash::Hash::compute_from(&data));
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(

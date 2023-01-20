@@ -10,28 +10,37 @@ use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use std::fmt::Error;
 use std::ops::Bound::Included;
 use std::str::FromStr;
 
 /// Size of a serialized address, in bytes
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum Address {
+    User(UserAddress),
+    SC(! /* SCAddress */),
+}
 /// Derived from a public key
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Address(pub Hash);
+pub struct UserAddress(pub Hash);
 
 const ADDRESS_PREFIX: char = 'A';
 const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let Address::User(addr) = self else {
+            return Err(Error);
+        };
         let u64_serializer = U64VarIntSerializer::new();
         // might want to allocate the vector with capacity in order to avoid re-allocation
         let mut bytes: Vec<u8> = Vec::new();
         u64_serializer
             .serialize(&ADDRESS_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_bytes());
+        bytes.extend(addr.0.to_bytes());
         write!(
             f,
             "{}{}",
@@ -139,10 +148,10 @@ impl FromStr for Address {
                 let (rest, _version) = u64_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::AddressParseError)?;
-                Ok(Address(Hash::from_bytes(
+                Ok(Self::User(UserAddress(Hash::from_bytes(
                     rest.try_into()
                         .map_err(|_| ModelsError::AddressParseError)?,
-                )))
+                ))))
             }
             _ => Err(ModelsError::AddressParseError),
         }
@@ -172,7 +181,7 @@ impl Address {
 
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address(Hash::compute_from(public_key.to_bytes()))
+        Self::User(UserAddress(Hash::compute_from(public_key.to_bytes())))
     }
 
     /// ## Example
@@ -188,7 +197,10 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn to_bytes(&self) -> &[u8; ADDRESS_SIZE_BYTES] {
-        self.0.to_bytes()
+        let Address::User(addr) = self else {
+            todo!("return result");
+        };
+        addr.0.to_bytes()
     }
 
     /// ## Example
@@ -204,7 +216,10 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn into_bytes(self) -> [u8; ADDRESS_SIZE_BYTES] {
-        self.0.into_bytes()
+        let Address::User(addr) = self else {
+            todo!("return result");
+        };
+        addr.0.into_bytes()
     }
 
     /// ## Example
@@ -220,7 +235,7 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Address {
-        Address(Hash::from_bytes(data))
+        Self::User(UserAddress(Hash::from_bytes(data)))
     }
 }
 
@@ -281,7 +296,7 @@ impl Deserializer<Address> for AddressDeserializer {
         context("Failed Address deserialization", |input| {
             self.hash_deserializer.deserialize(input)
         })
-        .map(Address)
+        .map(|addr| Address::User(UserAddress(addr)))
         .parse(buffer)
     }
 }
