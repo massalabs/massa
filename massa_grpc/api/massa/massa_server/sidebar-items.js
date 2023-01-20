@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["MassaServer","Massa gRPC service"]],"trait":[["Massa","Generated trait containing gRPC methods that should be implemented for use with MassaServer."]]};
