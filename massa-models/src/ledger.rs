@@ -383,14 +383,14 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// # let ledger_changes = LedgerChanges(vec![
     /// #   (
-    /// #       Address::from_str("A12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap(),
+    /// #       Address::from_str("AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap(),
     /// #       LedgerChange {
     /// #           balance_delta: Amount::from_str("1149").unwrap(),
     /// #           balance_increment: true
     /// #       },
     /// #   ),
     /// #   (
-    /// #       Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    /// #       Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     /// #       LedgerChange {
     /// #           balance_delta: Amount::from_str("1020").unwrap(),
     /// #           balance_increment: true

@@ -2,6 +2,7 @@
 
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
+use crate::slot::Slot;
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -20,33 +21,50 @@ pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Address {
     User(UserAddress),
-    SC(! /* SCAddress */),
+    SC(SCAddress),
 }
 /// Derived from a public key
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserAddress(pub Hash);
 
+impl UserAddress {
+    const fn version() -> u64 {
+        0
+    }
+}
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SCAddress {
+    slot: Slot,
+    idx: usize,
+    read_only: bool,
+}
+
 const ADDRESS_PREFIX: char = 'A';
-const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let Address::User(addr) = self else {
-            return Err(Error);
-        };
+        write!(
+            f,
+            "{}{}{}",
+            ADDRESS_PREFIX,
+            self.variant_prefix(),
+            match self {
+                Address::User(addr) => addr,
+                Address::SC(_addr) => unimplemented!(),
+            }
+        )
+    }
+}
+impl std::fmt::Display for UserAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let u64_serializer = U64VarIntSerializer::new();
         // might want to allocate the vector with capacity in order to avoid re-allocation
         let mut bytes: Vec<u8> = Vec::new();
         u64_serializer
-            .serialize(&ADDRESS_VERSION, &mut bytes)
+            .serialize(&Self::version(), &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(addr.0.to_bytes());
-        write!(
-            f,
-            "{}{}",
-            ADDRESS_PREFIX,
-            bs58::encode(bytes).with_check().into_string()
-        )
+        bytes.extend(self.0.to_bytes());
+        write!(f, "{}", bs58::encode(bytes).with_check().into_string())
     }
 }
 
@@ -75,7 +93,7 @@ impl<'de> ::serde::Deserialize<'de> for Address {
                 type Value = Address;
 
                 fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("A + base58::encode(version + hash)")
+                    formatter.write_str("A + variant prefix + inner address")
                 }
 
                 fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -137,24 +155,35 @@ impl FromStr for Address {
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
+        let Some('A') = chars.next() else {
+            return Err(ModelsError::AddressParseError);
+        };
         match chars.next() {
-            Some(prefix) if prefix == ADDRESS_PREFIX => {
-                let data = chars.collect::<String>();
-                let decoded_bs58_check = bs58::decode(data)
-                    .with_check(None)
-                    .into_vec()
-                    .map_err(|_| ModelsError::AddressParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, _version) = u64_deserializer
-                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-                    .map_err(|_| ModelsError::AddressParseError)?;
-                Ok(Self::User(UserAddress(Hash::from_bytes(
-                    rest.try_into()
-                        .map_err(|_| ModelsError::AddressParseError)?,
-                ))))
-            }
-            _ => Err(ModelsError::AddressParseError),
+            Some('U') => Ok(Self::User(UserAddress::from_str(
+                chars.collect::<String>().as_str(),
+            )?)),
+            Some('S') => Ok(Self::SC(todo!())),
+            Some(_) | None => Err(ModelsError::AddressParseError),
         }
+    }
+}
+
+impl FromStr for UserAddress {
+    type Err = ModelsError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let decoded_bs58_check = bs58::decode(s)
+            .with_check(None)
+            .into_vec()
+            .map_err(|_| ModelsError::AddressParseError)?;
+        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+        let (rest, _version) = u64_deserializer
+            .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+            .map_err(|_| ModelsError::AddressParseError)?;
+        Ok(UserAddress(Hash::from_bytes(
+            rest.try_into()
+                .map_err(|_| ModelsError::AddressParseError)?,
+        )))
     }
 }
 
@@ -165,8 +194,9 @@ fn test_address_str_format() {
     let keypair = KeyPair::generate();
     let address = Address::from_public_key(&keypair.get_public_key());
     let a = address.to_string();
+    dbg!(&a);
     let b = Address::from_str(&a).unwrap();
-    assert!(address == b);
+    assert_eq!(address, b);
 }
 
 impl PreHashed for Address {}
@@ -237,6 +267,13 @@ impl Address {
     pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Address {
         Self::User(UserAddress(Hash::from_bytes(data)))
     }
+
+    const fn variant_prefix(&self) -> char {
+        match self {
+            Address::User(_) => 'U',
+            Address::SC(_) => 'S',
+        }
+    }
 }
 
 /// Serializer for `Address`
@@ -279,11 +316,12 @@ impl AddressDeserializer {
 impl Deserializer<Address> for AddressDeserializer {
     /// ## Example
     /// ```rust
-    /// use massa_models::address::{Address, AddressDeserializer};
+    /// use massa_models::address::{UserAddress, Address, AddressDeserializer};
     /// use massa_serialization::{Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let address = Address::from_str("A12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
+    /// let user_address = UserAddress::from_str("12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
+    /// let address = Address::User(user_address);
     /// let bytes = address.into_bytes();
     /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
