@@ -30,7 +30,7 @@ impl std::fmt::Display for Address {
         //TODO: https://stackoverflow.com/questions/75171139/use-macro-in-match-branch
         match self {
             Address::AddressV1(address) => address.fmt(f),
-            Address::AddressV2(address) => address.fmt(f)
+            Address::AddressV2(address) => address.fmt(f),
         }
     }
 }
@@ -136,14 +136,18 @@ impl FromStr for Address {
                     .map_err(|_| ModelsError::AddressParseError)?;
                 //TODO: Make it function like macro from address big structure
                 match version {
-                    <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](<Address!["1"]>::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::AddressParseError)?,
-                    )?)),
-                    <Address!["1"]>::VERSION => Ok(AddressVariant!["2"](<Address!["2"]>::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::AddressParseError)?,
-                    )?)),
+                    <Address!["1"]>::VERSION => {
+                        Ok(AddressVariant!["1"](<Address!["1"]>::from_bytes(
+                            rest.try_into()
+                                .map_err(|_| ModelsError::AddressParseError)?,
+                        )?))
+                    }
+                    <Address!["1"]>::VERSION => {
+                        Ok(AddressVariant!["2"](<Address!["2"]>::from_bytes(
+                            rest.try_into()
+                                .map_err(|_| ModelsError::AddressParseError)?,
+                        )?))
+                    }
                     _ => Err(ModelsError::AddressParseError),
                 }
             }
@@ -211,7 +215,7 @@ impl PreHashed for Address {}
 fn test_address_str_format() {
     use massa_signature::KeyPair;
 
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(1).unwrap();
     let address = Address::from_public_key(1, &keypair.get_public_key()).unwrap();
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
@@ -247,7 +251,7 @@ impl ::serde::Serialize for Address {
     }
 }
 
-#[transition::impl_version(versions("1"), structure = "Address")]
+#[transition::impl_version(versions("1"), structures("Address"))]
 impl Address {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
@@ -257,7 +261,7 @@ impl Address {
     pub const SIZE_BYTES: usize = HASH_SIZE_BYTES + Self::VERSION_VARINT_SIZE_BYTES;
 }
 
-#[transition::impl_version(versions("2"), structure = "Address")]
+#[transition::impl_version(versions("2"), structures("Address"))]
 impl Address {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
@@ -272,9 +276,8 @@ impl Address {
     pub const SIZE_BYTES: usize = HASH_SIZE_BYTES + Self::VERSION_VARINT_SIZE_BYTES;
 }
 
-#[transition::impl_version(versions("1", "2"), structure = "Address")]
+#[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Address {
-
     pub fn get_version(&self) -> u64 {
         Self::VERSION
     }
@@ -356,7 +359,7 @@ impl AddressSerializer {
     /// Serializes an `Address` into a `Vec<u8>`
     pub fn new() -> Self {
         Self {
-            version_serializer: U64VarIntSerializer::new()
+            version_serializer: U64VarIntSerializer::new(),
         }
     }
 }
@@ -370,10 +373,11 @@ impl Serializer<Address> for AddressSerializer {
     }
 }
 
-#[transition::impl_version(versions("1", "2"), structure = "Address")]
+#[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Serializer<Address> for AddressSerializer {
     fn serialize(&self, value: &Address, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        self.version_serializer.serialize(&value.get_version(), buffer)?;
+        self.version_serializer
+            .serialize(&value.get_version(), buffer)?;
         buffer.extend_from_slice(&value.into_bytes());
         Ok(())
     }
@@ -417,7 +421,7 @@ impl Deserializer<Address> for AddressDeserializer {
     }
 }
 
-#[transition::impl_version(versions("1", "2"), structure = "Address")]
+#[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Deserializer<Address> for AddressDeserializer {
     /// ## Example
     /// ```rust

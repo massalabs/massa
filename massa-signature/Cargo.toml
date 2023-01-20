@@ -18,6 +18,8 @@ rand = "0.7"
 massa_hash = { path = "../massa-hash" }
 massa_serialization = { path = "../massa-serialization" }
 
+transition = { git = "https://github.com/AurelienFT/transition" }
+
 [dev-dependencies]
 serial_test = "0.10"
 serde_json = "1.0"

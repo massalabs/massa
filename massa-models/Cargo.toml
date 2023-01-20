@@ -20,7 +20,7 @@ bitvec = { version = "1.0", features = ["serde"] }
 nom = "7.1"
 sha2 = "0.10"
 
-transition = { path = "../../transition/transition" }
+transition = { git = "https://github.com/AurelienFT/transition" }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
