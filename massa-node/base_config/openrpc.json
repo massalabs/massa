@@ -1974,7 +1974,8 @@
                 "description": "Execute Smart Contract",
                 "required": [
                     "data",
-                    "max_gas"
+                    "max_gas",
+                    "datastore"
                 ],
                 "type": "object",
                 "properties": {
@@ -1988,6 +1989,10 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
+                    },
+                    "datastore": {
+                        "description": "A tuple which contains (key, value)",
+                        "$ref": "#/components/schemas/DataStore"
                     }
                 },
                 "additionalProperties": false
