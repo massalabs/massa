@@ -3,7 +3,6 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use std::net::SocketAddr;
 use crate::api_trait::MassaApiServer;
 use crate::{ApiServer, ApiV2, StopHandle, API};
 use async_trait::async_trait;
@@ -12,9 +11,14 @@ use jsonrpsee::core::error::SubscriptionClosed;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
+use massa_api_exports::address::AddressInfo;
+use massa_api_exports::block::{BlockInfo, BlockInfoContent};
 use massa_api_exports::config::APIConfig;
+use massa_api_exports::endorsement::EndorsementInfo;
+use massa_api_exports::error::ApiError;
+use massa_api_exports::operation::OperationInfo;
+use massa_api_exports::slot::SlotAmount;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
-use massa_execution_exports::ExecutionController;
 use massa_models::address::Address;
 use massa_models::block::{BlockGraphStatus, BlockId};
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
@@ -24,28 +28,18 @@ use massa_models::slot::Slot;
 use massa_models::timeslots;
 use massa_models::version::Version;
 use massa_pool_exports::PoolChannels;
-use massa_pool_exports::PoolController;
-use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolSenders;
 use massa_storage::Storage;
 use serde::Serialize;
+use std::net::SocketAddr;
 use tokio_stream::wrappers::BroadcastStream;
-use massa_api_exports::address::AddressInfo;
-use massa_api_exports::block::{BlockInfo, BlockInfoContent};
-use massa_api_exports::endorsement::EndorsementInfo;
-use massa_api_exports::error::ApiError;
-use massa_api_exports::operation::OperationInfo;
-use massa_api_exports::slot::SlotAmount;
 
 impl API<ApiV2> {
     /// generate a new massa API
     pub fn new(
         consensus_controller: Box<dyn ConsensusController>,
-        execution_controller: Box<dyn ExecutionController>,
-        selector_controller: Box<dyn SelectorController>,
         consensus_channels: ConsensusChannels,
         protocol_senders: ProtocolSenders,
-        pool_command_sender: Box<dyn PoolController>,
         pool_channels: PoolChannels,
         api_settings: APIConfig,
         version: Version,
@@ -53,11 +47,8 @@ impl API<ApiV2> {
     ) -> Self {
         API(ApiV2 {
             consensus_controller,
-            execution_controller,
-            selector_controller,
             consensus_channels,
             protocol_senders,
-            pool_command_sender,
             pool_channels,
             api_settings,
             version,
@@ -108,7 +99,11 @@ impl MassaApiServer for API<ApiV2> {
         let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
 
         // ask pool whether it carries the operations
-        let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
+        let in_pool = self
+            .0
+            .consensus_channels
+            .pool_command_sender
+            .contains_endorsements(&eds);
 
         let consensus_controller = self.0.consensus_controller.clone();
         let api_cfg = self.0.api_settings.clone();
@@ -226,7 +221,11 @@ impl MassaApiServer for API<ApiV2> {
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
 
         // ask pool whether it carries the operations
-        let in_pool = self.0.pool_command_sender.contains_operations(&ops);
+        let in_pool = self
+            .0
+            .consensus_channels
+            .pool_command_sender
+            .contains_operations(&ops);
 
         let api_cfg = self.0.api_settings.clone();
         let consensus_controller = self.0.consensus_controller.clone();
@@ -321,7 +320,11 @@ impl MassaApiServer for API<ApiV2> {
         };
 
         // get execution info
-        let execution_infos = self.0.execution_controller.get_addresses_infos(&addresses);
+        let execution_infos = self
+            .0
+            .consensus_channels
+            .execution_controller
+            .get_addresses_infos(&addresses);
 
         // get future draws from selector
         let selection_draws = {
@@ -342,6 +345,7 @@ impl MassaApiServer for API<ApiV2> {
                 .iter()
                 .map(|addr| {
                     self.0
+                        .consensus_channels
                         .selector_controller
                         .get_address_selections(addr, cur_slot, slot_end)
                         .unwrap_or_default()

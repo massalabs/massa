@@ -14,7 +14,6 @@ use jsonrpsee::types::{Id, RequestSer};
 use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll};
 use urlencoding::decode;
 
@@ -28,27 +27,14 @@ pub const URI_OPERATIONS: &str = "/operations";
 ///
 /// See [`MassaProxyGetRequest`] for more details.
 #[derive(Debug, Clone)]
-pub struct MassaProxyGetRequestLayer {
-    path: String,
-    method: String,
-}
+pub struct MassaProxyGetRequestLayer {}
 
 impl MassaProxyGetRequestLayer {
     /// Creates a new [`ProxyGetRequestLayer`].
     ///
     /// See [`MassaProxyGetRequest`] for more details.
-    pub fn new(path: impl Into<String>, method: impl Into<String>) -> Result<Self, RpcError> {
-        let path = path.into();
-        if !path.starts_with('/') {
-            return Err(RpcError::Custom(
-                "ProxyGetRequestLayer path must start with `/`".to_string(),
-            ));
-        }
-
-        Ok(Self {
-            path,
-            method: method.into(),
-        })
+    pub fn new() -> Result<Self, RpcError> {
+        Ok(Self {})
     }
 }
 
@@ -56,7 +42,7 @@ impl<S> Layer<S> for MassaProxyGetRequestLayer {
     type Service = MassaProxyGetRequest<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        MassaProxyGetRequest::new(inner, &self.path, &self.method)
+        MassaProxyGetRequest::new(inner)
             .expect("Path already validated in ProxyGetRequestLayer; qed")
     }
 }
@@ -76,8 +62,6 @@ impl<S> Layer<S> for MassaProxyGetRequestLayer {
 #[derive(Debug, Clone)]
 pub struct MassaProxyGetRequest<S> {
     inner: S,
-    path: Arc<str>,
-    method: Arc<str>,
 }
 
 impl<S> MassaProxyGetRequest<S> {
@@ -85,19 +69,8 @@ impl<S> MassaProxyGetRequest<S> {
     ///
     /// The request `GET /path` is redirected to the provided method.
     /// Fails if the path does not start with `/`.
-    pub fn new(inner: S, path: &str, method: &str) -> Result<Self, RpcError> {
-        if !path.starts_with('/') {
-            return Err(RpcError::Custom(format!(
-                "MassaProxyGetRequest path must start with `/`, got: {}",
-                path
-            )));
-        }
-
-        Ok(Self {
-            inner,
-            path: Arc::from(path),
-            method: Arc::from(method),
-        })
+    pub fn new(inner: S) -> Result<Self, RpcError> {
+        Ok(Self { inner })
     }
 }
 
@@ -121,8 +94,8 @@ where
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let uri = req.uri();
         let path = uri.path();
-        let mut modify = self.path.as_ref() == req.uri() && req.method() == Method::GET;
 
+        let mut modify = false;
         let mut params = ArrayParams::new();
 
         if req.method() == Method::GET
@@ -133,14 +106,14 @@ where
         {
             if let Some(query) = req.uri().query() {
                 // If this line is reached
-                // Extract addresses list from query params
+                // Extract params list from query params
 
                 let decoded_query = decode(query)
-                    .expect("Error when decode query for GET /addresses")
+                    .expect(&*format!("Error when decode query for GET {}", path))
                     .to_string();
 
                 for param in decoded_query.split('&') {
-                    // example param:"ids=["Address1", "Address2"]"
+                    // example param for addresses:"ids=["Address1", "Address2"]"
                     let kv: Vec<&str> = param.splitn(2, '=').collect();
                     if kv.len() == 2 {
                         let value: Value = serde_json::from_str(kv[1]).unwrap_or_else(|_| {
@@ -157,6 +130,14 @@ where
 
         // Proxy the request to the appropriate method call.
         if modify {
+            let method = match path {
+                URI_ADDRESSES => "get_addresses",
+                URI_BLOCKS => "get_blocks",
+                URI_OPERATIONS => "get_operations",
+                URI_ENDORSEMENTS => "get_endorsements",
+                _ => "",
+            };
+
             // RPC methods are accessed with `POST`.
             *req.method_mut() = Method::POST;
             // Precautionary remove the URI.
@@ -170,14 +151,9 @@ where
 
             // Adjust the body to reflect the method call.
             let rpc_params = params.to_rpc_params().unwrap();
-
             let body = Body::from(
-                serde_json::to_string(&RequestSer::borrowed(
-                    &Id::Number(0),
-                    &self.method,
-                    rpc_params.as_deref(),
-                ))
-                .expect("Valid request; qed"),
+                serde_json::to_string(&RequestSer::owned(Id::Number(0), method, rpc_params))
+                    .expect("Valid request; qed"),
             );
 
             req = req.map(|_| body);
