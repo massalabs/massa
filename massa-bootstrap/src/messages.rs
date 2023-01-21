@@ -10,8 +10,7 @@ use massa_consensus_exports::bootstrapable_graph::{
 };
 use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
-use massa_ledger_exports::{KeyDeserializer, KeySerializer};
-// use massa_models::block::BlockDeserializerArgs;
+use massa_ledger_exports::{Key, KeyDeserializer, KeySerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
@@ -522,7 +521,7 @@ pub enum BootstrapClientMessage {
         /// Slot we are attached to for changes
         last_slot: Option<Slot>,
         /// Last received ledger key
-        last_ledger_step: StreamingStep<Vec<u8>>,
+        last_ledger_step: StreamingStep<Key>,
         /// Last received async message id
         last_pool_step: StreamingStep<AsyncMessageId>,
         /// Last received Proof of Stake cycle
@@ -556,7 +555,7 @@ enum MessageClientTypeId {
 pub struct BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
-    ledger_step_serializer: StreamingStepSerializer<Vec<u8>, KeySerializer>,
+    ledger_step_serializer: StreamingStepSerializer<Key, KeySerializer>,
     pool_step_serializer: StreamingStepSerializer<AsyncMessageId, AsyncMessageIdSerializer>,
     cycle_step_serializer: StreamingStepSerializer<u64, U64VarIntSerializer>,
     slot_step_serializer: StreamingStepSerializer<Slot, SlotSerializer>,
@@ -664,7 +663,7 @@ pub struct BootstrapClientMessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
-    ledger_step_deserializer: StreamingStepDeserializer<Vec<u8>, KeyDeserializer>,
+    ledger_step_deserializer: StreamingStepDeserializer<Key, KeyDeserializer>,
     pool_step_deserializer: StreamingStepDeserializer<AsyncMessageId, AsyncMessageIdDeserializer>,
     cycle_step_deserializer: StreamingStepDeserializer<u64, U64VarIntDeserializer>,
     slot_step_deserializer: StreamingStepDeserializer<Slot, SlotDeserializer>,

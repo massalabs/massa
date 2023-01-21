@@ -103,15 +103,6 @@ macro_rules! data_prefix {
     };
 }
 
-/// Extract an address from a key
-pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
-    let address_deserializer = AddressDeserializer::new();
-    address_deserializer
-        .deserialize::<DeserializeError>(key)
-        .map(|res| res.1)
-        .ok()
-}
-
 /// Basic key serializer
 #[derive(Default, Clone)]
 pub struct KeySerializer {

@@ -37,6 +37,7 @@ const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
+const KEY_SER_ERROR: &str = "critical: key serialization failed";
 const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
 const LEDGER_HASH_KEY: &[u8; 1] = b"h";
@@ -266,38 +267,42 @@ impl LedgerDB {
     /// * The last taken key (this is an optimization to easily keep a reference to the last key)
     pub fn get_ledger_part(
         &self,
-        cursor: StreamingStep<Vec<u8>>,
-    ) -> Result<(Vec<u8>, StreamingStep<Vec<u8>>), ModelsError> {
+        cursor: StreamingStep<Key>,
+    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let opt = ReadOptions::default();
         let ser = VecU8Serializer::new();
         let key_serializer = KeySerializer::new();
+        let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
         let mut ledger_part = Vec::new();
 
         // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
         let (db_iterator, mut new_cursor) = match cursor {
             StreamingStep::Started => (
                 self.db.iterator_cf_opt(handle, opt, IteratorMode::Start),
-                StreamingStep::Started,
+                StreamingStep::<Key>::Started,
             ),
             StreamingStep::Ongoing(last_key) => {
+                let mut serialized_key = Vec::new();
+                key_serializer.serialize(&last_key, &mut serialized_key)?;
                 let mut iter = self.db.iterator_cf_opt(
                     handle,
                     opt,
-                    IteratorMode::From(&last_key, Direction::Forward),
+                    IteratorMode::From(&serialized_key, Direction::Forward),
                 );
                 iter.next();
                 (iter, StreamingStep::Finished(None))
             }
-            StreamingStep::Finished(_) => return Ok((ledger_part, cursor)),
+            StreamingStep::<Key>::Finished(_) => return Ok((ledger_part, cursor)),
         };
 
         // Iterates over the whole database
         for (key, entry) in db_iterator.flatten() {
             if (ledger_part.len() as u64) < (self.ledger_part_size_message_bytes) {
-                key_serializer.serialize(&key.to_vec(), &mut ledger_part)?;
+                let (_, key) = key_deserializer.deserialize(&key)?;
+                key_serializer.serialize(&key, &mut ledger_part)?;
                 ser.serialize(&entry.to_vec(), &mut ledger_part)?;
-                new_cursor = StreamingStep::Ongoing(key.to_vec());
+                new_cursor = StreamingStep::Ongoing(key);
             } else {
                 break;
             }
@@ -314,15 +319,12 @@ impl LedgerDB {
     ///
     /// # Returns
     /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
-    pub fn set_ledger_part<'a>(
-        &self,
-        data: &'a [u8],
-    ) -> Result<StreamingStep<Vec<u8>>, ModelsError> {
+    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<StreamingStep<Key>, ModelsError> {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
-        let mut last_key = Rc::new(Vec::new());
+        let mut last_key: Rc<Option<Key>> = Rc::new(None);
         let mut batch = LedgerBatch::new(self.get_ledger_hash());
 
         // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
@@ -333,22 +335,24 @@ impl LedgerDB {
             ))(input)?;
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
-            })? = key.clone();
+            })? = Some(key.clone());
             self.put_entry_value(handle, &mut batch, &key, &value);
             Ok((rest, ()))
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
 
-        // Every byte should have been read
-        if last_key.is_empty() {
-            Ok(StreamingStep::Finished(None))
-        } else if rest.is_empty() {
-            self.write_batch(batch);
-            Ok(StreamingStep::Ongoing((*last_key).clone()))
-        } else {
-            Err(ModelsError::SerializeError(
-                "rest is not empty.".to_string(),
-            ))
+        match last_key.as_ref() {
+            Some(last_key) => {
+                if rest.is_empty() {
+                    self.write_batch(batch);
+                    Ok(StreamingStep::Finished(Some(last_key.clone())))
+                } else {
+                    Err(ModelsError::SerializeError(
+                        "Error in deserialization".to_string(),
+                    ))
+                }
+            }
+            None => Ok(StreamingStep::Finished(None)),
         }
     }
 }
@@ -391,17 +395,22 @@ impl LedgerDB {
         &self,
         handle: &ColumnFamily,
         batch: &mut LedgerBatch,
-        key: &[u8],
+        key: &Key,
         value: &[u8],
     ) {
+        let key_serializer = KeySerializer::new();
+        let mut serialized_key = Vec::new();
+        key_serializer
+            .serialize(key, &mut serialized_key)
+            .expect(KEY_SER_ERROR);
         let mut len_bytes = Vec::new();
         self.len_serializer
-            .serialize(&(key.len() as u64), &mut len_bytes)
+            .serialize(&(serialized_key.len() as u64), &mut len_bytes)
             .expect(KEY_LEN_SER_ERROR);
-        let hash = Hash::compute_from(&[&len_bytes, key, value].concat());
+        let hash = Hash::compute_from(&[&len_bytes, &serialized_key, value].concat());
         batch.ledger_hash ^= hash;
-        batch.aeh_list.insert(key.to_vec(), hash);
-        batch.write_batch.put_cf(handle, key, value);
+        batch.aeh_list.insert(serialized_key.to_vec(), hash);
+        batch.write_batch.put_cf(handle, serialized_key, value);
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -419,14 +428,19 @@ impl LedgerDB {
             .unwrap();
 
         // balance
-        self.put_entry_value(handle, batch, &balance_key!(addr), &bytes_balance);
+        self.put_entry_value(handle, batch, &Key::new_balance(addr), &bytes_balance);
 
         // bytecode
-        self.put_entry_value(handle, batch, &bytecode_key!(addr), &ledger_entry.bytecode);
+        self.put_entry_value(
+            handle,
+            batch,
+            &Key::new_bytecode(addr),
+            &ledger_entry.bytecode,
+        );
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            self.put_entry_value(handle, batch, &data_key!(addr, hash), &entry);
+            self.put_entry_value(handle, batch, &Key::new_datastore(addr, Some(hash)), &entry);
         }
     }
 
@@ -599,7 +613,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
+                    key.split_at(ADDRESS_SIZE_BYTES + 2).1.to_vec(), // DIRTY FIX: It's supposed to be 1 but 2 works. I couldn't find why.
                     data.to_vec(),
                 )
             })
