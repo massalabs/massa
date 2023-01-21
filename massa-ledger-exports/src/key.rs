@@ -2,7 +2,7 @@ use massa_models::{
     address::{Address, AddressDeserializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
-use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};
 use std::ops::Bound::Included;
 
@@ -48,59 +48,23 @@ impl Key {
     pub fn new_balance(address: &Address) -> Self {
         Self {
             key_type: KeyType::BALANCE,
-            address: address.clone(),
+            address: *address,
         }
     }
 
     pub fn new_bytecode(address: &Address) -> Self {
         Self {
             key_type: KeyType::BYTECODE,
-            address: address.clone(),
+            address: *address,
         }
     }
 
     pub fn new_datastore(address: &Address, key: Option<Vec<u8>>) -> Self {
         Self {
             key_type: KeyType::DATASTORE(key),
-            address: address.clone(),
+            address: *address,
         }
     }
-}
-
-/// Balance key formatting macro
-#[macro_export]
-macro_rules! balance_key {
-    ($addr:expr) => {
-        [&$addr.prefixed_bytes()[..], &[BALANCE_IDENT]].concat()
-    };
-}
-
-/// Bytecode key formatting macro
-///
-/// NOTE: still handle separate bytecode for now to avoid too many refactor at once
-#[macro_export]
-macro_rules! bytecode_key {
-    ($addr:expr) => {
-        [&$addr.prefixed_bytes()[..], &[BYTECODE_IDENT]].concat()
-    };
-}
-
-/// Datastore entry key formatting macro
-///
-/// TODO: add a separator identifier if the need comes to have multiple datastore
-#[macro_export]
-macro_rules! data_key {
-    ($addr:expr, $key:expr) => {
-        [&$addr.prefixed_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
-    };
-}
-
-/// Datastore entry prefix formatting macro
-#[macro_export]
-macro_rules! data_prefix {
-    ($addr:expr) => {
-        &[&$addr.prefixed_bytes()[..], &[DATASTORE_IDENT]].concat()
-    };
 }
 
 /// Basic key serializer
@@ -141,9 +105,9 @@ impl Serializer<Key> for KeySerializer {
                 self.vec_u8_serializer.serialize(&data, buffer)?;
             }
             KeyType::DATASTORE(None) => {
-                return Err(SerializeError::GeneralError(
-                    "datastore keys can not be empty".to_string(),
-                ))
+                // return Err(SerializeError::GeneralError(
+                //     "datastore keys can not be empty".to_string(),
+                // ))
             }
             _ => {}
         }
