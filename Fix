@@ -1,0 +1,15 @@
+~/work/.gitconfig:
+
+[core]
+  sshCommand = "ssh -i ~/.ssh/work"
+github.com/google:
+  - user: gemployee
+    oauth_token: ...
+
+github.com/microsoft:
+  - user: msemployee
+    oauth_token: ...
+
+github.com:
+  - user: personal
+    oauth_token: ...https://github.com/Hazaaa/Smart_Health-v1.0/compare/master...Wesfluegel762:Smart_Health-v1.0:codespace-wesfluegel762-glowing-pancake-5gvggj9797qhvwwj?expand=1
