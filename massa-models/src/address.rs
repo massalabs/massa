@@ -28,6 +28,18 @@ pub enum Address {
     ///
     SC(SCAddress),
 }
+
+impl From<SCAddress> for Address {
+    fn from(value: SCAddress) -> Self {
+        #[allow(deprecated)]
+        Self::SC(value)
+    }
+}
+impl From<UserAddress> for Address {
+    fn from(value: UserAddress) -> Self {
+        Self::User(value)
+    }
+}
 /// Derived from a public key
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserAddress(pub Hash);
@@ -43,7 +55,7 @@ impl UserAddress {
 pub struct SCAddress {
     slot: Slot,
     idx: u64,
-    read_only: bool,
+    is_write: bool,
 }
 
 const ADDRESS_PREFIX: char = 'A';
@@ -170,10 +182,9 @@ impl FromStr for Address {
         match prefix {
             Some('U') => Ok(Self::User(UserAddress::from_str(dbg!(&s[2..]))?)),
             #[allow(deprecated)]
-            Some('S' | 's') => Ok(
-                SCAddress::from_bytes(s[1..].as_bytes(), prefix == Some('S'))
-                    .expect("todo: bubble up error"),
-            ),
+            Some('S') => Ok(Self::SC(
+                SCAddress::from_bytes(s[2..].as_bytes()).expect("todo: bubble up error"),
+            )),
             Some(_) | None => Err(ModelsError::AddressParseError),
         }
     }
@@ -286,21 +297,28 @@ impl Address {
             Address::SC(SCAddress {
                 slot: _,
                 idx: _,
-                read_only: true,
+                is_write: true,
             }) => 'S',
             #[allow(deprecated)]
             Address::SC(SCAddress {
                 slot: _,
                 idx: _,
-                read_only: false,
+                is_write: false,
             }) => 's',
         }
     }
 }
 impl SCAddress {
-    fn from_bytes(data: &[u8], read_and_write: bool) -> Result<Address, ModelsError> {
-        let deser = SCAddressDeserializer::new(read_and_write);
-        let ([], sc_address): (&[u8], Address) = deser.deserialize::<DeserializeError>(data).map_err(|er| ModelsError::DeserializeError(er.to_string()))? else {
+    pub fn new(slot: Slot, idx: u64, is_write: bool) -> Self {
+        Self {
+            slot,
+            idx,
+            is_write,
+        }
+    }
+    fn from_bytes(data: &[u8]) -> Result<SCAddress, ModelsError> {
+        let deser = SCAddressDeserializer::new();
+        let ([], sc_address): (&[u8], SCAddress) = deser.deserialize::<DeserializeError>(data).map_err(|er| ModelsError::DeserializeError(er.to_string()))? else {
             return Err( ModelsError::DeserializeError("leftover bytes".to_string()));
         };
         Ok(sc_address)
@@ -374,41 +392,40 @@ impl Deserializer<Address> for AddressDeserializer {
 pub struct SCAddressDeserializer {
     slot: SlotDeserializer,
     idx: U64VarIntDeserializer,
-    read_and_write: bool,
 }
 
 impl SCAddressDeserializer {
     /// Creates a new deserializer for `Address`
-    pub const fn new(read_and_write: bool) -> Self {
+    pub const fn new() -> Self {
         Self {
             slot: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(0), Excluded(THREAD_COUNT)),
             ),
             idx: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            read_and_write,
         }
     }
 }
 
-impl Deserializer<Address> for SCAddressDeserializer {
+impl Deserializer<SCAddress> for SCAddressDeserializer {
     /// ## Example
     /// ```rust
-    /// use massa_models::address::{SCAddress, Address, SCDeserializer};
+    /// use massa_models::address::{SCAddress, Address, SCAddressDeserializer};
+    /// use massa_models::slot::Slot;
     /// use massa_serialization::{Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let sc_address = todo!()
+    /// let sc_address = SCAddress::new(Slot::new(0, 0), 0, false);
     /// let address = Address::SC(sc_address);
     /// let bytes = address.into_bytes();
-    /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
-    /// assert_eq!(address, res_addr);
+    /// let (rest, res_addr) = SCAddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
+    /// assert_eq!(address, res_addr.into());
     /// assert_eq!(rest.len(), 0);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Address, E> {
+    ) -> IResult<&'a [u8], SCAddress, E> {
         context("SCAddress", |input| {
             {
                 tuple((
@@ -423,11 +440,11 @@ impl Deserializer<Address> for SCAddressDeserializer {
             (
                 rest,
                 #[allow(deprecated)]
-                Address::SC(SCAddress {
+                SCAddress {
                     slot,
                     idx,
-                    read_only: !self.read_and_write,
-                }),
+                    is_write: rest[0] == 1,
+                },
             )
         })
     }
