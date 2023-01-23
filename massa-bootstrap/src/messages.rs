@@ -307,12 +307,12 @@ impl BootstrapServerMessageDeserializer {
             ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
                 (&args).into(),
-                args.max_bootstrap_blocks,
+                args.max_bootstrap_blocks_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
                 BlockIdDeserializer::new(),
                 Included(0),
-                Included(args.max_bootstrap_blocks as u64),
+                Included(args.max_bootstrap_blocks_length as u64),
             ),
             ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(0),

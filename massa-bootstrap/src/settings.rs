@@ -7,6 +7,8 @@ use serde::Deserialize;
 use serde_json::to_value;
 use std::{net::SocketAddr, path::PathBuf};
 
+use substruct::SubStruct;
+
 /// Bootstrap IP protocol version setting.
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub enum IpType {
@@ -121,7 +123,8 @@ pub struct BootstrapConfig {
 }
 
 ///
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, SubStruct)]
+#[parent(type = "BootstrapConfig")]
 pub struct BootstrapClientConfig {
     pub max_bytes_read_write: f64,
     pub max_bootstrap_message_size: u32,
@@ -148,6 +151,7 @@ pub struct BootstrapClientConfig {
     pub max_ops_changes_length: u64,
 }
 
+/*
 impl From<&BootstrapConfig> for BootstrapClientConfig {
     fn from(value: &BootstrapConfig) -> Self {
         Self {
@@ -177,13 +181,16 @@ impl From<&BootstrapConfig> for BootstrapClientConfig {
         }
     }
 }
+*/
 
 ///
+#[derive(SubStruct)]
+#[parent(type = "BootstrapClientConfig")]
 pub struct BootstrapServerMessageDeserializerArgs {
     pub thread_count: u8,
     pub endorsement_count: u32,
     pub max_advertise_length: u32,
-    pub max_bootstrap_blocks: u32,
+    pub max_bootstrap_blocks_length: u32,
     pub max_operations_per_block: u32,
     pub max_bootstrap_final_state_parts_size: u64,
     pub max_async_pool_changes: u64,
@@ -202,6 +209,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_ops_changes_length: u64,
 }
 
+/*
 impl From<&BootstrapClientConfig> for BootstrapServerMessageDeserializerArgs {
     fn from(value: &BootstrapClientConfig) -> Self {
         Self {
@@ -228,7 +236,9 @@ impl From<&BootstrapClientConfig> for BootstrapServerMessageDeserializerArgs {
         }
     }
 }
+*/
 
+// TODO: add a proc macro for this case
 impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
     fn from(value: &BootstrapServerMessageDeserializerArgs) -> Self {
         Self {
