@@ -1,6 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 mod sc_address;
 use sc_address::*;
+mod user_address;
+use user_address::*;
 
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
@@ -19,7 +21,7 @@ use std::str::FromStr;
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// Captures the context of an address. For now, codebase assumes it's always User
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub enum Address {
     ///
     User(UserAddress),
@@ -39,15 +41,6 @@ impl From<UserAddress> for Address {
         Self::User(value)
     }
 }
-/// Derived from a public key
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct UserAddress(pub Hash);
-
-impl UserAddress {
-    const fn version() -> u64 {
-        0
-    }
-}
 const ADDRESS_PREFIX: char = 'A';
 
 impl std::fmt::Display for Address {
@@ -65,89 +58,6 @@ impl std::fmt::Display for Address {
         )
     }
 }
-impl std::fmt::Display for UserAddress {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let u64_serializer = U64VarIntSerializer::new();
-        // might want to allocate the vector with capacity in order to avoid re-allocation
-        let mut bytes: Vec<u8> = Vec::new();
-        u64_serializer
-            .serialize(&Self::version(), &mut bytes)
-            .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_bytes());
-        write!(f, "{}", bs58::encode(bytes).with_check().into_string())
-    }
-}
-
-impl std::fmt::Debug for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl ::serde::Serialize for Address {
-    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        if s.is_human_readable() {
-            s.collect_str(&self.to_string())
-        } else {
-            s.serialize_bytes(self.to_bytes())
-        }
-    }
-}
-
-impl<'de> ::serde::Deserialize<'de> for Address {
-    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Address, D::Error> {
-        if d.is_human_readable() {
-            struct AddressVisitor;
-
-            impl<'de> ::serde::de::Visitor<'de> for AddressVisitor {
-                type Value = Address;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("A + variant prefix + inner address")
-                }
-
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    if let Ok(v_str) = std::str::from_utf8(v) {
-                        Address::from_str(v_str).map_err(E::custom)
-                    } else {
-                        Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
-                    }
-                }
-
-                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    Address::from_str(v).map_err(E::custom)
-                }
-            }
-            d.deserialize_str(AddressVisitor)
-        } else {
-            struct BytesVisitor;
-
-            impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
-                type Value = Address;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("a bytestring")
-                }
-
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    Ok(Address::from_bytes(v.try_into().map_err(E::custom)?))
-                }
-            }
-
-            d.deserialize_bytes(BytesVisitor)
-        }
-    }
-}
-
 impl FromStr for Address {
     type Err = ModelsError;
     /// ## Example
@@ -178,25 +88,6 @@ impl FromStr for Address {
             )),
             Some(_) | None => Err(ModelsError::AddressParseError),
         }
-    }
-}
-
-impl FromStr for UserAddress {
-    type Err = ModelsError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let decoded_bs58_check = bs58::decode(s)
-            .with_check(None)
-            .into_vec()
-            .map_err(|_| ModelsError::AddressParseError)?;
-        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-        let (rest, _version) = u64_deserializer
-            .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-            .map_err(|_| ModelsError::AddressParseError)?;
-        Ok(UserAddress(Hash::from_bytes(
-            rest.try_into()
-                .map_err(|_| ModelsError::AddressParseError)?,
-        )))
     }
 }
 
