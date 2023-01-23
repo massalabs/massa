@@ -2611,6 +2611,10 @@
                     "operation_datastore": {
                         "description": "An operation datastore",
                         "type": "array"
+                    },
+                    "is_final": {
+                        "description": "Whether to start execution from final or active state",
+                        "type": "boolean"
                     }
                 },
                 "additionalProperties": false

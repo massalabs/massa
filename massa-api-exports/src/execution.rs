@@ -63,9 +63,8 @@ pub struct ReadOnlyBytecodeExecution {
     pub address: Option<Address>,
     /// Operation datastore, optional
     pub operation_datastore: Option<Vec<u8>>,
-    /// execution start state
-    ///
-    /// Whether to start execution from final or active state
+    /// whether to start execution from final or active state. Default false
+    #[serde(default)]
     pub is_final: bool,
 }
 
@@ -82,8 +81,7 @@ pub struct ReadOnlyCall {
     pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
-    /// execution start state
-    ///
-    /// Whether to start execution from final or active state
+    /// whether to start execution from final or active state. Default false
+    #[serde(default)]
     pub is_final: bool,
 }
