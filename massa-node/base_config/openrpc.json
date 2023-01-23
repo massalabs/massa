@@ -1719,13 +1719,16 @@
             },
             "DataStore": {
                 "title": "Datastore",
-                "description": "Datastore",
+                "description": "A tuple which contains (entry, bytes)",
                 "type": "object",
                 "additionalProperties": {
                     "type": "object",
                     "properties": {
-                        "enrtry": {
-                            "type": "string"
+                        "entry": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
                         },
                         "bytes": {
                             "type": "array",
@@ -1735,14 +1738,10 @@
                         }
                     }
                 },
-                "example": {
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": [
-                        "Number"
-                    ],
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": [
-                        "Number"
+                "example": [
+                        [1, 2, 3, 4],
+                        [5, 6, 7, 9, 10]
                     ]
-                }
             },
             "DataStoreEntry": {
                 "description": "Datastore entry",
