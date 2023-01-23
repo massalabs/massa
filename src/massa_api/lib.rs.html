@@ -372,6 +372,38 @@
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
@@ -413,19 +445,47 @@
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_wallet::Wallet;
+<span class="kw">use </span>paginate::Pages;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>serde_json::Value;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
-
 <span class="kw">use </span>tokio::sync::mpsc;
+<span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 <span class="kw">use </span>tracing::{info, warn};
 
 <span class="kw">mod </span>api;
 <span class="kw">mod </span>api_trait;
 <span class="kw">mod </span>private;
 <span class="kw">mod </span>public;
+
+<span class="doccomment">/// Represents a Vec that can be split across Pages
+/// Cf. https://docs.rs/paginate/latest/paginate/
+</span><span class="attr">#[derive(Serialize)]
+</span><span class="kw">pub struct </span>PagedVec&lt;T&gt; {
+    res: Vec&lt;T&gt;,
+    total_count: usize,
+}
+
+<span class="kw">impl</span>&lt;T: Serialize&gt; PagedVec&lt;T&gt; {
+
+    <span class="doccomment">/// Creates a new Paged Vec with optional limits of item per page and offset
+    </span><span class="kw">pub fn </span>new(elements: Vec&lt;T&gt;, limit: <span class="prelude-ty">Option</span>&lt;usize&gt;, offset: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>total_count = elements.len();
+
+        <span class="kw">let </span>pages = Pages::new(total_count, limit.unwrap_or(total_count));
+        <span class="kw">let </span>page = pages.with_offset(offset.unwrap_or_default());
+
+        <span class="kw">let </span>res: Vec&lt;<span class="kw">_</span>&gt; = elements
+            .into_iter()
+            .skip(page.start)
+            .take(page.length)
+            .collect();
+
+        PagedVec { res, total_count }
+    }
+}
 
 <span class="doccomment">/// Public API component
 </span><span class="kw">pub struct </span>Public {
@@ -640,32 +700,32 @@
     </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_peers_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_remove_from_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Returns node bootsrap whitelist IP address(es).
+    <span class="doccomment">/// Returns node bootstrap whitelist IP address(es).
     </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt;;
 
-    <span class="doccomment">/// Allow everyone to bootsrap from the node.
-    /// remove bootsrap whitelist configuration file.
+    <span class="doccomment">/// Allow everyone to bootstrap from the node.
+    /// remove bootstrap whitelist configuration file.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_whitelist_allow_all&quot;</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_whitelist_allow_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Add IP address(es) to node bootsrap whitelist.
+    <span class="doccomment">/// Add IP address(es) to node bootstrap whitelist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_add_to_bootstrap_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_add_to_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Remove IP address(es) to bootsrap whitelist.
+    <span class="doccomment">/// Remove IP address(es) to bootstrap whitelist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_bootstrap_whitelist&quot;</span>)]
     </span><span class="kw">async fn </span>node_remove_from_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Returns node bootsrap blacklist IP address(es).
+    <span class="doccomment">/// Returns node bootstrap blacklist IP address(es).
     </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_blacklist&quot;</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt;;
 
-    <span class="doccomment">/// Add IP address(es) to node bootsrap blacklist.
+    <span class="doccomment">/// Add IP address(es) to node bootstrap blacklist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_add_to_bootstrap_blacklist&quot;</span>)]
     </span><span class="kw">async fn </span>node_add_to_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Remove IP address(es) to bootsrap blacklist.
+    <span class="doccomment">/// Remove IP address(es) to bootstrap blacklist.
     </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_bootstrap_blacklist&quot;</span>)]
     </span><span class="kw">async fn </span>node_remove_from_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
@@ -689,7 +749,11 @@
 
     <span class="doccomment">/// Returns the active stakers and their active roll counts for the current cycle.
     </span><span class="attr">#[method(name = <span class="string">&quot;get_stakers&quot;</span>)]
-    </span><span class="kw">async fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;(Address, u64)&gt;&gt;;
+    </span><span class="kw">async fn </span>get_stakers(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        limit: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+        offset: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    ) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt;;
 
     <span class="doccomment">/// Returns operation(s) information associated to a given list of operation(s) ID(s).
     </span><span class="attr">#[method(name = <span class="string">&quot;get_operations&quot;</span>)]
