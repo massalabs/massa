@@ -27,10 +27,15 @@ impl ModuleCache {
         &mut self,
         bytecode: &[u8],
         limit: u64,
-    ) -> Result<(RuntimeModule, Option<u64>), ExecutionError> {
-        let tuple = if let Some((cached_module, init_cost)) = self.cache.get(bytecode) {
+    ) -> Result<RuntimeModule, ExecutionError> {
+        if let Some((cached_module, init_cost)) = self.cache.get(bytecode) {
             warn!("(CACHE) found");
-            (cached_module.clone(), Some(*init_cost))
+            if limit < *init_cost {
+                return Err(ExecutionError::RuntimeError(
+                    "given gas cannot cover the initialization costs".to_string(),
+                ));
+            }
+            Ok(cached_module.clone())
         } else {
             warn!("(CACHE) compiled");
             let new_module =
@@ -40,14 +45,14 @@ impl ModuleCache {
                         err
                     ))
                 })?;
-            (new_module, None)
-        };
-        Ok(tuple)
+            Ok(new_module)
+        }
     }
 
     /// Save a module in the cache
     pub fn save_module(&mut self, bytecode: &[u8], module: RuntimeModule, init_cost: u64) {
-        warn!("(CACHE) saved");
-        self.cache.insert(bytecode.to_vec(), (module, init_cost));
+        if self.cache.insert(bytecode.to_vec(), (module, init_cost)) {
+            warn!("(CACHE) saved");
+        }
     }
 }

@@ -176,9 +176,8 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` compiled module
     fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<RuntimeModule> {
-        // TODO: use cache here as well
         let context = context_guard!(self);
-        let module = context.module_cache.write().get_module(bytecode, limit)?.0;
+        let module = context.module_cache.write().get_module(bytecode, limit)?;
         Ok(module)
     }
 
