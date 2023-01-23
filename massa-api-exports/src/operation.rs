@@ -54,3 +54,46 @@ impl std::fmt::Display for OperationInfo {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use jsonrpsee_core::__reexports::serde_json::{self, Value};
+    use massa_models::operation::OperationType;
+    use serial_test::serial;
+    use std::collections::BTreeMap;
+
+    #[test]
+    #[serial]
+    fn test_execute_sc_with_datastore() {
+        let given_op = OperationType::ExecuteSC {
+            max_gas: 123,
+            data: vec![23u8, 123u8, 44u8],
+            datastore: BTreeMap::from([
+                (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
+                (vec![22, 33, 44, 55, 66, 77], vec![11]),
+                (vec![2, 3, 4, 5, 6, 7], vec![1]),
+            ]),
+        };
+
+        let op_json_str = serde_json::to_string(&given_op).unwrap();
+
+        let op_json_value: Value = serde_json::from_str(&op_json_str).unwrap();
+        let datastore = op_json_value["ExecuteSC"]
+            .as_object()
+            .unwrap()
+            .get("datastore")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        assert_eq!(datastore.len(), 3);
+        let first_entry = datastore[0].as_array().unwrap();
+        assert_eq!(first_entry.len(), 2);
+        let first_key = first_entry[0].as_array().unwrap();
+        let first_value = first_entry[1].as_array().unwrap();
+        assert_eq!(first_key.len(), 3);
+        assert_eq!(first_value.len(), 6);
+
+        let expected_op = serde_json::from_str(&op_json_str).unwrap();
+        assert_eq!(given_op, expected_op);
+    }
+}
