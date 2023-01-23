@@ -44,14 +44,40 @@ use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
-
 use tokio::sync::mpsc;
 use tracing::{info, warn};
+use serde::Serialize;
+use paginate::Pages;
 
 mod api;
 mod api_trait;
 mod private;
 mod public;
+
+
+
+#[derive(Serialize)]
+pub struct PagedVec<T> {
+    res: Vec<T>,
+    total_count: usize
+}
+
+impl<T: Serialize> PagedVec<T> {
+
+    pub fn new(elements: Vec<T>, limit: Option<usize>, offset: Option<usize>) -> Self {
+
+        let total_count = elements.len();
+
+        let pages = Pages::new(total_count, limit.unwrap_or(total_count));
+        let page = pages.with_offset(offset.unwrap_or_default());
+
+        let res: Vec<_> = elements.into_iter().skip(page.start).take(page.length).collect();
+
+        PagedVec {
+            res, total_count
+        }
+    }
+}
 
 /// Public API component
 pub struct Public {
@@ -315,7 +341,7 @@ pub trait MassaRpc {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[method(name = "get_stakers")]
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>>;
+    async fn get_stakers(&self, limit: Option<usize>, offset: Option<usize>) -> RpcResult<PagedVec<(Address, u64)>>;
 
     /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     #[method(name = "get_operations")]

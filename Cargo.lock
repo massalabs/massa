@@ -2281,6 +2281,7 @@ name = "massa_api"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "displaydoc",
  "hyper",
  "itertools",
  "jsonrpsee",
@@ -2297,6 +2298,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_wallet",
+ "paginate",
  "parking_lot",
  "serde",
  "serde_json",
@@ -3223,6 +3225,12 @@ name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
+
+[[package]]
+name = "paginate"
+version = "1.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ac1db209d9d6dc8e4435b744ed76198494406cd20eb8ca14baf9828664664c8"
 
 [[package]]
 name = "parking"

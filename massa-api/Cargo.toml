@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+paginate = "1.1.11"
+displaydoc = "0.2"
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 async-trait = "0.1.58"
 serde = { version = "1.0", features = ["derive"] }
