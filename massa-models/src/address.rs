@@ -1,14 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+#![allow(deprecated)]
 mod sc_address;
+use nom::branch::alt;
+use nom::character::complete::char;
 use sc_address::*;
 mod user_address;
-use user_address::*;
+pub use user_address::*;
 
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use massa_hash::{Hash, HashDeserializer};
+use crate::slot::{self, Slot};
+use massa_hash::Hash;
 use massa_serialization::{
-    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, Serializer, U16VarIntDeserializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
@@ -107,6 +112,7 @@ impl PreHashed for Address {}
 
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
+    #[deprecated(note = "use UserAddress api instead")]
     pub fn get_thread(&self, thread_count: u8) -> u8 {
         (self.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
@@ -114,6 +120,7 @@ impl Address {
     }
 
     /// Computes address associated with given public key
+    #[deprecated(note = "use UserAddress api instead")]
     pub fn from_public_key(public_key: &PublicKey) -> Self {
         Self::User(UserAddress(Hash::compute_from(public_key.to_bytes())))
     }
@@ -130,6 +137,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
+    #[deprecated(note = "use UserAddress api instead")]
     pub fn to_bytes(&self) -> &[u8; ADDRESS_SIZE_BYTES] {
         let Address::User(addr) = self else {
             todo!("return result");
@@ -149,6 +157,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
+    #[deprecated(note = "use UserAddress api instead")]
     pub fn into_bytes(self) -> [u8; ADDRESS_SIZE_BYTES] {
         let Address::User(addr) = self else {
             todo!("return result");
@@ -168,6 +177,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
+    #[deprecated(note = "use UserAddress api instead")]
     pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Address {
         Self::User(UserAddress(Hash::from_bytes(data)))
     }
@@ -198,23 +208,31 @@ impl Serializer<Address> for AddressSerializer {
         value: &Address,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        buffer.extend_from_slice(value.to_bytes());
+        buffer.push(b'A');
+        match value {
+            Address::User(usr) => {
+                buffer.push(b'U');
+                U64VarIntSerializer::new().serialize(&UserAddress::version(), buffer)?;
+                buffer.extend_from_slice(usr.to_bytes());
+            }
+            Address::SC(sc) => {
+                buffer.push(b'S');
+                SCAddressSerializer::new().serialize(&sc, buffer)?;
+            }
+        }
+
         Ok(())
     }
 }
 
 /// Deserializer for `Address`
-#[derive(Default, Clone)]
-pub struct AddressDeserializer {
-    hash_deserializer: HashDeserializer,
-}
+#[derive(Clone)]
+pub struct AddressDeserializer;
 
 impl AddressDeserializer {
     /// Creates a new deserializer for `Address`
     pub const fn new() -> Self {
-        Self {
-            hash_deserializer: HashDeserializer::new(),
-        }
+        Self
     }
 }
 
@@ -227,7 +245,7 @@ impl Deserializer<Address> for AddressDeserializer {
     ///
     /// let user_address = UserAddress::from_str("12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
     /// let address = Address::User(user_address);
-    /// let bytes = address.into_bytes();
+    /// let bytes = b"AU0foobar";
     /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// assert_eq!(rest.len(), 0);
@@ -236,12 +254,53 @@ impl Deserializer<Address> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
-        context("Failed Address deserialization", |input| {
-            self.hash_deserializer.deserialize(input)
-        })
-        .map(|addr| Address::User(UserAddress(addr)))
-        .parse(buffer)
+        let (rest, _) = context("Invalid Address Prefix", char(ADDRESS_PREFIX)).parse(buffer)?;
+        let (rest, pref) = context(
+            "Invalid Address Variant Prefix",
+            alt((char(UserAddress::prefix()), char(SCAddress::prefix()))),
+        )
+        .parse(rest)?;
+        match pref {
+            'U' => Ok((
+                &[],
+                UserAddress::from_bytes(rest.try_into().unwrap()).into(),
+            )),
+            'S' => {
+                let deser = SCAddressDeserializer::new();
+                let (rest, res) = deser.deserialize::<E>(rest)?;
+                Ok((rest, res.into()))
+            }
+            _ => todo!(),
+        }
     }
+}
+
+#[test]
+fn sniff_sc_serde() {
+    let addr: Address = SCAddress::new(Slot::new(0, 0), 0, true).into();
+    let ser = AddressSerializer::new();
+    let mut buf = Vec::new();
+    ser.serialize(&addr, &mut buf).unwrap();
+    dbg!(&buf);
+    let deser: Address = AddressDeserializer::new()
+        .deserialize::<DeserializeError>(&mut buf.as_slice())
+        .unwrap()
+        .1
+        .into();
+    assert_eq!(deser, addr);
+}
+#[test]
+fn sniff_user_serde() {
+    let user_address =
+        UserAddress::from_str("12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
+    let address = Address::User(user_address);
+    let mut bytes = b"AU".to_vec();
+    bytes.append(&mut user_address.clone().to_bytes().to_vec());
+    let (rest, res_addr) = AddressDeserializer::new()
+        .deserialize::<DeserializeError>(&bytes)
+        .unwrap();
+    assert_eq!(address, res_addr);
+    assert_eq!(rest.len(), 0);
 }
 
 /// Info for a given address on a given cycle
