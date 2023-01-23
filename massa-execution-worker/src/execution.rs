@@ -32,7 +32,7 @@ use massa_models::{
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{Interface, RuntimeModule};
+use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
@@ -615,23 +615,19 @@ impl ExecutionState {
 
         // run the VM on the bytecode loaded from the target address
         let mut module_lock = self.module_cache.write();
-        let module = module_lock.get_module(&bytecode, max_gas)?;
+        let (module, cached_cost) = module_lock.get_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
             target_func,
             param,
             max_gas,
-            None,
+            cached_cost,
             self.config.gas_costs.clone(),
         ) {
-            Ok(_response) => module_lock.save_module(&bytecode, module),
+            // TODO: handle in other ones too
+            Ok(Response { init_cost, .. }) => module_lock.save_module(&bytecode, module, init_cost),
             Err(err) => {
-                if err.to_string() != "limit reached at initialization" {
-                    module_lock.save_module(&bytecode, module);
-                } else {
-                    warn!("(EXEC) init error");
-                }
                 return Err(ExecutionError::RuntimeError(format!(
                     "module execution error in execute_callsc_op: {}",
                     err
@@ -711,7 +707,7 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let module = self
+        let (module, cached_init_cost) = self
             .module_cache
             .write()
             .get_module(&bytecode, message.max_gas)?;
@@ -721,7 +717,7 @@ impl ExecutionState {
             &message.handler,
             &message.data,
             message.max_gas,
-            None,
+            cached_init_cost,
             self.config.gas_costs.clone(),
         ) {
             // execution failed: reset context to snapshot and reimburse sender
@@ -1107,7 +1103,7 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the target function in the bytecode
-                let module = self
+                let (module, cached_init_cost) = self
                     .module_cache
                     .write()
                     .get_module(&bytecode, req.max_gas)?;
@@ -1117,7 +1113,7 @@ impl ExecutionState {
                     &target_func,
                     &parameter,
                     req.max_gas,
-                    None,
+                    cached_init_cost,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
