@@ -78,8 +78,13 @@ mod tests {
         let op_json_str = serde_json::to_string(&given_op).unwrap();
 
         let op_json_value: Value = serde_json::from_str(&op_json_str).unwrap();
-        let datastore = op_json_value["ExecuteSC"].as_object().unwrap()
-        .get("datastore").unwrap().as_array().unwrap();
+        let datastore = op_json_value["ExecuteSC"]
+            .as_object()
+            .unwrap()
+            .get("datastore")
+            .unwrap()
+            .as_array()
+            .unwrap();
         assert_eq!(datastore.len(), 3);
         let first_entry = datastore[0].as_array().unwrap();
         assert_eq!(first_entry.len(), 2);
