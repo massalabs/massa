@@ -3,7 +3,7 @@
 use crate::config::THREAD_COUNT;
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use crate::slot::{Slot, SlotDeserializer};
+use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -179,11 +179,12 @@ impl FromStr for Address {
             return Err(ModelsError::AddressParseError);
         };
         let prefix = chars.next();
+        let s = &s[2..];
         match prefix {
-            Some('U') => Ok(Self::User(UserAddress::from_str(dbg!(&s[2..]))?)),
+            Some('U') => Ok(Self::User(UserAddress::from_str(s)?)),
             #[allow(deprecated)]
             Some('S') => Ok(Self::SC(
-                SCAddress::from_bytes(s[2..].as_bytes()).expect("todo: bubble up error"),
+                SCAddress::from_bytes(s.as_bytes()).expect("todo: bubble up error"),
             )),
             Some(_) | None => Err(ModelsError::AddressParseError),
         }
@@ -323,6 +324,9 @@ impl SCAddress {
         };
         Ok(sc_address)
     }
+    const fn version() -> u64 {
+        0
+    }
 }
 
 /// Serializer for `Address`
@@ -385,6 +389,35 @@ impl Deserializer<Address> for AddressDeserializer {
         })
         .map(|addr| Address::User(UserAddress(addr)))
         .parse(buffer)
+    }
+}
+/// Serializer for `Address`
+#[derive(Default, Clone)]
+pub struct SCAddressSerializer {
+    slot: SlotSerializer,
+    idx: U64VarIntSerializer,
+}
+
+impl SCAddressSerializer {
+    /// Serializes an `Address` into a `Vec<u8>`
+    pub fn new() -> Self {
+        Self {
+            slot: SlotSerializer::new(),
+            idx: U64VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<SCAddress> for SCAddressSerializer {
+    fn serialize(
+        &self,
+        value: &SCAddress,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        self.slot.serialize(&value.slot, buffer)?;
+        self.idx.serialize(&value.idx, buffer)?;
+        buffer.push(value.is_write as u8);
+        Ok(())
     }
 }
 /// Deserializer for `SCAddress`
