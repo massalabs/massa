@@ -394,12 +394,27 @@
                     "description": "Massa public api"
                 }
             ],
-            "params": [],
+            "params": [
+                {
+                    "name": "limit",
+                    "summary": "Nb of elements per page",
+                    "schema": {
+                        "type": "number"
+                    }
+                },
+                {
+                    "name": "offset",
+                    "summary": "Page number to get",
+                    "schema": {
+                        "type": "number"
+                    }
+                }
+            ],
             "result": {
                 "schema": {
-                    "$ref": "#/components/schemas/Staker"
+                    "$ref": "#/components/schemas/PagedStakers"
                 },
-                "name": "Staker"
+                "name": "PagedStakers"
             },
             "name": "get_stakers",
             "summary": "Get stakers",
@@ -2516,6 +2531,22 @@
                     }
                 }
             },
+            "PagedStakers": {
+                "description": "PagedStakers",
+                "type": "object",
+                "properties": {
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Staker"
+                        }
+                    },
+                    "total_count": {
+                        "description": "Represents the total number of stakers",
+                        "type": "number"
+                    }
+                }
+            },
             "PoolStats": {
                 "title": "PoolStats",
                 "description": "Pool stats",
@@ -3101,6 +3132,14 @@
                 "description": "A OperationType object",
                 "schema": {
                     "$ref": "#/components/schemas/OperationType"
+                }
+            },
+            "PagedStakers": {
+                "name": "PagedStakers",
+                "summary": "PagedStakers",
+                "description": "A PagedStakers Object",
+                "schema": {
+                    "$ref": "#/components/schemas/PagedStakers"
                 }
             },
             "PubkeySig": {
