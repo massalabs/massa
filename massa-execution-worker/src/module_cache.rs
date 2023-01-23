@@ -1,6 +1,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use schnellru::{ByLength, LruMap};
+use tracing::log::warn;
 
 pub struct ModuleCache {
     gas_costs: GasCosts,
@@ -21,16 +22,17 @@ impl ModuleCache {
     ///
     /// If the module is not contained in the cache:
     /// * create the module
-    /// * save the module in the cache
-    /// * retrieve a copy of it
+    /// * retrieve it
     pub fn get_module(
         &mut self,
         bytecode: &[u8],
         limit: u64,
     ) -> Result<RuntimeModule, ExecutionError> {
         let module = if let Some(cached_module) = self.cache.get(bytecode) {
+            warn!("(CACHE) found");
             cached_module.clone()
         } else {
+            warn!("(CACHE) compiled");
             let new_module =
                 RuntimeModule::new(bytecode, limit, self.gas_costs.clone()).map_err(|err| {
                     ExecutionError::RuntimeError(format!(
@@ -38,9 +40,14 @@ impl ModuleCache {
                         err
                     ))
                 })?;
-            self.cache.insert(bytecode.to_vec(), new_module.clone());
             new_module
         };
         Ok(module)
+    }
+
+    /// Save a module in the cache
+    pub fn save_module(&mut self, bytecode: &[u8], module: RuntimeModule) {
+        warn!("(CACHE) saved");
+        self.cache.insert(bytecode.to_vec(), module);
     }
 }

@@ -614,17 +614,24 @@ impl ExecutionState {
         }
 
         // run the VM on the bytecode loaded from the target address
-        let module = self.module_cache.write().get_module(&bytecode, max_gas)?;
+        let mut module_lock = self.module_cache.write();
+        let module = module_lock.get_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
-            module,
+            module.clone(),
             target_func,
             param,
             max_gas,
+            None,
             self.config.gas_costs.clone(),
         ) {
-            Ok(_response) => {}
+            Ok(_response) => module_lock.save_module(&bytecode, module),
             Err(err) => {
+                if err.to_string() != "limit reached at initialization" {
+                    module_lock.save_module(&bytecode, module);
+                } else {
+                    warn!("(EXEC) init error");
+                }
                 return Err(ExecutionError::RuntimeError(format!(
                     "module execution error in execute_callsc_op: {}",
                     err
@@ -714,6 +721,7 @@ impl ExecutionState {
             &message.handler,
             &message.data,
             message.max_gas,
+            None,
             self.config.gas_costs.clone(),
         ) {
             // execution failed: reset context to snapshot and reimburse sender
@@ -1109,6 +1117,7 @@ impl ExecutionState {
                     &target_func,
                     &parameter,
                     req.max_gas,
+                    None,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
