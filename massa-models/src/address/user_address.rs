@@ -19,18 +19,12 @@ pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 pub struct UserAddress(pub Hash);
 
 impl AddressTrait for UserAddress {
+    const PREFIX: char = 'U';
+    const VERSION: u64 = 0;
     fn get_thread(&self, thread_count: u8) -> u8 {
         (self.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
-    }
-
-    fn variant_prefix() -> char {
-        todo!()
-    }
-
-    fn version() -> u64 {
-        0
     }
 }
 impl UserAddress {
@@ -92,7 +86,7 @@ impl std::fmt::Display for UserAddress {
         // might want to allocate the vector with capacity in order to avoid re-allocation
         let mut bytes: Vec<u8> = Vec::new();
         u64_serializer
-            .serialize(&Self::version(), &mut bytes)
+            .serialize(&Self::VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
         bytes.extend(self.0.to_bytes());
         write!(f, "{}", bs58::encode(bytes).with_check().into_string())
@@ -255,7 +249,7 @@ fn test_address_str_format() {
     use massa_signature::KeyPair;
 
     let keypair = KeyPair::generate();
-    let address = UserAddress::from_public_key(&keypair.get_public_key());
+    let address = UserAddress::from(&keypair.get_public_key());
     let a = address.to_string();
     dbg!(&a);
     let b = UserAddress::from_str(&a).unwrap();

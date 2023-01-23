@@ -38,13 +38,8 @@ impl SCAddress {
 }
 
 impl AddressTrait for SCAddress {
-    fn version() -> u64 {
-        0
-    }
-    fn variant_prefix() -> char {
-        'S'
-    }
-
+    const PREFIX: char = 'S';
+    const VERSION: u64 = 0;
     fn get_thread(&self, _thread_count: u8) -> u8 {
         self.slot.thread
     }
@@ -75,7 +70,7 @@ impl Serializer<SCAddress> for SCAddressSerializer {
         value: &SCAddress,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.version.serialize(&SCAddress::version(), buffer)?;
+        self.version.serialize(&SCAddress::VERSION, buffer)?;
         self.slot.serialize(&value.slot, buffer)?;
         self.idx.serialize(&value.idx, buffer)?;
         buffer.push(value.is_write as u8);
