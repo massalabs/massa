@@ -12,7 +12,7 @@ pub trait MassaApi {
     #[method(name = "get_version")]
     async fn get_version(&self) -> RpcResult<Version>;
 
-    /// Get the id of best parents for the next block to be produced along with their period
+    /// Get the ids of best parents for the next block to be produced along with their period
     #[method(name = "get_best_parents")]
     fn get_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>>;
 

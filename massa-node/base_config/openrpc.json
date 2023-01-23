@@ -1306,6 +1306,27 @@
             "name": "unsubscribe_new_operations",
             "summary": "Unsubscribe from new received operations",
             "description": "Unsubscribe from new received operations."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/Parent"
+                    }
+                },
+                "name": "best parents"
+            },
+            "name": "get_best_parents",
+            "summary": "Get best parents",
+            "description": "Returns the ids of best parents for the next block to be produced along with their period"
         }
     ],
     "components": {
@@ -2551,6 +2572,26 @@
                    "offset": {
                        "type": "number"
                    }
+                }
+            },
+            "Parent": {
+                "title": "Parent",
+                "description": "A tuple which contains (BlockId, period)",
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "BlockId": {
+                            "$ref": "#/components/schemas/BlockId"
+                        },
+                        "period": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "example": {
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": "Number",
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": "Number"
                 }
             },
             "PoolStats": {
