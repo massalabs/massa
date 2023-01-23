@@ -1,5 +1,4 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-#![allow(deprecated)]
 mod sc_address;
 use nom::branch::alt;
 use nom::character::complete::char;
@@ -9,17 +8,12 @@ pub use user_address::*;
 
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use crate::slot::{self, Slot};
 use massa_hash::Hash;
-use massa_serialization::{
-    DeserializeError, Deserializer, Serializer, U16VarIntDeserializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
-};
+use massa_serialization::{Deserializer, Serializer, U64VarIntSerializer};
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
-use std::ops::Bound::Included;
 use std::str::FromStr;
 
 /// Size of a serialized address, in bytes
@@ -62,6 +56,12 @@ impl std::fmt::Display for Address {
             }
         )
     }
+}
+
+trait AddressTrait {
+    fn get_thread(&self, thread_count: u8) -> u8;
+    fn variant_prefix() -> char;
+    fn version() -> u64;
 }
 impl FromStr for Address {
     type Err = ModelsError;
@@ -257,7 +257,10 @@ impl Deserializer<Address> for AddressDeserializer {
         let (rest, _) = context("Invalid Address Prefix", char(ADDRESS_PREFIX)).parse(buffer)?;
         let (rest, pref) = context(
             "Invalid Address Variant Prefix",
-            alt((char(UserAddress::prefix()), char(SCAddress::prefix()))),
+            alt((
+                char(UserAddress::variant_prefix()),
+                char(SCAddress::variant_prefix()),
+            )),
         )
         .parse(rest)?;
         match pref {

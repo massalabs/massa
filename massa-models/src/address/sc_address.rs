@@ -4,12 +4,13 @@ use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use nom::combinator::value;
 use nom::error::{context, ContextError, ParseError};
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included};
+
+use super::AddressTrait;
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 #[allow(deprecated)]
 ///
@@ -34,11 +35,18 @@ impl SCAddress {
         };
         Ok(sc_address)
     }
-    pub const fn version() -> u64 {
+}
+
+impl AddressTrait for SCAddress {
+    fn version() -> u64 {
         0
     }
-    pub const fn prefix() -> char {
+    fn variant_prefix() -> char {
         'S'
+    }
+
+    fn get_thread(&self, _thread_count: u8) -> u8 {
+        self.slot.thread
     }
 }
 

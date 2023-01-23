@@ -6,9 +6,10 @@ use massa_serialization::{
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
-use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
 use std::str::FromStr;
+
+use super::AddressTrait;
 
 /// Size of the decoded address hash, in bytes
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
@@ -17,11 +18,22 @@ pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserAddress(pub Hash);
 
-impl UserAddress {
-    pub const fn version() -> u64 {
-        0
+impl AddressTrait for UserAddress {
+    fn get_thread(&self, thread_count: u8) -> u8 {
+        (self.to_bytes()[0])
+            .checked_shr(8 - thread_count.trailing_zeros())
+            .unwrap_or(0)
     }
 
+    fn variant_prefix() -> char {
+        todo!()
+    }
+
+    fn version() -> u64 {
+        0
+    }
+}
+impl UserAddress {
     /// ## Example
     /// ```rust
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
@@ -67,19 +79,10 @@ impl UserAddress {
     pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Self {
         Self(Hash::from_bytes(data))
     }
-
-    pub const fn prefix() -> char {
-        'U'
-    }
-    /// Gets the associated thread. Depends on the `thread_count`
-    pub fn get_thread(&self, thread_count: u8) -> u8 {
-        (self.to_bytes()[0])
-            .checked_shr(8 - thread_count.trailing_zeros())
-            .unwrap_or(0)
-    }
-    /// Computes address associated with given public key
-    pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Self(Hash::compute_from(public_key.to_bytes()))
+}
+impl From<&PublicKey> for UserAddress {
+    fn from(value: &PublicKey) -> Self {
+        Self(Hash::compute_from(value.to_bytes()))
     }
 }
 
