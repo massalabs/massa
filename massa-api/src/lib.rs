@@ -63,7 +63,6 @@ pub struct PagedVec<T> {
 }
 
 impl<T: Serialize> PagedVec<T> {
-
     /// Creates a new Paged Vec with optional limits of item per page and offset
     pub fn new(elements: Vec<T>, limit: Option<usize>, offset: Option<usize>) -> Self {
         let total_count = elements.len();
