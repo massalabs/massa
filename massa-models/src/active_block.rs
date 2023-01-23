@@ -1,5 +1,5 @@
 use crate::{
-    address::Address,
+    address::AddressTrait,
     block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
@@ -9,9 +9,10 @@ use serde::{Deserialize, Serialize};
 
 /// Block that was checked as valid, with some useful pre-computed data
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActiveBlock {
+pub struct ActiveBlock<Addr: AddressTrait> {
+    /// TODO: Is this a UserAddress, SCAddress or both?
     /// The creator's address
-    pub creator_address: Address,
+    pub creator_address: Addr,
     /// The id of the block
     pub block_id: BlockId,
     /// one (block id, period) per thread ( if not genesis )
