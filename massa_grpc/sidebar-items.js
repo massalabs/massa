@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":[["api","gRPC API implementation Copyright (c) 2022 MASSA LABS info@massa.net Json RPC API for a massa-node"],["config","gRPC configuration"],["error","models error"]]};
