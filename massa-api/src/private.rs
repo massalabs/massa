@@ -1,8 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
-use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API, PagedVec};
+use crate::{MassaRpcServer, PagedVec, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
 use itertools::Itertools;
@@ -176,7 +174,11 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    async fn get_stakers(&self, _: Option<usize>, _: Option<usize>) -> RpcResult<PagedVec<(Address, u64)>> {
+    async fn get_stakers(
+        &self,
+        _: Option<usize>,
+        _: Option<usize>,
+    ) -> RpcResult<PagedVec<(Address, u64)>> {
         crate::wrong_api::<PagedVec<(Address, u64)>>()
     }
 

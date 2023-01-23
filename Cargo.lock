@@ -2281,7 +2281,6 @@ name = "massa_api"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "displaydoc",
  "hyper",
  "itertools",
  "jsonrpsee",
