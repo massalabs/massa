@@ -128,7 +128,7 @@ pub struct ExecutionContext {
     /// operation id that originally caused this execution (if any)
     pub origin_operation_id: Option<OperationId>,
 
-    // cache of pre compiled sc modules
+    // cache of compiled runtime modules
     pub module_cache: Arc<RwLock<ModuleCache>>,
 }
 

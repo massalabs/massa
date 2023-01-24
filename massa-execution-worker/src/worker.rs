@@ -85,7 +85,7 @@ impl ExecutionThread {
         if let Some(req_resp) = self.readonly_requests.pop() {
             let (req, resp_tx) = req_resp.into_request_sender_pair();
 
-            // Acquire read access to the execution state and execute the read-only request
+            // Acquire write access to the execution state (for cache updates) and execute the read-only request
             let outcome = self.execution_state.write().execute_readonly_request(req);
 
             // Send the execution output through resp_tx.

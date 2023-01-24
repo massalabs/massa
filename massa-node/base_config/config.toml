@@ -54,8 +54,8 @@
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
     wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
-    # maximum size of the pre compiled module cache
-    max_module_cache_size = 100
+    # max number of compiled modules in the cache
+    max_module_cache_size = 1000
 
 [ledger]
     # path to the initial ledger
