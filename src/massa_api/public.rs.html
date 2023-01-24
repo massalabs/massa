@@ -1015,6 +1015,9 @@
 <a href="#1015" id="1015">1015</a>
 <a href="#1016" id="1016">1016</a>
 <a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1422,7 +1425,10 @@
         <span class="prelude-val">Ok</span>(consensus_controller.get_cliques())
     }
 
-    <span class="kw">async fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>, page_request: PageRequest) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt; {
+    <span class="kw">async fn </span>get_stakers(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        page_request: <span class="prelude-ty">Option</span>&lt;PageRequest&gt;,
+    ) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
         <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
 
@@ -1453,7 +1459,7 @@
         staker_vec
             .sort_by(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_a), <span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_b)| roll_counts_b.cmp(<span class="kw-2">&amp;</span>roll_counts_a));
 
-        <span class="kw">let </span>paged_vec = PagedVec::new(staker_vec, page_request.limit, page_request.offset);
+        <span class="kw">let </span>paged_vec = PagedVec::new(staker_vec, page_request);
 
         <span class="prelude-val">Ok</span>(paged_vec)
     }
