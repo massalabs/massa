@@ -14,8 +14,9 @@ use massa_api_exports::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
     slot::SlotAmount,
-    page::{PageRequest, PagedVec}, TimeInterval,
+    TimeInterval,
 };
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
@@ -404,10 +405,7 @@ impl MassaRpcServer for API<Public> {
         Ok(consensus_controller.get_cliques())
     }
 
-    async fn get_stakers(
-        &self,
-        page_request: PageRequest
-    ) -> RpcResult<PagedVec<(Address, u64)>> {
+    async fn get_stakers(&self, page_request: PageRequest) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 

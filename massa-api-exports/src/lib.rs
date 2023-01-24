@@ -80,4 +80,3 @@ pub enum ListType {
     /// contains allowed entry
     Whitelist,
 }
-

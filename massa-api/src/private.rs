@@ -15,7 +15,8 @@ use massa_api_exports::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
-    ListType, page::{PageRequest, PagedVec}, ScrudOperation, TimeInterval,
+    page::{PageRequest, PagedVec},
+    ListType, ScrudOperation, TimeInterval,
 };
 use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
@@ -174,10 +175,7 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    async fn get_stakers(
-        &self,
-        _: PageRequest
-    ) -> RpcResult<PagedVec<(Address, u64)>> {
+    async fn get_stakers(&self, _: PageRequest) -> RpcResult<PagedVec<(Address, u64)>> {
         crate::wrong_api::<PagedVec<(Address, u64)>>()
     }
 
