@@ -2535,22 +2535,6 @@
                     }
                 }
             },
-            "PagedStakers": {
-                "description": "PagedStakers",
-                "type": "object",
-                "properties": {
-                    "elements": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/Staker"
-                        }
-                    },
-                    "total_count": {
-                        "description": "Represents the total number of stakers",
-                        "type": "number"
-                    }
-                }
-            },
             "PoolStats": {
                 "title": "PoolStats",
                 "description": "Pool stats",
@@ -3136,14 +3120,6 @@
                 "description": "A OperationType object",
                 "schema": {
                     "$ref": "#/components/schemas/OperationType"
-                }
-            },
-            "PagedStakers": {
-                "name": "PagedStakers",
-                "summary": "PagedStakers",
-                "description": "A PagedStakers Object",
-                "schema": {
-                    "$ref": "#/components/schemas/PagedStakers"
                 }
             },
             "PubkeySig": {
