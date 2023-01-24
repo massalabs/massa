@@ -1,13 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use paginate::Pages;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 /// Represents a Vec that can be split across Pages
 /// Cf. https://docs.rs/paginate/latest/paginate/
 pub struct PagedVec<T> {
     res: Vec<T>,
-    total_count: usize,
+    _total_count: usize,
 }
 
 impl<T: Serialize> PagedVec<T> {
@@ -29,7 +29,13 @@ impl<T: Serialize> PagedVec<T> {
             .take(page.length)
             .collect();
 
-        PagedVec { res, total_count }
+        PagedVec { res, _total_count: total_count }
+    }
+}
+
+impl<T: Serialize> Serialize for PagedVec<T> {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        self.res.serialize::<S>(s)
     }
 }
 
@@ -41,11 +47,3 @@ pub struct PageRequest {
     /// The page offset
     pub offset: usize,
 }
-
-/*
-impl PageRequest {
-    /// Creates a new input request for a PagedVec
-    pub fn new(limit: Option<usize>, offset: Option<usize>) -> Self {
-        PageRequest {limit, offset}
-    }
-}*/

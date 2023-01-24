@@ -413,7 +413,10 @@
             ],
             "result": {
                 "schema": {
-                    "$ref": "#/components/schemas/PagedStakers"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/Staker"
+                    }
                 },
                 "name": "PagedStakers"
             },
