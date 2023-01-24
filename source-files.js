@@ -1,6 +1,6 @@
 var sourcesIndex = JSON.parse('{\
 "massa_api":["",[],["api.rs","api_trait.rs","lib.rs","private.rs","public.rs"]],\
-"massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","rolls.rs","slot.rs"]],\
+"massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]],\
 "massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","message.rs","pool.rs"]],\
 "massa_bootstrap":["",[],["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server.rs","server_binder.rs","settings.rs","tools.rs"]],\
 "massa_cipher":["",[],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]],\
