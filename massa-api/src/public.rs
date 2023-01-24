@@ -39,7 +39,7 @@ use itertools::{izip, Itertools};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
-    block::BlockId,
+    block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,

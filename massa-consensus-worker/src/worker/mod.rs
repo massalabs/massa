@@ -2,7 +2,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
 };
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::clique::Clique;
 use massa_models::config::CHANNEL_SIZE;
 use massa_models::prehash::PreHashSet;

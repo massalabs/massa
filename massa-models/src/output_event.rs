@@ -1,4 +1,4 @@
-use crate::{address::Address, block::BlockId, operation::OperationId, slot::Slot};
+use crate::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt::Display};
 

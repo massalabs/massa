@@ -31,6 +31,9 @@ pub struct BootstrapConfig {
     pub bind: Option<SocketAddr>,
     /// connection timeout
     pub connect_timeout: MassaTime,
+    /// Time allocated to managing the bootstrapping process,
+    /// i.e. providing the ledger and consensus
+    pub bootstrap_timeout: MassaTime,
     /// readout timeout
     pub read_timeout: MassaTime,
     /// write timeout

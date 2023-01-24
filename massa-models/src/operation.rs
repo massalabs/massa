@@ -28,7 +28,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use serde_with::{DeserializeFromStr, SerializeDisplay};
+use serde_with::{serde_as, DeserializeFromStr, SerializeDisplay};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
@@ -421,6 +421,7 @@ impl Deserializer<Operation> for OperationDeserializer {
 }
 
 /// Type specific operation content
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum OperationType {
     /// transfer coins from sender to recipient
@@ -447,7 +448,7 @@ pub enum OperationType {
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
         max_gas: u64,
         /// A key-value store associating a hash to arbitrary bytes
-        #[serde(skip)]
+        #[serde_as(as = "Vec<(_, _)>")]
         datastore: Datastore,
     },
     /// Calls an exported function from a stored smart contract

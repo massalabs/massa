@@ -4,7 +4,7 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::endorsement::EndorsementId;
 use massa_models::operation::OperationId;
 use massa_models::slot::{IndexedSlot, Slot};
-use massa_models::{address::Address, amount::Amount, block::BlockId};
+use massa_models::{address::Address, amount::Amount, block_id::BlockId};
 use serde::{Deserialize, Serialize};
 
 use crate::slot::SlotAmount;

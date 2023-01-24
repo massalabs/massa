@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::prehash::PreHashMap;
-use crate::{address::Address, block::BlockId, operation::SecureShareOperation};
+use crate::{address::Address, block_id::BlockId, operation::SecureShareOperation};
 use massa_signature::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;

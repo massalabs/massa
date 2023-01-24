@@ -1376,8 +1376,8 @@
                             "type": "object",
                             "properties": {
                                 "slot": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Slot"
+                                    "$ref": "#/components/schemas/Slot",
+                                    "type": "object"
                                 },
                                 "amount": {
                                     "type": "number"
@@ -1389,8 +1389,8 @@
                         "description": "The next block draws",
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "$ref": "#/components/schemas/Slot"
+                            "$ref": "#/components/schemas/Slot",
+                            "type": "object"
                         }
                     },
                     "next_endorsement_draws": {
@@ -1400,8 +1400,8 @@
                             "type": "object",
                             "properties": {
                                 "slot": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Slot"
+                                    "$ref": "#/components/schemas/Slot",
+                                    "type": "object"
                                 },
                                 "index": {
                                     "type": "number"
@@ -1425,8 +1425,8 @@
                         "description": "Cycle infos",
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "$ref": "#/components/schemas/ExecutionAddressCycleInfo"
+                            "$ref": "#/components/schemas/ExecutionAddressCycleInfo",
+                            "type": "object"
                         }
                     }
                 },
@@ -1540,8 +1540,8 @@
                 "type": "object",
                 "properties": {
                     "target_addr": {
-                        "description": "Address",
-                        "$ref": "#/components/schemas/Address"
+                        "$ref": "#/components/schemas/Address",
+                        "description": "Address"
                     },
                     "target_func": {
                         "description": "Function name",
@@ -1574,9 +1574,7 @@
                         "description": "The block ids of the blocks in that clique",
                         "type": "array",
                         "items": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BlockId"
-                            }
+                            "$ref": "#/components/schemas/BlockId"
                         }
                     },
                     "fitness": {
@@ -1615,16 +1613,16 @@
                         "type": "number"
                     },
                     "end_timestamp": {
-                        "type": "number",
-                        "description": "(Only in tesnets)\nTime in milliseconds when the blockclique started."
+                        "description": "(Only in tesnets)\nTime in milliseconds when the blockclique started.",
+                        "type": "number"
                     },
                     "genesis_timestamp": {
-                        "type": "number",
-                        "description": "Time in milliseconds when the blockclique started."
+                        "description": "Time in milliseconds when the blockclique started.",
+                        "type": "number"
                     },
                     "max_block_size": {
-                        "type": "number",
-                        "description": "Maximum size (in bytes) of a block"
+                        "description": "Maximum size (in bytes) of a block",
+                        "type": "number"
                     },
                     "operation_validity_periods": {
                         "description": "Maximum operation validity period count",
@@ -1647,8 +1645,8 @@
                         "type": "string"
                     },
                     "t0": {
-                        "type": "number",
-                        "description": "Time between the periods in the same thread."
+                        "description": "Time between the periods in the same thread.",
+                        "type": "number"
                     },
                     "thread_count": {
                         "description": "Number of threads",
@@ -1719,13 +1717,16 @@
             },
             "DataStore": {
                 "title": "Datastore",
-                "description": "Datastore",
+                "description": "A tuple which contains (entry, bytes)",
                 "type": "object",
                 "additionalProperties": {
                     "type": "object",
                     "properties": {
-                        "enrtry": {
-                            "type": "string"
+                        "entry": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
                         },
                         "bytes": {
                             "type": "array",
@@ -1735,14 +1736,21 @@
                         }
                     }
                 },
-                "example": {
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": [
-                        "Number"
+                "example": [
+                    [
+                        1,
+                        2,
+                        3,
+                        4
                     ],
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": [
-                        "Number"
+                    [
+                        5,
+                        6,
+                        7,
+                        9,
+                        10
                     ]
-                }
+                ]
             },
             "DataStoreEntry": {
                 "description": "Datastore entry",
@@ -1921,21 +1929,6 @@
                 },
                 "additionalProperties": false
             },
-            "ReadOnlyResult": {
-                "title": "ReadOnlyResult",
-                "type": "object",
-                "description": "The result of a read-only execution",
-                "properties": {
-                    "Ok": {
-                        "type": "array",
-                        "description": "Included in case of success. The result of the execution"
-                    },
-                    "Error": {
-                        "type": "string",
-                        "description": "Included in case of error. The error message"
-                    }
-                }
-            },
             "ExecuteReadOnlyResponse": {
                 "title": "ExecuteReadOnlyResponse",
                 "required": [
@@ -1974,7 +1967,8 @@
                 "description": "Execute Smart Contract",
                 "required": [
                     "data",
-                    "max_gas"
+                    "max_gas",
+                    "datastore"
                 ],
                 "type": "object",
                 "properties": {
@@ -1988,6 +1982,10 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
+                    },
+                    "datastore": {
+                        "$ref": "#/components/schemas/DataStore",
+                        "description": "A tuple which contains (key, value)"
                     }
                 },
                 "additionalProperties": false
@@ -2034,12 +2032,12 @@
                         "description": "Optional end slot\nWill use by default Slot(0,0)"
                     },
                     "emitter_address": {
-                        "type": "string",
-                        "description": "Optional emitter address"
+                        "description": "Optional emitter address",
+                        "type": "string"
                     },
                     "original_caller_address": {
-                        "type": "string",
-                        "description": "Optional caller address"
+                        "description": "Optional caller address",
+                        "type": "string"
                     },
                     "original_operation_id": {
                         "description": "Optional operation id",
@@ -2074,7 +2072,7 @@
                     }
                 }
             },
-            "EventExecutionContext" : {
+            "EventExecutionContext": {
                 "title": "EventExecutionContext",
                 "description": "Context of the event (not generated by the user)",
                 "required": [
@@ -2363,8 +2361,8 @@
                         "type": "number"
                     },
                     "current_time": {
-                        "type": "number",
-                        "description": "Time in milliseconds since 1970-01-01"
+                        "description": "Time in milliseconds since 1970-01-01",
+                        "type": "number"
                     },
                     "last_slot": {
                         "$ref": "#/components/schemas/Slot",
@@ -2602,15 +2600,27 @@
                     },
                     "bytecode": {
                         "description": "Bytecode to execute",
-                        "type": "array"
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
                     },
                     "address": {
-                        "description": "caller's address",
-                        "$ref": "#/components/schemas/Address"
+                        "$ref": "#/components/schemas/Address",
+                        "description": "caller's address"
                     },
                     "operation_datastore": {
                         "description": "An operation datastore",
-                        "type": "array"
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
+                    },
+                    "is_final": {
+                        "description": "Whether to start execution from final or active state",
+                        "type": "boolean"
                     }
                 },
                 "additionalProperties": false
@@ -2643,11 +2653,30 @@
                         "type": "string"
                     },
                     "caller_address": {
-                        "type": "string",
-                        "description": "Caller's address, optional"
+                        "description": "Caller's address, optional",
+                        "type": "string"
                     }
                 },
                 "additionalProperties": false
+            },
+            "ReadOnlyResult": {
+                "title": "ReadOnlyResult",
+                "description": "The result of a read-only execution",
+                "type": "object",
+                "properties": {
+                    "Ok": {
+                        "description": "Included in case of success. The result of the execution",
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
+                    },
+                    "Error": {
+                        "description": "Included in case of error. The error message",
+                        "type": "string"
+                    }
+                }
             },
             "Roll": {
                 "title": "Roll",
@@ -2810,8 +2839,14 @@
                 }
             },
             "StateChanges": {
+                "title": "StateChanges",
+                "required": [
+                    "async_pool_changes",
+                    "executed_ops_changes",
+                    "ledger_changes",
+                    "pos_changes"
+                ],
                 "type": "object",
-                "additionalProperties": false,
                 "properties": {
                     "ledger_changes": {
                         "description": "ledger changes",
@@ -2819,7 +2854,10 @@
                     },
                     "async_pool_changes": {
                         "description": "async pool changes",
-                        "type": "array"
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
                     },
                     "pos_changes": {
                         "description": "pos changes",
@@ -2830,13 +2868,7 @@
                         "type": "object"
                     }
                 },
-                "required": [
-                    "async_pool_changes",
-                    "executed_ops_changes",
-                    "ledger_changes",
-                    "pos_changes"
-                ],
-                "title": "StateChanges"
+                "additionalProperties": false
             },
             "Transaction": {
                 "title": "Transaction",

@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    block::{BlockId, SecuredHeader},
-    endorsement::SecureShareEndorsement,
+    block_header::SecuredHeader, block_id::BlockId, endorsement::SecureShareEndorsement,
 };
 use massa_models::{
     config::CHANNEL_SIZE,

@@ -7,7 +7,7 @@ use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
 use massa_models::amount::Amount;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;

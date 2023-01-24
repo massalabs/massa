@@ -32,8 +32,10 @@ use massa_models::node::NodeId;
 use massa_models::{
     address::Address,
     amount::Amount,
+    block::Block,
     block::BlockSerializer,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
     endorsement::Endorsement,
     endorsement::EndorsementSerializer,
     operation::OperationId,
@@ -277,6 +279,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         bootstrap_protocol: IpType::Both,
+        bootstrap_timeout: 120000.into(),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
         max_ping: MassaTime::from_millis(500),

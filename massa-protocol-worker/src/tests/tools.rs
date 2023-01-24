@@ -2,9 +2,7 @@ use crate::start_protocol_controller;
 use futures::Future;
 use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
-    block::{BlockId, SecureShareBlock},
-    node::NodeId,
-    operation::SecureShareOperation,
+    block::SecureShareBlock, block_id::BlockId, node::NodeId, operation::SecureShareOperation,
     prehash::PreHashSet,
 };
 use massa_network_exports::BlockInfoReply;

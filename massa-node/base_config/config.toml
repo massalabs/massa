@@ -218,6 +218,8 @@
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
+    # timeout for providing the bootstrap to a connection
+    bootstrap_timeout = 1200000
     # delay in milliseconds to wait between consecutive bootstrap attempts
     retry_delay = 60000
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds

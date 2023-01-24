@@ -5,7 +5,7 @@
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
-use massa_models::{self, address::Address, amount::Amount, block::BlockId, slot::Slot};
+use massa_models::{self, address::Address, amount::Amount, block_id::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools::{self, assert_hash_asked_to_node};

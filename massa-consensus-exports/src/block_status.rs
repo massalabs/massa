@@ -1,9 +1,6 @@
 use massa_models::{
-    active_block::ActiveBlock,
-    address::Address,
-    block::{Block, BlockId, SecuredHeader},
-    prehash::PreHashSet,
-    slot::Slot,
+    active_block::ActiveBlock, address::Address, block::Block, block_header::SecuredHeader,
+    block_id::BlockId, prehash::PreHashSet, slot::Slot,
 };
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
