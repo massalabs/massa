@@ -231,19 +231,6 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -397,7 +384,6 @@
     <span class="kw">pub </span>ledger: LedgerSettings,
     <span class="kw">pub </span>selector: SelectionSettings,
     <span class="kw">pub </span>factory: FactorySettings,
-    <span class="kw">pub </span>grpc: GrpcSettings,
 }
 
 <span class="doccomment">/// Consensus configuration
@@ -471,18 +457,6 @@
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// Time threshold after which operation are not propagated
     </span><span class="kw">pub </span>max_endorsements_propagation_time: MassaTime,
-}
-
-<span class="doccomment">/// gRPC settings.
-/// the gRPC settings
-</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
-</span><span class="kw">pub struct </span>GrpcSettings {
-    <span class="doccomment">/// whether to enable gRPC.
-    </span><span class="kw">pub </span>enabled: bool,
-    <span class="doccomment">/// whether to enable HTTP.
-    </span><span class="kw">pub </span>enable_http: bool,
-    <span class="doccomment">/// bind for the Massa gRPC API
-    </span><span class="kw">pub </span>bind: SocketAddr,
 }
 
 <span class="attr">#[cfg(test)]
