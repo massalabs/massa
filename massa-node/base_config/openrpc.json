@@ -396,19 +396,10 @@
             ],
             "params": [
                 {
-                    "name": "page_request",
-                    "description": "PageRequest object",
                     "schema": {
-                        "type": "object",
-                        "properties": {
-                            "limit": {
-                                "type": "number"
-                            },
-                            "offset": {
-                                "type": "number"
-                            }
-                        }
-                    }
+                        "$ref": "#/components/schemas/PageRequest"
+                    },
+                    "name": "PageRequest"
                 }
             ],
             "result": {
@@ -2535,6 +2526,23 @@
                     }
                 }
             },
+            "PageRequest": {
+                "title": "PageRequest",
+                "description": "An PageRequest object, which contains limit (max elements par page) and a page offset.",
+                "type": "object",
+                "required": [
+                    "limit",
+                    "offset"
+                ],
+                "properties": {
+                   "limit": {
+                       "type": "number"
+                   },
+                   "offset": {
+                       "type": "number"
+                   }
+                }
+            },
             "PoolStats": {
                 "title": "PoolStats",
                 "description": "Pool stats",
@@ -3120,6 +3128,14 @@
                 "description": "A OperationType object",
                 "schema": {
                     "$ref": "#/components/schemas/OperationType"
+                }
+            },
+            "PageRequest": {
+                "name": "PageRequest",
+                "summary": "PageRequest",
+                "description": "An Page request parameter, which contains limit and offset properties.",
+                "schema": {
+                    "$ref": "#/components/schemas/PageRequest"
                 }
             },
             "PubkeySig": {
