@@ -38,10 +38,21 @@ impl SCAddress {
 }
 
 impl AddressTrait for SCAddress {
-    const PREFIX: char = 'S';
+    const PREFIX: u8 = b'S';
     const VERSION: u64 = 0;
     fn get_thread(&self, _thread_count: u8) -> u8 {
         self.slot.thread
+    }
+
+    fn to_bytes(&self) -> &[u8] {
+        todo!()
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        todo!()
     }
 }
 

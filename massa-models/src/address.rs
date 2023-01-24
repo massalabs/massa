@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 mod sc_address;
-use nom::branch::alt;
 use nom::character::complete::char;
 use sc_address::*;
 mod user_address;
@@ -9,7 +8,7 @@ pub use user_address::*;
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
 use massa_hash::Hash;
-use massa_serialization::{Deserializer, Serializer, U64VarIntSerializer};
+use massa_serialization::{Deserializer, Serializer};
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
@@ -38,7 +37,7 @@ impl From<UserAddress> for Address {
         Self::User(value)
     }
 }
-const ADDRESS_PREFIX: char = 'A';
+const ADDRESS_PREFIX: u8 = b'A';
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -57,10 +56,15 @@ impl std::fmt::Display for Address {
 
 #[allow(missing_docs)]
 pub trait AddressTrait {
-    const PREFIX: char;
+    const PREFIX: u8;
     const VERSION: u64;
     #[allow(missing_docs)]
     fn get_thread(&self, thread_count: u8) -> u8;
+    #[allow(missing_docs)]
+    fn to_bytes(&self) -> &[u8];
+    fn from_bytes(bytes: &[u8]) -> Result<Self, ()>
+    where
+        Self: Sized;
 }
 impl FromStr for Address {
     type Err = ModelsError;
@@ -194,25 +198,15 @@ impl AddressSerializer {
     }
 }
 
-impl Serializer<Address> for AddressSerializer {
+impl<T: AddressTrait> Serializer<T> for AddressSerializer {
     fn serialize(
         &self,
-        value: &Address,
+        value: &T,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
         buffer.push(b'A');
-        match value {
-            Address::User(usr) => {
-                buffer.push(b'U');
-                U64VarIntSerializer::new().serialize(&UserAddress::VERSION, buffer)?;
-                buffer.extend_from_slice(usr.to_bytes());
-            }
-            Address::SC(sc) => {
-                buffer.push(b'S');
-                SCAddressSerializer::new().serialize(&sc, buffer)?;
-            }
-        }
-
+        buffer.push(T::PREFIX);
+        buffer.extend_from_slice(value.to_bytes());
         Ok(())
     }
 }
@@ -228,7 +222,7 @@ impl AddressDeserializer {
     }
 }
 
-impl Deserializer<Address> for AddressDeserializer {
+impl<T: AddressTrait> Deserializer<T> for AddressDeserializer {
     /// ## Example
     /// ```rust
     /// use massa_models::address::{UserAddress, Address, AddressDeserializer};
@@ -245,25 +239,20 @@ impl Deserializer<Address> for AddressDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Address, E> {
-        let (rest, _) = context("Invalid Address Prefix", char(ADDRESS_PREFIX)).parse(buffer)?;
-        let (rest, pref) = context(
-            "Invalid Address Variant Prefix",
-            alt((char(UserAddress::PREFIX), char(SCAddress::PREFIX))),
-        )
-        .parse(rest)?;
-        match pref {
-            'U' => Ok((
-                &[],
-                UserAddress::from_bytes(rest.try_into().unwrap()).into(),
-            )),
-            'S' => {
-                let deser = SCAddressDeserializer::new();
-                let (rest, res) = deser.deserialize::<E>(rest)?;
-                Ok((rest, res.into()))
-            }
-            _ => todo!(),
-        }
+    ) -> IResult<&'a [u8], T, E> {
+        let (rest, _) =
+            context("Invalid Address Prefix", char(ADDRESS_PREFIX.into())).parse(buffer)?;
+        let (rest, pref) =
+            context("Invalid Address Variant Prefix", char(T::PREFIX.into())).parse(rest)?;
+
+        let res = T::from_bytes(rest).map_err(|_| {
+            nom::Err::Failure(ContextError::add_context(
+                rest,
+                "Invalid byte stream",
+                ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+            ))
+        })?;
+        Ok((rest, res))
     }
 }
 

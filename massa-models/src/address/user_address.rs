@@ -19,30 +19,31 @@ pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 pub struct UserAddress(pub Hash);
 
 impl AddressTrait for UserAddress {
-    const PREFIX: char = 'U';
+    const PREFIX: u8 = b'U';
     const VERSION: u64 = 0;
     fn get_thread(&self, thread_count: u8) -> u8 {
         (self.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
     }
-}
-impl UserAddress {
+
     /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.into_bytes();
-    /// let res_addr = Address::from_bytes(&bytes);
-    /// assert_eq!(address, res_addr);
-    /// ```
-    pub fn to_bytes(&self) -> &[u8; ADDRESS_SIZE_BYTES] {
-        self.0.to_bytes()
+    /// ``
+    fn to_bytes(&self) -> &[u8] {
+        let res = self.0.to_bytes();
+        debug_assert_eq!(res.len(), ADDRESS_SIZE_BYTES);
+        res
     }
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        todo!()
+    }
+}
+
+impl UserAddress {
     /// ## Example
     /// ```rust
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
