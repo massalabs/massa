@@ -405,7 +405,7 @@ impl MassaRpcServer for API<Public> {
         Ok(consensus_controller.get_cliques())
     }
 
-    async fn get_stakers(&self, page_request: PageRequest) -> RpcResult<PagedVec<(Address, u64)>> {
+    async fn get_stakers(&self, page_request: Option<PageRequest>) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
@@ -436,7 +436,7 @@ impl MassaRpcServer for API<Public> {
         staker_vec
             .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
 
-        let paged_vec = PagedVec::new(staker_vec, page_request.limit, page_request.offset);
+        let paged_vec = PagedVec::new(staker_vec, page_request);
 
         Ok(paged_vec)
     }

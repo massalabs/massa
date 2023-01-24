@@ -175,7 +175,7 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    async fn get_stakers(&self, _: PageRequest) -> RpcResult<PagedVec<(Address, u64)>> {
+    async fn get_stakers(&self, _: Option<PageRequest>) -> RpcResult<PagedVec<(Address, u64)>> {
         crate::wrong_api::<PagedVec<(Address, u64)>>()
     }
 

@@ -408,8 +408,7 @@
                                 "type": "number"
                             }
                         }
-                    },
-                    "required": true
+                    }
                 }
             ],
             "result": {
