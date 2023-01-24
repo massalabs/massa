@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{MassaRpcServer, PagedVec, Private, RpcServer, StopHandle, Value, API};
+use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
 use itertools::Itertools;
@@ -15,7 +15,7 @@ use massa_api_exports::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
-    ListType, ScrudOperation, TimeInterval,
+    ListType, page::{PageRequest, PagedVec}, ScrudOperation, TimeInterval,
 };
 use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
@@ -176,8 +176,7 @@ impl MassaRpcServer for API<Private> {
 
     async fn get_stakers(
         &self,
-        _: Option<usize>,
-        _: Option<usize>,
+        _: PageRequest
     ) -> RpcResult<PagedVec<(Address, u64)>> {
         crate::wrong_api::<PagedVec<(Address, u64)>>()
     }

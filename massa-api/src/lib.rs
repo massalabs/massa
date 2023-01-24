@@ -19,7 +19,7 @@ use massa_api_exports::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
-    TimeInterval,
+    page::{PageRequest, PagedVec}, TimeInterval,
 };
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
@@ -39,9 +39,7 @@ use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
-use paginate::Pages;
 use parking_lot::RwLock;
-use serde::Serialize;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -53,32 +51,6 @@ mod api;
 mod api_trait;
 mod private;
 mod public;
-
-/// Represents a Vec that can be split across Pages
-/// Cf. https://docs.rs/paginate/latest/paginate/
-#[derive(Serialize)]
-pub struct PagedVec<T> {
-    res: Vec<T>,
-    total_count: usize,
-}
-
-impl<T: Serialize> PagedVec<T> {
-    /// Creates a new Paged Vec with optional limits of item per page and offset
-    pub fn new(elements: Vec<T>, limit: Option<usize>, offset: Option<usize>) -> Self {
-        let total_count = elements.len();
-
-        let pages = Pages::new(total_count, limit.unwrap_or(total_count));
-        let page = pages.with_offset(offset.unwrap_or_default());
-
-        let res: Vec<_> = elements
-            .into_iter()
-            .skip(page.start)
-            .take(page.length)
-            .collect();
-
-        PagedVec { res, total_count }
-    }
-}
 
 /// Public API component
 pub struct Public {
@@ -344,8 +316,7 @@ pub trait MassaRpc {
     #[method(name = "get_stakers")]
     async fn get_stakers(
         &self,
-        limit: Option<usize>,
-        offset: Option<usize>,
+        page_request: PageRequest
     ) -> RpcResult<PagedVec<(Address, u64)>>;
 
     /// Returns operation(s) information associated to a given list of operation(s) ID(s).

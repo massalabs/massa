@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 
-use crate::{MassaRpcServer, PagedVec, Public, RpcServer, StopHandle, Value, API};
+use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
@@ -15,7 +15,7 @@ use massa_api_exports::{
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     slot::SlotAmount,
-    TimeInterval,
+    page::{PageRequest, PagedVec}, TimeInterval,
 };
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
@@ -406,8 +406,7 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_stakers(
         &self,
-        limit: Option<usize>,
-        offset: Option<usize>,
+        page_request: PageRequest
     ) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
@@ -439,7 +438,7 @@ impl MassaRpcServer for API<Public> {
         staker_vec
             .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
 
-        let paged_vec = PagedVec::new(staker_vec, limit, offset);
+        let paged_vec = PagedVec::new(staker_vec, page_request.limit, page_request.offset);
 
         Ok(paged_vec)
     }

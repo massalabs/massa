@@ -30,6 +30,8 @@ pub mod ledger;
 pub mod node;
 /// operations
 pub mod operation;
+/// page
+pub mod page;
 /// rolls
 pub mod rolls;
 /// slots
@@ -78,3 +80,4 @@ pub enum ListType {
     /// contains allowed entry
     Whitelist,
 }
+

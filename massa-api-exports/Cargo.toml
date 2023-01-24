@@ -5,6 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
+paginate = "1.1.11"
 displaydoc = "0.2"
 thiserror = "1.0"
 jsonrpsee-core = { version = "0.16.2" }
