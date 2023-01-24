@@ -1,10 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
-use jsonrpsee::{
-    core::Error as JsonRpseeError,
-    types::error::{CallError, ErrorObject},
-};
+use jsonrpsee_core::Error as JsonRpseeError;
+use jsonrpsee_types::{error::CallError, ErrorObject};
 
 use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
@@ -15,6 +13,7 @@ use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_wallet::WalletError;
 
+/// Errors of the api component.
 #[non_exhaustive]
 #[derive(Display, thiserror::Error, Debug)]
 pub enum ApiError {

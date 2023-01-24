@@ -9,9 +9,9 @@ use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::{
-        Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, SecureShareBlock,
-    },
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
     endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
@@ -226,8 +226,6 @@ pub fn create_protocol_config() -> ProtocolConfig {
         t0: MassaTime::from_millis(16000),
         max_operations_propagation_time: MassaTime::from_millis(30000),
         max_endorsements_propagation_time: MassaTime::from_millis(60000),
-        broadcast_enabled: false,
-        broadcast_operations_capacity: 128,
     }
 }
 

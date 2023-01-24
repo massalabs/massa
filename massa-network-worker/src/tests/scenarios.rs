@@ -22,7 +22,7 @@ use massa_models::config::{
     MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
 use massa_models::{
-    block::BlockId,
+    block_id::BlockId,
     endorsement::{Endorsement, EndorsementSerializer},
     node::NodeId,
     secure_share::SecureShareContent,

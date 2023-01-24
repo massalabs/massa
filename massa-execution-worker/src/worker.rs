@@ -14,7 +14,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;

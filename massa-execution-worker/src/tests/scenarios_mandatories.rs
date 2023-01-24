@@ -10,9 +10,9 @@ use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_S
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
-    api::EventFilter,
-    block::BlockId,
+    block_id::BlockId,
     datastore::Datastore,
+    execution::EventFilter,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     secure_share::SecureShareContent,
 };
@@ -57,12 +57,26 @@ fn test_sending_command() {
 #[test]
 #[serial]
 fn test_readonly_execution() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: 100.into(),
+        cursor_delay: 0.into(),
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+    // init the storage
+    let storage = Storage::create_root();
+    // start the execution worker
     let (mut manager, controller) = start_execution_worker(
-        ExecutionConfig::default(),
+        exec_cfg.clone(),
         sample_state.clone(),
         sample_state.read().pos_state.selector.clone(),
     );
+    // initialize the execution system with genesis blocks
+    init_execution_worker(&exec_cfg, &storage, controller.clone());
+    std::thread::sleep(Duration::from_millis(1000));
+
     let mut res = controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
@@ -70,11 +84,24 @@ fn test_readonly_execution() {
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
+            is_final: true,
         })
         .expect("readonly execution failed");
-
+    assert_eq!(res.out.slot, Slot::new(1, 0));
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
+
+    let res = controller
+        .execute_readonly_request(ReadOnlyExecutionRequest {
+            max_gas: 1_000_000,
+            call_stack: vec![],
+            target: ReadOnlyExecutionTarget::BytecodeExecution(
+                include_bytes!("./wasm/event_test.wasm").to_vec(),
+            ),
+            is_final: false,
+        })
+        .expect("readonly execution failed");
+    assert!(res.out.slot.period > 8);
 
     manager.stop();
 }

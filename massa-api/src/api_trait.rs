@@ -27,7 +27,7 @@ pub trait MassaApi {
     )]
     fn subscribe_new_blocks_headers(&self);
 
-    /// New produced block with operations content.
+    /// New produced blocks with operations content.
     #[subscription(
 		name = "subscribe_new_filled_blocks" => "new_filled_blocks",
 		unsubscribe = "unsubscribe_new_filled_blocks",

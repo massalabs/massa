@@ -1,30 +1,32 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
 use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
 use itertools::Itertools;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
-use massa_execution_exports::ExecutionController;
-use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, ListType, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, ScrudOperation, TimeInterval,
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
+    ListType, ScrudOperation, TimeInterval,
 };
+use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address,
-    block::{Block, BlockId},
-    endorsement::EndorsementId,
-    operation::OperationId,
-    slot::Slot,
+    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
+    execution::EventFilter, operation::OperationId, slot::Slot,
 };
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
@@ -173,8 +175,8 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
-        crate::wrong_api::<Vec<(Address, u64)>>()
+    async fn get_stakers(&self, _: Option<PageRequest>) -> RpcResult<PagedVec<(Address, u64)>> {
+        crate::wrong_api::<PagedVec<(Address, u64)>>()
     }
 
     async fn get_operations(&self, _: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
@@ -250,7 +252,7 @@ impl MassaRpcServer for API<Private> {
     async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
         remove_file(self.0.api_settings.bootstrap_whitelist_path.clone()).map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to delete bootsrap whitelist configuration file: {}",
+                "failed to delete bootstrap whitelist configuration file: {}",
                 e
             ))
             .into()
@@ -305,7 +307,7 @@ impl MassaRpcServer for API<Private> {
     }
 }
 
-/// Run Search, Create, Read, Update, Delete operation on bootsrap list of IP(s)
+/// Run Search, Create, Read, Update, Delete operation on bootstrap list of IP(s)
 fn run_scrud_operation(
     bootstrap_list_file: PathBuf,
     ips: Vec<IpAddr>,
@@ -330,7 +332,7 @@ fn run_scrud_operation(
             .and_then(|length| {
                 if length == 0 {
                     Err(ApiError::InternalServerError(format!(
-                        "failed, bootsrap {} configuration file is empty",
+                        "failed, bootstrap {} configuration file is empty",
                         list_type
                     ))
                     .into())
@@ -340,7 +342,7 @@ fn run_scrud_operation(
                         .and_then(|mut list_ips: BTreeSet<IpAddr>| {
                             if list_ips.is_empty() {
                                 return Err(ApiError::InternalServerError(format!(
-                                    "failed to execute delete operation, bootsrap {} is empty",
+                                    "failed to execute delete operation, bootstrap {} is empty",
                                     list_type
                                 ))
                                 .into());
@@ -373,7 +375,7 @@ fn get_file_len(
         .open(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to read bootsrap {} configuration file: {}",
+                "failed to read bootstrap {} configuration file: {}",
                 list_type, e
             ))
             .into()
@@ -381,14 +383,14 @@ fn get_file_len(
         .and_then(|file| match file.metadata() {
             Ok(metadata) => Ok(metadata.len()),
             Err(e) => Err(ApiError::InternalServerError(format!(
-                "failed to read bootsrap {} configuration file metadata: {}",
+                "failed to read bootstrap {} configuration file metadata: {}",
                 list_type, e
             ))
             .into()),
         })
 }
 
-/// Read bootsrap list IP(s) from json file
+/// Read bootstrap list IP(s) from json file
 fn read_ips_from_jsonfile(
     bootstrap_list_file: PathBuf,
     list_type: &ListType,
@@ -396,15 +398,15 @@ fn read_ips_from_jsonfile(
     std::fs::read_to_string(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to read bootsrap {} configuration file: {}",
+                "failed to read bootstrap {} configuration file: {}",
                 list_type, e
             ))
             .into()
         })
-        .and_then(|bootsrap_list_str| {
-            serde_json::from_str(&bootsrap_list_str).map_err(|e| {
+        .and_then(|bootstrap_list_str| {
+            serde_json::from_str(&bootstrap_list_str).map_err(|e| {
                 ApiError::InternalServerError(format!(
-                    "failed to parse bootsrap {} configuration file: {}",
+                    "failed to parse bootstrap {} configuration file: {}",
                     list_type, e
                 ))
                 .into()
@@ -412,7 +414,7 @@ fn read_ips_from_jsonfile(
         })
 }
 
-/// Write bootsrap list IP(s) from json file
+/// Write bootstrap list IP(s) from json file
 fn write_ips_to_jsonfile(
     bootstrap_list_file: PathBuf,
     ips: BTreeSet<IpAddr>,
@@ -425,7 +427,7 @@ fn write_ips_to_jsonfile(
         .open(bootstrap_list_file)
         .map_err(|e| {
             ApiError::InternalServerError(format!(
-                "failed to create bootsrap {} configuration file: {}",
+                "failed to create bootstrap {} configuration file: {}",
                 list_type, e
             ))
             .into()
@@ -433,7 +435,7 @@ fn write_ips_to_jsonfile(
         .and_then(|file| {
             serde_json::to_writer_pretty(file, &ips).map_err(|e| {
                 ApiError::InternalServerError(format!(
-                    "failed to write bootsrap {} configuration file: {}",
+                    "failed to write bootstrap {} configuration file: {}",
                     list_type, e
                 ))
                 .into()

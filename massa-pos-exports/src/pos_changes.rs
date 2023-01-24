@@ -14,9 +14,10 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use serde::{Deserialize, Serialize};
 
 /// Recap of all PoS changes
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<u8>,

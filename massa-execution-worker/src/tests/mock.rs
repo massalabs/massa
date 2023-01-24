@@ -19,7 +19,8 @@ use tempfile::TempDir;
 
 #[cfg(feature = "testing")]
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, SecureShareBlock},
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
     operation::SecureShareOperation,
     secure_share::SecureShareContent,
     slot::Slot,

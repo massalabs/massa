@@ -636,6 +636,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "const_format"
+version = "0.2.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7309d9b4d3d2c0641e018d449232f2e28f1b22933c137f157d3dbc14228b8c0e"
+dependencies = [
+ "const_format_proc_macros",
+]
+
+[[package]]
+name = "const_format_proc_macros"
+version = "0.2.29"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d897f47bf7270cf70d370f8f98c1abb6d2d4cf60a6845d30e05bfb90c6568650"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-xid",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2185,6 +2205,7 @@ dependencies = [
  "dialoguer",
  "erased-serde",
  "lazy_static",
+ "massa_api_exports",
  "massa_models",
  "massa_sdk",
  "massa_signature",
@@ -2212,6 +2233,7 @@ dependencies = [
  "enum-map",
  "lazy_static",
  "massa_api",
+ "massa_api_exports",
  "massa_async_pool",
  "massa_bootstrap",
  "massa_consensus_exports",
@@ -2277,13 +2299,12 @@ name = "massa_api"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "displaydoc",
  "hyper",
  "itertools",
  "jsonrpsee",
+ "massa_api_exports",
  "massa_consensus_exports",
  "massa_execution_exports",
- "massa_hash",
  "massa_models",
  "massa_network_exports",
  "massa_pool_exports",
@@ -2297,12 +2318,35 @@ dependencies = [
  "parking_lot",
  "serde",
  "serde_json",
- "thiserror",
  "tokio",
  "tokio-stream",
  "tower",
  "tower-http",
  "tracing",
+]
+
+[[package]]
+name = "massa_api_exports"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
+ "massa_consensus_exports",
+ "massa_execution_exports",
+ "massa_final_state",
+ "massa_hash",
+ "massa_models",
+ "massa_network_exports",
+ "massa_protocol_exports",
+ "massa_signature",
+ "massa_time",
+ "massa_wallet",
+ "paginate",
+ "serde",
+ "serial_test 1.0.0",
+ "strum",
+ "thiserror",
 ]
 
 [[package]]
@@ -2550,6 +2594,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "nom",
+ "serde",
  "thiserror",
  "tracing",
 ]
@@ -2617,6 +2662,7 @@ dependencies = [
  "bitvec",
  "bs58",
  "config",
+ "const_format",
  "directories",
  "displaydoc",
  "lazy_static",
@@ -2631,7 +2677,6 @@ dependencies = [
  "serde",
  "serde_with",
  "serial_test 0.10.0",
- "strum",
  "thiserror",
 ]
 
@@ -2688,6 +2733,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -2702,6 +2748,7 @@ dependencies = [
  "massa_storage",
  "num",
  "parking_lot",
+ "tokio",
  "tracing",
 ]
 
@@ -2799,6 +2846,7 @@ version = "0.1.0"
 dependencies = [
  "http",
  "jsonrpsee",
+ "massa_api_exports",
  "massa_models",
  "massa_time",
 ]
@@ -3195,6 +3243,12 @@ name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
+
+[[package]]
+name = "paginate"
+version = "1.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ac1db209d9d6dc8e4435b744ed76198494406cd20eb8ca14baf9828664664c8"
 
 [[package]]
 name = "parking"
@@ -4126,6 +4180,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_test"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "538c30747ae860d6fb88330addbbd3e0ddbe46d662d032855596d8a8ca260611"
+dependencies = [
+ "dashmap",
+ "futures",
+ "lazy_static",
+ "log",
+ "parking_lot",
+ "serial_test_derive 1.0.0",
+]
+
+[[package]]
 name = "serial_test_derive"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4143,6 +4211,17 @@ name = "serial_test_derive"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b64f9e531ce97c88b4778aad0ceee079216071cffec6ac9b904277f8f92e7fe3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "079a83df15f85d89a68d64ae1238f142f172b1fa915d0d76b26a7cba1b659a69"
 dependencies = [
  "proc-macro2",
  "quote",

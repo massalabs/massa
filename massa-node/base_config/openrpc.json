@@ -394,12 +394,22 @@
                     "description": "Massa public api"
                 }
             ],
-            "params": [],
+            "params": [
+                {
+                    "schema": {
+                        "$ref": "#/components/schemas/PageRequest"
+                    },
+                    "name": "PageRequest"
+                }
+            ],
             "result": {
                 "schema": {
-                    "$ref": "#/components/schemas/Staker"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/Staker"
+                    }
                 },
-                "name": "Staker"
+                "name": "PagedStakers"
             },
             "name": "get_stakers",
             "summary": "Get stakers",
@@ -503,8 +513,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_blacklist",
-            "summary": "Add to bootsrap blacklist given IP address(es)",
-            "description": "Add to bootsrap blacklist given IP address(es)."
+            "summary": "Add to bootstrap blacklist given IP address(es)",
+            "description": "Add to bootstrap blacklist given IP address(es)."
         },
         {
             "tags": [
@@ -533,8 +543,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_whitelist",
-            "summary": "Add to bootsrap whitelist given IP address(es)",
-            "description": "Add to bootsrap whitelist given IP address(es)."
+            "summary": "Add to bootstrap whitelist given IP address(es)",
+            "description": "Add to bootstrap whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -644,8 +654,8 @@
                 }
             },
             "name": "node_bootstrap_blacklist",
-            "summary": "Returns bootsrap blacklist IP address(es)",
-            "description": "Returns bootsrap blacklist IP address(es)."
+            "summary": "Returns bootstrap blacklist IP address(es)",
+            "description": "Returns bootstrap blacklist IP address(es)."
         },
         {
             "tags": [
@@ -667,8 +677,8 @@
                 }
             },
             "name": "node_bootstrap_whitelist",
-            "summary": "Returns bootsrap whitelist IP address(es)",
-            "description": "Returns bootsrap whitelist IP address(es)."
+            "summary": "Returns bootstrap whitelist IP address(es)",
+            "description": "Returns bootstrap whitelist IP address(es)."
         },
         {
             "tags": [
@@ -684,8 +694,8 @@
                 "schema": false
             },
             "name": "node_bootstrap_whitelist_allow_all",
-            "summary": "Allow everyone to bootsrap from the node",
-            "description": "Allow everyone to bootsrap from the node. Remove bootsrap whitelist configuration file."
+            "summary": "Allow everyone to bootstrap from the node",
+            "description": "Allow everyone to bootstrap from the node. Remove bootstrap whitelist configuration file."
         },
         {
             "tags": [
@@ -737,8 +747,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_blacklist",
-            "summary": "Remove from bootsrap blacklist given IP address(es)",
-            "description": "Remove from bootsrap blacklist given IP address(es)."
+            "summary": "Remove from bootstrap blacklist given IP address(es)",
+            "description": "Remove from bootstrap blacklist given IP address(es)."
         },
         {
             "tags": [
@@ -767,8 +777,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_whitelist",
-            "summary": "Remove from bootsrap whitelist given IP address(es)",
-            "description": "Remove from bootsrap whitelist given IP address(es)."
+            "summary": "Remove from bootstrap whitelist given IP address(es)",
+            "description": "Remove from bootstrap whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -1124,8 +1134,8 @@
                 "name": "FilledBlockInfo"
             },
             "name": "subscribe_new_filled_blocks",
-            "summary": "New produced block with operations content",
-            "description": "New produced block with operations content."
+            "summary": "New produced blocks with operations content",
+            "description": "New produced blocks with operations content."
         },
         {
             "tags": [
@@ -1150,8 +1160,8 @@
                 "name": "Operation"
             },
             "name": "subscribe_new_operations",
-            "summary": "Subscribe to new received operations",
-            "description": "Subscribe to new received operations."
+            "summary": "Subscribe to new operations",
+            "description": "Subscribe to new operations."
         },
         {
             "tags": [
@@ -1376,8 +1386,8 @@
                             "type": "object",
                             "properties": {
                                 "slot": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Slot"
+                                    "$ref": "#/components/schemas/Slot",
+                                    "type": "object"
                                 },
                                 "amount": {
                                     "type": "number"
@@ -1389,8 +1399,8 @@
                         "description": "The next block draws",
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "$ref": "#/components/schemas/Slot"
+                            "$ref": "#/components/schemas/Slot",
+                            "type": "object"
                         }
                     },
                     "next_endorsement_draws": {
@@ -1400,8 +1410,8 @@
                             "type": "object",
                             "properties": {
                                 "slot": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Slot"
+                                    "$ref": "#/components/schemas/Slot",
+                                    "type": "object"
                                 },
                                 "index": {
                                     "type": "number"
@@ -1425,8 +1435,8 @@
                         "description": "Cycle infos",
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "$ref": "#/components/schemas/ExecutionAddressCycleInfo"
+                            "$ref": "#/components/schemas/ExecutionAddressCycleInfo",
+                            "type": "object"
                         }
                     }
                 },
@@ -1540,8 +1550,8 @@
                 "type": "object",
                 "properties": {
                     "target_addr": {
-                        "description": "Address",
-                        "$ref": "#/components/schemas/Address"
+                        "$ref": "#/components/schemas/Address",
+                        "description": "Address"
                     },
                     "target_func": {
                         "description": "Function name",
@@ -1574,9 +1584,7 @@
                         "description": "The block ids of the blocks in that clique",
                         "type": "array",
                         "items": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BlockId"
-                            }
+                            "$ref": "#/components/schemas/BlockId"
                         }
                     },
                     "fitness": {
@@ -1615,16 +1623,16 @@
                         "type": "number"
                     },
                     "end_timestamp": {
-                        "type": "number",
-                        "description": "(Only in tesnets)\nTime in milliseconds when the blockclique started."
+                        "description": "(Only in tesnets)\nTime in milliseconds when the blockclique started.",
+                        "type": "number"
                     },
                     "genesis_timestamp": {
-                        "type": "number",
-                        "description": "Time in milliseconds when the blockclique started."
+                        "description": "Time in milliseconds when the blockclique started.",
+                        "type": "number"
                     },
                     "max_block_size": {
-                        "type": "number",
-                        "description": "Maximum size (in bytes) of a block"
+                        "description": "Maximum size (in bytes) of a block",
+                        "type": "number"
                     },
                     "operation_validity_periods": {
                         "description": "Maximum operation validity period count",
@@ -1647,8 +1655,8 @@
                         "type": "string"
                     },
                     "t0": {
-                        "type": "number",
-                        "description": "Time between the periods in the same thread."
+                        "description": "Time between the periods in the same thread.",
+                        "type": "number"
                     },
                     "thread_count": {
                         "description": "Number of threads",
@@ -1719,13 +1727,16 @@
             },
             "DataStore": {
                 "title": "Datastore",
-                "description": "Datastore",
+                "description": "A tuple which contains (entry, bytes)",
                 "type": "object",
                 "additionalProperties": {
                     "type": "object",
                     "properties": {
-                        "enrtry": {
-                            "type": "string"
+                        "entry": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
                         },
                         "bytes": {
                             "type": "array",
@@ -1735,14 +1746,21 @@
                         }
                     }
                 },
-                "example": {
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": [
-                        "Number"
+                "example": [
+                    [
+                        1,
+                        2,
+                        3,
+                        4
                     ],
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": [
-                        "Number"
+                    [
+                        5,
+                        6,
+                        7,
+                        9,
+                        10
                     ]
-                }
+                ]
             },
             "DataStoreEntry": {
                 "description": "Datastore entry",
@@ -1921,28 +1939,14 @@
                 },
                 "additionalProperties": false
             },
-            "ReadOnlyResult": {
-                "title": "ReadOnlyResult",
-                "type": "object",
-                "description": "The result of a read-only execution",
-                "properties": {
-                    "Ok": {
-                        "type": "array",
-                        "description": "Included in case of success. The result of the execution"
-                    },
-                    "Error": {
-                        "type": "string",
-                        "description": "Included in case of error. The error message"
-                    }
-                }
-            },
             "ExecuteReadOnlyResponse": {
                 "title": "ExecuteReadOnlyResponse",
                 "required": [
                     "executed_at",
                     "output_events",
                     "result",
-                    "gas_cost"
+                    "gas_cost",
+                    "state_changes"
                 ],
                 "type": "object",
                 "properties": {
@@ -1961,6 +1965,9 @@
                     "gas_cost": {
                         "description": "The gas cost for the execution",
                         "type": "number"
+                    },
+                    "state_changes": {
+                        "$ref": "#/components/schemas/StateChanges"
                     }
                 },
                 "additionalProperties": false
@@ -1970,7 +1977,8 @@
                 "description": "Execute Smart Contract",
                 "required": [
                     "data",
-                    "max_gas"
+                    "max_gas",
+                    "datastore"
                 ],
                 "type": "object",
                 "properties": {
@@ -1984,6 +1992,10 @@
                     "max_gas": {
                         "description": "Maximum amount of gas that the execution of the contract is allowed to cost.",
                         "type": "number"
+                    },
+                    "datastore": {
+                        "$ref": "#/components/schemas/DataStore",
+                        "description": "A tuple which contains (key, value)"
                     }
                 },
                 "additionalProperties": false
@@ -2030,12 +2042,12 @@
                         "description": "Optional end slot\nWill use by default Slot(0,0)"
                     },
                     "emitter_address": {
-                        "type": "string",
-                        "description": "Optional emitter address"
+                        "description": "Optional emitter address",
+                        "type": "string"
                     },
                     "original_caller_address": {
-                        "type": "string",
-                        "description": "Optional caller address"
+                        "description": "Optional caller address",
+                        "type": "string"
                     },
                     "original_operation_id": {
                         "description": "Optional operation id",
@@ -2070,7 +2082,7 @@
                     }
                 }
             },
-            "EventExecutionContext" : {
+            "EventExecutionContext": {
                 "title": "EventExecutionContext",
                 "description": "Context of the event (not generated by the user)",
                 "required": [
@@ -2359,8 +2371,8 @@
                         "type": "number"
                     },
                     "current_time": {
-                        "type": "number",
-                        "description": "Time in milliseconds since 1970-01-01"
+                        "description": "Time in milliseconds since 1970-01-01",
+                        "type": "number"
                     },
                     "last_slot": {
                         "$ref": "#/components/schemas/Slot",
@@ -2514,6 +2526,23 @@
                     }
                 }
             },
+            "PageRequest": {
+                "title": "PageRequest",
+                "description": "An PageRequest object, which contains limit (max elements par page) and a page offset.",
+                "type": "object",
+                "required": [
+                    "limit",
+                    "offset"
+                ],
+                "properties": {
+                   "limit": {
+                       "type": "number"
+                   },
+                   "offset": {
+                       "type": "number"
+                   }
+                }
+            },
             "PoolStats": {
                 "title": "PoolStats",
                 "description": "Pool stats",
@@ -2598,15 +2627,27 @@
                     },
                     "bytecode": {
                         "description": "Bytecode to execute",
-                        "type": "array"
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
                     },
                     "address": {
-                        "description": "caller's address",
-                        "$ref": "#/components/schemas/Address"
+                        "$ref": "#/components/schemas/Address",
+                        "description": "caller's address"
                     },
                     "operation_datastore": {
                         "description": "An operation datastore",
-                        "type": "array"
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
+                    },
+                    "is_final": {
+                        "description": "Whether to start execution from final or active state",
+                        "type": "boolean"
                     }
                 },
                 "additionalProperties": false
@@ -2639,11 +2680,30 @@
                         "type": "string"
                     },
                     "caller_address": {
-                        "type": "string",
-                        "description": "Caller's address, optional"
+                        "description": "Caller's address, optional",
+                        "type": "string"
                     }
                 },
                 "additionalProperties": false
+            },
+            "ReadOnlyResult": {
+                "title": "ReadOnlyResult",
+                "description": "The result of a read-only execution",
+                "type": "object",
+                "properties": {
+                    "Ok": {
+                        "description": "Included in case of success. The result of the execution",
+                        "type": "array",
+                        "items": {
+                            "format": "byte",
+                            "type": "string"
+                        }
+                    },
+                    "Error": {
+                        "description": "Included in case of error. The error message",
+                        "type": "string"
+                    }
+                }
             },
             "Roll": {
                 "title": "Roll",
@@ -2804,6 +2864,38 @@
                     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": "Number",
                     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": "Number"
                 }
+            },
+            "StateChanges": {
+                "title": "StateChanges",
+                "required": [
+                    "async_pool_changes",
+                    "executed_ops_changes",
+                    "ledger_changes",
+                    "pos_changes"
+                ],
+                "type": "object",
+                "properties": {
+                    "ledger_changes": {
+                        "description": "ledger changes",
+                        "type": "object"
+                    },
+                    "async_pool_changes": {
+                        "description": "async pool changes",
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "pos_changes": {
+                        "description": "pos changes",
+                        "type": "object"
+                    },
+                    "executed_ops_changes": {
+                        "description": "executed operations changes",
+                        "type": "object"
+                    }
+                },
+                "additionalProperties": false
             },
             "Transaction": {
                 "title": "Transaction",
@@ -3036,6 +3128,14 @@
                 "description": "A OperationType object",
                 "schema": {
                     "$ref": "#/components/schemas/OperationType"
+                }
+            },
+            "PageRequest": {
+                "name": "PageRequest",
+                "summary": "PageRequest",
+                "description": "An Page request parameter, which contains limit and offset properties.",
+                "schema": {
+                    "$ref": "#/components/schemas/PageRequest"
                 }
             },
             "PubkeySig": {

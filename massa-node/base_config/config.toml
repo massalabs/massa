@@ -134,8 +134,6 @@
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
     max_endorsements_propagation_time = 48000
-    # operations sender(channel) capacity
-    broadcast_operations_capacity = 5000
 
 [network]
     # port on which to listen for protocol communication
@@ -206,16 +204,24 @@
         ["198.27.74.5:31245", "N1qxuqNnx9kyAMYxUfsYiv2gQd5viiBX126SzzexEdbbWd2vQKu"],
         ["198.27.74.52:31245", "N1hdgsVsd4zkNp8cF1rdqqG6JPRQasAmx12QgJaJHBHFU1fRHEH"],
         ["54.36.174.177:31245", "N1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
-        ["51.75.60.228:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
+        ["51.75.60.228:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"],
+        ["[2001:41d0:1004:67::]:31245", "N12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j"],
+        ["[2001:41d0:a:7f7d::]:31245", "N12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq"],
+        ["[2001:41d0:602:db1::]:31245", "N1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
+        ["[2001:41d0:602:21e4::]:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"],
     ]
+    # force the bootstrap protocol to use: "IPv4", "IPv6", or "Both". Defaults to using both protocols.
+    bootstrap_protocol = "Both"
     # path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
     bootstrap_whitelist_path = "base_config/bootstrap_whitelist.json"
     # path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
     bootstrap_blacklist_path = "base_config/bootstrap_blacklist.json"
-    # [optionnal] port on which to listen for incoming bootstrap requests
+    # [optional] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
+    # timeout for providing the bootstrap to a connection
+    bootstrap_timeout = 1200000
     # delay in milliseconds to wait between consecutive bootstrap attempts
     retry_delay = 60000
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds
@@ -250,6 +256,8 @@
     max_endorsement_count = 10000
     # max number of items returned per query
     max_item_return_count = 100
+    # operations sender(channel) capacity
+    broadcast_operations_capacity = 5000
 
 [selector]
     # maximum number of computed cycle's draws we keep in cache

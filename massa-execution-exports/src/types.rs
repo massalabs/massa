@@ -6,7 +6,7 @@ use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
 use massa_models::datastore::Datastore;
 use massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block::BlockId,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
     slot::Slot,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -69,6 +69,10 @@ pub struct ReadOnlyExecutionRequest {
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target of the request
     pub target: ReadOnlyExecutionTarget,
+    /// execution start state
+    ///
+    /// Whether to start execution from final or active state
+    pub is_final: bool,
 }
 
 /// structure describing different possible targets of a read-only execution request
@@ -101,6 +105,10 @@ pub struct ReadOnlyCallRequest {
     pub target_func: String,
     /// Parameter to pass to the target function
     pub parameter: String,
+    /// execution start state
+    ///
+    /// Whether to start execution from final or active state
+    pub is_final: bool,
 }
 
 /// Structure describing an element of the execution stack.

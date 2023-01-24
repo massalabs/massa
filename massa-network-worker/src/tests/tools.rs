@@ -15,7 +15,7 @@ use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::BlockId,
+    block_id::BlockId,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     version::Version,
 };

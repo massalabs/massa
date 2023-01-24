@@ -3,7 +3,7 @@
 //! This module represents an event store allowing to store, search and retrieve
 //! a config-limited number of execution-generated events
 
-use massa_models::api::EventFilter;
+use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use std::collections::VecDeque;
 

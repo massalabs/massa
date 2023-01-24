@@ -288,7 +288,7 @@ where
     /// * `buffer`: buffer of serialized data to be deserialized
     ///
     /// # Returns:
-    /// A rest (data left over from deserialization) and structure wrapped up with signature verification data as coherent fields.
+    /// A rest (data left over from deserialization), an instance of `T`, and the data enabling signature verification
     pub fn deserialize_with<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
@@ -316,7 +316,8 @@ where
     Deser: Deserializer<T>,
 {
     /// ```
-    /// # use massa_models::{block::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}, slot::Slot, secure_share::{SecureShare, SecureShareSerializer, SecureShareDeserializer, SecureShareContent}};
+    /// # use massa_models::{endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}, slot::Slot, secure_share::{SecureShare, SecureShareSerializer, SecureShareDeserializer, SecureShareContent}};
+    /// use massa_models::block_id::BlockId;
     /// # use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
     /// # use massa_signature::KeyPair;
     /// # use std::ops::Bound::Included;

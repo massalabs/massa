@@ -4,8 +4,9 @@ use massa_consensus_exports::{
     export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
 };
 use massa_models::{
-    api::BlockGraphStatus,
-    block::{BlockHeader, BlockId, FilledBlock},
+    block::{BlockGraphStatus, FilledBlock},
+    block_header::BlockHeader,
+    block_id::BlockId,
     clique::Clique,
     operation::{Operation, OperationId},
     prehash::PreHashSet,

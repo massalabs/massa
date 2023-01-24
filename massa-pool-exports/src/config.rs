@@ -24,4 +24,8 @@ pub struct PoolConfig {
     pub max_block_endorsement_count: u32,
     /// operations and endorsements communication channels size
     pub channels_size: usize,
+    /// Whether WebSockets are enabled
+    pub broadcast_enabled: bool,
+    /// operations sender(channel) capacity
+    pub broadcast_operations_capacity: usize,
 }

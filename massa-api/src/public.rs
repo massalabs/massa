@@ -1,26 +1,36 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockInfoContent, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
+    slot::SlotAmount,
+    TimeInterval,
+};
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_models::api::{
-    BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
-};
-use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::{
-    block::Block, endorsement::SecureShareEndorsement, error::ModelsError,
-    operation::SecureShareOperation, timeslots,
+    block::{Block, BlockGraphStatus},
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
+    operation::SecureShareOperation,
+    timeslots,
 };
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
@@ -30,16 +40,12 @@ use itertools::{izip, Itertools};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
-    api::{
-        AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
-        NodeStatus, OperationInfo, TimeInterval,
-    },
-    block::BlockId,
+    block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
     endorsement::EndorsementId,
-    execution::ExecuteReadOnlyResponse,
+    execution::EventFilter,
     node::NodeId,
     operation::OperationId,
     output_event::SCOutputEvent,
@@ -127,6 +133,7 @@ impl MassaRpcServer for API<Public> {
             address,
             bytecode,
             operation_datastore,
+            is_final,
         } in reqs
         {
             let address = address.unwrap_or_else(|| {
@@ -170,6 +177,7 @@ impl MassaRpcServer for API<Public> {
                     owned_addresses: vec![address],
                     operation_datastore: op_datastore,
                 }],
+                is_final,
             };
 
             // run
@@ -186,7 +194,9 @@ impl MassaRpcServer for API<Public> {
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
@@ -211,6 +221,7 @@ impl MassaRpcServer for API<Public> {
             target_function,
             parameter,
             caller_address,
+            is_final,
         } in reqs
         {
             let caller_address = caller_address.unwrap_or_else(|| {
@@ -245,6 +256,7 @@ impl MassaRpcServer for API<Public> {
                         operation_datastore: None, // should always be None
                     },
                 ],
+                is_final,
             };
 
             // run
@@ -261,7 +273,9 @@ impl MassaRpcServer for API<Public> {
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
@@ -391,7 +405,10 @@ impl MassaRpcServer for API<Public> {
         Ok(consensus_controller.get_cliques())
     }
 
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
@@ -418,9 +435,13 @@ impl MassaRpcServer for API<Public> {
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();
+
         staker_vec
             .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
-        Ok(staker_vec)
+
+        let paged_vec = PagedVec::new(staker_vec, page_request);
+
+        Ok(paged_vec)
     }
 
     async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
@@ -588,30 +609,33 @@ impl MassaRpcServer for API<Public> {
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                if let Some(verifiable_block) = storage.read_blocks().get(&id).cloned() {
-                    if let Some(graph_status) = consensus_controller
-                        .get_block_statuses(&[id])
-                        .into_iter()
-                        .next()
-                    {
-                        let is_final = graph_status == BlockGraphStatus::Final;
-                        let is_in_blockclique =
-                            graph_status == BlockGraphStatus::ActiveInBlockclique;
-                        let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-                        let is_discarded = graph_status == BlockGraphStatus::Discarded;
+                let content = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
+                    wrapped_block.content.clone()
+                } else {
+                    return None;
+                };
 
-                        return Some(BlockInfo {
-                            id,
-                            content: Some(BlockInfoContent {
-                                is_final,
-                                is_in_blockclique,
-                                is_candidate,
-                                is_discarded,
-                                block: verifiable_block.content,
-                            }),
-                        });
-                    }
+                if let Some(graph_status) = consensus_controller
+                    .get_block_statuses(&[id])
+                    .into_iter()
+                    .next()
+                {
+                    let is_final = graph_status == BlockGraphStatus::Final;
+                    let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+                    let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+                    let is_discarded = graph_status == BlockGraphStatus::Discarded;
+
+                    return Some(BlockInfo {
+                        id,
+                        content: Some(BlockInfoContent {
+                            is_final,
+                            is_in_blockclique,
+                            is_candidate,
+                            is_discarded,
+                            block: content,
+                        }),
+                    });
                 }
 
                 None
