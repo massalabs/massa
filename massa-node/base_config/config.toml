@@ -8,7 +8,7 @@
     # max number of future periods considered during requests
     draw_lookahead_period_count = 10
     # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed
-    bind_private = "[::]:33034"
+    bind_private = "[::1]:33034"
     # port on which the node API listens for public requests. Can be exposed to the Internet
     bind_public = "[::]:33035"
     # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet
