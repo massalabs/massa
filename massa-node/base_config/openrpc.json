@@ -396,18 +396,20 @@
             ],
             "params": [
                 {
-                    "name": "limit",
-                    "summary": "Nb of elements per page",
+                    "name": "page_request",
+                    "description": "PageRequest object",
                     "schema": {
-                        "type": "number"
-                    }
-                },
-                {
-                    "name": "offset",
-                    "summary": "Page number to get",
-                    "schema": {
-                        "type": "number"
-                    }
+                        "type": "object",
+                        "properties": {
+                            "limit": {
+                                "type": "number"
+                            },
+                            "offset": {
+                                "type": "number"
+                            }
+                        }
+                    },
+                    "required": true
                 }
             ],
             "result": {
