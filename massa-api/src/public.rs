@@ -405,7 +405,10 @@ impl MassaRpcServer for API<Public> {
         Ok(consensus_controller.get_cliques())
     }
 
-    async fn get_stakers(&self, page_request: Option<PageRequest>) -> RpcResult<PagedVec<(Address, u64)>> {
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 

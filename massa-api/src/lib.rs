@@ -315,7 +315,10 @@ pub trait MassaRpc {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[method(name = "get_stakers")]
-    async fn get_stakers(&self, page_request: Option<PageRequest>) -> RpcResult<PagedVec<(Address, u64)>>;
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>>;
 
     /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     #[method(name = "get_operations")]

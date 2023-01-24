@@ -17,7 +17,7 @@ impl<T: Serialize> PagedVec<T> {
 
         let (limit, offset) = match page_request {
             Some(PageRequest { limit, offset }) => (limit, offset),
-            None => (total_count,0)
+            None => (total_count, 0),
         };
 
         let pages = Pages::new(total_count, limit);
@@ -29,7 +29,10 @@ impl<T: Serialize> PagedVec<T> {
             .take(page.length)
             .collect();
 
-        PagedVec { res, _total_count: total_count }
+        PagedVec {
+            res,
+            _total_count: total_count,
+        }
     }
 }
 
