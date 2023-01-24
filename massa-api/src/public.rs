@@ -14,6 +14,7 @@ use massa_api_exports::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
     slot::SlotAmount,
     TimeInterval,
 };
@@ -404,7 +405,10 @@ impl MassaRpcServer for API<Public> {
         Ok(consensus_controller.get_cliques())
     }
 
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
@@ -431,9 +435,13 @@ impl MassaRpcServer for API<Public> {
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();
+
         staker_vec
             .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
-        Ok(staker_vec)
+
+        let paged_vec = PagedVec::new(staker_vec, page_request);
+
+        Ok(paged_vec)
     }
 
     async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
@@ -601,30 +609,33 @@ impl MassaRpcServer for API<Public> {
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                if let Some(verifiable_block) = storage.read_blocks().get(&id).cloned() {
-                    if let Some(graph_status) = consensus_controller
-                        .get_block_statuses(&[id])
-                        .into_iter()
-                        .next()
-                    {
-                        let is_final = graph_status == BlockGraphStatus::Final;
-                        let is_in_blockclique =
-                            graph_status == BlockGraphStatus::ActiveInBlockclique;
-                        let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-                        let is_discarded = graph_status == BlockGraphStatus::Discarded;
+                let content = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
+                    wrapped_block.content.clone()
+                } else {
+                    return None;
+                };
 
-                        return Some(BlockInfo {
-                            id,
-                            content: Some(BlockInfoContent {
-                                is_final,
-                                is_in_blockclique,
-                                is_candidate,
-                                is_discarded,
-                                block: verifiable_block.content,
-                            }),
-                        });
-                    }
+                if let Some(graph_status) = consensus_controller
+                    .get_block_statuses(&[id])
+                    .into_iter()
+                    .next()
+                {
+                    let is_final = graph_status == BlockGraphStatus::Final;
+                    let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+                    let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+                    let is_discarded = graph_status == BlockGraphStatus::Discarded;
+
+                    return Some(BlockInfo {
+                        id,
+                        content: Some(BlockInfoContent {
+                            is_final,
+                            is_in_blockclique,
+                            is_candidate,
+                            is_discarded,
+                            block: content,
+                        }),
+                    });
                 }
 
                 None
