@@ -52,8 +52,7 @@ impl<S> Layer<S> for MassaProxyGetRequestLayer {
 /// # Request
 ///
 /// The `GET /path` requests are modified into valid `POST` requests for
-/// calling the RPC method. This middleware adds appropriate headers to the
-/// request, and completely modifies the request `BODY`.
+/// calling the RPC method. This middleware adds appropriate headers to the request
 ///
 /// # Response
 ///
@@ -66,9 +65,6 @@ pub struct MassaProxyGetRequest<S> {
 
 impl<S> MassaProxyGetRequest<S> {
     /// Creates a new [`MassaProxyGetRequest`].
-    ///
-    /// The request `GET /path` is redirected to the provided method.
-    /// Fails if the path does not start with `/`.
     pub fn new(inner: S) -> Result<Self, RpcError> {
         Ok(Self { inner })
     }
