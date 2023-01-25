@@ -185,7 +185,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool",
+            args = "start=slot_period,slot_thread end=slot_period,slot_thread emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool",
             pwd_not_needed = "true"
         ),
         message = "show events emitted by smart contracts with various filters"
