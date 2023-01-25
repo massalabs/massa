@@ -5,7 +5,7 @@ use schnellru::{ByLength, LruMap};
 /// LRU cache of compiled runtime modules.
 /// The LRU caching scheme is to remove the least recently used module when the cache is full.
 ///
-/// * key: raw bytecode
+/// * key: raw bytecode (which is hashed on insertion in LruMap)
 /// * value.0: corresponding compiled module
 /// * value.1: instance initialization cost
 pub struct ModuleCache {
