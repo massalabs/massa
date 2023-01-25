@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::repl::Output;
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_api_exports::{
     address::{AddressInfo, CompactAddressInfo},
@@ -658,17 +658,17 @@ impl Command {
                     if s.len() == 2 && p_list.contains(&s[0]) {
                         p.insert(s[0], s[1]);
                     } else {
-                        bail!("invalid parameter");
+                        bail!("invalid parameter: {}, type \"help get_filtered_sc_output_event\" to get the list of valid parameters", v);
                     }
                 }
                 let filter = EventFilter {
-                    start: parse_key_value(&p, p_list[0]),
-                    end: parse_key_value(&p, p_list[1]),
-                    emitter_address: parse_key_value(&p, p_list[2]),
-                    original_caller_address: parse_key_value(&p, p_list[3]),
-                    original_operation_id: parse_key_value(&p, p_list[4]),
-                    is_final: parse_key_value(&p, p_list[5]),
-                    is_error: parse_key_value(&p, p_list[6]),
+                    start: parse_key_value(&p, p_list[0])?,
+                    end: parse_key_value(&p, p_list[1])?,
+                    emitter_address: parse_key_value(&p, p_list[2])?,
+                    original_caller_address: parse_key_value(&p, p_list[3])?,
+                    original_operation_id: parse_key_value(&p, p_list[4])?,
+                    is_final: parse_key_value(&p, p_list[5])?,
+                    is_error: parse_key_value(&p, p_list[6])?,
                 };
                 match client.public.get_filtered_sc_output_event(filter).await {
                     Ok(events) => Ok(Box::new(events)),
@@ -1414,7 +1414,7 @@ async fn send_operation(
 
 /// TODO: ugly utilities functions
 /// takes a slice of string and makes it into a `Vec<T>`
-pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, Error>
+pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, anyhow::Error>
 where
     T::Err: Display,
 {
@@ -1431,16 +1431,21 @@ async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
 }
 
-// chains get_key_value with its parsing and displays a warning on parsing error
-pub fn parse_key_value<T: std::str::FromStr>(p: &HashMap<&str, &str>, key: &str) -> Option<T> {
-    p.get_key_value(key).and_then(|x| {
-        x.1.parse::<T>()
-            .map_err(|_| {
-                client_warning!(format!(
-                    "'{}' parameter was ignored because of wrong corresponding value",
-                    key
-                ))
-            })
-            .ok()
-    })
+// chains get_key_value with its parsing
+pub fn parse_key_value<T: std::str::FromStr>(
+    p: &HashMap<&str, &str>,
+    key: &str,
+) -> anyhow::Result<Option<T>, anyhow::Error>
+where
+    T::Err: Display,
+{
+    if let Some(value) = p.get_key_value(key) {
+        value
+            .1
+            .parse::<T>()
+            .map(|op| Some(op))
+            .map_err(|e| anyhow!("failed to parse \"{}\" due to: {}", value.1, e))
+    } else {
+        Ok(None)
+    }
 }
