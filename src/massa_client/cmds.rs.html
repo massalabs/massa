@@ -1444,10 +1444,15 @@
 <a href="#1444" id="1444">1444</a>
 <a href="#1445" id="1445">1445</a>
 <a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
-<span class="kw">use </span>anyhow::{anyhow, bail, Error, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>massa_api_exports::{
     address::{AddressInfo, CompactAddressInfo},
@@ -2104,17 +2109,17 @@
                     <span class="kw">if </span>s.len() == <span class="number">2 </span>&amp;&amp; p_list.contains(<span class="kw-2">&amp;</span>s[<span class="number">0</span>]) {
                         p.insert(s[<span class="number">0</span>], s[<span class="number">1</span>]);
                     } <span class="kw">else </span>{
-                        <span class="macro">bail!</span>(<span class="string">&quot;invalid parameter&quot;</span>);
+                        <span class="macro">bail!</span>(<span class="string">&quot;invalid parameter: {}, type \&quot;help get_filtered_sc_output_event\&quot; to get the list of valid parameters&quot;</span>, v);
                     }
                 }
                 <span class="kw">let </span>filter = EventFilter {
-                    start: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">0</span>]),
-                    end: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">1</span>]),
-                    emitter_address: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">2</span>]),
-                    original_caller_address: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">3</span>]),
-                    original_operation_id: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">4</span>]),
-                    is_final: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">5</span>]),
-                    is_error: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">6</span>]),
+                    start: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">0</span>])<span class="question-mark">?</span>,
+                    end: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">1</span>])<span class="question-mark">?</span>,
+                    emitter_address: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">2</span>])<span class="question-mark">?</span>,
+                    original_caller_address: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">3</span>])<span class="question-mark">?</span>,
+                    original_operation_id: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">4</span>])<span class="question-mark">?</span>,
+                    is_final: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">5</span>])<span class="question-mark">?</span>,
+                    is_error: parse_key_value(<span class="kw-2">&amp;</span>p, p_list[<span class="number">6</span>])<span class="question-mark">?</span>,
                 };
                 <span class="kw">match </span>client.public.get_filtered_sc_output_event(filter).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(events) =&gt; <span class="prelude-val">Ok</span>(Box::new(events)),
@@ -2860,7 +2865,7 @@
 
 <span class="doccomment">/// TODO: ugly utilities functions
 /// takes a slice of string and makes it into a `Vec&lt;T&gt;`
-</span><span class="kw">pub fn </span>parse_vec&lt;T: std::str::FromStr&gt;(args: <span class="kw-2">&amp;</span>[String]) -&gt; anyhow::Result&lt;Vec&lt;T&gt;, Error&gt;
+</span><span class="kw">pub fn </span>parse_vec&lt;T: std::str::FromStr&gt;(args: <span class="kw-2">&amp;</span>[String]) -&gt; anyhow::Result&lt;Vec&lt;T&gt;, anyhow::Error&gt;
 <span class="kw">where
     </span>T::Err: Display,
 {
@@ -2877,18 +2882,23 @@
     <span class="prelude-val">Ok</span>(tokio::fs::read(filename).<span class="kw">await</span><span class="question-mark">?</span>)
 }
 
-<span class="comment">// chains get_key_value with its parsing and displays a warning on parsing error
-</span><span class="kw">pub fn </span>parse_key_value&lt;T: std::str::FromStr&gt;(p: <span class="kw-2">&amp;</span>HashMap&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str&gt;, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt; {
-    p.get_key_value(key).and_then(|x| {
-        x.<span class="number">1</span>.parse::&lt;T&gt;()
-            .map_err(|<span class="kw">_</span>| {
-                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(
-                    <span class="string">&quot;&#39;{}&#39; parameter was ignored because of wrong corresponding value&quot;</span>,
-                    key
-                ))
-            })
-            .ok()
-    })
+<span class="comment">// chains get_key_value with its parsing
+</span><span class="kw">pub fn </span>parse_key_value&lt;T: std::str::FromStr&gt;(
+    p: <span class="kw-2">&amp;</span>HashMap&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str&gt;,
+    key: <span class="kw-2">&amp;</span>str,
+) -&gt; anyhow::Result&lt;<span class="prelude-ty">Option</span>&lt;T&gt;, anyhow::Error&gt;
+<span class="kw">where
+    </span>T::Err: Display,
+{
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = p.get_key_value(key) {
+        value
+            .<span class="number">1
+            </span>.parse::&lt;T&gt;()
+            .map(|op| <span class="prelude-val">Some</span>(op))
+            .map_err(|e| <span class="macro">anyhow!</span>(<span class="string">&quot;failed to parse \&quot;{}\&quot; due to: {}&quot;</span>, value.<span class="number">1</span>, e))
+    } <span class="kw">else </span>{
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+    }
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
