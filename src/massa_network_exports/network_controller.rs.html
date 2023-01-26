@@ -288,6 +288,13 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -295,7 +302,7 @@
     error::NetworkError,
     BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
-<span class="kw">use </span>crossbeam_channel::{bounded, Receiver, Sender};
+<span class="kw">use </span>crossbeam_channel::{bounded, Receiver, Sender, TrySendError};
 <span class="kw">use </span>massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -310,7 +317,7 @@
     collections::{HashMap, VecDeque},
     net::IpAddr,
 };
-<span class="kw">use </span>tracing::info;
+<span class="kw">use </span>tracing::{info, warn};
 
 <span class="doccomment">/// Network command sender
 </span><span class="attr">#[derive(Clone)]
@@ -474,13 +481,20 @@
         to_node: NodeId,
         batch: OperationPrefixIds,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
-        <span class="self">self</span>.<span class="number">0
-            </span>.send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
-            .map_err(|<span class="kw">_</span>| {
-                NetworkError::ChannelError(
+        <span class="kw">match </span><span class="self">self
+            </span>.<span class="number">0
+            </span>.try_send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
+        {
+            <span class="prelude-val">Ok</span>(()) =&gt; {}
+            <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;Failed to send NetworkCommand SendOperationAnnouncements channel full&quot;</span>);
+            }
+            <span class="prelude-val">Err</span>(TrySendError::Disconnected(<span class="kw">_</span>)) =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::ChannelError(
                     <span class="string">&quot;could not send SendOperationAnnouncements command&quot;</span>.into(),
-                )
-            })<span class="question-mark">?</span>;
+                ));
+            }
+        }
         <span class="prelude-val">Ok</span>(())
     }
 
