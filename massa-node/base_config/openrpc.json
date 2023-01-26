@@ -2346,6 +2346,8 @@
                     "consensus_stats",
                     "current_cycle",
                     "current_time",
+                    "current_cycle_time",
+                    "next_cycle_time",
                     "network_stats",
                     "next_slot",
                     "node_id",
@@ -2372,6 +2374,14 @@
                     },
                     "current_time": {
                         "description": "Time in milliseconds since 1970-01-01",
+                        "type": "number"
+                    },
+                    "current_cycle_time": {
+                        "description": "current cycle starting time in milliseconds since 1970-01-01",
+                        "type": "number"
+                    },
+                    "next_cycle_time": {
+                        "description": "next cycle starting time in milliseconds since 1970-01-01",
                         "type": "number"
                     },
                     "last_slot": {
