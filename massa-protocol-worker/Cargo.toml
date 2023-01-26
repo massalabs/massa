@@ -28,7 +28,7 @@ massa_signature = { path = "../massa-signature" }
 lazy_static = "1.4"
 serial_test = "1.0"
 futures = "0.3"
-tokio = { version = "1.21", features = ["full"] }
+tokio = { version = "1.23", features = ["full"] }
 
 massa_signature = { path = "../massa-signature" }
 massa_pool_exports = { path = "../massa-pool-exports", features = ["testing"] }
