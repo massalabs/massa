@@ -7,6 +7,8 @@ use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_signature::PublicKey;
+use nom::branch::alt;
+use nom::character::complete::char;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
@@ -18,7 +20,23 @@ pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// Derived from a public key
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Address(pub Hash);
+pub enum Address {
+    User(UserAddress),
+    SC(UserAddress),
+}
+
+impl std::ops::Deref for Address {
+    type Target = UserAddress;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Address::User(add) | Address::SC(add) => &add,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct UserAddress(pub Hash);
 
 const ADDRESS_PREFIX: char = 'A';
 const ADDRESS_VERSION: u64 = 0;
@@ -31,11 +49,15 @@ impl std::fmt::Display for Address {
         u64_serializer
             .serialize(&ADDRESS_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_bytes());
+        bytes.extend(*self.0.to_bytes());
         write!(
             f,
-            "{}{}",
+            "{}{}{}",
             ADDRESS_PREFIX,
+            match self {
+                Address::User(_) => 'U',
+                Address::SC(_) => 'S',
+            },
             bs58::encode(bytes).with_check().into_string()
         )
     }
@@ -54,7 +76,7 @@ impl ::serde::Serialize for Address {
         if s.is_human_readable() {
             s.collect_str(&self.to_string())
         } else {
-            s.serialize_bytes(self.to_bytes())
+            s.serialize_bytes(&self.unprefixed_bytes())
         }
     }
 }
@@ -68,7 +90,7 @@ impl<'de> ::serde::Deserialize<'de> for Address {
                 type Value = Address;
 
                 fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("A + base58::encode(version + hash)")
+                    formatter.write_str("A + {U | S} + base58::encode(version + hash)")
                 }
 
                 fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -104,7 +126,9 @@ impl<'de> ::serde::Deserialize<'de> for Address {
                 where
                     E: ::serde::de::Error,
                 {
-                    Ok(Address::from_bytes(v.try_into().map_err(E::custom)?))
+                    Ok(Address::from_unprefixed_bytes(
+                        v.try_into().map_err(E::custom)?,
+                    ))
                 }
             }
 
@@ -129,25 +153,34 @@ impl FromStr for Address {
     /// assert_eq!(address, res_addr);
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let err = Err(ModelsError::AddressParseError);
         let mut chars = s.chars();
-        match chars.next() {
-            Some(prefix) if prefix == ADDRESS_PREFIX => {
-                let data = chars.collect::<String>();
-                let decoded_bs58_check = bs58::decode(data)
-                    .with_check(None)
-                    .into_vec()
-                    .map_err(|_| ModelsError::AddressParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, _version) = u64_deserializer
-                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-                    .map_err(|_| ModelsError::AddressParseError)?;
-                Ok(Address(Hash::from_bytes(
-                    rest.try_into()
-                        .map_err(|_| ModelsError::AddressParseError)?,
-                )))
-            }
-            _ => Err(ModelsError::AddressParseError),
-        }
+        let Some('A') = chars.next() else {
+            return err;
+        };
+        let Some(pref) = chars.next() else {
+            return err;
+        };
+
+        let data = chars.collect::<String>();
+        let decoded_bs58_check = bs58::decode(data)
+            .with_check(None)
+            .into_vec()
+            .map_err(|_| ModelsError::AddressParseError)?;
+        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+        let (rest, _version) = u64_deserializer
+            .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+            .map_err(|_| ModelsError::AddressParseError)?;
+        let res = UserAddress(Hash::from_bytes(
+            rest.try_into()
+                .map_err(|_| ModelsError::AddressParseError)?,
+        ));
+        let res = match pref {
+            'U' => Address::User(res),
+            'S' => Address::SC(res),
+            _ => unreachable!(),
+        };
+        Ok(res)
     }
 }
 
@@ -159,7 +192,7 @@ fn test_address_str_format() {
     let address = Address::from_public_key(&keypair.get_public_key());
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
-    assert!(address == b);
+    assert_eq!(address, b);
 }
 
 impl PreHashed for Address {}
@@ -167,14 +200,30 @@ impl PreHashed for Address {}
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
     pub fn get_thread(&self, thread_count: u8) -> u8 {
-        (self.to_bytes()[0])
+        (self.unprefixed_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
     }
 
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address(Hash::compute_from(public_key.to_bytes()))
+        Address::User(UserAddress(Hash::compute_from(public_key.to_bytes())))
+    }
+
+    /// ## Example
+    /// ```rust
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use massa_models::address::Address;
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let bytes = address.unprefixed_bytes();
+    /// let res_addr = Address::from_bytes(&bytes);
+    /// assert_eq!(address, res_addr);
+    /// ```
+    fn unprefixed_bytes(&self) -> Vec<u8> {
+        self.0.into_bytes().to_vec()
     }
 
     /// ## Example
@@ -189,8 +238,16 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn to_bytes(&self) -> &[u8; ADDRESS_SIZE_BYTES] {
-        self.0.to_bytes()
+    fn into_prefixed_bytes(self) -> Vec<u8> {
+        let mut buf = [0; 4];
+        let pref = match self {
+            Address::User(_) => 'U',
+            Address::SC(_) => 'S',
+        };
+        let bytes = pref.encode_utf8(&mut buf).as_bytes();
+        let mut v = bytes.to_vec();
+        v.append(&mut self.0.into_bytes().to_vec());
+        v
     }
 
     /// ## Example
@@ -201,28 +258,14 @@ impl Address {
     /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.into_bytes();
-    /// let res_addr = Address::from_bytes(&bytes);
+    /// let bytes = address.into_unprefixed_bytes();
+    /// let res_addr = Address::from_unprefixed_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn into_bytes(self) -> [u8; ADDRESS_SIZE_BYTES] {
-        self.0.into_bytes()
-    }
-
-    /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.to_bytes();
-    /// let res_addr = Address::from_bytes(&bytes);
-    /// assert_eq!(address, res_addr);
-    /// ```
-    pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Address {
-        Address(Hash::from_bytes(data))
+    fn from_unprefixed_bytes(data: &[u8]) -> Address {
+        Address::User(UserAddress(Hash::from_bytes(
+            &data[0..32].try_into().unwrap(),
+        )))
     }
 }
 
@@ -243,7 +286,15 @@ impl Serializer<Address> for AddressSerializer {
         value: &Address,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        buffer.extend_from_slice(value.to_bytes());
+        let mut buf = [0; 4];
+
+        let pref = match value {
+            Address::User(_) => 'U',
+            Address::SC(_) => 'S',
+        };
+        let pref = pref.encode_utf8(&mut buf).as_bytes();
+        buffer.extend_from_slice(pref);
+        buffer.extend_from_slice(&value.unprefixed_bytes());
         Ok(())
     }
 }
@@ -270,8 +321,8 @@ impl Deserializer<Address> for AddressDeserializer {
     /// use massa_serialization::{Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let address = Address::from_str("A12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
-    /// let bytes = address.into_bytes();
+    /// let address = Address::from_str("AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
+    /// let bytes = address.into_prefixed_bytes();
     /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// assert_eq!(rest.len(), 0);
@@ -280,11 +331,18 @@ impl Deserializer<Address> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
-        context("Failed Address deserialization", |input| {
+        let (rest, pref) = context("Address Veriant", alt((char('U'), char('S')))).parse(buffer)?;
+        let (rest, res) = context("Failed Address deserialization", |input| {
             self.hash_deserializer.deserialize(input)
         })
-        .map(Address)
-        .parse(buffer)
+        .map(UserAddress)
+        .parse(rest)?;
+        let res = match pref {
+            'U' => Address::User(res),
+            'S' => Address::SC(res),
+            _ => unreachable!(),
+        };
+        Ok((rest, res))
     }
 }
 

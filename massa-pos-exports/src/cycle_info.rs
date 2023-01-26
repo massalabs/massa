@@ -242,7 +242,7 @@ fn test_cycle_info_hash_computation() {
         BitVec::default(),
         PreHashMap::default(),
     );
-    let addr = Address::from_bytes(&[0u8; 32]);
+    let addr = Address::from_unprefixed_bytes(&[0u8; 33]);
 
     // add changes
     let mut roll_changes = PreHashMap::default();
@@ -361,7 +361,7 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.u64_ser
             .serialize(&(value.roll_counts.len() as u64), buffer)?;
         for (addr, count) in &value.roll_counts {
-            buffer.extend(addr.to_bytes());
+            buffer.extend(addr.unprefixed_bytes());
             self.u64_ser.serialize(count, buffer)?;
         }
 
@@ -515,7 +515,7 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
             },
         ) in value.iter()
         {
-            buffer.extend(addr.to_bytes());
+            buffer.extend(addr.unprefixed_bytes());
             self.u64_ser.serialize(block_success_count, buffer)?;
             self.u64_ser.serialize(block_failure_count, buffer)?;
         }

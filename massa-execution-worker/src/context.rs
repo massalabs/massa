@@ -19,7 +19,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
-use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::address::{ExecutionAddressCycleInfo, UserAddress};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -411,7 +411,7 @@ impl ExecutionContext {
             data.push(1u8);
         }
         // hash the seed to get a unique address
-        let address = Address(massa_hash::Hash::compute_from(&data));
+        let address = Address::User(UserAddress(massa_hash::Hash::compute_from(&data)));
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(

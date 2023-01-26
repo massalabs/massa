@@ -433,7 +433,7 @@ fn local_execution() {
     assert_eq!(events[1].context.call_stack.len(), 1);
     assert_eq!(
         events[1].context.call_stack.back().unwrap(),
-        &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+        &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
     );
     assert_eq!(events[2].data, "one local execution completed");
     let amount = Amount::from_raw(events[5].data.parse().unwrap());
@@ -445,7 +445,7 @@ fn local_execution() {
     assert_eq!(events[5].context.call_stack.len(), 1);
     assert_eq!(
         events[1].context.call_stack.back().unwrap(),
-        &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+        &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
     );
     assert_eq!(events[6].data, "one local call completed");
 

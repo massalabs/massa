@@ -11,7 +11,7 @@ use crate::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerChanges;
-use massa_models::{slot::Slot, streaming_step::StreamingStep};
+use massa_models::{address::UserAddress, slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -353,7 +353,7 @@ fn test_take_batch() {
         bootstrap_part_size: 100,
     };
     let mut pool = AsyncPool::new(config);
-    let address = Address(Hash::compute_from(b"abc"));
+    let address = Address::User(UserAddress(Hash::compute_from(b"abc")));
     for i in 1..10 {
         let message = AsyncMessage::new_with_hash(
             Slot::new(0, 0),

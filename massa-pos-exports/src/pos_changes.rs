@@ -99,7 +99,7 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
         self.u64_serializer
             .serialize(&(value.roll_changes.len() as u64), buffer)?;
         for (addr, roll) in value.roll_changes.iter() {
-            buffer.extend(addr.to_bytes());
+            buffer.extend(addr.unprefixed_bytes());
             self.u64_serializer.serialize(roll, buffer)?;
         }
 

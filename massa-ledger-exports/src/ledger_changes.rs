@@ -8,7 +8,7 @@ use crate::types::{
     SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
-use massa_models::address::{Address, AddressDeserializer};
+use massa_models::address::{Address, AddressDeserializer, AddressSerializer};
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_models::prehash::PreHashMap;
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
@@ -333,6 +333,7 @@ pub struct LedgerChanges(
 /// `LedgerChanges` serializer
 pub struct LedgerChangesSerializer {
     u64_serializer: U64VarIntSerializer,
+    address_serializer: AddressSerializer,
     entry_serializer: SetUpdateOrDeleteSerializer<
         LedgerEntry,
         LedgerEntryUpdate,
@@ -346,6 +347,7 @@ impl LedgerChangesSerializer {
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             entry_serializer: SetUpdateOrDeleteSerializer::new(
                 LedgerEntrySerializer::new(),
                 LedgerEntryUpdateSerializer::new(),
@@ -382,7 +384,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
@@ -393,7 +395,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
         for (address, data) in value.0.iter() {
-            buffer.extend(address.to_bytes());
+            self.address_serializer.serialize(address, buffer)?;
             self.entry_serializer.serialize(data, buffer)?;
         }
         Ok(())
@@ -464,7 +466,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();

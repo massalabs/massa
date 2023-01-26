@@ -238,7 +238,10 @@ pub fn get_random_final_state_bootstrap(
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
     // insert the last possible address to prevent the last cursor to move when testing the changes
-    sorted_ledger.insert(Address::from_bytes(&[255; 32]), get_random_ledger_entry());
+    sorted_ledger.insert(
+        Address::from_unprefixed_bytes(&[255; 33]),
+        get_random_ledger_entry(),
+    );
 
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);
