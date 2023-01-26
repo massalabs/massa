@@ -490,9 +490,10 @@ impl MassaRpcServer for API<Public> {
         for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
             res.push(OperationInfo {
                 id,
-                operation,
                 in_pool,
                 is_final,
+                thread: operation.creator_address.get_thread(api_cfg.thread_count),
+                operation,
                 in_blocks: in_blocks.into_iter().collect(),
             });
         }
