@@ -258,48 +258,26 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_models::node::NodeId;
+</pre><pre class="rust"><code><span class="kw">use </span>crossbeam_channel::{SendTimeoutError, Sender};
+<span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_network_exports::{ConnectionId, NetworkError, NetworkEvent, NodeCommand, NodeEvent};
+<span class="kw">use </span>std::thread::JoinHandle;
 <span class="kw">use </span>std::time::Duration;
-<span class="kw">use </span>tokio::sync::mpsc::{<span class="self">self</span>, error::SendTimeoutError};
 <span class="kw">use </span>tracing::debug;
 
 <span class="kw">pub struct </span>EventSender {
     <span class="doccomment">/// Sender for network events
-    </span>controller_event_tx: mpsc::Sender&lt;NetworkEvent&gt;,
+    </span>controller_event_tx: Sender&lt;NetworkEvent&gt;,
     <span class="doccomment">/// Channel for sending node events.
-    </span>node_event_tx: mpsc::Sender&lt;NodeEvent&gt;,
+    </span>node_event_tx: Sender&lt;NodeEvent&gt;,
     <span class="doccomment">/// Max time spend to wait
     </span>max_send_wait: Duration,
 }
 
 <span class="kw">impl </span>EventSender {
     <span class="kw">pub fn </span>new(
-        controller_event_tx: mpsc::Sender&lt;NetworkEvent&gt;,
-        node_event_tx: mpsc::Sender&lt;NodeEvent&gt;,
+        controller_event_tx: Sender&lt;NetworkEvent&gt;,
+        node_event_tx: Sender&lt;NodeEvent&gt;,
         max_send_wait: Duration,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -309,14 +287,13 @@
         }
     }
 
-    <span class="kw">pub async fn </span>send(<span class="kw-2">&amp;</span><span class="self">self</span>, event: NetworkEvent) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    <span class="kw">pub fn </span>send(<span class="kw-2">&amp;</span><span class="self">self</span>, event: NetworkEvent) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">let </span>result = <span class="self">self
             </span>.controller_event_tx
-            .send_timeout(event, <span class="self">self</span>.max_send_wait)
-            .<span class="kw">await</span>;
+            .send_timeout(event, <span class="self">self</span>.max_send_wait);
         <span class="kw">match </span>result {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Err</span>(SendTimeoutError::Closed(event)) =&gt; {
+            <span class="prelude-val">Err</span>(SendTimeoutError::Disconnected(event)) =&gt; {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;Failed to send NetworkEvent due to channel closure: {:?}.&quot;</span>,
                     event
@@ -330,14 +307,14 @@
     }
 
     <span class="doccomment">/// Forward a message to a node worker. If it fails, notify upstream about connection closure.
-    </span><span class="kw">pub async fn </span>forward(
+    </span><span class="kw">pub fn </span>forward(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         node_id: NodeId,
-        node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(ConnectionId, mpsc::Sender&lt;NodeCommand&gt;)&gt;,
+        node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(ConnectionId, Sender&lt;NodeCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
         message: NodeCommand,
     ) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, node_command_tx)) = node {
-            <span class="kw">if </span>node_command_tx.send(message).<span class="kw">await</span>.is_err() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, node_command_tx, <span class="kw">_</span>)) = node {
+            <span class="kw">if </span>node_command_tx.send(message).is_err() {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;{}&quot;</span>,
                     NetworkError::ChannelError(<span class="string">&quot;contact with node worker lost while trying to send it a message. Probably a peer disconnect.&quot;</span>.into())
@@ -346,16 +323,12 @@
         } <span class="kw">else </span>{
             <span class="comment">// We probably weren&#39;t able to send this event previously,
             // retry it now.
-            </span><span class="kw">let _ </span>= <span class="self">self</span>.send(NetworkEvent::ConnectionClosed(node_id)).<span class="kw">await</span>;
+            </span><span class="kw">let _ </span>= <span class="self">self</span>.send(NetworkEvent::ConnectionClosed(node_id));
         }
     }
 
-    <span class="kw">pub fn </span>clone_node_sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mpsc::Sender&lt;NodeEvent&gt; {
+    <span class="kw">pub fn </span>clone_node_sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Sender&lt;NodeEvent&gt; {
         <span class="self">self</span>.node_event_tx.clone()
-    }
-
-    <span class="kw">pub fn </span>drop(<span class="self">self</span>) {
-        drop(<span class="self">self</span>.node_event_tx)
     }
 }
 
@@ -395,7 +368,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub async fn </span>on_received_ask_for_blocks(
+    <span class="kw">pub fn </span>on_received_ask_for_blocks(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
         list: Vec&lt;(BlockId, AskForBlocksInfo)&gt;,
@@ -403,13 +376,12 @@
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker
             .event
             .send(NetworkEvent::AskedForBlocks { node: from, list })
-            .<span class="kw">await
-        </span>{
+        {
             <span class="macro">evt_failed!</span>(err)
         }
     }
 
-    <span class="kw">pub async fn </span>on_received_block_header(
+    <span class="kw">pub fn </span>on_received_block_header(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
         header: SecuredHeader,
@@ -418,20 +390,16 @@
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader&quot;</span>,
             {<span class="string">&quot;hash&quot;</span>: header.id.get_hash(), <span class="string">&quot;header&quot;</span>: header, <span class="string">&quot;node&quot;</span>: from}
         );
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker
-            .event
-            .send(NetworkEvent::ReceivedBlockHeader {
-                source_node_id: from,
-                header,
-            })
-            .<span class="kw">await
-        </span>{
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker.event.send(NetworkEvent::ReceivedBlockHeader {
+            source_node_id: from,
+            header,
+        }) {
             <span class="macro">evt_failed!</span>(err)
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub async fn </span>on_received_block_info(
+    <span class="kw">pub fn </span>on_received_block_info(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
         info: Vec&lt;(BlockId, BlockInfoReply)&gt;,
@@ -439,25 +407,24 @@
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker
             .event
             .send(NetworkEvent::ReceivedBlockInfo { node: from, info })
-            .<span class="kw">await
-        </span>{
+        {
             <span class="macro">evt_failed!</span>(err)
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub async fn </span>on_asked_peer_list(
+    <span class="kw">pub fn </span>on_asked_peer_list(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;node_id={} asked us for peer list&quot;</span>, from);
         <span class="macro">massa_trace!</span>(<span class="string">&quot;node_asked_peer_list&quot;</span>, { <span class="string">&quot;node_id&quot;</span>: from });
         <span class="kw">let </span>peer_list = worker.peer_info_db.get_advertisable_peer_ips();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, node_command_tx)) = worker.active_nodes.get(<span class="kw-2">&amp;</span>from) {
-            <span class="kw">let </span>res = node_command_tx
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, node_command_tx, <span class="kw">_</span>)) = worker.active_nodes.get(<span class="kw-2">&amp;</span>from) {
+            <span class="kw">if </span>node_command_tx
                 .send(NodeCommand::SendPeerList(peer_list))
-                .<span class="kw">await</span>;
-            <span class="kw">if </span>res.is_err() {
+                .is_err()
+            {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;{}&quot;</span>,
                     NetworkError::ChannelError(<span class="string">&quot;node command send send_peer_list failed&quot;</span>.into(),)
@@ -476,7 +443,7 @@
     ///
     /// Forward the event by sending a `[NetworkEvent::ReceivedOperations]`.
     /// See also `[massa_network_exports::NodeEventType::ReceivedOperations]`
-    </span><span class="kw">pub async fn </span>on_received_operations(
+    </span><span class="kw">pub fn </span>on_received_operations(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
         operations: Vec&lt;SecureShareOperation&gt;,
@@ -485,21 +452,17 @@
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedOperations&quot;</span>,
             { <span class="string">&quot;operations&quot;</span>: operations }
         );
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker
-            .event
-            .send(NetworkEvent::ReceivedOperations {
-                node: from,
-                operations,
-            })
-            .<span class="kw">await
-        </span>{
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker.event.send(NetworkEvent::ReceivedOperations {
+            node: from,
+            operations,
+        }) {
             <span class="macro">evt_failed!</span>(err)
         }
     }
 
     <span class="doccomment">/// The node worker signal that he received a batch of operation ids
     /// from another node.
-    </span><span class="kw">pub async fn </span>on_received_operations_annoncement(
+    </span><span class="kw">pub fn </span>on_received_operations_annoncement(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
         operation_prefix_ids: OperationPrefixIds,
@@ -514,15 +477,14 @@
                 node: from,
                 operation_prefix_ids,
             })
-            .<span class="kw">await
-        </span>{
+        {
             <span class="macro">evt_failed!</span>(err)
         }
     }
 
     <span class="doccomment">/// The node worker signal that he received a list of operations required
     /// from another node.
-    </span><span class="kw">pub async fn </span>on_received_ask_for_operations(
+    </span><span class="kw">pub fn </span>on_received_ask_for_operations(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
         operation_prefix_ids: OperationPrefixIds,
@@ -531,19 +493,15 @@
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceiveAskForOperations&quot;</span>,
             { <span class="string">&quot;operations&quot;</span>: operation_prefix_ids }
         );
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker
-            .event
-            .send(NetworkEvent::ReceiveAskForOperations {
-                node: from,
-                operation_prefix_ids,
-            })
-            .<span class="kw">await
-        </span>{
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker.event.send(NetworkEvent::ReceiveAskForOperations {
+            node: from,
+            operation_prefix_ids,
+        }) {
             <span class="macro">evt_failed!</span>(err)
         }
     }
 
-    <span class="kw">pub async fn </span>on_received_endorsements(
+    <span class="kw">pub fn </span>on_received_endorsements(
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
         endorsements: Vec&lt;SecureShareEndorsement&gt;,
@@ -552,14 +510,10 @@
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements&quot;</span>,
             { <span class="string">&quot;endorsements&quot;</span>: endorsements }
         );
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker
-            .event
-            .send(NetworkEvent::ReceivedEndorsements {
-                node: from,
-                endorsements,
-            })
-            .<span class="kw">await
-        </span>{
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = worker.event.send(NetworkEvent::ReceivedEndorsements {
+            node: from,
+            endorsements,
+        }) {
             <span class="macro">evt_failed!</span>(err)
         }
     }

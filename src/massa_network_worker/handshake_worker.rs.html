@@ -214,6 +214,13 @@
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Here are happening handshakes.
@@ -224,9 +231,9 @@
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
+<span class="kw">use </span>crossbeam_channel::{Receiver, Sender};
 <span class="kw">use </span>futures::future::try_join;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     config::{
         constants::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
@@ -247,11 +254,32 @@
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
-<span class="kw">use </span>tokio::{task::JoinHandle, time::timeout};
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>std::thread::{<span class="self">self</span>, JoinHandle};
+<span class="kw">use </span>tokio::runtime::Handle;
+<span class="kw">use </span>tokio::time::timeout;
 
 <span class="doccomment">/// Type alias for more readability
 </span><span class="kw">pub type </span>HandshakeReturnType = <span class="prelude-ty">Result</span>&lt;(NodeId, ReadBinder, WriteBinder), NetworkError&gt;;
+
+<span class="doccomment">/// Start a thread, that will be responsible for running handshake workers,
+/// and sending the results back to the network worker.
+</span><span class="kw">pub fn </span>start_handshake_manager(
+    worker_rx: Receiver&lt;(ConnectionId, HandshakeWorker)&gt;,
+    connection_sender: Sender&lt;(ConnectionId, HandshakeReturnType)&gt;,
+    runtime_handle: Handle,
+) -&gt; JoinHandle&lt;()&gt; {
+    thread::spawn(<span class="kw">move </span>|| {
+        <span class="kw">while let </span><span class="prelude-val">Ok</span>((connection_id, new_handshake_worker)) = worker_rx.recv() {
+            <span class="kw">let </span>connection_sender = connection_sender.clone();
+            runtime_handle.block_on(<span class="kw">async move </span>{
+                <span class="kw">let </span>result = new_handshake_worker.run().<span class="kw">await</span>;
+                connection_sender
+                    .send((connection_id, result))
+                    .expect(<span class="string">&quot;Failed to send new connection message to network worker.&quot;</span>);
+            });
+        }
+    })
+}
 
 <span class="doccomment">/// Manages handshakes.
 </span><span class="kw">pub struct </span>HandshakeWorker {
@@ -286,64 +314,50 @@
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>spawn(
+    </span><span class="kw">pub fn </span>new(
         socket_reader: ReadHalf,
         socket_writer: WriteHalf,
         self_node_id: NodeId,
         keypair: KeyPair,
         timeout_duration: MassaTime,
         version: Version,
-        connection_id: ConnectionId,
         max_bytes_read: f64,
         max_bytes_write: f64,
-    ) -&gt; JoinHandle&lt;(ConnectionId, HandshakeReturnType)&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;starting handshake with connection_id={}&quot;</span>, connection_id);
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.new_connection&quot;</span>, {
-            <span class="string">&quot;connection_id&quot;</span>: connection_id
-        });
-
-        <span class="kw">let </span>connection_id_copy = connection_id;
-        tokio::spawn(<span class="kw">async move </span>{
-            (
-                connection_id_copy,
-                HandshakeWorker {
-                    reader: ReadBinder::new(
-                        socket_reader,
-                        max_bytes_read,
-                        MAX_MESSAGE_SIZE,
-                        MessageDeserializer::new(
-                            THREAD_COUNT,
-                            ENDORSEMENT_COUNT,
-                            MAX_ADVERTISE_LENGTH,
-                            MAX_ASK_BLOCKS_PER_MESSAGE,
-                            MAX_OPERATIONS_PER_BLOCK,
-                            MAX_OPERATIONS_PER_MESSAGE,
-                            MAX_ENDORSEMENTS_PER_MESSAGE,
-                            MAX_DATASTORE_VALUE_LENGTH,
-                            MAX_FUNCTION_NAME_LENGTH,
-                            MAX_PARAMETERS_SIZE,
-                            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-                            MAX_OPERATION_DATASTORE_KEY_LENGTH,
-                            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-                        ),
-                    ),
-                    writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),
-                    self_node_id,
-                    keypair,
-                    timeout_duration,
-                    version,
-                }
-                .run()
-                .<span class="kw">await</span>,
-            )
-        })
+    ) -&gt; <span class="self">Self </span>{
+        HandshakeWorker {
+            reader: ReadBinder::new(
+                socket_reader,
+                max_bytes_read,
+                MAX_MESSAGE_SIZE,
+                MessageDeserializer::new(
+                    THREAD_COUNT,
+                    ENDORSEMENT_COUNT,
+                    MAX_ADVERTISE_LENGTH,
+                    MAX_ASK_BLOCKS_PER_MESSAGE,
+                    MAX_OPERATIONS_PER_BLOCK,
+                    MAX_OPERATIONS_PER_MESSAGE,
+                    MAX_ENDORSEMENTS_PER_MESSAGE,
+                    MAX_DATASTORE_VALUE_LENGTH,
+                    MAX_FUNCTION_NAME_LENGTH,
+                    MAX_PARAMETERS_SIZE,
+                    MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+                    MAX_OPERATION_DATASTORE_KEY_LENGTH,
+                    MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                ),
+            ),
+            writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),
+            self_node_id,
+            keypair,
+            timeout_duration,
+            version,
+        }
     }
 
     <span class="doccomment">/// Manages one on going handshake.
     /// Consumes self.
     /// Returns a tuple `(ConnectionId, Result)`.
     /// Creates the binders to communicate with that node.
-    </span><span class="kw">async fn </span>run(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; HandshakeReturnType {
+    </span><span class="kw">pub async fn </span>run(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; HandshakeReturnType {
         <span class="comment">// generate random bytes
         </span><span class="kw">let </span><span class="kw-2">mut </span>self_random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
         StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>self_random_bytes);
