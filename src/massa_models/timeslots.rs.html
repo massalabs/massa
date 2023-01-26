@@ -338,17 +338,17 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;MassaTime, ModelsError&gt; {
     <span class="kw">let </span>base: MassaTime = t0
         .checked_div_u64(thread_count <span class="kw">as </span>u64)
-        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?
+        .map_err(|<span class="kw">_</span>| ModelsError::TimeOverflowError)<span class="question-mark">?
         </span>.checked_mul(slot.thread <span class="kw">as </span>u64)
-        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?</span>;
+        .map_err(|<span class="kw">_</span>| ModelsError::TimeOverflowError)<span class="question-mark">?</span>;
     <span class="kw">let </span>shift: MassaTime = t0
         .checked_mul(slot.period)
-        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?</span>;
+        .map_err(|<span class="kw">_</span>| ModelsError::TimeOverflowError)<span class="question-mark">?</span>;
     genesis_timestamp
         .checked_add(base)
-        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))<span class="question-mark">?
+        .map_err(|<span class="kw">_</span>| ModelsError::TimeOverflowError)<span class="question-mark">?
         </span>.checked_add(shift)
-        .or(<span class="prelude-val">Err</span>(ModelsError::TimeOverflowError))
+        .map_err(|<span class="kw">_</span>| ModelsError::TimeOverflowError)
 }
 
 <span class="doccomment">/// Returns the thread and block period index of the latest block slot at a given timestamp (inclusive), if any happened
