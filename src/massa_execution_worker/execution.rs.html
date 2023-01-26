@@ -1290,58 +1290,6 @@
 <a href="#1290" id="1290">1290</a>
 <a href="#1291" id="1291">1291</a>
 <a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
-<a href="#1295" id="1295">1295</a>
-<a href="#1296" id="1296">1296</a>
-<a href="#1297" id="1297">1297</a>
-<a href="#1298" id="1298">1298</a>
-<a href="#1299" id="1299">1299</a>
-<a href="#1300" id="1300">1300</a>
-<a href="#1301" id="1301">1301</a>
-<a href="#1302" id="1302">1302</a>
-<a href="#1303" id="1303">1303</a>
-<a href="#1304" id="1304">1304</a>
-<a href="#1305" id="1305">1305</a>
-<a href="#1306" id="1306">1306</a>
-<a href="#1307" id="1307">1307</a>
-<a href="#1308" id="1308">1308</a>
-<a href="#1309" id="1309">1309</a>
-<a href="#1310" id="1310">1310</a>
-<a href="#1311" id="1311">1311</a>
-<a href="#1312" id="1312">1312</a>
-<a href="#1313" id="1313">1313</a>
-<a href="#1314" id="1314">1314</a>
-<a href="#1315" id="1315">1315</a>
-<a href="#1316" id="1316">1316</a>
-<a href="#1317" id="1317">1317</a>
-<a href="#1318" id="1318">1318</a>
-<a href="#1319" id="1319">1319</a>
-<a href="#1320" id="1320">1320</a>
-<a href="#1321" id="1321">1321</a>
-<a href="#1322" id="1322">1322</a>
-<a href="#1323" id="1323">1323</a>
-<a href="#1324" id="1324">1324</a>
-<a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1355,7 +1303,6 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
 <span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
-<span class="kw">use </span><span class="kw">crate</span>::module_cache::ModuleCache;
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
@@ -1365,18 +1312,18 @@
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
-<span class="kw">use </span>massa_models::execution::EventFilter;
+<span class="kw">use </span>massa_models::api::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::{
     address::Address,
-    block_id::BlockId,
-    operation::{OperationId, OperationType, SecureShareOperation},
+    block::BlockId,
+    operation::{OperationId, OperationType, WrappedOperation},
 };
 <span class="kw">use </span>massa_models::{amount::Amount, slot::Slot};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_sc_runtime::{Interface, Response, RuntimeModule};
+<span class="kw">use </span>massa_sc_runtime::Interface;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -1415,8 +1362,6 @@
     </span>execution_interface: Box&lt;<span class="kw">dyn </span>Interface&gt;,
     <span class="comment">// execution statistics
     </span>stats_counter: ExecutionStatsCounter,
-    <span class="comment">// cache of pre compiled sc modules
-    </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -1436,18 +1381,11 @@
         <span class="comment">// Create default active history
         </span><span class="kw">let </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt; = Default::default();
 
-        <span class="comment">// Initialize the SC module cache
-        </span><span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(
-            config.gas_costs.clone(),
-            config.max_module_cache_size,
-        )));
-
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
         </span><span class="kw">let </span>execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
-            module_cache.clone(),
         )));
 
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -1469,7 +1407,6 @@
             </span>active_cursor: last_final_slot,
             final_cursor: last_final_slot,
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
-            module_cache,
             config,
         }
     }
@@ -1547,7 +1484,7 @@
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     </span><span class="kw">pub fn </span>execute_operation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        operation: <span class="kw-2">&amp;</span>SecureShareOperation,
+        operation: <span class="kw-2">&amp;</span>WrappedOperation,
         block_slot: Slot,
         remaining_block_gas: <span class="kw-2">&amp;mut </span>u64,
         block_credits: <span class="kw-2">&amp;mut </span>Amount,
@@ -1569,7 +1506,7 @@
         })<span class="question-mark">?</span>;
 
         <span class="comment">// get the operation&#39;s sender address
-        </span><span class="kw">let </span>sender_addr = operation.content_creator_address;
+        </span><span class="kw">let </span>sender_addr = operation.creator_address;
 
         <span class="comment">// get the thread to which the operation belongs
         </span><span class="kw">let </span>op_thread = sender_addr.get_thread(<span class="self">self</span>.config.thread_count);
@@ -1625,7 +1562,7 @@
             </span>context.max_gas = operation.get_gas_usage();
 
             <span class="comment">// set the creator address
-            </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
+            </span>context.creator_address = <span class="prelude-val">Some</span>(operation.creator_address);
 
             <span class="comment">// set the context origin operation ID
             </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
@@ -1858,23 +1795,17 @@
         };
 
         <span class="comment">// run the VM on the bytecode contained in the operation
-        </span><span class="kw">let </span>module = RuntimeModule::new(bytecode, <span class="kw-2">*</span>max_gas, <span class="self">self</span>.config.gas_costs.clone())
-            .map_err(|err| {
-                ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;compilation error in execute_executesc_op: {}&quot;</span>,
-                    err
-                ))
-            })<span class="question-mark">?</span>;
-        <span class="kw">match </span>massa_sc_runtime::run_main(
-            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module,
+        </span><span class="kw">match </span>massa_sc_runtime::run_main(
+            bytecode,
             <span class="kw-2">*</span>max_gas,
+            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             <span class="self">self</span>.config.gas_costs.clone(),
         ) {
             <span class="prelude-val">Ok</span>(_response) =&gt; {}
             <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;module execution error in execute_executesc_op: {}&quot;</span>,
+                <span class="comment">// there was an error during bytecode execution
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;bytecode execution error: {}&quot;</span>,
                     err
                 )));
             }
@@ -1958,25 +1889,25 @@
         }
 
         <span class="comment">// run the VM on the bytecode loaded from the target address
-        </span><span class="kw">let </span><span class="kw-2">mut </span>module_lock = <span class="self">self</span>.module_cache.write();
-        <span class="kw">let </span>module = module_lock.get_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
-        <span class="kw">match </span>massa_sc_runtime::run_function(
-            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module.clone(),
+        </span><span class="kw">match </span>massa_sc_runtime::run_function(
+            <span class="kw-2">&amp;</span>bytecode,
+            max_gas,
             target_func,
             param,
-            max_gas,
+            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             <span class="self">self</span>.config.gas_costs.clone(),
         ) {
-            <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
-                module_lock.save_module(<span class="kw-2">&amp;</span>bytecode, module, init_cost);
-                <span class="prelude-val">Ok</span>(())
+            <span class="prelude-val">Ok</span>(_response) =&gt; {}
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="comment">// there was an error during bytecode execution
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;bytecode execution error: {}&quot;</span>,
+                    err
+                )));
             }
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                <span class="string">&quot;module execution error in execute_callsc_op: {}&quot;</span>,
-                err
-            ))),
         }
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Tries to execute an asynchronous message
@@ -2047,32 +1978,26 @@
             bytecode
         };
 
-        <span class="comment">// run the VM on the bytecode contained in the operation
-        </span><span class="kw">let </span><span class="kw-2">mut </span>module_lock = <span class="self">self</span>.module_cache.write();
-        <span class="kw">let </span>module = module_lock.get_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
-        <span class="kw">match </span>massa_sc_runtime::run_function(
-            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module.clone(),
+        <span class="comment">// run the target function
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = massa_sc_runtime::run_function(
+            <span class="kw-2">&amp;</span>bytecode,
+            message.max_gas,
             <span class="kw-2">&amp;</span>message.handler,
             <span class="kw-2">&amp;</span>message.data,
-            message.max_gas,
+            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             <span class="self">self</span>.config.gas_costs.clone(),
         ) {
-            <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
-                module_lock.save_module(<span class="kw-2">&amp;</span>bytecode, module, init_cost);
-                <span class="prelude-val">Ok</span>(())
-            }
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="comment">// execution failed: reset context to snapshot and reimburse sender
-                </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;module execution error in execute_async_message: {}&quot;</span>,
-                    err
-                ));
-                <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-                context.reset_to_snapshot(context_snapshot, err.clone());
-                context.cancel_async_message(<span class="kw-2">&amp;</span>message);
-                <span class="prelude-val">Err</span>(err)
-            }
+            <span class="comment">// execution failed: reset context to snapshot and reimburse sender
+            </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                <span class="string">&quot;async message runtime execution error: {}&quot;</span>,
+                err
+            ));
+            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            context.reset_to_snapshot(context_snapshot, err.clone());
+            context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+            <span class="prelude-val">Err</span>(err)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(())
         }
     }
 
@@ -2099,7 +2024,6 @@
             exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id),
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
-            <span class="self">self</span>.module_cache.clone(),
         );
 
         <span class="comment">// Get asynchronous messages to execute
@@ -2148,7 +2072,7 @@
                     .content
                     .endorsements
                     .iter()
-                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
+                    .map(|endo| (endo.creator_address, endo.content.endorsed_block))
                     .unzip();
 
             <span class="comment">// deduce endorsement target block creators
@@ -2160,7 +2084,7 @@
                         blocks
                             .get(b_id)
                             .expect(<span class="string">&quot;endorsed block absent from storage&quot;</span>)
-                            .content_creator_address
+                            .creator_address
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             };
@@ -2188,7 +2112,7 @@
             }
 
             <span class="comment">// Get block creator address
-            </span><span class="kw">let </span>block_creator_addr = stored_block.content_creator_address;
+            </span><span class="kw">let </span>block_creator_addr = stored_block.creator_address;
 
             <span class="comment">// acquire lock on execution context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
@@ -2391,16 +2315,11 @@
             )));
         }
 
-        <span class="comment">// set the execution slot to be the one after the latest executed active or final slot
-        </span><span class="kw">let </span>slot = <span class="kw">if </span>req.is_final {
-            <span class="self">self</span>.final_cursor
-                .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;slot overflow in readonly execution from final slot&quot;</span>)
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.active_cursor
-                .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;slot overflow in readonly execution from active slot&quot;</span>)
-        };
+        <span class="comment">// set the execution slot to be the one after the latest executed active slot
+        </span><span class="kw">let </span>slot = <span class="self">self
+            </span>.active_cursor
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;slot overflow in readonly execution&quot;</span>);
 
         <span class="comment">// create a readonly execution context
         </span><span class="kw">let </span>execution_context = ExecutionContext::readonly(
@@ -2410,7 +2329,6 @@
             req.call_stack,
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
-            <span class="self">self</span>.module_cache.clone(),
         );
 
         <span class="comment">// run the interpreter according to the target type
@@ -2420,26 +2338,13 @@
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
                 <span class="comment">// run the bytecode&#39;s main function
-                </span><span class="kw">let </span>module =
-                    RuntimeModule::new(<span class="kw-2">&amp;</span>bytecode, req.max_gas, <span class="self">self</span>.config.gas_costs.clone())
-                        .map_err(|err| {
-                            ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                                <span class="string">&quot;compilation error in execute_readonly_request: {}&quot;</span>,
-                                err
-                            ))
-                        })<span class="question-mark">?</span>;
-                massa_sc_runtime::run_main(
-                    <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-                    module,
+                </span>massa_sc_runtime::run_main(
+                    <span class="kw-2">&amp;</span>bytecode,
                     req.max_gas,
+                    <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     <span class="self">self</span>.config.gas_costs.clone(),
                 )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;module execution error in execute_readonly_request BytecodeExecution: {}&quot;</span>,
-                        err,
-                    ))
-                })<span class="question-mark">?
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?
             </span>}
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -2455,25 +2360,16 @@
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
                 <span class="comment">// run the target function in the bytecode
-                </span><span class="kw">let </span><span class="kw-2">mut </span>module_lock = <span class="self">self</span>.module_cache.write();
-                <span class="kw">let </span>module = module_lock.get_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
-                <span class="kw">let </span>response = massa_sc_runtime::run_function(
-                    <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-                    module.clone(),
+                </span>massa_sc_runtime::run_function(
+                    <span class="kw-2">&amp;</span>bytecode,
+                    req.max_gas,
                     <span class="kw-2">&amp;</span>target_func,
                     <span class="kw-2">&amp;</span>parameter,
-                    req.max_gas,
+                    <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     <span class="self">self</span>.config.gas_costs.clone(),
                 )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;module execution error in execute_readonly_request BytecodeExecution: {}&quot;</span>,
-                        err,
-                    ))
-                })<span class="question-mark">?</span>;
-                module_lock.save_module(<span class="kw-2">&amp;</span>bytecode, module, response.init_cost);
-                response
-            }
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))<span class="question-mark">?
+            </span>}
         };
 
         <span class="comment">// return the execution output

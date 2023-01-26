@@ -834,15 +834,6 @@
 <a href="#834" id="834">834</a>
 <a href="#835" id="835">835</a>
 <a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -852,8 +843,7 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::module_cache::ModuleCache;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+</span><span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
@@ -868,7 +858,7 @@
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
-    block_id::BlockId,
+    block::BlockId,
     operation::OperationId,
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
@@ -972,9 +962,6 @@
 
     <span class="doccomment">/// operation id that originally caused this execution (if any)
     </span><span class="kw">pub </span>origin_operation_id: <span class="prelude-ty">Option</span>&lt;OperationId&gt;,
-
-    <span class="comment">// cache of compiled runtime modules
-    </span><span class="kw">pub </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -992,7 +979,6 @@
         config: ExecutionConfig,
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
-        module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -1024,7 +1010,6 @@
             unsafe_rng: Xoshiro256PlusPlus::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]),
             creator_address: Default::default(),
             origin_operation_id: Default::default(),
-            module_cache,
             config,
         }
     }
@@ -1098,8 +1083,6 @@
         call_stack: Vec&lt;ExecutionStackElement&gt;,
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
-
-        module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -1123,7 +1106,7 @@
             stack: call_stack,
             read_only: <span class="bool-val">true</span>,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history, module_cache)
+            ..ExecutionContext::new(config, final_state, active_history)
         }
     }
 
@@ -1163,7 +1146,6 @@
         opt_block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
-        module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -1185,7 +1167,7 @@
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history, module_cache)
+            ..ExecutionContext::new(config, final_state, active_history)
         }
     }
 
@@ -1540,9 +1522,6 @@
     </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ExecutionOutput {
         <span class="kw">let </span>slot = <span class="self">self</span>.slot;
 
-        <span class="comment">// execute the deferred credits coming from roll sells
-        </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
-
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
         </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
         <span class="kw">let </span>deleted_messages = <span class="self">self
@@ -1551,6 +1530,9 @@
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
             <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg);
         }
+
+        <span class="comment">// execute the deferred credits coming from roll sells
+        </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
         <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
         </span><span class="kw">if </span><span class="self">self

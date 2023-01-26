@@ -115,9 +115,15 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
-    active_block::ActiveBlock, address::Address, block::Block, block_header::SecuredHeader,
-    block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    active_block::ActiveBlock,
+    address::Address,
+    block::{Block, BlockId, WrappedHeader},
+    prehash::PreHashSet,
+    slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -125,7 +131,7 @@
 <span class="attr">#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>HeaderOrBlock {
-    Header(SecuredHeader),
+    Header(WrappedHeader),
     Block {
         id: BlockId,
         slot: Slot,
@@ -214,7 +220,7 @@
 </span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>ExportCompiledBlock {
     <span class="doccomment">/// Header of the corresponding block.
-    </span><span class="kw">pub </span>header: SecuredHeader,
+    </span><span class="kw">pub </span>header: WrappedHeader,
     <span class="doccomment">/// For (i, set) in children,
     /// set contains the headers&#39; hashes
     /// of blocks referencing exported block as a parent,

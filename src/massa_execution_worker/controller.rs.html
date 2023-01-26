@@ -302,12 +302,12 @@
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
-<span class="kw">use </span>massa_models::execution::EventFilter;
+<span class="kw">use </span>massa_models::api::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount, operation::OperationId};
-<span class="kw">use </span>massa_models::{block_id::BlockId, slot::Slot};
+<span class="kw">use </span>massa_models::{block::BlockId, slot::Slot};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};

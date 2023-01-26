@@ -306,8 +306,6 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -316,13 +314,11 @@
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{Block, BlockSerializer, SecureShareBlock},
-    block_header::{BlockHeader, BlockHeaderSerializer},
-    block_id::BlockId,
+    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
     prehash::PreHashMap,
-    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
+    wrapped::WrappedContent,
 };
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -348,9 +344,9 @@
 </span><span class="kw">pub fn </span>create_genesis_block(
     cfg: <span class="kw-2">&amp;</span>ConsensusConfig,
     thread_number: u8,
-) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShareBlock, ConsensusError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;WrappedBlock, ConsensusError&gt; {
     <span class="kw">let </span>keypair = <span class="kw-2">&amp;</span>cfg.genesis_key;
-    <span class="kw">let </span>header = BlockHeader::new_verifiable(
+    <span class="kw">let </span>header = BlockHeader::new_wrapped(
         BlockHeader {
             slot: Slot::new(<span class="number">0</span>, thread_number),
             parents: Vec::new(),
@@ -361,7 +357,7 @@
         keypair,
     )<span class="question-mark">?</span>;
 
-    <span class="prelude-val">Ok</span>(Block::new_verifiable(
+    <span class="prelude-val">Ok</span>(Block::new_wrapped(
         Block {
             header,
             operations: Default::default(),
@@ -414,7 +410,7 @@
                 block.id,
                 BlockStatus::Active {
                     a_block: Box::new(ActiveBlock {
-                        creator_address: block.content_creator_address,
+                        creator_address: block.creator_address,
                         parents: Vec::new(),
                         children: <span class="macro">vec!</span>[PreHashMap::default(); config.thread_count <span class="kw">as </span>usize],
                         descendants: Default::default(),

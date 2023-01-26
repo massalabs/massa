@@ -289,7 +289,7 @@
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
-<span class="kw">use </span>massa_models::block_id::BlockId;
+<span class="kw">use </span>massa_models::block::BlockId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_storage::Storage;
@@ -360,8 +360,8 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(req_resp) = <span class="self">self</span>.readonly_requests.pop() {
             <span class="kw">let </span>(req, resp_tx) = req_resp.into_request_sender_pair();
 
-            <span class="comment">// Acquire write access to the execution state (for cache updates) and execute the read-only request
-            </span><span class="kw">let </span>outcome = <span class="self">self</span>.execution_state.write().execute_readonly_request(req);
+            <span class="comment">// Acquire read access to the execution state and execute the read-only request
+            </span><span class="kw">let </span>outcome = <span class="self">self</span>.execution_state.read().execute_readonly_request(req);
 
             <span class="comment">// Send the execution output through resp_tx.
             // Ignore errors because they just mean that the request emitter dropped the received
