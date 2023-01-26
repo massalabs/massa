@@ -238,8 +238,11 @@ pub fn get_random_final_state_bootstrap(
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
     // insert the last possible address to prevent the last cursor to move when testing the changes
+
+    let mut bytes = [255; 33];
+    bytes[0] = b'U';
     sorted_ledger.insert(
-        Address::from_unprefixed_bytes(&[255; 33]),
+        Address::from_prefixed_bytes(&bytes),
         get_random_ledger_entry(),
     );
 

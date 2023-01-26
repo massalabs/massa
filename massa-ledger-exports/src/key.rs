@@ -14,7 +14,7 @@ pub const DATASTORE_IDENT: u8 = 2u8;
 #[macro_export]
 macro_rules! balance_key {
     ($addr:expr) => {
-        [&[b'U'], &$addr.unprefixed_bytes()[..], &[BALANCE_IDENT]].concat()
+        [&$addr.prefixed_bytes()[..], &[BALANCE_IDENT]].concat()
     };
 }
 
@@ -24,7 +24,7 @@ macro_rules! balance_key {
 #[macro_export]
 macro_rules! bytecode_key {
     ($addr:expr) => {
-        [&[b'U'], &$addr.unprefixed_bytes()[..], &[BYTECODE_IDENT]].concat()
+        [&$addr.prefixed_bytes()[..], &[BYTECODE_IDENT]].concat()
     };
 }
 
@@ -34,13 +34,7 @@ macro_rules! bytecode_key {
 #[macro_export]
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {
-        [
-            &[b'U'],
-            &$addr.unprefixed_bytes()[..],
-            &[DATASTORE_IDENT],
-            &$key,
-        ]
-        .concat()
+        [&$addr.prefixed_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
     };
 }
 
@@ -48,7 +42,7 @@ macro_rules! data_key {
 #[macro_export]
 macro_rules! data_prefix {
     ($addr:expr) => {
-        &[&[b'U'], &$addr.unprefixed_bytes()[..], &[DATASTORE_IDENT]].concat()
+        &[&$addr.prefixed_bytes()[..], &[DATASTORE_IDENT]].concat()
     };
 }
 
@@ -88,8 +82,7 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// let address = Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
     /// let mut key = Vec::new();
-    /// key.push(b'U');
-    /// key.extend(address.unprefixed_bytes());
+    /// key.extend(address.prefixed_bytes());
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
@@ -146,19 +139,17 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
-    /// key.push(b'U');
-    /// key.extend(address.unprefixed_bytes());
+    /// key.extend(address.prefixed_bytes());
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(key_deser, key);
+    /// assert_eq!(key_deser, key, "key deser issue");
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
-    /// key.push(b'U');
-    /// key.extend(address.unprefixed_bytes());
+    /// key.extend(address.prefixed_bytes());
     /// key.push(BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();

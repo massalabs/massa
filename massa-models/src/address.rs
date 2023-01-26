@@ -76,7 +76,7 @@ impl ::serde::Serialize for Address {
         if s.is_human_readable() {
             s.collect_str(&self.to_string())
         } else {
-            s.serialize_bytes(&self.unprefixed_bytes())
+            s.serialize_bytes(&self.prefixed_bytes())
         }
     }
 }
@@ -200,7 +200,7 @@ impl PreHashed for Address {}
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
     pub fn get_thread(&self, thread_count: u8) -> u8 {
-        (self.unprefixed_bytes()[0])
+        (self.prefixed_bytes()[1])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
     }
@@ -218,35 +218,17 @@ impl Address {
     /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.unprefixed_bytes();
-    /// let res_addr = Address::from_bytes(&bytes);
+    /// let bytes = address.prefixed_bytes();
+    /// let res_addr = Address::from_prefixed_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn unprefixed_bytes(&self) -> Vec<u8> {
-        self.0.into_bytes().to_vec()
-    }
-
-    /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.into_bytes();
-    /// let res_addr = Address::from_bytes(&bytes);
-    /// assert_eq!(address, res_addr);
-    /// ```
-    fn into_prefixed_bytes(self) -> Vec<u8> {
-        let mut buf = [0; 4];
+    pub fn prefixed_bytes(&self) -> Vec<u8> {
         let pref = match self {
-            Address::User(_) => 'U',
-            Address::SC(_) => 'S',
+            Address::User(_) => b'U',
+            Address::SC(_) => b'S',
         };
-        let bytes = pref.encode_utf8(&mut buf).as_bytes();
-        let mut v = bytes.to_vec();
-        v.append(&mut self.0.into_bytes().to_vec());
+        let mut v = vec![pref];
+        v.extend_from_slice(&self.0.into_bytes());
         v
     }
 
@@ -258,14 +240,57 @@ impl Address {
     /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.into_unprefixed_bytes();
-    /// let res_addr = Address::from_unprefixed_bytes(&bytes);
+    /// let bytes = address.into_prefixed_bytes();
+    /// dbg!(&bytes);
+    /// let res_addr = Address::from_prefixed_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn from_unprefixed_bytes(data: &[u8]) -> Address {
+    fn into_prefixed_bytes(self) -> Vec<u8> {
+        let pref = match self {
+            Address::User(_) => b'U',
+            Address::SC(_) => b'S',
+        };
+        let mut v = vec![pref];
+        v.extend_from_slice(&self.0.into_bytes());
+        v
+    }
+
+    /// ## Example
+    /// ```rust
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use massa_models::address::Address;
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let bytes = &address.into_prefixed_bytes()[1..];
+    /// let res_addr = Address::from_unprefixed_bytes(bytes);
+    /// assert_eq!(address, res_addr);
+    /// ```
+    fn from_unprefixed_bytes(data: &[u8]) -> Address {
         Address::User(UserAddress(Hash::from_bytes(
             &data[0..32].try_into().unwrap(),
         )))
+    }
+    /// ## Example
+    /// ```rust
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use massa_models::address::Address;
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let bytes = &address.into_prefixed_bytes()[1..];
+    /// let res_addr = Address::from_unprefixed_bytes(bytes);
+    /// assert_eq!(address, res_addr);
+    /// ```
+    pub fn from_prefixed_bytes(data: &[u8]) -> Address {
+        let hash = Hash::from_bytes(&data[1..].try_into().unwrap());
+        match data[0] {
+            b'U' => Address::User(UserAddress(hash)),
+            b'S' => Address::SC(UserAddress(hash)),
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -286,15 +311,7 @@ impl Serializer<Address> for AddressSerializer {
         value: &Address,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        let mut buf = [0; 4];
-
-        let pref = match value {
-            Address::User(_) => 'U',
-            Address::SC(_) => 'S',
-        };
-        let pref = pref.encode_utf8(&mut buf).as_bytes();
-        buffer.extend_from_slice(pref);
-        buffer.extend_from_slice(&value.unprefixed_bytes());
+        buffer.extend_from_slice(&value.prefixed_bytes());
         Ok(())
     }
 }
