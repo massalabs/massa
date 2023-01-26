@@ -5,6 +5,7 @@
 #![warn(unused_crate_dependencies)]
 mod error;
 mod signature_impl;
+mod multi;
 
 pub use error::MassaSignatureError;
 pub use signature_impl::{
