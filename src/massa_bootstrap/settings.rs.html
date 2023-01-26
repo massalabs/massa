@@ -101,18 +101,47 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_signature::PublicKey;
+</span><span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::{net::SocketAddr, path::PathBuf};
+
+<span class="doccomment">/// Bootstrap IP protocol version setting.
+</span><span class="attr">#[derive(Debug, Deserialize, Clone, Copy)]
+</span><span class="kw">pub enum </span>IpType {
+    <span class="doccomment">/// Bootstrap with both IPv4 and IPv6 protocols (default).
+    </span>Both,
+    <span class="doccomment">/// Bootstrap only with IPv4.
+    </span>IPv4,
+    <span class="doccomment">/// Bootstrap only with IPv6.
+    </span>IPv6,
+}
 
 <span class="doccomment">/// Bootstrap configuration.
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>BootstrapConfig {
     <span class="doccomment">/// Ip address of our bootstrap nodes and their public key.
-    </span><span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, PublicKey)&gt;,
+    </span><span class="kw">pub </span>bootstrap_list: Vec&lt;(SocketAddr, NodeId)&gt;,
+    <span class="doccomment">/// IP version filter for bootstrap list, targeting IpType::IPv4, IpType::IPv6 or IpType::Both. Defaults to IpType::Both.
+    </span><span class="kw">pub </span>bootstrap_protocol: IpType,
     <span class="doccomment">/// Path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
     </span><span class="kw">pub </span>bootstrap_whitelist_path: PathBuf,
     <span class="doccomment">/// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
@@ -121,6 +150,9 @@
     </span><span class="kw">pub </span>bind: <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;,
     <span class="doccomment">/// connection timeout
     </span><span class="kw">pub </span>connect_timeout: MassaTime,
+    <span class="doccomment">/// Time allocated to managing the bootstrapping process,
+    /// i.e. providing the ledger and consensus
+    </span><span class="kw">pub </span>bootstrap_timeout: MassaTime,
     <span class="doccomment">/// readout timeout
     </span><span class="kw">pub </span>read_timeout: MassaTime,
     <span class="doccomment">/// write timeout
