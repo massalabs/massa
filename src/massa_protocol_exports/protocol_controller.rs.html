@@ -158,13 +158,11 @@
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ProtocolError;
 <span class="kw">use </span>massa_logging::massa_trace;
 
-<span class="kw">use </span>crossbeam_channel::Sender;
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::{
     block_header::SecuredHeader, block_id::BlockId, endorsement::EndorsementId,
@@ -173,7 +171,7 @@
 <span class="kw">use </span>massa_network_exports::NetworkEventReceiver;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>serde::Serialize;
-<span class="kw">use </span>std::thread::JoinHandle;
+<span class="kw">use </span>tokio::{sync::mpsc, task::JoinHandle};
 <span class="kw">use </span>tracing::info;
 
 <span class="doccomment">/// block result: map block id to
@@ -219,7 +217,7 @@
 
 <span class="doccomment">/// protocol command sender
 </span><span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>ProtocolCommandSender(<span class="kw">pub </span>Sender&lt;ProtocolCommand&gt;);
+</span><span class="kw">pub struct </span>ProtocolCommandSender(<span class="kw">pub </span>mpsc::Sender&lt;ProtocolCommand&gt;);
 
 <span class="kw">impl </span>ProtocolCommandSender {
     <span class="doccomment">/// Sends the order to propagate the header of a block
@@ -236,7 +234,7 @@
             <span class="string">&quot;block_id&quot;</span>: block_id
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::IntegratedBlock { block_id, storage })
+            </span>.blocking_send(ProtocolCommand::IntegratedBlock { block_id, storage })
             .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;block_integrated command send error&quot;</span>.into()))
     }
 
@@ -246,7 +244,7 @@
             <span class="string">&quot;block_id&quot;</span>: block_id
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::AttackBlockDetected(block_id))
+            </span>.blocking_send(ProtocolCommand::AttackBlockDetected(block_id))
             .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;notify_block_attack command send error&quot;</span>.into())
             })
@@ -260,7 +258,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::WishlistDelta { new, remove })
+            </span>.blocking_send(ProtocolCommand::WishlistDelta { new, remove })
             .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;send_wishlist_delta command send error&quot;</span>.into())
             })
@@ -274,7 +272,7 @@
             <span class="string">&quot;operations&quot;</span>: operations.get_op_refs()
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::PropagateOperations(operations))
+            </span>.blocking_send(ProtocolCommand::PropagateOperations(operations))
             .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;propagate_operation command send error&quot;</span>.into())
             })
@@ -286,7 +284,7 @@
             <span class="string">&quot;endorsements&quot;</span>: endorsements.get_endorsement_refs()
         });
         <span class="self">self</span>.<span class="number">0
-            </span>.send(ProtocolCommand::PropagateEndorsements(endorsements))
+            </span>.blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
             .map_err(|<span class="kw">_</span>| {
                 ProtocolError::ChannelError(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.into())
             })
@@ -296,14 +294,14 @@
 <span class="doccomment">/// protocol manager used to stop the protocol
 </span><span class="kw">pub struct </span>ProtocolManager {
     join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt;&gt;,
-    manager_tx: Sender&lt;ProtocolManagementCommand&gt;,
+    manager_tx: mpsc::Sender&lt;ProtocolManagementCommand&gt;,
 }
 
 <span class="kw">impl </span>ProtocolManager {
     <span class="doccomment">/// new protocol manager
     </span><span class="kw">pub fn </span>new(
         join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt;&gt;,
-        manager_tx: Sender&lt;ProtocolManagementCommand&gt;,
+        manager_tx: mpsc::Sender&lt;ProtocolManagementCommand&gt;,
     ) -&gt; <span class="self">Self </span>{
         ProtocolManager {
             join_handle,
@@ -315,7 +313,7 @@
     </span><span class="kw">pub async fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
         <span class="macro">info!</span>(<span class="string">&quot;stopping protocol controller...&quot;</span>);
         drop(<span class="self">self</span>.manager_tx);
-        <span class="kw">let </span>network_event_receiver = <span class="self">self</span>.join_handle.join().unwrap()<span class="question-mark">?</span>;
+        <span class="kw">let </span>network_event_receiver = <span class="self">self</span>.join_handle.<span class="kw">await</span><span class="question-mark">??</span>;
         <span class="macro">info!</span>(<span class="string">&quot;protocol controller stopped&quot;</span>);
         <span class="prelude-val">Ok</span>(network_event_receiver)
     }
