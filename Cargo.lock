@@ -64,6 +64,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf6ccdb167abbf410dcb915cabd428929d7f6a04980b54a11f26a39f1c7f7107"
+dependencies = [
+ "cfg-if",
+ "getrandom 0.2.8",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1593,7 +1605,7 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
 ]
 
 [[package]]
@@ -1602,8 +1614,14 @@ version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
 ]
+
+[[package]]
+name = "hashbrown"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 
 [[package]]
 name = "hdrhistogram"
@@ -2254,7 +2272,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime#04082b4986753160f9c3a075daf9f6f772d73c29"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_19#d88552415603ef8d3144c7f2905cca64b462ab2d"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2270,6 +2288,7 @@ dependencies = [
  "serde_json",
  "serial_test 0.8.0",
  "thiserror",
+ "tracing",
  "wasmer",
  "wasmer-compiler-singlepass",
  "wasmer-middlewares",
@@ -2504,6 +2523,7 @@ dependencies = [
  "parking_lot",
  "rand 0.8.5",
  "rand_xoshiro",
+ "schnellru",
  "serde_json",
  "serial_test 0.10.0",
  "tempfile",
@@ -3982,6 +4002,17 @@ checksum = "88d6731146462ea25d9244b2ed5fd1d716d25c52e4d54aa4fb0f3c4e9854dbe2"
 dependencies = [
  "lazy_static",
  "windows-sys 0.36.1",
+]
+
+[[package]]
+name = "schnellru"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18b6778edaf75c32e4f919526092db16db6c49296e219005925ed9777e5b263d"
+dependencies = [
+ "ahash 0.8.2",
+ "cfg-if",
+ "hashbrown 0.13.2",
 ]
 
 [[package]]

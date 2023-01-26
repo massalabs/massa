@@ -1,6 +1,6 @@
 {
-  "assembly_caller_has_write_access": 142,
-  "assembly_function_exists": 40653,
+  "assembly_script_caller_has_write_access": 142,
+  "assembly_script_function_exists": 40653,
   "assembly_script_abort": 0,
   "assembly_script_address_from_public_key": 317,
   "assembly_script_append_data": 314,

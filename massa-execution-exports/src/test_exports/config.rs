@@ -55,6 +55,7 @@ impl Default for ExecutionConfig {
                 .into(),
             )
             .unwrap(),
+            max_module_cache_size: 1000,
         }
     }
 }
