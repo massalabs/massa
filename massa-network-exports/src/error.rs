@@ -17,10 +17,6 @@ pub enum NetworkError {
     GeneralProtocolError(String),
     /// An error occurred during channel communication: {0}
     ChannelError(String),
-    /// A tokio task has crashed err:{0}
-    TokioTaskJoinError(#[from] tokio::task::JoinError),
-    /// error receiving oneshot response : {0}
-    TokioRecvError(#[from] tokio::sync::oneshot::error::RecvError),
     /// Error during network connection: {0}
     PeerConnectionError(#[from] NetworkConnectionErrorType),
     /// The ip:`{0}` address is not valid
@@ -77,6 +73,8 @@ pub enum HandshakeErrorType {
     /// Outgoing connection returned a bootstrapable peer list: {0:?}
     PeerListReceived(Vec<IpAddr>),
     /// Failed to manage a succesful connection.
+    /// This happens if we cannot start a new handshake worker
+    /// via the handshake manager thread.
     ManagementFailed,
 }
 
