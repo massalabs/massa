@@ -1208,7 +1208,7 @@
                     <span class="kw">match </span>tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.get_bootstrap_peers()<span class="question-mark">?</span>,
+                            peers: network_command_sender.get_bootstrap_peers().<span class="kw">await</span><span class="question-mark">?</span>,
                         }),
                     )
                     .<span class="kw">await
