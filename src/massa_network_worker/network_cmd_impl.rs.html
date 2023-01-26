@@ -454,6 +454,7 @@
 <a href="#454" id="454">454</a>
 <a href="#455" id="455">455</a>
 <a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
 </pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation
 //!
 //! All following function take by default a reference to the `NetworkWorker`
@@ -480,11 +481,12 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, WrappedHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     composite::PubkeySig,
-    endorsement::WrappedEndorsement,
+    endorsement::SecureShareEndorsement,
     node::NodeId,
-    operation::{OperationPrefixIds, WrappedOperation},
+    operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
 <span class="kw">use </span>massa_network_exports::{
@@ -631,7 +633,7 @@
 <span class="kw">pub async fn </span>on_send_block_header_cmd(
     worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
     node: NodeId,
-    header: WrappedHeader,
+    header: SecuredHeader,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: header.id, <span class="string">&quot;node&quot;</span>: node});
     worker
@@ -710,7 +712,7 @@
 <span class="kw">pub async fn </span>on_send_endorsements_cmd(
     worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
     node: NodeId,
-    endorsements: Vec&lt;WrappedEndorsement&gt;,
+    endorsements: Vec&lt;SecureShareEndorsement&gt;,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendEndorsements&quot;</span>,
@@ -811,7 +813,7 @@
 </span><span class="kw">pub async fn </span>on_send_operations_cmd(
     worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
     to_node: NodeId,
-    operations: Vec&lt;WrappedOperation&gt;,
+    operations: Vec&lt;SecureShareOperation&gt;,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperations&quot;</span>,

@@ -92,6 +92,7 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting
@@ -101,9 +102,10 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::PosResult;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::address::Address;
-<span class="kw">use </span>massa_models::api::IndexedSlot;
-<span class="kw">use </span>massa_models::slot::Slot;
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    slot::{IndexedSlot, Slot},
+};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>std::collections::{HashMap, VecDeque};

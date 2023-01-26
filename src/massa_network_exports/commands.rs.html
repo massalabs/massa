@@ -309,6 +309,7 @@
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by
 //! `massa-network` that allow external communication with other nodes.
 //!
@@ -382,11 +383,12 @@
 
 </span><span class="kw">use crate</span>::{BootstrapPeers, ConnectionClosureReason, Peers};
 <span class="kw">use </span>massa_models::{
-    block::{BlockId, WrappedHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     composite::PubkeySig,
-    endorsement::WrappedEndorsement,
+    endorsement::SecureShareEndorsement,
     node::NodeId,
-    operation::{OperationId, OperationPrefixIds, WrappedOperation},
+    operation::{OperationId, OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -400,7 +402,7 @@
     <span class="doccomment">/// Send given peer list to node.
     </span>SendPeerList(Vec&lt;IpAddr&gt;),
     <span class="doccomment">/// Send the header of a block to a node.
-    </span>SendBlockHeader(WrappedHeader),
+    </span>SendBlockHeader(SecuredHeader),
     <span class="doccomment">/// Ask for info on a list of blocks.
     </span>AskForBlocks(Vec&lt;(BlockId, AskForBlocksInfo)&gt;),
     <span class="doccomment">/// Reply with info on a list of blocks.
@@ -408,13 +410,13 @@
     <span class="doccomment">/// Close the node worker.
     </span>Close(ConnectionClosureReason),
     <span class="doccomment">/// Send full Operations (send to a node that previously asked for)
-    </span>SendOperations(Vec&lt;WrappedOperation&gt;),
+    </span>SendOperations(Vec&lt;SecureShareOperation&gt;),
     <span class="doccomment">/// Send a batch of operation ids
     </span>SendOperationAnnouncements(OperationPrefixIds),
     <span class="doccomment">/// Ask for a set of operations
     </span>AskForOperations(OperationPrefixIds),
     <span class="doccomment">/// Endorsements
-    </span>SendEndorsements(Vec&lt;WrappedEndorsement&gt;),
+    </span>SendEndorsements(Vec&lt;SecureShareEndorsement&gt;),
     <span class="doccomment">/// Ask peer list
     </span>AskPeerList,
 }
@@ -430,19 +432,19 @@
     <span class="doccomment">/// Node we are connected to sent peer list
     </span>ReceivedPeerList(Vec&lt;IpAddr&gt;),
     <span class="doccomment">/// Node we are connected to sent block header
-    </span>ReceivedBlockHeader(WrappedHeader),
+    </span>ReceivedBlockHeader(SecuredHeader),
     <span class="doccomment">/// Node we are connected asked for info on a list of blocks.
     </span>ReceivedAskForBlocks(Vec&lt;(BlockId, AskForBlocksInfo)&gt;),
     <span class="doccomment">/// Node we are connected sent info on a list of blocks.
     </span>ReceivedReplyForBlocks(Vec&lt;(BlockId, BlockInfoReply)&gt;),
     <span class="doccomment">/// Received full operations.
-    </span>ReceivedOperations(Vec&lt;WrappedOperation&gt;),
+    </span>ReceivedOperations(Vec&lt;SecureShareOperation&gt;),
     <span class="doccomment">/// Received an operation id batch announcing new operations
     </span>ReceivedOperationAnnouncements(OperationPrefixIds),
     <span class="doccomment">/// Receive a list of wanted operations
     </span>ReceivedAskForOperations(OperationPrefixIds),
     <span class="doccomment">/// Receive a set of endorsement
-    </span>ReceivedEndorsements(Vec&lt;WrappedEndorsement&gt;),
+    </span>ReceivedEndorsements(Vec&lt;SecureShareEndorsement&gt;),
 }
 
 <span class="doccomment">/// Events node worker can emit.
@@ -483,7 +485,7 @@
         <span class="doccomment">/// to node id
         </span>node: NodeId,
         <span class="doccomment">/// block id
-        </span>header: WrappedHeader,
+        </span>header: SecuredHeader,
     },
     <span class="doccomment">/// `(PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list` of associated Id nodes in connection out (true)
     </span>GetPeers(oneshot::Sender&lt;Peers&gt;),
@@ -502,7 +504,7 @@
         <span class="doccomment">/// to node id
         </span>node: NodeId,
         <span class="doccomment">/// endorsements
-        </span>endorsements: Vec&lt;WrappedEndorsement&gt;,
+        </span>endorsements: Vec&lt;SecureShareEndorsement&gt;,
     },
     <span class="doccomment">/// sign message with our node keypair (associated to node id)
     /// != staking key
@@ -522,7 +524,7 @@
         <span class="doccomment">/// to node id
         </span>node: NodeId,
         <span class="doccomment">/// operations
-        </span>operations: Vec&lt;WrappedOperation&gt;,
+        </span>operations: Vec&lt;SecureShareOperation&gt;,
     },
     <span class="doccomment">/// Send operation ids batch to a node
     </span>SendOperationAnnouncements {
@@ -549,11 +551,11 @@
 #[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>BlockInfoReply {
     <span class="doccomment">/// Header
-    </span>Header(WrappedHeader),
+    </span>Header(SecuredHeader),
     <span class="doccomment">/// The info about the block is required(list of operations ids).
     </span>Info(Vec&lt;OperationId&gt;),
     <span class="doccomment">/// The actual operations required.
-    </span>Operations(Vec&lt;WrappedOperation&gt;),
+    </span>Operations(Vec&lt;SecureShareOperation&gt;),
     <span class="doccomment">/// Block not found
     </span>NotFound,
 }
@@ -578,7 +580,7 @@
         <span class="doccomment">/// from node id
         </span>source_node_id: NodeId,
         <span class="doccomment">/// header
-        </span>header: WrappedHeader,
+        </span>header: SecuredHeader,
     },
     <span class="doccomment">/// Someone ask for block with given header hash.
     </span>AskedForBlocks {
@@ -592,7 +594,7 @@
         <span class="doccomment">/// node id
         </span>node: NodeId,
         <span class="doccomment">/// operations
-        </span>operations: Vec&lt;WrappedOperation&gt;,
+        </span>operations: Vec&lt;SecureShareOperation&gt;,
     },
     <span class="doccomment">/// Receive a list of `OperationId`
     </span>ReceivedOperationAnnouncements {
@@ -613,7 +615,7 @@
         <span class="doccomment">/// node id
         </span>node: NodeId,
         <span class="doccomment">/// Endorsements
-        </span>endorsements: Vec&lt;WrappedEndorsement&gt;,
+        </span>endorsements: Vec&lt;SecureShareEndorsement&gt;,
     },
 }
 

@@ -618,6 +618,14 @@
 <a href="#618" id="618">618</a>
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
 </pre><pre class="rust"><code><span class="kw">use </span>futures::stream::FuturesUnordered;
 <span class="kw">use </span>futures::StreamExt;
 <span class="kw">use </span>humantime::format_duration;
@@ -626,7 +634,7 @@
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
+    block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
 };
 <span class="kw">use </span>massa_network_exports::NetworkCommandSender;
@@ -878,16 +886,24 @@
 
                         bootstrap_sessions.push(<span class="kw">async move </span>{
                             <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
-                            <span class="kw">match </span>manage_bootstrap(<span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;mut </span>server, data_execution, version, consensus_command_sender, network_command_sender).<span class="kw">await </span>{
-                                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                                    <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr)
-                                },
-                                <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>, remote_addr, error),
-                                <span class="prelude-val">Err</span>(err) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
+                            <span class="macro">debug!</span>(<span class="string">&quot;awaiting on bootstrap of peer {}&quot;</span>, remote_addr);
+                            <span class="kw">match </span>tokio::time::timeout(config.bootstrap_timeout.into(), manage_bootstrap(<span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;mut </span>server, data_execution, version, consensus_command_sender, network_command_sender)).<span class="kw">await </span>{
+                                <span class="prelude-val">Ok</span>(mgmt) =&gt; <span class="kw">match </span>mgmt {
+                                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                                        <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr)
+                                    },
+                                    <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>, remote_addr, error),
+                                    <span class="prelude-val">Err</span>(err) =&gt; {
+                                        <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
+                                        <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                                        </span><span class="kw">let _ </span>= tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).<span class="kw">await</span>;
+                                    },
+                                }
+                                <span class="prelude-val">Err</span>(_timeout) =&gt; {
+                                    <span class="macro">debug!</span>(<span class="string">&quot;bootstrap timeout for peer {}&quot;</span>, remote_addr);
                                     <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    </span><span class="kw">let _ </span>= tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).<span class="kw">await</span>;
-                                },
+                                    </span><span class="kw">let _ </span>= tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: <span class="macro">format!</span>(<span class="string">&quot;Bootstrap process timedout ({})&quot;</span>, format_duration(config.bootstrap_timeout.to_duration())) })).<span class="kw">await</span>;
+                                }
                             }
 
                         });

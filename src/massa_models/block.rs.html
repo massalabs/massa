@@ -1044,196 +1044,96 @@
 <a href="#1044" id="1044">1044</a>
 <a href="#1045" id="1045">1045</a>
 <a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
-<span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
-<span class="kw">use </span><span class="kw">crate</span>::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
+</span><span class="comment">// use crate::config::THREAD_COUNT;
+// use crate::endorsement::{EndorsementId, EndorsementSerializer, EndorsementSerializerLW};
+// use crate::prehash::PreHashed;
+</span><span class="kw">use </span><span class="kw">crate</span>::secure_share::{
+    Id, SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
+};
 <span class="kw">use crate</span>::{
-    endorsement::{Endorsement, EndorsementDeserializerLW, WrappedEndorsement},
-    error::ModelsError,
-    operation::{OperationId, OperationIdsDeserializer, OperationIdsSerializer, WrappedOperation},
-    slot::{Slot, SlotDeserializer, SlotSerializer},
-};
-<span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
-<span class="kw">use </span>massa_serialization::{
-    DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
-    U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
+    <span class="comment">// endorsement::{Endorsement, EndorsementDeserializerLW, SecureShareEndorsement},
+    </span>error::ModelsError,
+    operation::{
+        OperationId, OperationIdsDeserializer, OperationIdsSerializer, SecureShareOperation,
+    },
+    <span class="comment">// slot::{Slot, SlotDeserializer, SlotSerializer},
+</span>};
+<span class="comment">// use massa_hash::{Hash, HashDeserializer};
+</span><span class="kw">use </span>massa_serialization::{
+    <span class="comment">// DeserializeError,
+    </span>Deserializer,
+    SerializeError,
+    Serializer,
+    <span class="comment">// U32VarIntDeserializer,
+    // U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+</span>};
 <span class="kw">use </span>massa_signature::{KeyPair, PublicKey, Signature};
-<span class="kw">use </span>nom::branch::alt;
-<span class="kw">use </span>nom::bytes::complete::tag;
-<span class="kw">use </span>nom::error::context;
-<span class="kw">use </span>nom::multi::{count, length_count};
-<span class="kw">use </span>nom::sequence::{preceded, tuple};
+<span class="comment">// use nom::branch::alt;
+// use nom::bytes::complete::tag;
+</span><span class="kw">use </span>nom::error::context;
+<span class="comment">// use nom::multi::{count, length_count};
+</span><span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::Parser;
 <span class="kw">use </span>nom::{
     error::{ContextError, ParseError},
     IResult,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>serde_with::{DeserializeFromStr, SerializeDisplay};
-<span class="kw">use </span>std::convert::TryInto;
-<span class="kw">use </span>std::fmt::Formatter;
-<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
-<span class="kw">use </span>std::str::FromStr;
-
-<span class="doccomment">/// Size in bytes of a serialized block ID
-</span><span class="kw">const </span>BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-
-<span class="doccomment">/// block id
-</span><span class="attr">#[derive(
-    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
-)]
-</span><span class="kw">pub struct </span>BlockId(<span class="kw">pub </span>Hash);
-
-<span class="kw">impl </span>PreHashed <span class="kw">for </span>BlockId {}
-
-<span class="kw">impl </span>Id <span class="kw">for </span>BlockId {
-    <span class="kw">fn </span>new(hash: Hash) -&gt; <span class="self">Self </span>{
-        BlockId(hash)
-    }
-
-    <span class="kw">fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
-    </span>}
-}
-
-<span class="kw">const </span>BLOCKID_PREFIX: char = <span class="string">&#39;B&#39;</span>;
-<span class="kw">const </span>BLOCKID_VERSION: u64 = <span class="number">0</span>;
-
-<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
-        <span class="comment">// might want to allocate the vector with capacity in order to avoid re-allocation
-        </span><span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = Vec::new();
-        u64_serializer
-            .serialize(<span class="kw-2">&amp;</span>BLOCKID_VERSION, <span class="kw-2">&amp;mut </span>bytes)
-            .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
-        bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
-        <span class="macro">write!</span>(
-            f,
-            <span class="string">&quot;{}{}&quot;</span>,
-            BLOCKID_PREFIX,
-            bs58::encode(bytes).with_check().into_string()
-        )
-    }
-}
-
-<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>BlockId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
-    }
-}
-
-<span class="kw">impl </span>FromStr <span class="kw">for </span>BlockId {
-    <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
-    <span class="doccomment">/// ## Example
-    /// ```rust
-    /// # use massa_hash::Hash;
-    /// # use std::str::FromStr;
-    /// # use massa_models::block::BlockId;
-    /// # let hash = Hash::compute_from(b&quot;test&quot;);
-    /// # let block_id = BlockId(hash);
-    /// let ser = block_id.to_string();
-    /// let res_block_id = BlockId::from_str(&amp;ser).unwrap();
-    /// assert_eq!(block_id, res_block_id);
-    /// ```
-    </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
-        <span class="kw">match </span>chars.next() {
-            <span class="prelude-val">Some</span>(prefix) <span class="kw">if </span>prefix == BLOCKID_PREFIX =&gt; {
-                <span class="kw">let </span>data = chars.collect::&lt;String&gt;();
-                <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
-                    .with_check(<span class="prelude-val">None</span>)
-                    .into_vec()
-                    .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>;
-                <span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
-                <span class="kw">let </span>(rest, _version) = u64_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
-                    .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(BlockId(Hash::from_bytes(
-                    rest.try_into()
-                        .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>,
-                )))
-            }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::BlockIdParseError),
-        }
-    }
-}
-
-<span class="kw">impl </span>BlockId {
-    <span class="doccomment">/// block id to bytes
-    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; BLOCK_ID_SIZE_BYTES] {
-        <span class="self">self</span>.<span class="number">0</span>.to_bytes()
-    }
-
-    <span class="doccomment">/// block id into bytes
-    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; [u8; BLOCK_ID_SIZE_BYTES] {
-        <span class="self">self</span>.<span class="number">0</span>.into_bytes()
-    }
-
-    <span class="doccomment">/// block id from bytes
-    </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; BLOCK_ID_SIZE_BYTES]) -&gt; BlockId {
-        BlockId(Hash::from_bytes(data))
-    }
-
-    <span class="doccomment">/// first bit of the hashed block id
-    </span><span class="kw">pub fn </span>get_first_bit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.to_bytes()[<span class="number">0</span>] &gt;&gt; <span class="number">7 </span>== <span class="number">1
-    </span>}
-}
-
-<span class="doccomment">/// Serializer for `BlockId`
-</span><span class="attr">#[derive(Default, Clone)]
-</span><span class="kw">pub struct </span>BlockIdSerializer;
-
-<span class="kw">impl </span>BlockIdSerializer {
-    <span class="doccomment">/// Creates a new serializer for `BlockId`
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self
-    </span>}
-}
-
-<span class="kw">impl </span>Serializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdSerializer {
-    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BlockId, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        buffer.extend(value.to_bytes());
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="doccomment">/// Deserializer for `BlockId`
-</span><span class="attr">#[derive(Default, Clone)]
-</span><span class="kw">pub struct </span>BlockIdDeserializer {
-    hash_deserializer: HashDeserializer,
-}
-
-<span class="kw">impl </span>BlockIdDeserializer {
-    <span class="doccomment">/// Creates a new deserializer for `BlockId`
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            hash_deserializer: HashDeserializer::new(),
-        }
-    }
-}
-
-<span class="kw">impl </span>Deserializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockId, E&gt; {
-        context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
-            <span class="kw">let </span>(rest, hash) = <span class="self">self</span>.hash_deserializer.deserialize(input)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>((rest, BlockId(hash)))
-        })(buffer)
-    }
-}
+<span class="comment">// use serde_with::{DeserializeFromStr, SerializeDisplay};
+// use std::collections::HashSet;
+// use std::convert::TryInto;
+</span><span class="kw">use </span>std::fmt::Formatter;
+<span class="comment">// use std::ops::Bound::{Excluded, Included};
+// use std::str::FromStr;
+</span><span class="kw">use </span><span class="kw">crate</span>::block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader};
+<span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 
 <span class="doccomment">/// block
 </span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Block {
     <span class="doccomment">/// signed header
-    </span><span class="kw">pub </span>header: WrappedHeader,
+    </span><span class="kw">pub </span>header: SecuredHeader,
     <span class="doccomment">/// operations ids
     </span><span class="kw">pub </span>operations: Vec&lt;OperationId&gt;,
 }
@@ -1242,26 +1142,26 @@
 </span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>FilledBlock {
     <span class="doccomment">/// signed header
-    </span><span class="kw">pub </span>header: WrappedHeader,
+    </span><span class="kw">pub </span>header: SecuredHeader,
     <span class="doccomment">/// operations
-    </span><span class="kw">pub </span>operations: Vec&lt;(OperationId, <span class="prelude-ty">Option</span>&lt;WrappedOperation&gt;)&gt;,
+    </span><span class="kw">pub </span>operations: Vec&lt;(OperationId, <span class="prelude-ty">Option</span>&lt;SecureShareOperation&gt;)&gt;,
 }
 
-<span class="doccomment">/// Wrapped Block
-</span><span class="kw">pub type </span>WrappedBlock = Wrapped&lt;Block, BlockId&gt;;
+<span class="doccomment">/// Block with assosciated meta-data and interfaces allowing trust of data in untrusted network
+</span><span class="kw">pub type </span>SecureShareBlock = SecureShare&lt;Block, BlockId&gt;;
 
-<span class="kw">impl </span>WrappedContent <span class="kw">for </span>Block {
-    <span class="kw">fn </span>new_wrapped&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
+<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Block {
+    <span class="kw">fn </span>new_verifiable&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
         content: <span class="self">Self</span>,
         content_serializer: SC,
         _keypair: <span class="kw-2">&amp;</span>KeyPair,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Wrapped&lt;<span class="self">Self</span>, U&gt;, ModelsError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShare&lt;<span class="self">Self</span>, U&gt;, ModelsError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
         content_serializer.serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(Wrapped {
+        <span class="prelude-val">Ok</span>(SecureShare {
             signature: content.header.signature,
-            creator_public_key: content.header.creator_public_key,
-            creator_address: content.header.creator_address,
+            content_creator_pub_key: content.header.content_creator_pub_key,
+            content_creator_address: content.header.content_creator_address,
             id: U::new(<span class="kw-2">*</span>content.header.id.get_hash()),
             content,
             serialized_data: content_serialized,
@@ -1289,14 +1189,14 @@
         _creator_public_key_deserializer: <span class="kw-2">&amp;</span>massa_signature::PublicKeyDeserializer,
         content_deserializer: <span class="kw-2">&amp;</span>DC,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Wrapped&lt;<span class="self">Self</span>, U&gt;, E&gt; {
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SecureShare&lt;<span class="self">Self</span>, U&gt;, E&gt; {
         <span class="kw">let </span>(rest, content) = content_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((
             rest,
-            Wrapped {
+            SecureShare {
                 signature: content.header.signature,
-                creator_public_key: content.header.creator_public_key,
-                creator_address: content.header.creator_address,
+                content_creator_pub_key: content.header.content_creator_pub_key,
+                content_creator_address: content.header.content_creator_address,
                 id: U::new(<span class="kw-2">*</span>content.header.id.get_hash()),
                 content,
                 serialized_data: buffer[..buffer.len() - rest.len()].to_vec(),
@@ -1306,7 +1206,7 @@
 }
 <span class="doccomment">/// Serializer for `Block`
 </span><span class="kw">pub struct </span>BlockSerializer {
-    header_serializer: WrappedSerializer,
+    header_serializer: SecureShareSerializer,
     op_ids_serializer: OperationIdsSerializer,
 }
 
@@ -1314,7 +1214,7 @@
     <span class="doccomment">/// Creates a new `BlockSerializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         BlockSerializer {
-            header_serializer: WrappedSerializer::new(),
+            header_serializer: SecureShareSerializer::new(),
             op_ids_serializer: OperationIdsSerializer::new(),
         }
     }
@@ -1329,7 +1229,9 @@
 <span class="kw">impl </span>Serializer&lt;Block&gt; <span class="kw">for </span>BlockSerializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockId, BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, wrapped::WrappedContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
+    /// use massa_models::block_id::{BlockId};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -1339,13 +1241,13 @@
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::new_wrapped(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
@@ -1355,7 +1257,7 @@
     ///                 &amp;keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
@@ -1391,7 +1293,7 @@
 
 <span class="doccomment">/// Deserializer for `Block`
 </span><span class="kw">pub struct </span>BlockDeserializer {
-    header_deserializer: WrappedDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
+    header_deserializer: SecureShareDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
     op_ids_deserializer: OperationIdsDeserializer,
 }
 
@@ -1399,7 +1301,7 @@
     <span class="doccomment">/// Creates a new `BlockDeserializer`
     </span><span class="kw">pub fn </span>new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -&gt; <span class="self">Self </span>{
         BlockDeserializer {
-            header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+            header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),
@@ -1411,37 +1313,39 @@
 <span class="kw">impl </span>Deserializer&lt;Block&gt; <span class="kw">for </span>BlockDeserializer {
     <span class="doccomment">/// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockId,BlockHeader, BlockHeaderSerializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, wrapped::WrappedContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::block_id::BlockId;
+    /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
+    /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::new_wrapped(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
-    ///         parents,
+    ///         parents: parents.clone(),
     ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
-    ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
+    ///                     index: 0,
+    ///                     endorsed_block: parents[1].clone(),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
-    ///                     slot: Slot::new(4, 0),
-    ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
+    ///                     slot: Slot::new(1, 1),
+    ///                     index: 1,
+    ///                     endorsed_block: parents[1].clone(),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
@@ -1500,14 +1404,14 @@
     }
 }
 
-<span class="kw">impl </span>WrappedBlock {
+<span class="kw">impl </span>SecureShareBlock {
     <span class="doccomment">/// size in bytes of the whole block
     </span><span class="kw">pub fn </span>bytes_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="self">self</span>.serialized_data.len() <span class="kw">as </span>u64
     }
 
     <span class="doccomment">/// true if given operation is included in the block
-    </span><span class="kw">pub fn </span>contains_operation(<span class="kw-2">&amp;</span><span class="self">self</span>, op: WrappedOperation) -&gt; bool {
+    </span><span class="kw">pub fn </span>contains_operation(<span class="kw-2">&amp;</span><span class="self">self</span>, op: SecureShareOperation) -&gt; bool {
         <span class="self">self</span>.content.operations.contains(<span class="kw-2">&amp;</span>op.id)
     }
 
@@ -1533,19 +1437,6 @@
     }
 }
 
-<span class="doccomment">/// block header
-</span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
-</span><span class="kw">pub struct </span>BlockHeader {
-    <span class="doccomment">/// slot
-    </span><span class="kw">pub </span>slot: Slot,
-    <span class="doccomment">/// parents
-    </span><span class="kw">pub </span>parents: Vec&lt;BlockId&gt;,
-    <span class="doccomment">/// all operations hash
-    </span><span class="kw">pub </span>operation_merkle_root: Hash,
-    <span class="doccomment">/// endorsements
-    </span><span class="kw">pub </span>endorsements: Vec&lt;WrappedEndorsement&gt;,
-}
-
 <span class="comment">// NOTE: TODO
 // impl Signable&lt;BlockId&gt; for BlockHeader {
 //     fn get_signature_message(&amp;self) -&gt; Result&lt;Hash, ModelsError&gt; {
@@ -1558,322 +1449,42 @@
 //     }
 // }
 
-</span><span class="doccomment">/// wrapped header
-</span><span class="kw">pub type </span>WrappedHeader = Wrapped&lt;BlockHeader, BlockId&gt;;
-
-<span class="kw">impl </span>WrappedHeader {
-    <span class="doccomment">/// gets the header fitness
-    </span><span class="kw">pub fn </span>get_fitness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        (<span class="self">self</span>.content.endorsements.len() <span class="kw">as </span>u64) + <span class="number">1
-    </span>}
-}
-
-<span class="kw">impl </span>WrappedContent <span class="kw">for </span>BlockHeader {}
-
-<span class="doccomment">/// Serializer for `BlockHeader`
-</span><span class="kw">pub struct </span>BlockHeaderSerializer {
-    slot_serializer: SlotSerializer,
-    endorsement_serializer: WrappedSerializer,
-    endorsement_content_serializer: EndorsementSerializerLW,
-    u32_serializer: U32VarIntSerializer,
-}
-
-<span class="kw">impl </span>BlockHeaderSerializer {
-    <span class="doccomment">/// Creates a new `BlockHeaderSerializer`
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            slot_serializer: SlotSerializer::new(),
-            endorsement_serializer: WrappedSerializer::new(),
-            u32_serializer: U32VarIntSerializer::new(),
-            endorsement_content_serializer: EndorsementSerializerLW::new(),
-        }
-    }
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>BlockHeaderSerializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
-<span class="kw">impl </span>Serializer&lt;BlockHeader&gt; <span class="kw">for </span>BlockHeaderSerializer {
-    <span class="doccomment">/// ## Example:
-    /// ```rust
-    /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderSerializer};
-    /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
-    /// use massa_models::wrapped::WrappedContent;
-    /// use massa_models::{config::THREAD_COUNT, slot::Slot};
-    /// use massa_hash::Hash;
-    /// use massa_signature::KeyPair;
-    /// use massa_serialization::Serializer;
-    ///
-    /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
-    ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
-    ///   .collect();
-    /// let header = BlockHeader {
-    ///   slot: Slot::new(1, 1),
-    ///   parents,
-    ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
-    ///   endorsements: vec![
-    ///     Endorsement::new_wrapped(
-    ///        Endorsement {
-    ///          slot: Slot::new(1, 1),
-    ///          index: 1,
-    ///          endorsed_block: BlockId(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
-    ///        },
-    ///     EndorsementSerializer::new(),
-    ///     &amp;keypair,
-    ///     )
-    ///     .unwrap(),
-    ///     Endorsement::new_wrapped(
-    ///       Endorsement {
-    ///         slot: Slot::new(4, 0),
-    ///         index: 3,
-    ///         endorsed_block: BlockId(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
-    ///       },
-    ///     EndorsementSerializer::new(),
-    ///     &amp;keypair,
-    ///     )
-    ///     .unwrap(),
-    ///    ],
-    /// };
-    /// let mut buffer = vec![];
-    /// BlockHeaderSerializer::new().serialize(&amp;header, &amp;mut buffer).unwrap();
-    /// ```
-    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BlockHeader, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="self">self</span>.slot_serializer.serialize(<span class="kw-2">&amp;</span>value.slot, buffer)<span class="question-mark">?</span>;
-        <span class="comment">// parents (note: there should be none if slot period=0)
-        </span><span class="kw">if </span>value.parents.is_empty() {
-            buffer.push(<span class="number">0</span>);
-        } <span class="kw">else </span>{
-            buffer.push(<span class="number">1</span>);
-        }
-        <span class="kw">for </span>parent_h <span class="kw">in </span>value.parents.iter() {
-            buffer.extend(parent_h.<span class="number">0</span>.to_bytes());
-        }
-
-        <span class="comment">// operations merkle root
-        </span>buffer.extend(value.operation_merkle_root.to_bytes());
-
-        <span class="self">self</span>.u32_serializer.serialize(
-            <span class="kw-2">&amp;</span>value.endorsements.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;too many endorsements: {}&quot;</span>, err))
-            })<span class="question-mark">?</span>,
-            buffer,
-        )<span class="question-mark">?</span>;
-        <span class="kw">for </span>endorsement <span class="kw">in </span>value.endorsements.iter() {
-            <span class="self">self</span>.endorsement_serializer.serialize_with(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_content_serializer,
-                endorsement,
-                buffer,
-            )<span class="question-mark">?</span>;
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="doccomment">/// Deserializer for `BlockHeader`
-</span><span class="kw">pub struct </span>BlockHeaderDeserializer {
-    slot_deserializer: SlotDeserializer,
-    endorsement_serializer: EndorsementSerializer,
-    length_endorsements_deserializer: U32VarIntDeserializer,
-    hash_deserializer: HashDeserializer,
-    thread_count: u8,
-    endorsement_count: u32,
-}
-
-<span class="kw">impl </span>BlockHeaderDeserializer {
-    <span class="doccomment">/// Creates a new `BlockHeaderDeserializerLW`
-    </span><span class="kw">pub const fn </span>new(thread_count: u8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            slot_deserializer: SlotDeserializer::new(
-                (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
-            ),
-            endorsement_serializer: EndorsementSerializer::new(),
-            length_endorsements_deserializer: U32VarIntDeserializer::new(
-                Included(<span class="number">0</span>),
-                Included(endorsement_count),
-            ),
-            hash_deserializer: HashDeserializer::new(),
-            thread_count,
-            endorsement_count,
-        }
-    }
-}
-
-<span class="kw">impl </span>Deserializer&lt;BlockHeader&gt; <span class="kw">for </span>BlockHeaderDeserializer {
-    <span class="doccomment">/// ## Example:
-    /// ```rust
-    /// use massa_models::block::{BlockId, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer};
-    /// use massa_models::{config::THREAD_COUNT, slot::Slot, wrapped::WrappedContent};
-    /// use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
-    /// use massa_hash::Hash;
-    /// use massa_signature::KeyPair;
-    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    ///
-    /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
-    ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
-    ///   .collect();
-    /// let header = BlockHeader {
-    ///   slot: Slot::new(1, 1),
-    ///   parents,
-    ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
-    ///   endorsements: vec![
-    ///     Endorsement::new_wrapped(
-    ///        Endorsement {
-    ///          slot: Slot::new(1, 1),
-    ///          index: 1,
-    ///          endorsed_block: BlockId(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
-    ///        },
-    ///     EndorsementSerializerLW::new(),
-    ///     &amp;keypair,
-    ///     )
-    ///     .unwrap(),
-    ///     Endorsement::new_wrapped(
-    ///       Endorsement {
-    ///         slot: Slot::new(4, 0),
-    ///         index: 3,
-    ///         endorsed_block: BlockId(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
-    ///       },
-    ///     EndorsementSerializerLW::new(),
-    ///     &amp;keypair,
-    ///     )
-    ///     .unwrap(),
-    ///    ],
-    /// };
-    /// let mut buffer = vec![];
-    /// BlockHeaderSerializer::new().serialize(&amp;header, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
-    /// assert_eq!(rest.len(), 0);
-    /// let mut buffer2 = Vec::new();
-    /// BlockHeaderSerializer::new().serialize(&amp;deserialized_header, &amp;mut buffer2).unwrap();
-    /// assert_eq!(buffer, buffer2);
-    /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeader, E&gt; {
-        <span class="kw">let </span>(rest, (slot, parents, operation_merkle_root)): (<span class="kw-2">&amp;</span>[u8], (Slot, Vec&lt;BlockId&gt;, Hash)) =
-            context(
-                <span class="string">&quot;Failed BlockHeader deserialization&quot;</span>,
-                tuple((
-                    context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.slot_deserializer.deserialize(input)
-                    }),
-                    context(
-                        <span class="string">&quot;Failed parents deserialization&quot;</span>,
-                        alt((
-                            preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
-                            preceded(
-                                tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-                                count(
-                                    context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
-                                ),
-                            ),
-                        )),
-                    ),
-                    context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
-                        <span class="self">self</span>.hash_deserializer.deserialize(input)
-                    }),
-                )),
-            )
-            .parse(buffer)<span class="question-mark">?</span>;
-
-        <span class="kw">if </span>parents.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>((
-                <span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="comment">// Because there is 0 endorsements, we have a remaining 0 in rest and we don&#39;t need it
-                </span>BlockHeader {
-                    slot,
-                    parents,
-                    operation_merkle_root,
-                    endorsements: Vec::new(),
-                },
-            ));
-        }
-        <span class="comment">// Now deser the endorsements (which were: lw serialized)
-        </span><span class="kw">let </span>endorsement_deserializer = WrappedDeserializer::new(EndorsementDeserializerLW::new(
-            <span class="self">self</span>.endorsement_count,
-            slot,
-            parents[slot.thread <span class="kw">as </span>usize],
-        ));
-
-        <span class="kw">let </span>(rest, endorsements) = context(
-            <span class="string">&quot;Failed endorsements deserialization&quot;</span>,
-            length_count::&lt;<span class="kw-2">&amp;</span>[u8], Wrapped&lt;Endorsement, EndorsementId&gt;, u32, E, <span class="kw">_</span>, <span class="kw">_</span>&gt;(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.length_endorsements_deserializer.deserialize(input)
-                }),
-                context(<span class="string">&quot;Failed endorsement deserialization&quot;</span>, |input| {
-                    endorsement_deserializer.deserialize_with(<span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_serializer, input)
-                }),
-            ),
-        )
-        .parse(rest)<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>((
-            rest,
-            BlockHeader {
-                slot,
-                parents,
-                operation_merkle_root,
-                endorsements,
-            },
-        ))
-    }
-}
-
-<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockHeader {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">writeln!</span>(
-            f,
-            <span class="string">&quot;\t(period: {}, thread: {})&quot;</span>,
-            <span class="self">self</span>.slot.period, <span class="self">self</span>.slot.thread,
-        )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tMerkle root: {}&quot;</span>, <span class="self">self</span>.operation_merkle_root,)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tParents: &quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.parents.iter() {
-            <span class="kw">let </span>str_id = id.to_string();
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\t{}&quot;</span>, str_id)<span class="question-mark">?</span>;
-        }
-        <span class="kw">if </span><span class="self">self</span>.parents.is_empty() {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;No parents found: This is a genesis header&quot;</span>)<span class="question-mark">?</span>;
-        }
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tEndorsements:&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for </span>ed <span class="kw">in </span><span class="self">self</span>.endorsements.iter() {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\t-----&quot;</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tId: {}&quot;</span>, ed.id)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tIndex: {}&quot;</span>, ed.content.index)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorsed slot: {}&quot;</span>, ed.content.slot)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorser&#39;s public key: {}&quot;</span>, ed.creator_public_key)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorsed block: {}&quot;</span>, ed.content.endorsed_block)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tSignature: {}&quot;</span>, ed.signature)<span class="question-mark">?</span>;
-        }
-        <span class="kw">if </span><span class="self">self</span>.endorsements.is_empty() {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\tNo endorsements found&quot;</span>)<span class="question-mark">?</span>;
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
+</span><span class="doccomment">/// Block status within the graph
+</span><span class="attr">#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub enum </span>BlockGraphStatus {
+    <span class="doccomment">/// received but not yet graph-processed
+    </span>Incoming,
+    <span class="doccomment">/// waiting for its slot
+    </span>WaitingForSlot,
+    <span class="doccomment">/// waiting for a missing dependency
+    </span>WaitingForDependencies,
+    <span class="doccomment">/// active in alternative cliques
+    </span>ActiveInAlternativeCliques,
+    <span class="doccomment">/// active in blockclique
+    </span>ActiveInBlockclique,
+    <span class="doccomment">/// forever applies
+    </span>Final,
+    <span class="doccomment">/// discarded for any reason
+    </span>Discarded,
+    <span class="doccomment">/// not found in graph
+    </span>NotFound,
 }
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use crate</span>::{
+        block_header::BlockHeaderSerializer,
         config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
         endorsement::Endorsement,
         endorsement::EndorsementSerializer,
+        slot::Slot,
     };
+    <span class="kw">use </span>massa_hash::Hash;
     <span class="kw">use </span>massa_serialization::DeserializeError;
     <span class="kw">use </span>massa_signature::KeyPair;
     <span class="kw">use </span>serial_test::serial;
+    <span class="kw">use </span>std::str::FromStr;
 
     <span class="attr">#[test]
     #[serial]
@@ -1889,10 +1500,23 @@
             })
             .collect();
 
-        <span class="kw">let </span>endo = Endorsement::new_wrapped(
+        <span class="kw">let </span>endo1 = Endorsement::new_verifiable(
             Endorsement {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
-                index: <span class="number">1</span>,
+                index: <span class="number">0</span>,
+                endorsed_block: BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+        <span class="kw">let </span>endo2 = Endorsement::new_verifiable(
+            Endorsement {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                index: ENDORSEMENT_COUNT - <span class="number">1</span>,
                 endorsed_block: BlockId(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
@@ -1904,12 +1528,12 @@
         .unwrap();
 
         <span class="comment">// create block header
-        </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
-                endorsements: <span class="macro">vec!</span>[endo],
+                endorsements: <span class="macro">vec!</span>[endo1, endo2],
             },
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
@@ -1923,15 +1547,15 @@
         };
 
         <span class="comment">// serialize block
-        </span><span class="kw">let </span>wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(<span class="kw-2">&amp;</span>wrapped_block, <span class="kw-2">&amp;mut </span>ser_block)
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
             .unwrap();
 
         <span class="comment">// deserialize
-        </span><span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], WrappedBlock) = WrappedDeserializer::new(
+        </span><span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block)
@@ -1964,10 +1588,8 @@
         <span class="kw">for </span>ed <span class="kw">in </span>orig_block.header.content.endorsements.iter() {
             ed.verify_signature().unwrap();
         }
-        res_block.content.header.verify_signature().unwrap();
-        <span class="kw">for </span>ed <span class="kw">in </span>res_block.content.header.content.endorsements.iter() {
-            ed.verify_signature().unwrap();
-        }
+
+        res_block.content.header.assert_invariants().unwrap();
     }
 
     <span class="attr">#[test]
@@ -1977,9 +1599,9 @@
         <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// create block header
-        </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
-                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
@@ -1996,19 +1618,21 @@
         };
 
         <span class="comment">// serialize block
-        </span><span class="kw">let </span>wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(<span class="kw-2">&amp;</span>wrapped_block, <span class="kw-2">&amp;mut </span>ser_block)
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
             .unwrap();
 
         <span class="comment">// deserialize
-        </span><span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], WrappedBlock) = WrappedDeserializer::new(
+        </span><span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block)
         .unwrap();
+
+        res_block.content.header.assert_invariants().unwrap();
 
         <span class="comment">// check equality
 
@@ -2038,24 +1662,24 @@
 
     <span class="attr">#[test]
     #[serial]
-    </span><span class="kw">fn </span>test_invalid_genesis_block_serialization() {
+    </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_endorsements() {
         <span class="kw">let </span>keypair = KeyPair::generate();
         <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// Genesis block do not have any parents and thus cannot embed endorsements
         </span><span class="kw">let </span>endorsement = Endorsement {
-            slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+            slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
             index: <span class="number">1</span>,
             endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>])),
         };
 
         <span class="comment">// create block header
-        </span><span class="kw">let </span>orig_header = BlockHeader::new_wrapped(
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
-                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
-                endorsements: <span class="macro">vec!</span>[Endorsement::new_wrapped(
+                endorsements: <span class="macro">vec!</span>[Endorsement::new_verifiable(
                     endorsement,
                     EndorsementSerializer::new(),
                     <span class="kw-2">&amp;</span>keypair,
@@ -2074,20 +1698,474 @@
         };
 
         <span class="comment">// serialize block
-        </span><span class="kw">let </span>wrapped_block: WrappedBlock =
-            Block::new_wrapped(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
-        WrappedSerializer::new()
-            .serialize(<span class="kw-2">&amp;</span>wrapped_block, <span class="kw-2">&amp;mut </span>ser_block)
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
             .unwrap();
 
         <span class="comment">// deserialize
-        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], WrappedBlock), <span class="kw">_</span>&gt; = WrappedDeserializer::new(
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
             BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
 
-        <span class="macro">assert!</span>(res.is_err());
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        </span><span class="macro">assert!</span>(res.is_err());
+        <span class="comment">// let nom::Err::Failure(_) = res.unwrap_err() else {
+        //     panic!(&quot;Deserialisation with invalid endorsements should be total fail&quot;);
+        // };
+    </span>}
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_parents() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .collect();
+
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        </span><span class="macro">assert!</span>(res.is_err());
+    }
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_block_serialization_no_parents() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="comment">// Non genesis block must have THREAD_COUNT parents
+
+        // create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                parents: <span class="macro">vec!</span>[],
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        </span><span class="macro">assert!</span>(res.is_err());
+    }
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_parent_count() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="comment">// Non genesis block must have THREAD_COUNT parents
+        </span><span class="kw">let </span>parents = (<span class="number">0</span>..=THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .collect();
+
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        </span><span class="macro">assert!</span>(res.is_err());
+    }
+
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_block_serialization_max_endo_count() {
+        <span class="kw">let </span>keypair =
+            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+        <span class="kw">let </span>endorsed = BlockId(
+            Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>).unwrap(),
+        );
+        <span class="kw">let </span>fillers = (<span class="number">1</span>..THREAD_COUNT).map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])));
+        <span class="kw">let </span>parents = std::iter::once(endorsed).chain(fillers).collect();
+
+        <span class="kw">let </span>endorsements = (<span class="number">0</span>..ENDORSEMENT_COUNT)
+            .map(|i| {
+                Endorsement::new_verifiable(
+                    Endorsement {
+                        slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                        index: i,
+                        endorsed_block: BlockId(
+                            Hash::from_bs58_check(
+                                <span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>,
+                            )
+                            .unwrap(),
+                        ),
+                    },
+                    EndorsementSerializer::new(),
+                    <span class="kw-2">&amp;</span>keypair,
+                )
+                .unwrap()
+            })
+            .collect();
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements,
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>(<span class="kw">_</span>, res): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block)
+        .unwrap();
+
+        res.content.header.assert_invariants().unwrap();
+    }
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_block_serialization_obo_low_parent_count() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="comment">// Non genesis block must have THREAD_COUNT parents
+        </span><span class="kw">let </span>parents = (<span class="number">1</span>..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .collect();
+
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        </span><span class="macro">assert!</span>(res.is_err());
+    }
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_endo_count() {
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="comment">// Non genesis block must have THREAD_COUNT parents
+        </span><span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .collect();
+
+        <span class="kw">let </span>endorsements = (<span class="number">0</span>..=ENDORSEMENT_COUNT)
+            .map(|i| {
+                Endorsement::new_verifiable(
+                    Endorsement {
+                        slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
+                        index: i,
+                        endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i <span class="kw">as </span>u8])),
+                    },
+                    EndorsementSerializer::new(),
+                    <span class="kw-2">&amp;</span>keypair,
+                )
+                .unwrap()
+            })
+            .collect();
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements,
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: see issue #3400
+        </span><span class="macro">assert!</span>(res.is_err());
+    }
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_endorsement_idx() {
+        <span class="kw">let </span>keypair =
+            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|_i| {
+                BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                )
+            })
+            .collect();
+
+        <span class="kw">let </span>endo1 = Endorsement::new_verifiable(
+            Endorsement {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                index: ENDORSEMENT_COUNT,
+                endorsed_block: BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[endo1],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header.clone(),
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        </span><span class="macro">assert!</span>(res.is_err());
+    }
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_invalid_dupe_endo_idx() {
+        <span class="kw">let </span>keypair =
+            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
+            .map(|_i| {
+                BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                )
+            })
+            .collect();
+
+        <span class="kw">let </span>endo1 = Endorsement::new_verifiable(
+            Endorsement {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                index: <span class="number">0</span>,
+                endorsed_block: BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+        <span class="kw">let </span>endo2 = Endorsement::new_verifiable(
+            Endorsement {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                index: <span class="number">0</span>,
+                endorsed_block: BlockId(
+                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block header
+        </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                parents,
+                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                endorsements: <span class="macro">vec!</span>[endo1, endo2],
+            },
+            BlockHeaderSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+        )
+        .unwrap();
+
+        <span class="comment">// create block
+        </span><span class="kw">let </span>orig_block = Block {
+            header: orig_header.clone(),
+            operations: Default::default(),
+        };
+
+        <span class="comment">// serialize block
+        </span><span class="kw">let </span>secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
+            .unwrap();
+
+        <span class="comment">// deserialize
+        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; = SecureShareDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_block);
+
+        <span class="comment">// TODO: Catch an failed deser being a fail, instead of a recoverable error
+        // TODO: assert that the error variant/context/etc. matches the expected failure
+        </span><span class="macro">assert!</span>(res.is_err());
     }
 }
 </code></pre></div>

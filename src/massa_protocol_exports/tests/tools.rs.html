@@ -293,13 +293,15 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::operation::OperationSerializer;
-<span class="kw">use </span>massa_models::wrapped::WrappedContent;
+<span class="kw">use </span>massa_models::secure_share::SecureShareContent;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializerLW, WrappedEndorsement},
-    operation::{Operation, OperationType, WrappedOperation},
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
+    endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
+    operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
 };
 <span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, NetworkCommand};
@@ -343,8 +345,8 @@
 <span class="doccomment">/// Creates a block for use in protocol,
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
-</span><span class="kw">pub fn </span>create_block(keypair: <span class="kw-2">&amp;</span>KeyPair) -&gt; WrappedBlock {
-    <span class="kw">let </span>header = BlockHeader::new_wrapped(
+</span><span class="kw">pub fn </span>create_block(keypair: <span class="kw-2">&amp;</span>KeyPair) -&gt; SecureShareBlock {
+    <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
             parents: <span class="macro">vec!</span>[
@@ -359,7 +361,7 @@
     )
     .unwrap();
 
-    Block::new_wrapped(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -378,14 +380,14 @@
 </span><span class="kw">pub fn </span>create_block_with_operations(
     keypair: <span class="kw-2">&amp;</span>KeyPair,
     slot: Slot,
-    operations: Vec&lt;WrappedOperation&gt;,
-) -&gt; WrappedBlock {
+    operations: Vec&lt;SecureShareOperation&gt;,
+) -&gt; SecureShareBlock {
     <span class="kw">let </span>operation_merkle_root = Hash::compute_from(
         <span class="kw-2">&amp;</span>operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.id.to_bytes().to_vec()].concat()
         })[..],
     );
-    <span class="kw">let </span>header = BlockHeader::new_wrapped(
+    <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: <span class="macro">vec!</span>[
@@ -401,7 +403,7 @@
     .unwrap();
 
     <span class="kw">let </span>op_ids = operations.into_iter().map(|op| op.id).collect();
-    Block::new_wrapped(
+    Block::new_verifiable(
         Block {
             header,
             operations: op_ids,
@@ -420,9 +422,9 @@
 </span><span class="kw">pub fn </span>create_block_with_endorsements(
     keypair: <span class="kw-2">&amp;</span>KeyPair,
     slot: Slot,
-    endorsements: Vec&lt;WrappedEndorsement&gt;,
-) -&gt; WrappedBlock {
-    <span class="kw">let </span>header = BlockHeader::new_wrapped(
+    endorsements: Vec&lt;SecureShareEndorsement&gt;,
+) -&gt; SecureShareBlock {
+    <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: <span class="macro">vec!</span>[
@@ -437,7 +439,7 @@
     )
     .unwrap();
 
-    Block::new_wrapped(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -450,7 +452,7 @@
 
 <span class="doccomment">/// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-</span><span class="kw">pub fn </span>create_endorsement() -&gt; WrappedEndorsement {
+</span><span class="kw">pub fn </span>create_endorsement() -&gt; SecureShareEndorsement {
     <span class="kw">let </span>keypair = KeyPair::generate();
 
     <span class="kw">let </span>content = Endorsement {
@@ -458,14 +460,14 @@
         index: <span class="number">0</span>,
         endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[])),
     };
-    Endorsement::new_wrapped(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>keypair).unwrap()
+    Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>keypair).unwrap()
 }
 
 <span class="doccomment">/// Create an operation, from a specific sender, and with a specific expire period.
 </span><span class="kw">pub fn </span>create_operation_with_expire_period(
     keypair: <span class="kw-2">&amp;</span>KeyPair,
     expire_period: u64,
-) -&gt; WrappedOperation {
+) -&gt; SecureShareOperation {
     <span class="kw">let </span>recv_keypair = KeyPair::generate();
 
     <span class="kw">let </span>op = OperationType::Transaction {
@@ -477,7 +479,7 @@
         op,
         expire_period,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 <span class="macro">lazy_static::lazy_static! </span>{
@@ -512,8 +514,6 @@
         t0: MassaTime::from_millis(<span class="number">16000</span>),
         max_operations_propagation_time: MassaTime::from_millis(<span class="number">30000</span>),
         max_endorsements_propagation_time: MassaTime::from_millis(<span class="number">60000</span>),
-        broadcast_enabled: <span class="bool-val">false</span>,
-        broadcast_operations_capacity: <span class="number">128</span>,
     }
 }
 

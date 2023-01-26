@@ -177,17 +177,15 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
-    block::{BlockId, WrappedHeader},
-    endorsement::WrappedEndorsement,
+    block_header::SecuredHeader, block_id::BlockId, endorsement::SecureShareEndorsement,
 };
 <span class="kw">use </span>massa_models::{
     config::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, SecureShareOperation},
 };
 <span class="kw">use </span>massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkCommandSender, NetworkEvent,
@@ -254,7 +252,7 @@
 
     <span class="doccomment">/// send header
     /// todo inconsistency with names
-    </span><span class="kw">pub async fn </span>send_header(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source_node_id: NodeId, header: WrappedHeader) {
+    </span><span class="kw">pub async fn </span>send_header(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source_node_id: NodeId, header: SecuredHeader) {
         <span class="self">self</span>.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
@@ -269,7 +267,7 @@
     </span><span class="kw">pub async fn </span>send_operations(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         source_node_id: NodeId,
-        operations: Vec&lt;WrappedOperation&gt;,
+        operations: Vec&lt;SecureShareOperation&gt;,
     ) {
         <span class="self">self</span>.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
@@ -317,7 +315,7 @@
     </span><span class="kw">pub async fn </span>send_endorsements(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         source_node_id: NodeId,
-        endorsements: Vec&lt;WrappedEndorsement&gt;,
+        endorsements: Vec&lt;SecureShareEndorsement&gt;,
     ) {
         <span class="self">self</span>.network_event_tx
             .send(NetworkEvent::ReceivedEndorsements {
