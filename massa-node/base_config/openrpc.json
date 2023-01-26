@@ -1310,11 +1310,18 @@
         {
             "tags": [
                 {
-                    "name": "public",
-                    "description": "Massa public api"
+                    "name": "api",
+                    "description": "Massa api V2"
                 }
             ],
-            "params": [],
+            "params": [
+                {
+                    "schema": {
+                        "$ref": "#/components/schemas/PageRequest"
+                    },
+                    "name": "PageRequest"
+                }
+            ],
             "result": {
                 "schema": {
                     "type": "array",
@@ -2566,12 +2573,12 @@
                     "offset"
                 ],
                 "properties": {
-                   "limit": {
-                       "type": "number"
-                   },
-                   "offset": {
-                       "type": "number"
-                   }
+                    "limit": {
+                        "type": "number"
+                    },
+                    "offset": {
+                        "type": "number"
+                    }
                 }
             },
             "Parent": {

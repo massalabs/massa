@@ -10,6 +10,7 @@ use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
 use massa_api_exports::config::APIConfig;
+use massa_api_exports::page::{PageRequest, PagedVec};
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_models::block_id::BlockId;
 use massa_models::version::Version;
@@ -54,13 +55,14 @@ impl MassaApiServer for API<ApiV2> {
         Ok(self.0.version)
     }
 
-    fn get_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>> {
-        Ok(self
-            .0
-            .consensus_controller
-            .get_best_parents()
-            .into_iter()
-            .collect())
+    fn get_best_parents(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(BlockId, u64)>> {
+        Ok(PagedVec::new(
+            self.0.consensus_controller.get_best_parents(),
+            page_request,
+        ))
     }
 
     fn subscribe_new_blocks(&self, sink: SubscriptionSink) -> SubscriptionResult {

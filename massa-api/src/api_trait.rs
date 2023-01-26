@@ -2,6 +2,7 @@
 //! Json RPC API for a massa-node
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use massa_api_exports::page::{PageRequest, PagedVec};
 use massa_models::block_id::BlockId;
 use massa_models::version::Version;
 
@@ -14,7 +15,10 @@ pub trait MassaApi {
 
     /// Get the ids of best parents for the next block to be produced along with their period
     #[method(name = "get_best_parents")]
-    fn get_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>>;
+    fn get_best_parents(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(BlockId, u64)>>;
 
     /// New produced block.
     #[subscription(
