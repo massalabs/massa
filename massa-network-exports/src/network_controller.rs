@@ -5,7 +5,7 @@ use crate::{
     error::NetworkError,
     BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{bounded, Receiver, Sender, TrySendError};
 use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -20,7 +20,7 @@ use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
 };
-use tracing::info;
+use tracing::{info, warn};
 
 /// Network command sender
 #[derive(Clone)]
@@ -184,13 +184,20 @@ impl NetworkCommandSender {
         to_node: NodeId,
         batch: OperationPrefixIds,
     ) -> Result<(), NetworkError> {
-        self.0
-            .send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
-            .map_err(|_| {
-                NetworkError::ChannelError(
+        match self
+            .0
+            .try_send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
+        {
+            Ok(()) => {}
+            Err(TrySendError::Full(_)) => {
+                warn!("Failed to send NetworkCommand SendOperationAnnouncements channel full");
+            }
+            Err(TrySendError::Disconnected(_)) => {
+                return Err(NetworkError::ChannelError(
                     "could not send SendOperationAnnouncements command".into(),
-                )
-            })?;
+                ));
+            }
+        }
         Ok(())
     }
 
