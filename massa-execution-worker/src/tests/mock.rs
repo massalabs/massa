@@ -95,6 +95,7 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 
 /// Same as `get_random_address()` and return `keypair` associated
 /// to the address.
+#[allow(dead_code)] // to avoid warnings on gas_calibration feature
 pub fn get_random_address_full() -> (Address, KeyPair) {
     let keypair = KeyPair::generate();
     (Address::from_public_key(&keypair.get_public_key()), keypair)
@@ -130,6 +131,7 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
 /// creator.
 ///
 /// Return a result that should be unwrapped in the root `#[test]` routine.
+#[allow(dead_code)] // to avoid warnings on gas_calibration feature
 pub fn create_block(
     creator_keypair: KeyPair,
     operations: Vec<SecureShareOperation>,

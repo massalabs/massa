@@ -625,7 +625,8 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                Ok(module_lock.save_module(&bytecode, module, init_cost))
+                module_lock.save_module(&bytecode, module, init_cost);
+                Ok(())
             }
             Err(err) => Err(ExecutionError::RuntimeError(format!(
                 "module execution error in execute_callsc_op: {}",
@@ -714,7 +715,8 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                Ok(module_lock.save_module(&bytecode, module, init_cost))
+                module_lock.save_module(&bytecode, module, init_cost);
+                Ok(())
             }
             Err(err) => {
                 // execution failed: reset context to snapshot and reimburse sender

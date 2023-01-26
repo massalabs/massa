@@ -52,6 +52,7 @@ harness = false
 [features]
 sandbox = ["massa_async_pool/sandbox"]
 gas_calibration = [
+    "massa-sc-runtime/gas_calibration",
     "massa_execution_exports/gas_calibration",
     "massa_final_state/testing",
     "massa_pos_worker",
@@ -67,6 +68,7 @@ testing = [
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks
 benchmarking = [
+    "massa-sc-runtime/gas_calibration",
     "criterion",
     "massa_pos_worker",
     "massa_ledger_worker",

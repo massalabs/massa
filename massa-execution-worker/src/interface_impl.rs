@@ -58,12 +58,20 @@ impl InterfaceImpl {
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
+        use crate::module_cache::ModuleCache;
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        use massa_sc_runtime::GasCosts;
+        use parking_lot::RwLock;
 
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
-        let mut execution_context =
-            ExecutionContext::new(config.clone(), final_state, Default::default());
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
+        let mut execution_context = ExecutionContext::new(
+            config.clone(),
+            final_state,
+            Default::default(),
+            module_cache,
+        );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,
             coins: Amount::zero(),
