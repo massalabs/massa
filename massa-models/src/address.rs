@@ -222,7 +222,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    fn unprefixed_bytes(&self) -> Vec<u8> {
+    pub fn unprefixed_bytes(&self) -> Vec<u8> {
         self.0.into_bytes().to_vec()
     }
 
@@ -262,7 +262,7 @@ impl Address {
     /// let res_addr = Address::from_unprefixed_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    fn from_unprefixed_bytes(data: &[u8]) -> Address {
+    pub fn from_unprefixed_bytes(data: &[u8]) -> Address {
         Address::User(UserAddress(Hash::from_bytes(
             &data[0..32].try_into().unwrap(),
         )))
