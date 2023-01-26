@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":[["PageRequest","Represents the request inputs for a PagedVec"],["PagedVec","Represents a Vec that can be split across Pages Cf. https://docs.rs/paginate/latest/paginate/"]]};

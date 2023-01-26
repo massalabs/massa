@@ -630,7 +630,6 @@
 <a href="#630" id="630">630</a>
 <a href="#631" id="631">631</a>
 <a href="#632" id="632">632</a>
-<a href="#633" id="633">633</a>
 </pre><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
@@ -653,7 +652,6 @@
     IResult, Parser,
 };
 <span class="kw">use </span>num::rational::Ratio;
-<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::Included;
 
@@ -1084,7 +1082,7 @@
 }
 
 <span class="doccomment">/// Block production statistics
-</span><span class="attr">#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>ProductionStats {
     <span class="doccomment">/// Number of successfully created blocks
     </span><span class="kw">pub </span>block_success_count: u64,

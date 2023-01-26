@@ -178,9 +178,9 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
-<span class="kw">use </span>massa_models::operation::{Operation, OperationSerializer, SecureShareOperation};
+<span class="kw">use </span>massa_models::operation::{Operation, OperationSerializer, WrappedOperation};
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
-<span class="kw">use </span>massa_models::secure_share::SecureShareContent;
+<span class="kw">use </span>massa_models::wrapped::WrappedContent;
 <span class="kw">use </span>massa_signature::{KeyPair, PublicKey};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::path::PathBuf;
@@ -309,11 +309,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         content: Operation,
         address: Address,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShareOperation, WalletError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;WrappedOperation, WalletError&gt; {
         <span class="kw">let </span>sender_keypair = <span class="self">self
             </span>.find_associated_keypair(<span class="kw-2">&amp;</span>address)
             .ok_or_else(|| WalletError::MissingKeyError(address))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap())
+        <span class="prelude-val">Ok</span>(Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
 }
 

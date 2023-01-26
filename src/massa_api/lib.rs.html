@@ -373,62 +373,61 @@
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-</span><span class="kw">use </span>api_trait::MassaApiServer;
+</span><span class="kw">use </span><span class="kw">crate</span>::api_trait::MassaApiServer;
+<span class="kw">use </span><span class="kw">crate</span>::error::ApiError::WrongAPI;
 <span class="kw">use </span>hyper::Method;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
 <span class="kw">use </span>jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 <span class="kw">use </span>jsonrpsee::RpcModule;
-<span class="kw">use </span>massa_api_exports::{
-    address::AddressInfo,
-    block::{BlockInfo, BlockSummary},
-    config::APIConfig,
-    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
-    endorsement::EndorsementInfo,
-    error::ApiError::WrongAPI,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
-    node::NodeStatus,
-    operation::{OperationInfo, OperationInput},
-    page::{PageRequest, PagedVec},
-    TimeInterval,
-};
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
+<span class="kw">use </span>massa_models::api::{
+    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+};
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
+<span class="kw">use </span>massa_models::execution::ExecuteReadOnlyResponse;
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::{
-    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
-    execution::EventFilter, slot::Slot, version::Version,
+    address::Address,
+    block::{Block, BlockId},
+    endorsement::EndorsementId,
+    slot::Slot,
+    version::Version,
 };
 <span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkConfig};
-<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
+<span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
+<span class="kw">use </span>massa_protocol_exports::{ProtocolCommandSender, ProtocolSenders};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>serde_json::Value;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>tokio::sync::mpsc;
 <span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
+
+<span class="kw">use </span>tokio::sync::mpsc;
 <span class="kw">use </span>tracing::{info, warn};
 
 <span class="kw">mod </span>api;
 <span class="kw">mod </span>api_trait;
+<span class="kw">mod </span>config;
+<span class="kw">mod </span>error;
 <span class="kw">mod </span>private;
 <span class="kw">mod </span>public;
+<span class="kw">pub use </span>config::APIConfig;
 
 <span class="doccomment">/// Public API component
 </span><span class="kw">pub struct </span>Public {
@@ -474,8 +473,8 @@
 </span><span class="kw">pub struct </span>ApiV2 {
     <span class="doccomment">/// link(channels) to the consensus component
     </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
-    <span class="doccomment">/// link(channels) to the pool component
-    </span><span class="kw">pub </span>pool_channels: PoolChannels,
+    <span class="doccomment">/// link(channels) to the protocol component
+    </span><span class="kw">pub </span>protocol_senders: ProtocolSenders,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,
     <span class="doccomment">/// node version
@@ -692,10 +691,7 @@
 
     <span class="doccomment">/// Returns the active stakers and their active roll counts for the current cycle.
     </span><span class="attr">#[method(name = <span class="string">&quot;get_stakers&quot;</span>)]
-    </span><span class="kw">async fn </span>get_stakers(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        page_request: <span class="prelude-ty">Option</span>&lt;PageRequest&gt;,
-    ) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt;;
+    </span><span class="kw">async fn </span>get_stakers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;(Address, u64)&gt;&gt;;
 
     <span class="doccomment">/// Returns operation(s) information associated to a given list of operation(s) ID(s).
     </span><span class="attr">#[method(name = <span class="string">&quot;get_operations&quot;</span>)]

@@ -870,9 +870,6 @@
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -886,8 +883,7 @@
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block_header::SecuredHeader,
-    block_id::BlockId,
+    block::{BlockId, WrappedHeader},
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
@@ -1049,17 +1045,15 @@
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.incoming_header.discarded&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason});
                         <span class="comment">// count stales
                         </span><span class="kw">if </span>reason == DiscardReason::Stale {
-                            <span class="self">self</span>.new_stale_blocks.insert(
-                                block_id,
-                                (header.content_creator_address, header.content.slot),
-                            );
+                            <span class="self">self</span>.new_stale_blocks
+                                .insert(block_id, (header.creator_address, header.content.slot));
                         }
                         <span class="comment">// discard
                         </span><span class="self">self</span>.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
                                 slot: header.content.slot,
-                                creator: header.content_creator_address,
+                                creator: header.creator_address,
                                 parents: header.content.parents,
                                 reason,
                                 sequence_number: {
@@ -1117,7 +1111,7 @@
                             <span class="string">&quot;block_id&quot;</span>: block_id
                         });
                         (
-                            stored_block.content.header.content_creator_pub_key,
+                            stored_block.content.header.creator_public_key,
                             slot,
                             parents_hash_period,
                             incompatibilities,
@@ -1177,7 +1171,7 @@
                             <span class="self">self</span>.new_stale_blocks.insert(
                                 block_id,
                                 (
-                                    stored_block.content.header.content_creator_address,
+                                    stored_block.content.header.creator_address,
                                     stored_block.content.header.content.slot,
                                 ),
                             );
@@ -1187,7 +1181,7 @@
                             block_id,
                             BlockStatus::Discarded {
                                 slot: stored_block.content.header.content.slot,
-                                creator: stored_block.content_creator_address,
+                                creator: stored_block.creator_address,
                                 parents: stored_block.content.header.content.parents.clone(),
                                 reason,
                                 sequence_number: {
@@ -1700,7 +1694,7 @@
 
         <span class="comment">// notify protocol of block wishlist
         </span><span class="kw">let </span>new_wishlist = <span class="self">self</span>.get_block_wishlist()<span class="question-mark">?</span>;
-        <span class="kw">let </span>new_blocks: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt; = new_wishlist
+        <span class="kw">let </span>new_blocks: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;WrappedHeader&gt;&gt; = new_wishlist
             .iter()
             .filter_map(|(id, header)| {
                 <span class="kw">if </span>!<span class="self">self</span>.wishlist.contains_key(id) {
