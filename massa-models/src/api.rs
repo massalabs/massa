@@ -118,6 +118,8 @@ pub struct OperationInfo {
     pub in_blocks: Vec<BlockId>,
     /// true if the operation is final (for example in a final block)
     pub is_final: bool,
+    /// Thread in which the operation can be included
+    pub thread: u8,
     /// the operation itself
     pub operation: WrappedOperation,
 }
