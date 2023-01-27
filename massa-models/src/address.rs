@@ -130,7 +130,7 @@ impl<'de> ::serde::Deserialize<'de> for Address {
                 where
                     E: ::serde::de::Error,
                 {
-                    Ok(Address::from_unprefixed_bytes(v))
+                    Address::from_unprefixed_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -202,10 +202,13 @@ impl PreHashed for Address {}
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
     pub fn get_thread(&self, thread_count: u8) -> u8 {
-        // need to discard the prefix byte
-        (self.prefixed_bytes()[1])
+        (self.hash_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
+    }
+
+    fn hash_bytes(&self) -> &[u8; 32] {
+        (**self).0.to_bytes()
     }
 
     /// Computes address associated with given public key
@@ -230,15 +233,16 @@ impl Address {
             Address::User(_) => b'U',
             Address::SC(_) => b'S',
         };
-        let mut v = vec![pref];
-        v.extend_from_slice(&self.0.into_bytes());
-        v
+        [&[pref][..], &self.hash_bytes()[..]].concat().to_vec()
     }
 
-    fn from_unprefixed_bytes(data: &[u8]) -> Address {
-        Address::User(UserAddress(Hash::from_bytes(
-            &data[0..32].try_into().unwrap(),
-        )))
+    // TODO: work out a scheme to determine if it's a User address or SC address?
+    fn from_unprefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
+        Ok(Address::User(UserAddress(Hash::from_bytes(
+            &data[0..32]
+                .try_into()
+                .map_err(|_| ModelsError::AddressParseError)?,
+        ))))
     }
     /// ## Example
     /// ```rust
@@ -252,12 +256,16 @@ impl Address {
     /// let res_addr = Address::from_prefixed_bytes(bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn from_prefixed_bytes(data: &[u8]) -> Address {
-        let hash = Hash::from_bytes(&data[1..].try_into().unwrap());
-        match data[0] {
-            b'U' => Address::User(UserAddress(hash)),
-            b'S' => Address::SC(UserAddress(hash)),
-            _ => unreachable!(),
+    pub fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
+        let hash = Hash::from_bytes(
+            &data[1..]
+                .try_into()
+                .map_err(|_| ModelsError::AddressParseError)?,
+        );
+        match data.first() {
+            Some(b'U') => Ok(Address::User(UserAddress(hash))),
+            Some(b'S') => Ok(Address::SC(UserAddress(hash))),
+            _ => Err(ModelsError::AddressParseError),
         }
     }
 }
