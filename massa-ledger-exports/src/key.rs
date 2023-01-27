@@ -145,7 +145,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(key_deser, key, "key deser issue");
+    /// assert_eq!(key_deser, key);
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
@@ -165,19 +165,18 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
             buffer,
             nom::error::ErrorKind::Fail,
         ));
-        let ident = rest.first();
-        dbg!(ident, rest);
-        match ident {
-            Some(ident) => match *ident {
-                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
-                BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
-                DATASTORE_IDENT => {
-                    let (rest, hash) = self.datastore_key_deserializer.deserialize(&rest[1..])?;
-                    Ok((rest, data_key!(address, hash)))
-                }
-                _ => Err(error),
-            },
-            None => Err(error),
+        let Some(ident) = rest.first() else {
+            return Err(error);
+        };
+
+        match *ident {
+            BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
+            BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
+            DATASTORE_IDENT => {
+                let (rest, hash) = self.datastore_key_deserializer.deserialize(&rest[1..])?;
+                Ok((rest, data_key!(address, hash)))
+            }
+            _ => Err(error),
         }
     }
 }

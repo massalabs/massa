@@ -324,14 +324,11 @@ where
                 context("None", value(None, tag(b"0"))),
                 context(
                     "Some(_)",
-                    preceded(
-                        tag(b"1"),
-                        |input| -> Result<(&[u8], Option<T>), nom::Err<_>> {
-                            self.data_deserializer
-                                .deserialize(input)
-                                .map(|(rest, data)| (rest, Some(data)))
-                        },
-                    ),
+                    preceded(tag(b"1"), |input| {
+                        self.data_deserializer
+                            .deserialize(input)
+                            .map(|(rest, data)| (rest, Some(data)))
+                    }),
                 ),
             )),
         )

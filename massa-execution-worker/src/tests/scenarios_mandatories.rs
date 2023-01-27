@@ -618,7 +618,7 @@ fn send_and_receive_async_message_with_trigger() {
     });
 
     // match the events
-    assert_eq!(events.len(), 2, "Two event was expected");
+    assert_eq!(events.len(), 2, "Two events were expected");
     assert_eq!(events[0].data, "Triggered");
 
     // keypair associated to thread 1

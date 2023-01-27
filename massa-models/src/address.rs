@@ -53,7 +53,7 @@ impl std::fmt::Display for Address {
         u64_serializer
             .serialize(&ADDRESS_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(*self.0.to_bytes());
+        bytes.extend(*(*self).hash_bytes());
         write!(
             f,
             "{}{}{}",
@@ -180,7 +180,7 @@ impl FromStr for Address {
         let res = match pref {
             'U' => Address::User(res),
             'S' => Address::SC(res),
-            _ => unreachable!(),
+            _ => return err,
         };
         Ok(res)
     }
@@ -225,7 +225,7 @@ impl Address {
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.prefixed_bytes();
-    /// let res_addr = Address::from_prefixed_bytes(&bytes);
+    /// let res_addr = Address::from_prefixed_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn prefixed_bytes(&self) -> Vec<u8> {
@@ -253,18 +253,23 @@ impl Address {
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = &address.prefixed_bytes();
-    /// let res_addr = Address::from_prefixed_bytes(bytes);
+    /// let res_addr = Address::from_prefixed_bytes(bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
+        let Some(pref) = data.first() else {
+            return Err(ModelsError::AddressParseError);
+        };
+
         let hash = Hash::from_bytes(
             &data[1..]
                 .try_into()
                 .map_err(|_| ModelsError::AddressParseError)?,
         );
-        match data.first() {
-            Some(b'U') => Ok(Address::User(UserAddress(hash))),
-            Some(b'S') => Ok(Address::SC(UserAddress(hash))),
+
+        match pref {
+            b'U' => Ok(Address::User(UserAddress(hash))),
+            b'S' => Ok(Address::SC(UserAddress(hash))),
             _ => Err(ModelsError::AddressParseError),
         }
     }
@@ -330,10 +335,12 @@ impl Deserializer<Address> for AddressDeserializer {
         })
         .map(UserAddress)
         .parse(rest)?;
+
+        // TODO: replace this match statement with idiomatic nom usage
         let res = match pref {
             'U' => Address::User(res),
             'S' => Address::SC(res),
-            _ => unreachable!(),
+            _ => unreachable!("the variant parser only matches on 'U' and 'S'"),
         };
         Ok((rest, res))
     }

@@ -242,7 +242,7 @@ pub fn get_random_final_state_bootstrap(
     let mut bytes = [255; 33];
     bytes[0] = b'U';
     sorted_ledger.insert(
-        Address::from_prefixed_bytes(&bytes),
+        Address::from_prefixed_bytes(&bytes).unwrap(),
         get_random_ledger_entry(),
     );
 

@@ -244,7 +244,7 @@ fn test_cycle_info_hash_computation() {
     );
     let mut bytes = [0; 33];
     bytes[0] = b'U';
-    let addr = Address::from_prefixed_bytes(&bytes);
+    let addr = Address::from_prefixed_bytes(&bytes).unwrap();
 
     // add changes
     let mut roll_changes = PreHashMap::default();
