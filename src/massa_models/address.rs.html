@@ -583,7 +583,7 @@
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&amp;keypair.get_public_key());
     /// let bytes = address.prefixed_bytes();
-    /// let res_addr = Address::from_prefixed_bytes(&amp;bytes);
+    /// let res_addr = Address::from_prefixed_bytes(&amp;bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
     </span><span class="kw">pub fn </span>prefixed_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
@@ -611,7 +611,7 @@
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&amp;keypair.get_public_key());
     /// let bytes = &amp;address.prefixed_bytes();
-    /// let res_addr = Address::from_prefixed_bytes(bytes);
+    /// let res_addr = Address::from_prefixed_bytes(bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
     </span><span class="kw">pub fn </span>from_prefixed_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Address, ModelsError&gt; {
