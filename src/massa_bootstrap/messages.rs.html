@@ -824,10 +824,30 @@
 <a href="#824" id="824">824</a>
 <a href="#825" id="825">825</a>
 <a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
-<span class="kw">use </span>massa_async_pool::{
+</span><span class="kw">use </span>massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncPoolDeserializer, AsyncPoolSerializer,
 };
@@ -837,8 +857,7 @@
 <span class="kw">use </span>massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 <span class="kw">use </span>massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 <span class="kw">use </span>massa_ledger_exports::{KeyDeserializer, KeySerializer};
-<span class="comment">// use massa_models::block::BlockDeserializerArgs;
-</span><span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
+<span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::serialization::{
@@ -1105,7 +1124,28 @@
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
     <span class="doccomment">/// Creates a new `BootstrapServerMessageDeserializer`
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(args: BootstrapServerMessageDeserializerArgs) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        thread_count: u8,
+        endorsement_count: u32,
+        max_advertise_length: u32,
+        max_bootstrap_blocks: u32,
+        max_operations_per_block: u32,
+        max_bootstrap_final_state_parts_size: u64,
+        max_async_pool_changes: u64,
+        max_async_pool_length: u64,
+        max_async_message_data: u64,
+        max_ledger_changes_count: u64,
+        max_datastore_key_length: u8,
+        max_datastore_value_length: u64,
+        max_datastore_entry_count: u64,
+        max_bootstrap_error_length: u64,
+        max_changes_slot_count: u64,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+        max_credits_length: u64,
+        max_executed_ops_length: u64,
+        max_ops_changes_length: u64,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             message_id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -1113,63 +1153,65 @@
                 Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(args.max_advertise_length),
+            peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
             state_changes_deserializer: StateChangesDeserializer::new(
-                args.thread_count,
-                args.max_async_pool_changes,
-                args.max_async_message_data,
-                args.max_ledger_changes_count,
-                args.max_datastore_key_length,
-                args.max_datastore_value_length,
-                args.max_datastore_entry_count,
-                args.max_rolls_length,
-                args.max_production_stats_length,
-                args.max_credits_length,
-                args.max_ops_changes_length,
+                thread_count,
+                max_async_pool_changes,
+                max_async_message_data,
+                max_ledger_changes_count,
+                max_datastore_key_length,
+                max_datastore_value_length,
+                max_datastore_entry_count,
+                max_rolls_length,
+                max_production_stats_length,
+                max_credits_length,
+                max_ops_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(args.max_changes_slot_count),
+                Included(max_changes_slot_count),
             ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                (<span class="kw-2">&amp;</span>args).into(),
-                args.max_bootstrap_blocks_length,
+                thread_count,
+                endorsement_count,
+                max_bootstrap_blocks,
+                max_operations_per_block,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
                 BlockIdDeserializer::new(),
                 Included(<span class="number">0</span>),
-                Included(args.max_bootstrap_blocks_length <span class="kw">as </span>u64),
+                Included(max_bootstrap_blocks <span class="kw">as </span>u64),
             ),
             ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(<span class="number">0</span>),
-                Included(args.max_bootstrap_final_state_parts_size),
+                Included(max_bootstrap_final_state_parts_size),
             ),
             length_bootstrap_error: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(args.max_bootstrap_error_length),
+                Included(max_bootstrap_error_length),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(args.thread_count)),
+                (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
             async_pool_deserializer: AsyncPoolDeserializer::new(
-                args.thread_count,
-                args.max_async_pool_length,
-                args.max_async_message_data,
-                args.max_datastore_key_length <span class="kw">as </span>u32,
+                thread_count,
+                max_async_pool_length,
+                max_async_message_data,
+                max_datastore_key_length <span class="kw">as </span>u32,
             ),
             opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
-                args.max_rolls_length,
-                args.max_production_stats_length,
+                max_rolls_length,
+                max_production_stats_length,
             )),
             pos_credits_deserializer: DeferredCreditsDeserializer::new(
-                args.thread_count,
-                args.max_credits_length,
+                thread_count,
+                max_credits_length,
             ),
             exec_ops_deserializer: ExecutedOpsDeserializer::new(
-                args.thread_count,
-                args.max_executed_ops_length,
-                args.max_operations_per_block <span class="kw">as </span>u64,
+                thread_count,
+                max_executed_ops_length,
+                max_operations_per_block <span class="kw">as </span>u64,
             ),
         }
     }

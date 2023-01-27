@@ -277,7 +277,7 @@
 <span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
+    block::{Block, BlockDeserializer, SecureShareBlock},
     block_id::BlockId,
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
@@ -413,13 +413,13 @@
 
 <span class="kw">impl </span>ExportActiveBlockDeserializer {
     <span class="doccomment">/// Create a new `ExportActiveBlockDeserializer`
-    </span><span class="comment">// TODO: check if we can remove this?
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(block_der_args: BlockDeserializerArgs) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>thread_count = block_der_args.thread_count;
+    </span><span class="kw">pub fn </span>new(thread_count: u8, endorsement_count: u32, max_operations_per_block: u32) -&gt; <span class="self">Self </span>{
         ExportActiveBlockDeserializer {
             sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
-                block_der_args,
+                thread_count,
+                max_operations_per_block,
+                endorsement_count,
             )),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
