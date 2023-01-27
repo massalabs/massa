@@ -300,6 +300,57 @@
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -309,6 +360,8 @@
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>massa_signature::PublicKey;
+<span class="kw">use </span>nom::branch::alt;
+<span class="kw">use </span>nom::character::complete::char;
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
 <span class="kw">use </span>nom::{IResult, Parser};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -316,11 +369,31 @@
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="doccomment">/// Size of a serialized address, in bytes
-</span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+</span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES + <span class="number">1</span>;
 
-<span class="doccomment">/// Derived from a public key
+<span class="doccomment">/// In future versions, the SC variant will encode slot, index and is_write directly
 </span><span class="attr">#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-</span><span class="kw">pub struct </span>Address(<span class="kw">pub </span>Hash);
+</span><span class="kw">pub enum </span>Address {
+    <span class="attr">#[allow(missing_docs)]
+    </span>User(UserAddress),
+    <span class="attr">#[allow(missing_docs)]
+    </span>SC(UserAddress),
+}
+
+<span class="comment">// TODO: Remove this impl when introducing `SCAddress`
+</span><span class="kw">impl </span>std::ops::Deref <span class="kw">for </span>Address {
+    <span class="kw">type </span>Target = UserAddress;
+
+    <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
+        <span class="kw">match </span><span class="self">self </span>{
+            Address::User(add) | Address::SC(add) =&gt; add,
+        }
+    }
+}
+
+<span class="doccomment">/// Derived from a public key.
+</span><span class="attr">#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+</span><span class="kw">pub struct </span>UserAddress(<span class="kw">pub </span>Hash);
 
 <span class="kw">const </span>ADDRESS_PREFIX: char = <span class="string">&#39;A&#39;</span>;
 <span class="kw">const </span>ADDRESS_VERSION: u64 = <span class="number">0</span>;
@@ -333,11 +406,15 @@
         u64_serializer
             .serialize(<span class="kw-2">&amp;</span>ADDRESS_VERSION, <span class="kw-2">&amp;mut </span>bytes)
             .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
-        bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
+        bytes.extend(<span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.to_bytes());
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;{}{}&quot;</span>,
+            <span class="string">&quot;{}{}{}&quot;</span>,
             ADDRESS_PREFIX,
+            <span class="kw">match </span><span class="self">self </span>{
+                Address::User(<span class="kw">_</span>) =&gt; <span class="string">&#39;U&#39;</span>,
+                Address::SC(<span class="kw">_</span>) =&gt; <span class="string">&#39;S&#39;</span>,
+            },
             bs58::encode(bytes).with_check().into_string()
         )
     }
@@ -354,7 +431,7 @@
         <span class="kw">if </span>s.is_human_readable() {
             s.collect_str(<span class="kw-2">&amp;</span><span class="self">self</span>.to_string())
         } <span class="kw">else </span>{
-            s.serialize_bytes(<span class="self">self</span>.to_bytes())
+            s.serialize_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>.prefixed_bytes())
         }
     }
 }
@@ -368,7 +445,7 @@
                 <span class="kw">type </span>Value = Address;
 
                 <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-                    formatter.write_str(<span class="string">&quot;A + base58::encode(version + hash)&quot;</span>)
+                    formatter.write_str(<span class="string">&quot;A + {U | S} + base58::encode(version + hash)&quot;</span>)
                 }
 
                 <span class="kw">fn </span>visit_bytes&lt;E&gt;(<span class="self">self</span>, v: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
@@ -404,7 +481,7 @@
                 <span class="kw">where
                     </span>E: ::serde::de::Error,
                 {
-                    <span class="prelude-val">Ok</span>(Address::from_bytes(v.try_into().map_err(E::custom)<span class="question-mark">?</span>))
+                    Address::from_unprefixed_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -429,25 +506,34 @@
     /// assert_eq!(address, res_addr);
     /// ```
     </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span>err = <span class="prelude-val">Err</span>(ModelsError::AddressParseError);
         <span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
-        <span class="kw">match </span>chars.next() {
-            <span class="prelude-val">Some</span>(prefix) <span class="kw">if </span>prefix == ADDRESS_PREFIX =&gt; {
-                <span class="kw">let </span>data = chars.collect::&lt;String&gt;();
-                <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
-                    .with_check(<span class="prelude-val">None</span>)
-                    .into_vec()
-                    .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>;
-                <span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
-                <span class="kw">let </span>(rest, _version) = u64_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
-                    .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(Address(Hash::from_bytes(
-                    rest.try_into()
-                        .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
-                )))
-            }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError),
-        }
+        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="string">&#39;A&#39;</span>) = chars.next() <span class="kw">else </span>{
+            <span class="kw">return </span>err;
+        };
+        <span class="kw">let </span><span class="prelude-val">Some</span>(pref) = chars.next() <span class="kw">else </span>{
+            <span class="kw">return </span>err;
+        };
+
+        <span class="kw">let </span>data = chars.collect::&lt;String&gt;();
+        <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
+            .with_check(<span class="prelude-val">None</span>)
+            .into_vec()
+            .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>;
+        <span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
+        <span class="kw">let </span>(rest, _version) = u64_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
+            .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>;
+        <span class="kw">let </span>res = UserAddress(Hash::from_bytes(
+            rest.try_into()
+                .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
+        ));
+        <span class="kw">let </span>res = <span class="kw">match </span>pref {
+            <span class="string">&#39;U&#39; </span>=&gt; Address::User(res),
+            <span class="string">&#39;S&#39; </span>=&gt; Address::SC(res),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        };
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
@@ -459,7 +545,7 @@
     <span class="kw">let </span>address = Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key());
     <span class="kw">let </span>a = address.to_string();
     <span class="kw">let </span>b = Address::from_str(<span class="kw-2">&amp;</span>a).unwrap();
-    <span class="macro">assert!</span>(address == b);
+    <span class="macro">assert_eq!</span>(address, b);
 }
 
 <span class="kw">impl </span>PreHashed <span class="kw">for </span>Address {}
@@ -467,14 +553,18 @@
 <span class="kw">impl </span>Address {
     <span class="doccomment">/// Gets the associated thread. Depends on the `thread_count`
     </span><span class="kw">pub fn </span>get_thread(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: u8) -&gt; u8 {
-        (<span class="self">self</span>.to_bytes()[<span class="number">0</span>])
+        (<span class="self">self</span>.hash_bytes()[<span class="number">0</span>])
             .checked_shr(<span class="number">8 </span>- thread_count.trailing_zeros())
             .unwrap_or(<span class="number">0</span>)
     }
 
+    <span class="kw">fn </span>hash_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] {
+        (<span class="kw-2">**</span><span class="self">self</span>).<span class="number">0</span>.to_bytes()
+    }
+
     <span class="doccomment">/// Computes address associated with given public key
     </span><span class="kw">pub fn </span>from_public_key(public_key: <span class="kw-2">&amp;</span>PublicKey) -&gt; <span class="self">Self </span>{
-        Address(Hash::compute_from(public_key.to_bytes()))
+        Address::User(UserAddress(Hash::compute_from(public_key.to_bytes())))
     }
 
     <span class="doccomment">/// ## Example
@@ -485,14 +575,26 @@
     /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&amp;keypair.get_public_key());
-    /// let bytes = address.into_bytes();
-    /// let res_addr = Address::from_bytes(&amp;bytes);
+    /// let bytes = address.prefixed_bytes();
+    /// let res_addr = Address::from_prefixed_bytes(&amp;bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; ADDRESS_SIZE_BYTES] {
-        <span class="self">self</span>.<span class="number">0</span>.to_bytes()
+    </span><span class="kw">pub fn </span>prefixed_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="kw">let </span>pref = <span class="kw">match </span><span class="self">self </span>{
+            Address::User(<span class="kw">_</span>) =&gt; <span class="string">b&#39;U&#39;</span>,
+            Address::SC(<span class="kw">_</span>) =&gt; <span class="string">b&#39;S&#39;</span>,
+        };
+        [<span class="kw-2">&amp;</span>[pref][..], <span class="kw-2">&amp;</span><span class="self">self</span>.hash_bytes()[..]].concat().to_vec()
     }
 
+    <span class="comment">// TODO: work out a scheme to determine if it&#39;s a User address or SC address?
+    </span><span class="kw">fn </span>from_unprefixed_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Address, ModelsError&gt; {
+        <span class="prelude-val">Ok</span>(Address::User(UserAddress(Hash::from_bytes(
+            <span class="kw-2">&amp;</span>data[<span class="number">0</span>..<span class="number">32</span>]
+                .try_into()
+                .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
+        ))))
+    }
     <span class="doccomment">/// ## Example
     /// ```rust
     /// # use massa_signature::{PublicKey, KeyPair, Signature};
@@ -501,28 +603,21 @@
     /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&amp;keypair.get_public_key());
-    /// let bytes = address.into_bytes();
-    /// let res_addr = Address::from_bytes(&amp;bytes);
+    /// let bytes = &amp;address.prefixed_bytes();
+    /// let res_addr = Address::from_prefixed_bytes(bytes);
     /// assert_eq!(address, res_addr);
     /// ```
-    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; [u8; ADDRESS_SIZE_BYTES] {
-        <span class="self">self</span>.<span class="number">0</span>.into_bytes()
-    }
-
-    <span class="doccomment">/// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&amp;keypair.get_public_key());
-    /// let bytes = address.to_bytes();
-    /// let res_addr = Address::from_bytes(&amp;bytes);
-    /// assert_eq!(address, res_addr);
-    /// ```
-    </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; ADDRESS_SIZE_BYTES]) -&gt; Address {
-        Address(Hash::from_bytes(data))
+    </span><span class="kw">pub fn </span>from_prefixed_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Address, ModelsError&gt; {
+        <span class="kw">let </span>hash = Hash::from_bytes(
+            <span class="kw-2">&amp;</span>data[<span class="number">1</span>..]
+                .try_into()
+                .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
+        );
+        <span class="kw">match </span>data.first() {
+            <span class="prelude-val">Some</span>(<span class="string">b&#39;U&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Address::User(UserAddress(hash))),
+            <span class="prelude-val">Some</span>(<span class="string">b&#39;S&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Address::SC(UserAddress(hash))),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError),
+        }
     }
 }
 
@@ -543,7 +638,7 @@
         value: <span class="kw-2">&amp;</span>Address,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), massa_serialization::SerializeError&gt; {
-        buffer.extend_from_slice(value.to_bytes());
+        buffer.extend_from_slice(<span class="kw-2">&amp;</span>value.prefixed_bytes());
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -570,8 +665,8 @@
     /// use massa_serialization::{Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let address = Address::from_str(&quot;A12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ&quot;).unwrap();
-    /// let bytes = address.into_bytes();
+    /// let address = Address::from_str(&quot;AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ&quot;).unwrap();
+    /// let bytes = address.prefixed_bytes();
     /// let (rest, res_addr) = AddressDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// assert_eq!(rest.len(), 0);
@@ -580,11 +675,18 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Address, E&gt; {
-        context(<span class="string">&quot;Failed Address deserialization&quot;</span>, |input| {
+        <span class="kw">let </span>(rest, pref) = context(<span class="string">&quot;Address Veriant&quot;</span>, alt((char(<span class="string">&#39;U&#39;</span>), char(<span class="string">&#39;S&#39;</span>)))).parse(buffer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(rest, res) = context(<span class="string">&quot;Failed Address deserialization&quot;</span>, |input| {
             <span class="self">self</span>.hash_deserializer.deserialize(input)
         })
-        .map(Address)
-        .parse(buffer)
+        .map(UserAddress)
+        .parse(rest)<span class="question-mark">?</span>;
+        <span class="kw">let </span>res = <span class="kw">match </span>pref {
+            <span class="string">&#39;U&#39; </span>=&gt; Address::User(res),
+            <span class="string">&#39;S&#39; </span>=&gt; Address::SC(res),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        };
+        <span class="prelude-val">Ok</span>((rest, res))
     }
 }
 

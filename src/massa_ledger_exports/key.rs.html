@@ -179,6 +179,8 @@
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -195,7 +197,7 @@
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>balance_key {
     (<span class="macro-nonterminal">$addr</span>:expr) =&gt; {
-        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[BALANCE_IDENT]].concat()
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.prefixed_bytes()[..], <span class="kw-2">&amp;</span>[BALANCE_IDENT]].concat()
     };
 }
 
@@ -205,7 +207,7 @@
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>bytecode_key {
     (<span class="macro-nonterminal">$addr</span>:expr) =&gt; {
-        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[BYTECODE_IDENT]].concat()
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.prefixed_bytes()[..], <span class="kw-2">&amp;</span>[BYTECODE_IDENT]].concat()
     };
 }
 
@@ -215,7 +217,7 @@
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>data_key {
     (<span class="macro-nonterminal">$addr</span>:expr, <span class="macro-nonterminal">$key</span>:expr) =&gt; {
-        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[DATASTORE_IDENT], <span class="kw-2">&amp;</span><span class="macro-nonterminal">$key</span>].concat()
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.prefixed_bytes()[..], <span class="kw-2">&amp;</span>[DATASTORE_IDENT], <span class="kw-2">&amp;</span><span class="macro-nonterminal">$key</span>].concat()
     };
 }
 
@@ -223,7 +225,7 @@
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>data_prefix {
     (<span class="macro-nonterminal">$addr</span>:expr) =&gt; {
-        <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.to_bytes()[..], <span class="kw-2">&amp;</span>[DATASTORE_IDENT]].concat()
+        <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="macro-nonterminal">$addr</span>.prefixed_bytes()[..], <span class="kw-2">&amp;</span>[DATASTORE_IDENT]].concat()
     };
 }
 
@@ -260,10 +262,10 @@
     /// use std::str::FromStr;
     ///
     /// let mut serialized = Vec::new();
-    /// let address = Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();
+    /// let address = Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();
     /// let store_key = Hash::compute_from(b&quot;test&quot;);
     /// let mut key = Vec::new();
-    /// key.extend(address.to_bytes());
+    /// key.extend(address.prefixed_bytes());
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
@@ -271,7 +273,7 @@
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Vec&lt;u8&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>limit = ADDRESS_SIZE_BYTES + <span class="number">1</span>;
         buffer.extend(<span class="kw-2">&amp;</span>value[..limit]);
-        <span class="kw">if </span>value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
+        <span class="kw">if </span>value[limit - <span class="number">1</span>] == DATASTORE_IDENT {
             <span class="kw">if </span>value.len() &gt; limit {
                 <span class="self">self</span>.vec_u8_serializer
                     .serialize(<span class="kw-2">&amp;</span>value[limit..].to_vec(), buffer)<span class="question-mark">?</span>;
@@ -309,28 +311,28 @@
 </span><span class="kw">impl </span>Deserializer&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>KeyDeserializer {
     <span class="doccomment">/// ## Example
     /// ```
-    /// use massa_models::address::Address;
+    /// use massa_models::address::{AddressSerializer, Address };
     /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
     ///
-    /// let address = Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();
+    /// let address = Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap();
     /// let store_key = Hash::compute_from(b&quot;test&quot;);
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
-    /// key.extend(address.to_bytes());
+    /// key.extend(address.prefixed_bytes());
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(key_deser, key);
+    /// assert_eq!(key_deser, key, &quot;key deser issue&quot;);
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
-    /// key.extend(address.to_bytes());
+    /// key.extend(address.prefixed_bytes());
     /// key.push(BALANCE_IDENT);
     /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
@@ -346,7 +348,9 @@
             buffer,
             nom::error::ErrorKind::Fail,
         ));
-        <span class="kw">match </span>rest.first() {
+        <span class="kw">let </span>ident = rest.first();
+        <span class="macro">dbg!</span>(ident, rest);
+        <span class="kw">match </span>ident {
             <span class="prelude-val">Some</span>(ident) =&gt; <span class="kw">match </span><span class="kw-2">*</span>ident {
                 BALANCE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">balance_key!</span>(address))),
                 BYTECODE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">bytecode_key!</span>(address))),
