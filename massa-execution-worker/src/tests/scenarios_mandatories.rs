@@ -520,7 +520,12 @@ fn sc_deployment() {
     });
 
     // match the events
-    assert_eq!(events.len(), 3, "3 events were expected");
+    if events.len() != 3 {
+        for (i, ev) in events.iter().enumerate() {
+            eprintln!("ev {}: {}", i, ev);
+        }
+        panic!("3 events were expected");
+    }
     assert_eq!(events[0].data, "sc created");
     assert_eq!(events[1].data, "constructor exists and will be called");
     assert_eq!(events[2].data, "constructor called by deployer");
