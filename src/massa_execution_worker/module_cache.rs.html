@@ -57,9 +57,20 @@
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionError;
+<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>massa_sc_runtime::{GasCosts, RuntimeModule};
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
+
+<span class="doccomment">/// `LruMap` specialization for `PreHashed` keys
+</span><span class="kw">pub type </span>PreHashLruMap&lt;K, V&gt; = LruMap&lt;K, V, ByLength, BuildHashMapper&lt;K&gt;&gt;;
 
 <span class="doccomment">/// LRU cache of compiled runtime modules.
 /// The LRU caching scheme is to remove the least recently used module when the cache is full.
@@ -69,14 +80,14 @@
 /// * value.1: instance initialization cost
 </span><span class="kw">pub struct </span>ModuleCache {
     gas_costs: GasCosts,
-    cache: LruMap&lt;Vec&lt;u8&gt;, (RuntimeModule, u64)&gt;,
+    cache: PreHashLruMap&lt;Hash, (RuntimeModule, u64)&gt;,
 }
 
 <span class="kw">impl </span>ModuleCache {
     <span class="kw">pub fn </span>new(gas_costs: GasCosts, cache_size: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             gas_costs,
-            cache: LruMap::new(ByLength::new(cache_size)),
+            cache: LruMap::with_hasher(ByLength::new(cache_size), BuildHashMapper::default()),
         }
     }
 
@@ -92,7 +103,7 @@
         bytecode: <span class="kw-2">&amp;</span>[u8],
         limit: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, ExecutionError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((cached_module, init_cost)) = <span class="self">self</span>.cache.get(bytecode) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((cached_module, init_cost)) = <span class="self">self</span>.cache.get(<span class="kw-2">&amp;</span>Hash::compute_from(bytecode)) {
             <span class="kw">if </span>limit &lt; <span class="kw-2">*</span>init_cost {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
                     <span class="string">&quot;given gas cannot cover the initialization costs&quot;</span>.to_string(),
@@ -113,7 +124,8 @@
 
     <span class="doccomment">/// Save a module in the cache
     </span><span class="kw">pub fn </span>save_module(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], module: RuntimeModule, init_cost: u64) {
-        <span class="self">self</span>.cache.insert(bytecode.to_vec(), (module, init_cost));
+        <span class="self">self</span>.cache
+            .insert(Hash::compute_from(bytecode), (module, init_cost));
     }
 }
 </code></pre></div>
