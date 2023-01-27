@@ -132,17 +132,10 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::export_active_block::{
     ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
 };
+<span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -222,22 +215,13 @@
 <span class="kw">impl </span>BootstrapableGraphDeserializer {
     <span class="doccomment">/// Creates a `BootstrapableGraphDeserializer`
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_bootstrap_blocks: u32,
-        max_operations_per_block: u32,
-    ) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(block_der_args: BlockDeserializerArgs, max_bootstrap_blocks: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             block_count_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(max_bootstrap_blocks),
             ),
-            export_active_block_deserializer: ExportActiveBlockDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_operations_per_block,
-            ),
+            export_active_block_deserializer: ExportActiveBlockDeserializer::new(block_der_args),
         }
     }
 }
