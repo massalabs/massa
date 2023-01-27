@@ -1,6 +1,11 @@
 use massa_execution_exports::ExecutionError;
+use massa_hash::Hash;
+use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use schnellru::{ByLength, LruMap};
+
+/// `LruMap` specialization for `PreHashed` keys
+pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
 
 /// LRU cache of compiled runtime modules.
 /// The LRU caching scheme is to remove the least recently used module when the cache is full.
@@ -10,14 +15,14 @@ use schnellru::{ByLength, LruMap};
 /// * value.1: instance initialization cost
 pub struct ModuleCache {
     gas_costs: GasCosts,
-    cache: LruMap<Vec<u8>, (RuntimeModule, u64)>,
+    cache: PreHashLruMap<Hash, (RuntimeModule, u64)>,
 }
 
 impl ModuleCache {
     pub fn new(gas_costs: GasCosts, cache_size: u32) -> Self {
         Self {
             gas_costs,
-            cache: LruMap::new(ByLength::new(cache_size)),
+            cache: LruMap::with_hasher(ByLength::new(cache_size), BuildHashMapper::default()),
         }
     }
 
@@ -33,7 +38,7 @@ impl ModuleCache {
         bytecode: &[u8],
         limit: u64,
     ) -> Result<RuntimeModule, ExecutionError> {
-        if let Some((cached_module, init_cost)) = self.cache.get(bytecode) {
+        if let Some((cached_module, init_cost)) = self.cache.get(&Hash::compute_from(bytecode)) {
             if limit < *init_cost {
                 return Err(ExecutionError::RuntimeError(
                     "given gas cannot cover the initialization costs".to_string(),
@@ -54,6 +59,7 @@ impl ModuleCache {
 
     /// Save a module in the cache
     pub fn save_module(&mut self, bytecode: &[u8], module: RuntimeModule, init_cost: u64) {
-        self.cache.insert(bytecode.to_vec(), (module, init_cost));
+        self.cache
+            .insert(Hash::compute_from(bytecode), (module, init_cost));
     }
 }
