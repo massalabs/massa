@@ -16,25 +16,29 @@ use std::ops::Bound::Included;
 use std::str::FromStr;
 
 /// Size of a serialized address, in bytes
-pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES + 1;
 
-/// Derived from a public key
+/// In future versions, the SC variant will encode slot, index and is_write directly
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Address {
+    #[allow(missing_docs)]
     User(UserAddress),
+    #[allow(missing_docs)]
     SC(UserAddress),
 }
 
+// TODO: Remove this impl when introducing `SCAddress`
 impl std::ops::Deref for Address {
     type Target = UserAddress;
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Address::User(add) | Address::SC(add) => &add,
+            Address::User(add) | Address::SC(add) => add,
         }
     }
 }
 
+/// Derived from a public key.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserAddress(pub Hash);
 
@@ -126,9 +130,7 @@ impl<'de> ::serde::Deserialize<'de> for Address {
                 where
                     E: ::serde::de::Error,
                 {
-                    Ok(Address::from_unprefixed_bytes(
-                        v.try_into().map_err(E::custom)?,
-                    ))
+                    Ok(Address::from_unprefixed_bytes(v))
                 }
             }
 
@@ -200,6 +202,7 @@ impl PreHashed for Address {}
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
     pub fn get_thread(&self, thread_count: u8) -> u8 {
+        // need to discard the prefix byte
         (self.prefixed_bytes()[1])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
@@ -232,41 +235,6 @@ impl Address {
         v
     }
 
-    /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.into_prefixed_bytes();
-    /// dbg!(&bytes);
-    /// let res_addr = Address::from_prefixed_bytes(&bytes);
-    /// assert_eq!(address, res_addr);
-    /// ```
-    fn into_prefixed_bytes(self) -> Vec<u8> {
-        let pref = match self {
-            Address::User(_) => b'U',
-            Address::SC(_) => b'S',
-        };
-        let mut v = vec![pref];
-        v.extend_from_slice(&self.0.into_bytes());
-        v
-    }
-
-    /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = &address.into_prefixed_bytes()[1..];
-    /// let res_addr = Address::from_unprefixed_bytes(bytes);
-    /// assert_eq!(address, res_addr);
-    /// ```
     fn from_unprefixed_bytes(data: &[u8]) -> Address {
         Address::User(UserAddress(Hash::from_bytes(
             &data[0..32].try_into().unwrap(),
@@ -280,8 +248,8 @@ impl Address {
     /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = &address.into_prefixed_bytes()[1..];
-    /// let res_addr = Address::from_unprefixed_bytes(bytes);
+    /// let bytes = &address.prefixed_bytes();
+    /// let res_addr = Address::from_prefixed_bytes(bytes);
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_prefixed_bytes(data: &[u8]) -> Address {
@@ -339,7 +307,7 @@ impl Deserializer<Address> for AddressDeserializer {
     /// use std::str::FromStr;
     ///
     /// let address = Address::from_str("AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
-    /// let bytes = address.into_prefixed_bytes();
+    /// let bytes = address.prefixed_bytes();
     /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// assert_eq!(rest.len(), 0);

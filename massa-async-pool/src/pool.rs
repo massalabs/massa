@@ -11,7 +11,7 @@ use crate::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerChanges;
-use massa_models::{address::UserAddress, slot::Slot, streaming_step::StreamingStep};
+use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
