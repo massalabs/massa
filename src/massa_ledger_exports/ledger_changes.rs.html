@@ -983,8 +983,6 @@
 <a href="#983" id="983">983</a>
 <a href="#984" id="984">984</a>
 <a href="#985" id="985">985</a>
-<a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file provides structures representing changes to ledger entries
@@ -995,7 +993,7 @@
     SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
-<span class="kw">use </span>massa_models::address::{Address, AddressDeserializer, AddressSerializer};
+<span class="kw">use </span>massa_models::address::{Address, AddressDeserializer};
 <span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
@@ -1320,7 +1318,6 @@
 <span class="doccomment">/// `LedgerChanges` serializer
 </span><span class="kw">pub struct </span>LedgerChangesSerializer {
     u64_serializer: U64VarIntSerializer,
-    address_serializer: AddressSerializer,
     entry_serializer: SetUpdateOrDeleteSerializer&lt;
         LedgerEntry,
         LedgerEntryUpdate,
@@ -1334,7 +1331,6 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u64_serializer: U64VarIntSerializer::new(),
-            address_serializer: AddressSerializer::new(),
             entry_serializer: SetUpdateOrDeleteSerializer::new(
                 LedgerEntrySerializer::new(),
                 LedgerEntryUpdateSerializer::new(),
@@ -1371,7 +1367,7 @@
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&amp;changes, &amp;mut serialized).unwrap();
@@ -1382,7 +1378,7 @@
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(address, data) <span class="kw">in </span>value.<span class="number">0</span>.iter() {
-            <span class="self">self</span>.address_serializer.serialize(address, buffer)<span class="question-mark">?</span>;
+            buffer.extend(address.to_bytes());
             <span class="self">self</span>.entry_serializer.serialize(data, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -1453,7 +1449,7 @@
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&amp;changes, &amp;mut serialized).unwrap();
