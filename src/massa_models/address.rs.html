@@ -351,6 +351,13 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -406,7 +413,7 @@
         u64_serializer
             .serialize(<span class="kw-2">&amp;</span>ADDRESS_VERSION, <span class="kw-2">&amp;mut </span>bytes)
             .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
-        bytes.extend(<span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.to_bytes());
+        bytes.extend(<span class="kw-2">*</span>(<span class="kw-2">*</span><span class="self">self</span>).hash_bytes());
         <span class="macro">write!</span>(
             f,
             <span class="string">&quot;{}{}{}&quot;</span>,
@@ -531,7 +538,7 @@
         <span class="kw">let </span>res = <span class="kw">match </span>pref {
             <span class="string">&#39;U&#39; </span>=&gt; Address::User(res),
             <span class="string">&#39;S&#39; </span>=&gt; Address::SC(res),
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span>err,
         };
         <span class="prelude-val">Ok</span>(res)
     }
@@ -608,14 +615,19 @@
     /// assert_eq!(address, res_addr);
     /// ```
     </span><span class="kw">pub fn </span>from_prefixed_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Address, ModelsError&gt; {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(pref) = data.first() <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::AddressParseError);
+        };
+
         <span class="kw">let </span>hash = Hash::from_bytes(
             <span class="kw-2">&amp;</span>data[<span class="number">1</span>..]
                 .try_into()
                 .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
         );
-        <span class="kw">match </span>data.first() {
-            <span class="prelude-val">Some</span>(<span class="string">b&#39;U&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Address::User(UserAddress(hash))),
-            <span class="prelude-val">Some</span>(<span class="string">b&#39;S&#39;</span>) =&gt; <span class="prelude-val">Ok</span>(Address::SC(UserAddress(hash))),
+
+        <span class="kw">match </span>pref {
+            <span class="string">b&#39;U&#39; </span>=&gt; <span class="prelude-val">Ok</span>(Address::User(UserAddress(hash))),
+            <span class="string">b&#39;S&#39; </span>=&gt; <span class="prelude-val">Ok</span>(Address::SC(UserAddress(hash))),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError),
         }
     }
@@ -681,10 +693,12 @@
         })
         .map(UserAddress)
         .parse(rest)<span class="question-mark">?</span>;
-        <span class="kw">let </span>res = <span class="kw">match </span>pref {
+
+        <span class="comment">// TODO: replace this match statement with idiomatic nom usage
+        </span><span class="kw">let </span>res = <span class="kw">match </span>pref {
             <span class="string">&#39;U&#39; </span>=&gt; Address::User(res),
             <span class="string">&#39;S&#39; </span>=&gt; Address::SC(res),
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;the variant parser only matches on &#39;U&#39; and &#39;S&#39;&quot;</span>),
         };
         <span class="prelude-val">Ok</span>((rest, res))
     }

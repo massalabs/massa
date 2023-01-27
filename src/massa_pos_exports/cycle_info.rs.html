@@ -879,7 +879,7 @@
     );
     <span class="kw">let </span><span class="kw-2">mut </span>bytes = [<span class="number">0</span>; <span class="number">33</span>];
     bytes[<span class="number">0</span>] = <span class="string">b&#39;U&#39;</span>;
-    <span class="kw">let </span>addr = Address::from_prefixed_bytes(<span class="kw-2">&amp;</span>bytes);
+    <span class="kw">let </span>addr = Address::from_prefixed_bytes(<span class="kw-2">&amp;</span>bytes).unwrap();
 
     <span class="comment">// add changes
     </span><span class="kw">let </span><span class="kw-2">mut </span>roll_changes = PreHashMap::default();

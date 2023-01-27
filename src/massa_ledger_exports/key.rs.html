@@ -180,7 +180,6 @@
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -328,7 +327,7 @@
     /// KeySerializer::new().serialize(&amp;key, &amp;mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(key_deser, key, &quot;key deser issue&quot;);
+    /// assert_eq!(key_deser, key);
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
@@ -348,19 +347,18 @@
             buffer,
             nom::error::ErrorKind::Fail,
         ));
-        <span class="kw">let </span>ident = rest.first();
-        <span class="macro">dbg!</span>(ident, rest);
-        <span class="kw">match </span>ident {
-            <span class="prelude-val">Some</span>(ident) =&gt; <span class="kw">match </span><span class="kw-2">*</span>ident {
-                BALANCE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">balance_key!</span>(address))),
-                BYTECODE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">bytecode_key!</span>(address))),
-                DATASTORE_IDENT =&gt; {
-                    <span class="kw">let </span>(rest, hash) = <span class="self">self</span>.datastore_key_deserializer.deserialize(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>((rest, <span class="macro">data_key!</span>(address, hash)))
-                }
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(error),
-            },
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(error),
+        <span class="kw">let </span><span class="prelude-val">Some</span>(ident) = rest.first() <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(error);
+        };
+
+        <span class="kw">match </span><span class="kw-2">*</span>ident {
+            BALANCE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">balance_key!</span>(address))),
+            BYTECODE_IDENT =&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], <span class="macro">bytecode_key!</span>(address))),
+            DATASTORE_IDENT =&gt; {
+                <span class="kw">let </span>(rest, hash) = <span class="self">self</span>.datastore_key_deserializer.deserialize(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>((rest, <span class="macro">data_key!</span>(address, hash)))
+            }
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(error),
         }
     }
 }
