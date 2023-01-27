@@ -43,7 +43,7 @@ impl<T: Serialize> Serialize for PagedVec<T> {
 }
 
 /// Represents the request inputs for a PagedVec
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct PageRequest {
     /// The limit of elements in a page
     pub limit: usize,

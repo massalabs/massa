@@ -2,6 +2,7 @@
 //! Json RPC API for a massa-node
 use std::net::SocketAddr;
 
+use crate::api_request::ApiRequest;
 use crate::api_trait::MassaApiServer;
 use crate::{ApiServer, ApiV2, StopHandle, API};
 use async_trait::async_trait;
@@ -10,7 +11,7 @@ use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
 use massa_api_exports::config::APIConfig;
-use massa_api_exports::page::{PageRequest, PagedVec};
+use massa_api_exports::page::PagedVec;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_models::block_id::BlockId;
 use massa_models::version::Version;
@@ -55,10 +56,13 @@ impl MassaApiServer for API<ApiV2> {
         Ok(self.0.version)
     }
 
-    fn get_best_parents(
-        &self,
-        page_request: Option<PageRequest>,
-    ) -> RpcResult<PagedVec<(BlockId, u64)>> {
+    fn get_best_parents(&self, request: Option<ApiRequest>) -> RpcResult<PagedVec<(BlockId, u64)>> {
+        let page_request = if let Some(request) = request {
+            request.page_request
+        } else {
+            None
+        };
+
         Ok(PagedVec::new(
             self.0.consensus_controller.get_best_parents(),
             page_request,

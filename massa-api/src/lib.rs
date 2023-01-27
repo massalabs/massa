@@ -49,6 +49,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
 mod api;
+mod api_request;
 mod api_trait;
 mod private;
 mod public;
