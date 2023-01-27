@@ -4,7 +4,6 @@ use massa_models::block::BlockDeserializerArgs;
 use massa_models::node::NodeId;
 use massa_time::MassaTime;
 use serde::Deserialize;
-use serde_json::to_value;
 use std::{net::SocketAddr, path::PathBuf};
 
 use substruct::SubStruct;
@@ -151,38 +150,6 @@ pub struct BootstrapClientConfig {
     pub max_ops_changes_length: u64,
 }
 
-/*
-impl From<&BootstrapConfig> for BootstrapClientConfig {
-    fn from(value: &BootstrapConfig) -> Self {
-        Self {
-            max_bytes_read_write: value.max_bytes_read_write,
-            max_bootstrap_message_size: value.max_bootstrap_message_size,
-            endorsement_count: value.endorsement_count,
-            max_advertise_length: value.max_advertise_length,
-            max_bootstrap_blocks_length: value.max_bootstrap_blocks_length,
-            max_operations_per_block: value.max_operations_per_block,
-            thread_count: value.thread_count,
-            randomness_size_bytes: value.randomness_size_bytes,
-            max_bootstrap_error_length: value.max_bootstrap_error_length,
-            max_bootstrap_final_state_parts_size: value.max_bootstrap_final_state_parts_size,
-            max_datastore_entry_count: value.max_datastore_entry_count,
-            max_datastore_key_length: value.max_datastore_key_length,
-            max_datastore_value_length: value.max_datastore_value_length,
-            max_async_pool_changes: value.max_async_pool_changes,
-            max_async_pool_length: value.max_async_pool_length,
-            max_async_message_data: value.max_async_message_data,
-            max_ledger_changes_count: value.max_ledger_changes_count,
-            max_changes_slot_count: value.max_changes_slot_count,
-            max_rolls_length: value.max_rolls_length,
-            max_production_stats_length: value.max_production_stats_length,
-            max_credits_length: value.max_credits_length,
-            max_executed_ops_length: value.max_executed_ops_length,
-            max_ops_changes_length: value.max_ops_changes_length,
-        }
-    }
-}
-*/
-
 ///
 #[derive(SubStruct)]
 #[parent(type = "BootstrapClientConfig")]
@@ -208,35 +175,6 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
 }
-
-/*
-impl From<&BootstrapClientConfig> for BootstrapServerMessageDeserializerArgs {
-    fn from(value: &BootstrapClientConfig) -> Self {
-        Self {
-            thread_count: value.thread_count,
-            endorsement_count: value.endorsement_count,
-            max_advertise_length: value.max_advertise_length,
-            max_bootstrap_blocks: value.max_bootstrap_blocks_length, // FIXME: not the same name
-            max_operations_per_block: value.max_operations_per_block,
-            max_bootstrap_final_state_parts_size: value.max_bootstrap_final_state_parts_size,
-            max_async_pool_changes: value.max_async_pool_changes,
-            max_async_pool_length: value.max_async_pool_length,
-            max_async_message_data: value.max_async_message_data,
-            max_ledger_changes_count: value.max_ledger_changes_count,
-            max_datastore_key_length: value.max_datastore_key_length,
-            max_datastore_value_length: value.max_datastore_value_length,
-            max_datastore_entry_count: value.max_datastore_entry_count,
-            max_bootstrap_error_length: value.max_bootstrap_error_length,
-            max_changes_slot_count: value.max_changes_slot_count,
-            max_rolls_length: value.max_rolls_length,
-            max_production_stats_length: value.max_production_stats_length,
-            max_credits_length: value.max_credits_length,
-            max_executed_ops_length: value.max_executed_ops_length,
-            max_ops_changes_length: value.max_ops_changes_length,
-        }
-    }
-}
-*/
 
 // TODO: add a proc macro for this case
 impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
