@@ -2870,6 +2870,7 @@ dependencies = [
  "serde_json",
  "serial_test 0.10.0",
  "thiserror",
+ "transition",
 ]
 
 [[package]]
@@ -4833,6 +4834,26 @@ dependencies = [
  "thread_local",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "transition"
+version = "0.1.0"
+source = "git+https://github.com/AurelienFT/transition#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
+dependencies = [
+ "transition-macros",
+]
+
+[[package]]
+name = "transition-macros"
+version = "0.1.0"
+source = "git+https://github.com/AurelienFT/transition#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "unsigned-varint",
 ]
 
 [[package]]

@@ -15,4 +15,7 @@ pub enum MassaSignatureError {
 
     /// Wrong prefix for hash: expected {0}, got {1}
     WrongPrefix(String, String),
+
+    /// invalid version identifier: {0}
+    InvalidVersionError(String),
 }

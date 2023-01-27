@@ -7,7 +7,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
 schnorrkel = "0.10.2"
+transition = { git = "https://github.com/AurelienFT/transition" }
+
 bs58 = { version = "0.4", features = ["check"] }
 displaydoc = "0.2"
 ed25519-dalek = { version = "1.0", features = ["batch"] }
