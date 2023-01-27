@@ -1321,9 +1321,10 @@
             "params": [
                 {
                     "schema": {
-                        "$ref": "#/components/schemas/PageRequest"
+                        "$ref": "#/components/schemas/ApiRequest"
                     },
-                    "name": "PageRequest"
+                    "name": "PageRequest",
+                    "description": "Optional api request"
                 }
             ],
             "result": {
@@ -1473,6 +1474,16 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "ApiRequest": {
+                "description": "ApiRequest for apiV2",
+                "type": "object",
+                "properties": {
+                    "page_request": {
+                        "$ref": "#/components/schemas/PageRequest",
+                        "description": "Optional page request"
+                    }
+                }
             },
             "Balance": {
                 "title": "Balance",
