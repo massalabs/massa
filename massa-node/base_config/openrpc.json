@@ -1312,6 +1312,10 @@
                 {
                     "name": "api",
                     "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
                 }
             ],
             "params": [
