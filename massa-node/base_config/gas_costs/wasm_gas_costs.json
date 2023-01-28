@@ -1,13 +1,13 @@
 {
   "Wasm:Drop": 0,
-  "Wasm:GlobalGet": 284,
+  "Wasm:GlobalGet": 4,
   "Wasm:GlobalSet": 0,
-  "Wasm:I32Add": 33,
+  "Wasm:I32Add": 126,
   "Wasm:I32Const": 0,
-  "Wasm:I32DivS": 366,
-  "Wasm:I32Mul": 0,
-  "Wasm:I32Sub": 311,
-  "Wasm:If": 89,
+  "Wasm:I32DivS": 46,
+  "Wasm:I32Mul": 11,
+  "Wasm:I32Sub": 22,
+  "Wasm:If": 48,
   "Wasm:LocalGet": 0,
   "Wasm:LocalSet": 0
 }
