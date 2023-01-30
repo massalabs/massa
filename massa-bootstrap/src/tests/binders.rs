@@ -17,7 +17,6 @@ use massa_models::config::{
     MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
     MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
 };
-use massa_models::endorsement::Endorsement;
 use massa_models::node::NodeId;
 use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
