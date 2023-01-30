@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 
 /// address related structures
 pub mod address;
+/// api params request
+pub mod api_request;
 /// block-related structures
 pub mod block;
 /// node configuration

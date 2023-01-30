@@ -1,8 +1,8 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Json RPC API for a massa-node
-use crate::api_request::ApiRequest;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use massa_api_exports::api_request::ApiRequest;
 use massa_api_exports::page::PagedVec;
 use massa_models::block_id::BlockId;
 use massa_models::version::Version;
@@ -15,8 +15,11 @@ pub trait MassaApi {
     async fn get_version(&self) -> RpcResult<Version>;
 
     /// Get the ids of best parents for the next block to be produced along with their period
-    #[method(name = "get_best_parents")]
-    fn get_best_parents(&self, request: Option<ApiRequest>) -> RpcResult<PagedVec<(BlockId, u64)>>;
+    #[method(name = "get_next_block_best_parents")]
+    fn get_next_block_best_parents(
+        &self,
+        request: Option<ApiRequest>,
+    ) -> RpcResult<PagedVec<(BlockId, u64)>>;
 
     /// New produced block.
     #[subscription(

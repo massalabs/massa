@@ -1336,7 +1336,7 @@
                 },
                 "name": "best parents"
             },
-            "name": "get_best_parents",
+            "name": "get_next_block_best_parents",
             "summary": "Get best parents",
             "description": "Returns the ids of best parents for the next block to be produced along with their period"
         }
