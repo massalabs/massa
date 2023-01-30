@@ -293,16 +293,11 @@ impl Serializer<Address> for AddressSerializer {
 
 /// Deserializer for `Address`
 #[derive(Default, Clone)]
-pub struct AddressDeserializer {
-    hash_deserializer: HashDeserializer,
-}
-
+pub struct AddressDeserializer;
 impl AddressDeserializer {
     /// Creates a new deserializer for `Address`
     pub const fn new() -> Self {
-        Self {
-            hash_deserializer: HashDeserializer::new(),
-        }
+        Self
     }
 }
 
@@ -323,20 +318,7 @@ impl Deserializer<Address> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
-        let (rest, pref) = context("Address Veriant", alt((char('U'), char('S')))).parse(buffer)?;
-        let (rest, res) = context("Failed Address deserialization", |input| {
-            self.hash_deserializer.deserialize(input)
-        })
-        .map(UserAddress)
-        .parse(rest)?;
-
-        // TODO: replace this match statement with idiomatic nom usage
-        let res = match pref {
-            'U' => Address::User(res),
-            'S' => Address::SC(res),
-            _ => unreachable!("the variant parser only matches on 'U' and 'S'"),
-        };
-        Ok((rest, res))
+        context("Address Variant", alt((user_parser, sc_parser))).parse(buffer)
     }
 }
 
@@ -346,7 +328,7 @@ fn user_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
 ) -> IResult<&'a [u8], Address, E> {
     context(
         "Failed after matching on 'U' Prefix",
-        preceded(char('U'), |input| {
+        preceded(char(USER_PREFIX), |input| {
             HashDeserializer::new().deserialize(input)
         }),
     )
@@ -359,7 +341,7 @@ fn sc_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
 ) -> IResult<&'a [u8], Address, E> {
     context(
         "Failed after matching on 'S' Prefix",
-        preceded(char('S'), |input| {
+        preceded(char(SC_PREFIX), |input| {
             HashDeserializer::new().deserialize(input)
         }),
     )
