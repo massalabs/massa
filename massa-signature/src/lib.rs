@@ -7,14 +7,14 @@ mod error;
 mod signature_impl;
 
 #[macro_use]
-mod multi_v2;
+mod multi;
 
 pub use error::MassaSignatureError;
 /*pub use signature_impl::{
     verify_signature_batch, KeyPair, PublicKey, PublicKeyDeserializer, Signature,
     SignatureDeserializer, PUBLIC_KEY_SIZE_BYTES, SECRET_KEY_BYTES_SIZE, SIGNATURE_SIZE_BYTES,
 };*/
-pub use multi_v2::{
+pub use multi::{
     verify_signature_batch, KeyPair, PublicKey, PublicKeyDeserializer, Signature,
     SignatureDeserializer,
 };
