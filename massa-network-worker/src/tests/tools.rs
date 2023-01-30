@@ -82,7 +82,7 @@ pub async fn full_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(1).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
@@ -141,7 +141,7 @@ pub async fn rejected_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake and ignore errors
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(1).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
     let result = HandshakeWorker::spawn(
         mock_read_half,
@@ -226,7 +226,7 @@ pub async fn full_connection_from_controller(
     resp_tx.send(true).expect("resp_tx failed");
 
     // perform handshake
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(1).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
@@ -325,9 +325,9 @@ pub async fn incoming_message_drain_stop(
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
-    let sender_keypair = KeyPair::generate();
+    let sender_keypair = KeyPair::generate(1).unwrap();
 
-    let recv_keypair = KeyPair::generate();
+    let recv_keypair = KeyPair::generate(1).unwrap();
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),

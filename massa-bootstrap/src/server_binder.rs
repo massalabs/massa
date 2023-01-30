@@ -120,7 +120,7 @@ impl BootstrapServerBinder {
         };
 
         // send signature
-        self.duplex.write_all(&sig.to_bytes()).await?;
+        self.duplex.write_all(&sig.into_bytes()).await?;
 
         // send message length
         {
@@ -132,7 +132,7 @@ impl BootstrapServerBinder {
         self.duplex.write_all(&msg_bytes).await?;
 
         // save prev sig
-        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
+        self.prev_message = Some(Hash::compute_from(&sig.into_bytes()));
 
         Ok(())
     }

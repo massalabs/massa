@@ -96,7 +96,7 @@ impl FromStr for KeyPair {
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
                 match version {
-                    <KeyPair!["1"]>::VERSION => Ok(KeyPairVariant!["1"](
+                    <KeyPair!["1"]>::VERSION | 0 => Ok(KeyPairVariant!["1"](
                         <KeyPair!["1"]>::from_bytes(rest.try_into().map_err(|_| {
                             MassaSignatureError::ParsingError(format!(
                                 "secret key not long enough for: {}",
@@ -201,8 +201,8 @@ impl KeyPair {
                     ))
                 })?,
             )?)),
-            _ => Err(MassaSignatureError::InvalidVersionError(String::from(
-                "Unknown keypair version",
+            _ => Err(MassaSignatureError::InvalidVersionError(format!(
+                "Unknown keypair version: {}", version
             ))),
         }
     }
@@ -761,7 +761,7 @@ impl PublicKey {
             <PublicKey!["1"]>::VERSION => Ok(PublicKeyVariant!["1"](
                 <PublicKey!["1"]>::from_bytes(rest.try_into().map_err(|err| {
                     MassaSignatureError::ParsingError(format!(
-                        "keypair bytes parsing error: {}",
+                        "pubkey bytes parsing error: {}",
                         err
                     ))
                 })?)?,
@@ -769,14 +769,22 @@ impl PublicKey {
             <PublicKey!["2"]>::VERSION => Ok(PublicKeyVariant!["2"](
                 <PublicKey!["2"]>::from_bytes(rest.try_into().map_err(|err| {
                     MassaSignatureError::ParsingError(format!(
-                        "keypair bytes parsing error: {}",
+                        "pubkey bytes parsing error: {}",
                         err
                     ))
                 })?)?,
             )),
-            _ => Err(MassaSignatureError::InvalidVersionError(String::from(
-                "Unknown keypair version",
-            ))),
+            _ => Ok(PublicKeyVariant!["1"](
+                <PublicKey!["1"]>::from_bytes(data.try_into().map_err(|err| {
+                    MassaSignatureError::ParsingError(format!(
+                        "pubkey bytes parsing error: {}",
+                        err
+                    ))
+                })?)?,
+            )),
+           /*_ => Err(MassaSignatureError::InvalidVersionError(format!(
+                "Unknown PublicKey version: {}", version
+            ))),*/
         }
     }
 }
@@ -793,9 +801,9 @@ impl PublicKey {
     /// ```
     pub fn to_bytes(&self) -> Vec<u8> {
         let version_serializer = U64VarIntSerializer::new();
-        let mut bytes: Vec<u8> = Vec::new();
+        let mut bytes: Vec<u8> = Vec::with_capacity(Self::VERSION_VARINT_SIZE_BYTES + Self::PUBLIC_KEY_SIZE_BYTES);
         version_serializer.serialize(&Self::VERSION, &mut bytes);
-        bytes[Self::VERSION_VARINT_SIZE_BYTES..].copy_from_slice(&self.a.to_bytes());
+        bytes.extend_from_slice(&self.a.to_bytes());
         bytes
     }
 }
@@ -1102,8 +1110,8 @@ impl FromStr for Signature {
                     ))
                 })?)?,
             )),
-            _ => Err(MassaSignatureError::InvalidVersionError(String::from(
-                "Unknown signature version",
+            _ => Err(MassaSignatureError::InvalidVersionError(format!(
+                "Unknown signature version: {}", version
             ))),
         }
     }
@@ -1128,6 +1136,33 @@ impl Signature {
             Signature::SignatureV1(signature) => signature.to_bs58_check(),
             Signature::SignatureV2(signature) => signature.to_bs58_check(),
         }
+    }
+
+    /// Deserialize a `Signature` using `bs58` encoding with checksum.
+    ///
+    /// # Example
+    ///  ```
+    /// # use massa_signature::{KeyPair, Signature};
+    /// # use massa_hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
+    /// let signature = keypair.sign(&data).unwrap();
+    ///
+    /// let serialized: String = signature.to_bs58_check();
+    /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
+    /// ```
+    pub fn from_bs58_check(data: &str) -> Result<Signature, MassaSignatureError> {
+        bs58::decode(data)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| {
+                MassaSignatureError::ParsingError(format!(
+                    "signature bs58_check parsing error: {}",
+                    err
+                ))
+            })
+            .and_then(|signature| Signature::from_bytes(signature.as_slice()))
     }
 
     /// Serialize a Signature into bytes.
@@ -1186,8 +1221,8 @@ impl Signature {
                     ))
                 })?)?,
             )),
-            _ => Err(MassaSignatureError::InvalidVersionError(String::from(
-                "Unknown signature version",
+            _ => Err(MassaSignatureError::InvalidVersionError(format!(
+                "Unknown signature version: {}", version
             ))),
         }
     }
@@ -1479,6 +1514,72 @@ impl Deserializer<Signature> for SignatureDeserializer {
         })?;
         // Safe because the signature deserialization success
         Ok((&buffer[SIGNATURE_SIZE_BYTES..], signature))
+    }
+}
+
+pub fn verify_signature_batch(
+    batch: &[(Hash, Signature, PublicKey)],
+) -> Result<(), MassaSignatureError> {
+    //nothing to verify
+    if batch.is_empty() {
+        return Ok(());
+    }
+
+    // normal verif is fastest for size 1 batches
+    if batch.len() == 1 {
+        let (hash, signature, public_key) = batch[0];
+        return public_key.verify_signature(&hash, &signature);
+    }
+
+    // otherwise, use batch verif.
+    match batch[0] {
+        (_hash, Signature::SignatureV1(_sig), PublicKey::PublicKeyV1(_pubkey)) => {
+            let mut hashes = Vec::with_capacity(batch.len());
+            let mut signatures = Vec::with_capacity(batch.len());
+            let mut public_keys = Vec::with_capacity(batch.len());
+            batch.iter().for_each(|(hash, signature, public_key)| {
+                match (&signature, &public_key) {
+                    (Signature::SignatureV1(sig), PublicKey::PublicKeyV1(pubkey)) => {
+                        hashes.push(hash.to_bytes().as_slice());
+                        signatures.push(sig.a);
+                        public_keys.push(pubkey.a);
+                    }
+                    _ => {}
+                }
+            });
+            ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice())
+                .map_err(|err| {
+                    MassaSignatureError::SignatureError(format!(
+                        "Batch signature verification failed: {}",
+                        err
+                    ))
+                })
+        }
+        (_hash, Signature::SignatureV2(_sig), PublicKey::PublicKeyV2(_pubkey)) => {
+            let mut ts = Vec::with_capacity(batch.len());
+            let mut signatures = Vec::with_capacity(batch.len());
+            let mut public_keys = Vec::with_capacity(batch.len());
+            batch.iter().for_each(|(hash, signature, public_key)| {
+                match (&signature, &public_key) {
+                    (Signature::SignatureV2(sig), PublicKey::PublicKeyV2(pubkey)) => {
+                        ts.push(schnorrkel::signing_context(b"massa_sign").bytes(hash.to_bytes()));
+                        signatures.push(sig.a);
+                        public_keys.push(pubkey.a);
+                    }
+                    _ => {}
+                }
+            });
+            schnorrkel::verify_batch(ts, signatures.as_slice(), public_keys.as_slice(), false)
+                .map_err(|err| {
+                    MassaSignatureError::SignatureError(format!(
+                        "Batch signature verification failed: {}",
+                        err
+                    ))
+                })
+        }
+        _ => Err(MassaSignatureError::InvalidVersionError(String::from(
+            "Batch contains incompatible versions",
+        ))),
     }
 }
 

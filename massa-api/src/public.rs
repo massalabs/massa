@@ -137,7 +137,7 @@ impl MassaRpcServer for API<Public> {
         {
             let address = address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate().get_public_key())
+                Address::from_public_key(&KeyPair::generate(1).unwrap().get_public_key())
             });
 
             let op_datastore = match operation_datastore {
@@ -225,7 +225,7 @@ impl MassaRpcServer for API<Public> {
         {
             let caller_address = caller_address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate().get_public_key())
+                Address::from_public_key(&KeyPair::generate(1).unwrap().get_public_key())
             });
 
             // TODO:
@@ -884,7 +884,7 @@ impl MassaRpcServer for API<Public> {
             .into_iter()
             .map(|op_input| {
                 let mut op_serialized = Vec::new();
-                op_serialized.extend(op_input.signature.to_bytes());
+                op_serialized.extend(op_input.signature.into_bytes());
                 op_serialized.extend(op_input.creator_public_key.to_bytes());
                 op_serialized.extend(op_input.serialized_content);
                 let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer

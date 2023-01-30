@@ -300,7 +300,7 @@ impl Serializer<Operation> for OperationSerializer {
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
@@ -365,7 +365,7 @@ impl Deserializer<Operation> for OperationDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
@@ -551,7 +551,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
@@ -675,7 +675,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
@@ -1155,7 +1155,7 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
@@ -1228,7 +1228,7 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
@@ -1286,8 +1286,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_transaction() {
-        let sender_keypair = KeyPair::generate();
-        let recv_keypair = KeyPair::generate();
+        let sender_keypair = KeyPair::generate(1).unwrap();
+        let recv_keypair = KeyPair::generate(1).unwrap();
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
@@ -1359,7 +1359,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_executesc() {
-        let sender_keypair = KeyPair::generate();
+        let sender_keypair = KeyPair::generate(1).unwrap();
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
@@ -1433,9 +1433,9 @@ mod tests {
     #[test]
     #[serial]
     fn test_callsc() {
-        let sender_keypair = KeyPair::generate();
+        let sender_keypair = KeyPair::generate(1).unwrap();
 
-        let target_keypair = KeyPair::generate();
+        let target_keypair = KeyPair::generate(1).unwrap();
         let target_addr = Address::from_public_key(&target_keypair.get_public_key());
 
         let op = OperationType::CallSC {

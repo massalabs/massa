@@ -111,7 +111,7 @@ impl KeyPair {
     ///  ```
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -128,7 +128,7 @@ impl KeyPair {
     ///  ```
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     /// ```
@@ -144,7 +144,7 @@ impl KeyPair {
     /// # Example
     /// ```
     /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let bytes = keypair.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; SECRET_KEY_BYTES_SIZE] {
@@ -156,7 +156,7 @@ impl KeyPair {
     /// # Example
     /// ```
     /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let bytes = keypair.into_bytes();
     /// ```
     pub fn into_bytes(&self) -> [u8; SECRET_KEY_BYTES_SIZE] {
@@ -168,7 +168,7 @@ impl KeyPair {
     /// # Example
     /// ```
     /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let bytes = keypair.into_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
@@ -187,7 +187,7 @@ impl KeyPair {
     /// # Example
     /// ```
     /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let public_key = keypair.get_public_key();
     /// ```
     pub fn get_public_key(&self) -> PublicKey {
@@ -207,7 +207,7 @@ impl ::serde::Serialize for KeyPair {
     /// ```
     /// # use massa_signature::KeyPair;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let serialized: String = serde_json::to_string(&keypair).unwrap();
     /// ```
     ///
@@ -232,7 +232,7 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
     /// ```
     /// # use massa_signature::KeyPair;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let serialized = serde_json::to_string(&keypair).unwrap();
     /// let deserialized: KeyPair = serde_json::from_str(&serialized).unwrap();
     /// ```
@@ -431,7 +431,7 @@ impl PublicKey {
     ///  ```
     /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     ///
     /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
@@ -445,7 +445,7 @@ impl PublicKey {
     ///  ```
     /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     ///
     /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
@@ -459,7 +459,7 @@ impl PublicKey {
     ///  ```
     /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     ///
     /// let serialized = keypair.get_public_key().into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
@@ -490,7 +490,7 @@ impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// use massa_serialization::{DeserializeError, Deserializer};
     /// use massa_hash::Hash;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let public_key = keypair.get_public_key();
     /// let serialized = public_key.to_bytes();
     /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(serialized).unwrap();
@@ -538,7 +538,7 @@ impl ::serde::Serialize for PublicKey {
     /// ```
     /// # use massa_signature::KeyPair;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let serialized: String = serde_json::to_string(&keypair.get_public_key()).unwrap();
     /// ```
     ///
@@ -559,7 +559,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     /// ```
     /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     ///
     /// let serialized = serde_json::to_string(&keypair.get_public_key()).unwrap();
     /// let deserialized: PublicKey = serde_json::from_str(&serialized).unwrap();
@@ -622,7 +622,7 @@ impl Signature {
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -639,7 +639,7 @@ impl Signature {
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -656,7 +656,7 @@ impl Signature {
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -673,7 +673,7 @@ impl Signature {
     /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -707,7 +707,7 @@ impl Signature {
     /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -736,7 +736,7 @@ impl ::serde::Serialize for Signature {
     /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -765,7 +765,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     ///
@@ -843,7 +843,7 @@ impl Deserializer<Signature> for SignatureDeserializer {
     /// use massa_serialization::{DeserializeError, Deserializer};
     /// use massa_hash::Hash;
     ///
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(1).unwrap();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&data).unwrap();
     /// let serialized = signature.into_bytes();
@@ -919,7 +919,7 @@ pub fn verify_signature_batch(
 
 pub fn multi_signature() {
 
-    let keypairs: Vec<KeyPair> = (0..16).map(|_| KeyPair::generate()).collect();
+    let keypairs: Vec<KeyPair> = (0..16).map(|_| KeyPair::generate(1).unwrap()).collect();
     /*
     let t = schnorrkel::signing_context(b"multi-sig").bytes(b"We are legion!");
 
@@ -978,7 +978,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_example() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(1).unwrap();
         let message = "Hello World!".as_bytes();
         let hash = Hash::compute_from(message);
         let signature = keypair.sign(&hash).unwrap();
@@ -991,7 +991,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_serde_keypair() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(1).unwrap();
         let serialized = serde_json::to_string(&keypair).expect("could not serialize keypair");
         let deserialized: KeyPair =
             serde_json::from_str(&serialized).expect("could not deserialize keypair");
@@ -1001,7 +1001,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_serde_public_key() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(1).unwrap();
         let public_key = keypair.get_public_key();
         let serialized =
             serde_json::to_string(&public_key).expect("Could not serialize public key");
@@ -1013,7 +1013,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_serde_signature() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(1).unwrap();
         let message = "Hello World!".as_bytes();
         let hash = Hash::compute_from(message);
         let signature = keypair.sign(&hash).unwrap();

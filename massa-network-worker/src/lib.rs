@@ -73,7 +73,7 @@ pub async fn start_network_controller(
         serde_json::from_slice::<KeyPair>(keypair_bs58_check_encoded.as_bytes())?
     } else {
         // node file does not exist: generate the key and save it
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(1).unwrap();
         if let Err(e) = tokio::fs::write(
             &network_settings.keypair_file,
             serde_json::to_string(&keypair)?,

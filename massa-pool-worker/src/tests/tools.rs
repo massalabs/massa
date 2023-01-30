@@ -27,7 +27,7 @@ pub fn create_operation_with_expire_period(
     keypair: &KeyPair,
     expire_period: u64,
 ) -> SecureShareOperation {
-    let recv_keypair = KeyPair::generate();
+    let recv_keypair = KeyPair::generate(1).unwrap();
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
@@ -93,10 +93,12 @@ where
 }
 
 pub fn _get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
-    let sender_keypair = KeyPair::generate();
+    let sender_keypair = KeyPair::generate(1).unwrap();
 
     let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&KeyPair::generate().get_public_key()),
+        recipient_address: Address::from_public_key(
+            &KeyPair::generate(1).unwrap().get_public_key(),
+        ),
         amount: Amount::default(),
     };
     let content = Operation {
@@ -109,7 +111,7 @@ pub fn _get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
 
 /// Creates an endorsement for use in pool tests.
 pub fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
-    let sender_keypair = KeyPair::generate();
+    let sender_keypair = KeyPair::generate(1).unwrap();
 
     let content = Endorsement {
         slot,

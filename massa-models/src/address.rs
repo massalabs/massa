@@ -120,7 +120,7 @@ impl FromStr for Address {
     /// # use serde::{Deserialize, Serialize};
     /// # use std::str::FromStr;
     /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_string();
     /// let res_addr = Address::from_str(&ser).unwrap();
@@ -153,7 +153,7 @@ impl FromStr for Address {
 fn test_address_str_format() {
     use massa_signature::KeyPair;
 
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(1).unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
@@ -172,7 +172,7 @@ impl Address {
 
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address(Hash::compute_from(public_key.to_bytes()))
+        Address(Hash::compute_from(&public_key.to_bytes()))
     }
 
     /// ## Example
@@ -181,7 +181,7 @@ impl Address {
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
@@ -197,7 +197,7 @@ impl Address {
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
@@ -213,7 +213,7 @@ impl Address {
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes);

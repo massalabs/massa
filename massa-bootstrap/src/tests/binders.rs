@@ -24,7 +24,7 @@ use tokio::io::duplex;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(1).unwrap();
         (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };
 }

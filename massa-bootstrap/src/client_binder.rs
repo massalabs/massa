@@ -12,7 +12,7 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
+use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES_V1};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -141,7 +141,7 @@ impl BootstrapClientBinder {
     pub async fn next(&mut self) -> Result<BootstrapServerMessage, BootstrapError> {
         // read signature
         let sig = {
-            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
+            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES_V1];
             self.duplex.read_exact(&mut sig_bytes).await?;
             Signature::from_bytes(&sig_bytes)?
         };
@@ -178,7 +178,7 @@ impl BootstrapClientBinder {
         );
         let message = {
             if let Some(prev_message) = self.prev_message {
-                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
+                self.prev_message = Some(Hash::compute_from(&sig.into_bytes()));
                 let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
                 sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
                 self.duplex
@@ -191,7 +191,7 @@ impl BootstrapClientBinder {
                     .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
                 msg
             } else {
-                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
+                self.prev_message = Some(Hash::compute_from(&sig.into_bytes()));
                 let mut sig_msg_bytes = vec![0u8; msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
