@@ -10,6 +10,7 @@ use massa_signature::PublicKey;
 use nom::branch::alt;
 use nom::character::complete::char;
 use nom::error::{context, ContextError, ParseError};
+use nom::sequence::preceded;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
@@ -43,6 +44,10 @@ impl std::ops::Deref for Address {
 pub struct UserAddress(pub Hash);
 
 const ADDRESS_PREFIX: char = 'A';
+// must be u8 castable
+const USER_PREFIX: char = 'U';
+// must be u8 castable
+const SC_PREFIX: char = 'S';
 const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
@@ -59,8 +64,8 @@ impl std::fmt::Display for Address {
             "{}{}{}",
             ADDRESS_PREFIX,
             match self {
-                Address::User(_) => 'U',
-                Address::SC(_) => 'S',
+                Address::User(_) => USER_PREFIX,
+                Address::SC(_) => SC_PREFIX,
             },
             bs58::encode(bytes).with_check().into_string()
         )
@@ -157,7 +162,7 @@ impl FromStr for Address {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let err = Err(ModelsError::AddressParseError);
         let mut chars = s.chars();
-        let Some('A') = chars.next() else {
+        let Some(ADDRESS_PREFIX) = chars.next() else {
             return err;
         };
         let Some(pref) = chars.next() else {
@@ -178,23 +183,12 @@ impl FromStr for Address {
                 .map_err(|_| ModelsError::AddressParseError)?,
         ));
         let res = match pref {
-            'U' => Address::User(res),
-            'S' => Address::SC(res),
+            USER_PREFIX => Address::User(res),
+            SC_PREFIX => Address::SC(res),
             _ => return err,
         };
         Ok(res)
     }
-}
-
-#[test]
-fn test_address_str_format() {
-    use massa_signature::KeyPair;
-
-    let keypair = KeyPair::generate();
-    let address = Address::from_public_key(&keypair.get_public_key());
-    let a = address.to_string();
-    let b = Address::from_str(&a).unwrap();
-    assert_eq!(address, b);
 }
 
 impl PreHashed for Address {}
@@ -230,8 +224,8 @@ impl Address {
     /// ```
     pub fn prefixed_bytes(&self) -> Vec<u8> {
         let pref = match self {
-            Address::User(_) => b'U',
-            Address::SC(_) => b'S',
+            Address::User(_) => USER_PREFIX as u8,
+            Address::SC(_) => SC_PREFIX as u8,
         };
         [&[pref][..], &self.hash_bytes()[..]].concat().to_vec()
     }
@@ -346,6 +340,32 @@ impl Deserializer<Address> for AddressDeserializer {
     }
 }
 
+// used to make the `alt(...)` more readable
+fn user_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], Address, E> {
+    context(
+        "Failed after matching on 'U' Prefix",
+        preceded(char('U'), |input| {
+            HashDeserializer::new().deserialize(input)
+        }),
+    )
+    .map(|hash| Address::User(UserAddress(hash)))
+    .parse(input)
+}
+// used to make the `alt(...)` more readable. Will be usefull when the SCAddress will be deserialised differently
+fn sc_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], Address, E> {
+    context(
+        "Failed after matching on 'S' Prefix",
+        preceded(char('S'), |input| {
+            HashDeserializer::new().deserialize(input)
+        }),
+    )
+    .map(|inner| Address::SC(UserAddress(inner)))
+    .parse(input)
+}
 /// Info for a given address on a given cycle
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecutionAddressCycleInfo {
@@ -359,4 +379,36 @@ pub struct ExecutionAddressCycleInfo {
     pub nok_count: u64,
     /// number of active rolls the address had at that cycle (if still available)
     pub active_rolls: Option<u64>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_address_str_format() {
+        use massa_signature::KeyPair;
+
+        let keypair = KeyPair::generate();
+        let address = Address::from_public_key(&keypair.get_public_key());
+        let a = address.to_string();
+        let b = Address::from_str(&a).unwrap();
+        assert_eq!(address, b);
+    }
+
+    #[test]
+    fn prefix_loop() {
+        assert_eq!(
+            ADDRESS_PREFIX as u8 as char, ADDRESS_PREFIX,
+            "info loss on prefix casting"
+        );
+        assert_eq!(
+            USER_PREFIX as u8 as char, USER_PREFIX,
+            "info loss on prefix casting"
+        );
+        assert_eq!(
+            SC_PREFIX as u8 as char, SC_PREFIX,
+            "info loss on prefix casting"
+        );
+    }
 }
