@@ -452,7 +452,7 @@
         u64_serializer
             .serialize(<span class="kw-2">&amp;</span>ADDRESS_VERSION, <span class="kw-2">&amp;mut </span>bytes)
             .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
-        bytes.extend(<span class="kw-2">*</span>(<span class="kw-2">*</span><span class="self">self</span>).hash_bytes());
+        bytes.extend(<span class="self">self</span>.hash_bytes());
         <span class="macro">write!</span>(
             f,
             <span class="string">&quot;{}{}{}&quot;</span>,
