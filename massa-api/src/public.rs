@@ -390,21 +390,23 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::TimeError(e).into()),
         };
 
-        let previous_cycle = current_cycle.saturating_sub(1);
-
-        let elapsed_time_before_current_cycle = match if previous_cycle == 0 {
-            Ok(MassaTime::from(0))
+        let current_cycle_time_result = if current_cycle == 0 {
+            Ok(api_settings.genesis_timestamp)
         } else {
-            cycle_duration.checked_mul(previous_cycle)
-        } {
-            Ok(elapsed_time_before_current_cycle) => elapsed_time_before_current_cycle,
-            Err(e) => return Err(ApiError::TimeError(e).into()),
+            let previous_cycle = current_cycle.saturating_sub(1);
+            if previous_cycle == 0 {
+                Ok(cycle_duration)
+            } else {
+                cycle_duration.checked_mul(previous_cycle)
+            }
+            .and_then(|elapsed_time_before_current_cycle| {
+                api_settings
+                    .genesis_timestamp
+                    .checked_add(elapsed_time_before_current_cycle)
+            })
         };
 
-        let current_cycle_time = match api_settings
-            .genesis_timestamp
-            .checked_add(elapsed_time_before_current_cycle)
-        {
+        let current_cycle_time = match current_cycle_time_result {
             Ok(current_cycle_time) => current_cycle_time,
             Err(e) => return Err(ApiError::TimeError(e).into()),
         };
