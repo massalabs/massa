@@ -9,11 +9,10 @@
 
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
+use crate::page::PageRequest;
 
 /// address related structures
 pub mod address;
-/// api params request
-pub mod api_request;
 /// block-related structures
 pub mod block;
 /// node configuration
@@ -82,3 +81,11 @@ pub enum ListType {
     /// contains allowed entry
     Whitelist,
 }
+
+/// Wrap request params into struct for ApiV2 method
+#[derive(Deserialize, Serialize)]
+pub struct ApiRequest {
+    /// pagination
+    pub page_request: Option<PageRequest>,
+}
+
