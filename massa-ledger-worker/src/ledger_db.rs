@@ -2,11 +2,7 @@
 
 //! Module to interact with the disk ledger
 
-mod constants;
-use constants::*;
-mod helpers;
-
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::{
     address::{Address, ADDRESS_SIZE_BYTES},
@@ -34,6 +30,17 @@ use std::{
 
 #[cfg(feature = "testing")]
 use massa_models::amount::{Amount, AmountDeserializer};
+
+pub const LEDGER_CF: &str = "ledger";
+pub const METADATA_CF: &str = "metadata";
+pub const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
+pub const CF_ERROR: &str = "critical: rocksdb column family operation failed";
+pub const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
+pub const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
+pub const SLOT_KEY: &[u8; 1] = b"s";
+pub const LEDGER_HASH_KEY: &[u8; 1] = b"h";
+pub const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -231,9 +238,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        opt.set_iterate_range(
-            data_prefix!(addr).clone()..helpers::end_prefix(data_prefix!(addr)).unwrap(),
-        );
+        opt.set_iterate_range(data_prefix!(addr).clone()..end_prefix(data_prefix!(addr)).unwrap());
 
         let mut iter = self
             .db
@@ -242,6 +247,7 @@ impl LedgerDB {
             .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
             .peekable();
 
+        // Return None if emtpty
         iter.peek()?;
         Some(iter.collect())
     }
@@ -513,7 +519,7 @@ impl LedgerDB {
 
         // datastore
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(helpers::end_prefix(data_prefix!(addr)).unwrap());
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
         for (key, _) in self
             .db
             .iterator_cf_opt(
@@ -580,7 +586,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(helpers::end_prefix(data_prefix!(addr)).unwrap());
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
         self.db
             .iterator_cf_opt(
@@ -596,6 +602,23 @@ impl LedgerDB {
                 )
             })
             .collect()
+    }
+}
+
+/// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
+/// This assumes the key bytes are ordered in lexicographical order.
+/// Since key length is not limited, for some case we return `None` because there is
+/// no bounded limit (every keys in the series `[]`, `[255]`, `[255, 255]` ...).
+fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
+    let mut end_range = prefix.to_vec();
+    while let Some(0xff) = end_range.last() {
+        end_range.pop();
+    }
+    if let Some(byte) = end_range.last_mut() {
+        *byte += 1;
+        Some(end_range)
+    } else {
+        None
     }
 }
 
@@ -694,5 +717,11 @@ mod tests {
         let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(StreamingStep::Started).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
+    }
+
+    #[test]
+    fn test_end_prefix() {
+        assert_eq!(end_prefix(&[5, 6, 7]), Some(vec![5, 6, 8]));
+        assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
     }
 }
