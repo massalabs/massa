@@ -24,11 +24,9 @@ use std::{convert::TryInto, str::FromStr};
 
 use transition::Versioned;
 
-
 // TODO : REMOVE THESE DECLARATIONS AND HANDLE ERRORS!
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
 pub const SIGNATURE_SIZE_BYTES: usize = 32;
-
 
 #[transition::versioned(versions("1", "2"))]
 pub struct KeyPair {
@@ -47,8 +45,8 @@ impl KeyPair {
 
 #[transition::impl_version(versions("2"), structures("KeyPair"))]
 impl KeyPair {
-        /// Size of a keypair
-        pub const SECRET_KEY_BYTES_SIZE: usize = schnorrkel::SECRET_KEY_LENGTH;
+    /// Size of a keypair
+    pub const SECRET_KEY_BYTES_SIZE: usize = schnorrkel::SECRET_KEY_LENGTH;
 }
 
 impl Clone for KeyPair {
@@ -167,7 +165,7 @@ impl KeyPair {
         }
     }
 
-    pub fn to_bytes(&self) -> &[u8] {
+    pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             KeyPair::KeyPairV1(keypair) => keypair.to_bytes(),
             KeyPair::KeyPairV2(keypair) => keypair.to_bytes(),
@@ -218,7 +216,7 @@ impl Clone for KeyPair {
                 // This will never error since self is a valid keypair
                 secret: ed25519_dalek::SecretKey::from_bytes(self.a.secret.as_bytes()).unwrap(),
                 public: self.a.public,
-            }
+            },
         }
     }
 }
@@ -231,7 +229,7 @@ impl Clone for KeyPair {
                 // This will never error since self is a valid keypair
                 secret: schnorrkel::SecretKey::from_bytes(&self.a.secret.to_bytes()).unwrap(),
                 public: self.a.public,
-            }
+            },
         }
     }
 }
@@ -268,7 +266,9 @@ impl KeyPair {
     /// let signature = keypair.sign(&data).unwrap();
     /// ```
     pub fn sign(&self, hash: &Hash) -> Result<Signature, MassaSignatureError> {
-        Ok(Signature {a: self.a.sign(hash.to_bytes())})
+        Ok(Signature {
+            a: self.a.sign(hash.to_bytes()),
+        })
     }
 
     /// Get the public key of the keypair
@@ -280,7 +280,7 @@ impl KeyPair {
     /// let public_key = keypair.get_public_key();
     /// ```
     pub fn get_public_key(&self) -> PublicKey {
-        PublicKey {a: self.a.public}
+        PublicKey { a: self.a.public }
     }
 
     /// Generate a new `KeyPair`
@@ -297,7 +297,9 @@ impl KeyPair {
     /// ```
     pub fn generate() -> Self {
         let mut rng = OsRng::default();
-        KeyPair {a: ed25519_dalek::Keypair::generate(&mut rng)}
+        KeyPair {
+            a: ed25519_dalek::Keypair::generate(&mut rng),
+        }
     }
 
     /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`
@@ -309,14 +311,18 @@ impl KeyPair {
     /// let bytes = keypair.into_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; Self::SECRET_KEY_BYTES_SIZE]) -> Result<Self, MassaSignatureError> {
+    pub fn from_bytes(
+        data: &[u8; Self::SECRET_KEY_BYTES_SIZE],
+    ) -> Result<Self, MassaSignatureError> {
         let secret = ed25519_dalek::SecretKey::from_bytes(&data[..]).map_err(|err| {
             MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
         })?;
-        Ok(KeyPair {a: ed25519_dalek::Keypair {
-            public: ed25519_dalek::PublicKey::from(&secret),
-            secret,
-        }})
+        Ok(KeyPair {
+            a: ed25519_dalek::Keypair {
+                public: ed25519_dalek::PublicKey::from(&secret),
+                secret,
+            },
+        })
     }
 }
 
@@ -334,9 +340,8 @@ impl KeyPair {
     /// let signature = keypair.sign(&data).unwrap();
     /// ```
     pub fn sign(&self, hash: &Hash) -> Result<Signature, MassaSignatureError> {
-        
         let t = schnorrkel::signing_context(b"massa_sign").bytes(hash.to_bytes());
-        Ok(Signature {a: self.a.sign(t)})
+        Ok(Signature { a: self.a.sign(t) })
     }
 
     /// Get the public key of the keypair
@@ -348,7 +353,7 @@ impl KeyPair {
     /// let public_key = keypair.get_public_key();
     /// ```
     pub fn get_public_key(&self) -> PublicKey {
-        PublicKey {a: self.a.public}
+        PublicKey { a: self.a.public }
     }
 
     /// Generate a new `KeyPair`
@@ -365,7 +370,9 @@ impl KeyPair {
     /// ```
     pub fn generate() -> Self {
         let mut rng = OsRng::default();
-        KeyPair {a: schnorrkel::Keypair::generate()}
+        KeyPair {
+            a: schnorrkel::Keypair::generate(),
+        }
     }
 
     /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`
@@ -377,20 +384,23 @@ impl KeyPair {
     /// let bytes = keypair.into_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; Self::SECRET_KEY_BYTES_SIZE]) -> Result<Self, MassaSignatureError> {
+    pub fn from_bytes(
+        data: &[u8; Self::SECRET_KEY_BYTES_SIZE],
+    ) -> Result<Self, MassaSignatureError> {
         let secret = schnorrkel::SecretKey::from_bytes(&data[..]).map_err(|err| {
             MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
         })?;
-        Ok(KeyPair{ a: schnorrkel::Keypair {
-            public: schnorrkel::PublicKey::from(secret.clone()),
-            secret,
-        }})
+        Ok(KeyPair {
+            a: schnorrkel::Keypair {
+                public: schnorrkel::PublicKey::from(secret.clone()),
+                secret,
+            },
+        })
     }
 }
 
 #[transition::impl_version(versions("1", "2"), structures("KeyPair"))]
 impl KeyPair {
-
     /// Return the bytes representing the keypair (should be a reference in the future)
     ///
     /// # Example
@@ -399,8 +409,12 @@ impl KeyPair {
     /// let keypair = KeyPair::generate(1).unwrap();
     /// let bytes = keypair.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> &[u8; Self::SECRET_KEY_BYTES_SIZE] {
-        &self.a.secret.to_bytes()
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let version_serializer = U64VarIntSerializer::new();
+        let mut bytes: Vec<u8> = Vec::new();
+        version_serializer.serialize(&Self::VERSION, &mut bytes);
+        bytes[Self::VERSION_VARINT_SIZE_BYTES..].copy_from_slice(&self.a.to_bytes());
+        bytes
     }
 
     /// Return the bytes representing the keypair
@@ -720,10 +734,10 @@ impl PublicKey {
     ///
     /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> &[u8] {
+    pub fn to_bytes(&self) -> Vec<u8> {
         match self {
-            PublicKey::PublicKeyV1(pubkey) => &pubkey.a.to_bytes(),
-            PublicKey::PublicKeyV2(pubkey) => &pubkey.a.to_bytes(),
+            PublicKey::PublicKeyV1(pubkey) => pubkey.to_bytes(),
+            PublicKey::PublicKeyV2(pubkey) => pubkey.to_bytes(),
         }
     }
 
@@ -738,9 +752,7 @@ impl PublicKey {
     /// let serialized = keypair.get_public_key().into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(
-        data: &[u8],
-    ) -> Result<PublicKey, MassaSignatureError> {
+    pub fn from_bytes(data: &[u8]) -> Result<PublicKey, MassaSignatureError> {
         let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
         let (rest, version) = u64_deserializer
             .deserialize::<DeserializeError>(&data[..])
@@ -766,6 +778,25 @@ impl PublicKey {
                 "Unknown keypair version",
             ))),
         }
+    }
+}
+
+#[transition::impl_version(versions("1", "2"), structures("PublicKey"))]
+impl PublicKey {
+    /// Return the bytes representing the keypair (should be a reference in the future)
+    ///
+    /// # Example
+    /// ```
+    /// # use massa_signature::KeyPair;
+    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let bytes = keypair.to_bytes();
+    /// ```
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let version_serializer = U64VarIntSerializer::new();
+        let mut bytes: Vec<u8> = Vec::new();
+        version_serializer.serialize(&Self::VERSION, &mut bytes);
+        bytes[Self::VERSION_VARINT_SIZE_BYTES..].copy_from_slice(&self.a.to_bytes());
+        bytes
     }
 }
 
@@ -825,7 +856,6 @@ impl PublicKey {
         hash: &Hash,
         signature: &Signature,
     ) -> Result<(), MassaSignatureError> {
-
         self.a.verify(hash.to_bytes(), &signature.a).map_err(|err| {
             MassaSignatureError::SignatureError(format!("Signature verification failed: {}", err))
         })
@@ -849,7 +879,6 @@ impl PublicKey {
             .map(|d| Self { a: d })
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
-
 }
 
 #[transition::impl_version(versions("2"), structures("PublicKey", "Signature"))]
@@ -861,26 +890,11 @@ impl PublicKey {
         hash: &Hash,
         signature: &Signature,
     ) -> Result<(), MassaSignatureError> {
-        
         let t = schnorrkel::signing_context(b"massa_sign").bytes(hash.to_bytes());
 
         self.a.verify(t, &signature.a).map_err(|err| {
             MassaSignatureError::SignatureError(format!("Signature verification failed: {}", err))
         })
-    }
-
-    /// Serialize a `PublicKey` as bytes.
-    ///
-    /// # Example
-    ///  ```
-    /// # use massa_signature::{PublicKey, KeyPair};
-    /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate(1).unwrap();
-    ///
-    /// let serialize = keypair.get_public_key().to_bytes();
-    /// ```
-    pub fn to_bytes(&self) -> &[u8; Self::PUBLIC_KEY_SIZE_BYTES] {
-        &self.a.to_bytes()
     }
 
     /// Deserialize a `PublicKey` from bytes.
@@ -1027,7 +1041,6 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     }
 }
 
-
 /// Signature generated from a message and a `KeyPair`.
 #[transition::versioned(versions("1", "2"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1042,7 +1055,7 @@ pub struct Signature {
 #[transition::impl_version(versions("1"), structures("Signature"))]
 impl Signature {
     /// Size of a signature
-    pub const SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;  
+    pub const SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
 }
 
 #[transition::impl_version(versions("2"), structures("Signature"))]
@@ -1264,7 +1277,6 @@ impl Signature {
     }
 }
 
-
 #[transition::impl_version(versions("1"), structures("Signature"))]
 impl Signature {
     /// Deserialize a Signature from bytes.
@@ -1281,9 +1293,11 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; Self::SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaSignatureError> {
+    pub fn from_bytes(
+        data: &[u8; Self::SIGNATURE_SIZE_BYTES],
+    ) -> Result<Signature, MassaSignatureError> {
         ed25519_dalek::Signature::from_bytes(&data[..])
-            .map(|s |Self { a: s} )
+            .map(|s| Self { a: s })
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
@@ -1306,15 +1320,16 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; Self::SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaSignatureError> {
+    pub fn from_bytes(
+        data: &[u8; Self::SIGNATURE_SIZE_BYTES],
+    ) -> Result<Signature, MassaSignatureError> {
         schnorrkel::Signature::from_bytes(&data[..])
-            .map(|s |Self { a: s} )
+            .map(|s| Self { a: s })
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
     }
 }
-
 
 impl ::serde::Serialize for Signature {
     /// `::serde::Serialize` trait for `Signature`
@@ -1504,15 +1519,16 @@ impl Signature {
             signatures.push(signature.a);
             public_keys.push(public_key.a);
         });
-        ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice()).map_err(|err| {
-            MassaSignatureError::SignatureError(format!(
-                "Batch signature verification failed: {}",
-                err
-            ))
-        })
+        ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice()).map_err(
+            |err| {
+                MassaSignatureError::SignatureError(format!(
+                    "Batch signature verification failed: {}",
+                    err
+                ))
+            },
+        )
     }
 }
-
 
 #[transition::impl_version(versions("2"), structures("Signature", "PublicKey"))]
 impl Signature {
@@ -1552,12 +1568,14 @@ impl Signature {
             signatures.push(signature.a);
             public_keys.push(public_key.a);
         });
-        schnorrkel::verify_batch(ts, signatures.as_slice(), public_keys.as_slice(), false).map_err(|err| {
-            MassaSignatureError::SignatureError(format!(
-                "Batch signature verification failed: {}",
-                err
-            ))
-        })
+        schnorrkel::verify_batch(ts, signatures.as_slice(), public_keys.as_slice(), false).map_err(
+            |err| {
+                MassaSignatureError::SignatureError(format!(
+                    "Batch signature verification failed: {}",
+                    err
+                ))
+            },
+        )
     }
 }
 

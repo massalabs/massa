@@ -16,5 +16,5 @@ pub use error::MassaSignatureError;
 };*/
 pub use multi_v2::{
     /*verify_signature_batch,*/ KeyPair, PublicKey, PublicKeyDeserializer, Signature,
-    SignatureDeserializer
+    SignatureDeserializer,
 };
