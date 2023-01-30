@@ -58,7 +58,7 @@ impl std::fmt::Display for Address {
         u64_serializer
             .serialize(&ADDRESS_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(*(*self).hash_bytes());
+        bytes.extend(self.hash_bytes());
         write!(
             f,
             "{}{}{}",
