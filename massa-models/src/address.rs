@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::config::THREAD_COUNT;
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
 use massa_hash::{Hash, HashDeserializer};
@@ -43,7 +44,13 @@ impl std::fmt::Display for Address {
 
 impl std::fmt::Debug for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
+        write!(
+            f,
+            "{} Thread {} of {}",
+            self,
+            self.get_thread(THREAD_COUNT),
+            THREAD_COUNT
+        )
     }
 }
 
