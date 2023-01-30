@@ -36,7 +36,7 @@ pub use messages::{
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
 };
 pub use server::{start_bootstrap_server, BootstrapManager};
-pub use settings::BootstrapConfig;
+pub use settings::{BootstrapConfig, BootstrapServerMessageDeserializerArgs};
 pub use settings::IpType;
 
 #[cfg(test)]

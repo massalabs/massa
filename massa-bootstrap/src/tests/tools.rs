@@ -60,6 +60,7 @@ use std::{
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
+use massa_models::block::BlockDeserializerArgs;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -428,11 +429,14 @@ pub fn get_boot_state() -> BootstrapableGraph {
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
+    let args = BlockDeserializerArgs {
+        thread_count: THREAD_COUNT,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        endorsement_count: ENDORSEMENT_COUNT,
+    };
     let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
-        THREAD_COUNT,
-        ENDORSEMENT_COUNT,
+        args,
         MAX_BOOTSTRAP_BLOCKS,
-        MAX_OPERATIONS_PER_BLOCK,
     );
 
     let mut bootstrapable_graph_serialized = Vec::new();

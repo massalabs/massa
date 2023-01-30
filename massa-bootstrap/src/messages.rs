@@ -353,13 +353,24 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// ## Example
     /// ```rust
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer, BootstrapServerMessageDeserializer};
+    /// use massa_bootstrap::BootstrapServerMessageDeserializerArgs;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;
     /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(32, 16, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 255, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000);
+    /// let args = BootstrapServerMessageDeserializerArgs {
+    ///     thread_count: 32, endorsement_count: 16,
+    ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
+    ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
+    ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,
+    ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
+    ///     max_datastore_value_length: 1000,
+    ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
+    ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
+    ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000};
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
@@ -374,7 +385,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///    } => {
     ///     assert_eq!(server_time, MassaTime::from(0));
     ///     assert_eq!(version, Version::from_str("TEST.1.10").unwrap());
-    ///   },
+    ///   }
     ///   _ => panic!("Unexpected message"),
     /// }
     /// assert_eq!(rest.len(), 0);
