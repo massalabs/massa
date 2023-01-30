@@ -85,10 +85,6 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::node::NodeId;
@@ -112,10 +108,6 @@
     </span><span class="kw">pub </span>current_time: MassaTime,
     <span class="doccomment">/// current cycle
     </span><span class="kw">pub </span>current_cycle: u64,
-    <span class="doccomment">/// current cycle starting timestamp
-    </span><span class="kw">pub </span>current_cycle_time: MassaTime,
-    <span class="doccomment">/// next cycle starting timestamp
-    </span><span class="kw">pub </span>next_cycle_time: MassaTime,
     <span class="doccomment">/// connected nodes (node id, ip address, true if the connection is outgoing, false if incoming)
     </span><span class="kw">pub </span>connected_nodes: BTreeMap&lt;NodeId, (IpAddr, bool)&gt;,
     <span class="doccomment">/// latest slot, none if now is before genesis timestamp
