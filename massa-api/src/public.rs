@@ -393,17 +393,13 @@ impl MassaRpcServer for API<Public> {
         let current_cycle_time_result = if current_cycle == 0 {
             Ok(api_settings.genesis_timestamp)
         } else {
-            let previous_cycle = current_cycle.saturating_sub(1);
-            if previous_cycle == 0 {
-                Ok(cycle_duration)
-            } else {
-                cycle_duration.checked_mul(previous_cycle)
-            }
-            .and_then(|elapsed_time_before_current_cycle| {
-                api_settings
-                    .genesis_timestamp
-                    .checked_add(elapsed_time_before_current_cycle)
-            })
+            cycle_duration.checked_mul(current_cycle).and_then(
+                |elapsed_time_before_current_cycle| {
+                    api_settings
+                        .genesis_timestamp
+                        .checked_add(elapsed_time_before_current_cycle)
+                },
+            )
         };
 
         let current_cycle_time = match current_cycle_time_result {
