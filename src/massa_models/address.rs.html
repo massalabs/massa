@@ -358,6 +358,40 @@
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -370,6 +404,7 @@
 <span class="kw">use </span>nom::branch::alt;
 <span class="kw">use </span>nom::character::complete::char;
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
+<span class="kw">use </span>nom::sequence::preceded;
 <span class="kw">use </span>nom::{IResult, Parser};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Bound::Included;
@@ -403,6 +438,10 @@
 </span><span class="kw">pub struct </span>UserAddress(<span class="kw">pub </span>Hash);
 
 <span class="kw">const </span>ADDRESS_PREFIX: char = <span class="string">&#39;A&#39;</span>;
+<span class="comment">// must be u8 castable
+</span><span class="kw">const </span>USER_PREFIX: char = <span class="string">&#39;U&#39;</span>;
+<span class="comment">// must be u8 castable
+</span><span class="kw">const </span>SC_PREFIX: char = <span class="string">&#39;S&#39;</span>;
 <span class="kw">const </span>ADDRESS_VERSION: u64 = <span class="number">0</span>;
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Address {
@@ -419,8 +458,8 @@
             <span class="string">&quot;{}{}{}&quot;</span>,
             ADDRESS_PREFIX,
             <span class="kw">match </span><span class="self">self </span>{
-                Address::User(<span class="kw">_</span>) =&gt; <span class="string">&#39;U&#39;</span>,
-                Address::SC(<span class="kw">_</span>) =&gt; <span class="string">&#39;S&#39;</span>,
+                Address::User(<span class="kw">_</span>) =&gt; USER_PREFIX,
+                Address::SC(<span class="kw">_</span>) =&gt; SC_PREFIX,
             },
             bs58::encode(bytes).with_check().into_string()
         )
@@ -515,7 +554,7 @@
     </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
         <span class="kw">let </span>err = <span class="prelude-val">Err</span>(ModelsError::AddressParseError);
         <span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
-        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="string">&#39;A&#39;</span>) = chars.next() <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(ADDRESS_PREFIX) = chars.next() <span class="kw">else </span>{
             <span class="kw">return </span>err;
         };
         <span class="kw">let </span><span class="prelude-val">Some</span>(pref) = chars.next() <span class="kw">else </span>{
@@ -536,23 +575,12 @@
                 .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
         ));
         <span class="kw">let </span>res = <span class="kw">match </span>pref {
-            <span class="string">&#39;U&#39; </span>=&gt; Address::User(res),
-            <span class="string">&#39;S&#39; </span>=&gt; Address::SC(res),
+            USER_PREFIX =&gt; Address::User(res),
+            SC_PREFIX =&gt; Address::SC(res),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span>err,
         };
         <span class="prelude-val">Ok</span>(res)
     }
-}
-
-<span class="attr">#[test]
-</span><span class="kw">fn </span>test_address_str_format() {
-    <span class="kw">use </span>massa_signature::KeyPair;
-
-    <span class="kw">let </span>keypair = KeyPair::generate();
-    <span class="kw">let </span>address = Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key());
-    <span class="kw">let </span>a = address.to_string();
-    <span class="kw">let </span>b = Address::from_str(<span class="kw-2">&amp;</span>a).unwrap();
-    <span class="macro">assert_eq!</span>(address, b);
 }
 
 <span class="kw">impl </span>PreHashed <span class="kw">for </span>Address {}
@@ -588,8 +616,8 @@
     /// ```
     </span><span class="kw">pub fn </span>prefixed_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span>pref = <span class="kw">match </span><span class="self">self </span>{
-            Address::User(<span class="kw">_</span>) =&gt; <span class="string">b&#39;U&#39;</span>,
-            Address::SC(<span class="kw">_</span>) =&gt; <span class="string">b&#39;S&#39;</span>,
+            Address::User(<span class="kw">_</span>) =&gt; USER_PREFIX <span class="kw">as </span>u8,
+            Address::SC(<span class="kw">_</span>) =&gt; SC_PREFIX <span class="kw">as </span>u8,
         };
         [<span class="kw-2">&amp;</span>[pref][..], <span class="kw-2">&amp;</span><span class="self">self</span>.hash_bytes()[..]].concat().to_vec()
     }
@@ -657,17 +685,12 @@
 
 <span class="doccomment">/// Deserializer for `Address`
 </span><span class="attr">#[derive(Default, Clone)]
-</span><span class="kw">pub struct </span>AddressDeserializer {
-    hash_deserializer: HashDeserializer,
-}
-
+</span><span class="kw">pub struct </span>AddressDeserializer;
 <span class="kw">impl </span>AddressDeserializer {
     <span class="doccomment">/// Creates a new deserializer for `Address`
     </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            hash_deserializer: HashDeserializer::new(),
-        }
-    }
+        <span class="self">Self
+    </span>}
 }
 
 <span class="kw">impl </span>Deserializer&lt;Address&gt; <span class="kw">for </span>AddressDeserializer {
@@ -687,23 +710,36 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Address, E&gt; {
-        <span class="kw">let </span>(rest, pref) = context(<span class="string">&quot;Address Veriant&quot;</span>, alt((char(<span class="string">&#39;U&#39;</span>), char(<span class="string">&#39;S&#39;</span>)))).parse(buffer)<span class="question-mark">?</span>;
-        <span class="kw">let </span>(rest, res) = context(<span class="string">&quot;Failed Address deserialization&quot;</span>, |input| {
-            <span class="self">self</span>.hash_deserializer.deserialize(input)
-        })
-        .map(UserAddress)
-        .parse(rest)<span class="question-mark">?</span>;
-
-        <span class="comment">// TODO: replace this match statement with idiomatic nom usage
-        </span><span class="kw">let </span>res = <span class="kw">match </span>pref {
-            <span class="string">&#39;U&#39; </span>=&gt; Address::User(res),
-            <span class="string">&#39;S&#39; </span>=&gt; Address::SC(res),
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;the variant parser only matches on &#39;U&#39; and &#39;S&#39;&quot;</span>),
-        };
-        <span class="prelude-val">Ok</span>((rest, res))
+        context(<span class="string">&quot;Address Variant&quot;</span>, alt((user_parser, sc_parser))).parse(buffer)
     }
 }
 
+<span class="comment">// used to make the `alt(...)` more readable
+</span><span class="kw">fn </span>user_parser&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Address, E&gt; {
+    context(
+        <span class="string">&quot;Failed after matching on &#39;U&#39; Prefix&quot;</span>,
+        preceded(char(USER_PREFIX), |input| {
+            HashDeserializer::new().deserialize(input)
+        }),
+    )
+    .map(|hash| Address::User(UserAddress(hash)))
+    .parse(input)
+}
+<span class="comment">// used to make the `alt(...)` more readable. Will be usefull when the SCAddress will be deserialised differently
+</span><span class="kw">fn </span>sc_parser&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Address, E&gt; {
+    context(
+        <span class="string">&quot;Failed after matching on &#39;S&#39; Prefix&quot;</span>,
+        preceded(char(SC_PREFIX), |input| {
+            HashDeserializer::new().deserialize(input)
+        }),
+    )
+    .map(|inner| Address::SC(UserAddress(inner)))
+    .parse(input)
+}
 <span class="doccomment">/// Info for a given address on a given cycle
 </span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>ExecutionAddressCycleInfo {
@@ -717,6 +753,38 @@
     </span><span class="kw">pub </span>nok_count: u64,
     <span class="doccomment">/// number of active rolls the address had at that cycle (if still available)
     </span><span class="kw">pub </span>active_rolls: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_address_str_format() {
+        <span class="kw">use </span>massa_signature::KeyPair;
+
+        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>address = Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key());
+        <span class="kw">let </span>a = address.to_string();
+        <span class="kw">let </span>b = Address::from_str(<span class="kw-2">&amp;</span>a).unwrap();
+        <span class="macro">assert_eq!</span>(address, b);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>prefix_loop() {
+        <span class="macro">assert_eq!</span>(
+            ADDRESS_PREFIX <span class="kw">as </span>u8 <span class="kw">as </span>char, ADDRESS_PREFIX,
+            <span class="string">&quot;info loss on prefix casting&quot;
+        </span>);
+        <span class="macro">assert_eq!</span>(
+            USER_PREFIX <span class="kw">as </span>u8 <span class="kw">as </span>char, USER_PREFIX,
+            <span class="string">&quot;info loss on prefix casting&quot;
+        </span>);
+        <span class="macro">assert_eq!</span>(
+            SC_PREFIX <span class="kw">as </span>u8 <span class="kw">as </span>char, SC_PREFIX,
+            <span class="string">&quot;info loss on prefix casting&quot;
+        </span>);
+    }
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
