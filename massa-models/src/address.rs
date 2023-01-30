@@ -208,7 +208,7 @@ impl Address {
     }
 
     fn hash_bytes(&self) -> &[u8; 32] {
-        (**self).0.to_bytes()
+        self.0.to_bytes()
     }
 
     /// Computes address associated with given public key
