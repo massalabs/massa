@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
+use crate::settings::BootstrapClientConfig;
 use crate::types::Duplex;
 use crate::BootstrapConfig;
 use crate::{
@@ -16,13 +17,12 @@ use massa_models::config::{
     MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
     MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
 };
+use massa_models::endorsement::Endorsement;
 use massa_models::node::NodeId;
 use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
 use serial_test::serial;
 use tokio::io::duplex;
-use massa_models::endorsement::Endorsement;
-use crate::settings::BootstrapClientConfig;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -58,11 +58,7 @@ impl BootstrapClientBinder {
             max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
             max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         };
-        BootstrapClientBinder::new(
-            client_duplex,
-            remote_pubkey,
-            cfg
-        )
+        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg)
     }
 }
 

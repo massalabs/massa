@@ -121,7 +121,8 @@ pub struct BootstrapConfig {
     pub consensus_bootstrap_part_size: u64,
 }
 
-///
+/// Bootstrap client config
+#[allow(missing_docs)]
 #[derive(Debug, Deserialize, Clone, SubStruct)]
 #[parent(type = "BootstrapConfig")]
 pub struct BootstrapClientConfig {
@@ -150,7 +151,8 @@ pub struct BootstrapClientConfig {
     pub max_ops_changes_length: u64,
 }
 
-///
+/// Bootstrap Message der args
+#[allow(missing_docs)]
 #[derive(SubStruct)]
 #[parent(type = "BootstrapClientConfig")]
 pub struct BootstrapServerMessageDeserializerArgs {

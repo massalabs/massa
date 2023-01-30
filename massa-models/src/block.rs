@@ -487,11 +487,10 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let (rest, res_block): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block)
-        .unwrap();
+        let (rest, res_block): (&[u8], SecureShareBlock) =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
 
         assert!(rest.is_empty());
         // check equality
@@ -563,11 +562,10 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let (rest, res_block): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block)
-        .unwrap();
+        let (rest, res_block): (&[u8], SecureShareBlock) =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
 
         res_block.content.header.assert_invariants().unwrap();
 
@@ -648,10 +646,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -701,10 +698,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -749,10 +745,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -800,10 +795,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -873,11 +867,10 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let (_, res): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block)
-        .unwrap();
+        let (_, res): (&[u8], SecureShareBlock) =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
 
         res.content.header.assert_invariants().unwrap();
     }
@@ -923,10 +916,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -988,10 +980,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: see issue #3400
@@ -1058,10 +1049,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
         assert!(res.is_err());
@@ -1140,10 +1130,9 @@ mod test {
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
         };
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(args),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure

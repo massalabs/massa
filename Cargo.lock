@@ -4435,7 +4435,7 @@ dependencies = [
 [[package]]
 name = "substruct"
 version = "0.1.0"
-source = "git+https://github.com/sydhds/substruct#3f9b24d3d495f3f517baf3d77d41e8ff07c62487"
+source = "git+https://github.com/sydhds/substruct#2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"
 dependencies = [
  "quote",
  "syn",

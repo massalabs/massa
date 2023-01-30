@@ -17,6 +17,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::block::BlockDeserializerArgs;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
@@ -60,7 +61,6 @@ use std::{
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
-use massa_models::block::BlockDeserializerArgs;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -434,10 +434,8 @@ pub fn get_boot_state() -> BootstrapableGraph {
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
     };
-    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
-        args,
-        MAX_BOOTSTRAP_BLOCKS,
-    );
+    let bootstrapable_graph_deserializer =
+        BootstrapableGraphDeserializer::new(args, MAX_BOOTSTRAP_BLOCKS);
 
     let mut bootstrapable_graph_serialized = Vec::new();
     bootstrapable_graph_serializer
