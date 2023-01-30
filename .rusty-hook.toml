@@ -1,4 +1,4 @@
-# Generate git hooks run: cargo install rusty-hook && rusty-hook
+# Generate git hooks run: cargo install rusty-hook && rusty-hook init
 [hooks]
 pre-commit= "cargo check && cargo fmt -- --check && cargo clippy -- -A clippy::uninlined-format-args"
 
