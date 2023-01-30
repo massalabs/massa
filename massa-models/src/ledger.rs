@@ -49,6 +49,7 @@ impl LedgerDataSerializer {
 impl Serializer<LedgerData> for LedgerDataSerializer {
     /// ## Example:
     /// ```rust
+    /// use massa_models::ledger::{LedgerData, LedgerDataSerializer};
     /// use massa_models::amount::Amount;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -92,6 +93,7 @@ impl Default for LedgerDataDeserializer {
 impl Deserializer<LedgerData> for LedgerDataDeserializer {
     /// ## Example:
     /// ```rust
+    /// use massa_models::ledger::{LedgerData, LedgerDataDeserializer, LedgerDataSerializer};
     /// use massa_models::amount::Amount;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -193,9 +195,9 @@ impl LedgerChangeSerializer {
 impl Serializer<LedgerChange> for LedgerChangeSerializer {
     /// ## Example
     /// ```rust
-    /// use massa_models::{address::Address, amount::Amount};
+    /// use massa_models::{address::Address, amount::Amount, ledger::LedgerChangeSerializer};
     /// use std::str::FromStr;
-    /// use massa_models::ledger::{LedgerChange, LedgerChangeSerializer};
+    /// use massa_models::ledger::LedgerChange;
     /// use massa_serialization::Serializer;
     /// let ledger_change = LedgerChange {
     ///   balance_delta: Amount::from_str("1149").unwrap(),
@@ -238,9 +240,9 @@ impl Default for LedgerChangeDeserializer {
 impl Deserializer<LedgerChange> for LedgerChangeDeserializer {
     /// ## Example
     /// ```rust
-    /// use massa_models::{address::Address, amount::Amount};
+    /// use massa_models::{address::Address, amount::Amount, ledger::{LedgerChangeSerializer, LedgerChangeDeserializer}};
     /// use std::str::FromStr;
-    /// use massa_models::ledger::{LedgerChange, LedgerChangeDeserializer, LedgerChangeSerializer};
+    /// use massa_models::ledger::LedgerChange;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let ledger_change = LedgerChange {
     ///   balance_delta: Amount::from_str("1149").unwrap(),
@@ -377,9 +379,9 @@ impl LedgerChangesDeserializer {
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// ## Example
     /// ```rust
-    /// # use massa_models::{address::Address, amount::Amount};
+    /// # use massa_models::{address::Address, amount::Amount, ledger::{LedgerChangesSerializer, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangeDeserializer}};
     /// # use std::str::FromStr;
-    /// use massa_models::ledger::{LedgerChange, LedgerChanges, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangesSerializer};
+    /// # use massa_models::ledger::{LedgerChanges, LedgerChange};
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// # let ledger_changes = LedgerChanges(vec![
     /// #   (

@@ -31,16 +31,16 @@ use std::{
 #[cfg(feature = "testing")]
 use massa_models::amount::{Amount, AmountDeserializer};
 
-pub const LEDGER_CF: &str = "ledger";
-pub const METADATA_CF: &str = "metadata";
-pub const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
-pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
-pub const CF_ERROR: &str = "critical: rocksdb column family operation failed";
-pub const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
-pub const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
-pub const SLOT_KEY: &[u8; 1] = b"s";
-pub const LEDGER_HASH_KEY: &[u8; 1] = b"h";
-pub const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const LEDGER_CF: &str = "ledger";
+const METADATA_CF: &str = "metadata";
+const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
+const CF_ERROR: &str = "critical: rocksdb column family operation failed";
+const LEDGER_HASH_ERROR: &str = "critical: saved ledger hash is corrupted";
+const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
+const SLOT_KEY: &[u8; 1] = b"s";
+const LEDGER_HASH_KEY: &[u8; 1] = b"h";
+const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -247,7 +247,7 @@ impl LedgerDB {
             .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
             .peekable();
 
-        // Return None if emtpty
+        // Return None if empty
         iter.peek()?;
         Some(iter.collect())
     }
@@ -624,8 +624,7 @@ fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use super::LedgerDB;
-    use crate::ledger_db::{LedgerBatch, LedgerSubEntry, LEDGER_HASH_INITIAL_BYTES};
+    use super::*;
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
