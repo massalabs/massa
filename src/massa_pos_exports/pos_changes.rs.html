@@ -279,7 +279,7 @@
         </span><span class="self">self</span>.u64_serializer
             .serialize(<span class="kw-2">&amp;</span>(value.roll_changes.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(addr, roll) <span class="kw">in </span>value.roll_changes.iter() {
-            buffer.extend(addr.prefixed_bytes());
+            buffer.extend(addr.to_bytes());
             <span class="self">self</span>.u64_serializer.serialize(roll, buffer)<span class="question-mark">?</span>;
         }
 
