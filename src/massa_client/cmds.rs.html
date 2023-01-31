@@ -2894,7 +2894,7 @@
         value
             .<span class="number">1
             </span>.parse::&lt;T&gt;()
-            .map(|op| <span class="prelude-val">Some</span>(op))
+            .map(Option::Some)
             .map_err(|e| <span class="macro">anyhow!</span>(<span class="string">&quot;failed to parse \&quot;{}\&quot; due to: {}&quot;</span>, value.<span class="number">1</span>, e))
     } <span class="kw">else </span>{
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
