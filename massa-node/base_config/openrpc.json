@@ -1047,6 +1047,39 @@
                     "description": "Experimental APIs. They might disappear, and they will change"
                 }
             ],
+            "params": [
+                {
+                    "schema": {
+                        "$ref": "#/components/schemas/ApiRequest"
+                    },
+                    "name": "PageRequest",
+                    "description": "Optional api request"
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/Parent"
+                    }
+                },
+                "name": "Next block best parents"
+            },
+            "name": "get_next_block_best_parents",
+            "summary": "Get next block best parents",
+            "description": "Returns the ids of best parents for the next block to be produced along with their period"
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
             "params": [],
             "result": {
                 "schema": {
@@ -1306,39 +1339,6 @@
             "name": "unsubscribe_new_operations",
             "summary": "Unsubscribe from new received operations",
             "description": "Unsubscribe from new received operations."
-        },
-        {
-            "tags": [
-                {
-                    "name": "api",
-                    "description": "Massa api V2"
-                },
-                {
-                    "name": "experimental",
-                    "description": "Experimental APIs. They might disappear, and they will change"
-                }
-            ],
-            "params": [
-                {
-                    "schema": {
-                        "$ref": "#/components/schemas/ApiRequest"
-                    },
-                    "name": "PageRequest",
-                    "description": "Optional api request"
-                }
-            ],
-            "result": {
-                "schema": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/components/schemas/Parent"
-                    }
-                },
-                "name": "Next block best parents"
-            },
-            "name": "get_next_block_best_parents",
-            "summary": "Get next block best parents",
-            "description": "Returns the ids of best parents for the next block to be produced along with their period"
         }
     ],
     "components": {
@@ -3209,6 +3209,14 @@
                 "description": "An Page request parameter, which contains limit and offset properties.",
                 "schema": {
                     "$ref": "#/components/schemas/PageRequest"
+                }
+            },
+            "Parent": {
+                "name": "Parent",
+                "summary": "Parent",
+                "description": "A Parent object",
+                "schema": {
+                    "$ref": "#/components/schemas/Parent"
                 }
             },
             "PubkeySig": {
