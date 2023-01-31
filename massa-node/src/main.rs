@@ -543,6 +543,7 @@ async fn launch(
     let api = API::<ApiV2>::new(
         consensus_controller.clone(),
         consensus_channels,
+        execution_controller.clone(),
         pool_channels,
         api_config.clone(),
         *VERSION,

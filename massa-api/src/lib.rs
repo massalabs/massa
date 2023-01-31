@@ -99,6 +99,8 @@ pub struct ApiV2 {
     pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
+    /// link to the execution component
+    pub execution_controller: Box<dyn ExecutionController>,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
     /// API settings

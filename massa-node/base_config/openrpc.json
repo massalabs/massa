@@ -1052,18 +1052,40 @@
                     "schema": {
                         "$ref": "#/components/schemas/ApiRequest"
                     },
-                    "name": "PageRequest",
+                    "name": "ApiRequest",
                     "description": "Optional api request"
                 }
             ],
             "result": {
                 "schema": {
+                    "$ref": "#/components/schemas/PagedVecStaker"
+                },
+                "name": "PagedVecStaker"
+            },
+            "name": "get_largest_stakers",
+            "summary": "Get largest stakers",
+            "description": "Returns the active stakers and their active roll counts for the current cycle sorted by largest roll counts."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/components/schemas/Parent"
+                        "$ref": "#/components/schemas/BlockParent"
                     }
                 },
-                "name": "Next block best parents"
+                "name": "NextBlockBestParents"
             },
             "name": "get_next_block_best_parents",
             "summary": "Get next block best parents",
@@ -1579,6 +1601,26 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "BlockParent": {
+                "title": "BlockParent",
+                "description": "A tuple which contains (BlockId, period)",
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "BlockId": {
+                            "$ref": "#/components/schemas/BlockId"
+                        },
+                        "period": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "example": {
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": "Number",
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": "Number"
+                }
             },
             "CallSC": {
                 "title": "CallSC",
@@ -2596,24 +2638,19 @@
                     }
                 }
             },
-            "Parent": {
-                "title": "Parent",
-                "description": "A tuple which contains (BlockId, period)",
+            "PagedVecStaker": {
+                "description": "PagedVec of stakers for apiV2",
                 "type": "object",
-                "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                        "BlockId": {
-                            "$ref": "#/components/schemas/BlockId"
-                        },
-                        "period": {
-                            "type": "number"
+                "properties": {
+                    "content": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Staker"
                         }
+                    },
+                    "total_count": {
+                        "type": "number"
                     }
-                },
-                "example": {
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": "Number",
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": "Number"
                 }
             },
             "PoolStats": {
@@ -3203,20 +3240,20 @@
                     "$ref": "#/components/schemas/OperationType"
                 }
             },
+            "PagedVecStaker": {
+                "name": "PagedVecStaker",
+                "summary": "PagedVecStaker",
+                "description": "A PagedVecStaker object",
+                "schema": {
+                    "$ref": "#/components/schemas/PagedVecStaker"
+                }
+            },
             "PageRequest": {
                 "name": "PageRequest",
                 "summary": "PageRequest",
                 "description": "An Page request parameter, which contains limit and offset properties.",
                 "schema": {
                     "$ref": "#/components/schemas/PageRequest"
-                }
-            },
-            "Parent": {
-                "name": "Parent",
-                "summary": "Parent",
-                "description": "A Parent object",
-                "schema": {
-                    "$ref": "#/components/schemas/Parent"
                 }
             },
             "PubkeySig": {
