@@ -385,6 +385,18 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -646,7 +658,22 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;Address&gt; <span class="kw">for </span>AddressSerializer {
-    <span class="kw">fn </span>serialize(
+    <span class="doccomment">/// # Example
+    /// ```rust
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
+    /// # use serde::{Deserialize, Serialize};
+    /// # use massa_models::address::{UserAddress, Address, AddressSerializer};
+    /// # use massa_serialization::{Serializer, SerializeError};
+    /// use massa_hash::Hash;
+    /// let bytes = &amp;[0; 32];
+    /// // Make a hard-coded 0-byte container
+    /// let ref_addr = Address::User(UserAddress(Hash::from_bytes(bytes)));
+    /// let mut vec = vec![];
+    /// AddressSerializer::new().serialize(&amp;ref_addr, &amp;mut vec).unwrap();
+    /// // the deser adds the prefix value &#39;0&#39; in a single byte
+    /// assert_eq!(vec, [[0].as_slice(), bytes.as_slice()].concat());
+    /// ```
+    </span><span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         value: <span class="kw-2">&amp;</span>Address,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
@@ -673,21 +700,18 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;Address&gt; <span class="kw">for </span>AddressDeserializer {
-    <span class="doccomment">/// ## Example
+    <span class="doccomment">/// # Example
     /// ```rust
-    /// use massa_models::address::{Address, AddressDeserializer};
+    /// use massa_models::address::{UserAddress, Address, AddressDeserializer};
     /// use massa_serialization::{Deserializer, DeserializeError};
-    /// use std::str::FromStr;
-    ///
-    /// let address = Address::from_str(&quot;AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ&quot;).unwrap();
-    /// let mut bytes = address.prefixed_bytes();
-    /// let (rest, res_addr) = AddressDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;bytes).unwrap();
-    /// assert_eq!(address, res_addr);
-    /// assert_eq!(rest.len(), 0);
-    ///
-    /// // set an invalid prefix-byte?
-    /// bytes[0] = 2;
-    /// assert!(AddressDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;bytes).is_err());
+    /// use massa_hash::Hash;
+    /// // Make a hard-coded 0-byte container
+    /// let bytes = [[0].as_slice(), [0; 32].as_slice()].concat();
+    /// let ref_addr = Address::User(UserAddress(Hash::from_bytes(bytes[1..33].try_into().unwrap())));
+    /// let res_addr = AddressDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;bytes).unwrap();
+    /// // the deser adds the prefix value &#39;0&#39; in a single byte
+    /// assert_eq!(ref_addr, res_addr.1);
+    /// assert_eq!(0, res_addr.0.len());
     /// ```
     </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
