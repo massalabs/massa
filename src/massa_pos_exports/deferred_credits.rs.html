@@ -317,6 +317,8 @@
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
@@ -549,6 +551,7 @@
 <span class="doccomment">/// Serializer for `Credits`
 </span><span class="kw">pub struct </span>CreditsSerializer {
     u64_ser: U64VarIntSerializer,
+    address_ser: AddressSerializer,
     amount_ser: AmountSerializer,
 }
 
@@ -563,6 +566,7 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u64_ser: U64VarIntSerializer::new(),
+            address_ser: AddressSerializer::new(),
             amount_ser: AmountSerializer::new(),
         }
     }
@@ -579,7 +583,7 @@
         <span class="comment">// slot credits
         </span><span class="kw">for </span>(addr, amount) <span class="kw">in </span>value {
             <span class="comment">// address
-            </span>buffer.extend(addr.prefixed_bytes());
+            </span><span class="self">self</span>.address_ser.serialize(<span class="kw-2">&amp;</span>addr, buffer)<span class="question-mark">?</span>;
             <span class="comment">// credited amount
             </span><span class="self">self</span>.amount_ser.serialize(amount, buffer)<span class="question-mark">?</span>;
         }
