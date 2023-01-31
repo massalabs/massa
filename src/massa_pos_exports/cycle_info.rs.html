@@ -875,7 +875,7 @@
         BitVec::default(),
         PreHashMap::default(),
     );
-    <span class="kw">let </span>addr = Address::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">32</span>]);
+    <span class="kw">let </span>addr = Address::from_prefixed_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">33</span>].as_slice()).unwrap();
 
     <span class="comment">// add changes
     </span><span class="kw">let </span><span class="kw-2">mut </span>roll_changes = PreHashMap::default();
@@ -994,7 +994,7 @@
         </span><span class="self">self</span>.u64_ser
             .serialize(<span class="kw-2">&amp;</span>(value.roll_counts.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(addr, count) <span class="kw">in </span><span class="kw-2">&amp;</span>value.roll_counts {
-            buffer.extend(addr.to_bytes());
+            buffer.extend(addr.prefixed_bytes());
             <span class="self">self</span>.u64_ser.serialize(count, buffer)<span class="question-mark">?</span>;
         }
 
@@ -1148,7 +1148,7 @@
             },
         ) <span class="kw">in </span>value.iter()
         {
-            buffer.extend(addr.to_bytes());
+            buffer.extend(addr.prefixed_bytes());
             <span class="self">self</span>.u64_ser.serialize(block_success_count, buffer)<span class="question-mark">?</span>;
             <span class="self">self</span>.u64_ser.serialize(block_failure_count, buffer)<span class="question-mark">?</span>;
         }
