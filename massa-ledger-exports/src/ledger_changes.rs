@@ -427,7 +427,7 @@ impl LedgerChangesDeserializer {
                 Included(u64::MIN),
                 Included(max_ledger_changes_count),
             ),
-            address_deserializer: AddressDeserializer::default(),
+            address_deserializer: AddressDeserializer::new(),
             entry_deserializer: SetUpdateOrDeleteDeserializer::new(
                 LedgerEntryDeserializer::new(
                     max_datastore_entry_count,

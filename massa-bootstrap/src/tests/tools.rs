@@ -240,7 +240,7 @@ pub fn get_random_final_state_bootstrap(
     // insert the last possible address to prevent the last cursor to move when testing the changes
 
     let mut bytes = [255; 33];
-    bytes[0] = b'U';
+    bytes[0] = 1;
     sorted_ledger.insert(
         Address::from_prefixed_bytes(&bytes).unwrap(),
         get_random_ledger_entry(),

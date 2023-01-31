@@ -242,9 +242,7 @@ fn test_cycle_info_hash_computation() {
         BitVec::default(),
         PreHashMap::default(),
     );
-    let mut bytes = [0; 33];
-    bytes[0] = b'U';
-    let addr = Address::from_prefixed_bytes(&bytes).unwrap();
+    let addr = Address::from_prefixed_bytes(&[0; 33].as_slice()).unwrap();
 
     // add changes
     let mut roll_changes = PreHashMap::default();
