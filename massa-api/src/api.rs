@@ -11,13 +11,13 @@ use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
 use massa_api_exports::config::APIConfig;
 use massa_api_exports::page::PagedVec;
+use massa_api_exports::ApiRequest;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_models::block_id::BlockId;
 use massa_models::version::Version;
 use massa_pool_exports::PoolChannels;
 use serde::Serialize;
 use tokio_stream::wrappers::BroadcastStream;
-use massa_api_exports::ApiRequest;
 
 impl API<ApiV2> {
     /// generate a new massa API

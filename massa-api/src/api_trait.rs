@@ -2,8 +2,8 @@
 //! Json RPC API for a massa-node
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
-use massa_api_exports::ApiRequest;
 use massa_api_exports::page::PagedVec;
+use massa_api_exports::ApiRequest;
 use massa_models::block_id::BlockId;
 use massa_models::version::Version;
 

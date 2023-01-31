@@ -7,9 +7,9 @@
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
 
+use crate::page::PageRequest;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use crate::page::PageRequest;
 
 /// address related structures
 pub mod address;
@@ -88,4 +88,3 @@ pub struct ApiRequest {
     /// pagination
     pub page_request: Option<PageRequest>,
 }
-
