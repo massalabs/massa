@@ -600,11 +600,6 @@
 <a href="#600" id="600">600</a>
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -754,11 +749,10 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = from_addr {
             <span class="kw">let </span>new_balance = <span class="self">self
                 </span>.get_balance(<span class="kw-2">&amp;</span>from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, from_addr)))<span class="question-mark">?
+                .ok_or_else(|| ExecutionError::RuntimeError(<span class="string">&quot;source addr not found&quot;</span>.to_string()))<span class="question-mark">?
                 </span>.checked_sub(amount)
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed to transfer {} from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
-                    </span>.get_balance(<span class="kw-2">&amp;</span>from_addr).unwrap_or_default()))
+                    ExecutionError::RuntimeError(<span class="string">&quot;insufficient from_addr balance&quot;</span>.into())
                 })<span class="question-mark">?</span>;
             changes.set_balance(from_addr, new_balance);
         }
@@ -771,10 +765,7 @@
                 <span class="comment">// if `to_addr` exists we increase the balance
                 </span>(<span class="prelude-val">Some</span>(old_balance), <span class="kw">_</span>) =&gt; {
                     <span class="kw">let </span>new_balance = old_balance.checked_add(amount).ok_or_else(|| {
-                        ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                            <span class="string">&quot;overflow in crediting address {} balance {} due to adding {}&quot;</span>,
-                            to_addr, old_balance, amount
-                        ))
+                        ExecutionError::RuntimeError(<span class="string">&quot;overflow in to_addr balance&quot;</span>.into())
                     })<span class="question-mark">?</span>;
                     changes.set_balance(to_addr, new_balance);
                 }
@@ -790,15 +781,14 @@
                                 .checked_sub(<span class="self">self</span>.storage_costs_constants.ledger_entry_base_cost)
                                 .ok_or_else(|| {
                                     ExecutionError::RuntimeError(
-                                        <span class="macro">format!</span>(<span class="string">&quot;overflow in subtract ledger cost {} for new crediting address {}&quot;</span>, to_addr, <span class="self">self</span>.storage_costs_constants.ledger_entry_base_cost),
+                                        <span class="string">&quot;overflow in subtract ledger cost for addr&quot;</span>.to_string(),
                                     )
                                 })<span class="question-mark">?</span>,
                         );
                     } <span class="kw">else </span>{
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                            <span class="string">&quot;insufficient amount {} to create crediting address {}&quot;</span>,
-                            amount, to_addr
-                        )));
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
+                            <span class="string">&quot;insufficient amount to create receiver address&quot;</span>.to_string(),
+                        ));
                     }
                 }
                 <span class="comment">// if `from_addr` is none and `to_addr` doesn&#39;t exist try to create it from coins sent
@@ -814,7 +804,7 @@
                                 .checked_sub(<span class="self">self</span>.storage_costs_constants.ledger_entry_base_cost)
                                 .ok_or_else(|| {
                                     ExecutionError::RuntimeError(
-                                        <span class="macro">format!</span>(<span class="string">&quot;overflow in subtract ledger cost {} for new crediting address {}&quot;</span>, to_addr, <span class="self">self</span>.storage_costs_constants.ledger_entry_base_cost),
+                                        <span class="string">&quot;overflow in subtract ledger cost for addr&quot;</span>.to_string(),
                                     )
                                 })<span class="question-mark">?</span>,
                         );
