@@ -259,6 +259,21 @@ impl AddressSerializer {
 }
 
 impl Serializer<Address> for AddressSerializer {
+    /// # Example
+    /// ```rust
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
+    /// # use serde::{Deserialize, Serialize};
+    /// # use massa_models::address::{UserAddress, Address, AddressSerializer};
+    /// # use massa_serialization::{Serializer, SerializeError};
+    /// use massa_hash::Hash;
+    /// let bytes = &[0; 32];
+    /// // Make a hard-coded 0-byte container
+    /// let ref_addr = Address::User(UserAddress(Hash::from_bytes(bytes)));
+    /// let mut vec = vec![];
+    /// AddressSerializer::new().serialize(&ref_addr, &mut vec).unwrap();
+    /// // the deser adds the prefix value '0' in a single byte
+    /// assert_eq!(vec, [[0].as_slice(), bytes.as_slice()].concat());
+    /// ```
     fn serialize(
         &self,
         value: &Address,
@@ -286,21 +301,18 @@ impl AddressDeserializer {
 }
 
 impl Deserializer<Address> for AddressDeserializer {
-    /// ## Example
+    /// # Example
     /// ```rust
-    /// use massa_models::address::{Address, AddressDeserializer};
+    /// use massa_models::address::{UserAddress, Address, AddressDeserializer};
     /// use massa_serialization::{Deserializer, DeserializeError};
-    /// use std::str::FromStr;
-    ///
-    /// let address = Address::from_str("AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
-    /// let mut bytes = address.prefixed_bytes();
-    /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
-    /// assert_eq!(address, res_addr);
-    /// assert_eq!(rest.len(), 0);
-    ///
-    /// // set an invalid prefix-byte?
-    /// bytes[0] = 2;
-    /// assert!(AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).is_err());
+    /// use massa_hash::Hash;
+    /// // Make a hard-coded 0-byte container
+    /// let bytes = [[0].as_slice(), [0; 32].as_slice()].concat();
+    /// let ref_addr = Address::User(UserAddress(Hash::from_bytes(bytes[1..33].try_into().unwrap())));
+    /// let res_addr = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
+    /// // the deser adds the prefix value '0' in a single byte
+    /// assert_eq!(ref_addr, res_addr.1);
+    /// assert_eq!(0, res_addr.0.len());
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
