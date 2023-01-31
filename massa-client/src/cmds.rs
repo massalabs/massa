@@ -1443,7 +1443,7 @@ where
         value
             .1
             .parse::<T>()
-            .map(|op| Some(op))
+            .map(Option::Some)
             .map_err(|e| anyhow!("failed to parse \"{}\" due to: {}", value.1, e))
     } else {
         Ok(None)

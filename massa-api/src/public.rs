@@ -381,11 +381,44 @@ impl MassaRpcServer for API<Public> {
             })
             .collect::<BTreeMap<_, _>>();
 
+        let current_cycle = last_slot
+            .unwrap_or_else(|| Slot::new(0, 0))
+            .get_cycle(api_settings.periods_per_cycle);
+
+        let cycle_duration = match api_settings.t0.checked_mul(api_settings.periods_per_cycle) {
+            Ok(cycle_duration) => cycle_duration,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
+        let current_cycle_time_result = if current_cycle == 0 {
+            Ok(api_settings.genesis_timestamp)
+        } else {
+            cycle_duration.checked_mul(current_cycle).and_then(
+                |elapsed_time_before_current_cycle| {
+                    api_settings
+                        .genesis_timestamp
+                        .checked_add(elapsed_time_before_current_cycle)
+                },
+            )
+        };
+
+        let current_cycle_time = match current_cycle_time_result {
+            Ok(current_cycle_time) => current_cycle_time,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
+        let next_cycle_time = match current_cycle_time.checked_add(cycle_duration) {
+            Ok(next_cycle_time) => next_cycle_time,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
         Ok(NodeStatus {
             node_id,
             node_ip: network_config.routable_ip,
             version,
             current_time: now,
+            current_cycle_time,
+            next_cycle_time,
             connected_nodes,
             last_slot,
             next_slot,
@@ -394,9 +427,7 @@ impl MassaRpcServer for API<Public> {
             network_stats,
             pool_stats,
             config,
-            current_cycle: last_slot
-                .unwrap_or_else(|| Slot::new(0, 0))
-                .get_cycle(api_settings.periods_per_cycle),
+            current_cycle,
         })
     }
 
