@@ -396,7 +396,6 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -619,8 +618,7 @@
         Address::User(UserAddress(Hash::compute_from(public_key.to_bytes())))
     }
 
-    <span class="doccomment">/// ## Example
-    /// Inner implementation for serializer. Mostly made available for the benefit of macros.
+    <span class="doccomment">/// Inner implementation for serializer. Mostly made available for the benefit of macros.
     </span><span class="kw">pub fn </span>prefixed_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buff = <span class="macro">vec!</span>[];
         <span class="kw">let </span>pref_ser = U64VarIntSerializer::new();
