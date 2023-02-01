@@ -65,7 +65,7 @@ fn test_simple_get_operations() {
                     Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
                         response_tx.send(unexecuted_ops.clone()).unwrap();
                     }
-                    Ok(_) => panic!("unexpected controller request"),
+                    Ok(op) => panic!("expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
                     Err(_) => panic!("execution never called"),
                 }
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
@@ -121,14 +121,22 @@ fn launch_basic_get_block_operation_execution_mock(
         use ControllerMsg::GetFinalAndCandidateBalance as GetFinal;
         use ControllerMsg::UnexecutedOpsAmong as Unexecuted;
 
-        if let Ok(Unexecuted { response_tx, .. }) = receive(&recvr) {
-            response_tx.send(unexecuted_ops.clone()).unwrap();
+        match receive(&recvr) {
+            Ok(Unexecuted { response_tx, .. }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
+            Ok(op) => panic!("expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
+            Err(_) => panic!("execution never called"),
         }
-        if let Ok(GetFinal { response_tx, .. }) = receive(&recvr) {
-            response_tx
+        match receive(&recvr) {
+            Ok(GetFinal { response_tx, .. }) => response_tx
                 .send(vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
-                .unwrap();
+                .unwrap(),
+            Ok(op) => panic!(
+                "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
+                op
+            ),
+            Err(_) => panic!("execution never called"),
         }
+
         (1..operations_len).for_each(|_| {
             if let Ok(Unexecuted { response_tx, .. }) = receive(&recvr) {
                 response_tx.send(unexecuted_ops.clone()).unwrap();
