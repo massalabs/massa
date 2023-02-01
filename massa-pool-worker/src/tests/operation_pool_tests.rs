@@ -126,10 +126,14 @@ fn test_pool() {
 
     // checks ops are the expected ones for thread 0 and 1 and various periods
     for thread in 0u8..pool_config.thread_count {
+        dbg!(thread);
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 3;
+            // fails at a non-deterministic point in this double iteration.
+            // Furthest I saw it get was thread 8 in 0..32
             let (ids, storage) = pool.get_block_operations(&target_slot);
+
             assert!(ids
                 .iter()
                 .map(|id| (
