@@ -2452,6 +2452,7 @@
                     "in_blocks",
                     "in_pool",
                     "is_final",
+                    "thread",
                     "operation"
                 ],
                 "type": "object",
@@ -2474,6 +2475,10 @@
                     "is_final": {
                         "description": "True if the operation is final (for example in a final block)",
                         "type": "boolean"
+                    },
+                    "thread": {
+                        "description": "Thread in which the operation can be included",
+                        "type": "number"
                     },
                     "operation": {
                         "$ref": "#/components/schemas/WrappedOperation",
