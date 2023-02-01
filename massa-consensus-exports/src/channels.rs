@@ -1,5 +1,6 @@
 use massa_execution_exports::ExecutionController;
-use massa_models::block::{Block, BlockHeader, FilledBlock};
+use massa_models::block::{Block, FilledBlock};
+use massa_models::block_header::BlockHeader;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;

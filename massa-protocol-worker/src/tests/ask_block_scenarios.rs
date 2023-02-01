@@ -3,7 +3,7 @@
 use super::tools::protocol_test;
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
-use massa_models::{block::BlockId, slot::Slot};
+use massa_models::{block_id::BlockId, slot::Slot};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};
@@ -40,7 +40,7 @@ async fn test_full_ask_block_workflow() {
             let op_1 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_2 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_thread = op_1
-                .creator_address
+                .content_creator_address
                 .get_thread(protocol_config.thread_count);
             let block = tools::create_block_with_operations(
                 &node_a.keypair,

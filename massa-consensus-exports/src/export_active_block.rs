@@ -2,9 +2,10 @@ use crate::error::ConsensusError;
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, BlockId, WrappedBlock},
+    block::{Block, BlockDeserializer, SecureShareBlock},
+    block_id::BlockId,
     prehash::PreHashMap,
-    wrapped::{WrappedDeserializer, WrappedSerializer},
+    secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -27,7 +28,7 @@ use std::ops::Bound::Included;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
     /// The block.
-    pub block: WrappedBlock,
+    pub block: SecureShareBlock,
     /// one `(block id, period)` per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// for example has its fitness reached the given threshold
@@ -69,7 +70,7 @@ impl ExportActiveBlock {
 
         // create ActiveBlock
         let active_block = ActiveBlock {
-            creator_address: self.block.creator_address,
+            creator_address: self.block.content_creator_address,
             block_id: self.block.id,
             parents: self.parents.clone(),
             children: vec![PreHashMap::default(); thread_count as usize], // will be computed once the full graph is available
@@ -89,7 +90,7 @@ impl ExportActiveBlock {
 /// Basic serializer of `ExportActiveBlock`
 #[derive(Default)]
 pub struct ExportActiveBlockSerializer {
-    wrapped_serializer: WrappedSerializer,
+    sec_share_serializer: SecureShareSerializer,
     period_serializer: U64VarIntSerializer,
 }
 
@@ -97,7 +98,7 @@ impl ExportActiveBlockSerializer {
     /// Create a new `ExportActiveBlockSerializer`
     pub fn new() -> Self {
         ExportActiveBlockSerializer {
-            wrapped_serializer: WrappedSerializer::new(),
+            sec_share_serializer: SecureShareSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
         }
     }
@@ -110,7 +111,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         // block
-        self.wrapped_serializer.serialize(&value.block, buffer)?;
+        self.sec_share_serializer.serialize(&value.block, buffer)?;
 
         // parents with periods
         // note: there should be no parents for genesis blocks
@@ -129,7 +130,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 
 /// Basic deserializer of `ExportActiveBlock`
 pub struct ExportActiveBlockDeserializer {
-    wrapped_block_deserializer: WrappedDeserializer<Block, BlockDeserializer>,
+    sec_share_block_deserializer: SecureShareDeserializer<Block, BlockDeserializer>,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
     thread_count: u8,
@@ -140,7 +141,7 @@ impl ExportActiveBlockDeserializer {
     #[allow(clippy::too_many_arguments)]
     pub fn new(thread_count: u8, endorsement_count: u32, max_operations_per_block: u32) -> Self {
         ExportActiveBlockDeserializer {
-            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
+            sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
                 thread_count,
                 max_operations_per_block,
                 endorsement_count,
@@ -156,7 +157,9 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_consensus_exports::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{BlockId, Block, BlockSerializer, BlockHeader, BlockHeaderSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializerLW}, slot::Slot, wrapped::WrappedContent};
+    /// use massa_models::{ledger::LedgerChanges, config::THREAD_COUNT, rolls::RollUpdates, block::{Block, BlockSerializer}, prehash::PreHashSet, endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, secure_share::SecureShareContent};
+    /// use massa_models::block_id::BlockId;
+    /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;
@@ -168,29 +171,29 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///     .collect();
     ///
     /// // create block header
-    /// let orig_header = BlockHeader::new_wrapped(
+    /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///                     endorsed_block: BlockId(Hash::compute_from(&[1])),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
-    ///             Endorsement::new_wrapped(
+    ///             Endorsement::new_verifiable(
     ///                 Endorsement {
-    ///                     slot: Slot::new(4, 0),
+    ///                     slot: Slot::new(1, 1),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///                     endorsed_block: BlockId(Hash::compute_from(&[1])),
     ///                 },
-    ///                 EndorsementSerializerLW::new(),
+    ///                 EndorsementSerializer::new(),
     ///                 &keypair,
     ///             )
     ///             .unwrap(),
@@ -207,7 +210,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///     operations: Vec::new(),
     /// };
     ///
-    /// let full_block = Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
+    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
     ///    parents: vec![],
@@ -230,7 +233,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
             tuple((
                 // block
                 context("Failed block deserialization", |input| {
-                    self.wrapped_block_deserializer.deserialize(input)
+                    self.sec_share_block_deserializer.deserialize(input)
                 }),
                 // parents
                 context(

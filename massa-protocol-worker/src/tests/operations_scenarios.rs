@@ -5,7 +5,7 @@
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_models::prehash::PreHashSet;
-use massa_models::{self, address::Address, amount::Amount, block::BlockId, slot::Slot};
+use massa_models::{self, address::Address, amount::Amount, block_id::BlockId, slot::Slot};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::tests::tools::{self, assert_hash_asked_to_node};
@@ -574,7 +574,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let op_1 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_2 = tools::create_operation_with_expire_period(&node_a.keypair, 5);
             let op_thread = op_1
-                .creator_address
+                .content_creator_address
                 .get_thread(protocol_config.thread_count);
             let mut block = tools::create_block_with_operations(
                 &node_a.keypair,

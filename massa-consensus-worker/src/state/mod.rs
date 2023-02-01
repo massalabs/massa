@@ -12,8 +12,9 @@ use massa_consensus_exports::{
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    api::BlockGraphStatus,
-    block::{BlockId, WrappedHeader},
+    block::BlockGraphStatus,
+    block_header::SecuredHeader,
+    block_id::BlockId,
     clique::Clique,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
@@ -86,7 +87,7 @@ pub struct ConsensusState {
     /// the time span considered for desynchronization detection
     pub stats_desync_detection_timespan: MassaTime,
     /// blocks we want
-    pub wishlist: PreHashMap<BlockId, Option<WrappedHeader>>,
+    pub wishlist: PreHashMap<BlockId, Option<SecuredHeader>>,
     /// previous blockclique notified to Execution
     pub prev_blockclique: PreHashMap<BlockId, Slot>,
 }
@@ -466,8 +467,8 @@ impl ConsensusState {
     /// get the current block wish list, including the operations hash.
     pub fn get_block_wishlist(
         &self,
-    ) -> Result<PreHashMap<BlockId, Option<WrappedHeader>>, ConsensusError> {
-        let mut wishlist = PreHashMap::<BlockId, Option<WrappedHeader>>::default();
+    ) -> Result<PreHashMap<BlockId, Option<SecuredHeader>>, ConsensusError> {
+        let mut wishlist = PreHashMap::<BlockId, Option<SecuredHeader>>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
             if let Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,

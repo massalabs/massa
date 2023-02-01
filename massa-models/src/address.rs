@@ -41,6 +41,8 @@ impl std::fmt::Display for Address {
     }
 }
 
+// See https://github.com/massalabs/massa/pull/3479#issuecomment-1408694720
+// as to why more information is not provided
 impl std::fmt::Debug for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)

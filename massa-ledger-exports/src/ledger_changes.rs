@@ -19,11 +19,12 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
+use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeMap};
 use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LedgerEntryUpdate {
     /// change the balance
     pub balance: SetOrKeep<Amount>,
@@ -324,7 +325,7 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 }
 
 /// represents a list of changes to multiple ledger entries
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LedgerChanges(
     pub PreHashMap<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>,
 );

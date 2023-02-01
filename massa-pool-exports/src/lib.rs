@@ -5,9 +5,11 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 
+mod channels;
 mod config;
 mod controller_traits;
 
+pub use channels::PoolChannels;
 pub use config::PoolConfig;
 pub use controller_traits::{PoolController, PoolManager};
 

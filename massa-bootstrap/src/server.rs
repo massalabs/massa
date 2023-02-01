@@ -6,7 +6,7 @@ use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, Consensus
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{
-    block::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
+    block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
 };
 use massa_network_exports::NetworkCommandSender;
@@ -16,6 +16,7 @@ use parking_lot::RwLock;
 use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -66,42 +67,6 @@ pub async fn start_bootstrap_server(
     if let Some(bind) = bootstrap_config.bind {
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
 
-        let whitelist = if let Ok(whitelist) =
-            std::fs::read_to_string(&bootstrap_config.bootstrap_whitelist_path)
-        {
-            Some(
-                serde_json::from_str::<HashSet<IpAddr>>(whitelist.as_str())
-                    .map_err(|_| {
-                        BootstrapError::GeneralError(String::from(
-                            "Failed to parse bootstrap whitelist",
-                        ))
-                    })?
-                    .into_iter()
-                    .map(normalize_ip)
-                    .collect(),
-            )
-        } else {
-            None
-        };
-
-        let blacklist = if let Ok(blacklist) =
-            std::fs::read_to_string(&bootstrap_config.bootstrap_blacklist_path)
-        {
-            Some(
-                serde_json::from_str::<HashSet<IpAddr>>(blacklist.as_str())
-                    .map_err(|_| {
-                        BootstrapError::GeneralError(String::from(
-                            "Failed to parse bootstrap blacklist",
-                        ))
-                    })?
-                    .into_iter()
-                    .map(normalize_ip)
-                    .collect(),
-            )
-        } else {
-            None
-        };
-
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
                 consensus_controller,
@@ -112,8 +77,6 @@ pub async fn start_bootstrap_server(
                 bind,
                 keypair,
                 version,
-                whitelist,
-                blacklist,
                 ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
                 bootstrap_config,
             }
@@ -139,9 +102,47 @@ struct BootstrapServer {
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
-    blacklist: Option<HashSet<IpAddr>>,
-    whitelist: Option<HashSet<IpAddr>>,
     ip_hist_map: HashMap<IpAddr, Instant>,
+}
+
+#[allow(clippy::result_large_err)]
+#[allow(clippy::type_complexity)]
+fn reload_whitelist_blacklist(
+    whitelist_path: &PathBuf,
+    blacklist_path: &PathBuf,
+) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
+    let whitelist = if let Ok(whitelist) = std::fs::read_to_string(whitelist_path) {
+        Some(
+            serde_json::from_str::<HashSet<IpAddr>>(whitelist.as_str())
+                .map_err(|_| {
+                    BootstrapError::GeneralError(String::from(
+                        "Failed to parse bootstrap whitelist",
+                    ))
+                })?
+                .into_iter()
+                .map(normalize_ip)
+                .collect(),
+        )
+    } else {
+        None
+    };
+
+    let blacklist = if let Ok(blacklist) = std::fs::read_to_string(blacklist_path) {
+        Some(
+            serde_json::from_str::<HashSet<IpAddr>>(blacklist.as_str())
+                .map_err(|_| {
+                    BootstrapError::GeneralError(String::from(
+                        "Failed to parse bootstrap blacklist",
+                    ))
+                })?
+                .into_iter()
+                .map(normalize_ip)
+                .collect(),
+        )
+    } else {
+        None
+    };
+    Ok((whitelist, blacklist))
 }
 
 impl BootstrapServer {
@@ -150,15 +151,13 @@ impl BootstrapServer {
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
         let mut bootstrap_sessions = FuturesUnordered::new();
-        // let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
-        // let mut bootstrap_data: Option<(
-        //     BootstrapableGraph,
-        //     BootstrapPeers,
-        //     Arc<RwLock<FinalState>>,
-        // )> = None;
-        // let cache_timer = sleep(cache_timeout);
+        let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
+        let (mut whitelist, mut blacklist) = reload_whitelist_blacklist(
+            &self.bootstrap_config.bootstrap_whitelist_path,
+            &self.bootstrap_config.bootstrap_blacklist_path,
+        )?;
+        let mut cache_interval = tokio::time::interval(cache_timeout);
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        // tokio::pin!(cache_timer);
         /*
             select! without the "biased" modifier will randomly select the 1st branch to check,
             then will check the next ones in the order they are written.
@@ -177,11 +176,10 @@ impl BootstrapServer {
                     break
                 },
 
-                // cache cleanup timeout
-                // _ = &mut cache_timer, if bootstrap_data.is_some() => {
-                //     massa_trace!("bootstrap.lib.run.cache_unload", {});
-                //     bootstrap_data = None;
-                // }
+                // Whitelist cache timeout
+                _ = cache_interval.tick() => {
+                    (whitelist, blacklist) = reload_whitelist_blacklist(&self.bootstrap_config.bootstrap_whitelist_path, &self.bootstrap_config.bootstrap_blacklist_path)?;
+                }
 
                 // bootstrap session finished
                 Some(_) = bootstrap_sessions.next() => {
@@ -189,7 +187,7 @@ impl BootstrapServer {
                 }
 
                 // listener
-                res_connection = listener.accept(&self.whitelist, &self.blacklist) => {
+                res_connection = listener.accept(&whitelist, &blacklist) => {
                     let (dplx, remote_addr) = if res_connection.is_ok() {
                         res_connection.unwrap()
                     } else {
@@ -260,16 +258,24 @@ impl BootstrapServer {
 
                         bootstrap_sessions.push(async move {
                             let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
-                            match manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender).await {
-                                Ok(_) => {
-                                    info!("bootstrapped peer {}", remote_addr)
-                                },
-                                Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
-                                Err(err) => {
-                                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                            debug!("awaiting on bootstrap of peer {}", remote_addr);
+                            match tokio::time::timeout(config.bootstrap_timeout.into(), manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender)).await {
+                                Ok(mgmt) => match mgmt {
+                                    Ok(_) => {
+                                        info!("bootstrapped peer {}", remote_addr)
+                                    },
+                                    Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
+                                    Err(err) => {
+                                        debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                                        let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
+                                    },
+                                }
+                                Err(_timeout) => {
+                                    debug!("bootstrap timeout for peer {}", remote_addr);
                                     // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
-                                },
+                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: format!("Bootstrap process timedout ({})", format_duration(config.bootstrap_timeout.to_duration())) })).await;
+                                }
                             }
 
                         });

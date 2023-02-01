@@ -88,6 +88,7 @@ mod context;
 mod controller;
 mod execution;
 mod interface_impl;
+mod module_cache;
 mod request_queue;
 mod slot_sequencer;
 mod speculative_async_pool;

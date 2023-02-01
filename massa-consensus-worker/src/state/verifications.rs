@@ -6,9 +6,7 @@ use massa_consensus_exports::{
 };
 use massa_logging::massa_trace;
 use massa_models::{
-    block::{BlockId, WrappedHeader},
-    prehash::PreHashSet,
-    slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
 };
 
 /// Possible output of a header check
@@ -66,7 +64,7 @@ impl ConsensusState {
     pub fn check_header(
         &self,
         block_id: &BlockId,
-        header: &WrappedHeader,
+        header: &SecuredHeader,
         current_slot: Option<Slot>,
         read_shared_state: &ConsensusState,
     ) -> Result<HeaderCheckOutcome, ConsensusError> {
@@ -77,7 +75,7 @@ impl ConsensusState {
             Vec::with_capacity(self.config.thread_count as usize);
         let mut incomp = PreHashSet::<BlockId>::default();
         let mut missing_deps = PreHashSet::<BlockId>::default();
-        let creator_addr = header.creator_address;
+        let creator_addr = header.content_creator_address;
 
         // check that is older than the latest final block in that thread
         // Note: this excludes genesis blocks
@@ -376,7 +374,7 @@ impl ConsensusState {
     /// * endorsed slot is `parent_in_own_thread` slot
     pub fn check_endorsements(
         &self,
-        header: &WrappedHeader,
+        header: &SecuredHeader,
     ) -> Result<EndorsementsCheckOutcome, ConsensusError> {
         // check endorsements
         let endorsement_draws = match self
@@ -389,7 +387,8 @@ impl ConsensusState {
         };
         for endorsement in header.content.endorsements.iter() {
             // check that the draw is correct
-            if endorsement.creator_address != endorsement_draws[endorsement.content.index as usize]
+            if endorsement.content_creator_address
+                != endorsement_draws[endorsement.content.index as usize]
             {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
                     format!(

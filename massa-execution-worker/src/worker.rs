@@ -14,7 +14,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
@@ -85,8 +85,8 @@ impl ExecutionThread {
         if let Some(req_resp) = self.readonly_requests.pop() {
             let (req, resp_tx) = req_resp.into_request_sender_pair();
 
-            // Acquire read access to the execution state and execute the read-only request
-            let outcome = self.execution_state.read().execute_readonly_request(req);
+            // Acquire write access to the execution state (for cache updates) and execute the read-only request
+            let outcome = self.execution_state.write().execute_readonly_request(req);
 
             // Send the execution output through resp_tx.
             // Ignore errors because they just mean that the request emitter dropped the received

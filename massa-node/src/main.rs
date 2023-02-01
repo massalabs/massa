@@ -8,7 +8,8 @@ use crate::settings::SETTINGS;
 
 use crossbeam_channel::{Receiver, TryRecvError};
 use dialoguer::Password;
-use massa_api::{APIConfig, ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
+use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
+use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_consensus_exports::events::ConsensusEvent;
@@ -47,7 +48,7 @@ use massa_models::config::constants::{
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool_exports::{PoolConfig, PoolManager};
+use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -172,10 +173,12 @@ async fn launch(
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
         bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
         bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
         bind: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
+        bootstrap_timeout: SETTINGS.bootstrap.bootstrap_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
         write_timeout: SETTINGS.bootstrap.write_timeout,
         read_error_timeout: SETTINGS.bootstrap.read_error_timeout,
@@ -328,6 +331,7 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
+        max_module_cache_size: SETTINGS.execution.max_module_cache_size,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
         gas_costs: GasCosts::new(
@@ -353,9 +357,20 @@ async fn launch(
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        broadcast_enabled: SETTINGS.api.enable_ws,
+        broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
     };
-    let (pool_manager, pool_controller) =
-        start_pool_controller(pool_config, &shared_storage, execution_controller.clone());
+
+    let pool_channels = PoolChannels {
+        operation_sender: broadcast::channel(pool_config.broadcast_operations_capacity).0,
+    };
+
+    let (pool_manager, pool_controller) = start_pool_controller(
+        pool_config,
+        &shared_storage,
+        execution_controller.clone(),
+        pool_channels.clone(),
+    );
 
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
@@ -440,13 +455,10 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-        broadcast_enabled: SETTINGS.api.enable_ws,
-        broadcast_operations_capacity: SETTINGS.protocol.broadcast_operations_capacity,
     };
 
     let protocol_senders = ProtocolSenders {
         network_command_sender: network_command_sender.clone(),
-        operation_sender: broadcast::channel(protocol_config.broadcast_operations_capacity).0,
     };
 
     let protocol_receivers = ProtocolReceivers {
@@ -530,7 +542,7 @@ async fn launch(
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_channels,
-        protocol_senders,
+        pool_channels,
         api_config.clone(),
         *VERSION,
     );

@@ -57,6 +57,8 @@ pub struct ExecutionConfig {
     pub max_bytecode_size: u64,
     /// Max datastore value size
     pub max_datastore_value_size: u64,
+    /// Max number of compiled modules in the cache
+    pub max_module_cache_size: u32,
     /// Storage cost constants
     pub storage_costs_constants: StorageCostsConstants,
     /// Max gas for read only executions

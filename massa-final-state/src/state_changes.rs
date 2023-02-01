@@ -16,9 +16,10 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use serde::{Deserialize, Serialize};
 
 /// represents changes that can be applied to the execution state
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct StateChanges {
     /// ledger changes
     pub ledger_changes: LedgerChanges,

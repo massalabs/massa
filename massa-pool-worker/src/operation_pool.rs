@@ -8,7 +8,7 @@ use massa_models::{
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
 };
-use massa_pool_exports::PoolConfig;
+use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use std::collections::BTreeSet;
 
@@ -35,6 +35,9 @@ pub struct OperationPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
+
+    /// channels used by the pool worker
+    channels: PoolChannels,
 }
 
 impl OperationPool {
@@ -42,6 +45,7 @@ impl OperationPool {
         config: PoolConfig,
         storage: &Storage,
         execution_controller: Box<dyn ExecutionController>,
+        channels: PoolChannels,
     ) -> Self {
         OperationPool {
             operations: Default::default(),
@@ -51,6 +55,7 @@ impl OperationPool {
             config,
             storage: storage.clone_without_refs(),
             execution_controller,
+            channels,
         }
     }
 
@@ -112,10 +117,15 @@ impl OperationPool {
         {
             let ops = ops_storage.read_operations();
             for op_id in items {
+                let op = ops
+                    .get(&op_id)
+                    .expect("attempting to add operation to pool, but it is absent from storage");
+                // Broadcast operation to active sender(channel) subscribers.
+                if self.config.broadcast_enabled {
+                    let _ = self.channels.operation_sender.send(op.content.clone());
+                }
                 let op_info = OperationInfo::from_op(
-                    ops.get(&op_id).expect(
-                        "attempting to add operation to pool, but it is absent from storage",
-                    ),
+                    op,
                     self.config.operation_validity_periods,
                     self.config.roll_price,
                     self.config.thread_count,

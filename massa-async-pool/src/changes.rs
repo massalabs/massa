@@ -9,6 +9,7 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use serde::{Deserialize, Serialize};
 
 ///! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
@@ -19,7 +20,7 @@ use crate::{
 };
 
 /// Enum representing a value U with identifier T being added or deleted
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Change<T, U> {
     /// an item with identifier T and value U is added
     Add(T, U),
@@ -39,7 +40,7 @@ enum ChangeId {
 }
 
 /// represents a list of additions and deletions to the asynchronous message pool
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
 
 /// `AsyncPoolChanges` serializer

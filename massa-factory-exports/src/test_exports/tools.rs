@@ -1,14 +1,15 @@
 use massa_hash::Hash;
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, WrappedBlock},
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    secure_share::SecureShareContent,
     slot::Slot,
-    wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
 
 /// Create an empty block for testing. Can be used to generate genesis blocks.
-pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> WrappedBlock {
-    let header = BlockHeader::new_wrapped(
+pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: *slot,
             parents: Vec::new(),
@@ -20,7 +21,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> WrappedBlock {
     )
     .unwrap();
 
-    Block::new_wrapped(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),

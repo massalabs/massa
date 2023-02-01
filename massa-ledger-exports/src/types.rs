@@ -7,6 +7,7 @@ use nom::{
     error::{ContextError, ParseError},
     IResult,
 };
+use serde::{Deserialize, Serialize};
 
 /// Trait marking a structure that supports another one (V) being applied to it
 pub trait Applicable<V> {
@@ -15,7 +16,7 @@ pub trait Applicable<V> {
 }
 
 /// Enumeration representing set/update/delete change on a value T
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V> + Clone> {
     /// Sets the value T a new absolute value T
     Set(T),
@@ -184,7 +185,7 @@ where
 }
 
 /// `Enum` representing a set/delete change on a value T
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum SetOrDelete<T: Clone> {
     /// sets a new absolute value T
     Set(T),
@@ -270,7 +271,7 @@ impl<T: Clone> Applicable<SetOrDelete<T>> for SetOrDelete<T> {
 }
 
 /// represents a set/keep change
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum SetOrKeep<T: Clone> {
     /// sets a new absolute value T
     Set(T),
