@@ -21,6 +21,10 @@ pub struct NodeStatus {
     pub current_time: MassaTime,
     /// current cycle
     pub current_cycle: u64,
+    /// current cycle starting timestamp
+    pub current_cycle_time: MassaTime,
+    /// next cycle starting timestamp
+    pub next_cycle_time: MassaTime,
     /// connected nodes (node id, ip address, true if the connection is outgoing, false if incoming)
     pub connected_nodes: BTreeMap<NodeId, (IpAddr, bool)>,
     /// latest slot, none if now is before genesis timestamp

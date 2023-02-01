@@ -147,10 +147,11 @@ impl SpeculativeLedger {
         if let Some(from_addr) = from_addr {
             let new_balance = self
                 .get_balance(&from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError("source addr not found".to_string()))?
+                .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
                 .checked_sub(amount)
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError("insufficient from_addr balance".into())
+                    ExecutionError::RuntimeError(format!("failed to transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                    .get_balance(&from_addr).unwrap_or_default()))
                 })?;
             changes.set_balance(from_addr, new_balance);
         }
@@ -161,14 +162,17 @@ impl SpeculativeLedger {
             let old_balance = changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr));
             match (old_balance, from_addr) {
                 // if `to_addr` exists we increase the balance
-                (Some(old_balance), _) => {
+                (Some(old_balance), _from_addr) => {
                     let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
-                        ExecutionError::RuntimeError("overflow in to_addr balance".into())
+                        ExecutionError::RuntimeError(format!(
+                            "overflow in crediting address {} balance {} due to adding {}",
+                            to_addr, old_balance, amount
+                        ))
                     })?;
                     changes.set_balance(to_addr, new_balance);
                 }
                 // if `to_addr` doesn't exist but `from_addr` is defined. `from_addr` will create the address using the coins sent.
-                (None, Some(_)) => {
+                (None, Some(_from_addr)) => {
                     //TODO: Remove when stabilized
                     debug!("Creating address {} from coins in transactions", to_addr);
                     if amount >= self.storage_costs_constants.ledger_entry_base_cost {
@@ -179,17 +183,18 @@ impl SpeculativeLedger {
                                 .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
                                 .ok_or_else(|| {
                                     ExecutionError::RuntimeError(
-                                        "overflow in subtract ledger cost for addr".to_string(),
+                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
                                     )
                                 })?,
                         );
                     } else {
-                        return Err(ExecutionError::RuntimeError(
-                            "insufficient amount to create receiver address".to_string(),
-                        ));
+                        return Err(ExecutionError::RuntimeError(format!(
+                            "insufficient amount {} to create crediting address {}",
+                            amount, to_addr
+                        )));
                     }
                 }
-                // if `from_addr` is none and `to_addr` doesn't exist try to create it from coins sent
+                // if `from_addr` is none and `to_addr` doesn't exist(in the ledger) try to create it from coins sent
                 (None, None) => {
                     //TODO: Remove when stabilized
                     debug!("Creating address {} from coins generated", to_addr);
@@ -202,7 +207,7 @@ impl SpeculativeLedger {
                                 .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
                                 .ok_or_else(|| {
                                     ExecutionError::RuntimeError(
-                                        "overflow in subtract ledger cost for addr".to_string(),
+                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
                                     )
                                 })?,
                         );
@@ -455,9 +460,12 @@ impl SpeculativeLedger {
                 .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(_entry) => true,
-                HistorySearchResult::NoInfo => {
-                    self.final_state.read().ledger.has_data_entry(addr, key)
-                }
+                HistorySearchResult::NoInfo => self
+                    .final_state
+                    .read()
+                    .ledger
+                    .get_data_entry(addr, key)
+                    .is_some(),
                 HistorySearchResult::Absent => false,
             }
         })

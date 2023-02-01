@@ -14,6 +14,7 @@ use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
+use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
@@ -57,12 +58,20 @@ impl InterfaceImpl {
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
+        use crate::module_cache::ModuleCache;
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        use massa_sc_runtime::GasCosts;
+        use parking_lot::RwLock;
 
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
-        let mut execution_context =
-            ExecutionContext::new(config.clone(), final_state, Default::default());
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
+        let mut execution_context = ExecutionContext::new(
+            config.clone(),
+            final_state,
+            Default::default(),
+            module_cache,
+        );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,
             coins: Amount::zero(),
@@ -168,6 +177,16 @@ impl Interface for InterfaceImpl {
         }
 
         Ok(())
+    }
+
+    /// Get the module from cache if possible, compile it if not
+    ///
+    /// # Returns
+    /// A `massa-sc-runtime` compiled module
+    fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<RuntimeModule> {
+        let context = context_guard!(self);
+        let module = context.module_cache.write().get_module(bytecode, limit)?;
+        Ok(module)
     }
 
     /// Gets the balance of the current address address (top of the stack).

@@ -30,6 +30,7 @@ pub struct ExecutionSettings {
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
     pub wasm_gas_costs_file: PathBuf,
+    pub max_module_cache_size: u32,
 }
 
 #[derive(Clone, Debug, Deserialize)]
