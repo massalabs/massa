@@ -43,11 +43,11 @@ where
     let (protocol_command_sender, protocol_command_receiver) =
         bounded(protocol_config.controller_channel_size);
     let protocol_receivers = ProtocolReceivers {
-        network_event_receiver,
+        network_event_receiver: NetworkEventReceiver(network_event_receiver),
         protocol_command_receiver,
     };
     let protocol_senders = ProtocolSenders {
-        network_command_sender,
+        network_command_sender: NetworkCommandSender(network_command_sender),
     };
     // start protocol controller
     let protocol_manager: ProtocolManager = start_protocol_controller(
@@ -113,11 +113,11 @@ where
         bounded(protocol_config.controller_channel_size);
 
     let protocol_senders = ProtocolSenders {
-        network_command_sender: network_command_sender.clone(),
+        network_command_sender: NetworkCommandSender(network_command_sender),
     };
 
     let protocol_receivers = ProtocolReceivers {
-        network_event_receiver,
+        network_event_receiver: NetworkEventReceiver(network_event_receiver),
         protocol_command_receiver,
     };
 
