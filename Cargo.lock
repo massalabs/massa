@@ -144,15 +144,6 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 [[package]]
 name = "as-ffi-bindings"
 version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.3.2#156c2a86fa03d14c72c1baec3fb25c6c517ca546"
-dependencies = [
- "anyhow",
- "wasmer",
-]
-
-[[package]]
-name = "as-ffi-bindings"
-version = "0.2.5"
 source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.3.3#81a1cba61a20a6e5065341b00d7f751c7974e65b"
 dependencies = [
  "anyhow",
@@ -2291,36 +2282,10 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_19#6602be544a08513c52837b052116f4264b689302"
-dependencies = [
- "anyhow",
- "as-ffi-bindings 0.2.5 (git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.3.2)",
- "base64 0.13.1",
- "displaydoc",
- "function_name",
- "loupe",
- "more-asserts 0.3.1",
- "parking_lot",
- "rand 0.8.5",
- "regex",
- "serde",
- "serde_json",
- "serial_test 0.8.0",
- "thiserror",
- "tracing",
- "wasmer",
- "wasmer-compiler-singlepass",
- "wasmer-middlewares",
- "wasmer-types",
-]
-
-[[package]]
-name = "massa-sc-runtime"
-version = "0.10.0"
 source = "git+https://github.com/massalabs/massa-sc-runtime#3c4815dd78e3e78c387045df0117eac24d016db3"
 dependencies = [
  "anyhow",
- "as-ffi-bindings 0.2.5 (git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.3.3)",
+ "as-ffi-bindings",
  "base64 0.13.1",
  "chrono",
  "displaydoc",
@@ -2533,7 +2498,7 @@ name = "massa_execution_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_19)",
+ "massa-sc-runtime",
  "massa_final_state",
  "massa_hash",
  "massa_ledger_exports",
@@ -2551,7 +2516,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "criterion",
- "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime)",
+ "massa-sc-runtime",
  "massa_async_pool",
  "massa_executed_ops",
  "massa_execution_exports",
