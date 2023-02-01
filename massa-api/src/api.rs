@@ -269,8 +269,11 @@ impl MassaApiServer for API<ApiV2> {
         for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
             res.push(OperationInfo {
                 id,
-                operation,
                 in_pool,
+                thread: operation
+                    .content_creator_address
+                    .get_thread(api_cfg.thread_count),
+                operation,
                 is_final,
                 in_blocks: in_blocks.into_iter().collect(),
             });
