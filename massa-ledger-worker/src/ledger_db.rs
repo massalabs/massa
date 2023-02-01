@@ -248,6 +248,8 @@ impl LedgerDB {
             .peekable();
 
         // Return None if empty
+        // TODO: function should return None if complete entry does not exist
+        // and Some([]) if it does but datastore is empty
         iter.peek()?;
         Some(iter.collect())
     }
