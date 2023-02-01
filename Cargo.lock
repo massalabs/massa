@@ -151,6 +151,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "as-ffi-bindings"
+version = "0.2.5"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.3.3#81a1cba61a20a6e5065341b00d7f751c7974e65b"
+dependencies = [
+ "anyhow",
+ "wasmer",
+]
+
+[[package]]
 name = "async-compression"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -498,9 +507,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16b0a3d9ed01224b22057780a37bb8c5dbfe1be8ba48678e7bf57ec4b385411f"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-integer",
  "num-traits",
  "serde",
+ "time 0.1.45",
+ "wasm-bindgen",
  "winapi",
 ]
 
@@ -2282,8 +2294,35 @@ version = "0.10.0"
 source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_19#6602be544a08513c52837b052116f4264b689302"
 dependencies = [
  "anyhow",
- "as-ffi-bindings",
+ "as-ffi-bindings 0.2.5 (git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.3.2)",
  "base64 0.13.1",
+ "displaydoc",
+ "function_name",
+ "loupe",
+ "more-asserts 0.3.1",
+ "parking_lot",
+ "rand 0.8.5",
+ "regex",
+ "serde",
+ "serde_json",
+ "serial_test 0.8.0",
+ "thiserror",
+ "tracing",
+ "wasmer",
+ "wasmer-compiler-singlepass",
+ "wasmer-middlewares",
+ "wasmer-types",
+]
+
+[[package]]
+name = "massa-sc-runtime"
+version = "0.10.0"
+source = "git+https://github.com/massalabs/massa-sc-runtime#3c4815dd78e3e78c387045df0117eac24d016db3"
+dependencies = [
+ "anyhow",
+ "as-ffi-bindings 0.2.5 (git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.3.3)",
+ "base64 0.13.1",
+ "chrono",
  "displaydoc",
  "function_name",
  "loupe",
@@ -2494,7 +2533,7 @@ name = "massa_execution_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "massa-sc-runtime",
+ "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_19)",
  "massa_final_state",
  "massa_hash",
  "massa_ledger_exports",
@@ -2512,7 +2551,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "criterion",
- "massa-sc-runtime",
+ "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime)",
  "massa_async_pool",
  "massa_executed_ops",
  "massa_execution_exports",
@@ -2908,7 +2947,7 @@ dependencies = [
  "nom",
  "serde",
  "thiserror",
- "time",
+ "time 0.3.17",
 ]
 
 [[package]]
@@ -4143,7 +4182,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros",
- "time",
+ "time 0.3.17",
 ]
 
 [[package]]
@@ -4548,6 +4587,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "time"
+version = "0.1.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
+dependencies = [
+ "libc",
+ "wasi 0.10.0+wasi-snapshot-preview1",
+ "winapi",
 ]
 
 [[package]]
@@ -4962,6 +5012,12 @@ name = "wasi"
 version = "0.9.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
+
+[[package]]
+name = "wasi"
+version = "0.10.0+wasi-snapshot-preview1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasi"
