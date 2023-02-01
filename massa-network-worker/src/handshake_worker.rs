@@ -8,7 +8,7 @@ use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{bounded, select, Receiver, Sender};
 use futures::future::try_join;
 use massa_hash::Hash;
 use massa_models::{
@@ -31,6 +31,7 @@ use massa_network_exports::{
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
+use std::collections::HashMap;
 use std::thread::{self, JoinHandle};
 use tokio::runtime::Handle;
 use tokio::time::timeout;
@@ -46,14 +47,47 @@ pub fn start_handshake_manager(
     runtime_handle: Handle,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
-        while let Ok((connection_id, new_handshake_worker)) = worker_rx.recv() {
-            let connection_sender = connection_sender.clone();
-            runtime_handle.block_on(async move {
-                let result = new_handshake_worker.run().await;
-                connection_sender
-                    .send((connection_id, result))
-                    .expect("Failed to send new connection message to network worker.");
-            });
+        let mut task_handles = HashMap::new();
+        let (result_tx, result_rx) = bounded::<(ConnectionId, HandshakeReturnType)>(1);
+        loop {
+            select! {
+                recv(worker_rx) -> msg => {
+                    match msg {
+                        Err(_) => break,
+                        Ok((connection_id, new_handshake_worker)) => {
+                            let result_tx = result_tx.clone();
+                            // Spawn an async task to run the handshake.
+                            let handle = runtime_handle.spawn(async move {
+                                let result = new_handshake_worker.run().await;
+                                // Spawn a blocking task to send the result back on the channel.
+                                Handle::current()
+                                    .spawn_blocking(move || {
+                                        result_tx
+                                            .send((connection_id, result))
+                                            .expect("Failed to send new connection message to network worker.")
+                                    })
+                                    .await.expect("Failed to spawn blocking call.");
+                            });
+                            task_handles.insert(connection_id, handle);
+                        }
+                    }
+                },
+                recv(result_rx) -> msg => {
+                    match msg {
+                        Err(_) => break,
+                        Ok((connection_id, result)) => {
+                            connection_sender
+                                .send((connection_id, result))
+                                .expect("Failed to send new connection message to network worker.");
+                            task_handles.remove(&connection_id);
+                        }
+                    }
+                }
+            }
+        }
+        // Abort all outstanding handshakes.
+        for handle in task_handles.values() {
+            handle.abort();
         }
     })
 }
