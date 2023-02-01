@@ -63,14 +63,19 @@ pub struct NetworkWorker {
     pub(crate) event: EventSender,
     /// Tokio runtime.
     runtime: Runtime,
+    /// A channel to receive the results of running a handshake.
     connections_rx: Receiver<(ConnectionId, HandshakeReturnType)>,
+    /// A channel to send handshake workers to be run on by the handshake manager. 
     handshake_tx: Sender<(ConnectionId, HandshakeWorker)>,
-    handshake_join_handle: JoinHandle<()>,
-
+    /// The handle to the handshake manager.
+    handshake_manager_join_handle: JoinHandle<()>,
+    /// A channel to receive the result of closing a node worker.
     node_result_rx: Receiver<(NodeId, Result<ConnectionClosureReason, NetworkError>)>,
+    /// A channel, cloned for each node worker, to send the result of closing a node worker.
     node_result_tx: Sender<(NodeId, Result<ConnectionClosureReason, NetworkError>)>,
-
+    /// A channel used to send the result of sending a list of peers.
     handshake_peer_list_tx: Sender<IpAddr>,
+    /// A channel used to receive the result of sending a list of peers.
     handshake_peer_list_rx: Receiver<IpAddr>,
 }
 
@@ -112,7 +117,7 @@ impl NetworkWorker {
             bounded::<(ConnectionId, HandshakeReturnType)>(cfg.handshake_manager_channel_size);
         let (handshake_tx, handshake_rx) =
             bounded::<(ConnectionId, HandshakeWorker)>(cfg.handshake_manager_channel_size);
-        let handshake_join_handle =
+        let handshake_manager_join_handle =
             start_handshake_manager(handshake_rx, conn_tx, runtime.handle().clone());
 
         let (node_result_tx, node_result_rx) = bounded::<(
@@ -144,7 +149,7 @@ impl NetworkWorker {
             runtime,
             connections_rx,
             handshake_tx,
-            handshake_join_handle,
+            handshake_manager_join_handle,
             node_result_rx,
             node_result_tx,
             handshake_peer_list_tx,
@@ -370,7 +375,7 @@ impl NetworkWorker {
 
         // Drop the sole sender to, and join on, the handshake manager thread.
         drop(self.handshake_tx);
-        self.handshake_join_handle
+        self.handshake_manager_join_handle
             .join()
             .expect("Failed to join on the handshake manager thread at shutdown.");
 
