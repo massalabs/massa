@@ -262,7 +262,7 @@ impl Serializer<PreHashMap<Address, Amount>> for CreditsSerializer {
         // slot credits
         for (addr, amount) in value {
             // address
-            self.address_ser.serialize(&addr, buffer)?;
+            self.address_ser.serialize(addr, buffer)?;
             // credited amount
             self.amount_ser.serialize(amount, buffer)?;
         }

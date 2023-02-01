@@ -363,7 +363,7 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.u64_ser
             .serialize(&(value.roll_counts.len() as u64), buffer)?;
         for (addr, count) in &value.roll_counts {
-            self.address_ser.serialize(&addr, buffer)?;
+            self.address_ser.serialize(addr, buffer)?;
             self.u64_ser.serialize(count, buffer)?;
         }
 
@@ -519,7 +519,7 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
             },
         ) in value.iter()
         {
-            self.address_ser.serialize(&addr, buffer)?;
+            self.address_ser.serialize(addr, buffer)?;
             self.u64_ser.serialize(block_success_count, buffer)?;
             self.u64_ser.serialize(block_failure_count, buffer)?;
         }
