@@ -178,15 +178,13 @@
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
     ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
 };
 <span class="kw">use </span>bitvec::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>massa_models::{
-    address::{Address, AddressSerializer},
+    address::Address,
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
 };
@@ -250,7 +248,6 @@
     bit_vec_serializer: BitVecSerializer,
     u64_serializer: U64VarIntSerializer,
     production_stats_serializer: ProductionStatsSerializer,
-    address_serializer: AddressSerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
 }
 
@@ -267,7 +264,6 @@
             bit_vec_serializer: BitVecSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             production_stats_serializer: ProductionStatsSerializer::new(),
-            address_serializer: AddressSerializer::new(),
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
         }
     }
@@ -283,7 +279,7 @@
         </span><span class="self">self</span>.u64_serializer
             .serialize(<span class="kw-2">&amp;</span>(value.roll_changes.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(addr, roll) <span class="kw">in </span>value.roll_changes.iter() {
-            <span class="self">self</span>.address_serializer.serialize(addr, buffer)<span class="question-mark">?</span>;
+            buffer.extend(addr.to_bytes());
             <span class="self">self</span>.u64_serializer.serialize(roll, buffer)<span class="question-mark">?</span>;
         }
 
