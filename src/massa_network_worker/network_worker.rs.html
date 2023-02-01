@@ -909,6 +909,11 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The network worker actually does the job of managing connections
@@ -974,15 +979,20 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) event: EventSender,
     <span class="doccomment">/// Tokio runtime.
     </span>runtime: Runtime,
-    connections_rx: Receiver&lt;(ConnectionId, HandshakeReturnType)&gt;,
-    handshake_tx: Sender&lt;(ConnectionId, HandshakeWorker)&gt;,
-    handshake_join_handle: JoinHandle&lt;()&gt;,
-
-    node_result_rx: Receiver&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;,
-    node_result_tx: Sender&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;,
-
-    handshake_peer_list_tx: Sender&lt;IpAddr&gt;,
-    handshake_peer_list_rx: Receiver&lt;IpAddr&gt;,
+    <span class="doccomment">/// A channel to receive the results of running a handshake.
+    </span>connections_rx: Receiver&lt;(ConnectionId, HandshakeReturnType)&gt;,
+    <span class="doccomment">/// A channel to send handshake workers to be run on by the handshake manager. 
+    </span>handshake_tx: Sender&lt;(ConnectionId, HandshakeWorker)&gt;,
+    <span class="doccomment">/// The handle to the handshake manager.
+    </span>handshake_manager_join_handle: JoinHandle&lt;()&gt;,
+    <span class="doccomment">/// A channel to receive the result of closing a node worker.
+    </span>node_result_rx: Receiver&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;,
+    <span class="doccomment">/// A channel, cloned for each node worker, to send the result of closing a node worker.
+    </span>node_result_tx: Sender&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;,
+    <span class="doccomment">/// A channel used to send the result of sending a list of peers.
+    </span>handshake_peer_list_tx: Sender&lt;IpAddr&gt;,
+    <span class="doccomment">/// A channel used to receive the result of sending a list of peers.
+    </span>handshake_peer_list_rx: Receiver&lt;IpAddr&gt;,
 }
 
 <span class="kw">pub struct </span>NetworkWorkerChannels {
@@ -1023,7 +1033,7 @@
             bounded::&lt;(ConnectionId, HandshakeReturnType)&gt;(cfg.handshake_manager_channel_size);
         <span class="kw">let </span>(handshake_tx, handshake_rx) =
             bounded::&lt;(ConnectionId, HandshakeWorker)&gt;(cfg.handshake_manager_channel_size);
-        <span class="kw">let </span>handshake_join_handle =
+        <span class="kw">let </span>handshake_manager_join_handle =
             start_handshake_manager(handshake_rx, conn_tx, runtime.handle().clone());
 
         <span class="kw">let </span>(node_result_tx, node_result_rx) = bounded::&lt;(
@@ -1055,7 +1065,7 @@
             runtime,
             connections_rx,
             handshake_tx,
-            handshake_join_handle,
+            handshake_manager_join_handle,
             node_result_rx,
             node_result_tx,
             handshake_peer_list_tx,
@@ -1281,7 +1291,7 @@
 
         <span class="comment">// Drop the sole sender to, and join on, the handshake manager thread.
         </span>drop(<span class="self">self</span>.handshake_tx);
-        <span class="self">self</span>.handshake_join_handle
+        <span class="self">self</span>.handshake_manager_join_handle
             .join()
             .expect(<span class="string">&quot;Failed to join on the handshake manager thread at shutdown.&quot;</span>);
 
