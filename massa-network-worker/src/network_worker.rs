@@ -152,8 +152,7 @@ impl NetworkWorker {
         }
     }
 
-    /// Runs the main loop of the network worker
-    /// There is a `tokio::select!` inside the loop
+    /// Runs the main loop of the network worker.
     pub fn run_loop(mut self) -> Result<(), NetworkError> {
         let mut out_connection_handle = None;
         let mut out_connection_rx = None;
