@@ -23,15 +23,16 @@ use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{
     address::Address,
     amount::Amount,
-    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     prehash::PreHashMap,
+    secure_share::SecureShareContent,
     slot::Slot,
-    wrapped::WrappedContent,
 };
-use massa_pool_exports::PoolConfig;
+use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use std::str::FromStr;
+use tokio::sync::broadcast;
 
 #[test]
 fn test_add_operation() {
@@ -56,7 +57,7 @@ fn test_add_irrelevant_operation() {
     });
 }
 
-fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
+fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
     let sender_keypair = KeyPair::generate();
 
     let recv_keypair = KeyPair::generate();
@@ -70,7 +71,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
         op,
         expire_period,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// TODO refactor old tests
@@ -80,7 +81,13 @@ fn test_pool() {
     let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_config = PoolConfig::default();
     let storage_base = Storage::create_root();
-    let mut pool = OperationPool::init(pool_config, &storage_base, execution_controller);
+    let operation_sender = broadcast::channel(pool_config.broadcast_operations_capacity).0;
+    let mut pool = OperationPool::init(
+        pool_config,
+        &storage_base,
+        execution_controller,
+        PoolChannels { operation_sender },
+    );
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
     for i in 0..18 {
@@ -105,7 +112,9 @@ fn test_pool() {
         //TODO: compare
         //assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
 
-        let op_thread = op.creator_address.get_thread(pool_config.thread_count);
+        let op_thread = op
+            .content_creator_address
+            .get_thread(pool_config.thread_count);
         thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
     }
 
@@ -185,7 +194,9 @@ fn test_pool() {
         pool.add_operations(storage);
         //TODO: compare
         //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
-        let op_thread = op.creator_address.get_thread(pool_config.thread_count);
+        let op_thread = op
+            .content_creator_address
+            .get_thread(pool_config.thread_count);
         let (ids, _) = pool.get_block_operations(&Slot::new(expire_period - 1, op_thread));
         assert!(ids.is_empty());
     }

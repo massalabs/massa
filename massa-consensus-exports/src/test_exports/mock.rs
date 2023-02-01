@@ -6,14 +6,9 @@ use std::sync::{
 };
 
 use massa_models::{
-    api::BlockGraphStatus,
-    block::{BlockHeader, BlockId},
-    clique::Clique,
-    prehash::PreHashSet,
-    slot::Slot,
-    stats::ConsensusStats,
+    block::BlockGraphStatus, block_header::BlockHeader, block_id::BlockId, clique::Clique,
+    prehash::PreHashSet, secure_share::SecureShare, slot::Slot, stats::ConsensusStats,
     streaming_step::StreamingStep,
-    wrapped::Wrapped,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -74,7 +69,7 @@ pub enum MockConsensusControllerMessage {
     },
     MarkInvalidBlock {
         block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>,
+        header: SecureShare<BlockHeader, BlockId>,
     },
     RegisterBlock {
         block_id: BlockId,
@@ -84,7 +79,7 @@ pub enum MockConsensusControllerMessage {
     },
     RegisterBlockHeader {
         block_id: BlockId,
-        header: Wrapped<BlockHeader, BlockId>,
+        header: SecureShare<BlockHeader, BlockId>,
     },
 }
 
@@ -237,7 +232,7 @@ impl ConsensusController for MockConsensusController {
         response_rx.recv().unwrap()
     }
 
-    fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
+    fn mark_invalid_block(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         self.0
             .lock()
             .unwrap()
@@ -258,7 +253,7 @@ impl ConsensusController for MockConsensusController {
             .unwrap();
     }
 
-    fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
+    fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         self.0
             .lock()
             .unwrap()

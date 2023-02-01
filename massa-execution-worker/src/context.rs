@@ -7,6 +7,7 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
+use crate::module_cache::ModuleCache;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
@@ -22,7 +23,7 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::BlockId,
+    block_id::BlockId,
     operation::OperationId,
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
@@ -126,6 +127,9 @@ pub struct ExecutionContext {
 
     /// operation id that originally caused this execution (if any)
     pub origin_operation_id: Option<OperationId>,
+
+    // cache of compiled runtime modules
+    pub module_cache: Arc<RwLock<ModuleCache>>,
 }
 
 impl ExecutionContext {
@@ -143,6 +147,7 @@ impl ExecutionContext {
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        module_cache: Arc<RwLock<ModuleCache>>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -174,6 +179,7 @@ impl ExecutionContext {
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
             creator_address: Default::default(),
             origin_operation_id: Default::default(),
+            module_cache,
             config,
         }
     }
@@ -247,6 +253,8 @@ impl ExecutionContext {
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+
+        module_cache: Arc<RwLock<ModuleCache>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -270,7 +278,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history)
+            ..ExecutionContext::new(config, final_state, active_history, module_cache)
         }
     }
 
@@ -310,6 +318,7 @@ impl ExecutionContext {
         opt_block_id: Option<BlockId>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        module_cache: Arc<RwLock<ModuleCache>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -331,7 +340,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history)
+            ..ExecutionContext::new(config, final_state, active_history, module_cache)
         }
     }
 
@@ -686,6 +695,9 @@ impl ExecutionContext {
     pub fn settle_slot(&mut self) -> ExecutionOutput {
         let slot = self.slot;
 
+        // execute the deferred credits coming from roll sells
+        self.execute_deferred_credits(&slot);
+
         // settle emitted async messages and reimburse the senders of deleted messages
         let ledger_changes = self.speculative_ledger.take();
         let deleted_messages = self
@@ -694,9 +706,6 @@ impl ExecutionContext {
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
         }
-
-        // execute the deferred credits coming from roll sells
-        self.execute_deferred_credits(&slot);
 
         // if the current slot is last in cycle check the production stats and act accordingly
         if self

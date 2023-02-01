@@ -80,11 +80,12 @@ pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
     use massa_models::{
-        block::{BlockId, WrappedHeader},
-        endorsement::WrappedEndorsement,
+        block_header::SecuredHeader,
+        block_id::BlockId,
+        endorsement::SecureShareEndorsement,
         node::NodeId,
-        operation::{OperationPrefixIds, WrappedOperation},
-        wrapped::Id,
+        operation::{OperationPrefixIds, SecureShareOperation},
+        secure_share::Id,
     };
     use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NodeCommand};
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -128,7 +129,7 @@ pub mod event_impl {
     pub async fn on_received_block_header(
         worker: &mut NetworkWorker,
         from: NodeId,
-        header: WrappedHeader,
+        header: SecuredHeader,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
@@ -195,7 +196,7 @@ pub mod event_impl {
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -262,7 +263,7 @@ pub mod event_impl {
     pub async fn on_received_endorsements(
         worker: &mut NetworkWorker,
         from: NodeId,
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements",

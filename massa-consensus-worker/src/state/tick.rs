@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use massa_consensus_exports::{block_status::BlockStatus, error::ConsensusError};
 use massa_logging::massa_trace;
-use massa_models::{block::BlockId, slot::Slot};
+use massa_models::{block_id::BlockId, slot::Slot};
 
 use super::ConsensusState;
 

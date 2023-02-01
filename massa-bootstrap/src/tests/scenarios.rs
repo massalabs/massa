@@ -27,7 +27,9 @@ use massa_final_state::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
-use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{
+    address::Address, node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version,
+};
 use massa_models::{
     config::{
         MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
@@ -50,7 +52,7 @@ use tokio::sync::mpsc;
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
         let keypair = KeyPair::generate();
-        (get_bootstrap_config(keypair.get_public_key()), keypair)
+        (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };
 }
 

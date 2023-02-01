@@ -50,11 +50,11 @@ impl Display for CompactConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "    Genesis timestamp: {}",
+            "    Genesis time: {}",
             self.genesis_timestamp.to_utc_string()
         )?;
         if let Some(end) = self.end_timestamp {
-            writeln!(f, "    End timestamp: {}", end.to_utc_string())?;
+            writeln!(f, "    End time: {}", end.to_utc_string())?;
         }
         writeln!(f, "    Thread count: {}", self.thread_count)?;
         writeln!(f, "    t0: {}", self.t0)?;

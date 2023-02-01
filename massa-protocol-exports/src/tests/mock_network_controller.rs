@@ -1,13 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    block::{BlockId, WrappedHeader},
-    endorsement::WrappedEndorsement,
+    block_header::SecuredHeader, block_id::BlockId, endorsement::SecureShareEndorsement,
 };
 use massa_models::{
     config::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, SecureShareOperation},
 };
 use massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkCommandSender, NetworkEvent,
@@ -74,7 +73,7 @@ impl MockNetworkController {
 
     /// send header
     /// todo inconsistency with names
-    pub async fn send_header(&mut self, source_node_id: NodeId, header: WrappedHeader) {
+    pub async fn send_header(&mut self, source_node_id: NodeId, header: SecuredHeader) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
@@ -89,7 +88,7 @@ impl MockNetworkController {
     pub async fn send_operations(
         &mut self,
         source_node_id: NodeId,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
@@ -137,7 +136,7 @@ impl MockNetworkController {
     pub async fn send_endorsements(
         &mut self,
         source_node_id: NodeId,
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedEndorsements {

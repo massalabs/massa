@@ -11,6 +11,7 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
+use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
@@ -20,18 +21,18 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::api::EventFilter;
+use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
-    block::BlockId,
-    operation::{OperationId, OperationType, WrappedOperation},
+    block_id::BlockId,
+    operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::Interface;
+use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
@@ -70,6 +71,8 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     // execution statistics
     stats_counter: ExecutionStatsCounter,
+    // cache of pre compiled sc modules
+    module_cache: Arc<RwLock<ModuleCache>>,
 }
 
 impl ExecutionState {
@@ -89,11 +92,18 @@ impl ExecutionState {
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
 
+        // Initialize the SC module cache
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(
+            config.gas_costs.clone(),
+            config.max_module_cache_size,
+        )));
+
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
+            module_cache.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -115,6 +125,7 @@ impl ExecutionState {
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
+            module_cache,
             config,
         }
     }
@@ -192,7 +203,7 @@ impl ExecutionState {
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     pub fn execute_operation(
         &self,
-        operation: &WrappedOperation,
+        operation: &SecureShareOperation,
         block_slot: Slot,
         remaining_block_gas: &mut u64,
         block_credits: &mut Amount,
@@ -214,7 +225,7 @@ impl ExecutionState {
         })?;
 
         // get the operation's sender address
-        let sender_addr = operation.creator_address;
+        let sender_addr = operation.content_creator_address;
 
         // get the thread to which the operation belongs
         let op_thread = sender_addr.get_thread(self.config.thread_count);
@@ -270,7 +281,7 @@ impl ExecutionState {
             context.max_gas = operation.get_gas_usage();
 
             // set the creator address
-            context.creator_address = Some(operation.creator_address);
+            context.creator_address = Some(operation.content_creator_address);
 
             // set the context origin operation ID
             context.origin_operation_id = Some(operation_id);
@@ -503,17 +514,23 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
+        let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
+            .map_err(|err| {
+                ExecutionError::RuntimeError(format!(
+                    "compilation error in execute_executesc_op: {}",
+                    err
+                ))
+            })?;
         match massa_sc_runtime::run_main(
-            bytecode,
-            *max_gas,
             &*self.execution_interface,
+            module,
+            *max_gas,
             self.config.gas_costs.clone(),
         ) {
             Ok(_response) => {}
             Err(err) => {
-                // there was an error during bytecode execution
                 return Err(ExecutionError::RuntimeError(format!(
-                    "bytecode execution error: {}",
+                    "module execution error in execute_executesc_op: {}",
                     err
                 )));
             }
@@ -597,25 +614,25 @@ impl ExecutionState {
         }
 
         // run the VM on the bytecode loaded from the target address
+        let mut module_lock = self.module_cache.write();
+        let module = module_lock.get_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
-            &bytecode,
-            max_gas,
+            &*self.execution_interface,
+            module.clone(),
             target_func,
             param,
-            &*self.execution_interface,
+            max_gas,
             self.config.gas_costs.clone(),
         ) {
-            Ok(_response) => {}
-            Err(err) => {
-                // there was an error during bytecode execution
-                return Err(ExecutionError::RuntimeError(format!(
-                    "bytecode execution error: {}",
-                    err
-                )));
+            Ok(Response { init_cost, .. }) => {
+                module_lock.save_module(&bytecode, module, init_cost);
+                Ok(())
             }
+            Err(err) => Err(ExecutionError::RuntimeError(format!(
+                "module execution error in execute_callsc_op: {}",
+                err
+            ))),
         }
-
-        Ok(())
     }
 
     /// Tries to execute an asynchronous message
@@ -686,26 +703,32 @@ impl ExecutionState {
             bytecode
         };
 
-        // run the target function
-        if let Err(err) = massa_sc_runtime::run_function(
-            &bytecode,
-            message.max_gas,
+        // run the VM on the bytecode contained in the operation
+        let mut module_lock = self.module_cache.write();
+        let module = module_lock.get_module(&bytecode, message.max_gas)?;
+        match massa_sc_runtime::run_function(
+            &*self.execution_interface,
+            module.clone(),
             &message.handler,
             &message.data,
-            &*self.execution_interface,
+            message.max_gas,
             self.config.gas_costs.clone(),
         ) {
-            // execution failed: reset context to snapshot and reimburse sender
-            let err = ExecutionError::RuntimeError(format!(
-                "async message runtime execution error: {}",
-                err
-            ));
-            let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot, err.clone());
-            context.cancel_async_message(&message);
-            Err(err)
-        } else {
-            Ok(())
+            Ok(Response { init_cost, .. }) => {
+                module_lock.save_module(&bytecode, module, init_cost);
+                Ok(())
+            }
+            Err(err) => {
+                // execution failed: reset context to snapshot and reimburse sender
+                let err = ExecutionError::RuntimeError(format!(
+                    "module execution error in execute_async_message: {}",
+                    err
+                ));
+                let mut context = context_guard!(self);
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(&message);
+                Err(err)
+            }
         }
     }
 
@@ -732,6 +755,7 @@ impl ExecutionState {
             exec_target.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
+            self.module_cache.clone(),
         );
 
         // Get asynchronous messages to execute
@@ -780,7 +804,7 @@ impl ExecutionState {
                     .content
                     .endorsements
                     .iter()
-                    .map(|endo| (endo.creator_address, endo.content.endorsed_block))
+                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
                     .unzip();
 
             // deduce endorsement target block creators
@@ -792,7 +816,7 @@ impl ExecutionState {
                         blocks
                             .get(b_id)
                             .expect("endorsed block absent from storage")
-                            .creator_address
+                            .content_creator_address
                     })
                     .collect::<Vec<_>>()
             };
@@ -820,7 +844,7 @@ impl ExecutionState {
             }
 
             // Get block creator address
-            let block_creator_addr = stored_block.creator_address;
+            let block_creator_addr = stored_block.content_creator_address;
 
             // acquire lock on execution context
             let mut context = context_guard!(self);
@@ -1023,11 +1047,16 @@ impl ExecutionState {
             )));
         }
 
-        // set the execution slot to be the one after the latest executed active slot
-        let slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow in readonly execution");
+        // set the execution slot to be the one after the latest executed active or final slot
+        let slot = if req.is_final {
+            self.final_cursor
+                .get_next_slot(self.config.thread_count)
+                .expect("slot overflow in readonly execution from final slot")
+        } else {
+            self.active_cursor
+                .get_next_slot(self.config.thread_count)
+                .expect("slot overflow in readonly execution from active slot")
+        };
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
@@ -1037,6 +1066,7 @@ impl ExecutionState {
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
+            self.module_cache.clone(),
         );
 
         // run the interpreter according to the target type
@@ -1046,13 +1076,26 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
+                let module =
+                    RuntimeModule::new(&bytecode, req.max_gas, self.config.gas_costs.clone())
+                        .map_err(|err| {
+                            ExecutionError::RuntimeError(format!(
+                                "compilation error in execute_readonly_request: {}",
+                                err
+                            ))
+                        })?;
                 massa_sc_runtime::run_main(
-                    &bytecode,
-                    req.max_gas,
                     &*self.execution_interface,
+                    module,
+                    req.max_gas,
                     self.config.gas_costs.clone(),
                 )
-                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(format!(
+                        "module execution error in execute_readonly_request BytecodeExecution: {}",
+                        err,
+                    ))
+                })?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1068,15 +1111,24 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the target function in the bytecode
-                massa_sc_runtime::run_function(
-                    &bytecode,
-                    req.max_gas,
+                let mut module_lock = self.module_cache.write();
+                let module = module_lock.get_module(&bytecode, req.max_gas)?;
+                let response = massa_sc_runtime::run_function(
+                    &*self.execution_interface,
+                    module.clone(),
                     &target_func,
                     &parameter,
-                    &*self.execution_interface,
+                    req.max_gas,
                     self.config.gas_costs.clone(),
                 )
-                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(format!(
+                        "module execution error in execute_readonly_request BytecodeExecution: {}",
+                        err,
+                    ))
+                })?;
+                module_lock.save_module(&bytecode, module, response.init_cost);
+                response
             }
         };
 

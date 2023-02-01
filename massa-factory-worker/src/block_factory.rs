@@ -3,12 +3,14 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedHeader},
-    endorsement::WrappedEndorsement,
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
+    block_id::BlockId,
+    endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
+    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-    wrapped::WrappedContent,
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
@@ -171,7 +173,7 @@ impl BlockFactoryWorker {
             .get_block_endorsements(&same_thread_parent_id, &slot);
 
         //TODO: Do we want ot populate only with endorsement id in the future ?
-        let endorsements: Vec<WrappedEndorsement> = {
+        let endorsements: Vec<SecureShareEndorsement> = {
             let endo_read = endo_storage.read_endorsements();
             endorsements_ids
                 .into_iter()
@@ -197,7 +199,7 @@ impl BlockFactoryWorker {
         );
 
         // create header
-        let header: WrappedHeader = BlockHeader::new_wrapped::<BlockHeaderSerializer, BlockId>(
+        let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
@@ -210,7 +212,7 @@ impl BlockFactoryWorker {
         .expect("error while producing block header");
 
         // create block
-        let block = Block::new_wrapped(
+        let block = Block::new_verifiable(
             Block {
                 header,
                 operations: op_ids.into_iter().collect(),

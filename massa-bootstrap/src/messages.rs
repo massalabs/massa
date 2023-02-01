@@ -10,7 +10,7 @@ use massa_consensus_exports::bootstrapable_graph::{
 use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
-use massa_models::block::{BlockId, BlockIdDeserializer, BlockIdSerializer};
+use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{

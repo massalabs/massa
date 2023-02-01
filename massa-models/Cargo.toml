@@ -11,7 +11,6 @@ num_enum = "0.5"
 rust_decimal = "1.26"
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "2.1.0"
-strum = { version = "0.24", features = ["derive"] }
 thiserror = "1.0"
 num = { version = "0.4", features = ["serde"] }
 directories = "4.0"
@@ -25,6 +24,7 @@ massa_hash = { path = "../massa-hash" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+const_format = "0.2.30"
 
 [dev-dependencies]
 serial_test = "0.10"

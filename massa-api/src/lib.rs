@@ -3,56 +3,55 @@
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-use crate::api_trait::MassaApiServer;
-use crate::error::ApiError::WrongAPI;
+use api_trait::MassaApiServer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError::WrongAPI,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
+    TimeInterval,
+};
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
-use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
-};
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address,
-    block::{Block, BlockId},
-    endorsement::EndorsementId,
-    slot::Slot,
-    version::Version,
+    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
+    execution::EventFilter, slot::Slot, version::Version,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
-use massa_pool_exports::PoolController;
+use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_protocol_exports::{ProtocolCommandSender, ProtocolSenders};
+use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
-
 use tokio::sync::mpsc;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
 mod api;
 mod api_trait;
-mod config;
-mod error;
 mod private;
 mod public;
-pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
@@ -98,8 +97,8 @@ pub struct Private {
 pub struct ApiV2 {
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
-    /// link(channels) to the protocol component
-    pub protocol_senders: ProtocolSenders,
+    /// link(channels) to the pool component
+    pub pool_channels: PoolChannels,
     /// API settings
     pub api_settings: APIConfig,
     /// node version
@@ -316,7 +315,10 @@ pub trait MassaRpc {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[method(name = "get_stakers")]
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>>;
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>>;
 
     /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     #[method(name = "get_operations")]

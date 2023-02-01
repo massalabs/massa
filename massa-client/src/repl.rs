@@ -1,26 +1,31 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::ask_password;
 use crate::cmds::{Command, ExtendedWallet};
 use crate::settings::SETTINGS;
 use anyhow::Result;
 use console::style;
 use erased_serde::{Serialize, Serializer};
-use massa_models::api::{
-    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, NodeStatus, OperationInfo,
+use massa_api_exports::{
+    address::AddressInfo, block::BlockInfo, datastore::DatastoreEntryOutput,
+    endorsement::EndorsementInfo, execution::ExecuteReadOnlyResponse, node::NodeStatus,
+    operation::OperationInfo,
 };
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{address::Address, operation::OperationId};
 use massa_sdk::Client;
+use massa_signature::{KeyPair, PublicKey};
 use massa_wallet::Wallet;
 use rustyline::completion::{Completer, FilenameCompleter, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::validate::MatchingBracketValidator;
 use rustyline::{CompletionType, Config, Editor};
 use rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
+use std::env;
 use std::net::IpAddr;
+use std::path::Path;
 use std::str;
 use strum::IntoEnumIterator;
 use strum::ParseError;
@@ -96,7 +101,11 @@ struct MyHelper {
     validator: MatchingBracketValidator,
 }
 
-pub(crate) async fn run(client: &Client, wallet: &mut Wallet) -> Result<()> {
+pub(crate) async fn run(
+    client: &Client,
+    wallet_path: &Path,
+    args_password: Option<String>,
+) -> Result<()> {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' or 'CTRL+D or CTRL+C' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
@@ -118,6 +127,9 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) -> Result<()> {
     if rl.load_history(&SETTINGS.history_file_path).is_err() {
         println!("No previous history.");
     }
+
+    let mut wallet_opt = None;
+
     loop {
         let readline = rl.readline("command > ");
         match readline {
@@ -132,10 +144,28 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) -> Result<()> {
                 let parameters = input[1..].to_vec();
                 // Print result of evaluated command
                 match cmd {
-                    Ok(command) => match command.run(client, wallet, &parameters, false).await {
-                        Ok(output) => output.pretty_print(),
-                        Err(e) => println!("{}", style(format!("Error: {}", e)).red()),
-                    },
+                    Ok(command) => {
+                        // Check if we need to prompt the user for their wallet password
+                        if command.is_pwd_needed() && wallet_opt.is_none() {
+                            let password =
+                                match (args_password.clone(), env::var("MASSA_CLIENT_PASSWORD")) {
+                                    (Some(pwd), _) => pwd,
+                                    (_, Ok(pwd)) => pwd,
+                                    _ => ask_password(wallet_path),
+                                };
+
+                            let wallet = Wallet::new(wallet_path.to_path_buf(), password)?;
+                            wallet_opt = Some(wallet);
+                        }
+
+                        match command
+                            .run(client, &mut wallet_opt, &parameters, false)
+                            .await
+                        {
+                            Ok(output) => output.pretty_print(),
+                            Err(e) => println!("{}", style(format!("Error: {}", e)).red()),
+                        }
+                    }
                     Err(_) => {
                         println!("Command not found!\ntype \"help\" to get the list of commands")
                     }
@@ -216,6 +246,36 @@ impl Output for Wallet {
 impl Output for ExtendedWallet {
     fn pretty_print(&self) {
         println!("{}", self);
+    }
+}
+
+impl Output for Vec<(Address, PublicKey)> {
+    fn pretty_print(&self) {
+        match self.len() {
+            1 => println!("{}", self[0].1),
+            _ => {
+                for address_pubkey in self {
+                    println!("Address: {}", address_pubkey.0);
+                    println!("Public key: {}", address_pubkey.1);
+                    println!();
+                }
+            }
+        }
+    }
+}
+
+impl Output for Vec<(Address, KeyPair)> {
+    fn pretty_print(&self) {
+        match self.len() {
+            1 => println!("{}", self[0].1),
+            _ => {
+                for address_seckey in self {
+                    println!("Address: {}", address_seckey.0);
+                    println!("Secret key: {}", address_seckey.1);
+                    println!();
+                }
+            }
+        }
     }
 }
 

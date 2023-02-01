@@ -1,4 +1,3 @@
-use massa_models::operation::Operation;
 use massa_network_exports::{NetworkCommandSender, NetworkEventReceiver};
 use tokio::sync::mpsc;
 
@@ -10,8 +9,6 @@ use crate::ProtocolCommand;
 pub struct ProtocolSenders {
     /// network command sender
     pub network_command_sender: NetworkCommandSender,
-    /// Broadcast sender(channel) for new operations
-    pub operation_sender: tokio::sync::broadcast::Sender<Operation>,
 }
 
 /// Contains channels(receivers) used by the protocol worker

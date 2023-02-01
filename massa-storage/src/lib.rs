@@ -20,11 +20,12 @@ mod tests;
 use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
 use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
-use massa_models::wrapped::Id;
+use massa_models::secure_share::Id;
 use massa_models::{
-    block::{BlockId, WrappedBlock},
-    endorsement::{EndorsementId, WrappedEndorsement},
-    operation::{OperationId, WrappedOperation},
+    block::SecureShareBlock,
+    block_id::BlockId,
+    endorsement::{EndorsementId, SecureShareEndorsement},
+    operation::{OperationId, SecureShareOperation},
 };
 use operation_indexes::OperationIndexes;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -278,7 +279,7 @@ impl Storage {
 
     /// Store a block
     /// Note that this also claims a local reference to the block
-    pub fn store_block(&mut self, block: WrappedBlock) {
+    pub fn store_block(&mut self, block: SecureShareBlock) {
         let id = block.id;
         let mut owners = self.block_owners.write();
         let mut blocks = self.blocks.write();
@@ -362,7 +363,7 @@ impl Storage {
 
     /// Store operations
     /// Claims a local reference to the added operation
-    pub fn store_operations(&mut self, operations: Vec<WrappedOperation>) {
+    pub fn store_operations(&mut self, operations: Vec<SecureShareOperation>) {
         if operations.is_empty() {
             return;
         }
@@ -460,7 +461,7 @@ impl Storage {
 
     /// Store endorsements
     /// Claims local references to the added endorsements
-    pub fn store_endorsements(&mut self, endorsements: Vec<WrappedEndorsement>) {
+    pub fn store_endorsements(&mut self, endorsements: Vec<SecureShareEndorsement>) {
         if endorsements.is_empty() {
             return;
         }

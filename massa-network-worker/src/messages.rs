@@ -2,18 +2,19 @@
 
 use massa_hash::HashDeserializer;
 use massa_models::{
-    block::{BlockHeader, BlockHeaderDeserializer, BlockId, WrappedHeader},
+    block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
+    block_id::BlockId,
     config::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
-    endorsement::{Endorsement, EndorsementDeserializer, WrappedEndorsement},
+    endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     operation::{
         OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIds,
         OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationsDeserializer,
-        OperationsSerializer, WrappedOperation,
+        OperationsSerializer, SecureShareOperation,
     },
+    secure_share::{SecureShareDeserializer, SecureShareSerializer},
     serialization::array_from_slice,
     serialization::{IpAddrDeserializer, IpAddrSerializer},
     version::{Version, VersionDeserializer, VersionSerializer},
-    wrapped::{WrappedDeserializer, WrappedSerializer},
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply};
 use massa_serialization::{
@@ -52,7 +53,7 @@ pub enum Message {
         signature: Signature,
     },
     /// Block header
-    BlockHeader(WrappedHeader),
+    BlockHeader(SecuredHeader),
     /// Message asking the peer for info on a list of blocks.
     AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
     /// Message replying with info on a list of blocks.
@@ -69,9 +70,9 @@ pub enum Message {
     /// Someone ask for operations.
     AskForOperations(OperationPrefixIds),
     /// A list of operations
-    Operations(Vec<WrappedOperation>),
+    Operations(Vec<SecureShareOperation>),
     /// Endorsements
-    Endorsements(Vec<WrappedEndorsement>),
+    Endorsements(Vec<SecureShareEndorsement>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -103,7 +104,7 @@ pub(crate) enum BlockInfoType {
 pub struct MessageSerializer {
     version_serializer: VersionSerializer,
     u32_serializer: U32VarIntSerializer,
-    wrapped_serializer: WrappedSerializer,
+    secure_serializer: SecureShareSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
     operations_ids_serializer: OperationIdsSerializer,
     operations_serializer: OperationsSerializer,
@@ -116,7 +117,7 @@ impl MessageSerializer {
         MessageSerializer {
             version_serializer: VersionSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
-            wrapped_serializer: WrappedSerializer::new(),
+            secure_serializer: SecureShareSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
             operations_ids_serializer: OperationIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
@@ -155,7 +156,7 @@ impl Serializer<Message> for MessageSerializer {
             Message::BlockHeader(header) => {
                 self.u32_serializer
                     .serialize(&(MessageTypeId::BlockHeader as u32), buffer)?;
-                self.wrapped_serializer.serialize(header, buffer)?;
+                self.secure_serializer.serialize(header, buffer)?;
             }
             Message::AskForBlocks(list) => {
                 self.u32_serializer
@@ -192,7 +193,7 @@ impl Serializer<Message> for MessageSerializer {
                     self.u32_serializer
                         .serialize(&u32::from(info_type), buffer)?;
                     if let BlockInfoReply::Header(header) = info {
-                        self.wrapped_serializer.serialize(header, buffer)?;
+                        self.secure_serializer.serialize(header, buffer)?;
                     }
                     if let BlockInfoReply::Operations(ops) = info {
                         self.operations_serializer.serialize(ops, buffer)?;
@@ -238,7 +239,7 @@ impl Serializer<Message> for MessageSerializer {
                 self.u32_serializer
                     .serialize(&(endorsements.len() as u32), buffer)?;
                 for endorsement in endorsements {
-                    self.wrapped_serializer.serialize(endorsement, buffer)?;
+                    self.secure_serializer.serialize(endorsement, buffer)?;
                 }
             }
         }
@@ -256,9 +257,9 @@ pub struct MessageDeserializer {
     peer_list_length_deserializer: U32VarIntDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
-    block_header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
+    block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
     endorsements_length_deserializer: U32VarIntDeserializer,
-    endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
+    endorsement_deserializer: SecureShareDeserializer<Endorsement, EndorsementDeserializer>,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
     infos_deserializer: OperationIdsDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
@@ -305,7 +306,7 @@ impl MessageDeserializer {
                 max_op_datastore_value_length,
             ),
             hash_deserializer: HashDeserializer::new(),
-            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+            block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),
@@ -313,7 +314,7 @@ impl MessageDeserializer {
                 Included(0),
                 Excluded(max_endorsements_per_message),
             ),
-            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
+            endorsement_deserializer: SecureShareDeserializer::new(EndorsementDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),

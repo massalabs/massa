@@ -1,6 +1,6 @@
 use massa_models::{
     address::Address,
-    block::BlockId,
+    block_id::BlockId,
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
