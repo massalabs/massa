@@ -11,7 +11,7 @@ use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::SubscriptionSink;
 use massa_api_exports::config::APIConfig;
 use massa_api_exports::error::ApiError;
-use massa_api_exports::page::{PagedVec, PagedVecV2};
+use massa_api_exports::page::{PageRequest, PagedVec, PagedVecV2};
 use massa_api_exports::ApiRequest;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
@@ -97,7 +97,13 @@ impl MassaApiServer for API<ApiV2> {
         let paged_vec = if let Some(api_request) = api_request {
             PagedVec::new(staker_vec, api_request.page_request)
         } else {
-            PagedVec::new(staker_vec, None)
+            PagedVec::new(
+                staker_vec,
+                Some(PageRequest {
+                    offset: 0,
+                    limit: 50,
+                }),
+            )
         };
 
         Ok(paged_vec.into())
