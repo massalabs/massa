@@ -605,6 +605,9 @@
 <a href="#605" id="605">605</a>
 <a href="#606" id="606">606</a>
 <a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -1067,9 +1070,12 @@
                 .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(_entry) =&gt; <span class="bool-val">true</span>,
-                HistorySearchResult::NoInfo =&gt; {
-                    <span class="self">self</span>.final_state.read().ledger.has_data_entry(addr, key)
-                }
+                HistorySearchResult::NoInfo =&gt; <span class="self">self
+                    </span>.final_state
+                    .read()
+                    .ledger
+                    .get_data_entry(addr, key)
+                    .is_some(),
                 HistorySearchResult::Absent =&gt; <span class="bool-val">false</span>,
             }
         })
