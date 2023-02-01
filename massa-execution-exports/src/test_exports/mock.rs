@@ -35,7 +35,7 @@ use std::{
 /// and is emitted in a thread-safe way by the mock whenever that method is called.
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `ExecutionController` for details on parameters and return values.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum MockExecutionControllerMessage {
     /// update blockclique status
     UpdateBlockcliqueStatus {
