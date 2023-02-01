@@ -909,7 +909,6 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The network worker actually does the job of managing connections
@@ -1064,8 +1063,7 @@
         }
     }
 
-    <span class="doccomment">/// Runs the main loop of the network worker
-    /// There is a `tokio::select!` inside the loop
+    <span class="doccomment">/// Runs the main loop of the network worker.
     </span><span class="kw">pub fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>out_connection_handle = <span class="prelude-val">None</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>out_connection_rx = <span class="prelude-val">None</span>;
