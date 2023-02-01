@@ -162,7 +162,7 @@ impl SpeculativeLedger {
             let old_balance = changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr));
             match (old_balance, from_addr) {
                 // if `to_addr` exists we increase the balance
-                (Some(old_balance), _) => {
+                (Some(old_balance), _from_addr) => {
                     let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
                         ExecutionError::RuntimeError(format!(
                             "overflow in crediting address {} balance {} due to adding {}",
@@ -172,7 +172,7 @@ impl SpeculativeLedger {
                     changes.set_balance(to_addr, new_balance);
                 }
                 // if `to_addr` doesn't exist but `from_addr` is defined. `from_addr` will create the address using the coins sent.
-                (None, Some(_)) => {
+                (None, Some(_from_addr)) => {
                     //TODO: Remove when stabilized
                     debug!("Creating address {} from coins in transactions", to_addr);
                     if amount >= self.storage_costs_constants.ledger_entry_base_cost {
@@ -183,7 +183,7 @@ impl SpeculativeLedger {
                                 .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
                                 .ok_or_else(|| {
                                     ExecutionError::RuntimeError(
-                                        format!("overflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
+                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
                                     )
                                 })?,
                         );
@@ -194,7 +194,7 @@ impl SpeculativeLedger {
                         )));
                     }
                 }
-                // if `from_addr` is none and `to_addr` doesn't exist try to create it from coins sent
+                // if `from_addr` is none and `to_addr` doesn't exist(in the ledger) try to create it from coins sent
                 (None, None) => {
                     //TODO: Remove when stabilized
                     debug!("Creating address {} from coins generated", to_addr);
@@ -207,7 +207,7 @@ impl SpeculativeLedger {
                                 .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
                                 .ok_or_else(|| {
                                     ExecutionError::RuntimeError(
-                                        format!("overflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
+                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
                                     )
                                 })?,
                         );
