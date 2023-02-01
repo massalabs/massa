@@ -7,7 +7,7 @@ use massa_api_exports::block::BlockInfo;
 use massa_api_exports::endorsement::EndorsementInfo;
 use massa_api_exports::operation::OperationInfo;
 use massa_models::address::Address;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::endorsement::EndorsementId;
 use massa_models::operation::OperationId;
 use massa_models::version::Version;

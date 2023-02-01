@@ -6,7 +6,7 @@
 use crate::api_trait::MassaApiServer;
 use crate::{ApiServer, ApiV2, StopHandle, API};
 use async_trait::async_trait;
-use itertools::{izip, Itertools};
+use itertools::{Itertools, izip};
 use jsonrpsee::core::error::SubscriptionClosed;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::types::SubscriptionResult;
@@ -20,7 +20,7 @@ use massa_api_exports::operation::OperationInfo;
 use massa_api_exports::slot::SlotAmount;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_models::address::Address;
-use massa_models::block::{BlockGraphStatus, BlockId};
+use massa_models::block::{BlockGraphStatus};
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::{PreHashMap, PreHashSet};
@@ -33,6 +33,7 @@ use massa_storage::Storage;
 use serde::Serialize;
 use std::net::SocketAddr;
 use tokio_stream::wrappers::BroadcastStream;
+use massa_models::block_id::BlockId;
 
 impl API<ApiV2> {
     /// generate a new massa API
