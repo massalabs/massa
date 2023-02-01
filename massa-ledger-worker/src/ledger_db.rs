@@ -13,8 +13,8 @@ use massa_models::{
     streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
+use nom::multi::many0;
 use nom::sequence::tuple;
-use nom::{multi::many0, AsBytes};
 use rocksdb::{
     ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
     WriteBatch, DB,
@@ -245,11 +245,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        let key = Key::new_datastore(addr, None);
-        let mut serialized_key = Vec::new();
-        self.key_serializer
-            .serialize(&key, &mut serialized_key)
-            .expect(KEY_SER_ERROR);
+        let serialized_key = datastore_prefix_from_address(addr);
 
         opt.set_iterate_range(serialized_key.clone()..end_prefix(&serialized_key).unwrap());
 
@@ -569,11 +565,7 @@ impl LedgerDB {
 
         // datastore
         let mut opt = ReadOptions::default();
-        let datastore_key = Key::new_datastore(addr, None);
-        let mut serialized_key = Vec::new();
-        self.key_serializer
-            .serialize(&datastore_key, &mut serialized_key)
-            .expect(KEY_SER_ERROR);
+        let serialized_key = datastore_prefix_from_address(addr);
         let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
         opt.set_iterate_upper_bound(end_prefix(&serialized_key).unwrap());
         for (key, _) in self
@@ -641,11 +633,7 @@ impl LedgerDB {
         &self,
         addr: &Address,
     ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
-        let datastore_key = Key::new_datastore(addr, None);
-        let mut serialized_key = Vec::new();
-        self.key_serializer
-            .serialize(&datastore_key, &mut serialized_key)
-            .unwrap();
+        let serialized_key = datastore_prefix_from_address(addr);
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();

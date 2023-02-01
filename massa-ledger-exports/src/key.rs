@@ -67,6 +67,13 @@ impl Key {
     }
 }
 
+pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
+    let mut prefix = Vec::new();
+    prefix.extend(address.into_bytes());
+    prefix.extend([DATASTORE_IDENT]);
+    prefix
+}
+
 /// Basic key serializer
 #[derive(Default, Clone)]
 pub struct KeySerializer {
@@ -105,9 +112,9 @@ impl Serializer<Key> for KeySerializer {
                 self.vec_u8_serializer.serialize(&data, buffer)?;
             }
             KeyType::DATASTORE(None) => {
-                // return Err(SerializeError::GeneralError(
-                //     "datastore keys can not be empty".to_string(),
-                // ))
+                return Err(SerializeError::GeneralError(
+                    "datastore keys can not be empty".to_string(),
+                ))
             }
             _ => {}
         }
