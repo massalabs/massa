@@ -544,7 +544,9 @@ impl MassaRpcServer for API<Public> {
                 id,
                 in_pool,
                 is_final,
-                thread: operation.content_creator_address.get_thread(api_cfg.thread_count),
+                thread: operation
+                    .content_creator_address
+                    .get_thread(api_cfg.thread_count),
                 operation,
                 in_blocks: in_blocks.into_iter().collect(),
             });
