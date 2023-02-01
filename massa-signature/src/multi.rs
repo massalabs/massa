@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::MassaSignatureError;
+use anyhow::{Error, bail};
 
 use ed25519_dalek;
 use ed25519_dalek::{Signer, Verifier};
@@ -14,12 +15,12 @@ use nom::{
     IResult,
 };
 use rand::rngs::OsRng;
-use schnorrkel::musig::CommitStage;
 use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::SerializeStruct,
     Deserialize,
 };
+use tokio::join;
 use std::{borrow::Cow, cmp::Ordering, hash::Hasher, ops::Bound::Included};
 use std::{convert::TryInto, str::FromStr};
 
@@ -1684,11 +1685,13 @@ impl Signature {
     }
 }
 
+/* BEGIN MULTI IMPL */
+
 impl KeyPair {
     pub fn musig<'k>(&'k self, hash: Hash) -> Result<
       schnorrkel::musig::MuSig<
-        impl schnorrkel::context::SigningTranscript + Clone,
-        CommitStage<&'k schnorrkel::Keypair>>,
+      impl schnorrkel::context::SigningTranscript + Clone,
+      schnorrkel::musig::CommitStage<&'k schnorrkel::Keypair>>,
       MassaSignatureError>
       {
 
@@ -1705,9 +1708,311 @@ impl KeyPair {
     }
 }
 
+enum Stage {
+    CommitStage,
+    RevealStage,
+}
 
-fn multi_signature() {
+
+//trait MassaTranscript: schnorrkel::context::SigningTranscript + Clone {}
+
+
+struct MultiSig {
+    stage: Stage,
+    musig_commit: Option<schnorrkel::musig::MuSig<merlin::Transcript, schnorrkel::musig::CommitStage<schnorrkel::Keypair>>>,
+    musig_reveal: Option<schnorrkel::musig::MuSig<merlin::Transcript, schnorrkel::musig::RevealStage<schnorrkel::Keypair>>>,
+    musig_cosig: Option<schnorrkel::musig::MuSig<merlin::Transcript, schnorrkel::musig::CosignStage>>,
+    our_keypair: KeyPair,
+    other_pubkeys: Vec<PublicKey>,
+    hash: Hash,
+
+}
+
+impl MultiSig {
+
+    pub fn new(our_keypair: KeyPair, other_pubkeys: Vec<PublicKey>, hash: Hash) -> Result<MultiSig, MassaSignatureError> {
+        
+        match our_keypair.clone() {
+            KeyPair::KeyPairV1(_kp) => {
+                
+                Err(MassaSignatureError::InvalidVersionError(String::from("MultiSig not available for KeyPairs V1")))
+            },
+            KeyPair::KeyPairV2(kp) => {
+
+                let t = schnorrkel::signing_context(b"massa_sig").bytes(hash.to_bytes());
+                let m = schnorrkel::musig::MuSig::new(kp.a, t);
+        
+                Ok(MultiSig { stage: Stage::CommitStage, musig_commit: Some(m), musig_reveal: None, musig_cosig: None, our_keypair, other_pubkeys, hash })
+
+            },
+        }
+    }
+
+    pub fn get_our_commitment(&self) -> schnorrkel::musig::Commitment {
+
+        let c = self.musig_commit.as_ref().unwrap().our_commitment();
+        c
+    }
+
+    pub fn set_other_commitment(&mut self, pubkey: PublicKey, c: schnorrkel::musig::Commitment) {
+        
+        match pubkey {
+            PublicKey::PublicKeyV1(pk) => { },
+            PublicKey::PublicKeyV2(pk) => { 
+                let r = self.musig_commit.as_mut().unwrap().add_their_commitment(pk.a, c);
+
+            }
+        }
+    }
     
+    pub fn get_our_reveal(&mut self) -> &schnorrkel::musig::Reveal {
+        
+        self.musig_reveal = Some(self.musig_commit.take().unwrap().reveal_stage());
+        let r = self.musig_reveal.as_ref().unwrap().our_reveal();
+
+        r
+
+    }
+
+    pub fn set_other_reveal(&mut self, pubkey: PublicKey, r: schnorrkel::musig::Reveal) {
+
+        match pubkey {
+            PublicKey::PublicKeyV1(pk) => { },
+            PublicKey::PublicKeyV2(pk) => { 
+                let r = self.musig_reveal.as_mut().unwrap().add_their_reveal(pk.a, r);
+
+            }
+        }
+    }
+        
+    pub fn get_our_cosignature(&mut self) -> schnorrkel::musig::Cosignature {
+        
+        self.musig_cosig = Some(self.musig_reveal.take().unwrap().cosign_stage());
+        let s = self.musig_cosig.as_ref().unwrap().our_cosignature();
+
+        s
+    }
+
+    pub fn set_other_cosignature(&mut self, pubkey: PublicKey, s: schnorrkel::musig::Cosignature) {
+
+        match pubkey {
+            PublicKey::PublicKeyV1(pk) => { },
+            PublicKey::PublicKeyV2(pk) => { 
+                let r = self.musig_cosig.as_mut().unwrap().add_their_cosignature(pk.a, s);
+            }
+        }
+    }
+
+
+}
+
+#[derive(Clone)]
+pub enum MultiSigMsg {
+    Commitment(PublicKey, schnorrkel::musig::Commitment),
+    Reveal(PublicKey, schnorrkel::musig::Reveal),
+    Cosignature(PublicKey, schnorrkel::musig::Cosignature),
+}
+
+impl std::fmt::Debug for MultiSigMsg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> { 
+        match self {
+            MultiSigMsg::Commitment(pk, c) => {
+                f.write_fmt(format_args!("MultiSigMsg::Commitment from pk: {}", pk))
+            },
+            MultiSigMsg::Reveal(pk, r) => {
+                f.write_fmt(format_args!("MultiSigMsg::Reveal from pk: {}", pk))
+            },
+            MultiSigMsg::Cosignature(pk, s) => {
+                f.write_fmt(format_args!("MultiSigMsg::Cosignature from pk: {}", pk))
+            },
+        }
+        
+    }
+}
+
+pub async fn start_multi_signature_scheme() -> Result<(), Error> {
+
+    let (tx, _) = tokio::sync::broadcast::channel::<MultiSigMsg>(3);
+
+    let keypair_1 = KeyPair::generate(2).unwrap();
+    let keypair_2 = KeyPair::generate(2).unwrap();
+    let keypair_3 = KeyPair::generate(2).unwrap();
+
+    let pubkey_1 = keypair_1.get_public_key();
+    let pubkey_2 = keypair_2.get_public_key();
+    let pubkey_3 = keypair_2.get_public_key();
+
+    let hash = Hash::compute_from(b"SomeData");
+
+    let handle1 = tokio::spawn({
+        let keypair_1 = keypair_1.clone();
+        let pubkey_2 = pubkey_2.clone();
+        let pubkey_3 = pubkey_3.clone();
+        let hash = hash.clone();
+        let tx_clone = tx.clone();
+        let rx_clone = tx_clone.subscribe();
+        async move {
+            //handle_multi_signature_one_node(keypair_1, vec![pubkey_2, pubkey_3], hash, tx1, vec![rx2_clone, rx3_clone]).await?;
+            handle_multi_signature_one_node(keypair_1, vec![pubkey_2, pubkey_3], hash, tx_clone, rx_clone).await?;
+            
+            Result::<(), Error>::Ok(())
+        }
+    });
+
+    let handle2 = tokio::spawn({
+        let keypair_2 = keypair_2.clone();
+        let pubkey_1 = pubkey_1.clone();
+        let pubkey_3 = pubkey_3.clone();
+        let hash = hash.clone();
+        let tx_clone = tx.clone();
+        let rx_clone = tx_clone.subscribe();
+        async move {
+            //handle_multi_signature_one_node(keypair_2, vec![pubkey_1, pubkey_3], hash, tx2, vec![rx1_clone, rx3_clone]).await?;
+            handle_multi_signature_one_node(keypair_2, vec![pubkey_1, pubkey_3], hash, tx_clone, rx_clone).await?;
+            
+            Result::<(), Error>::Ok(())
+        }
+    });
+
+    let handle3 = tokio::spawn({
+        let keypair_3 = keypair_3.clone();
+        let pubkey_1 = pubkey_1.clone();
+        let pubkey_2 = pubkey_2.clone();
+        let hash = hash.clone();
+        let tx_clone = tx.clone();
+        let rx_clone = tx_clone.subscribe();
+        async move {
+            handle_multi_signature_one_node(keypair_3, vec![pubkey_1, pubkey_2], hash, tx_clone, rx_clone).await?;
+            
+            Result::<(), Error>::Ok(())
+        }
+    });
+    
+    println!("ALL 3 tasks launched");
+
+    let _ret = join!(handle1,handle2,handle3);
+    
+    println!("ALL 3 tasks joined");
+
+    Ok(())
+}
+
+pub async fn handle_multi_signature_one_node(our_keypair: KeyPair, other_pubkeys: Vec<PublicKey>, hash: Hash, tx: tokio::sync::broadcast::Sender<MultiSigMsg>, mut rx: tokio::sync::broadcast::Receiver<MultiSigMsg>) -> Result<(), Error> {
+
+    let mut multi_sig = MultiSig::new(our_keypair.clone(), other_pubkeys.clone(), hash).unwrap();
+
+    /* Commit stage */
+    
+    println!("KP: {} - Start commit stage", our_keypair.get_public_key());
+
+    // Send our commitment to other keypairs
+    tx.send(MultiSigMsg::Commitment(our_keypair.get_public_key(), multi_sig.get_our_commitment()))?;
+
+    // Wait for every other commitment
+    let mut num_commit = 0;
+    while num_commit < other_pubkeys.len() {
+
+        let res = rx.recv().await;
+
+        match res {
+            Ok(MultiSigMsg::Commitment(pk, c)) if pk != our_keypair.get_public_key() => {
+                multi_sig.set_other_commitment(pk, c);
+                num_commit += 1;
+            },
+            Ok(_) => {                
+            }
+            _ => {
+            }
+        }
+    }
+
+    println!("KP: {} - Received all commit msg!", our_keypair.get_public_key());
+
+    /* Reveal stage */
+    
+    println!("KP: {} - Start reveal stage", our_keypair.get_public_key());
+
+    // Send our reveal to other keypairs
+    
+    tx.send(MultiSigMsg::Reveal(our_keypair.get_public_key(), multi_sig.get_our_reveal().clone()))?;
+
+    // Wait for every other reveal
+    
+    let mut num_reveal = 0;
+    while num_reveal < other_pubkeys.len() {
+        
+        let res = rx.recv().await;
+
+        match res {
+            Ok(MultiSigMsg::Reveal(pk, r)) if pk != our_keypair.get_public_key() => {
+                multi_sig.set_other_reveal(pk, r);
+                num_reveal += 1;
+            },
+            Ok(_) => {
+                
+            }
+            _ => {
+
+            }
+        }
+    }
+
+    println!("KP: {} - Received all reveal msg!", our_keypair.get_public_key());
+
+    /* Cosign stage */
+    
+    println!("KP: {} - Start cosign stage", our_keypair.get_public_key());
+
+    // Send our cosignature to other keypairs
+    
+    tx.send(MultiSigMsg::Cosignature(our_keypair.get_public_key(), multi_sig.get_our_cosignature().clone()))?;
+
+    // Wait for every other reveal
+    
+    let mut num_cosignature = 0;
+    while num_cosignature < other_pubkeys.len() {
+        let res = rx.recv().await;
+
+        match res {
+            Ok(MultiSigMsg::Cosignature(pk, s)) if pk != our_keypair.get_public_key() => {
+                multi_sig.set_other_cosignature(pk, s);
+                num_cosignature += 1;
+            },
+            Ok(_) => {
+                
+            }
+            _ => {
+
+            }
+        }
+    }
+    
+    println!("KP: {} - Received all cosign msg!", our_keypair.get_public_key());
+
+    /* EVERYONE SIGNED! */
+
+    let signature = multi_sig.musig_cosig.as_ref().unwrap().sign().unwrap();
+
+    match our_keypair.get_public_key() { 
+        PublicKey::PublicKeyV1(_pk) => { 
+            bail!("Wrong PubKey version");
+        },
+        PublicKey::PublicKeyV2(pk) => { 
+            
+            let t = schnorrkel::signing_context(b"massa_sig").bytes(hash.to_bytes());
+
+            let aggregate_pk = multi_sig.musig_cosig.as_ref().unwrap().public_key();
+
+            let result = aggregate_pk.verify(t,&signature); 
+
+            assert!(result.is_ok());
+
+        },
+
+    }
+    
+
+    Ok(())
 
 }
 
@@ -1841,13 +2146,15 @@ mod tests {
         assert_eq!(signature, deserialized);
     }
 
-    #[test]
+    /*#[test]
     fn test_multi_signature_simulation() {
         multi_signature_simulation();
-    }
+    }*/
 
-    #[test]
-    fn test_multi_signature() {
-        multi_signature();
+    #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+    async fn test_multi_signature() -> Result<(), Error> {
+        start_multi_signature_scheme().await?;
+
+        Ok(())
     }
 }

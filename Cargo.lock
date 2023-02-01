@@ -2858,11 +2858,13 @@ dependencies = [
 name = "massa_signature"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bs58",
  "displaydoc",
  "ed25519-dalek",
  "massa_hash",
  "massa_serialization",
+ "merlin 3.0.0",
  "nom",
  "rand 0.7.3",
  "schnorrkel",
@@ -2870,6 +2872,7 @@ dependencies = [
  "serde_json",
  "serial_test 0.10.0",
  "thiserror",
+ "tokio",
  "transition",
 ]
 

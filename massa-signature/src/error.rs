@@ -13,6 +13,9 @@ pub enum MassaSignatureError {
     /// Signature error : {0}
     SignatureError(String),
 
+    /// Signature error : {0}
+    MultiSignatureError(String),
+
     /// Wrong prefix for hash: expected {0}, got {1}
     WrongPrefix(String, String),
 
