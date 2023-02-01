@@ -220,7 +220,6 @@ impl Address {
         Address::User(UserAddress(Hash::compute_from(public_key.to_bytes())))
     }
 
-    /// ## Example
     /// Inner implementation for serializer. Mostly made available for the benefit of macros.
     pub fn prefixed_bytes(&self) -> Vec<u8> {
         let mut buff = vec![];
