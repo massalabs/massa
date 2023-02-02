@@ -1506,9 +1506,14 @@
 <a href="#1506" id="1506">1506</a>
 <a href="#1507" id="1507">1507</a>
 <a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
+</span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
+<span class="kw">use </span><span class="kw">crate</span>::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::prehash::{PreHashSet, PreHashed};
 <span class="kw">use </span><span class="kw">crate</span>::secure_share::{
     Id, SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
@@ -2026,6 +2031,7 @@
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
+    address_serializer: AddressSerializer,
     function_name_serializer: StringSerializer&lt;U16VarIntSerializer, u16&gt;,
     datastore_serializer: DatastoreSerializer,
 }
@@ -2038,6 +2044,7 @@
             u64_serializer: U64VarIntSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
         }
@@ -2076,7 +2083,8 @@
             } =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(OperationTypeId::Transaction), buffer)<span class="question-mark">?</span>;
-                buffer.extend(recipient_address.to_bytes());
+                <span class="self">self</span>.address_serializer
+                    .serialize(recipient_address, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.amount_serializer.serialize(amount, buffer)<span class="question-mark">?</span>;
             }
             OperationType::RollBuy { roll_count } =&gt; {
@@ -2111,7 +2119,7 @@
                     .serialize(<span class="kw-2">&amp;</span>u32::from(OperationTypeId::CallSC), buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.u64_serializer.serialize(max_gas, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.amount_serializer.serialize(coins, buffer)<span class="question-mark">?</span>;
-                buffer.extend(target_addr.to_bytes());
+                <span class="self">self</span>.address_serializer.serialize(target_addr, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.function_name_serializer
                     .serialize(target_func, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.vec_u8_serializer.serialize(param, buffer)<span class="question-mark">?</span>;
