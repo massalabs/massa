@@ -4,7 +4,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 mod error;
-mod signature_impl;
+//mod signature_impl;
 
 #[macro_use]
 mod multi;
@@ -19,5 +19,7 @@ pub use multi::{
     SignatureDeserializer,
 };
 
+/// TODO: Backcompatibility for the code
 pub const PUBLIC_KEY_SIZE_BYTES_V1: usize = 32;
+/// TODO: Backcompatibility for the code
 pub const SIGNATURE_SIZE_BYTES_V1: usize = 32;

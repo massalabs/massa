@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::MassaSignatureError;
-use anyhow::{Error, bail};
+use anyhow::{bail, Error};
 
 use ed25519_dalek;
 use ed25519_dalek::{Signer, Verifier};
@@ -20,9 +20,9 @@ use serde::{
     ser::SerializeStruct,
     Deserialize,
 };
-use tokio::join;
 use std::{borrow::Cow, cmp::Ordering, hash::Hasher, ops::Bound::Included};
 use std::{convert::TryInto, str::FromStr};
+use tokio::join;
 
 use transition::Versioned;
 
@@ -30,6 +30,7 @@ use transition::Versioned;
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
 pub const SIGNATURE_SIZE_BYTES: usize = 32;
 
+/// A versioned KeyPair
 #[transition::versioned(versions("1", "2"))]
 pub struct KeyPair {
     #[transition::field(versions("1"))]
@@ -136,6 +137,7 @@ impl KeyPair {
 }
 
 impl KeyPair {
+    /// Get the version of the given KeyPair
     pub fn get_version(&self) -> u64 {
         match self {
             KeyPair::KeyPairV1(keypair) => keypair.get_version(),
@@ -143,12 +145,18 @@ impl KeyPair {
         }
     }
 
-    /// ## Example
-    /// ```rust
-    /// use massa_signature::KeyPair;
+    /// Generates a new KeyPair of the version given as parameter.
+    /// Errors if the version number does not exist
+    ///
+    /// # Example
+    ///  ```
+    /// # use massa_signature::KeyPair;
+    /// # use massa_hash::Hash;
     /// let keypair = KeyPair::generate(1).unwrap();
-    /// assert_eq!(keypair.get_version(), 1);
-    /// ```
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
+    /// let signature = keypair.sign(&data).unwrap();
+    ///
+    /// let serialized: String = signature.to_bs58_check();
     pub fn generate(version: u64) -> Result<Self, MassaSignatureError> {
         match version {
             <KeyPair!["1"]>::VERSION => Ok(KeyPairVariant!["1"](<KeyPair!["1"]>::generate())),
@@ -160,6 +168,17 @@ impl KeyPair {
         }
     }
 
+    /// Returns the Signature produced by signing
+    /// data bytes with a `KeyPair`.
+    ///
+    /// # Example
+    ///  ```
+    /// # use massa_signature::KeyPair;
+    /// # use massa_hash::Hash;
+    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
+    /// let signature = keypair.sign(&data).unwrap();
+    /// ```
     pub fn sign(&self, hash: &Hash) -> Result<Signature, MassaSignatureError> {
         match self {
             KeyPair::KeyPairV1(keypair) => keypair.sign(hash).map(Signature::SignatureV1),
@@ -167,6 +186,14 @@ impl KeyPair {
         }
     }
 
+    /// Return the bytes (as a Vec) representing the keypair
+    ///
+    /// # Example
+    /// ```
+    /// # use massa_signature::KeyPair;
+    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let bytes = keypair.to_bytes();
+    /// ```
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             KeyPair::KeyPairV1(keypair) => keypair.to_bytes(),
@@ -174,6 +201,14 @@ impl KeyPair {
         }
     }
 
+    /// Get the public key of the keypair
+    ///
+    /// # Example
+    /// ```
+    /// # use massa_signature::KeyPair;
+    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let public_key = keypair.get_public_key();
+    /// ```
     pub fn get_public_key(&self) -> PublicKey {
         match self {
             KeyPair::KeyPairV1(keypair) => PublicKey::PublicKeyV1(keypair.get_public_key()),
@@ -181,6 +216,15 @@ impl KeyPair {
         }
     }
 
+    /// Convert a byte slice to a `KeyPair`
+    ///
+    /// # Example
+    /// ```
+    /// # use massa_signature::KeyPair;
+    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let bytes = keypair.into_bytes();
+    /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
+    /// ```
     pub fn from_bytes(data: &[u8]) -> Result<Self, MassaSignatureError> {
         let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
         let (rest, version) = u64_deserializer
@@ -372,7 +416,6 @@ impl KeyPair {
     /// let serialized: String = signature.to_bs58_check();
     /// ```
     pub fn generate() -> Self {
-        let mut rng = OsRng::default();
         KeyPair {
             a: schnorrkel::Keypair::generate(),
         }
@@ -415,7 +458,9 @@ impl KeyPair {
     pub fn to_bytes(&self) -> Vec<u8> {
         let version_serializer = U64VarIntSerializer::new();
         let mut bytes: Vec<u8> = Vec::new();
-        version_serializer.serialize(&Self::VERSION, &mut bytes);
+        version_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .expect("Failed to serialize KeyPair version");
         bytes[Self::VERSION_VARINT_SIZE_BYTES..].copy_from_slice(&self.a.to_bytes());
         bytes
     }
@@ -806,7 +851,9 @@ impl PublicKey {
         let version_serializer = U64VarIntSerializer::new();
         let mut bytes: Vec<u8> =
             Vec::with_capacity(Self::VERSION_VARINT_SIZE_BYTES + Self::PUBLIC_KEY_SIZE_BYTES);
-        version_serializer.serialize(&Self::VERSION, &mut bytes);
+        version_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .unwrap();
         bytes.extend_from_slice(&self.a.to_bytes());
         bytes
     }
@@ -1523,6 +1570,7 @@ impl Deserializer<Signature> for SignatureDeserializer {
     }
 }
 
+/// Verifies a batch of signatures
 pub fn verify_signature_batch(
     batch: &[(Hash, Signature, PublicKey)],
 ) -> Result<(), MassaSignatureError> {
@@ -1688,17 +1736,21 @@ impl Signature {
 /* BEGIN MULTI IMPL */
 
 impl KeyPair {
-    pub fn musig<'k>(&'k self, hash: Hash) -> Result<
-      schnorrkel::musig::MuSig<
-      impl schnorrkel::context::SigningTranscript + Clone,
-      schnorrkel::musig::CommitStage<&'k schnorrkel::Keypair>>,
-      MassaSignatureError>
-      {
-
+    /// Creates a new multi-signature scheme with this KeyPair
+    pub fn musig(
+        &self,
+        hash: Hash,
+    ) -> Result<
+        schnorrkel::musig::MuSig<
+            impl schnorrkel::context::SigningTranscript + Clone,
+            schnorrkel::musig::CommitStage<&schnorrkel::Keypair>,
+        >,
+        MassaSignatureError,
+    > {
         match self {
-            KeyPair::KeyPairV1(_kp) => {
-                Err(MassaSignatureError::InvalidVersionError(String::from("MultiSig not available for KeyPairs V1")))
-            },
+            KeyPair::KeyPairV1(_kp) => Err(MassaSignatureError::InvalidVersionError(String::from(
+                "MultiSig not available for KeyPairs V1",
+            ))),
             KeyPair::KeyPairV2(kp) => {
                 let t = schnorrkel::signing_context(b"massa_sign").bytes(hash.to_bytes());
 
@@ -1708,130 +1760,143 @@ impl KeyPair {
     }
 }
 
-enum Stage {
-    CommitStage,
-    RevealStage,
-}
-
-
-//trait MassaTranscript: schnorrkel::context::SigningTranscript + Clone {}
-
-
+/// A MultiSig struct, wrapping the schnorkkel musig
 struct MultiSig {
-    stage: Stage,
-    musig_commit: Option<schnorrkel::musig::MuSig<merlin::Transcript, schnorrkel::musig::CommitStage<schnorrkel::Keypair>>>,
-    musig_reveal: Option<schnorrkel::musig::MuSig<merlin::Transcript, schnorrkel::musig::RevealStage<schnorrkel::Keypair>>>,
-    musig_cosig: Option<schnorrkel::musig::MuSig<merlin::Transcript, schnorrkel::musig::CosignStage>>,
+    musig_commit: Option<
+        schnorrkel::musig::MuSig<
+            merlin::Transcript,
+            schnorrkel::musig::CommitStage<schnorrkel::Keypair>,
+        >,
+    >,
+    musig_reveal: Option<
+        schnorrkel::musig::MuSig<
+            merlin::Transcript,
+            schnorrkel::musig::RevealStage<schnorrkel::Keypair>,
+        >,
+    >,
+    musig_cosig:
+        Option<schnorrkel::musig::MuSig<merlin::Transcript, schnorrkel::musig::CosignStage>>,
     our_keypair: KeyPair,
     other_pubkeys: Vec<PublicKey>,
     hash: Hash,
-
 }
 
 impl MultiSig {
-
-    pub fn new(our_keypair: KeyPair, other_pubkeys: Vec<PublicKey>, hash: Hash) -> Result<MultiSig, MassaSignatureError> {
-        
+    pub fn new(
+        our_keypair: KeyPair,
+        other_pubkeys: Vec<PublicKey>,
+        hash: Hash,
+    ) -> Result<MultiSig, MassaSignatureError> {
         match our_keypair.clone() {
-            KeyPair::KeyPairV1(_kp) => {
-                
-                Err(MassaSignatureError::InvalidVersionError(String::from("MultiSig not available for KeyPairs V1")))
-            },
+            KeyPair::KeyPairV1(_kp) => Err(MassaSignatureError::InvalidVersionError(String::from(
+                "MultiSig not available for KeyPairs V1",
+            ))),
             KeyPair::KeyPairV2(kp) => {
-
                 let t = schnorrkel::signing_context(b"massa_sig").bytes(hash.to_bytes());
                 let m = schnorrkel::musig::MuSig::new(kp.a, t);
-        
-                Ok(MultiSig { stage: Stage::CommitStage, musig_commit: Some(m), musig_reveal: None, musig_cosig: None, our_keypair, other_pubkeys, hash })
 
-            },
+                Ok(MultiSig {
+                    musig_commit: Some(m),
+                    musig_reveal: None,
+                    musig_cosig: None,
+                    our_keypair,
+                    other_pubkeys,
+                    hash,
+                })
+            }
         }
     }
 
     pub fn get_our_commitment(&self) -> schnorrkel::musig::Commitment {
-
         let c = self.musig_commit.as_ref().unwrap().our_commitment();
         c
     }
 
-    pub fn set_other_commitment(&mut self, pubkey: PublicKey, c: schnorrkel::musig::Commitment) {
-        
+    pub fn set_other_commitment(&mut self, pubkey: PublicKey, c: schnorrkel::musig::Commitment) -> Result<(), MassaSignatureError> {
         match pubkey {
-            PublicKey::PublicKeyV1(pk) => { },
-            PublicKey::PublicKeyV2(pk) => { 
-                let r = self.musig_commit.as_mut().unwrap().add_their_commitment(pk.a, c);
-
+            PublicKey::PublicKeyV1(_) => {Err(MassaSignatureError::InvalidVersionError(String::from("Multi-sig not implemented for this PublicKey version")))}
+            PublicKey::PublicKeyV2(pk) => {
+                let r = self
+                    .musig_commit
+                    .as_mut()
+                    .unwrap()
+                    .add_their_commitment(pk.a, c);
+                r.map_err(|_| { MassaSignatureError::SignatureError(String::from("Multi-sig set other commitment failed")) })
             }
         }
     }
-    
+
     pub fn get_our_reveal(&mut self) -> &schnorrkel::musig::Reveal {
-        
         self.musig_reveal = Some(self.musig_commit.take().unwrap().reveal_stage());
         let r = self.musig_reveal.as_ref().unwrap().our_reveal();
 
         r
-
     }
 
-    pub fn set_other_reveal(&mut self, pubkey: PublicKey, r: schnorrkel::musig::Reveal) {
-
+    pub fn set_other_reveal(&mut self, pubkey: PublicKey, r: schnorrkel::musig::Reveal) -> Result<(), MassaSignatureError> {
         match pubkey {
-            PublicKey::PublicKeyV1(pk) => { },
-            PublicKey::PublicKeyV2(pk) => { 
-                let r = self.musig_reveal.as_mut().unwrap().add_their_reveal(pk.a, r);
-
+            PublicKey::PublicKeyV1(_) => {Err(MassaSignatureError::InvalidVersionError(String::from("Multi-sig not implemented for this PublicKey version")))}
+            PublicKey::PublicKeyV2(pk) => {
+                let r = self
+                    .musig_reveal
+                    .as_mut()
+                    .unwrap()
+                    .add_their_reveal(pk.a, r);
+                r.map_err(|_| { MassaSignatureError::SignatureError(String::from("Multi-sig set other reveal failed")) })
             }
         }
     }
-        
+
     pub fn get_our_cosignature(&mut self) -> schnorrkel::musig::Cosignature {
-        
         self.musig_cosig = Some(self.musig_reveal.take().unwrap().cosign_stage());
         let s = self.musig_cosig.as_ref().unwrap().our_cosignature();
 
         s
     }
 
-    pub fn set_other_cosignature(&mut self, pubkey: PublicKey, s: schnorrkel::musig::Cosignature) {
-
+    pub fn set_other_cosignature(&mut self, pubkey: PublicKey, s: schnorrkel::musig::Cosignature) -> Result<(), MassaSignatureError> {
         match pubkey {
-            PublicKey::PublicKeyV1(pk) => { },
-            PublicKey::PublicKeyV2(pk) => { 
-                let r = self.musig_cosig.as_mut().unwrap().add_their_cosignature(pk.a, s);
+            PublicKey::PublicKeyV1(_) => {Err(MassaSignatureError::InvalidVersionError(String::from("Multi-sig not implemented for this PublicKey version")))}
+            PublicKey::PublicKeyV2(pk) => {
+                let r = self
+                    .musig_cosig
+                    .as_mut()
+                    .unwrap()
+                    .add_their_cosignature(pk.a, s);
+                r.map_err(|_| { MassaSignatureError::SignatureError(String::from("Multi-sig set other cosignature failed")) })
             }
         }
     }
-
-
 }
 
+/// A MultiSig Message, used to send and receive commitments, reveals and cosignatures
 #[derive(Clone)]
 pub enum MultiSigMsg {
+    /// A MultiSig Commitment
     Commitment(PublicKey, schnorrkel::musig::Commitment),
+    /// A MultiSig Reveal
     Reveal(PublicKey, schnorrkel::musig::Reveal),
+    /// A MultiSig Cosignature
     Cosignature(PublicKey, schnorrkel::musig::Cosignature),
 }
 
 impl std::fmt::Debug for MultiSigMsg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> { 
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            MultiSigMsg::Commitment(pk, c) => {
+            MultiSigMsg::Commitment(pk, _c) => {
                 f.write_fmt(format_args!("MultiSigMsg::Commitment from pk: {}", pk))
-            },
-            MultiSigMsg::Reveal(pk, r) => {
+            }
+            MultiSigMsg::Reveal(pk, _r) => {
                 f.write_fmt(format_args!("MultiSigMsg::Reveal from pk: {}", pk))
-            },
-            MultiSigMsg::Cosignature(pk, s) => {
+            }
+            MultiSigMsg::Cosignature(pk, _s) => {
                 f.write_fmt(format_args!("MultiSigMsg::Cosignature from pk: {}", pk))
-            },
+            }
         }
-        
     }
 }
 
 pub async fn start_multi_signature_scheme() -> Result<(), Error> {
-
     let (tx, _) = tokio::sync::broadcast::channel::<MultiSigMsg>(3);
 
     let keypair_1 = KeyPair::generate(2).unwrap();
@@ -1846,177 +1911,195 @@ pub async fn start_multi_signature_scheme() -> Result<(), Error> {
 
     let handle1 = tokio::spawn({
         let keypair_1 = keypair_1.clone();
-        let pubkey_2 = pubkey_2.clone();
-        let pubkey_3 = pubkey_3.clone();
-        let hash = hash.clone();
         let tx_clone = tx.clone();
         let rx_clone = tx_clone.subscribe();
         async move {
             //handle_multi_signature_one_node(keypair_1, vec![pubkey_2, pubkey_3], hash, tx1, vec![rx2_clone, rx3_clone]).await?;
-            handle_multi_signature_one_node(keypair_1, vec![pubkey_2, pubkey_3], hash, tx_clone, rx_clone).await?;
-            
+            handle_multi_signature_one_node(
+                keypair_1,
+                vec![pubkey_2, pubkey_3],
+                hash,
+                tx_clone,
+                rx_clone,
+            )
+            .await?;
+
             Result::<(), Error>::Ok(())
         }
     });
 
     let handle2 = tokio::spawn({
         let keypair_2 = keypair_2.clone();
-        let pubkey_1 = pubkey_1.clone();
-        let pubkey_3 = pubkey_3.clone();
-        let hash = hash.clone();
         let tx_clone = tx.clone();
         let rx_clone = tx_clone.subscribe();
         async move {
             //handle_multi_signature_one_node(keypair_2, vec![pubkey_1, pubkey_3], hash, tx2, vec![rx1_clone, rx3_clone]).await?;
-            handle_multi_signature_one_node(keypair_2, vec![pubkey_1, pubkey_3], hash, tx_clone, rx_clone).await?;
-            
+            handle_multi_signature_one_node(
+                keypair_2,
+                vec![pubkey_1, pubkey_3],
+                hash,
+                tx_clone,
+                rx_clone,
+            )
+            .await?;
+
             Result::<(), Error>::Ok(())
         }
     });
 
     let handle3 = tokio::spawn({
         let keypair_3 = keypair_3.clone();
-        let pubkey_1 = pubkey_1.clone();
-        let pubkey_2 = pubkey_2.clone();
-        let hash = hash.clone();
         let tx_clone = tx.clone();
         let rx_clone = tx_clone.subscribe();
         async move {
-            handle_multi_signature_one_node(keypair_3, vec![pubkey_1, pubkey_2], hash, tx_clone, rx_clone).await?;
-            
+            handle_multi_signature_one_node(
+                keypair_3,
+                vec![pubkey_1, pubkey_2],
+                hash,
+                tx_clone,
+                rx_clone,
+            )
+            .await?;
+
             Result::<(), Error>::Ok(())
         }
     });
-    
+
     println!("ALL 3 tasks launched");
 
-    let _ret = join!(handle1,handle2,handle3);
-    
+    let _ret = join!(handle1, handle2, handle3);
+
     println!("ALL 3 tasks joined");
 
     Ok(())
 }
 
-pub async fn handle_multi_signature_one_node(our_keypair: KeyPair, other_pubkeys: Vec<PublicKey>, hash: Hash, tx: tokio::sync::broadcast::Sender<MultiSigMsg>, mut rx: tokio::sync::broadcast::Receiver<MultiSigMsg>) -> Result<(), Error> {
-
+pub async fn handle_multi_signature_one_node(
+    our_keypair: KeyPair,
+    other_pubkeys: Vec<PublicKey>,
+    hash: Hash,
+    tx: tokio::sync::broadcast::Sender<MultiSigMsg>,
+    mut rx: tokio::sync::broadcast::Receiver<MultiSigMsg>,
+) -> Result<(), Error> {
     let mut multi_sig = MultiSig::new(our_keypair.clone(), other_pubkeys.clone(), hash).unwrap();
 
     /* Commit stage */
-    
+
     println!("KP: {} - Start commit stage", our_keypair.get_public_key());
 
     // Send our commitment to other keypairs
-    tx.send(MultiSigMsg::Commitment(our_keypair.get_public_key(), multi_sig.get_our_commitment()))?;
+    tx.send(MultiSigMsg::Commitment(
+        our_keypair.get_public_key(),
+        multi_sig.get_our_commitment(),
+    ))?;
 
     // Wait for every other commitment
     let mut num_commit = 0;
     while num_commit < other_pubkeys.len() {
-
         let res = rx.recv().await;
 
         match res {
             Ok(MultiSigMsg::Commitment(pk, c)) if pk != our_keypair.get_public_key() => {
-                multi_sig.set_other_commitment(pk, c);
+                multi_sig.set_other_commitment(pk, c)?;
                 num_commit += 1;
-            },
-            Ok(_) => {                
             }
-            _ => {
-            }
+            Ok(_) => {}
+            _ => {}
         }
     }
 
-    println!("KP: {} - Received all commit msg!", our_keypair.get_public_key());
+    println!(
+        "KP: {} - Received all commit msg!",
+        our_keypair.get_public_key()
+    );
 
     /* Reveal stage */
-    
+
     println!("KP: {} - Start reveal stage", our_keypair.get_public_key());
 
     // Send our reveal to other keypairs
-    
-    tx.send(MultiSigMsg::Reveal(our_keypair.get_public_key(), multi_sig.get_our_reveal().clone()))?;
+
+    tx.send(MultiSigMsg::Reveal(
+        our_keypair.get_public_key(),
+        multi_sig.get_our_reveal().clone(),
+    ))?;
 
     // Wait for every other reveal
-    
+
     let mut num_reveal = 0;
     while num_reveal < other_pubkeys.len() {
-        
         let res = rx.recv().await;
 
         match res {
             Ok(MultiSigMsg::Reveal(pk, r)) if pk != our_keypair.get_public_key() => {
-                multi_sig.set_other_reveal(pk, r);
+                multi_sig.set_other_reveal(pk, r)?;
                 num_reveal += 1;
-            },
-            Ok(_) => {
-                
             }
-            _ => {
-
-            }
+            Ok(_) => {}
+            _ => {}
         }
     }
 
-    println!("KP: {} - Received all reveal msg!", our_keypair.get_public_key());
+    println!(
+        "KP: {} - Received all reveal msg!",
+        our_keypair.get_public_key()
+    );
 
     /* Cosign stage */
-    
+
     println!("KP: {} - Start cosign stage", our_keypair.get_public_key());
 
     // Send our cosignature to other keypairs
-    
-    tx.send(MultiSigMsg::Cosignature(our_keypair.get_public_key(), multi_sig.get_our_cosignature().clone()))?;
+
+    tx.send(MultiSigMsg::Cosignature(
+        our_keypair.get_public_key(),
+        multi_sig.get_our_cosignature().clone(),
+    ))?;
 
     // Wait for every other reveal
-    
+
     let mut num_cosignature = 0;
     while num_cosignature < other_pubkeys.len() {
         let res = rx.recv().await;
 
         match res {
             Ok(MultiSigMsg::Cosignature(pk, s)) if pk != our_keypair.get_public_key() => {
-                multi_sig.set_other_cosignature(pk, s);
+                multi_sig.set_other_cosignature(pk, s)?;
                 num_cosignature += 1;
-            },
-            Ok(_) => {
-                
             }
-            _ => {
-
-            }
+            Ok(_) => {}
+            _ => {}
         }
     }
-    
-    println!("KP: {} - Received all cosign msg!", our_keypair.get_public_key());
+
+    println!(
+        "KP: {} - Received all cosign msg!",
+        our_keypair.get_public_key()
+    );
 
     /* EVERYONE SIGNED! */
 
     let signature = multi_sig.musig_cosig.as_ref().unwrap().sign().unwrap();
 
-    match our_keypair.get_public_key() { 
-        PublicKey::PublicKeyV1(_pk) => { 
+    match our_keypair.get_public_key() {
+        PublicKey::PublicKeyV1(_) => {
             bail!("Wrong PubKey version");
-        },
-        PublicKey::PublicKeyV2(pk) => { 
-            
+        }
+        PublicKey::PublicKeyV2(_pk) => {
             let t = schnorrkel::signing_context(b"massa_sig").bytes(hash.to_bytes());
 
             let aggregate_pk = multi_sig.musig_cosig.as_ref().unwrap().public_key();
 
-            let result = aggregate_pk.verify(t,&signature); 
+            let result = aggregate_pk.verify(t, &signature);
 
             assert!(result.is_ok());
-
-        },
-
+        }
     }
-    
 
     Ok(())
-
 }
 
-fn multi_signature_simulation() {
+fn original_multi_signature_simulation() {
     let keypairs: Vec<schnorrkel::Keypair> =
         (0..16).map(|_| schnorrkel::Keypair::generate()).collect();
 
@@ -2146,10 +2229,10 @@ mod tests {
         assert_eq!(signature, deserialized);
     }
 
-    /*#[test]
+    #[test]
     fn test_multi_signature_simulation() {
-        multi_signature_simulation();
-    }*/
+        original_multi_signature_simulation();
+    }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
     async fn test_multi_signature() -> Result<(), Error> {
