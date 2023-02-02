@@ -411,7 +411,7 @@ impl ExecutionContext {
             data.push(1u8);
         }
         // hash the seed to get a unique address
-        let address = Address::User(UserAddress(massa_hash::Hash::compute_from(&data)));
+        let address = Address::SC(SCAddress(massa_hash::Hash::compute_from(&data)));
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(
