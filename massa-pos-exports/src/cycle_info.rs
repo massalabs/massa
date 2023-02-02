@@ -10,7 +10,6 @@ use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_signature::KeyPair;
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -234,6 +233,7 @@ impl CycleInfo {
 fn test_cycle_info_hash_computation() {
     use crate::DeferredCredits;
     use bitvec::prelude::*;
+    use massa_signature::KeyPair;
 
     // cycle and address
     let mut cycle_a = CycleInfo::new_with_hash(

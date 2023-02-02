@@ -1,8 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Signature management
 
-#![warn(missing_docs)]
+//#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![allow(missing_docs)]
+#![allow(dead_code)]
 mod error;
 //mod signature_impl;
 

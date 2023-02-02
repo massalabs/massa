@@ -3,7 +3,6 @@
 use crate::error::MassaSignatureError;
 use anyhow::{bail, Error};
 
-use ed25519_dalek;
 use ed25519_dalek::{Signer, Verifier};
 
 use massa_hash::Hash;
@@ -473,7 +472,7 @@ impl KeyPair {
     /// let keypair = KeyPair::generate(1).unwrap();
     /// let bytes = keypair.into_bytes();
     /// ```
-    pub fn into_bytes(&self) -> [u8; Self::SECRET_KEY_BYTES_SIZE] {
+    pub fn into_bytes(self) -> [u8; Self::SECRET_KEY_BYTES_SIZE] {
         self.a.secret.to_bytes()
     }
 }
@@ -619,9 +618,11 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
 #[transition::versioned(versions("1", "2"))]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PublicKey {
+    /// The ed25519_dalek public key to wrap
     #[transition::field(versions("1"))]
     pub a: ed25519_dalek::PublicKey,
 
+    /// The schnorrkel public key to wrap
     #[transition::field(versions("2"))]
     pub a: schnorrkel::PublicKey,
 }
@@ -803,7 +804,7 @@ impl PublicKey {
     pub fn from_bytes(data: &[u8]) -> Result<PublicKey, MassaSignatureError> {
         let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
         let (rest, version) = u64_deserializer
-            .deserialize::<DeserializeError>(&data[..])
+            .deserialize::<DeserializeError>(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
         match version {
             <PublicKey!["1"]>::VERSION => Ok(PublicKeyVariant!["1"](
@@ -1303,7 +1304,7 @@ impl Signature {
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// ```
-    pub fn to_bs58_check(&self) -> String {
+    pub fn to_bs58_check(self) -> String {
         bs58::encode(self.into_bytes()).with_check().into_string()
     }
 
@@ -1513,7 +1514,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
                 where
                     E: ::serde::de::Error,
                 {
-                    Signature::from_bytes(v.try_into().map_err(E::custom)?).map_err(E::custom)
+                    Signature::from_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -1592,13 +1593,12 @@ pub fn verify_signature_batch(
             let mut signatures = Vec::with_capacity(batch.len());
             let mut public_keys = Vec::with_capacity(batch.len());
             batch.iter().for_each(|(hash, signature, public_key)| {
-                match (&signature, &public_key) {
-                    (Signature::SignatureV1(sig), PublicKey::PublicKeyV1(pubkey)) => {
-                        hashes.push(hash.to_bytes().as_slice());
-                        signatures.push(sig.a);
-                        public_keys.push(pubkey.a);
-                    }
-                    _ => {}
+                if let (Signature::SignatureV1(sig), PublicKey::PublicKeyV1(pubkey)) =
+                    (&signature, &public_key)
+                {
+                    hashes.push(hash.to_bytes().as_slice());
+                    signatures.push(sig.a);
+                    public_keys.push(pubkey.a);
                 }
             });
             ed25519_dalek::verify_batch(&hashes, signatures.as_slice(), public_keys.as_slice())
@@ -1614,13 +1614,12 @@ pub fn verify_signature_batch(
             let mut signatures = Vec::with_capacity(batch.len());
             let mut public_keys = Vec::with_capacity(batch.len());
             batch.iter().for_each(|(hash, signature, public_key)| {
-                match (&signature, &public_key) {
-                    (Signature::SignatureV2(sig), PublicKey::PublicKeyV2(pubkey)) => {
-                        ts.push(schnorrkel::signing_context(b"massa_sign").bytes(hash.to_bytes()));
-                        signatures.push(sig.a);
-                        public_keys.push(pubkey.a);
-                    }
-                    _ => {}
+                if let (Signature::SignatureV2(sig), PublicKey::PublicKeyV2(pubkey)) =
+                    (&signature, &public_key)
+                {
+                    ts.push(schnorrkel::signing_context(b"massa_sign").bytes(hash.to_bytes()));
+                    signatures.push(sig.a);
+                    public_keys.push(pubkey.a);
                 }
             });
             schnorrkel::verify_batch(ts, signatures.as_slice(), public_keys.as_slice(), false)
@@ -1760,7 +1759,7 @@ impl KeyPair {
     }
 }
 
-/// A MultiSig struct, wrapping the schnorkkel musig
+/// A MultiSig struct, wrapping the schnorrkel musig
 struct MultiSig {
     musig_commit: Option<
         schnorrkel::musig::MuSig<
@@ -2083,7 +2082,7 @@ pub async fn handle_multi_signature_one_node(
 
     tx.send(MultiSigMsg::Cosignature(
         our_keypair.get_public_key(),
-        multi_sig.get_our_cosignature().clone(),
+        multi_sig.get_our_cosignature(),
     ))?;
 
     // Wait for every other reveal
@@ -2139,9 +2138,7 @@ fn original_multi_signature_simulation() {
         let r = commits[i].our_commitment();
         for j in commits.iter_mut() {
             assert!(
-                j.add_their_commitment(keypairs[i].public.clone(), r)
-                    .is_ok()
-                    != (r == j.our_commitment())
+                j.add_their_commitment(keypairs[i].public, r).is_ok() != (r == j.our_commitment())
             );
         }
     }
@@ -2151,8 +2148,7 @@ fn original_multi_signature_simulation() {
     for i in 0..reveals.len() {
         let r = reveals[i].our_reveal().clone();
         for j in reveals.iter_mut() {
-            j.add_their_reveal(keypairs[i].public.clone(), r.clone())
-                .unwrap();
+            j.add_their_reveal(keypairs[i].public, r.clone()).unwrap();
         }
         reveal_msgs.push(r);
     }
@@ -2170,8 +2166,7 @@ fn original_multi_signature_simulation() {
         assert_eq!(pk, cosigns[i].public_key());
         let r = cosigns[i].our_cosignature();
         for j in cosigns.iter_mut() {
-            j.add_their_cosignature(keypairs[i].public.clone(), r)
-                .unwrap();
+            j.add_their_cosignature(keypairs[i].public, r).unwrap();
         }
         cosign_msgs.push(r);
         assert_eq!(pk, cosigns[i].public_key());
@@ -2180,19 +2175,15 @@ fn original_multi_signature_simulation() {
     // let signature = cosigns[0].sign().unwrap();
     let mut c = schnorrkel::musig::collect_cosignatures(t.clone());
     for i in 0..cosigns.len() {
-        c.add(
-            keypairs[i].public.clone(),
-            reveal_msgs[i].clone(),
-            cosign_msgs[i].clone(),
-        )
-        .unwrap();
+        c.add(keypairs[i].public, reveal_msgs[i].clone(), cosign_msgs[i])
+            .unwrap();
     }
     let signature = c.signature();
 
     assert!(pk.verify(t, &signature).is_ok());
-    for i in 0..cosigns.len() {
-        assert_eq!(pk, cosigns[i].public_key());
-        assert_eq!(signature, cosigns[i].sign().unwrap());
+    for cosign in &cosigns {
+        assert_eq!(pk, cosign.public_key());
+        assert_eq!(signature, cosign.sign().unwrap());
     }
 }
 

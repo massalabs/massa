@@ -18,8 +18,7 @@ config = "0.13"
 bs58 = { version = "0.4", features = ["check"] }
 bitvec = { version = "1.0", features = ["serde"] }
 nom = "7.1"
-
-transition = { path = "../../transition/transition" }
+transition = { git = "https://github.com/AurelienFT/transition" }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }

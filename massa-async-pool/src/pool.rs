@@ -15,7 +15,6 @@ use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_signature::KeyPair;
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -343,8 +342,8 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
 
 #[test]
 fn test_take_batch() {
-    use massa_hash::Hash;
     use massa_models::{address::Address, amount::Amount, slot::Slot};
+    use massa_signature::KeyPair;
     use std::str::FromStr;
 
     let config = AsyncPoolConfig {

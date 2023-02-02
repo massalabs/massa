@@ -2671,7 +2671,7 @@ dependencies = [
  "serde_with",
  "serial_test 0.10.0",
  "thiserror",
- "transition 0.1.0",
+ "transition",
 ]
 
 [[package]]
@@ -2874,7 +2874,7 @@ dependencies = [
  "serial_test 0.10.0",
  "thiserror",
  "tokio",
- "transition 0.1.0 (git+https://github.com/AurelienFT/transition)",
+ "transition",
 ]
 
 [[package]]
@@ -4843,27 +4843,9 @@ dependencies = [
 [[package]]
 name = "transition"
 version = "0.1.0"
-dependencies = [
- "transition-macros 0.1.0",
-]
-
-[[package]]
-name = "transition"
-version = "0.1.0"
 source = "git+https://github.com/AurelienFT/transition#93fa3bf82f9f5ff421c78536879b7fd1b948ca75"
 dependencies = [
- "transition-macros 0.1.0 (git+https://github.com/AurelienFT/transition)",
-]
-
-[[package]]
-name = "transition-macros"
-version = "0.1.0"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "syn",
- "unsigned-varint",
+ "transition-macros",
 ]
 
 [[package]]

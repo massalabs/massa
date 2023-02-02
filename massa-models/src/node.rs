@@ -81,9 +81,9 @@ impl std::str::FromStr for NodeId {
                 let (rest, _version) = u64_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::NodeIdParseError)?;
-                Ok(NodeId(PublicKey::from_bytes(
-                    rest.try_into().map_err(|_| ModelsError::NodeIdParseError)?,
-                )?))
+                Ok(NodeId(
+                    PublicKey::from_bytes(rest).map_err(|_| ModelsError::NodeIdParseError)?,
+                ))
             }
             _ => Err(ModelsError::NodeIdParseError),
         }
