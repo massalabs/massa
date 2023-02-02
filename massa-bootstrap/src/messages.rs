@@ -513,6 +513,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
 
 /// Messages used during bootstrap by client
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum BootstrapClientMessage {
     /// Ask for bootstrap peers
     AskBootstrapPeers,
