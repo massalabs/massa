@@ -126,7 +126,7 @@ jobs:
 
   # Maybe launch it only in testnet branches
   gas-costs-check:
-    if: github.ref != 'refs/heads/staging'
+    if: github.ref != 'refs/heads/staging' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     steps: 
       - uses: actions/checkout@v3
