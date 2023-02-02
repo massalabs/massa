@@ -30,7 +30,7 @@ impl std::fmt::Display for Address {
         //TODO: https://stackoverflow.com/questions/75171139/use-macro-in-match-branch
         match self {
             Address::AddressV1(address) => address.fmt(f),
-            Address::AddressV2(address) => address.fmt(f)
+            Address::AddressV2(address) => address.fmt(f),
         }
     }
 }
@@ -136,14 +136,18 @@ impl FromStr for Address {
                     .map_err(|_| ModelsError::AddressParseError)?;
                 //TODO: Make it function like macro from address big structure
                 match version {
-                    <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](<Address!["1"]>::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::AddressParseError)?,
-                    )?)),
-                    <Address!["1"]>::VERSION => Ok(AddressVariant!["2"](<Address!["2"]>::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::AddressParseError)?,
-                    )?)),
+                    <Address!["1"]>::VERSION => {
+                        Ok(AddressVariant!["1"](<Address!["1"]>::from_bytes(
+                            rest.try_into()
+                                .map_err(|_| ModelsError::AddressParseError)?,
+                        )?))
+                    }
+                    <Address!["1"]>::VERSION => {
+                        Ok(AddressVariant!["2"](<Address!["2"]>::from_bytes(
+                            rest.try_into()
+                                .map_err(|_| ModelsError::AddressParseError)?,
+                        )?))
+                    }
                     _ => Err(ModelsError::AddressParseError),
                 }
             }
@@ -274,7 +278,6 @@ impl Address {
 
 #[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Address {
-
     pub fn get_version(&self) -> u64 {
         Self::VERSION
     }
@@ -356,7 +359,7 @@ impl AddressSerializer {
     /// Serializes an `Address` into a `Vec<u8>`
     pub fn new() -> Self {
         Self {
-            version_serializer: U64VarIntSerializer::new()
+            version_serializer: U64VarIntSerializer::new(),
         }
     }
 }
@@ -373,7 +376,8 @@ impl Serializer<Address> for AddressSerializer {
 #[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Serializer<Address> for AddressSerializer {
     fn serialize(&self, value: &Address, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        self.version_serializer.serialize(&value.get_version(), buffer)?;
+        self.version_serializer
+            .serialize(&value.get_version(), buffer)?;
         buffer.extend_from_slice(&value.into_bytes());
         Ok(())
     }

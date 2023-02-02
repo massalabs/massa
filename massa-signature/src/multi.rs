@@ -1812,16 +1812,26 @@ impl MultiSig {
         c
     }
 
-    pub fn set_other_commitment(&mut self, pubkey: PublicKey, c: schnorrkel::musig::Commitment) -> Result<(), MassaSignatureError> {
+    pub fn set_other_commitment(
+        &mut self,
+        pubkey: PublicKey,
+        c: schnorrkel::musig::Commitment,
+    ) -> Result<(), MassaSignatureError> {
         match pubkey {
-            PublicKey::PublicKeyV1(_) => {Err(MassaSignatureError::InvalidVersionError(String::from("Multi-sig not implemented for this PublicKey version")))}
+            PublicKey::PublicKeyV1(_) => Err(MassaSignatureError::InvalidVersionError(
+                String::from("Multi-sig not implemented for this PublicKey version"),
+            )),
             PublicKey::PublicKeyV2(pk) => {
                 let r = self
                     .musig_commit
                     .as_mut()
                     .unwrap()
                     .add_their_commitment(pk.a, c);
-                r.map_err(|_| { MassaSignatureError::SignatureError(String::from("Multi-sig set other commitment failed")) })
+                r.map_err(|_| {
+                    MassaSignatureError::SignatureError(String::from(
+                        "Multi-sig set other commitment failed",
+                    ))
+                })
             }
         }
     }
@@ -1833,16 +1843,26 @@ impl MultiSig {
         r
     }
 
-    pub fn set_other_reveal(&mut self, pubkey: PublicKey, r: schnorrkel::musig::Reveal) -> Result<(), MassaSignatureError> {
+    pub fn set_other_reveal(
+        &mut self,
+        pubkey: PublicKey,
+        r: schnorrkel::musig::Reveal,
+    ) -> Result<(), MassaSignatureError> {
         match pubkey {
-            PublicKey::PublicKeyV1(_) => {Err(MassaSignatureError::InvalidVersionError(String::from("Multi-sig not implemented for this PublicKey version")))}
+            PublicKey::PublicKeyV1(_) => Err(MassaSignatureError::InvalidVersionError(
+                String::from("Multi-sig not implemented for this PublicKey version"),
+            )),
             PublicKey::PublicKeyV2(pk) => {
                 let r = self
                     .musig_reveal
                     .as_mut()
                     .unwrap()
                     .add_their_reveal(pk.a, r);
-                r.map_err(|_| { MassaSignatureError::SignatureError(String::from("Multi-sig set other reveal failed")) })
+                r.map_err(|_| {
+                    MassaSignatureError::SignatureError(String::from(
+                        "Multi-sig set other reveal failed",
+                    ))
+                })
             }
         }
     }
@@ -1854,16 +1874,26 @@ impl MultiSig {
         s
     }
 
-    pub fn set_other_cosignature(&mut self, pubkey: PublicKey, s: schnorrkel::musig::Cosignature) -> Result<(), MassaSignatureError> {
+    pub fn set_other_cosignature(
+        &mut self,
+        pubkey: PublicKey,
+        s: schnorrkel::musig::Cosignature,
+    ) -> Result<(), MassaSignatureError> {
         match pubkey {
-            PublicKey::PublicKeyV1(_) => {Err(MassaSignatureError::InvalidVersionError(String::from("Multi-sig not implemented for this PublicKey version")))}
+            PublicKey::PublicKeyV1(_) => Err(MassaSignatureError::InvalidVersionError(
+                String::from("Multi-sig not implemented for this PublicKey version"),
+            )),
             PublicKey::PublicKeyV2(pk) => {
                 let r = self
                     .musig_cosig
                     .as_mut()
                     .unwrap()
                     .add_their_cosignature(pk.a, s);
-                r.map_err(|_| { MassaSignatureError::SignatureError(String::from("Multi-sig set other cosignature failed")) })
+                r.map_err(|_| {
+                    MassaSignatureError::SignatureError(String::from(
+                        "Multi-sig set other cosignature failed",
+                    ))
+                })
             }
         }
     }
