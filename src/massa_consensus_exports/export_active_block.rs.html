@@ -273,11 +273,14 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ConsensusError;
 <span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, SecureShareBlock},
+    block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
     block_id::BlockId,
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
@@ -413,13 +416,13 @@
 
 <span class="kw">impl </span>ExportActiveBlockDeserializer {
     <span class="doccomment">/// Create a new `ExportActiveBlockDeserializer`
+    </span><span class="comment">// TODO: check if we can remove this?
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(thread_count: u8, endorsement_count: u32, max_operations_per_block: u32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(block_der_args: BlockDeserializerArgs) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>thread_count = block_der_args.thread_count;
         ExportActiveBlockDeserializer {
             sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
-                thread_count,
-                max_operations_per_block,
-                endorsement_count,
+                block_der_args,
             )),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -437,6 +440,7 @@
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
+    /// use massa_models::block::BlockDeserializerArgs;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -494,7 +498,9 @@
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&amp;export_active_block, &amp;mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 16, 1000).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// let args = BlockDeserializerArgs {
+    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000};
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(rest.len(), 0);
