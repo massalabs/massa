@@ -115,7 +115,7 @@ impl FromStr for Address {
     /// # use serde::{Deserialize, Serialize};
     /// # use std::str::FromStr;
     /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_string();
     /// let res_addr = Address::from_str(&ser).unwrap();
@@ -211,7 +211,7 @@ impl PreHashed for Address {}
 fn test_address_str_format() {
     use massa_signature::KeyPair;
 
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(1).unwrap();
     let address = Address::from_public_key(1, &keypair.get_public_key()).unwrap();
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
@@ -247,17 +247,17 @@ impl ::serde::Serialize for Address {
     }
 }
 
-#[transition::impl_version(versions("1"), structure = "Address")]
+#[transition::impl_version(versions("1"), structures("Address"))]
 impl Address {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address(Hash::compute_from(public_key.to_bytes()))
+        Address(Hash::compute_from(&public_key.to_bytes()))
     }
 
     pub const SIZE_BYTES: usize = HASH_SIZE_BYTES + Self::VERSION_VARINT_SIZE_BYTES;
 }
 
-#[transition::impl_version(versions("2"), structure = "Address")]
+#[transition::impl_version(versions("2"), structures("Address"))]
 impl Address {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
@@ -272,7 +272,7 @@ impl Address {
     pub const SIZE_BYTES: usize = HASH_SIZE_BYTES + Self::VERSION_VARINT_SIZE_BYTES;
 }
 
-#[transition::impl_version(versions("1", "2"), structure = "Address")]
+#[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Address {
 
     pub fn get_version(&self) -> u64 {
@@ -292,7 +292,7 @@ impl Address {
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
@@ -312,7 +312,7 @@ impl Address {
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
+    /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
@@ -370,7 +370,7 @@ impl Serializer<Address> for AddressSerializer {
     }
 }
 
-#[transition::impl_version(versions("1", "2"), structure = "Address")]
+#[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Serializer<Address> for AddressSerializer {
     fn serialize(&self, value: &Address, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.version_serializer.serialize(&value.get_version(), buffer)?;
@@ -417,7 +417,7 @@ impl Deserializer<Address> for AddressDeserializer {
     }
 }
 
-#[transition::impl_version(versions("1", "2"), structure = "Address")]
+#[transition::impl_version(versions("1", "2"), structures("Address"))]
 impl Deserializer<Address> for AddressDeserializer {
     /// ## Example
     /// ```rust
