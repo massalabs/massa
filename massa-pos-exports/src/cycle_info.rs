@@ -10,6 +10,7 @@ use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
+use massa_signature::KeyPair;
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -242,7 +243,9 @@ fn test_cycle_info_hash_computation() {
         BitVec::default(),
         PreHashMap::default(),
     );
-    let addr = Address::from_bytes(&[0u8; 32]);
+
+    let public_key = KeyPair::generate(1).unwrap().get_public_key();
+    let addr = Address::from_public_key(&public_key);
 
     // add changes
     let mut roll_changes = PreHashMap::default();
@@ -361,7 +364,7 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.u64_ser
             .serialize(&(value.roll_counts.len() as u64), buffer)?;
         for (addr, count) in &value.roll_counts {
-            buffer.extend(addr.to_bytes());
+            buffer.extend(addr.into_bytes());
             self.u64_ser.serialize(count, buffer)?;
         }
 
@@ -515,7 +518,7 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
             },
         ) in value.iter()
         {
-            buffer.extend(addr.to_bytes());
+            buffer.extend(addr.into_bytes());
             self.u64_ser.serialize(block_success_count, buffer)?;
             self.u64_ser.serialize(block_failure_count, buffer)?;
         }

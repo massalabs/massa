@@ -346,7 +346,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
         self.length_serializer
             .serialize(&(value.0.len() as u64), buffer)?;
         for (address, change) in value.0.iter() {
-            buffer.extend(address.to_bytes());
+            buffer.extend(address.into_bytes());
             self.ledger_change_serializer.serialize(change, buffer)?;
         }
         Ok(())

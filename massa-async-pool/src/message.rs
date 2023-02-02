@@ -426,8 +426,8 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
             .serialize(&value.emission_slot, buffer)?;
         self.u64_serializer
             .serialize(&value.emission_index, buffer)?;
-        buffer.extend(value.sender.to_bytes());
-        buffer.extend(value.destination.to_bytes());
+        buffer.extend(value.sender.into_bytes());
+        buffer.extend(value.destination.into_bytes());
 
         let handler_bytes = value.handler.as_bytes();
         let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {

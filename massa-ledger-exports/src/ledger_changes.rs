@@ -393,7 +393,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
         for (address, data) in value.0.iter() {
-            buffer.extend(address.to_bytes());
+            buffer.extend(address.into_bytes());
             self.entry_serializer.serialize(data, buffer)?;
         }
         Ok(())

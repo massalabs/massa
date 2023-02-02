@@ -568,7 +568,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::Transaction), buffer)?;
-                buffer.extend(recipient_address.to_bytes());
+                buffer.extend(recipient_address.into_bytes());
                 self.amount_serializer.serialize(amount, buffer)?;
             }
             OperationType::RollBuy { roll_count } => {
@@ -603,7 +603,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                     .serialize(&u32::from(OperationTypeId::CallSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
                 self.amount_serializer.serialize(coins, buffer)?;
-                buffer.extend(target_addr.to_bytes());
+                buffer.extend(target_addr.into_bytes());
                 self.function_name_serializer
                     .serialize(target_func, buffer)?;
                 self.vec_u8_serializer.serialize(param, buffer)?;

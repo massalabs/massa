@@ -5,7 +5,7 @@
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES},
+    address::{Address, ADDRESS_SIZE_BYTES_V1},
     amount::AmountSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -343,7 +343,7 @@ impl LedgerDB {
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
             .flatten()
-            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
+            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec())
             .collect()
     }
 
@@ -612,7 +612,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
+                    key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec(),
                     data.to_vec(),
                 )
             })

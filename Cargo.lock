@@ -2670,7 +2670,6 @@ dependencies = [
  "serde",
  "serde_with",
  "serial_test 0.10.0",
- "sha2 0.10.6",
  "thiserror",
  "transition 0.1.0",
 ]

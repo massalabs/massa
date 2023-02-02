@@ -1,5 +1,5 @@
 use massa_models::{
-    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
+    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES_V1},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
@@ -14,7 +14,7 @@ pub const DATASTORE_IDENT: u8 = 2u8;
 #[macro_export]
 macro_rules! balance_key {
     ($addr:expr) => {
-        [&$addr.to_bytes()[..], &[BALANCE_IDENT]].concat()
+        [&$addr.into_bytes()[..], &[BALANCE_IDENT]].concat()
     };
 }
 
@@ -24,7 +24,7 @@ macro_rules! balance_key {
 #[macro_export]
 macro_rules! bytecode_key {
     ($addr:expr) => {
-        [&$addr.to_bytes()[..], &[BYTECODE_IDENT]].concat()
+        [&$addr.into_bytes()[..], &[BYTECODE_IDENT]].concat()
     };
 }
 
@@ -34,7 +34,7 @@ macro_rules! bytecode_key {
 #[macro_export]
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {
-        [&$addr.to_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
+        [&$addr.into_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
     };
 }
 
@@ -42,7 +42,7 @@ macro_rules! data_key {
 #[macro_export]
 macro_rules! data_prefix {
     ($addr:expr) => {
-        &[&$addr.to_bytes()[..], &[DATASTORE_IDENT]].concat()
+        &[&$addr.into_bytes()[..], &[DATASTORE_IDENT]].concat()
     };
 }
 
@@ -82,15 +82,15 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// let address = Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
     /// let mut key = Vec::new();
-    /// key.extend(address.to_bytes());
+    /// key.extend(address.into_bytes());
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        let limit = ADDRESS_SIZE_BYTES + 1;
+        let limit = ADDRESS_SIZE_BYTES_V1 + 1;
         buffer.extend(&value[..limit]);
-        if value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
+        if value[ADDRESS_SIZE_BYTES_V1] == DATASTORE_IDENT {
             if value.len() > limit {
                 self.vec_u8_serializer
                     .serialize(&value[limit..].to_vec(), buffer)?;
@@ -139,7 +139,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
-    /// key.extend(address.to_bytes());
+    /// key.extend(address.into_bytes());
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
@@ -149,7 +149,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     ///
     /// let mut key = Vec::new();
     /// let mut serialized = Vec::new();
-    /// key.extend(address.to_bytes());
+    /// key.extend(address.into_bytes());
     /// key.push(BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
@@ -160,7 +160,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
-        let (rest, address) = self.address_deserializer.deserialize(buffer)?;
+        let (rest, address): (_, Address) = self.address_deserializer.deserialize(buffer)?;
         let error = nom::Err::Error(ParseError::from_error_kind(
             buffer,
             nom::error::ErrorKind::Fail,

@@ -15,8 +15,8 @@ pub use error::MassaSignatureError;
     SignatureDeserializer, PUBLIC_KEY_SIZE_BYTES, SECRET_KEY_BYTES_SIZE, SIGNATURE_SIZE_BYTES,
 };*/
 pub use multi::{
-    verify_signature_batch, KeyPair, PublicKey, PublicKeyDeserializer, Signature,
-    SignatureDeserializer,
+    verify_signature_batch, KeyPair, PublicKey, PublicKeyDeserializer, PublicKeyV1, PublicKeyV2,
+    Signature, SignatureDeserializer,
 };
 
 /// TODO: Backcompatibility for the code

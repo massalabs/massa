@@ -7,12 +7,10 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-use massa_signature::PublicKey;
+use massa_signature::{PublicKey, PublicKeyV1, PublicKeyV2};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
-use sha2::Digest;
-use sha2::Sha512;
 use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 use transition::Versioned;
@@ -23,6 +21,7 @@ use transition::Versioned;
 pub struct Address(pub Hash);
 
 const ADDRESS_PREFIX: char = 'A';
+pub const ADDRESS_SIZE_BYTES_V1: usize = 32;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -142,7 +141,7 @@ impl FromStr for Address {
                                 .map_err(|_| ModelsError::AddressParseError)?,
                         )?))
                     }
-                    <Address!["1"]>::VERSION => {
+                    <Address!["2"]>::VERSION => {
                         Ok(AddressVariant!["2"](<Address!["2"]>::from_bytes(
                             rest.try_into()
                                 .map_err(|_| ModelsError::AddressParseError)?,
@@ -157,6 +156,53 @@ impl FromStr for Address {
 }
 
 impl Address {
+    pub fn get_thread(&self, thread_count: u8) -> u8 {
+        match self {
+            Address::AddressV1(a) => a.get_thread(thread_count),
+            Address::AddressV2(a) => a.get_thread(thread_count),
+        }
+    }
+
+    pub fn from_hash(version: u64, hash: Hash) -> Result<Self, ModelsError> {
+        match version {
+            <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](
+                <Address!["1"]>::from_bytes_without_version(
+                    hash.to_bytes()
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| ModelsError::AddressParseError)?,
+                )?,
+            )),
+            <Address!["2"]>::VERSION => Ok(AddressVariant!["2"](
+                <Address!["2"]>::from_bytes_without_version(
+                    hash.to_bytes()
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| ModelsError::AddressParseError)?,
+                )?,
+            )),
+            _ => Err(ModelsError::AddressParseError),
+        }
+    }
+
+    pub fn from_bytes_without_version(version: u64, data: &[u8]) -> Result<Self, ModelsError> {
+        match version {
+            <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](
+                <Address!["1"]>::from_bytes_without_version(
+                    data.try_into()
+                        .map_err(|_| ModelsError::AddressParseError)?,
+                )?,
+            )),
+            <Address!["2"]>::VERSION => Ok(AddressVariant!["2"](
+                <Address!["2"]>::from_bytes_without_version(
+                    data.try_into()
+                        .map_err(|_| ModelsError::AddressParseError)?,
+                )?,
+            )),
+            _ => Err(ModelsError::AddressParseError),
+        }
+    }
+
     pub fn from_bytes(data: &[u8]) -> Result<Self, ModelsError> {
         let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
         let (rest, version) = u64_deserializer
@@ -180,6 +226,7 @@ impl Address {
                         .map_err(|_| ModelsError::AddressParseError)?,
                 )?,
             )),
+            _ => Err(ModelsError::AddressParseError),
         }
     }
 
@@ -192,19 +239,16 @@ impl Address {
         }
     }
 
-    pub fn from_public_key(version: u64, public_key: &PublicKey) -> Result<Self, ModelsError> {
+    pub fn from_public_key(public_key: &PublicKey) -> Self {
         //BuildVersions!(version, from_public_key(public_key), ModelsError::InvalidVersionError(format!("Address version {} doesn't exist.", version)));
-        match version {
-            <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](<Address!["1"]>::from_public_key(
-                public_key,
-            ))),
-            <Address!["2"]>::VERSION => Ok(AddressVariant!["2"](<Address!["2"]>::from_public_key(
-                public_key,
-            ))),
-            _ => Err(ModelsError::InvalidVersionError(format!(
-                "Address version {} doesn't exist.",
-                version
-            ))),
+
+        match public_key {
+            PublicKey::PublicKeyV1(pk) => {
+                AddressVariant!["1"](<Address!["1"]>::from_public_key(pk))
+            }
+            PublicKey::PublicKeyV2(pk) => {
+                AddressVariant!["2"](<Address!["2"]>::from_public_key(pk))
+            }
         }
     }
 }
@@ -216,7 +260,7 @@ fn test_address_str_format() {
     use massa_signature::KeyPair;
 
     let keypair = KeyPair::generate(1).unwrap();
-    let address = Address::from_public_key(1, &keypair.get_public_key()).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
     assert!(address == b);
@@ -251,28 +295,13 @@ impl ::serde::Serialize for Address {
     }
 }
 
-#[transition::impl_version(versions("1"), structures("Address"))]
+#[transition::impl_version(versions("1", "2"), structures("Address", "PublicKey"))]
 impl Address {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
         Address(Hash::compute_from(&public_key.to_bytes()))
     }
 
-    pub const SIZE_BYTES: usize = HASH_SIZE_BYTES + Self::VERSION_VARINT_SIZE_BYTES;
-}
-
-#[transition::impl_version(versions("2"), structures("Address"))]
-impl Address {
-    /// Computes address associated with given public key
-    pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address(Hash::from_bytes(
-            &Sha512::digest(public_key.to_bytes())[..]
-                .try_into()
-                .unwrap(),
-        ))
-    }
-
-    // Should be in common but it's to showcase the potential of the macro
     pub const SIZE_BYTES: usize = HASH_SIZE_BYTES + Self::VERSION_VARINT_SIZE_BYTES;
 }
 
@@ -304,7 +333,9 @@ impl Address {
     pub fn into_bytes(self) -> Vec<u8> {
         let version_serializer = U64VarIntSerializer::new();
         let mut bytes: Vec<u8> = Vec::new();
-        version_serializer.serialize(&Self::VERSION, &mut bytes);
+        version_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .expect("Failed Address version serialization");
         bytes[Self::VERSION_VARINT_SIZE_BYTES..].copy_from_slice(&self.0.into_bytes());
         bytes
     }
@@ -317,7 +348,7 @@ impl Address {
     /// # use massa_models::address::Address;
     /// # let keypair = KeyPair::generate(1).unwrap();
     /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let bytes = address.to_bytes();
+    /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
