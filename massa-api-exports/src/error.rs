@@ -53,10 +53,10 @@ pub enum ApiError {
     InternalServerError(String),
 }
 
-impl From<ApiError> for JsonRpseeError {
-    fn from(err: ApiError) -> Self {
-        // JSON-RPC Server errors codes must be between -32099 to -32000
-        let code = match err {
+impl ApiError {
+    /// Get error code from ApiError
+    pub fn get_code(&self) -> i32 {
+        match self {
             ApiError::BadRequest(_) => -32000,
             ApiError::InternalServerError(_) => -32001,
             ApiError::NotFound => -32004,
@@ -74,8 +74,18 @@ impl From<ApiError> for JsonRpseeError {
             ApiError::MissingCommandSender(_) => -32017,
             ApiError::MissingConfig(_) => -32018,
             ApiError::WrongAPI => -32019,
-        };
+        }
+    }
+}
 
-        CallError::Custom(ErrorObject::owned(code, err.to_string(), None::<()>)).into()
+impl From<ApiError> for JsonRpseeError {
+    fn from(err: ApiError) -> Self {
+        // JSON-RPC Server errors codes must be between -32099 to -32000
+        CallError::Custom(ErrorObject::owned(
+            err.get_code(),
+            err.to_string(),
+            None::<()>,
+        ))
+        .into()
     }
 }
