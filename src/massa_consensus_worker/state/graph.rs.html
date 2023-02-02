@@ -530,7 +530,7 @@
             <span class="self">self</span>.discarded_index.insert(<span class="kw-2">*</span>block_id);
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} is missing&quot;</span>, add_block_id, block_id)))
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} is missing&quot;</span>, add_block_id, block_id)));
         }
     }
 
