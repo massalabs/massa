@@ -212,7 +212,7 @@ fn test_pool() {
         let fee = 1000;
         let expire_period: u64 = 300;
         let op = get_transaction(expire_period, fee);
-        let mut storage = Storage::create_root();
+        let mut storage = storage_base.clone_without_refs();
         storage.store_operations(vec![op.clone()]);
         pool.add_operations(storage);
         //TODO: compare
