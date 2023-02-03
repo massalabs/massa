@@ -103,7 +103,7 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 /// to the address.
 #[cfg(feature = "testing")]
 pub fn get_random_address_full() -> (Address, KeyPair) {
-    let keypair = KeyPair::generate(1).unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 

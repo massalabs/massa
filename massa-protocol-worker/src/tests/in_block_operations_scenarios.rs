@@ -36,12 +36,12 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
-            let mut keypair = KeyPair::generate(1).unwrap();
+            let mut keypair = KeyPair::generate(0).unwrap();
             let mut address = Address::from_public_key(&keypair.get_public_key());
             let mut thread = address.get_thread(2);
 
             while thread != 0 {
-                keypair = KeyPair::generate(1).unwrap();
+                keypair = KeyPair::generate(0).unwrap();
                 address = Address::from_public_key(&keypair.get_public_key());
                 thread = address.get_thread(2);
             }
@@ -146,12 +146,12 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
-            let mut keypair = KeyPair::generate(1).unwrap();
+            let mut keypair = KeyPair::generate(0).unwrap();
             let mut address = Address::from_public_key(&keypair.get_public_key());
             let mut thread = address.get_thread(2);
 
             while thread != 0 {
-                keypair = KeyPair::generate(1).unwrap();
+                keypair = KeyPair::generate(0).unwrap();
                 address = Address::from_public_key(&keypair.get_public_key());
                 thread = address.get_thread(2);
             }

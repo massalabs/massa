@@ -150,7 +150,7 @@ impl Serializer<Block> for BlockSerializer {
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();
@@ -234,7 +234,7 @@ impl Deserializer<Block> for BlockDeserializer {
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();
@@ -510,7 +510,7 @@ mod test {
     #[test]
     #[serial]
     fn test_genesis_block_serialization() {
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         let parents: Vec<BlockId> = vec![];
 
         // create block header
@@ -578,7 +578,7 @@ mod test {
     #[test]
     #[serial]
     fn test_invalid_genesis_block_serialization_with_endorsements() {
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         let parents: Vec<BlockId> = vec![];
 
         // Genesis block do not have any parents and thus cannot embed endorsements
@@ -636,7 +636,7 @@ mod test {
     #[test]
     #[serial]
     fn test_invalid_genesis_block_serialization_with_parents() {
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         let parents = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
@@ -681,7 +681,7 @@ mod test {
     #[test]
     #[serial]
     fn test_invalid_block_serialization_no_parents() {
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         // Non genesis block must have THREAD_COUNT parents
 
         // create block header
@@ -724,7 +724,7 @@ mod test {
     #[test]
     #[serial]
     fn test_invalid_block_serialization_obo_high_parent_count() {
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         // Non genesis block must have THREAD_COUNT parents
         let parents = (0..=THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
@@ -837,7 +837,7 @@ mod test {
     #[test]
     #[serial]
     fn test_invalid_block_serialization_obo_low_parent_count() {
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         // Non genesis block must have THREAD_COUNT parents
         let parents = (1..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
@@ -883,7 +883,7 @@ mod test {
     #[test]
     #[serial]
     fn test_invalid_block_serialization_obo_high_endo_count() {
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         // Non genesis block must have THREAD_COUNT parents
         let parents = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))

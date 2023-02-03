@@ -34,7 +34,7 @@ pub struct NodeInfo {
 
 /// create node info
 pub fn create_node() -> NodeInfo {
-    let keypair = KeyPair::generate(1).unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
     let id = NodeId::new(keypair.get_public_key());
     NodeInfo { keypair, id }
 }
@@ -165,7 +165,7 @@ pub fn create_block_with_endorsements(
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
 pub fn create_endorsement() -> SecureShareEndorsement {
-    let keypair = KeyPair::generate(1).unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
 
     let content = Endorsement {
         slot: Slot::new(10, 1),
@@ -180,7 +180,7 @@ pub fn create_operation_with_expire_period(
     keypair: &KeyPair,
     expire_period: u64,
 ) -> SecureShareOperation {
-    let recv_keypair = KeyPair::generate(1).unwrap();
+    let recv_keypair = KeyPair::generate(0).unwrap();
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),

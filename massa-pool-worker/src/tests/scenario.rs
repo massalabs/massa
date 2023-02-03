@@ -50,7 +50,7 @@ fn test_simple_get_operations() {
     pool_test(
         config,
         |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
-            let keypair = KeyPair::generate(1).unwrap();
+            let keypair = KeyPair::generate(0).unwrap();
             storage.store_operations(create_some_operations(10, &keypair, 1));
 
             let creator_address = Address::from_public_key(&keypair.get_public_key());
@@ -148,7 +148,7 @@ fn test_get_operations_overflow() {
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;
     let mut max_block_size = 0;
-    let keypair = KeyPair::generate(1).unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
     let creator_address = Address::from_public_key(&keypair.get_public_key());
     let operations = create_some_operations(OP_LEN, &keypair, 1);
     operations

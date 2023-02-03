@@ -137,7 +137,7 @@ impl MassaRpcServer for API<Public> {
         {
             let address = address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate(1).unwrap().get_public_key())
+                Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key())
             });
 
             let op_datastore = match operation_datastore {
@@ -225,7 +225,7 @@ impl MassaRpcServer for API<Public> {
         {
             let caller_address = caller_address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&KeyPair::generate(1).unwrap().get_public_key())
+                Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key())
             });
 
             // TODO:

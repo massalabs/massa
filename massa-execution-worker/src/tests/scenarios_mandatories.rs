@@ -112,7 +112,7 @@ fn init_execution_worker(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
 ) {
-    let genesis_keypair = KeyPair::generate(1).unwrap();
+    let genesis_keypair = KeyPair::generate(0).unwrap();
     let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
     let mut block_storage: PreHashMap<BlockId, Storage> = PreHashMap::default();
     for thread in 0..config.thread_count {
@@ -174,7 +174,7 @@ fn test_nested_call_gas_usage() {
     let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -242,7 +242,7 @@ fn test_nested_call_gas_usage() {
     let mut storage = Storage::create_root();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 1),
     )
@@ -327,7 +327,7 @@ fn send_and_receive_async_message() {
     let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -413,7 +413,7 @@ fn local_execution() {
     let local_call_op = create_execute_sc_operation(&keypair, call_bytecode, datastore).unwrap();
     storage.store_operations(vec![local_exec_op.clone(), local_call_op.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![local_exec_op.clone(), local_call_op.clone()],
         Slot::new(1, 0),
     )
@@ -510,7 +510,7 @@ fn sc_deployment() {
     // create the block contaning the operation
     let op = create_execute_sc_operation(&keypair, op_bytecode, datastore.clone()).unwrap();
     storage.store_operations(vec![op.clone()]);
-    let block = create_block(KeyPair::generate(1).unwrap(), vec![op], Slot::new(1, 0)).unwrap();
+    let block = create_block(KeyPair::generate(0).unwrap(), vec![op], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -742,7 +742,7 @@ pub fn send_and_receive_transaction() {
     // create the block containing the transaction operation
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -821,7 +821,7 @@ pub fn roll_buy() {
     // create the block containing the roll buy operation
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -922,7 +922,7 @@ pub fn roll_sell() {
     // create the block containing the roll buy operation
     storage.store_operations(vec![operation1.clone(), operation2.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation1, operation2],
         Slot::new(1, 0),
     )
@@ -1020,7 +1020,7 @@ fn sc_execution_error() {
     let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -1090,7 +1090,7 @@ fn sc_datastore() {
     let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -1154,7 +1154,7 @@ fn set_bytecode_error() {
     let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -1219,7 +1219,7 @@ fn datastore_manipulations() {
     let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )
@@ -1451,7 +1451,7 @@ fn sc_builtins() {
     let operation = create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
     storage.store_operations(vec![operation.clone()]);
     let block = create_block(
-        KeyPair::generate(1).unwrap(),
+        KeyPair::generate(0).unwrap(),
         vec![operation],
         Slot::new(1, 0),
     )

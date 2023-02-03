@@ -101,7 +101,7 @@ async fn test_node_worker_shutdown() {
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
-    let keypair = KeyPair::generate(1).unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
 
     let node_worker_command_tx = node_command_tx.clone();
@@ -175,7 +175,7 @@ async fn test_node_worker_operations_message() {
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
-    let keypair = KeyPair::generate(1).unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
     let mock_node_id = NodeId::new(keypair.get_public_key());
 
     // Create transaction.
@@ -1190,7 +1190,7 @@ async fn test_endorsements_messages() {
             .await;
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-            let sender_keypair = KeyPair::generate(1).unwrap();
+            let sender_keypair = KeyPair::generate(0).unwrap();
 
             let content = Endorsement {
                 slot: Slot::new(10, 1),
@@ -1226,7 +1226,7 @@ async fn test_endorsements_messages() {
                 panic!("Timeout while waiting for endorsement event.");
             }
 
-            let sender_keypair = KeyPair::generate(1).unwrap();
+            let sender_keypair = KeyPair::generate(0).unwrap();
 
             let content = Endorsement {
                 slot: Slot::new(11, 1),

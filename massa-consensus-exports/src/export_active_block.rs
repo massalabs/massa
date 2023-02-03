@@ -165,7 +165,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
-    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();

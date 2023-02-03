@@ -397,7 +397,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_endorsement_serialization() {
-        let sender_keypair = KeyPair::generate(1).unwrap();
+        let sender_keypair = KeyPair::generate(0).unwrap();
         let content = Endorsement {
             slot: Slot::new(10, 1),
             index: 0,
@@ -422,7 +422,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_endorsement_lightweight_serialization() {
-        let sender_keypair = KeyPair::generate(1).unwrap();
+        let sender_keypair = KeyPair::generate(0).unwrap();
         let content = Endorsement {
             slot: Slot::new(10, 1),
             index: 0,

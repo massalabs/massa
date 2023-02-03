@@ -39,7 +39,7 @@ fn test_add_operation() {
     operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
         storage.store_operations(create_some_operations(
             10,
-            &KeyPair::generate(1).unwrap(),
+            &KeyPair::generate(0).unwrap(),
             2,
         ));
         operation_pool.add_operations(storage);
@@ -56,7 +56,7 @@ fn test_add_irrelevant_operation() {
     operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
         storage.store_operations(create_some_operations(
             10,
-            &KeyPair::generate(1).unwrap(),
+            &KeyPair::generate(0).unwrap(),
             1,
         ));
         operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
@@ -66,9 +66,9 @@ fn test_add_irrelevant_operation() {
 }
 
 fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
-    let sender_keypair = KeyPair::generate(1).unwrap();
+    let sender_keypair = KeyPair::generate(0).unwrap();
 
-    let recv_keypair = KeyPair::generate(1).unwrap();
+    let recv_keypair = KeyPair::generate(0).unwrap();
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),

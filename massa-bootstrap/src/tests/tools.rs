@@ -264,17 +264,17 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_public_key() -> PublicKey {
-    let priv_key = KeyPair::generate(1).unwrap();
+    let priv_key = KeyPair::generate(0).unwrap();
     priv_key.get_public_key()
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = KeyPair::generate(1).unwrap();
+    let priv_key = KeyPair::generate(0).unwrap();
     Address::from_public_key(&priv_key.get_public_key())
 }
 
 pub fn get_dummy_signature(s: &str) -> Signature {
-    let priv_key = KeyPair::generate(1).unwrap();
+    let priv_key = KeyPair::generate(0).unwrap();
     priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
@@ -374,7 +374,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> BootstrapableGraph {
-    let keypair = KeyPair::generate(1).unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
 
     let block = Block::new_verifiable(
         Block {

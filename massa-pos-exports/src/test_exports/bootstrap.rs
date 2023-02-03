@@ -17,7 +17,7 @@ impl Default for SelectorConfig {
             max_draw_cache: 10,
             periods_per_cycle: PERIODS_PER_CYCLE,
             genesis_address: Address::from_public_key(
-                &KeyPair::generate(1).unwrap().get_public_key(),
+                &KeyPair::generate(0).unwrap().get_public_key(),
             ),
             channel_size: CHANNEL_SIZE,
         }

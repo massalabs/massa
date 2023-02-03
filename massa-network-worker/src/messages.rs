@@ -571,7 +571,7 @@ mod tests {
         );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);
-        let keypair = KeyPair::generate(1).unwrap();
+        let keypair = KeyPair::generate(0).unwrap();
         let msg = Message::HandshakeInitiation {
             public_key: keypair.get_public_key(),
             random_bytes,

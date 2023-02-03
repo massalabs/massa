@@ -244,7 +244,7 @@ fn test_cycle_info_hash_computation() {
         PreHashMap::default(),
     );
 
-    let public_key = KeyPair::generate(1).unwrap().get_public_key();
+    let public_key = KeyPair::generate(0).unwrap().get_public_key();
     let addr = Address::from_public_key(&public_key);
 
     // add changes

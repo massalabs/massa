@@ -136,7 +136,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     ///
-    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
@@ -243,7 +243,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
-    /// let keypair = KeyPair::generate(1).unwrap();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
