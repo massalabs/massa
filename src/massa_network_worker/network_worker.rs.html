@@ -823,96 +823,6 @@
 <a href="#823" id="823">823</a>
 <a href="#824" id="824">824</a>
 <a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
-<a href="#881" id="881">881</a>
-<a href="#882" id="882">882</a>
-<a href="#883" id="883">883</a>
-<a href="#884" id="884">884</a>
-<a href="#885" id="885">885</a>
-<a href="#886" id="886">886</a>
-<a href="#887" id="887">887</a>
-<a href="#888" id="888">888</a>
-<a href="#889" id="889">889</a>
-<a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The network worker actually does the job of managing connections
@@ -921,11 +831,10 @@
 };
 <span class="kw">use crate</span>::{
     binders::{ReadBinder, WriteBinder},
-    handshake_worker::{start_handshake_manager, HandshakeWorker},
+    handshake_worker::HandshakeWorker,
     messages::{Message, MessageDeserializer},
     network_event::EventSender,
 };
-<span class="kw">use </span>crossbeam_channel::{bounded, select, Receiver, Sender};
 <span class="kw">use </span>futures::{stream::FuturesUnordered, StreamExt};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{node::NodeId, version::Version};
@@ -935,14 +844,13 @@
     NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType, ReadHalf, WriteHalf,
 };
 <span class="kw">use </span>massa_signature::KeyPair;
-<span class="kw">use </span>std::thread::{<span class="self">self</span>, JoinHandle};
 <span class="kw">use </span>std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
 };
-<span class="kw">use </span>tokio::runtime::{Handle, Runtime};
-<span class="kw">use </span>tokio::task::JoinHandle <span class="kw">as </span>AsyncJoinHandle;
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tokio::sync::mpsc;
+<span class="kw">use </span>tokio::task::JoinHandle;
+<span class="kw">use </span>tracing::{debug, trace, warn};
 
 <span class="doccomment">/// Real job is done by network worker
 </span><span class="kw">pub struct </span>NetworkWorker {
@@ -953,51 +861,40 @@
     <span class="doccomment">/// Our node id.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) self_node_id: NodeId,
     <span class="doccomment">/// Listener part of the establisher.
-    </span>listener: <span class="prelude-ty">Option</span>&lt;Listener&gt;,
+    </span>listener: Listener,
     <span class="doccomment">/// The connection establisher.
     </span>establisher: Establisher,
     <span class="doccomment">/// Database with peer information.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) peer_info_db: PeerInfoDatabase,
     <span class="doccomment">/// Receiver for network commands
-    </span>controller_command_rx: Receiver&lt;NetworkCommand&gt;,
+    </span>controller_command_rx: mpsc::Receiver&lt;NetworkCommand&gt;,
     <span class="doccomment">/// Receiver for network management commands
-    </span>controller_manager_rx: Receiver&lt;NetworkManagementCommand&gt;,
+    </span>controller_manager_rx: mpsc::Receiver&lt;NetworkManagementCommand&gt;,
     <span class="doccomment">/// Set of connection id of node with running handshake.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) running_handshakes: HashSet&lt;ConnectionId&gt;,
+    <span class="doccomment">/// Running handshakes futures.
+    </span>handshake_futures: FuturesUnordered&lt;JoinHandle&lt;(ConnectionId, HandshakeReturnType)&gt;&gt;,
     <span class="doccomment">/// Running handshakes that send a list of peers.
-    </span>handshake_peer_list_futures: HashMap&lt;IpAddr, AsyncJoinHandle&lt;()&gt;&gt;,
+    </span>handshake_peer_list_futures: FuturesUnordered&lt;JoinHandle&lt;()&gt;&gt;,
     <span class="doccomment">/// Receiving channel for node events.
-    </span>node_event_rx: Receiver&lt;NodeEvent&gt;,
+    </span>node_event_rx: mpsc::Receiver&lt;NodeEvent&gt;,
     <span class="doccomment">/// Ids of active nodes mapped to Connection id, node command sender and handle on the associated node worker.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) active_nodes: HashMap&lt;NodeId, (ConnectionId, Sender&lt;NodeCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) active_nodes: HashMap&lt;NodeId, (ConnectionId, mpsc::Sender&lt;NodeCommand&gt;)&gt;,
+    <span class="doccomment">/// Node worker handles
+    </span>node_worker_handles:
+        FuturesUnordered&lt;JoinHandle&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;&gt;,
     <span class="doccomment">/// Map of connection to ip, `is_outgoing`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) active_connections: HashMap&lt;ConnectionId, (IpAddr, bool)&gt;,
     <span class="doccomment">/// Node version
     </span>version: Version,
     <span class="doccomment">/// Event sender
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) event: EventSender,
-    <span class="doccomment">/// Tokio runtime.
-    </span>runtime: Runtime,
-    <span class="doccomment">/// A channel to receive the results of running a handshake.
-    </span>connections_rx: Receiver&lt;(ConnectionId, HandshakeReturnType)&gt;,
-    <span class="doccomment">/// A channel to send handshake workers to be run on by the handshake manager. 
-    </span>handshake_tx: Sender&lt;(ConnectionId, HandshakeWorker)&gt;,
-    <span class="doccomment">/// The handle to the handshake manager.
-    </span>handshake_manager_join_handle: JoinHandle&lt;()&gt;,
-    <span class="doccomment">/// A channel to receive the result of closing a node worker.
-    </span>node_result_rx: Receiver&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;,
-    <span class="doccomment">/// A channel, cloned for each node worker, to send the result of closing a node worker.
-    </span>node_result_tx: Sender&lt;(NodeId, <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;)&gt;,
-    <span class="doccomment">/// A channel used to send the result of sending a list of peers.
-    </span>handshake_peer_list_tx: Sender&lt;IpAddr&gt;,
-    <span class="doccomment">/// A channel used to receive the result of sending a list of peers.
-    </span>handshake_peer_list_rx: Receiver&lt;IpAddr&gt;,
 }
 
 <span class="kw">pub struct </span>NetworkWorkerChannels {
-    <span class="kw">pub </span>controller_command_rx: Receiver&lt;NetworkCommand&gt;,
-    <span class="kw">pub </span>controller_event_tx: Sender&lt;NetworkEvent&gt;,
-    <span class="kw">pub </span>controller_manager_rx: Receiver&lt;NetworkManagementCommand&gt;,
+    <span class="kw">pub </span>controller_command_rx: mpsc::Receiver&lt;NetworkCommand&gt;,
+    <span class="kw">pub </span>controller_event_tx: mpsc::Sender&lt;NetworkEvent&gt;,
+    <span class="kw">pub </span>controller_manager_rx: mpsc::Receiver&lt;NetworkManagementCommand&gt;,
 }
 
 <span class="kw">impl </span>NetworkWorker {
@@ -1024,118 +921,55 @@
             controller_manager_rx,
         }: NetworkWorkerChannels,
         version: Version,
-        runtime: Runtime,
     ) -&gt; NetworkWorker {
         <span class="kw">let </span>self_node_id = NodeId::new(keypair.get_public_key());
 
-        <span class="kw">let </span>(conn_tx, connections_rx) =
-            bounded::&lt;(ConnectionId, HandshakeReturnType)&gt;(cfg.handshake_manager_channel_size);
-        <span class="kw">let </span>(handshake_tx, handshake_rx) =
-            bounded::&lt;(ConnectionId, HandshakeWorker)&gt;(cfg.handshake_manager_channel_size);
-        <span class="kw">let </span>handshake_manager_join_handle =
-            start_handshake_manager(handshake_rx, conn_tx, runtime.handle().clone());
-
-        <span class="kw">let </span>(node_result_tx, node_result_rx) = bounded::&lt;(
-            NodeId,
-            <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt;,
-        )&gt;(cfg.node_result_channel_size);
-
-        <span class="kw">let </span>(handshake_peer_list_tx, handshake_peer_list_rx) =
-            bounded::&lt;IpAddr&gt;(cfg.handshake_peer_list_channel_size);
-
-        <span class="kw">let </span>(node_event_tx, node_event_rx) = bounded::&lt;NodeEvent&gt;(cfg.node_event_channel_size);
+        <span class="kw">let </span>(node_event_tx, node_event_rx) =
+            mpsc::channel::&lt;NodeEvent&gt;(cfg.node_event_channel_size);
         <span class="kw">let </span>max_wait_event = cfg.max_send_wait_network_event.to_duration();
         NetworkWorker {
             cfg,
             self_node_id,
             keypair,
-            listener: <span class="prelude-val">Some</span>(listener),
+            listener,
             establisher,
             peer_info_db,
             controller_command_rx,
             event: EventSender::new(controller_event_tx, node_event_tx, max_wait_event),
             controller_manager_rx,
             running_handshakes: HashSet::new(),
-            handshake_peer_list_futures: Default::default(),
+            handshake_futures: FuturesUnordered::new(),
+            handshake_peer_list_futures: FuturesUnordered::new(),
             node_event_rx,
             active_nodes: HashMap::new(),
+            node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
             version,
-            runtime,
-            connections_rx,
-            handshake_tx,
-            handshake_manager_join_handle,
-            node_result_rx,
-            node_result_tx,
-            handshake_peer_list_tx,
-            handshake_peer_list_rx,
         }
     }
 
-    <span class="doccomment">/// Runs the main loop of the network worker.
-    </span><span class="kw">pub fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>out_connection_handle = <span class="prelude-val">None</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>out_connection_rx = <span class="prelude-val">None</span>;
+    <span class="doccomment">/// Runs the main loop of the network worker
+    /// There is a `tokio::select!` inside the loop
+    </span><span class="kw">pub async fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>out_connecting_futures = FuturesUnordered::new();
         <span class="kw">let </span><span class="kw-2">mut </span>cur_connection_id = ConnectionId::default();
 
-        <span class="comment">// Start a task to run the listener.
-        </span><span class="kw">let </span>(listener_tx, listener_rx) = bounded::&lt;(ReadHalf, WriteHalf, SocketAddr)&gt;(<span class="number">1</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>listener = <span class="self">self
-            </span>.listener
-            .take()
-            .expect(<span class="string">&quot;No listener at start of run loop.&quot;</span>);
-        <span class="kw">let </span>listener_handle = <span class="self">self</span>.runtime.spawn(<span class="kw">async move </span>{
-            <span class="kw">loop </span>{
-                <span class="kw">match </span>listener.accept().<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(res) =&gt; {
-                        <span class="kw">let </span>sender = listener_tx.clone();
-                        Handle::current()
-                            .spawn_blocking(<span class="kw">move </span>|| {
-                                sender
-                                    .send(res)
-                                    .expect(<span class="string">&quot;Failed to send listener message to network worker.&quot;</span>);
-                            })
-                            .<span class="kw">await
-                            </span>.expect(
-                                <span class="string">&quot;Failed to run task to send listener message to network worker.&quot;</span>,
-                            );
-                    }
-                    <span class="prelude-val">Err</span>(err) =&gt; {
-                        <span class="macro">debug!</span>(<span class="string">&quot;connection accept failed: {}&quot;</span>, err);
-                        <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_failed&quot;</span>, {<span class="string">&quot;err&quot;</span>: err.to_string()});
-                        <span class="kw">break</span>;
-                    }
-                }
-            }
-        });
+        <span class="comment">// wake up the controller at a regular interval to retry connections
+        </span><span class="kw">let </span><span class="kw-2">mut </span>wakeup_interval = tokio::time::interval(<span class="self">self</span>.cfg.wakeup_interval.to_duration());
+        <span class="kw">let </span><span class="kw-2">mut </span>need_connect_retry = <span class="bool-val">true</span>;
 
         <span class="kw">loop </span>{
-            <span class="kw">if </span>out_connection_rx.is_none() {
-                <span class="comment">// Scope the channel creation to here,
-                // to ensure all senders drop when the futureset is empty.
-                </span><span class="kw">let </span>(out_connection_tx, rx) = bounded::&lt;(
-                    tokio::io::Result&lt;(ReadHalf, WriteHalf)&gt;,
-                    IpAddr,
-                )&gt;(<span class="self">self</span>.cfg.node_command_channel_size); <span class="comment">// TODO: config
-
-                </span>out_connection_rx = <span class="prelude-val">Some</span>(rx);
-
+            <span class="kw">if </span>need_connect_retry {
                 <span class="comment">// try to connect to candidate IPs
-                </span><span class="kw">let </span><span class="kw-2">mut </span>out_connecting_futures = FuturesUnordered::new();
-                <span class="kw">let </span>candidate_ips = <span class="self">self</span>.peer_info_db.get_out_connection_candidate_ips()<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>candidate_ips = <span class="self">self</span>.peer_info_db.get_out_connection_candidate_ips()<span class="question-mark">?</span>;
                 <span class="kw">for </span>ip <span class="kw">in </span>candidate_ips {
                     <span class="macro">debug!</span>(<span class="string">&quot;starting outgoing connection attempt towards ip={}&quot;</span>, ip);
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;out_connection_attempt_start&quot;</span>, { <span class="string">&quot;ip&quot;</span>: ip });
                     <span class="self">self</span>.peer_info_db.new_out_connection_attempt(<span class="kw-2">&amp;</span>ip)<span class="question-mark">?</span>;
-
-                    <span class="comment">// Run the future on the current thread.
-                    // Note: this future doesn&#39;t actually await anything, consider removing async.
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = <span class="self">self</span>.runtime.block_on(<span class="kw">async </span>{
-                        <span class="self">self</span>.establisher
-                            .get_connector(<span class="self">self</span>.cfg.connect_timeout)
-                            .<span class="kw">await
-                    </span>})<span class="question-mark">?</span>;
-
+                    <span class="kw">let </span><span class="kw-2">mut </span>connector = <span class="self">self
+                        </span>.establisher
+                        .get_connector(<span class="self">self</span>.cfg.connect_timeout)
+                        .<span class="kw">await</span><span class="question-mark">?</span>;
                     <span class="kw">let </span>addr = SocketAddr::new(ip, <span class="self">self</span>.cfg.protocol_port);
                     out_connecting_futures.push(<span class="kw">async move </span>{
                         <span class="kw">match </span>connector.connect(addr).<span class="kw">await </span>{
@@ -1144,70 +978,63 @@
                         }
                     });
                 }
-
-                <span class="comment">// Spawn an async task to handling out connection futures.
-                </span><span class="kw">let </span>out_connection_tx_clone = out_connection_tx.clone();
-                out_connection_handle = <span class="prelude-val">Some</span>(<span class="self">self</span>.runtime.spawn(<span class="kw">async move </span>{
-                    <span class="kw">while let </span><span class="prelude-val">Some</span>((ip_addr, res)) = out_connecting_futures.next().<span class="kw">await </span>{
-                        <span class="kw">let </span>out_connection_tx_clone = out_connection_tx_clone.clone();
-                        Handle::current()
-                            .spawn_blocking(<span class="kw">move </span>|| {
-                                out_connection_tx_clone
-                                    .send((res, ip_addr))
-                                    .expect(<span class="string">&quot;Failed to send out-connection message to network worker.&quot;</span>);
-                            })
-                            .<span class="kw">await
-                            </span>.expect(<span class="string">&quot;Failed to run task to send out-connection message to network worker.&quot;</span>);
-                    }
-                }));
+                need_connect_retry = <span class="bool-val">false</span>;
             }
 
-            <span class="macro">select! </span>{
-                <span class="comment">// listen to manager commands.
-                </span>recv(<span class="self">self</span>.controller_manager_rx) -&gt; cmd =&gt; {
-                    <span class="kw">if </span>cmd.is_err() {
-                        <span class="kw">break
-                    </span>}
+            <span class="comment">/*
+                select! without the &quot;biased&quot; modifier will randomly select the 1st branch to check,
+                then will check the next ones in the order they are written.
+                We choose this order:
+                    * manager commands to avoid waiting too long to stop in case of contention
+                    * node events (HIGH FREQUENCY): we want to process incoming events in priority to know best about the network and empty buffers quickly
+                    * incoming commands (HIGH FREQUENCY): we want to TRY to send data to the target, but don&#39;t wait if the buffers are full
+                    * cleanup tick (less important, low freq)
+                    * node closed (no worries if processed a bit late)
+                    * out connecting events (no problem if a bit late)
+                    * listener event (HIGH FREQUENCY) non-critical
+            */
+            </span><span class="macro">tokio::select! </span>{
+                <span class="comment">// listen to manager commands
+                </span>cmd = <span class="self">self</span>.controller_manager_rx.recv() =&gt; {
+                    <span class="kw">match </span>cmd {
+                        <span class="prelude-val">None </span>=&gt; <span class="kw">break</span>,
+                        <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; {}
+                    }
                 },
 
-                <span class="comment">// event received from a node.
-                </span>recv(<span class="self">self</span>.node_event_rx) -&gt; evt =&gt; {
+                <span class="comment">// event received from a node
+                </span>evt = <span class="self">self</span>.node_event_rx.recv() =&gt; {
                     <span class="self">self</span>.on_node_event(
-                        evt.map_err(|<span class="kw">_</span>| NetworkError::ChannelError(<span class="string">&quot;node event rx failed&quot;</span>.into()))<span class="question-mark">?
-                    </span>)<span class="question-mark">?</span>;
-                }
+                        evt.ok_or_else(|| NetworkError::ChannelError(<span class="string">&quot;node event rx failed&quot;</span>.into()))<span class="question-mark">?
+                    </span>).<span class="kw">await</span><span class="question-mark">?
+                </span>},
 
-                <span class="comment">// Try peer list future finished.
-                </span>recv(<span class="self">self</span>.handshake_peer_list_rx) -&gt; msg =&gt; {
-                    <span class="kw">match </span>msg {
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {},
-                        <span class="prelude-val">Ok</span>(ip) =&gt; {
-                           <span class="self">self</span>.handshake_peer_list_futures.remove(<span class="kw-2">&amp;</span>ip);
-                        }
-                    }
-                }
+                <span class="comment">// incoming command
+                </span><span class="prelude-val">Some</span>(cmd) = <span class="self">self</span>.controller_command_rx.recv() =&gt; {
+                    <span class="self">self</span>.manage_network_command(cmd).<span class="kw">await</span><span class="question-mark">?</span>;
+                },
 
-                <span class="comment">// Listener socket received.
-                </span>recv(listener_rx) -&gt; msg =&gt; {
-                    <span class="kw">match </span>msg {
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {},
-                        <span class="prelude-val">Ok</span>((reader, writer, remote_addr)) =&gt; {
-                            <span class="self">self</span>.manage_in_connections(
-                                reader,
-                                writer,
-                                remote_addr,
-                                <span class="kw-2">&amp;mut </span>cur_connection_id,
-                            )<span class="question-mark">?
-                        </span>}
-                    }
-                }
+                <span class="comment">// wake up interval
+                </span><span class="kw">_ </span>= wakeup_interval.tick() =&gt; {
+                    <span class="self">self</span>.peer_info_db.update()<span class="question-mark">?</span>; <span class="comment">// notify tick to peer db
 
-                <span class="comment">// Active node run result.
-                </span>recv(<span class="self">self</span>.node_result_rx) -&gt; msg =&gt; {
-                    <span class="comment">// Should never panic, since the network worker keeps a sender around.
-                    </span><span class="kw">let </span>(node_id, res) = msg.expect(<span class="string">&quot;Unexpected failure of node worker.&quot;</span>);
+                    </span>need_connect_retry = <span class="bool-val">true</span>; <span class="comment">// retry out connections
+                </span>}
 
-                    <span class="kw">let </span>reason = <span class="kw">match </span>res {
+                <span class="comment">// wait for a handshake future to complete
+                </span><span class="prelude-val">Some</span>(res) = <span class="self">self</span>.handshake_futures.next() =&gt; {
+                    <span class="kw">let </span>(conn_id, outcome) = res<span class="question-mark">?</span>;
+                    <span class="self">self</span>.on_handshake_finished(conn_id, outcome).<span class="kw">await</span><span class="question-mark">?</span>;
+                    need_connect_retry = <span class="bool-val">true</span>; <span class="comment">// retry out connections
+                </span>},
+
+                <span class="comment">// Managing handshakes that return a PeerList
+                </span><span class="prelude-val">Some</span>(<span class="kw">_</span>) = <span class="self">self</span>.handshake_peer_list_futures.next() =&gt; {},
+
+                <span class="comment">// node closed
+                </span><span class="prelude-val">Some</span>(evt) = <span class="self">self</span>.node_worker_handles.next() =&gt; {
+                    <span class="kw">let </span>(node_id, res) = evt<span class="question-mark">?</span>;  <span class="comment">// ? =&gt; when a node worker panics
+                    </span><span class="kw">let </span>reason = <span class="kw">match </span>res {
                         <span class="prelude-val">Ok</span>(r) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;network.network_worker.run_loop.node_worker_handles.normal&quot;</span>, {
                                 <span class="string">&quot;node_id&quot;</span>: node_id,
@@ -1228,93 +1055,84 @@
                     // we will retry a send for this event for that unknown node,
                     // ensuring protocol eventually notes the closure.
                     </span><span class="kw">let _ </span>= <span class="self">self
-                        </span>.event.send(NetworkEvent::ConnectionClosed(node_id));
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>((connection_id, <span class="kw">_</span>, join_handle)) = <span class="self">self
+                        </span>.event.send(NetworkEvent::ConnectionClosed(node_id))
+                        .<span class="kw">await</span>;
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>((connection_id, <span class="kw">_</span>)) = <span class="self">self
                         </span>.active_nodes
                         .remove(<span class="kw-2">&amp;</span>node_id) {
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol channel closed&quot;</span>, {<span class="string">&quot;node_id&quot;</span>: node_id});
-                        <span class="self">self</span>.connection_closed(connection_id, reason)<span class="question-mark">?</span>;
-                        join_handle.join().expect(<span class="string">&quot;Failed to join on node worker handle.&quot;</span>);
+                        <span class="self">self</span>.connection_closed(connection_id, reason).<span class="kw">await</span><span class="question-mark">?</span>;
                     }
-                }
 
-                <span class="comment">// incoming command.
-                </span>recv(<span class="self">self</span>.controller_command_rx) -&gt; cmd =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(cmd) = cmd {
-                        <span class="self">self</span>.manage_network_command(cmd)<span class="question-mark">?</span>;
-                    }
-                },
+                    need_connect_retry = <span class="bool-val">true</span>; <span class="comment">// retry out connections
+                </span>},
 
-                <span class="comment">// Handle finished handshakes.
-                </span>recv(<span class="self">self</span>.connections_rx) -&gt; msg =&gt; {
-                    <span class="kw">match </span>msg {
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="comment">// Handshake manager failed.
-                            </span><span class="kw">break
-                        </span>},
-                        <span class="prelude-val">Ok</span>((conn_id, outcome)) =&gt; {
-                            <span class="self">self</span>.on_handshake_finished(conn_id, outcome)<span class="question-mark">?</span>;
-                        }
-                    }
-                },
+                <span class="comment">// out-connector event
+                </span><span class="prelude-val">Some</span>((ip_addr, res)) = out_connecting_futures.next() =&gt; {
+                    need_connect_retry = <span class="bool-val">true</span>; <span class="comment">// retry out connections
+                    </span><span class="self">self</span>.manage_out_connections(
+                        res,
+                        ip_addr,
+                        <span class="kw-2">&amp;mut </span>cur_connection_id,
+                    ).<span class="kw">await</span><span class="question-mark">?
+                </span>},
 
-                <span class="comment">// Out-connections
-                // `out_connection_rx` is always Some(rx) here.
-                </span>recv(out_connection_rx.as_ref().expect(<span class="string">&quot;No out_connection_rx.&quot;</span>)) -&gt; conn =&gt; {
-                    <span class="kw">match </span>conn {
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="comment">// Future set empty, re-try
-                            </span>out_connection_rx = <span class="prelude-val">None</span>;
-                            <span class="self">self</span>.peer_info_db.update()<span class="question-mark">?</span>; <span class="comment">// notify tick to peer db
-                        </span>},
-                        <span class="prelude-val">Ok</span>((res, ip_addr)) =&gt; {
-                            <span class="self">self</span>.manage_out_connections(
-                                res,
-                                ip_addr,
-                                <span class="kw-2">&amp;mut </span>cur_connection_id,
-                            )<span class="question-mark">?</span>;
-                        }
-                    }
-                },
+                <span class="comment">// listener socket received
+                </span>res = <span class="self">self</span>.listener.accept() =&gt; {
+                    <span class="self">self</span>.manage_in_connections(
+                        res,
+                        <span class="kw-2">&amp;mut </span>cur_connection_id,
+                    ).<span class="kw">await</span><span class="question-mark">?
+                </span>}
             }
         }
 
-        <span class="comment">// Abort the out connection task.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = out_connection_handle {
-            handle.abort();
-        }
-
-        <span class="comment">// Abort the listener task
-        </span>listener_handle.abort();
-
-        <span class="comment">// Drop the sole sender to, and join on, the handshake manager thread.
-        </span>drop(<span class="self">self</span>.handshake_tx);
-        <span class="self">self</span>.handshake_manager_join_handle
-            .join()
-            .expect(<span class="string">&quot;Failed to join on the handshake manager thread at shutdown.&quot;</span>);
-
-        <span class="comment">// Shutdown all the node workers.
-        </span><span class="kw">for </span>(<span class="kw">_</span>, node_command_tx, handle) <span class="kw">in </span><span class="self">self</span>.active_nodes.into_values() {
-            node_command_tx
-                .send(NodeCommand::Close(ConnectionClosureReason::Normal))
-                .expect(<span class="string">&quot;Failed to send close command to node worker.&quot;</span>);
-            <span class="kw">let _ </span>= <span class="self">self</span>.node_result_rx.recv();
-            handle
-                .join()
-                .expect(<span class="string">&quot;Failed to join on a node worker thread at shutdown.&quot;</span>);
-        }
-
-        <span class="comment">// Abort all the pending peerlist tasks
-        </span><span class="kw">for </span>(<span class="kw">_</span>, handle) <span class="kw">in </span><span class="self">self</span>.handshake_peer_list_futures.drain() {
-            handle.abort();
-        }
+        <span class="comment">// wait for out-connectors to finish
+        </span><span class="kw">while </span>out_connecting_futures.next().<span class="kw">await</span>.is_some() {}
 
         <span class="comment">// stop peer info db
-        </span><span class="self">self</span>.peer_info_db.stop()<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.peer_info_db.stop().<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="comment">// Will block until all tasks are finished.
-        </span>drop(<span class="self">self</span>.runtime);
+        <span class="comment">// Cleanup of connected nodes.
+        // drop sender
+        </span><span class="self">self</span>.event.drop();
+        <span class="kw">for </span>(<span class="kw">_</span>, (<span class="kw">_</span>, node_tx)) <span class="kw">in </span><span class="self">self</span>.active_nodes.drain() {
+            <span class="comment">// close opened connection.
+            </span><span class="macro">trace!</span>(<span class="string">&quot;before sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop&quot;</span>);
+            <span class="comment">// send a close command to every node
+            // note that we ignore any error here because nodes might have closed by themselves just before
+            </span><span class="kw">let _ </span>= node_tx
+                .send(NodeCommand::Close(ConnectionClosureReason::Normal))
+                .<span class="kw">await</span>;
+            <span class="macro">trace!</span>(<span class="string">&quot;after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop&quot;</span>);
+        }
+        <span class="comment">// drain incoming node events
+        </span><span class="kw">while </span><span class="self">self</span>.node_event_rx.recv().<span class="kw">await</span>.is_some() {}
+        <span class="comment">// wait for node join handles
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(res) = <span class="self">self</span>.node_worker_handles.next().<span class="kw">await </span>{
+            <span class="kw">match </span>res {
+                <span class="prelude-val">Ok</span>((node_id, <span class="prelude-val">Ok</span>(reason))) =&gt; {
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;network.network_worker.cleanup.wait_node.ok&quot;</span>, {
+                        <span class="string">&quot;node_id&quot;</span>: node_id,
+                        <span class="string">&quot;reason&quot;</span>: reason,
+                    });
+                }
+                <span class="prelude-val">Ok</span>((node_id, <span class="prelude-val">Err</span>(err))) =&gt; {
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;network.network_worker.cleanup.wait_node.err&quot;</span>, {
+                        <span class="string">&quot;node_id&quot;</span>: node_id,
+                        <span class="string">&quot;err&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)
+                    });
+                }
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;a node worker panicked: {}&quot;</span>, err);
+                }
+            }
+        }
 
+        <span class="comment">// wait for all running handshakes
+        </span><span class="self">self</span>.running_handshakes.clear();
+        <span class="kw">while </span><span class="self">self</span>.handshake_futures.next().<span class="kw">await</span>.is_some() {}
+        <span class="kw">while </span><span class="self">self</span>.handshake_peer_list_futures.next().<span class="kw">await</span>.is_some() {}
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1324,7 +1142,7 @@
     /// # Arguments
     /// * `new_connection_id`: connection id of the connection that should be established here.
     /// * `outcome`: result returned by a handshake.
-    </span><span class="kw">fn </span>on_handshake_finished(
+    </span><span class="kw">async fn </span>on_handshake_finished(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         new_connection_id: ConnectionId,
         outcome: HandshakeReturnType,
@@ -1354,7 +1172,8 @@
                         <span class="string">&quot;connection_id&quot;</span>: new_connection_id,
                         <span class="string">&quot;node_id&quot;</span>: new_node_id
                     });
-                    <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Normal)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Normal)
+                        .<span class="kw">await</span><span class="question-mark">?</span>;
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
 
@@ -1369,7 +1188,8 @@
                             <span class="string">&quot;connection_id&quot;</span>: new_connection_id,
                             <span class="string">&quot;node_id&quot;</span>: new_node_id
                         });
-                        <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Normal)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Normal)
+                            .<span class="kw">await</span><span class="question-mark">?</span>;
                     }
                     <span class="comment">// we don&#39;t have this node ID
                     </span>hash_map::Entry::Vacant(entry) =&gt; {
@@ -1389,34 +1209,37 @@
 
                         <span class="comment">// spawn node_controller_fn
                         </span><span class="kw">let </span>(node_command_tx, node_command_rx) =
-                            bounded::&lt;NodeCommand&gt;(<span class="self">self</span>.cfg.node_command_channel_size);
+                            mpsc::channel::&lt;NodeCommand&gt;(<span class="self">self</span>.cfg.node_command_channel_size);
                         <span class="kw">let </span>node_event_tx_clone = <span class="self">self</span>.event.clone_node_sender();
                         <span class="kw">let </span>cfg_copy = <span class="self">self</span>.cfg.clone();
-                        <span class="kw">let </span>runtime_handle = <span class="self">self</span>.runtime.handle().clone();
-                        <span class="kw">let </span>node_result_tx = <span class="self">self</span>.node_result_tx.clone();
-                        <span class="kw">let </span>node_fn_handle = thread::spawn(<span class="kw">move </span>|| {
+                        <span class="kw">let </span>node_worker_command_tx = node_command_tx.clone();
+                        <span class="kw">let </span>node_fn_handle = tokio::spawn(<span class="kw">async move </span>{
                             <span class="kw">let </span>res = NodeWorker::new(
                                 cfg_copy,
                                 new_node_id,
                                 socket_reader,
                                 socket_writer,
+                                node_worker_command_tx,
                                 node_command_rx,
                                 node_event_tx_clone,
-                                runtime_handle,
                             )
-                            .run_loop();
-                            node_result_tx
-                                .send((new_node_id, res))
-                                .expect(<span class="string">&quot;Failed to send node run result back to network worker. &quot;</span>);
+                            .run_loop()
+                            .<span class="kw">await</span>;
+                            (new_node_id, res)
                         });
-                        entry.insert((new_connection_id, node_command_tx.clone(), node_fn_handle));
+                        entry.insert((new_connection_id, node_command_tx.clone()));
+                        <span class="self">self</span>.node_worker_handles.push(node_fn_handle);
 
-                        <span class="kw">let </span>res = <span class="self">self</span>.event.send(NetworkEvent::NewConnection(new_node_id));
+                        <span class="kw">let </span>res = <span class="self">self
+                            </span>.event
+                            .send(NetworkEvent::NewConnection(new_node_id))
+                            .<span class="kw">await</span>;
 
                         <span class="comment">// If we failed to send the event to protocol, close the connection.
                         </span><span class="kw">if </span>res.is_err() {
                             <span class="kw">let </span>res = node_command_tx
-                                .send(NodeCommand::Close(ConnectionClosureReason::Normal));
+                                .send(NodeCommand::Close(ConnectionClosureReason::Normal))
+                                .<span class="kw">await</span>;
                             <span class="kw">if </span>res.is_err() {
                                 <span class="macro">massa_trace!</span>(
                                     <span class="string">&quot;network.network_worker.on_handshake_finished&quot;</span>, {<span class="string">&quot;err&quot;</span>: NetworkError::ChannelError(
@@ -1435,7 +1258,8 @@
                 // has failed and merge new `to_add` candidates.
                 </span><span class="self">self</span>.peer_info_db.merge_candidate_peers(<span class="kw-2">&amp;</span>peers)<span class="question-mark">?</span>;
                 <span class="self">self</span>.running_handshakes.remove(<span class="kw-2">&amp;</span>new_connection_id);
-                <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Failed)<span class="question-mark">?</span>;
+                <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Failed)
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
             }
             <span class="comment">// a handshake finished and failed
             </span><span class="prelude-val">Err</span>(err) =&gt; {
@@ -1448,13 +1272,14 @@
                     <span class="string">&quot;err&quot;</span>: err.to_string()
                 });
                 <span class="self">self</span>.running_handshakes.remove(<span class="kw-2">&amp;</span>new_connection_id);
-                <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Failed)<span class="question-mark">?</span>;
+                <span class="self">self</span>.connection_closed(new_connection_id, ConnectionClosureReason::Failed)
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
             }
         };
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>connection_closed(
+    <span class="kw">async fn </span>connection_closed(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         id: ConnectionId,
         reason: ConnectionClosureReason,
@@ -1508,42 +1333,44 @@
     /// `network_cmd_impl.rs` where the commands are implemented.
     ///
     /// ex: `NetworkCommand::AskForBlocks` =&gt; `on_ask_bfor_block_cmd(...)`
-    </span><span class="kw">fn </span>manage_network_command(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cmd: NetworkCommand) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    </span><span class="kw">async fn </span>manage_network_command(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cmd: NetworkCommand) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">use </span><span class="kw">crate</span>::network_cmd_impl::<span class="kw-2">*</span>;
         <span class="kw">match </span>cmd {
-            NetworkCommand::NodeBanByIps(ips) =&gt; on_node_ban_by_ips_cmd(<span class="self">self</span>, ips)<span class="question-mark">?</span>,
-            NetworkCommand::NodeBanByIds(ids) =&gt; on_node_ban_by_ids_cmd(<span class="self">self</span>, ids)<span class="question-mark">?</span>,
+            NetworkCommand::NodeBanByIps(ips) =&gt; on_node_ban_by_ips_cmd(<span class="self">self</span>, ips).<span class="kw">await</span><span class="question-mark">?</span>,
+            NetworkCommand::NodeBanByIds(ids) =&gt; on_node_ban_by_ids_cmd(<span class="self">self</span>, ids).<span class="kw">await</span><span class="question-mark">?</span>,
             NetworkCommand::SendBlockHeader { node, header } =&gt; {
-                on_send_block_header_cmd(<span class="self">self</span>, node, header)<span class="question-mark">?
+                on_send_block_header_cmd(<span class="self">self</span>, node, header).<span class="kw">await</span><span class="question-mark">?
             </span>}
-            NetworkCommand::AskForBlocks { list } =&gt; on_ask_for_block_cmd(<span class="self">self</span>, list),
+            NetworkCommand::AskForBlocks { list } =&gt; on_ask_for_block_cmd(<span class="self">self</span>, list).<span class="kw">await</span>,
             NetworkCommand::SendBlockInfo { node, info } =&gt; {
-                on_send_block_info_cmd(<span class="self">self</span>, node, info)<span class="question-mark">?
+                on_send_block_info_cmd(<span class="self">self</span>, node, info).<span class="kw">await</span><span class="question-mark">?
             </span>}
-            NetworkCommand::GetPeers(response_tx) =&gt; on_get_peers_cmd(<span class="self">self</span>, response_tx),
+            NetworkCommand::GetPeers(response_tx) =&gt; on_get_peers_cmd(<span class="self">self</span>, response_tx).<span class="kw">await</span>,
             NetworkCommand::GetBootstrapPeers(response_tx) =&gt; {
-                on_get_bootstrap_peers_cmd(<span class="self">self</span>, response_tx)
-            }
-            NetworkCommand::SendOperations { node, operations } =&gt; {
-                on_send_operations_cmd(<span class="self">self</span>, node, operations)
-            }
-            NetworkCommand::SendOperationAnnouncements { to_node, batch } =&gt; {
-                on_send_operation_batches_cmd(<span class="self">self</span>, to_node, batch)
-            }
-            NetworkCommand::AskForOperations { to_node, wishlist } =&gt; {
-                on_ask_for_operations_cmd(<span class="self">self</span>, to_node, wishlist)
-            }
-            NetworkCommand::SendEndorsements { node, endorsements } =&gt; {
-                on_send_endorsements_cmd(<span class="self">self</span>, node, endorsements)
-            }
-            NetworkCommand::NodeSignMessage { msg, response_tx } =&gt; {
-                on_node_sign_message_cmd(<span class="self">self</span>, msg, response_tx)<span class="question-mark">?
+                on_get_bootstrap_peers_cmd(<span class="self">self</span>, response_tx).<span class="kw">await
             </span>}
-            NetworkCommand::NodeUnbanByIds(ids) =&gt; on_node_unban_by_ids_cmd(<span class="self">self</span>, ids)<span class="question-mark">?</span>,
-            NetworkCommand::NodeUnbanByIps(ips) =&gt; on_node_unban_by_ips_cmd(<span class="self">self</span>, ips)<span class="question-mark">?</span>,
-            NetworkCommand::GetStats { response_tx } =&gt; on_get_stats_cmd(<span class="self">self</span>, response_tx),
-            NetworkCommand::Whitelist(ips) =&gt; on_whitelist_cmd(<span class="self">self</span>, ips)<span class="question-mark">?</span>,
-            NetworkCommand::RemoveFromWhitelist(ips) =&gt; on_remove_from_whitelist_cmd(<span class="self">self</span>, ips)<span class="question-mark">?</span>,
+            NetworkCommand::SendOperations { node, operations } =&gt; {
+                on_send_operations_cmd(<span class="self">self</span>, node, operations).<span class="kw">await
+            </span>}
+            NetworkCommand::SendOperationAnnouncements { to_node, batch } =&gt; {
+                on_send_operation_batches_cmd(<span class="self">self</span>, to_node, batch).<span class="kw">await
+            </span>}
+            NetworkCommand::AskForOperations { to_node, wishlist } =&gt; {
+                on_ask_for_operations_cmd(<span class="self">self</span>, to_node, wishlist).<span class="kw">await
+            </span>}
+            NetworkCommand::SendEndorsements { node, endorsements } =&gt; {
+                on_send_endorsements_cmd(<span class="self">self</span>, node, endorsements).<span class="kw">await
+            </span>}
+            NetworkCommand::NodeSignMessage { msg, response_tx } =&gt; {
+                on_node_sign_message_cmd(<span class="self">self</span>, msg, response_tx).<span class="kw">await</span><span class="question-mark">?
+            </span>}
+            NetworkCommand::NodeUnbanByIds(ids) =&gt; on_node_unban_by_ids_cmd(<span class="self">self</span>, ids).<span class="kw">await</span><span class="question-mark">?</span>,
+            NetworkCommand::NodeUnbanByIps(ips) =&gt; on_node_unban_by_ips_cmd(<span class="self">self</span>, ips).<span class="kw">await</span><span class="question-mark">?</span>,
+            NetworkCommand::GetStats { response_tx } =&gt; on_get_stats_cmd(<span class="self">self</span>, response_tx).<span class="kw">await</span>,
+            NetworkCommand::Whitelist(ips) =&gt; on_whitelist_cmd(<span class="self">self</span>, ips).<span class="kw">await</span><span class="question-mark">?</span>,
+            NetworkCommand::RemoveFromWhitelist(ips) =&gt; {
+                on_remove_from_whitelist_cmd(<span class="self">self</span>, ips).<span class="kw">await</span><span class="question-mark">?
+            </span>}
         };
         <span class="prelude-val">Ok</span>(())
     }
@@ -1555,7 +1382,7 @@
     /// * `res`: `(reader, writer)` in a result coming out of `out_connecting_futures`
     /// * `ip_addr`: distant address we are trying to reach.
     /// * `cur_connection_id`: connection id of the node we are trying to reach
-    </span><span class="kw">fn </span>manage_out_connections(
+    </span><span class="kw">async fn </span>manage_out_connections(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         res: tokio::io::Result&lt;(ReadHalf, WriteHalf)&gt;,
         ip_addr: IpAddr,
@@ -1614,35 +1441,41 @@
     /// # Arguments
     /// * `re` : `(reader, writer, socketAddr)` in a result coming out of the listener
     /// * `cur_connection_id`: connection id of the node we are trying to reach
-    </span><span class="kw">fn </span>manage_in_connections(
+    </span><span class="kw">async fn </span>manage_in_connections(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        reader: ReadHalf,
-        writer: WriteHalf,
-        remote_addr: SocketAddr,
+        res: std::io::Result&lt;(ReadHalf, WriteHalf, SocketAddr)&gt;,
         cur_connection_id: <span class="kw-2">&amp;mut </span>ConnectionId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
-        <span class="kw">match </span><span class="self">self</span>.peer_info_db.try_new_in_connection(<span class="kw-2">&amp;</span>remote_addr.ip()) {
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>connection_id = <span class="kw-2">*</span>cur_connection_id;
-                <span class="macro">debug!</span>(
-                    <span class="string">&quot;inbound connection from addr={} succeeded =&gt; connection_id={}&quot;</span>,
-                    remote_addr, connection_id
-                );
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_established&quot;</span>, {
-                    <span class="string">&quot;ip&quot;</span>: remote_addr.ip(),
-                    <span class="string">&quot;connection_id&quot;</span>: connection_id
-                });
-                cur_connection_id.<span class="number">0 </span>+= <span class="number">1</span>;
-                <span class="self">self</span>.active_connections
-                    .insert(connection_id, (remote_addr.ip(), <span class="bool-val">false</span>));
-                <span class="self">self</span>.manage_successful_connection(connection_id, reader, writer)<span class="question-mark">?</span>;
+        <span class="kw">match </span>res {
+            <span class="prelude-val">Ok</span>((reader, writer, remote_addr)) =&gt; {
+                <span class="kw">match </span><span class="self">self</span>.peer_info_db.try_new_in_connection(<span class="kw-2">&amp;</span>remote_addr.ip()) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="kw">let </span>connection_id = <span class="kw-2">*</span>cur_connection_id;
+                        <span class="macro">debug!</span>(
+                            <span class="string">&quot;inbound connection from addr={} succeeded =&gt; connection_id={}&quot;</span>,
+                            remote_addr, connection_id
+                        );
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_established&quot;</span>, {
+                            <span class="string">&quot;ip&quot;</span>: remote_addr.ip(),
+                            <span class="string">&quot;connection_id&quot;</span>: connection_id
+                        });
+                        cur_connection_id.<span class="number">0 </span>+= <span class="number">1</span>;
+                        <span class="self">self</span>.active_connections
+                            .insert(connection_id, (remote_addr.ip(), <span class="bool-val">false</span>));
+                        <span class="self">self</span>.manage_successful_connection(connection_id, reader, writer)<span class="question-mark">?</span>;
+                    }
+                    <span class="prelude-val">Err</span>(NetworkError::PeerConnectionError(
+                        NetworkConnectionErrorType::MaxPeersConnectionReached(<span class="kw">_</span>),
+                    )) =&gt; <span class="self">self</span>.try_send_peer_list_in_handshake(reader, writer, remote_addr),
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="macro">debug!</span>(<span class="string">&quot;inbound connection from addr={} refused&quot;</span>, remote_addr);
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused&quot;</span>, {<span class="string">&quot;ip&quot;</span>: remote_addr.ip()});
+                    }
+                }
             }
-            <span class="prelude-val">Err</span>(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::MaxPeersConnectionReached(<span class="kw">_</span>),
-            )) =&gt; <span class="self">self</span>.try_send_peer_list_in_handshake(reader, writer, remote_addr),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;inbound connection from addr={} refused&quot;</span>, remote_addr);
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused&quot;</span>, {<span class="string">&quot;ip&quot;</span>: remote_addr.ip()});
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;connection accept failed: {}&quot;</span>, err);
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_failed&quot;</span>, {<span class="string">&quot;err&quot;</span>: err.to_string()});
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -1675,7 +1508,7 @@
     /// Spawn a future in `self.handshake_peer_list_futures` managed by the
     /// main loop.
     </span><span class="kw">fn </span>try_send_peer_list_in_handshake(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         reader: ReadHalf,
         writer: WriteHalf,
         remote_addr: SocketAddr,
@@ -1703,10 +1536,8 @@
             <span class="kw">let </span>max_op_datastore_entry_count = <span class="self">self</span>.cfg.max_op_datastore_entry_count;
             <span class="kw">let </span>max_op_datastore_key_length = <span class="self">self</span>.cfg.max_op_datastore_key_length;
             <span class="kw">let </span>max_op_datastore_value_length = <span class="self">self</span>.cfg.max_op_datastore_value_length;
-            <span class="kw">let </span>sender_clone = <span class="self">self</span>.handshake_peer_list_tx.clone();
-            <span class="kw">let </span>ip = remote_addr.ip();
             <span class="self">self</span>.handshake_peer_list_futures
-                .insert(remote_addr.ip(), <span class="self">self</span>.runtime.spawn(<span class="kw">async move </span>{
+                .push(tokio::spawn(<span class="kw">async move </span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
                     <span class="kw">let </span><span class="kw-2">mut </span>reader = ReadBinder::new(
                         reader,
@@ -1742,18 +1573,16 @@
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">massa_trace!</span>(<span class="string">&quot;Ignored timeout error when sending peer list&quot;</span>, {}),
                         <span class="kw">_ </span>=&gt; (),
                     }
-                    <span class="comment">// Notify end of task to network worker.
-                    </span>Handle::current()
-                        .spawn_blocking(<span class="kw">move </span>|| {
-                            <span class="kw">let _ </span>= sender_clone.send(ip);
-                        })
-                        .<span class="kw">await
-                        </span>.expect(<span class="string">&quot;Failed to run task to send peer list task end notification to network worker.&quot;</span>);
                 }));
         }
     }
 
-    <span class="doccomment">/// Manage a successful incoming and outgoing connection.
+    <span class="doccomment">/// Manage a successful incoming and outgoing connection,
+    /// Check if we&#39;re not already running an handshake for `connection_id` by inserting the connection id in
+    /// `self.running_handshakes`
+    /// Add a new handshake to perform in `self.handshake_futures` to be handle in the main loop.
+    ///
+    /// Return an handshake error if connection already running/waiting
     </span><span class="kw">fn </span>manage_successful_connection(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         connection_id: ConnectionId,
@@ -1765,26 +1594,17 @@
                 HandshakeErrorType::HandshakeIdAlreadyExist(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, connection_id)),
             ));
         }
-        <span class="kw">let </span>worker = HandshakeWorker::new(
+        <span class="self">self</span>.handshake_futures.push(HandshakeWorker::spawn(
             reader,
             writer,
             <span class="self">self</span>.self_node_id,
             <span class="self">self</span>.keypair.clone(),
             <span class="self">self</span>.cfg.connect_timeout,
             <span class="self">self</span>.version,
+            connection_id,
             <span class="self">self</span>.cfg.max_bytes_read,
             <span class="self">self</span>.cfg.max_bytes_write,
-        );
-        <span class="kw">if </span><span class="self">self</span>.handshake_tx.send((connection_id, worker)).is_err() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(NetworkError::HandshakeError(
-                HandshakeErrorType::ManagementFailed,
-            ));
-        } <span class="kw">else </span>{
-            <span class="macro">debug!</span>(<span class="string">&quot;starting handshake with connection_id={}&quot;</span>, connection_id);
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.new_connection&quot;</span>, {
-                <span class="string">&quot;connection_id&quot;</span>: connection_id
-            });
-        }
+        ));
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1793,7 +1613,7 @@
     ///
     /// # Argument
     /// * `evt`: optional node event to process.
-    </span><span class="kw">fn </span>on_node_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>, evt: NodeEvent) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    </span><span class="kw">async fn </span>on_node_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>, evt: NodeEvent) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">use </span><span class="kw">crate</span>::network_event::<span class="kw-2">*</span>;
         <span class="kw">match </span>evt {
             <span class="comment">// received a list of peers
@@ -1801,29 +1621,29 @@
                 event_impl::on_received_peer_list(<span class="self">self</span>, from_node_id, <span class="kw-2">&amp;</span>lst)<span class="question-mark">?
             </span>}
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) =&gt; {
-                event_impl::on_received_ask_for_blocks(<span class="self">self</span>, from_node_id, list)
-            }
+                event_impl::on_received_ask_for_blocks(<span class="self">self</span>, from_node_id, list).<span class="kw">await
+            </span>}
             NodeEvent(from_node_id, NodeEventType::ReceivedReplyForBlocks(list)) =&gt; {
-                event_impl::on_received_block_info(<span class="self">self</span>, from_node_id, list)<span class="question-mark">?
+                event_impl::on_received_block_info(<span class="self">self</span>, from_node_id, list).<span class="kw">await</span><span class="question-mark">?
             </span>}
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) =&gt; {
-                event_impl::on_received_block_header(<span class="self">self</span>, source_node_id, header)<span class="question-mark">?
+                event_impl::on_received_block_header(<span class="self">self</span>, source_node_id, header).<span class="kw">await</span><span class="question-mark">?
             </span>}
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) =&gt; {
-                event_impl::on_asked_peer_list(<span class="self">self</span>, from_node_id)<span class="question-mark">?
+                event_impl::on_asked_peer_list(<span class="self">self</span>, from_node_id).<span class="kw">await</span><span class="question-mark">?
             </span>}
             NodeEvent(node, NodeEventType::ReceivedOperations(operations)) =&gt; {
-                event_impl::on_received_operations(<span class="self">self</span>, node, operations)
-            }
+                event_impl::on_received_operations(<span class="self">self</span>, node, operations).<span class="kw">await
+            </span>}
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) =&gt; {
-                event_impl::on_received_endorsements(<span class="self">self</span>, node, endorsements)
-            }
+                event_impl::on_received_endorsements(<span class="self">self</span>, node, endorsements).<span class="kw">await
+            </span>}
             NodeEvent(node, NodeEventType::ReceivedOperationAnnouncements(operation_ids)) =&gt; {
-                event_impl::on_received_operations_annoncement(<span class="self">self</span>, node, operation_ids)
-            }
+                event_impl::on_received_operations_annoncement(<span class="self">self</span>, node, operation_ids).<span class="kw">await
+            </span>}
             NodeEvent(node, NodeEventType::ReceivedAskForOperations(operation_ids)) =&gt; {
-                event_impl::on_received_ask_for_operations(<span class="self">self</span>, node, operation_ids)
-            }
+                event_impl::on_received_ask_for_operations(<span class="self">self</span>, node, operation_ids).<span class="kw">await
+            </span>}
         }
         <span class="prelude-val">Ok</span>(())
     }

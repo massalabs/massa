@@ -133,6 +133,10 @@
     </span>GeneralProtocolError(String),
     <span class="doccomment">/// An error occurred during channel communication: {0}
     </span>ChannelError(String),
+    <span class="doccomment">/// A tokio task has crashed err:{0}
+    </span>TokioTaskJoinError(<span class="attr">#[from] </span>tokio::task::JoinError),
+    <span class="doccomment">/// error receiving oneshot response : {0}
+    </span>TokioRecvError(<span class="attr">#[from] </span>tokio::sync::oneshot::error::RecvError),
     <span class="doccomment">/// Error during network connection: {0}
     </span>PeerConnectionError(<span class="attr">#[from] </span>NetworkConnectionErrorType),
     <span class="doccomment">/// The ip:`{0}` address is not valid
@@ -188,10 +192,6 @@
     </span>IncompatibleVersion,
     <span class="doccomment">/// Outgoing connection returned a bootstrapable peer list: {0:?}
     </span>PeerListReceived(Vec&lt;IpAddr&gt;),
-    <span class="doccomment">/// Failed to manage a succesful connection.
-    /// This happens if we cannot start a new handshake worker
-    /// via the handshake manager thread.
-    </span>ManagementFailed,
 }
 
 <span class="doccomment">/// return handshake error
