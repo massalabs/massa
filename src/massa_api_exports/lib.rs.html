@@ -80,6 +80,14 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! All the structures that are used everywhere
 //!
@@ -89,7 +97,8 @@
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
 
-</span><span class="kw">use </span>massa_time::MassaTime;
+</span><span class="kw">use </span><span class="kw">crate</span>::page::PageRequest;
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// address related structures
@@ -161,6 +170,13 @@
     </span>Blacklist,
     <span class="doccomment">/// contains allowed entry
     </span>Whitelist,
+}
+
+<span class="doccomment">/// Wrap request params into struct for ApiV2 method
+</span><span class="attr">#[derive(Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>ApiRequest {
+    <span class="doccomment">/// pagination
+    </span><span class="kw">pub </span>page_request: <span class="prelude-ty">Option</span>&lt;PageRequest&gt;,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
