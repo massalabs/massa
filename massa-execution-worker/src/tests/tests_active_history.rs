@@ -17,8 +17,8 @@ fn test_active_history_deferred_credits() {
     let slot1 = Slot::new(2, 2);
     let slot2 = Slot::new(4, 11);
 
-    let addr1 = Address(Hash::compute_from("A1".as_bytes()));
-    let addr2 = Address(Hash::compute_from("A2".as_bytes()));
+    let addr1 = Address::from_hash(0, Hash::compute_from("A1".as_bytes())).unwrap();
+    let addr2 = Address::from_hash(0, Hash::compute_from("A2".as_bytes())).unwrap();
 
     let amount_a1_s1 = Amount::from_raw(500);
     let amount_a2_s1 = Amount::from_raw(2702);

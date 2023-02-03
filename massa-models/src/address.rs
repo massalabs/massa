@@ -130,7 +130,6 @@ impl FromStr for Address {
         let mut chars = s.chars();
         match chars.next() {
             Some(prefix) if prefix == ADDRESS_PREFIX => {
-
                 let data = chars.collect::<String>();
                 let decoded_bs58_check = bs58::decode(data)
                     .with_check(None)
@@ -141,20 +140,20 @@ impl FromStr for Address {
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::AddressParseError)?;
                 //TODO: Make it function like macro from address big structure
-                
+
                 match version {
-                    <Address!["0"]>::VERSION => {
-                        Ok(AddressVariant!["0"](<Address!["0"]>::from_bytes_without_version(
+                    <Address!["0"]>::VERSION => Ok(AddressVariant!["0"](
+                        <Address!["0"]>::from_bytes_without_version(
                             rest.try_into()
                                 .map_err(|_| ModelsError::AddressParseError)?,
-                        )?))
-                    }
-                    <Address!["1"]>::VERSION => {
-                        Ok(AddressVariant!["1"](<Address!["1"]>::from_bytes_without_version(
+                        )?,
+                    )),
+                    <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](
+                        <Address!["1"]>::from_bytes_without_version(
                             rest.try_into()
                                 .map_err(|_| ModelsError::AddressParseError)?,
-                        )?))
-                    }
+                        )?,
+                    )),
                     _ => Err(ModelsError::AddressParseError),
                 }
             }
@@ -490,9 +489,7 @@ pub struct ExecutionAddressCycleInfo {
 
 #[test]
 pub fn test_addr_serialization() {
-
     let addr = Address::from_str("A12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF");
 
     assert!(addr.is_ok());
-
 }
