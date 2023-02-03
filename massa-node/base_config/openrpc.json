@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.19.0",
+        "version": "TEST.20.0",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -2537,6 +2537,7 @@
                     "in_blocks",
                     "in_pool",
                     "is_final",
+                    "thread",
                     "operation"
                 ],
                 "type": "object",
@@ -2559,6 +2560,10 @@
                     "is_final": {
                         "description": "True if the operation is final (for example in a final block)",
                         "type": "boolean"
+                    },
+                    "thread": {
+                        "description": "Thread in which the operation can be included",
+                        "type": "number"
                     },
                     "operation": {
                         "$ref": "#/components/schemas/WrappedOperation",
