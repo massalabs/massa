@@ -244,7 +244,7 @@ impl LedgerDB {
             .db
             .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
-            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
+            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec())
             .peekable();
 
         // Return None if empty
