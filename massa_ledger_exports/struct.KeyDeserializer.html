@@ -12,7 +12,7 @@
 
 <span class="kw">let </span><span class="kw-2">mut </span>key = Vec::new();
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
-key.extend(address.into_bytes());
+key.extend(address.to_bytes());
 key.push(DATASTORE_IDENT);
 key.extend(store_key.to_bytes());
 KeySerializer::new().serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized).unwrap();
@@ -22,7 +22,7 @@ KeySerializer::new().serialize(<span class="kw-2">&amp;</span>key, <span class="
 
 <span class="kw">let </span><span class="kw-2">mut </span>key = Vec::new();
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
-key.extend(address.into_bytes());
+key.extend(address.to_bytes());
 key.push(BALANCE_IDENT);
 KeySerializer::new().serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized).unwrap();
 <span class="kw">let </span>(rest, key_deser) = KeyDeserializer::new(<span class="number">255</span>).deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized).unwrap();

@@ -440,7 +440,7 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
-    /// let keypair = KeyPair::generate(0).unwrap();
+    /// let keypair = KeyPair::generate();
     /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();

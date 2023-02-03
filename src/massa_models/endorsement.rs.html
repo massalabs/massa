@@ -848,7 +848,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_endorsement_serialization() {
-        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate();
         <span class="kw">let </span>content = Endorsement {
             slot: Slot::new(<span class="number">10</span>, <span class="number">1</span>),
             index: <span class="number">0</span>,
@@ -873,7 +873,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_endorsement_lightweight_serialization() {
-        <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>sender_keypair = KeyPair::generate();
         <span class="kw">let </span>content = Endorsement {
             slot: Slot::new(<span class="number">10</span>, <span class="number">1</span>),
             index: <span class="number">0</span>,
