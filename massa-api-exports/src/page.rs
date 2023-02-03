@@ -43,10 +43,26 @@ impl<T: Serialize> Serialize for PagedVec<T> {
 }
 
 /// Represents the request inputs for a PagedVec
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct PageRequest {
     /// The limit of elements in a page
     pub limit: usize,
     /// The page offset
     pub offset: usize,
+}
+
+/// Represents the request inputs for a PagedVecV2
+#[derive(Deserialize, Serialize)]
+pub struct PagedVecV2<T> {
+    content: Vec<T>,
+    total_count: usize,
+}
+
+impl<T> From<PagedVec<T>> for PagedVecV2<T> {
+    fn from(paged_vec: PagedVec<T>) -> Self {
+        PagedVecV2 {
+            content: paged_vec.res,
+            total_count: paged_vec._total_count,
+        }
+    }
 }

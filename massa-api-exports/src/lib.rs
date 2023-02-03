@@ -7,6 +7,7 @@
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
 
+use crate::page::PageRequest;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 
@@ -79,4 +80,11 @@ pub enum ListType {
     Blacklist,
     /// contains allowed entry
     Whitelist,
+}
+
+/// Wrap request params into struct for ApiV2 method
+#[derive(Deserialize, Serialize)]
+pub struct ApiRequest {
+    /// pagination
+    pub page_request: Option<PageRequest>,
 }

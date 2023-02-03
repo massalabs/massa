@@ -95,8 +95,12 @@ pub struct Private {
 
 /// API v2 content
 pub struct ApiV2 {
+    /// link to the consensus component
+    pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
+    /// link to the execution component
+    pub execution_controller: Box<dyn ExecutionController>,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
     /// API settings
