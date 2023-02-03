@@ -249,13 +249,10 @@ impl OperationPool {
                 } else {
                     continue;
                 };
-            if !creator_balance.is_zero() {
-                dbg!(&creator_balance);
-            }
 
-            // if *creator_balance < op_info.fee {
-            //     continue;
-            // }
+            if *creator_balance < op_info.fee {
+                continue;
+            }
 
             // here we consider the operation as accepted
             op_ids.push(op_info.id);
