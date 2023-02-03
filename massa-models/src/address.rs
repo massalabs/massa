@@ -19,29 +19,35 @@ use std::str::FromStr;
 /// Size of a serialized address, in bytes
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES + 1;
 
-/// In future versions, the SC variant will encode slot, index and is_write directly
+/// Top level address representation that can differentiate between User and SC address
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Address {
     #[allow(missing_docs)]
     User(UserAddress),
     #[allow(missing_docs)]
-    SC(UserAddress),
+    SC(SCAddress),
 }
 
-// TODO: Remove this impl when introducing `SCAddress`
-impl std::ops::Deref for Address {
-    type Target = UserAddress;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Address::User(add) | Address::SC(add) => add,
-        }
-    }
-}
+/// In the near future, this will encapsulate slot, idx, and is_write
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SCAddress(pub Hash);
 
 /// Derived from a public key.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserAddress(pub Hash);
+
+/// TODO: This conversion will need re-writing/removal when SCAddress is optimised
+impl From<SCAddress> for UserAddress {
+    fn from(value: SCAddress) -> Self {
+        Self(value.0)
+    }
+}
+/// TODO: This conversion will need re-writing/removal when SCAddress is optimised
+impl From<UserAddress> for SCAddress {
+    fn from(value: UserAddress) -> Self {
+        Self(value.0)
+    }
+}
 
 const ADDRESS_PREFIX: char = 'A';
 // serialized with varint
@@ -194,7 +200,7 @@ impl FromStr for Address {
 
         let res = match pref {
             'U' => Address::User(res),
-            'S' => Address::SC(res),
+            'S' => Address::SC(res.into()),
             _ => return err,
         };
         Ok(res)
@@ -212,7 +218,10 @@ impl Address {
     }
 
     fn hash_bytes(&self) -> &[u8; 32] {
-        self.0.to_bytes()
+        match self {
+            Address::User(addr) => addr.0.to_bytes(),
+            Address::SC(addr) => addr.0.to_bytes(),
+        }
     }
 
     /// Computes address associated with given public key
@@ -363,7 +372,7 @@ fn sc_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
             |input| deser.deserialize(input),
         ),
     )
-    .map(|hash| Address::SC(UserAddress(hash)))
+    .map(|hash| Address::SC(SCAddress(hash)))
     .parse(input)
 }
 /// Info for a given address on a given cycle
