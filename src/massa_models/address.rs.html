@@ -493,9 +493,6 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![allow(missing_docs)]
@@ -628,7 +625,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
         <span class="kw">match </span>chars.next() {
             <span class="prelude-val">Some</span>(prefix) <span class="kw">if </span>prefix == ADDRESS_PREFIX =&gt; {
-
                 <span class="kw">let </span>data = chars.collect::&lt;String&gt;();
                 <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
                     .with_check(<span class="prelude-val">None</span>)
@@ -639,20 +635,20 @@
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
                     .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>;
                 <span class="comment">//TODO: Make it function like macro from address big structure
-                
+
                 </span><span class="kw">match </span>version {
-                    &lt;<span class="macro">Address!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
-                        <span class="prelude-val">Ok</span>(<span class="macro">AddressVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">Address!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(
+                    &lt;<span class="macro">Address!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">AddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
+                        &lt;<span class="macro">Address!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(
                             rest.try_into()
                                 .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
-                        )<span class="question-mark">?</span>))
-                    }
-                    &lt;<span class="macro">Address!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; {
-                        <span class="prelude-val">Ok</span>(<span class="macro">AddressVariant!</span>[<span class="string">&quot;1&quot;</span>](&lt;<span class="macro">Address!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(
+                        )<span class="question-mark">?</span>,
+                    )),
+                    &lt;<span class="macro">Address!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">AddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
+                        &lt;<span class="macro">Address!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(
                             rest.try_into()
                                 .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
-                        )<span class="question-mark">?</span>))
-                    }
+                        )<span class="question-mark">?</span>,
+                    )),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError),
                 }
             }
@@ -988,10 +984,9 @@
 
 <span class="attr">#[test]
 </span><span class="kw">pub fn </span>test_addr_serialization() {
-
     <span class="kw">let </span>addr = Address::from_str(<span class="string">&quot;A12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF&quot;</span>);
 
     <span class="macro">assert!</span>(addr.is_ok());
-
-}</code></pre></div>
+}
+</code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
