@@ -762,21 +762,6 @@
 <a href="#762" id="762">762</a>
 <a href="#763" id="763">763</a>
 <a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
-<a href="#774" id="774">774</a>
-<a href="#775" id="775">775</a>
-<a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -797,7 +782,6 @@
 <span class="kw">use </span>massa_sc_runtime::{Interface, InterfaceClone};
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rand::Rng;
-<span class="kw">use </span>sha2::{Digest, Sha256};
 <span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -1540,20 +1524,6 @@
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t set address {} bytecode: {}&quot;</span>, address, err),
         }
-    }
-
-    <span class="doccomment">/// Hashes givens bytes with sha256
-    ///
-    /// # Arguments
-    /// * bytes: bytes to hash
-    ///
-    /// # Returns
-    /// The vector of bytes representation of the resulting hash
-    </span><span class="kw">fn </span>sha256_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>hasher = Sha256::new();
-        hasher.update(bytes);
-        <span class="kw">let </span>hash = hasher.finalize().to_vec();
-        <span class="prelude-val">Ok</span>(hash)
     }
 }
 </code></pre></div>

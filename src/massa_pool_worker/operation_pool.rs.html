@@ -273,6 +273,14 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -457,6 +465,10 @@
     }
 
     <span class="doccomment">/// get operations for block creation
+    ///
+    /// Searches the available operations, and selects the sub-set of operations that:
+    /// - fit inside the block
+    /// - is the most profitable for block producer
     </span><span class="kw">pub fn </span>get_block_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; (Vec&lt;OperationId&gt;, Storage) {
         <span class="comment">// init list of selected operation IDs
         </span><span class="kw">let </span><span class="kw-2">mut </span>op_ids = Vec::new();
@@ -497,7 +509,8 @@
                 .unexecuted_ops_among(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[op_info.id].into_iter().collect(), slot.thread)
                 .is_empty()
             {
-                <span class="kw">continue</span>;
+                <span class="comment">// this is never outputted
+                </span><span class="kw">continue</span>;
             }
 
             <span class="comment">// check balance
@@ -519,12 +532,15 @@
                 } <span class="kw">else </span>{
                     <span class="kw">continue</span>;
                 };
-
-            <span class="kw">if </span><span class="kw-2">*</span>creator_balance &lt; op_info.fee {
-                <span class="kw">continue</span>;
+            <span class="kw">if </span>!creator_balance.is_zero() {
+                <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>creator_balance);
             }
 
-            <span class="comment">// here we consider the operation as accepted
+            <span class="comment">// if *creator_balance &lt; op_info.fee {
+            //     continue;
+            // }
+
+            // here we consider the operation as accepted
             </span>op_ids.push(op_info.id);
 
             <span class="comment">// update remaining block space
