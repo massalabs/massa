@@ -164,7 +164,6 @@ impl NetworkWorker {
         let mut cur_connection_id = ConnectionId::default();
 
         // Start a task to run the listener.
-        // TODO: config size.
         let (listener_tx, listener_rx) = bounded::<(ReadHalf, WriteHalf, SocketAddr)>(1);
         let mut listener = self
             .listener
