@@ -733,7 +733,7 @@
 </span><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::<span class="kw-2">*</span>;
 <span class="kw">use </span>massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES},
+    address::{Address, ADDRESS_SIZE_BYTES_V1},
     amount::AmountSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -972,7 +972,7 @@
             </span>.db
             .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
-            .map(|(key, <span class="kw">_</span>)| key.split_at(ADDRESS_SIZE_BYTES + <span class="number">1</span>).<span class="number">1</span>.to_vec())
+            .map(|(key, <span class="kw">_</span>)| key.split_at(ADDRESS_SIZE_BYTES_V1 + <span class="number">1</span>).<span class="number">1</span>.to_vec())
             .peekable();
 
         <span class="comment">// Return None if empty
@@ -1327,7 +1327,7 @@
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + <span class="number">1</span>).<span class="number">1</span>.to_vec(),
+                    key.split_at(ADDRESS_SIZE_BYTES_V1 + <span class="number">1</span>).<span class="number">1</span>.to_vec(),
                     data.to_vec(),
                 )
             })
@@ -1402,7 +1402,7 @@
     <span class="doccomment">/// Functional test of `LedgerDB`
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_ledger_db() {
-        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key());
+        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
         <span class="kw">let </span>(db, data) = init_test_ledger(addr);
         <span class="kw">let </span>ledger_hash = db.get_ledger_hash();
         <span class="kw">let </span>amount_deserializer =
@@ -1441,7 +1441,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_ledger_parts() {
-        <span class="kw">let </span>pub_a = KeyPair::generate().get_public_key();
+        <span class="kw">let </span>pub_a = KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key();
         <span class="kw">let </span>a = Address::from_public_key(<span class="kw-2">&amp;</span>pub_a);
         <span class="kw">let </span>(db, <span class="kw">_</span>) = init_test_ledger(a);
         <span class="kw">let </span>res = db.get_ledger_part(StreamingStep::Started).unwrap();

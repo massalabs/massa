@@ -1573,14 +1573,14 @@
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(args = <span class="string">&quot;(add, remove or allow-all) [IpAddr]&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;Manage bootstrap whitelist IP address(es). No args returns the bootstrap whitelist&quot;
+        message = <span class="string">&quot;Manage boostrap whitelist IP address(es). No args returns the whitelist blacklist&quot;
     </span>)]
     </span>node_bootstrap_whitelist,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(args = <span class="string">&quot;(add or remove) [IpAddr]&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;Manage bootstrap blacklist IP address(es). No args returns the bootstrap blacklist&quot;
+        message = <span class="string">&quot;Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist&quot;
     </span>)]
     </span>node_bootstrap_blacklist,
 
@@ -2239,7 +2239,7 @@
             Command::wallet_generate_secret_key =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
-                <span class="kw">let </span>key = KeyPair::generate();
+                <span class="kw">let </span>key = KeyPair::generate(<span class="number">0</span>).unwrap();
                 <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
                 <span class="kw">if </span>json {
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))

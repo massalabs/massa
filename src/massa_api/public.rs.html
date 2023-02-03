@@ -1192,7 +1192,7 @@
         {
             <span class="kw">let </span>address = address.unwrap_or_else(|| {
                 <span class="comment">// if no addr provided, use a random one
-                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key())
+                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key())
             });
 
             <span class="kw">let </span>op_datastore = <span class="kw">match </span>operation_datastore {
@@ -1280,7 +1280,7 @@
         {
             <span class="kw">let </span>caller_address = caller_address.unwrap_or_else(|| {
                 <span class="comment">// if no addr provided, use a random one
-                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key())
+                </span>Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key())
             });
 
             <span class="comment">// TODO:
@@ -1983,7 +1983,7 @@
             .into_iter()
             .map(|op_input| {
                 <span class="kw">let </span><span class="kw-2">mut </span>op_serialized = Vec::new();
-                op_serialized.extend(op_input.signature.to_bytes());
+                op_serialized.extend(op_input.signature.into_bytes());
                 op_serialized.extend(op_input.creator_public_key.to_bytes());
                 op_serialized.extend(op_input.serialized_content);
                 <span class="kw">let </span>(rest, op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = operation_deserializer

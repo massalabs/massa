@@ -16,6 +16,12 @@
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
 <a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
@@ -31,8 +37,14 @@
     <span class="doccomment">/// Signature error : {0}
     </span>SignatureError(String),
 
+    <span class="doccomment">/// Signature error : {0}
+    </span>MultiSignatureError(String),
+
     <span class="doccomment">/// Wrong prefix for hash: expected {0}, got {1}
     </span>WrongPrefix(String, String),
+
+    <span class="doccomment">/// invalid version identifier: {0}
+    </span>InvalidVersionError(String),
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_signature" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>

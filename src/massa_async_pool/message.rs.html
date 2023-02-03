@@ -1095,8 +1095,8 @@
             .serialize(<span class="kw-2">&amp;</span>value.emission_slot, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.u64_serializer
             .serialize(<span class="kw-2">&amp;</span>value.emission_index, buffer)<span class="question-mark">?</span>;
-        buffer.extend(value.sender.to_bytes());
-        buffer.extend(value.destination.to_bytes());
+        buffer.extend(value.sender.into_bytes());
+        buffer.extend(value.destination.into_bytes());
 
         <span class="kw">let </span>handler_bytes = value.handler.as_bytes();
         <span class="kw">let </span>handler_name_len: u8 = handler_bytes.len().try_into().map_err(|<span class="kw">_</span>| {

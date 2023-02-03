@@ -1378,7 +1378,7 @@
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(address, data) <span class="kw">in </span>value.<span class="number">0</span>.iter() {
-            buffer.extend(address.to_bytes());
+            buffer.extend(address.into_bytes());
             <span class="self">self</span>.entry_serializer.serialize(data, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
