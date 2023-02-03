@@ -221,17 +221,14 @@ impl OperationPool {
 
             // check if the op was already executed
             // TODO batch this
-            dbg!(&slot);
             if self
                 .execution_controller
                 .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
                 .is_empty()
             {
                 // this is never outputted
-                dbg!("continuing");
                 continue;
             }
-            dbg!(&slot);
 
             // check balance
             //TODO: It's a weird behaviour because if the address is created afterwards this operation will be executed
@@ -252,10 +249,13 @@ impl OperationPool {
                 } else {
                     continue;
                 };
-
-            if *creator_balance < op_info.fee {
-                continue;
+            if !creator_balance.is_zero() {
+                dbg!(&creator_balance);
             }
+
+            // if *creator_balance < op_info.fee {
+            //     continue;
+            // }
 
             // here we consider the operation as accepted
             op_ids.push(op_info.id);

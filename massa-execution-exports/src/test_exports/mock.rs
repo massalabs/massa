@@ -214,8 +214,9 @@ impl ExecutionController for MockExecutionController {
         {
             println!("mock error {err}");
         }
-        dbg!("never seen this not err...");
-        dbg!(response_rx.recv_timeout(Duration::from_millis(100))).unwrap()
+        response_rx
+            .recv_timeout(Duration::from_millis(100))
+            .unwrap()
     }
 
     fn clone_box(&self) -> Box<dyn ExecutionController> {

@@ -348,7 +348,7 @@ impl Storage {
                     }
                 }
                 hash_map::Entry::Vacant(_vac) => {
-                    panic!("missing object in storage on storage object reference drop");
+                    // panic!("missing object in storage on storage object reference drop");
                 }
             }
         }

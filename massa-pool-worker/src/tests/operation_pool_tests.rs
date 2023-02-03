@@ -19,7 +19,9 @@
 //!
 use super::tools::{create_some_operations, operation_pool_test};
 use crate::operation_pool::OperationPool;
-use massa_execution_exports::test_exports::MockExecutionController;
+use massa_execution_exports::test_exports::{
+    MockExecutionController, MockExecutionControllerMessage,
+};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -31,7 +33,7 @@ use massa_models::{
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 use tokio::sync::broadcast;
 
 #[test]
@@ -78,7 +80,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
 #[test]
 #[ignore]
 fn test_pool() {
-    let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
+    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_config = PoolConfig::default();
     let storage_base = Storage::create_root();
     let operation_sender = broadcast::channel(pool_config.broadcast_operations_capacity).0;
@@ -117,6 +119,31 @@ fn test_pool() {
             .get_thread(pool_config.thread_count);
         thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
     }
+    // let items = &thread_tx_lists
+    //     .iter()
+    //     .filter(|lst| !lst.is_empty())
+    //     .map(|lst| lst.iter().map(|itm| &itm.0.id).collect::<Vec<_>>());
+    // dbg!(&items.clone().collect::<Vec<_>>());
+    let thread_tx_lists_cloned = thread_tx_lists.clone();
+    std::thread::spawn(move || loop {
+        match execution_receiver.recv_timeout(Duration::from_millis(100)) {
+            Ok(MockExecutionControllerMessage::UnexecutedOpsAmong {
+                ops: _ops,
+                thread,
+                response_tx,
+            }) => {
+                let lst = thread_tx_lists_cloned.get(thread as usize).unwrap();
+                let ops = lst.iter().map(|itm| itm.0.id).collect();
+                response_tx.send(ops).unwrap();
+            }
+            Ok(MockExecutionControllerMessage::GetFinalAndCandidateBalance {
+                response_tx, ..
+            }) => response_tx
+                .send(vec![(Some(Amount::from_raw(0)), Some(Amount::from_raw(0)))])
+                .unwrap(),
+            _ => {}
+        }
+    });
 
     // sort from bigger fee to smaller and truncate
     for lst in thread_tx_lists.iter_mut() {
@@ -126,13 +153,26 @@ fn test_pool() {
 
     // checks ops are the expected ones for thread 0 and 1 and various periods
     for thread in 0u8..pool_config.thread_count {
-        dbg!(thread);
+        // let mut once = true;
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 3;
             // fails at a non-deterministic point in this double iteration.
             // Furthest I saw it get was thread 8 in 0..32
             let (ids, storage) = pool.get_block_operations(&target_slot);
+
+            // if !ids.is_empty() {
+            //     if once {
+            //         println!(
+            //             "{:?}",
+            //             &thread_tx_lists[target_slot.thread as usize]
+            //                 .iter()
+            //                 .map(|itm| itm.0.id)
+            //                 .collect::<Vec<_>>()
+            //         );
+            //         once = false;
+            //     }
+            // }
 
             assert!(ids
                 .iter()
