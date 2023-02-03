@@ -1788,7 +1788,7 @@ impl MultiSig {
     ) -> Result<MultiSig, MassaSignatureError> {
         match our_keypair.clone() {
             KeyPair::KeyPairV0(_kp) => Err(MassaSignatureError::InvalidVersionError(String::from(
-                "MultiSig not available for KeyPairs V1",
+                "MultiSig not available for KeyPairs V0",
             ))),
             KeyPair::KeyPairV1(kp) => {
                 let t = schnorrkel::signing_context(b"massa_sig").bytes(hash.to_bytes());
@@ -1928,9 +1928,9 @@ impl std::fmt::Debug for MultiSigMsg {
 pub async fn start_multi_signature_scheme() -> Result<(), Error> {
     let (tx, _) = tokio::sync::broadcast::channel::<MultiSigMsg>(3);
 
-    let keypair_1 = KeyPair::generate(0).unwrap();
-    let keypair_2 = KeyPair::generate(0).unwrap();
-    let keypair_3 = KeyPair::generate(0).unwrap();
+    let keypair_1 = KeyPair::generate(1).unwrap();
+    let keypair_2 = KeyPair::generate(1).unwrap();
+    let keypair_3 = KeyPair::generate(1).unwrap();
 
     let pubkey_1 = keypair_1.get_public_key();
     let pubkey_2 = keypair_2.get_public_key();
@@ -1996,7 +1996,11 @@ pub async fn start_multi_signature_scheme() -> Result<(), Error> {
 
     println!("ALL 3 tasks launched");
 
-    let _ret = join!(handle1, handle2, handle3);
+    let (res1, res2, res3) = join!(handle1, handle2, handle3);
+
+    assert!(res1.is_ok() && res1.unwrap().is_ok());
+    assert!(res2.is_ok() && res2.unwrap().is_ok());
+    assert!(res3.is_ok() && res3.unwrap().is_ok());
 
     println!("ALL 3 tasks joined");
 
@@ -2112,7 +2116,7 @@ pub async fn handle_multi_signature_one_node(
 
     match our_keypair.get_public_key() {
         PublicKey::PublicKeyV0(_) => {
-            bail!("Wrong PubKey version");
+            Err(MassaSignatureError::InvalidVersionError(String::from("Wrong PubKey version")).into())
         }
         PublicKey::PublicKeyV1(_pk) => {
             let t = schnorrkel::signing_context(b"massa_sig").bytes(hash.to_bytes());
@@ -2121,11 +2125,10 @@ pub async fn handle_multi_signature_one_node(
 
             let result = aggregate_pk.verify(t, &signature);
 
-            assert!(result.is_ok());
+            result.map_err(|_| MassaSignatureError::MultiSignatureError(String::from("Could not verify the multi-signature")).into())
         }
     }
 
-    Ok(())
 }
 
 fn original_multi_signature_simulation() {
