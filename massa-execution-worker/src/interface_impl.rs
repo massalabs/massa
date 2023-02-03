@@ -18,6 +18,7 @@ use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -760,5 +761,19 @@ impl Interface for InterfaceImpl {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }
+    }
+
+    /// Hashes givens bytes with sha256
+    ///
+    /// # Arguments
+    /// * bytes: bytes to hash
+    ///
+    /// # Returns
+    /// The vector of bytes representation of the resulting hash
+    fn sha256_hash(&self, bytes: &[u8]) -> Result<Vec<u8>> {
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        let hash = hasher.finalize().to_vec();
+        Ok(hash)
     }
 }

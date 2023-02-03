@@ -2531,6 +2531,7 @@ dependencies = [
  "schnellru",
  "serde_json",
  "serial_test 0.10.0",
+ "sha2 0.10.6",
  "tempfile",
  "tracing",
 ]
