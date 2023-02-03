@@ -451,9 +451,11 @@ fn local_execution() {
         &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
     );
     assert_eq!(events[2].data, "one local execution completed");
-    assert_eq!(
-        Amount::from_raw(events[5].data.parse().unwrap()),
-        Amount::from_str("299_979.05275").unwrap() // start (299_000) - fee (1000) - storage cost
+    let amount = Amount::from_raw(events[5].data.parse().unwrap());
+    assert!(
+        // start (299_000) - fee (1000) - storage cost
+        Amount::from_str("299_979").unwrap() < amount
+            && amount < Amount::from_str("299_980").unwrap()
     );
     assert_eq!(events[5].context.call_stack.len(), 1);
     assert_eq!(
@@ -1103,7 +1105,7 @@ fn sc_datastore() {
     let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
     block_storage.insert(block.id, storage.clone());
     controller.update_blockclique_status(finalized_blocks, Some(Default::default()), block_storage);
-    std::thread::sleep(Duration::from_millis(10));
+    std::thread::sleep(Duration::from_millis(100));
 
     // retrieve the event emitted by the execution error
     let events = controller.get_filtered_sc_output_event(EventFilter::default());

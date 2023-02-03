@@ -1,8 +1,18 @@
+use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_ledger_exports::LedgerEntry;
-use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerError};
+use massa_hash::Hash;
+use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
-use massa_models::{address::Address, amount::Amount, config::THREAD_COUNT};
+use massa_models::{
+    address::Address,
+    amount::Amount,
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    config::THREAD_COUNT,
+    operation::SecureShareOperation,
+    secure_share::SecureShareContent,
+    slot::Slot,
+};
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
@@ -14,23 +24,7 @@ use std::{
     io::Seek,
     sync::Arc,
 };
-use tempfile::NamedTempFile;
-use tempfile::TempDir;
-
-#[cfg(feature = "testing")]
-use massa_models::{
-    block::{Block, BlockSerializer, SecureShareBlock},
-    block_header::{BlockHeader, BlockHeaderSerializer},
-    operation::SecureShareOperation,
-    secure_share::SecureShareContent,
-    slot::Slot,
-};
-
-#[cfg(feature = "testing")]
-use massa_execution_exports::ExecutionError;
-
-#[cfg(feature = "testing")]
-use massa_hash::Hash;
+use tempfile::{NamedTempFile, TempDir};
 
 fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let file = NamedTempFile::new().unwrap();
@@ -101,7 +95,7 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 
 /// Same as `get_random_address()` and return `keypair` associated
 /// to the address.
-#[cfg(feature = "testing")]
+#[allow(dead_code)] // to avoid warnings on gas_calibration feature
 pub fn get_random_address_full() -> (Address, KeyPair) {
     let keypair = KeyPair::generate(0).unwrap();
     (Address::from_public_key(&keypair.get_public_key()), keypair)
@@ -137,7 +131,7 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
 /// creator.
 ///
 /// Return a result that should be unwrapped in the root `#[test]` routine.
-#[cfg(feature = "testing")]
+#[allow(dead_code)] // to avoid warnings on gas_calibration feature
 pub fn create_block(
     creator_keypair: KeyPair,
     operations: Vec<SecureShareOperation>,

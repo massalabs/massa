@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::repl::Output;
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_api_exports::{
     address::{AddressInfo, CompactAddressInfo},
@@ -124,14 +124,14 @@ pub enum Command {
         props(args = "(add, remove or allow-all) [IpAddr]", pwd_not_needed = "true"),
         message = "Manage boostrap whitelist IP address(es). No args returns the whitelist blacklist"
     )]
-    node_bootsrap_whitelist,
+    node_bootstrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "(add or remove) [IpAddr]", pwd_not_needed = "true"),
         message = "Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist"
     )]
-    node_bootsrap_blacklist,
+    node_bootstrap_blacklist,
 
     #[strum(
         ascii_case_insensitive,
@@ -185,7 +185,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool",
+            args = "start=slot_period,slot_thread end=slot_period,slot_thread emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool",
             pwd_not_needed = "true"
         ),
         message = "show events emitted by smart contracts with various filters"
@@ -616,8 +616,8 @@ impl Command {
             }
 
             Command::get_blocks => {
-                if parameters.len() != 1 {
-                    bail!("wrong param numbers, expecting at least one IP address")
+                if parameters.is_empty() {
+                    bail!("wrong param numbers, expecting at least one block id")
                 }
                 let block_ids = parse_vec::<BlockId>(parameters)?;
                 match client.public.get_blocks(block_ids).await {
@@ -658,17 +658,17 @@ impl Command {
                     if s.len() == 2 && p_list.contains(&s[0]) {
                         p.insert(s[0], s[1]);
                     } else {
-                        bail!("invalid parameter");
+                        bail!("invalid parameter: {}, type \"help get_filtered_sc_output_event\" to get the list of valid parameters", v);
                     }
                 }
                 let filter = EventFilter {
-                    start: parse_key_value(&p, p_list[0]),
-                    end: parse_key_value(&p, p_list[1]),
-                    emitter_address: parse_key_value(&p, p_list[2]),
-                    original_caller_address: parse_key_value(&p, p_list[3]),
-                    original_operation_id: parse_key_value(&p, p_list[4]),
-                    is_final: parse_key_value(&p, p_list[5]),
-                    is_error: parse_key_value(&p, p_list[6]),
+                    start: parse_key_value(&p, p_list[0])?,
+                    end: parse_key_value(&p, p_list[1])?,
+                    emitter_address: parse_key_value(&p, p_list[2])?,
+                    original_caller_address: parse_key_value(&p, p_list[3])?,
+                    original_operation_id: parse_key_value(&p, p_list[4])?,
+                    is_final: parse_key_value(&p, p_list[5])?,
+                    is_error: parse_key_value(&p, p_list[6])?,
                 };
                 match client.public.get_filtered_sc_output_event(filter).await {
                     Ok(events) => Ok(Box::new(events)),
@@ -1180,10 +1180,10 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-            Command::node_bootsrap_blacklist => {
+            Command::node_bootstrap_blacklist => {
                 if parameters.is_empty() {
                     match client.private.node_bootstrap_blacklist().await {
-                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Ok(bootstraplist_ips) => Ok(Box::new(bootstraplist_ips)),
                         Err(e) => rpc_error!(e),
                     }
                 } else {
@@ -1204,7 +1204,7 @@ impl Command {
                                 Ok(()) => {
                                     if !json {
                                         println!(
-                                            "Request of bootsrap blacklisting successfully sent!"
+                                            "Request of bootstrap blacklisting successfully sent!"
                                         )
                                     }
                                     Ok(Box::new(()))
@@ -1220,7 +1220,7 @@ impl Command {
                             {
                                 Ok(()) => {
                                     if !json {
-                                        println!("Request of remove from bootsrap blacklist successfully sent!")
+                                        println!("Request of remove from bootstrap blacklist successfully sent!")
                                     }
                                     Ok(Box::new(()))
                                 }
@@ -1234,12 +1234,12 @@ impl Command {
                     res
                 }
             }
-            Command::node_bootsrap_whitelist => {
+            Command::node_bootstrap_whitelist => {
                 if parameters.is_empty() {
                     match client.private.node_bootstrap_whitelist().await {
-                        Ok(bootsraplist_ips) => Ok(Box::new(bootsraplist_ips)),
+                        Ok(bootstraplist_ips) => Ok(Box::new(bootstraplist_ips)),
                         Err(e) => {
-                            client_warning!("if bootsrap whitelist configuration file does't exists, bootsrap is allowed for everyone !!!");
+                            client_warning!("if bootstrap whitelist configuration file does't exists, bootstrap is allowed for everyone !!!");
                             rpc_error!(e)
                         }
                     }
@@ -1264,7 +1264,7 @@ impl Command {
                                 Ok(()) => {
                                     if !json {
                                         println!(
-                                            "Request of bootsrap whitelisting successfully sent!"
+                                            "Request of bootstrap whitelisting successfully sent!"
                                         )
                                     }
                                     Ok(Box::new(()))
@@ -1283,7 +1283,7 @@ impl Command {
                             {
                                 Ok(()) => {
                                     if !json {
-                                        println!("Request of remove from bootsrap whitelist successfully sent!")
+                                        println!("Request of remove from bootstrap whitelist successfully sent!")
                                     }
                                     Ok(Box::new(()))
                                 }
@@ -1295,7 +1295,7 @@ impl Command {
                                 Ok(()) => {
                                     if !json {
                                         println!(
-                                            "Request of bootsrap whitelisting everyone successfully sent!"
+                                            "Request of bootstrap whitelisting everyone successfully sent!"
                                         )
                                     }
                                     Ok(Box::new(()))
@@ -1414,7 +1414,7 @@ async fn send_operation(
 
 /// TODO: ugly utilities functions
 /// takes a slice of string and makes it into a `Vec<T>`
-pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, Error>
+pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, anyhow::Error>
 where
     T::Err: Display,
 {
@@ -1431,16 +1431,21 @@ async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
 }
 
-// chains get_key_value with its parsing and displays a warning on parsing error
-pub fn parse_key_value<T: std::str::FromStr>(p: &HashMap<&str, &str>, key: &str) -> Option<T> {
-    p.get_key_value(key).and_then(|x| {
-        x.1.parse::<T>()
-            .map_err(|_| {
-                client_warning!(format!(
-                    "'{}' parameter was ignored because of wrong corresponding value",
-                    key
-                ))
-            })
-            .ok()
-    })
+// chains get_key_value with its parsing
+pub fn parse_key_value<T: std::str::FromStr>(
+    p: &HashMap<&str, &str>,
+    key: &str,
+) -> anyhow::Result<Option<T>, anyhow::Error>
+where
+    T::Err: Display,
+{
+    if let Some(value) = p.get_key_value(key) {
+        value
+            .1
+            .parse::<T>()
+            .map(Option::Some)
+            .map_err(|e| anyhow!("failed to parse \"{}\" due to: {}", value.1, e))
+    } else {
+        Ok(None)
+    }
 }

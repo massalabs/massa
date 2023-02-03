@@ -14,6 +14,7 @@ use massa_api_exports::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
     slot::SlotAmount,
     TimeInterval,
 };
@@ -380,11 +381,44 @@ impl MassaRpcServer for API<Public> {
             })
             .collect::<BTreeMap<_, _>>();
 
+        let current_cycle = last_slot
+            .unwrap_or_else(|| Slot::new(0, 0))
+            .get_cycle(api_settings.periods_per_cycle);
+
+        let cycle_duration = match api_settings.t0.checked_mul(api_settings.periods_per_cycle) {
+            Ok(cycle_duration) => cycle_duration,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
+        let current_cycle_time_result = if current_cycle == 0 {
+            Ok(api_settings.genesis_timestamp)
+        } else {
+            cycle_duration.checked_mul(current_cycle).and_then(
+                |elapsed_time_before_current_cycle| {
+                    api_settings
+                        .genesis_timestamp
+                        .checked_add(elapsed_time_before_current_cycle)
+                },
+            )
+        };
+
+        let current_cycle_time = match current_cycle_time_result {
+            Ok(current_cycle_time) => current_cycle_time,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
+        let next_cycle_time = match current_cycle_time.checked_add(cycle_duration) {
+            Ok(next_cycle_time) => next_cycle_time,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
         Ok(NodeStatus {
             node_id,
             node_ip: network_config.routable_ip,
             version,
             current_time: now,
+            current_cycle_time,
+            next_cycle_time,
             connected_nodes,
             last_slot,
             next_slot,
@@ -393,9 +427,7 @@ impl MassaRpcServer for API<Public> {
             network_stats,
             pool_stats,
             config,
-            current_cycle: last_slot
-                .unwrap_or_else(|| Slot::new(0, 0))
-                .get_cycle(api_settings.periods_per_cycle),
+            current_cycle,
         })
     }
 
@@ -404,7 +436,10 @@ impl MassaRpcServer for API<Public> {
         Ok(consensus_controller.get_cliques())
     }
 
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
@@ -431,9 +466,13 @@ impl MassaRpcServer for API<Public> {
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();
+
         staker_vec
             .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
-        Ok(staker_vec)
+
+        let paged_vec = PagedVec::new(staker_vec, page_request);
+
+        Ok(paged_vec)
     }
 
     async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
@@ -503,9 +542,12 @@ impl MassaRpcServer for API<Public> {
         for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
             res.push(OperationInfo {
                 id,
-                operation,
                 in_pool,
                 is_final,
+                thread: operation
+                    .content_creator_address
+                    .get_thread(api_cfg.thread_count),
+                operation,
                 in_blocks: in_blocks.into_iter().collect(),
             });
         }
@@ -601,30 +643,33 @@ impl MassaRpcServer for API<Public> {
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                if let Some(verifiable_block) = storage.read_blocks().get(&id).cloned() {
-                    if let Some(graph_status) = consensus_controller
-                        .get_block_statuses(&[id])
-                        .into_iter()
-                        .next()
-                    {
-                        let is_final = graph_status == BlockGraphStatus::Final;
-                        let is_in_blockclique =
-                            graph_status == BlockGraphStatus::ActiveInBlockclique;
-                        let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-                        let is_discarded = graph_status == BlockGraphStatus::Discarded;
+                let content = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
+                    wrapped_block.content.clone()
+                } else {
+                    return None;
+                };
 
-                        return Some(BlockInfo {
-                            id,
-                            content: Some(BlockInfoContent {
-                                is_final,
-                                is_in_blockclique,
-                                is_candidate,
-                                is_discarded,
-                                block: verifiable_block.content,
-                            }),
-                        });
-                    }
+                if let Some(graph_status) = consensus_controller
+                    .get_block_statuses(&[id])
+                    .into_iter()
+                    .next()
+                {
+                    let is_final = graph_status == BlockGraphStatus::Final;
+                    let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+                    let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+                    let is_discarded = graph_status == BlockGraphStatus::Discarded;
+
+                    return Some(BlockInfo {
+                        id,
+                        content: Some(BlockInfoContent {
+                            is_final,
+                            is_in_blockclique,
+                            is_candidate,
+                            is_discarded,
+                            block: content,
+                        }),
+                    });
                 }
 
                 None

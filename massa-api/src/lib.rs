@@ -19,6 +19,7 @@ use massa_api_exports::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
     TimeInterval,
 };
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
@@ -43,9 +44,8 @@ use parking_lot::RwLock;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
-
 use tokio::sync::mpsc;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
 mod api;
@@ -95,8 +95,12 @@ pub struct Private {
 
 /// API v2 content
 pub struct ApiV2 {
+    /// link to the consensus component
+    pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
+    /// link to the execution component
+    pub execution_controller: Box<dyn ExecutionController>,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
     /// API settings
@@ -266,32 +270,32 @@ pub trait MassaRpc {
     #[method(name = "node_remove_from_peers_whitelist")]
     async fn node_remove_from_peers_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
-    /// Returns node bootsrap whitelist IP address(es).
+    /// Returns node bootstrap whitelist IP address(es).
     #[method(name = "node_bootstrap_whitelist")]
     async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>>;
 
-    /// Allow everyone to bootsrap from the node.
-    /// remove bootsrap whitelist configuration file.
+    /// Allow everyone to bootstrap from the node.
+    /// remove bootstrap whitelist configuration file.
     #[method(name = "node_bootstrap_whitelist_allow_all")]
     async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()>;
 
-    /// Add IP address(es) to node bootsrap whitelist.
+    /// Add IP address(es) to node bootstrap whitelist.
     #[method(name = "node_add_to_bootstrap_whitelist")]
     async fn node_add_to_bootstrap_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
-    /// Remove IP address(es) to bootsrap whitelist.
+    /// Remove IP address(es) to bootstrap whitelist.
     #[method(name = "node_remove_from_bootstrap_whitelist")]
     async fn node_remove_from_bootstrap_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
-    /// Returns node bootsrap blacklist IP address(es).
+    /// Returns node bootstrap blacklist IP address(es).
     #[method(name = "node_bootstrap_blacklist")]
     async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>>;
 
-    /// Add IP address(es) to node bootsrap blacklist.
+    /// Add IP address(es) to node bootstrap blacklist.
     #[method(name = "node_add_to_bootstrap_blacklist")]
     async fn node_add_to_bootstrap_blacklist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
-    /// Remove IP address(es) to bootsrap blacklist.
+    /// Remove IP address(es) to bootstrap blacklist.
     #[method(name = "node_remove_from_bootstrap_blacklist")]
     async fn node_remove_from_bootstrap_blacklist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
@@ -315,7 +319,10 @@ pub trait MassaRpc {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[method(name = "get_stakers")]
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>>;
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>>;
 
     /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     #[method(name = "get_operations")]

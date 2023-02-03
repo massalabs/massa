@@ -13,6 +13,8 @@ use jsonrpsee::rpc_params;
 use jsonrpsee::types::error::CallError;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
+use massa_api_exports::page::PagedVecV2;
+use massa_api_exports::ApiRequest;
 use massa_api_exports::{
     address::AddressInfo,
     block::{BlockInfo, BlockSummary},
@@ -177,50 +179,50 @@ impl RpcClient {
             .await
     }
 
-    /// Returns node bootsrap whitelist IP address(es).
+    /// Returns node bootstrap whitelist IP address(es).
     pub async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
         self.http_client
             .request("node_bootstrap_whitelist", rpc_params![])
             .await
     }
 
-    /// Allow everyone to bootsrap from the node.
-    /// remove bootsrap whitelist configuration file.
+    /// Allow everyone to bootstrap from the node.
+    /// remove bootstrap whitelist configuration file.
     pub async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
         self.http_client
             .request("node_bootstrap_whitelist_allow_all", rpc_params![])
             .await
     }
 
-    /// Add IP address(es) to node bootsrap whitelist.
+    /// Add IP address(es) to node bootstrap whitelist.
     pub async fn node_add_to_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_add_to_bootstrap_whitelist", rpc_params![ips])
             .await
     }
 
-    /// Remove IP address(es) to bootsrap whitelist.
+    /// Remove IP address(es) to bootstrap whitelist.
     pub async fn node_remove_from_bootstrap_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_remove_from_bootstrap_whitelist", rpc_params![ips])
             .await
     }
 
-    /// Returns node bootsrap blacklist IP address(es).
+    /// Returns node bootstrap blacklist IP address(es).
     pub async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
         self.http_client
             .request("node_bootstrap_blacklist", rpc_params![])
             .await
     }
 
-    /// Add IP address(es) to node bootsrap blacklist.
+    /// Add IP address(es) to node bootstrap blacklist.
     pub async fn node_add_to_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_add_to_bootstrap_blacklist", rpc_params![ips])
             .await
     }
 
-    /// Remove IP address(es) to bootsrap blacklist.
+    /// Remove IP address(es) to bootstrap blacklist.
     pub async fn node_remove_from_bootstrap_blacklist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.http_client
             .request("node_remove_from_bootstrap_blacklist", rpc_params![ips])
@@ -270,7 +272,7 @@ impl RpcClient {
     }
 
     /// Returns block(s) information associated to a given list of block(s) ID(s)
-    pub async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<BlockInfo> {
+    pub async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
         self.http_client
             .request("get_blocks", rpc_params![block_ids])
             .await
@@ -428,6 +430,35 @@ impl RpcClientV2 {
     ////////////////
     //
     // Experimental APIs. They might disappear, and they will change //
+
+    /// Get the active stakers and their active roll counts for the current cycle sorted by largest roll counts.
+    pub async fn get_largest_stakers(
+        &self,
+        request: Option<ApiRequest>,
+    ) -> RpcResult<PagedVecV2<(BlockId, u64)>> {
+        if let Some(client) = self.http_client.as_ref() {
+            client
+                .request("get_largest_stakers", rpc_params![request])
+                .await
+        } else {
+            Err(JsonRpseeError::Custom(
+                "error, no Http client instance found".to_owned(),
+            ))
+        }
+    }
+
+    /// Get the ids of best parents for the next block to be produced along with their period
+    pub async fn get_next_block_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>> {
+        if let Some(client) = self.http_client.as_ref() {
+            client
+                .request("get_next_block_best_parents", rpc_params![])
+                .await
+        } else {
+            Err(JsonRpseeError::Custom(
+                "error, no Http client instance found".to_owned(),
+            ))
+        }
+    }
 
     /// Get Massa node version
     pub async fn get_version(&self) -> RpcResult<Version> {

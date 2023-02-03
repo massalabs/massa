@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.19.0",
+        "version": "TEST.20.0",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -394,12 +394,22 @@
                     "description": "Massa public api"
                 }
             ],
-            "params": [],
+            "params": [
+                {
+                    "schema": {
+                        "$ref": "#/components/schemas/PageRequest"
+                    },
+                    "name": "PageRequest"
+                }
+            ],
             "result": {
                 "schema": {
-                    "$ref": "#/components/schemas/Staker"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/Staker"
+                    }
                 },
-                "name": "Staker"
+                "name": "PagedStakers"
             },
             "name": "get_stakers",
             "summary": "Get stakers",
@@ -503,8 +513,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_blacklist",
-            "summary": "Add to bootsrap blacklist given IP address(es)",
-            "description": "Add to bootsrap blacklist given IP address(es)."
+            "summary": "Add to bootstrap blacklist given IP address(es)",
+            "description": "Add to bootstrap blacklist given IP address(es)."
         },
         {
             "tags": [
@@ -533,8 +543,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_whitelist",
-            "summary": "Add to bootsrap whitelist given IP address(es)",
-            "description": "Add to bootsrap whitelist given IP address(es)."
+            "summary": "Add to bootstrap whitelist given IP address(es)",
+            "description": "Add to bootstrap whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -644,8 +654,8 @@
                 }
             },
             "name": "node_bootstrap_blacklist",
-            "summary": "Returns bootsrap blacklist IP address(es)",
-            "description": "Returns bootsrap blacklist IP address(es)."
+            "summary": "Returns bootstrap blacklist IP address(es)",
+            "description": "Returns bootstrap blacklist IP address(es)."
         },
         {
             "tags": [
@@ -667,8 +677,8 @@
                 }
             },
             "name": "node_bootstrap_whitelist",
-            "summary": "Returns bootsrap whitelist IP address(es)",
-            "description": "Returns bootsrap whitelist IP address(es)."
+            "summary": "Returns bootstrap whitelist IP address(es)",
+            "description": "Returns bootstrap whitelist IP address(es)."
         },
         {
             "tags": [
@@ -684,8 +694,8 @@
                 "schema": false
             },
             "name": "node_bootstrap_whitelist_allow_all",
-            "summary": "Allow everyone to bootsrap from the node",
-            "description": "Allow everyone to bootsrap from the node. Remove bootsrap whitelist configuration file."
+            "summary": "Allow everyone to bootstrap from the node",
+            "description": "Allow everyone to bootstrap from the node. Remove bootstrap whitelist configuration file."
         },
         {
             "tags": [
@@ -737,8 +747,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_blacklist",
-            "summary": "Remove from bootsrap blacklist given IP address(es)",
-            "description": "Remove from bootsrap blacklist given IP address(es)."
+            "summary": "Remove from bootstrap blacklist given IP address(es)",
+            "description": "Remove from bootstrap blacklist given IP address(es)."
         },
         {
             "tags": [
@@ -767,8 +777,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_whitelist",
-            "summary": "Remove from bootsrap whitelist given IP address(es)",
-            "description": "Remove from bootsrap whitelist given IP address(es)."
+            "summary": "Remove from bootstrap whitelist given IP address(es)",
+            "description": "Remove from bootstrap whitelist given IP address(es)."
         },
         {
             "tags": [
@@ -1025,6 +1035,61 @@
             "name": "send_operations",
             "summary": "Adds operations to pool",
             "description": "Adds operations to pool. Returns operations that were ok and sent to pool."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
+            "params": [
+                {
+                    "schema": {
+                        "$ref": "#/components/schemas/ApiRequest"
+                    },
+                    "name": "ApiRequest",
+                    "description": "Optional api request"
+                }
+            ],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/PagedVecStaker"
+                },
+                "name": "PagedVecStaker"
+            },
+            "name": "get_largest_stakers",
+            "summary": "Get largest stakers",
+            "description": "Returns the active stakers and their active roll counts for the current cycle sorted by largest roll counts."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/BlockParent"
+                    }
+                },
+                "name": "NextBlockBestParents"
+            },
+            "name": "get_next_block_best_parents",
+            "summary": "Get next block best parents",
+            "description": "Returns the ids of best parents for the next block to be produced along with their period"
         },
         {
             "tags": [
@@ -1432,6 +1497,16 @@
                 },
                 "additionalProperties": false
             },
+            "ApiRequest": {
+                "description": "ApiRequest for apiV2",
+                "type": "object",
+                "properties": {
+                    "page_request": {
+                        "$ref": "#/components/schemas/PageRequest",
+                        "description": "Optional page request"
+                    }
+                }
+            },
             "Balance": {
                 "title": "Balance",
                 "required": [
@@ -1526,6 +1601,26 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "BlockParent": {
+                "title": "BlockParent",
+                "description": "A tuple which contains (BlockId, period)",
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "BlockId": {
+                            "$ref": "#/components/schemas/BlockId"
+                        },
+                        "period": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "example": {
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": "Number",
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": "Number"
+                }
             },
             "CallSC": {
                 "title": "CallSC",
@@ -2336,6 +2431,8 @@
                     "consensus_stats",
                     "current_cycle",
                     "current_time",
+                    "current_cycle_time",
+                    "next_cycle_time",
                     "network_stats",
                     "next_slot",
                     "node_id",
@@ -2362,6 +2459,14 @@
                     },
                     "current_time": {
                         "description": "Time in milliseconds since 1970-01-01",
+                        "type": "number"
+                    },
+                    "current_cycle_time": {
+                        "description": "current cycle starting time in milliseconds since 1970-01-01",
+                        "type": "number"
+                    },
+                    "next_cycle_time": {
+                        "description": "next cycle starting time in milliseconds since 1970-01-01",
                         "type": "number"
                     },
                     "last_slot": {
@@ -2432,6 +2537,7 @@
                     "in_blocks",
                     "in_pool",
                     "is_final",
+                    "thread",
                     "operation"
                 ],
                 "type": "object",
@@ -2454,6 +2560,10 @@
                     "is_final": {
                         "description": "True if the operation is final (for example in a final block)",
                         "type": "boolean"
+                    },
+                    "thread": {
+                        "description": "Thread in which the operation can be included",
+                        "type": "number"
                     },
                     "operation": {
                         "$ref": "#/components/schemas/WrappedOperation",
@@ -2513,6 +2623,38 @@
                     "RollSell": {
                         "$ref": "#/components/schemas/RollSell",
                         "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration"
+                    }
+                }
+            },
+            "PageRequest": {
+                "title": "PageRequest",
+                "description": "An PageRequest object, which contains limit (max elements par page) and a page offset.",
+                "type": "object",
+                "required": [
+                    "limit",
+                    "offset"
+                ],
+                "properties": {
+                    "limit": {
+                        "type": "number"
+                    },
+                    "offset": {
+                        "type": "number"
+                    }
+                }
+            },
+            "PagedVecStaker": {
+                "description": "PagedVec of stakers for apiV2",
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Staker"
+                        }
+                    },
+                    "total_count": {
+                        "type": "number"
                     }
                 }
             },
@@ -3101,6 +3243,22 @@
                 "description": "A OperationType object",
                 "schema": {
                     "$ref": "#/components/schemas/OperationType"
+                }
+            },
+            "PagedVecStaker": {
+                "name": "PagedVecStaker",
+                "summary": "PagedVecStaker",
+                "description": "A PagedVecStaker object",
+                "schema": {
+                    "$ref": "#/components/schemas/PagedVecStaker"
+                }
+            },
+            "PageRequest": {
+                "name": "PageRequest",
+                "summary": "PageRequest",
+                "description": "An Page request parameter, which contains limit and offset properties.",
+                "schema": {
+                    "$ref": "#/components/schemas/PageRequest"
                 }
             },
             "PubkeySig": {
