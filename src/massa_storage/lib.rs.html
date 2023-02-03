@@ -838,8 +838,8 @@
                     }
                 }
                 hash_map::Entry::Vacant(_vac) =&gt; {
-                    <span class="comment">// panic!(&quot;missing object in storage on storage object reference drop&quot;);
-                </span>}
+                    <span class="macro">panic!</span>(<span class="string">&quot;missing object in storage on storage object reference drop&quot;</span>);
+                }
             }
         }
         <span class="comment">// if there are orphaned objects, remove them from storage
