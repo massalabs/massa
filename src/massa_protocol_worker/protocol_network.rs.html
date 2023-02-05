@@ -576,13 +576,6 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -750,9 +743,8 @@
         from_node_id: NodeId,
         list: Vec&lt;(BlockId, AskForBlocksInfo)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="kw">let </span>node_info = <span class="kw">match </span><span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) {
-            <span class="prelude-val">Some</span>(node_info) =&gt; node_info,
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+        <span class="kw">let </span><span class="prelude-val">Some</span>(node_info) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
         <span class="kw">let </span><span class="kw-2">mut </span>all_blocks_info = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(hash, info_wanted) <span class="kw">in </span><span class="kw-2">&amp;</span>list {
@@ -892,9 +884,7 @@
             node_info.insert_known_ops(operation_ids.iter().map(|id| id.prefix()));
         }
 
-        <span class="kw">let </span>info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) {
-            info
-        } <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) <span class="kw">else </span>{
             <span class="macro">warn!</span>(
                 <span class="string">&quot;Node {} sent us an operation list but we don&#39;t have block id {} in our wishlist.&quot;</span>,
                 from_node_id, block_id
@@ -906,9 +896,7 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
 
-        <span class="kw">let </span>header = <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="kw-2">&amp;</span>info.header {
-            header
-        } <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(header) = <span class="kw-2">&amp;</span>info.header <span class="kw">else </span>{
             <span class="macro">warn!</span>(<span class="string">&quot;Node {} sent us an operation list but we don&#39;t have receive the header of block id {} yet.&quot;</span>, from_node_id, block_id);
             <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
                 node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);
@@ -1024,9 +1012,7 @@
                     }
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 };
-                <span class="kw">let </span>block_operation_ids = <span class="kw">if let </span><span class="prelude-val">Some</span>(operations) = <span class="kw-2">&amp;</span>info.operation_ids {
-                    operations
-                } <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Some</span>(block_operation_ids) = <span class="kw-2">&amp;</span>info.operation_ids <span class="kw">else  </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Node {} sent us full operations but we don&#39;t have received the operation list of block id {} yet.&quot;</span>, from_node_id, block_id);
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.active_nodes.get_mut(<span class="kw-2">&amp;</span>from_node_id) &amp;&amp; node.asked_blocks.contains_key(<span class="kw-2">&amp;</span>block_id) {
                         node.asked_blocks.remove(<span class="kw-2">&amp;</span>block_id);

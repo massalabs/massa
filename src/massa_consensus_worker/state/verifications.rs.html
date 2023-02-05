@@ -404,10 +404,6 @@
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -508,13 +504,12 @@
 
         <span class="comment">// check if it was the creator&#39;s turn to create this block
         // (step 1 in consensus/pos.md)
-        </span><span class="kw">let </span>slot_draw_address = <span class="kw">match </span><span class="self">self
+        </span><span class="kw">let </span><span class="prelude-val">Ok</span>(slot_draw_address) =  <span class="self">self
             </span>.channels
             .selector_controller
-            .get_producer(header.content.slot)
-        {
-            <span class="prelude-val">Ok</span>(draw) =&gt; draw,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::WaitForSlot), <span class="comment">// TODO properly handle PoS errors
+            .get_producer(header.content.slot) <span class="kw">else
+        </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::WaitForSlot); <span class="comment">// TODO properly handle PoS errors
         </span>};
         <span class="kw">if </span>creator_addr != slot_draw_address {
             <span class="comment">// it was not the creator&#39;s turn to create a block for this slot
@@ -596,17 +591,14 @@
             <span class="kw">let </span><span class="kw-2">mut </span>gp_max_slots = <span class="macro">vec!</span>[<span class="number">0u64</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
             <span class="kw">for </span>parent_i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
                 <span class="kw">let </span>(parent_h, parent_period) = parents[parent_i <span class="kw">as </span>usize];
-                <span class="kw">let </span>parent = <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>parent_h) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active {
-                        a_block,
-                        storage: <span class="kw">_</span>,
-                    }) =&gt; a_block,
-                    <span class="kw">_ </span>=&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(
-                            <span class="string">&quot;inconsistency inside block statuses searching parent {} of block {}&quot;</span>,
-                            parent_h, block_id
-                        )))
-                    }
+                <span class="kw">let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
+                    a_block: parent,
+                    storage: <span class="kw">_</span>,
+                }) = read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>parent_h) <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(
+                        <span class="string">&quot;inconsistency inside block statuses searching parent {} of block {}&quot;</span>,
+                        parent_h, block_id
+                    )));
                 };
                 <span class="kw">if </span>parent_period &lt; gp_max_slots[parent_i <span class="kw">as </span>usize] {
                     <span class="comment">// a parent is earlier than a block known by another parent in that thread

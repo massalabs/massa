@@ -255,8 +255,6 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
@@ -393,13 +391,11 @@
 
         <span class="comment">// check if the block producer address is handled by the wallet
         </span><span class="kw">let </span>block_producer_keypair_ref = <span class="self">self</span>.wallet.read();
-        <span class="kw">let </span>block_producer_keypair = <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) =
-            block_producer_keypair_ref.find_associated_keypair(<span class="kw-2">&amp;</span>block_producer_addr)
-        {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(block_producer_keypair) =
+            block_producer_keypair_ref.find_associated_keypair(<span class="kw-2">&amp;</span>block_producer_addr) <span class="kw">else
+        </span>{
             <span class="comment">// the selected block producer is managed locally =&gt; continue to attempt block production
-            </span>kp
-        } <span class="kw">else </span>{
-            <span class="comment">// the selected block producer is not managed locally =&gt; quit
+            // the selected block producer is not managed locally =&gt; quit
             </span><span class="kw">return</span>;
         };
         <span class="comment">// get best parents and their periods
