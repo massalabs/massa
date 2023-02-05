@@ -98,13 +98,12 @@ impl ConsensusState {
 
         // check if it was the creator's turn to create this block
         // (step 1 in consensus/pos.md)
-        let slot_draw_address = match self
+        let Ok(slot_draw_address) =  self
             .channels
             .selector_controller
-            .get_producer(header.content.slot)
+            .get_producer(header.content.slot) else
         {
-            Ok(draw) => draw,
-            Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot), // TODO properly handle PoS errors
+            return Ok(HeaderCheckOutcome::WaitForSlot); // TODO properly handle PoS errors
         };
         if creator_addr != slot_draw_address {
             // it was not the creator's turn to create a block for this slot
@@ -186,17 +185,14 @@ impl ConsensusState {
             let mut gp_max_slots = vec![0u64; self.config.thread_count as usize];
             for parent_i in 0..self.config.thread_count {
                 let (parent_h, parent_period) = parents[parent_i as usize];
-                let parent = match read_shared_state.block_statuses.get(&parent_h) {
-                    Some(BlockStatus::Active {
-                        a_block,
-                        storage: _,
-                    }) => a_block,
-                    _ => {
-                        return Err(ConsensusError::ContainerInconsistency(format!(
-                            "inconsistency inside block statuses searching parent {} of block {}",
-                            parent_h, block_id
-                        )))
-                    }
+                let Some(BlockStatus::Active {
+                    a_block: parent,
+                    storage: _,
+                }) = read_shared_state.block_statuses.get(&parent_h) else {
+                    return Err(ConsensusError::ContainerInconsistency(format!(
+                        "inconsistency inside block statuses searching parent {} of block {}",
+                        parent_h, block_id
+                    )));
                 };
                 if parent_period < gp_max_slots[parent_i as usize] {
                     // a parent is earlier than a block known by another parent in that thread

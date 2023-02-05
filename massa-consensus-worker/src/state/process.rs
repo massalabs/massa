@@ -681,12 +681,12 @@ impl ConsensusState {
                     // was previously sent as a blockclique element
                     return None;
                 }
-                let storage = match self.block_statuses.get(b_id) {
-                    Some(BlockStatus::Active {
-                        a_block: _,
-                        storage,
-                    }) => storage,
-                    _ => panic!("final block not found in active blocks"),
+
+                let Some(BlockStatus::Active {
+                    a_block: _,
+                    storage,
+                }) = self.block_statuses.get(b_id) else {
+                    panic!("final block not found in active blocks");
                 };
                 Some((*b_id, storage.clone()))
             })

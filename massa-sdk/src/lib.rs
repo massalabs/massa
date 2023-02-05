@@ -619,14 +619,14 @@ fn get_id_kind(id_kind: &str) -> IdKind {
 fn get_headers(headers: &[(String, String)]) -> HeaderMap {
     let mut headers_map = HeaderMap::new();
     headers.iter().for_each(|(key, value)| {
-        let header_name = match HeaderName::from_str(key.as_str()) {
-            Ok(header_name) => header_name,
-            Err(_) => panic!("invalid header name: {:?}", key),
+        let Ok(header_name) = HeaderName::from_str(key.as_str()) else {
+            panic!("invalid header name: {:?}", key);
         };
-        let header_value = match HeaderValue::from_str(value.as_str()) {
-            Ok(header_name) => header_name,
-            Err(_) => panic!("invalid header value: {:?}", value),
+
+        let Ok(header_value) = HeaderValue::from_str(value.as_str()) else {
+            panic!("invalid header value: {:?}", value);
         };
+
         headers_map.insert(header_name, header_value);
     });
 

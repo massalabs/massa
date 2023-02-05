@@ -1187,11 +1187,10 @@ impl Command {
                         Err(e) => rpc_error!(e),
                     }
                 } else {
-                    let cli_op = match parameters[0].parse::<ListOperation>() {
-                        Ok(op) => op,
-                        Err(_) => bail!(
+                    let Ok(cli_op) = parameters[0].parse::<ListOperation>() else {
+                        bail!(
                             "failed to parse operation, supported operations are: [add, remove]"
-                        ),
+                        );
                     };
                     let args = &parameters[1..];
                     if args.is_empty() {
@@ -1244,11 +1243,10 @@ impl Command {
                         }
                     }
                 } else {
-                    let cli_op = match parameters[0].parse::<ListOperation>() {
-                        Ok(op) => op,
-                        Err(_) => bail!(
+                    let Ok(cli_op) = parameters[0].parse::<ListOperation>() else {
+                        bail!(
                             "failed to parse operation, supported operations are: [add, remove, allow-all]"
-                        ),
+                        );
                     };
                     let args = &parameters[1..];
                     let res: Result<Box<dyn Output>> = match cli_op {
@@ -1314,11 +1312,10 @@ impl Command {
                         Err(e) => rpc_error!(e),
                     }
                 } else {
-                    let cli_op = match parameters[0].parse::<ListOperation>() {
-                        Ok(op) => op,
-                        Err(_) => bail!(
+                    let Ok(cli_op) = parameters[0].parse::<ListOperation>() else {
+                        bail!(
                             "failed to parse operation, supported operations are: [add, remove]"
-                        ),
+                        );
                     };
                     let args = &parameters[1..];
                     if args.is_empty() {

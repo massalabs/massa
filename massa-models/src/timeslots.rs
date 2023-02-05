@@ -165,13 +165,12 @@ pub fn get_closest_slot_to_timestamp(
     timestamp: MassaTime,
 ) -> Slot {
     // get the latest past slot at this timestamp (if any)
-    let latest_past_slot =
-        match get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, timestamp)
-            .unwrap()
-        {
-            None => return Slot::new(0, 0), // we are before genesis
-            Some(s) => s,
-        };
+    let Some(latest_past_slot) =
+        get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, timestamp)
+        .unwrap() else
+    {
+        return Slot::new(0, 0); // we are before genesis
+    };
 
     // compute the time of the latest past slot
     let t_latest = get_block_slot_timestamp(

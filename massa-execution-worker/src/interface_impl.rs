@@ -131,9 +131,8 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
 
         // get target bytecode
-        let bytecode = match context.get_bytecode(&to_address) {
-            Some(bytecode) => bytecode,
-            None => bail!("bytecode not found for address {}", to_address),
+        let Some(bytecode) = context.get_bytecode(&to_address) else {
+            bail!("bytecode not found for address {}", to_address);
         };
 
         // get caller address
@@ -534,13 +533,11 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// true if the signature verification succeeded, false otherwise
     fn signature_verify(&self, data: &[u8], signature: &str, public_key: &str) -> Result<bool> {
-        let signature = match massa_signature::Signature::from_bs58_check(signature) {
-            Ok(sig) => sig,
-            Err(_) => return Ok(false),
+        let Ok(signature) = massa_signature::Signature::from_bs58_check(signature) else {
+            return Ok(false);
         };
-        let public_key = match massa_signature::PublicKey::from_str(public_key) {
-            Ok(pubk) => pubk,
-            Err(_) => return Ok(false),
+        let Ok(public_key) = massa_signature::PublicKey::from_str(public_key) else {
+            return Ok(false);
         };
         let h = massa_hash::Hash::compute_from(data);
         Ok(public_key.verify_signature(&h, &signature).is_ok())

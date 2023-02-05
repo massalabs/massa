@@ -685,9 +685,8 @@ impl MassaRpcServer for API<Public> {
 
         let block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
 
-        let block_id = match block_id_option {
-            Some(id) => id,
-            None => return Ok(None),
+        let Some(block_id) = block_id_option else {
+            return Ok(None);
         };
 
         let res = storage

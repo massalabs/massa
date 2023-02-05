@@ -348,9 +348,8 @@ impl ExecutionState {
         seller_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process roll sell operations only
-        let roll_count = match operation {
-            OperationType::RollSell { roll_count } => roll_count,
-            _ => panic!("unexpected operation type"),
+        let OperationType::RollSell { roll_count } = operation else  {
+            panic!("unexpected operation type");
         };
 
         // acquire write access to the context
@@ -387,9 +386,8 @@ impl ExecutionState {
         buyer_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
-        let roll_count = match operation {
-            OperationType::RollBuy { roll_count } => roll_count,
-            _ => panic!("unexpected operation type"),
+        let OperationType::RollBuy { roll_count } = operation else {
+            panic!("unexpected operation type");
         };
 
         // acquire write access to the context
@@ -405,14 +403,11 @@ impl ExecutionState {
         }];
 
         // compute the amount of coins to spend
-        let spend_coins = match self.config.roll_price.checked_mul_u64(*roll_count) {
-            Some(v) => v,
-            None => {
+        let Some(spend_coins) = self.config.roll_price.checked_mul_u64(*roll_count) else {
                 return Err(ExecutionError::RollBuyError(format!(
                     "{} failed to buy {} rolls: overflow on the required coin amount",
                     buyer_addr, roll_count
                 )));
-            }
         };
 
         // spend `roll_price` * `roll_count` coins from the buyer
@@ -442,12 +437,11 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process transaction operations only
-        let (recipient_address, amount) = match operation {
-            OperationType::Transaction {
-                recipient_address,
-                amount,
-            } => (recipient_address, amount),
-            _ => panic!("unexpected operation type"),
+        let OperationType::Transaction {
+            recipient_address,
+            amount,
+        } = operation else {
+            panic!("unexpected operation type");
         };
 
         // acquire write access to the context
@@ -487,14 +481,13 @@ impl ExecutionState {
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
-        let (bytecode, max_gas, datastore) = match &operation {
-            OperationType::ExecuteSC {
-                data,
-                max_gas,
-                datastore,
-                ..
-            } => (data, max_gas, datastore),
-            _ => panic!("unexpected operation type"),
+        let OperationType::ExecuteSC {
+            data: bytecode,
+            max_gas,
+            datastore,
+            ..
+        } = &operation else {
+            panic!("unexpected operation type");
         };
 
         {

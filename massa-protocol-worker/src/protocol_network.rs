@@ -165,9 +165,8 @@ impl ProtocolWorker {
         from_node_id: NodeId,
         list: Vec<(BlockId, AskForBlocksInfo)>,
     ) -> Result<(), ProtocolError> {
-        let node_info = match self.active_nodes.get_mut(&from_node_id) {
-            Some(node_info) => node_info,
-            _ => return Ok(()),
+        let Some(node_info) = self.active_nodes.get_mut(&from_node_id) else {
+            return Ok(());
         };
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
@@ -307,9 +306,7 @@ impl ProtocolWorker {
             node_info.insert_known_ops(operation_ids.iter().map(|id| id.prefix()));
         }
 
-        let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
-            info
-        } else {
+        let Some(info) = self.block_wishlist.get_mut(&block_id) else {
             warn!(
                 "Node {} sent us an operation list but we don't have block id {} in our wishlist.",
                 from_node_id, block_id
@@ -321,9 +318,7 @@ impl ProtocolWorker {
             return Ok(());
         };
 
-        let header = if let Some(header) = &info.header {
-            header
-        } else {
+        let Some(header) = &info.header else {
             warn!("Node {} sent us an operation list but we don't have receive the header of block id {} yet.", from_node_id, block_id);
             if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
                 node.asked_blocks.remove(&block_id);
@@ -439,9 +434,7 @@ impl ProtocolWorker {
                     }
                     return Ok(());
                 };
-                let block_operation_ids = if let Some(operations) = &info.operation_ids {
-                    operations
-                } else {
+                let Some(block_operation_ids) = &info.operation_ids else  {
                     warn!("Node {} sent us full operations but we don't have received the operation list of block id {} yet.", from_node_id, block_id);
                     if let Some(node) = self.active_nodes.get_mut(&from_node_id) && node.asked_blocks.contains_key(&block_id) {
                         node.asked_blocks.remove(&block_id);

@@ -134,12 +134,10 @@ impl BlockFactoryWorker {
 
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();
-        let block_producer_keypair = if let Some(kp) =
-            block_producer_keypair_ref.find_associated_keypair(&block_producer_addr)
+        let Some(block_producer_keypair) =
+            block_producer_keypair_ref.find_associated_keypair(&block_producer_addr) else
         {
             // the selected block producer is managed locally => continue to attempt block production
-            kp
-        } else {
             // the selected block producer is not managed locally => quit
             return;
         };

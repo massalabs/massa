@@ -310,20 +310,18 @@ impl PoSFinalState {
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
         // get lookback cycle index
-        let lookback_cycle = cycle.checked_sub(3);
-        if let Some(lookback_cycle) = lookback_cycle {
-            let lookback_index = match self.get_cycle_index(lookback_cycle) {
-                Some(idx) => idx,
-                None => return None,
-            };
-            // get rolls
-            self.cycle_history[lookback_index]
-                .roll_counts
-                .get(addr)
-                .cloned()
-        } else {
-            self.initial_rolls.get(addr).cloned()
-        }
+        let Some(lookback_cycle) = cycle.checked_sub(3) else {
+            return self.initial_rolls.get(addr).cloned();
+        };
+        let Some(lookback_index) = self.get_cycle_index(lookback_cycle) else {
+            return None;
+        };
+
+        // get rolls
+        self.cycle_history[lookback_index]
+            .roll_counts
+            .get(addr)
+            .cloned()
     }
 
     /// Retrieves every deferred credit of the given slot

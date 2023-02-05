@@ -49,9 +49,8 @@ impl Amount {
     /// ```
     pub const fn from_mantissa_scale(mantissa: u64, scale: u32) -> Self {
         let raw_mantissa = (mantissa as u128) * (AMOUNT_DECIMAL_FACTOR as u128);
-        let scale_factor = match 10u128.checked_pow(scale) {
-            Some(v) => v,
-            None => panic!(),
+        let Some(scale_factor) = 10u128.checked_pow(scale) else {
+            panic!();
         };
         assert!(raw_mantissa % scale_factor == 0);
         let res = raw_mantissa / scale_factor;
