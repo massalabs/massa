@@ -763,17 +763,17 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    /// Hashes givens bytes with sha256
+    /// Hashes givens byte array with sha256
     ///
     /// # Arguments
-    /// * bytes: bytes to hash
+    /// * bytes: byte array to hash
     ///
     /// # Returns
     /// The vector of bytes representation of the resulting hash
-    fn sha256_hash(&self, bytes: &[u8]) -> Result<Vec<u8>> {
+    fn hash_sha256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         let mut hasher = Sha256::new();
         hasher.update(bytes);
-        let hash = hasher.finalize().to_vec();
+        let hash = hasher.finalize().into();
         Ok(hash)
     }
 }
