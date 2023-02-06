@@ -579,7 +579,7 @@
         <span class="comment">// slot credits
         </span><span class="kw">for </span>(addr, amount) <span class="kw">in </span>value {
             <span class="comment">// address
-            </span>buffer.extend(addr.into_bytes());
+            </span>buffer.extend(addr.to_bytes());
             <span class="comment">// credited amount
             </span><span class="self">self</span>.amount_ser.serialize(amount, buffer)<span class="question-mark">?</span>;
         }

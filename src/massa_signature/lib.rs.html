@@ -11,52 +11,18 @@
 <a href="#11" id="11">11</a>
 <a href="#12" id="12">12</a>
 <a href="#13" id="13">13</a>
-<a href="#14" id="14">14</a>
-<a href="#15" id="15">15</a>
-<a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Signature management
 
-</span><span class="comment">//#![warn(missing_docs)]
-</span><span class="attr">#![warn(unused_crate_dependencies)]
-#![allow(missing_docs)]
-#![allow(dead_code)]
+</span><span class="attr">#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 </span><span class="kw">mod </span>error;
-<span class="comment">//mod signature_impl;
-
-</span><span class="attr">#[macro_use]
-</span><span class="kw">mod </span>multi;
+<span class="kw">mod </span>signature_impl;
 
 <span class="kw">pub use </span>error::MassaSignatureError;
-<span class="comment">/*pub use signature_impl::{
+<span class="kw">pub use </span>signature_impl::{
     verify_signature_batch, KeyPair, PublicKey, PublicKeyDeserializer, Signature,
     SignatureDeserializer, PUBLIC_KEY_SIZE_BYTES, SECRET_KEY_BYTES_SIZE, SIGNATURE_SIZE_BYTES,
-};*/
-</span><span class="kw">pub use </span>multi::{
-    verify_signature_batch, KeyPair, PublicKey, PublicKeyDeserializer, PublicKeyV0, PublicKeyV1,
-    Signature, SignatureDeserializer,
 };
-
-<span class="doccomment">/// TODO: Backcompatibility for the code
-</span><span class="kw">pub const </span>PUBLIC_KEY_SIZE_BYTES_V1: usize = <span class="number">32</span>;
-<span class="doccomment">/// TODO: Backcompatibility for the code
-</span><span class="kw">pub const </span>SIGNATURE_SIZE_BYTES_V1: usize = <span class="number">32</span>;
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests;
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_signature" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>

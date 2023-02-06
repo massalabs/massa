@@ -316,7 +316,7 @@
         };
 
         <span class="comment">// send signature
-        </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>sig.into_bytes()).<span class="kw">await</span><span class="question-mark">?</span>;
+        </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>sig.to_bytes()).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="comment">// send message length
         </span>{
@@ -328,7 +328,7 @@
         </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>msg_bytes).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="comment">// save prev sig
-        </span><span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>sig.into_bytes()));
+        </span><span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>sig.to_bytes()));
 
         <span class="prelude-val">Ok</span>(())
     }

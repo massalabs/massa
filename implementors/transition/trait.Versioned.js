@@ -1,4 +1,0 @@
-(function() {var implementors = {
-"massa_models":[["impl Versioned for <a class=\"struct\" href=\"massa_models/address/struct.AddressV0.html\" title=\"struct massa_models::address::AddressV0\">AddressV0</a>"],["impl Versioned for <a class=\"struct\" href=\"massa_models/address/struct.AddressV1.html\" title=\"struct massa_models::address::AddressV1\">AddressV1</a>"]],
-"massa_signature":[["impl Versioned for <a class=\"struct\" href=\"massa_signature/struct.PublicKeyV0.html\" title=\"struct massa_signature::PublicKeyV0\">PublicKeyV0</a>"],["impl Versioned for <a class=\"struct\" href=\"massa_signature/struct.PublicKeyV1.html\" title=\"struct massa_signature::PublicKeyV1\">PublicKeyV1</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

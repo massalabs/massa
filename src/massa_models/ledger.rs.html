@@ -843,7 +843,7 @@
         <span class="self">self</span>.length_serializer
             .serialize(<span class="kw-2">&amp;</span>(value.<span class="number">0</span>.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(address, change) <span class="kw">in </span>value.<span class="number">0</span>.iter() {
-            buffer.extend(address.into_bytes());
+            buffer.extend(address.to_bytes());
             <span class="self">self</span>.ledger_change_serializer.serialize(change, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
