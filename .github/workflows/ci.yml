@@ -38,7 +38,7 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-  
+
   check:
     if: github.ref != 'refs/heads/staging'
     needs: sanity
@@ -117,6 +117,10 @@ jobs:
         with:
           command: nextest
           args: run --features testing --retries 10
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features testing --doc
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
@@ -128,7 +132,7 @@ jobs:
   gas-costs-check:
     if: github.ref != 'refs/heads/staging' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    steps: 
+    steps:
       - uses: actions/checkout@v3
         with:
           submodules: "recursive"
@@ -151,15 +155,15 @@ jobs:
       # Replace the branch in the dependencies in gas-calibration project by the current branch
       # Special case for massa-sc-runtime: we use the branch referenced in the Cargo.toml of massa-execution-worker.
       - name: "Use the current branch as dependency for gas-calibration"
-        run: > 
-          cd gas-calibration && 
-          sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml && 
+        run: >
+          cd gas-calibration &&
+          sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml &&
           sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep 'massalabs/massa-sc-runtime' | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml
       - name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
         run: >
-          cd gas-calibration && 
+          cd gas-calibration &&
           cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
-      
+
 
   doc:
     runs-on: ubuntu-latest
