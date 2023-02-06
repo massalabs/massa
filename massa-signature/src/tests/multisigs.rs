@@ -4,7 +4,26 @@ use anyhow::Error;
 use massa_hash::Hash;
 use tokio::join;
 
-pub async fn start_multi_signature_scheme() -> Result<(), Error> {
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+enum AttackMode {
+    None,
+    HangCommitment,
+    HangReveal,
+    HangCosign,
+    WrongCommitment,
+    WrongReveal,
+    WrongCosign,
+    ReuseCommitment,
+    ReuseReveal,
+    ReuseCosign,
+    ReuseSomeoneElsesPublicKey,
+}
+
+async fn start_multi_signature_scheme(
+    attack_mode_1: AttackMode,
+    attack_mode_2: AttackMode,
+    attack_mode_3: AttackMode,
+) -> Result<(), Error> {
     let (tx, _) = tokio::sync::broadcast::channel::<MultiSigMsg>(3);
 
     let keypair_1 = KeyPair::generate(1).unwrap();
@@ -16,7 +35,6 @@ pub async fn start_multi_signature_scheme() -> Result<(), Error> {
     let pubkey_3 = keypair_2.get_public_key();
 
     let hash = Hash::compute_from(b"SomeData");
-    let attacker_hash = Hash::compute_from(b"Some_Attacking_Data");
 
     let handle1 = tokio::spawn({
         let keypair_1 = keypair_1.clone();
@@ -29,6 +47,7 @@ pub async fn start_multi_signature_scheme() -> Result<(), Error> {
                 hash,
                 tx_clone,
                 rx_clone,
+                attack_mode_1,
             )
             .await?;
 
@@ -47,6 +66,7 @@ pub async fn start_multi_signature_scheme() -> Result<(), Error> {
                 hash,
                 tx_clone,
                 rx_clone,
+                attack_mode_2,
             )
             .await?;
 
@@ -65,6 +85,7 @@ pub async fn start_multi_signature_scheme() -> Result<(), Error> {
                 hash,
                 tx_clone,
                 rx_clone,
+                attack_mode_3,
             )
             .await?;
 
@@ -76,108 +97,96 @@ pub async fn start_multi_signature_scheme() -> Result<(), Error> {
 
     let (res1, res2, res3) = join!(handle1, handle2, handle3);
 
-    assert!(res1.is_ok() && res1.unwrap().is_ok());
-    assert!(res2.is_ok() && res2.unwrap().is_ok());
-    assert!(res3.is_ok() && res3.unwrap().is_ok());
-
-    println!("ALL 3 tasks joined");
-
-    let handle4 = tokio::spawn({
-        let keypair_1 = keypair_1.clone();
-        let tx_clone = tx.clone();
-        let rx_clone = tx_clone.subscribe();
-        async move {
-            handle_multi_signature_one_node(
-                keypair_1,
-                vec![pubkey_2, pubkey_3],
-                attacker_hash,
-                tx_clone,
-                rx_clone,
-            )
-            .await?;
-
-            Result::<(), Error>::Ok(())
-        }
-    });
-
-    let handle5 = tokio::spawn({
-        let keypair_2 = keypair_2.clone();
-        let tx_clone = tx.clone();
-        let rx_clone = tx_clone.subscribe();
-        async move {
-            handle_multi_signature_one_node(
-                keypair_2,
-                vec![pubkey_1, pubkey_3],
-                hash,
-                tx_clone,
-                rx_clone,
-            )
-            .await?;
-
-            Result::<(), Error>::Ok(())
-        }
-    });
-
-    let handle6 = tokio::spawn({
-        let keypair_3 = keypair_3.clone();
-        let tx_clone = tx.clone();
-        let rx_clone = tx_clone.subscribe();
-        async move {
-            handle_multi_signature_one_node(
-                keypair_3,
-                vec![pubkey_1, pubkey_2],
-                hash,
-                tx_clone,
-                rx_clone,
-            )
-            .await?;
-
-            Result::<(), Error>::Ok(())
-        }
-    });
-
-    let (res4, res5, res6) = join!(handle4, handle5, handle6);
-
-    assert!(res4.is_ok() && res4.unwrap().is_err());
-    assert!(res5.is_ok() && res5.unwrap().is_err());
-    assert!(res6.is_ok() && res6.unwrap().is_err());
+    if attack_mode_1 == AttackMode::None
+        && attack_mode_2 == AttackMode::None
+        && attack_mode_3 == AttackMode::None
+    {
+        assert!(res1.is_ok() && res1.unwrap().is_ok());
+        assert!(res2.is_ok() && res2.unwrap().is_ok());
+        assert!(res3.is_ok() && res3.unwrap().is_ok());
+    } else {
+        assert!(res1.is_ok() && res1.unwrap().is_err());
+        assert!(res2.is_ok() && res2.unwrap().is_err());
+        assert!(res3.is_ok() && res3.unwrap().is_err());
+    }
 
     println!("ALL 3 tasks joined");
 
     Ok(())
 }
 
-pub async fn handle_multi_signature_one_node(
+async fn handle_multi_signature_one_node(
     our_keypair: KeyPair,
     other_pubkeys: Vec<PublicKey>,
     hash: Hash,
     tx: tokio::sync::broadcast::Sender<MultiSigMsg>,
     mut rx: tokio::sync::broadcast::Receiver<MultiSigMsg>,
+    attack_mode: AttackMode,
 ) -> Result<(), Error> {
-    let mut multi_sig = MultiSig::new(our_keypair.clone(), other_pubkeys.clone(), hash).unwrap();
+    let mut multi_sig = match attack_mode {
+        AttackMode::WrongCommitment => {
+            let attack_hash = Hash::compute_from(b"SomeOtherData");
+            MultiSig::new(our_keypair.clone(), other_pubkeys.clone(), attack_hash).unwrap()
+        }
+        _ => MultiSig::new(our_keypair.clone(), other_pubkeys.clone(), hash).unwrap(),
+    };
 
     /* Commit stage */
 
-    println!("KP: {} - Start commit stage", our_keypair.get_public_key());
-
-    // Send our commitment to other keypairs
-    tx.send(MultiSigMsg::Commitment(
+    println!(
+        "KP: {} - AttackMode: {:?} - Start commit stage",
         our_keypair.get_public_key(),
-        multi_sig.get_our_commitment(),
-    ))?;
+        attack_mode
+    );
 
-    // Wait for every other commitment
-    let mut num_commit = 0;
-    while num_commit < other_pubkeys.len() {
-        let res = rx.recv().await;
+    if attack_mode == AttackMode::HangCommitment {
+        return Err(MassaSignatureError::MultiSignatureError(String::from(
+            "Attack - Hanging Reveal",
+        ))
+        .into());
+    }
 
-        match res {
-            Ok(MultiSigMsg::Commitment(pk, c)) if pk != our_keypair.get_public_key() => {
-                multi_sig.set_other_commitment(pk, c)?;
-                num_commit += 1;
+    if attack_mode != AttackMode::ReuseCommitment {
+        // Send our commitment to other keypairs
+        tx.send(MultiSigMsg::Commitment(
+            our_keypair.get_public_key(),
+            multi_sig.get_our_commitment(),
+        ))?;
+    }
+
+    // Wait for every other commitment with a timeout
+    tokio::select! {
+        _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {
+            return Err(MassaSignatureError::MultiSignatureError(String::from("Timeout waiting other commitments")).into());
+        },
+        result = async {
+            let mut num_commit = 0;
+            while num_commit < other_pubkeys.len() {
+                let res = rx.recv().await;
+
+                match res {
+                    Ok(MultiSigMsg::Commitment(pk, c)) if pk != our_keypair.get_public_key() => {
+                        multi_sig.set_other_commitment(pk, c)?;
+                        num_commit += 1;
+
+                        if num_commit == 1 && attack_mode == AttackMode::ReuseCommitment {
+                            tx.send(MultiSigMsg::Commitment(
+                                our_keypair.get_public_key(),
+                                c,
+                            ))?;
+                        }
+                    }
+                    Ok(_) => {}
+                    _ => {}
+                }
             }
-            Ok(_) => {}
-            _ => {}
+            Result::<(), anyhow::Error>::Ok(())
+        }
+        => {
+            match result {
+                Ok(()) => { },
+                Err(_) => { return Err(MassaSignatureError::MultiSignatureError(String::from("Error trying to set other commitments")).into()); }
+            }
         }
     }
 
@@ -190,26 +199,45 @@ pub async fn handle_multi_signature_one_node(
 
     println!("KP: {} - Start reveal stage", our_keypair.get_public_key());
 
-    // Send our reveal to other keypairs
+    if attack_mode == AttackMode::HangReveal {
+        return Err(MassaSignatureError::MultiSignatureError(String::from(
+            "Attack - Hanging Reveal",
+        ))
+        .into());
+    }
 
+    // Send our reveal to other keypairs
     tx.send(MultiSigMsg::Reveal(
         our_keypair.get_public_key(),
         multi_sig.get_our_reveal().clone(),
     ))?;
 
-    // Wait for every other reveal
+    // Wait for every other reveal with a timeout
+    tokio::select! {
+        _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {
+            return Err(MassaSignatureError::MultiSignatureError(String::from("Timeout waiting other reveals")).into());
+        },
+        result = async {
+            let mut num_reveal = 0;
+            while num_reveal < other_pubkeys.len() {
+                let res = rx.recv().await;
 
-    let mut num_reveal = 0;
-    while num_reveal < other_pubkeys.len() {
-        let res = rx.recv().await;
-
-        match res {
-            Ok(MultiSigMsg::Reveal(pk, r)) if pk != our_keypair.get_public_key() => {
-                multi_sig.set_other_reveal(pk, r)?;
-                num_reveal += 1;
+                match res {
+                    Ok(MultiSigMsg::Reveal(pk, r)) if pk != our_keypair.get_public_key() => {
+                        multi_sig.set_other_reveal(pk, r)?;
+                        num_reveal += 1;
+                    }
+                    Ok(_) => {}
+                    _ => {}
+                }
             }
-            Ok(_) => {}
-            _ => {}
+            Result::<(), MassaSignatureError>::Ok(())
+        }
+        => {
+            match result {
+                Ok(()) => { },
+                Err(_) => { return Err(MassaSignatureError::MultiSignatureError(String::from("Error trying to set other reveals")).into()); }
+            }
         }
     }
 
@@ -222,26 +250,46 @@ pub async fn handle_multi_signature_one_node(
 
     println!("KP: {} - Start cosign stage", our_keypair.get_public_key());
 
-    // Send our cosignature to other keypairs
+    if attack_mode == AttackMode::HangCosign {
+        return Err(MassaSignatureError::MultiSignatureError(String::from(
+            "Attack - Hanging Cosignature",
+        ))
+        .into());
+    }
 
+    // Send our cosignature to other keypairs
     tx.send(MultiSigMsg::Cosignature(
         our_keypair.get_public_key(),
         multi_sig.get_our_cosignature(),
     ))?;
 
-    // Wait for every other reveal
+    // Wait for every other cosignature with a timeout
+    tokio::select! {
+        _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {
+            return Err(MassaSignatureError::MultiSignatureError(String::from("Timeout waiting other cosignatures")).into());
+        },
+        result = async {
 
-    let mut num_cosignature = 0;
-    while num_cosignature < other_pubkeys.len() {
-        let res = rx.recv().await;
+            let mut num_cosignature = 0;
+            while num_cosignature < other_pubkeys.len() {
+                let res = rx.recv().await;
 
-        match res {
-            Ok(MultiSigMsg::Cosignature(pk, s)) if pk != our_keypair.get_public_key() => {
-                multi_sig.set_other_cosignature(pk, s)?;
-                num_cosignature += 1;
+                match res {
+                    Ok(MultiSigMsg::Cosignature(pk, s)) if pk != our_keypair.get_public_key() => {
+                        multi_sig.set_other_cosignature(pk, s)?;
+                        num_cosignature += 1;
+                    }
+                    Ok(_) => {}
+                    _ => {}
+                }
             }
-            Ok(_) => {}
-            _ => {}
+            Result::<(), MassaSignatureError>::Ok(())
+        }
+        => {
+            match result {
+                Ok(()) => { },
+                Err(_) => { return Err(MassaSignatureError::MultiSignatureError(String::from("Error trying to set other cosignatures")).into()); }
+            }
         }
     }
 
@@ -341,8 +389,109 @@ fn test_multi_signature_simulation() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
-async fn test_multi_signature() -> Result<(), Error> {
-    start_multi_signature_scheme().await?;
+async fn test_multi_signature_all_honests() -> Result<(), Error> {
+    start_multi_signature_scheme(AttackMode::None, AttackMode::None, AttackMode::None).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_hang_commitment() -> Result<(), Error> {
+    start_multi_signature_scheme(
+        AttackMode::HangCommitment,
+        AttackMode::None,
+        AttackMode::None,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_hang_reveal() -> Result<(), Error> {
+    start_multi_signature_scheme(AttackMode::HangReveal, AttackMode::None, AttackMode::None)
+        .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_hang_cosign() -> Result<(), Error> {
+    start_multi_signature_scheme(AttackMode::HangCosign, AttackMode::None, AttackMode::None)
+        .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_wrong_commitment() -> Result<(), Error> {
+    start_multi_signature_scheme(
+        AttackMode::WrongCommitment,
+        AttackMode::None,
+        AttackMode::None,
+    )
+    .await?;
+
+    Ok(())
+}
+
+// TODO
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_wrong_reveal() -> Result<(), Error> {
+    start_multi_signature_scheme(AttackMode::WrongReveal, AttackMode::None, AttackMode::None)
+        .await?;
+
+    Ok(())
+}
+
+// TODO
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_wrong_cosign() -> Result<(), Error> {
+    start_multi_signature_scheme(AttackMode::WrongCosign, AttackMode::None, AttackMode::None)
+        .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_reuse_commitment() -> Result<(), Error> {
+    start_multi_signature_scheme(
+        AttackMode::ReuseCommitment,
+        AttackMode::None,
+        AttackMode::None,
+    )
+    .await?;
+
+    Ok(())
+}
+
+// TODO
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_reuse_reveal() -> Result<(), Error> {
+    start_multi_signature_scheme(AttackMode::ReuseReveal, AttackMode::None, AttackMode::None)
+        .await?;
+
+    Ok(())
+}
+
+// TODO
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_reuse_cosign() -> Result<(), Error> {
+    start_multi_signature_scheme(AttackMode::ReuseCosign, AttackMode::None, AttackMode::None)
+        .await?;
+
+    Ok(())
+}
+
+// TODO
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn test_multi_signature_reuse_someone_elses_public_key() -> Result<(), Error> {
+    start_multi_signature_scheme(
+        AttackMode::ReuseSomeoneElsesPublicKey,
+        AttackMode::None,
+        AttackMode::None,
+    )
+    .await?;
 
     Ok(())
 }

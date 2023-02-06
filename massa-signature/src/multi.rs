@@ -1910,15 +1910,18 @@ pub enum MultiSigMsg {
 impl std::fmt::Debug for MultiSigMsg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            MultiSigMsg::Commitment(pk, _c) => {
-                f.write_fmt(format_args!("MultiSigMsg::Commitment from pk: {}", pk))
-            }
-            MultiSigMsg::Reveal(pk, _r) => {
-                f.write_fmt(format_args!("MultiSigMsg::Reveal from pk: {}", pk))
-            }
-            MultiSigMsg::Cosignature(pk, _s) => {
-                f.write_fmt(format_args!("MultiSigMsg::Cosignature from pk: {}", pk))
-            }
+            MultiSigMsg::Commitment(pk, c) => f.write_fmt(format_args!(
+                "MultiSigMsg::Commitment from pk: {}. Raw data: {:?}",
+                pk, c.0
+            )),
+            MultiSigMsg::Reveal(pk, r) => f.write_fmt(format_args!(
+                "MultiSigMsg::Reveal from pk: {}. Raw data: {:?}",
+                pk, r.0
+            )),
+            MultiSigMsg::Cosignature(pk, s) => f.write_fmt(format_args!(
+                "MultiSigMsg::Cosignature from pk: {}. Raw data: {:?}",
+                pk, s.0
+            )),
         }
     }
 }
