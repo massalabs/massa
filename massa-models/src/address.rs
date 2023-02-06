@@ -143,16 +143,10 @@ impl FromStr for Address {
 
                 match version {
                     <Address!["0"]>::VERSION => Ok(AddressVariant!["0"](
-                        <Address!["0"]>::from_bytes_without_version(
-                            rest.try_into()
-                                .map_err(|_| ModelsError::AddressParseError)?,
-                        )?,
+                        <Address!["0"]>::from_bytes_without_version(rest)?,
                     )),
                     <Address!["1"]>::VERSION => Ok(AddressVariant!["1"](
-                        <Address!["1"]>::from_bytes_without_version(
-                            rest.try_into()
-                                .map_err(|_| ModelsError::AddressParseError)?,
-                        )?,
+                        <Address!["1"]>::from_bytes_without_version(rest)?,
                     )),
                     _ => Err(ModelsError::AddressParseError),
                 }
@@ -351,11 +345,11 @@ impl Address {
             U64VarIntDeserializer::new(Included(Self::VERSION), Excluded(Self::VERSION + 1));
         let (rest, version) = version_deserializer.deserialize(data)?;
         if version != Self::VERSION {
-            return Err(ModelsError::InvalidVersionError(format!(
+            Err(ModelsError::InvalidVersionError(format!(
                 "Expected address version {}, got {}",
                 Self::VERSION,
                 version
-            )));
+            )))
         } else {
             Ok(Address::from_bytes_without_version(rest)?)
         }

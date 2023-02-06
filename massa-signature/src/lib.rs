@@ -25,3 +25,6 @@ pub use multi::{
 pub const PUBLIC_KEY_SIZE_BYTES_V1: usize = 32;
 /// TODO: Backcompatibility for the code
 pub const SIGNATURE_SIZE_BYTES_V1: usize = 32;
+
+#[cfg(test)]
+mod tests;
