@@ -220,6 +220,20 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations
 //!
 //! Implement the propagation algorithm written here [redirect to GitHub]
@@ -233,7 +247,6 @@
 </span><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span><span class="kw">crate</span>::protocol_worker::ProtocolWorker;
-<span class="kw">use </span>crossbeam_channel::after;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     node::NodeId,
@@ -242,7 +255,8 @@
 };
 <span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>massa_time::TimeError;
-<span class="kw">use </span>std::time::Instant;
+<span class="kw">use </span>std::pin::Pin;
+<span class="kw">use </span>tokio::time::{sleep_until, Instant, Sleep};
 <span class="kw">use </span>tracing::warn;
 
 <span class="doccomment">/// Structure containing a Batch of `operation_ids` we would like to ask
@@ -281,7 +295,7 @@
     ///        op_batch_buf.push(now+op_batch_proc_period, node_id, future_set)
     ///    ask ask_set to node_id
     ///```
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>on_operations_announcements_received(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>on_operations_announcements_received(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw-2">mut </span>op_batch: OperationPrefixIds,
         node_id: NodeId,
@@ -349,7 +363,8 @@
         <span class="kw">if </span>!ask_set.is_empty() {
             <span class="self">self</span>.network_command_sender
                 .send_ask_for_operations(node_id, ask_set)
-                .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;send ask for operations failed&quot;</span>.into()))
+                .<span class="kw">await
+                </span>.map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;send ask for operations failed&quot;</span>.into()))
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
@@ -359,30 +374,40 @@
     /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>on_operations_received(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>on_operations_received(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         node_id: NodeId,
         operations: Vec&lt;SecureShareOperation&gt;,
+        op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_operations_from_node(operations, <span class="kw-2">&amp;</span>node_id) {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
+            </span>.note_operations_from_node(operations, <span class="kw-2">&amp;</span>node_id, op_timer)
+            .<span class="kw">await
+        </span>{
             <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node. Err = {}&quot;</span>, node_id, err);
-            <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>node_id);
+            <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>node_id).<span class="kw">await</span>;
         }
     }
 
     <span class="doccomment">/// Clear the `asked_operations` data structure and reset
     /// `ask_operations_timer`
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>prune_asked_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>prune_asked_operations(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        ask_operations_timer: <span class="kw-2">&amp;mut </span>std::pin::Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="self">self</span>.asked_operations.clear();
         <span class="comment">// reset timer
         </span><span class="kw">let </span>instant = Instant::now()
             .checked_add(<span class="self">self</span>.config.asked_operations_pruning_period.into())
             .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
-        <span class="self">self</span>.operation_prune_timer = after(instant.elapsed());
+        ask_operations_timer.set(sleep_until(instant));
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_ask_operation(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>update_ask_operation(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        operation_batch_proc_period_timer: <span class="kw-2">&amp;mut </span>std::pin::Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="kw">let </span>now = Instant::now();
         <span class="kw">while </span>!<span class="self">self</span>.op_batch_buffer.is_empty()
         <span class="comment">// This unwrap is ok because we checked that it&#39;s not empty just before.
@@ -392,25 +417,26 @@
             <span class="self">self</span>.on_operations_announcements_received(
                 op_batch_item.operations_prefix_ids,
                 op_batch_item.node_id,
-            )<span class="question-mark">?</span>;
+            )
+            .<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="comment">// reset timer
-        </span><span class="kw">let </span>timer = <span class="kw">if let </span><span class="prelude-val">Some</span>(item) = <span class="self">self</span>.op_batch_buffer.front() {
-            item.instant.elapsed()
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(item) = <span class="self">self</span>.op_batch_buffer.front() {
+            operation_batch_proc_period_timer.set(sleep_until(item.instant));
         } <span class="kw">else </span>{
             <span class="kw">let </span>next_tick = now
                 .checked_add(<span class="self">self</span>.config.operation_batch_proc_period.into())
                 .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?</span>;
-            next_tick.elapsed()
-        };
-        <span class="self">self</span>.operation_batch_proc_period_timer = after(timer);
+            operation_batch_proc_period_timer.set(sleep_until(next_tick));
+        }
+
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Process the reception of a batch of asked operations, that means that
     /// we have already sent a batch of ids in the network, notifying that we already
     /// have those operations.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>on_asked_operations_received(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>on_asked_operations_received(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
@@ -437,7 +463,9 @@
             }
         }
         <span class="kw">if </span>!ops.is_empty() {
-            <span class="self">self</span>.network_command_sender.send_operations(node_id, ops)<span class="question-mark">?</span>;
+            <span class="self">self</span>.network_command_sender
+                .send_operations(node_id, ops)
+                .<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
