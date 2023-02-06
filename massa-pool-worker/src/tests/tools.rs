@@ -52,7 +52,7 @@ pub fn create_some_operations(
         .collect()
 }
 
-/// Used to creates the module mocks, and deploys them using the passed in
+/// Creates module mocks, providing the environment needed to run the provided closure
 pub fn pool_test<F>(cfg: PoolConfig, test: F)
 where
     F: FnOnce(
@@ -64,7 +64,6 @@ where
 {
     let storage: Storage = Storage::create_root();
     let operation_sender = broadcast::channel(5000).0;
-    // as if we started an execution module, but it's just something that....
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
     let (pool_manager, pool_controller) = start_pool_controller(
         cfg,

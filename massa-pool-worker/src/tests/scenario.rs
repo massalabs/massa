@@ -65,7 +65,7 @@ fn test_simple_get_operations() {
                     Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
                         response_tx.send(unexecuted_ops.clone()).unwrap();
                     }
-                    Ok(op) => panic!("expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
+                    Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
                     Err(_) => panic!("execution never called"),
                 }
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
@@ -92,7 +92,9 @@ fn test_simple_get_operations() {
                         Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
                             response_tx.send(unexecuted_ops.clone()).unwrap();
                         }
-                        Ok(op) => panic!("ControllerMsg::UnexecutedOpsAmong, got {:?}", op),
+                        Ok(op) => {
+                            panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op)
+                        }
                         Err(_) => panic!("execution never called"),
                     }
                 })
@@ -123,7 +125,7 @@ fn launch_basic_get_block_operation_execution_mock(
 
         match receive(&recvr) {
             Ok(Unexecuted { response_tx, .. }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
-            Ok(op) => panic!("expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
+            Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
             Err(_) => panic!("execution never called"),
         }
         match receive(&recvr) {

@@ -226,7 +226,6 @@ impl OperationPool {
                 .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
                 .is_empty()
             {
-                // this is never outputted
                 continue;
             }
 

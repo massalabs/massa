@@ -78,7 +78,6 @@ fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
 
 /// TODO refactor old tests
 #[test]
-#[ignore]
 fn test_pool() {
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_config = PoolConfig::default();
