@@ -62,8 +62,8 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     String::from("test"),
     ///     10000000,
     ///     Amount::from_str("1").unwrap(),
@@ -121,8 +121,8 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     String::from("test"),
     ///     10000000,
     ///     Amount::from_str("1").unwrap(),
@@ -367,6 +367,7 @@ pub struct AsyncMessageSerializer {
     amount_serializer: AmountSerializer,
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
+    address_serializer: AddressSerializer,
     trigger_serializer: OptionSerializer<AsyncMessageTrigger, AsyncMessageTriggerSerializer>,
 }
 
@@ -377,6 +378,7 @@ impl AsyncMessageSerializer {
             amount_serializer: AmountSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
+            address_serializer: AddressSerializer::new(),
             trigger_serializer: OptionSerializer::new(AsyncMessageTriggerSerializer::new()),
         }
     }
@@ -399,8 +401,8 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     String::from("test"),
     ///     10000000,
     ///     Amount::from_str("1").unwrap(),
@@ -409,7 +411,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     Some(AsyncMessageTrigger {
-    ///         address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///         address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///         datastore_key: Some(vec![1, 2, 3, 4])
     ///     })
     /// );
@@ -426,8 +428,9 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
             .serialize(&value.emission_slot, buffer)?;
         self.u64_serializer
             .serialize(&value.emission_index, buffer)?;
-        buffer.extend(value.sender.to_bytes());
-        buffer.extend(value.destination.to_bytes());
+        self.address_serializer.serialize(&value.sender, buffer)?;
+        self.address_serializer
+            .serialize(&value.destination, buffer)?;
 
         let handler_bytes = value.handler.as_bytes();
         let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
@@ -498,8 +501,8 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     String::from("test"),
     ///     10000000,
     ///     Amount::from_str("1").unwrap(),
@@ -508,7 +511,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     Some(AsyncMessageTrigger {
-    ///        address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
     ///     })
     /// );
@@ -516,6 +519,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&message, &mut serialized).unwrap();
     /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000, 255);
+    /// // dbg!(&serialized);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
@@ -636,8 +640,8 @@ mod tests {
         let message = AsyncMessage::new_with_hash(
             Slot::new(1, 2),
             0,
-            Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
             String::from("test"),
             10000000,
             Amount::from_str("1").unwrap(),
@@ -646,7 +650,7 @@ mod tests {
             Slot::new(3, 0),
             vec![1, 2, 3, 4],
             Some(AsyncMessageTrigger {
-                address: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                address: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
                     .unwrap(),
                 datastore_key: None,
             }),

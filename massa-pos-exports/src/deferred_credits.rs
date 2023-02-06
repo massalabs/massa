@@ -230,6 +230,7 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
 /// Serializer for `Credits`
 pub struct CreditsSerializer {
     u64_ser: U64VarIntSerializer,
+    address_ser: AddressSerializer,
     amount_ser: AmountSerializer,
 }
 
@@ -244,6 +245,7 @@ impl CreditsSerializer {
     pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
+            address_ser: AddressSerializer::new(),
             amount_ser: AmountSerializer::new(),
         }
     }
@@ -260,7 +262,7 @@ impl Serializer<PreHashMap<Address, Amount>> for CreditsSerializer {
         // slot credits
         for (addr, amount) in value {
             // address
-            buffer.extend(addr.to_bytes());
+            self.address_ser.serialize(addr, buffer)?;
             // credited amount
             self.amount_ser.serialize(amount, buffer)?;
         }

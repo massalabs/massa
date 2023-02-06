@@ -4,7 +4,7 @@ use crate::{
 };
 use bitvec::prelude::*;
 use massa_models::{
-    address::Address,
+    address::{Address, AddressSerializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
 };
@@ -68,6 +68,7 @@ pub struct PoSChangesSerializer {
     bit_vec_serializer: BitVecSerializer,
     u64_serializer: U64VarIntSerializer,
     production_stats_serializer: ProductionStatsSerializer,
+    address_serializer: AddressSerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
 }
 
@@ -84,6 +85,7 @@ impl PoSChangesSerializer {
             bit_vec_serializer: BitVecSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             production_stats_serializer: ProductionStatsSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
         }
     }
@@ -99,7 +101,7 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
         self.u64_serializer
             .serialize(&(value.roll_changes.len() as u64), buffer)?;
         for (addr, roll) in value.roll_changes.iter() {
-            buffer.extend(addr.to_bytes());
+            self.address_serializer.serialize(addr, buffer)?;
             self.u64_serializer.serialize(roll, buffer)?;
         }
 
