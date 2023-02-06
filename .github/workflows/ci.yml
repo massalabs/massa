@@ -117,6 +117,10 @@ jobs:
         with:
           command: nextest
           args: run --features testing --retries 10
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features testing --doc
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
@@ -160,20 +164,6 @@ jobs:
           cd gas-calibration &&
           cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
 
-
-
-  doc_test:
-    runs-on: ubuntu-latest
-    name: doc_test
-    needs: sanity
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: "recursive"
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features testing --doc
 
   doc:
     runs-on: ubuntu-latest
