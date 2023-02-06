@@ -38,6 +38,9 @@ pub struct NetworkWorker {
     /// Our node id.
     pub(crate) self_node_id: NodeId,
     /// Listener part of the establisher.
+    /// Currently an option,
+    /// so that it can be taken out at the start of the loop,
+    /// which solves a `move` problem.
     listener: Option<Listener>,
     /// The connection establisher.
     establisher: Establisher,
@@ -65,7 +68,7 @@ pub struct NetworkWorker {
     runtime: Runtime,
     /// A channel to receive the results of running a handshake.
     connections_rx: Receiver<(ConnectionId, HandshakeReturnType)>,
-    /// A channel to send handshake workers to be run on by the handshake manager. 
+    /// A channel to send handshake workers to be run on by the handshake manager.
     handshake_tx: Sender<(ConnectionId, HandshakeWorker)>,
     /// The handle to the handshake manager.
     handshake_manager_join_handle: JoinHandle<()>,
