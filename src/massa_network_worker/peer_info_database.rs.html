@@ -975,6 +975,12 @@
 <a href="#975" id="975">975</a>
 <a href="#976" id="976">976</a>
 <a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
@@ -991,12 +997,16 @@
 <span class="kw">use </span>serde_json::json;
 <span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::fs::{read_to_string, File};
+<span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::path::Path;
+<span class="kw">use </span>tokio::runtime::Handle;
 <span class="kw">use </span>tokio::sync::watch;
 <span class="kw">use </span>tokio::task::JoinHandle;
 <span class="kw">use </span>tokio::time::{sleep, Duration};
 <span class="kw">use </span>tracing::{trace, warn};
+
 <span class="doccomment">/// Contains all information about every peers we know about.
 </span><span class="kw">pub struct </span>PeerInfoDatabase {
     <span class="doccomment">/// Network configuration.
@@ -1018,10 +1028,7 @@
 /// # Arguments
 /// * `peers`: peers to save
 /// * `file_path`: path to the file
-</span><span class="kw">async fn </span>dump_peers(
-    peers: <span class="kw-2">&amp;</span>HashMap&lt;IpAddr, PeerInfo&gt;,
-    file_path: <span class="kw-2">&amp;</span>Path,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+</span><span class="kw">fn </span>dump_peers(peers: <span class="kw-2">&amp;</span>HashMap&lt;IpAddr, PeerInfo&gt;, file_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
     <span class="kw">let </span>peer_vec: Vec&lt;<span class="kw">_</span>&gt; = peers
         .values()
         .filter(|v| v.advertised || v.peer_type != PeerType::Standard || v.banned)
@@ -1037,7 +1044,8 @@
         })
         .collect();
 
-    tokio::fs::write(file_path, serde_json::to_string_pretty(<span class="kw-2">&amp;</span>peer_vec)<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>file = File::create(file_path)<span class="question-mark">?</span>;
+    file.write_all(<span class="kw-2">&amp;</span>serde_json::to_vec_pretty(<span class="kw-2">&amp;</span>peer_vec)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -1146,31 +1154,29 @@
     ///
     /// # Argument
     /// * `cfg`: network configuration
-    </span><span class="kw">pub async fn </span>new(cfg: <span class="kw-2">&amp;</span>NetworkConfig) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NetworkError&gt; {
+    /// * `runtime`: a handle to a tokio runtime.
+    </span><span class="kw">pub fn </span>new(cfg: <span class="kw-2">&amp;</span>NetworkConfig, runtime: Handle) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NetworkError&gt; {
         <span class="comment">// wakeup interval
         </span><span class="kw">let </span>wakeup_interval = cfg.wakeup_interval;
 
         <span class="comment">// load from initial file
-        </span><span class="kw">let </span><span class="kw-2">mut </span>peers = serde_json::from_str::&lt;Vec&lt;PeerInfo&gt;&gt;(
-            <span class="kw-2">&amp;</span>tokio::fs::read_to_string(<span class="kw-2">&amp;</span>cfg.initial_peers_file).<span class="kw">await</span><span class="question-mark">?</span>,
-        )<span class="question-mark">?
-        </span>.into_iter()
-        .map(|<span class="kw-2">mut </span>p| {
-            p.cleanup();
-            (p.ip, p)
-        })
-        .collect::&lt;HashMap&lt;IpAddr, PeerInfo&gt;&gt;();
-        <span class="kw">if </span>cfg.peers_file.is_file() {
-            peers.extend(
-                <span class="comment">// previously known peers
-                </span>serde_json::from_str::&lt;Vec&lt;PeerInfo&gt;&gt;(
-                    <span class="kw-2">&amp;</span>tokio::fs::read_to_string(<span class="kw-2">&amp;</span>cfg.peers_file).<span class="kw">await</span><span class="question-mark">?</span>,
-                )<span class="question-mark">?
+        </span><span class="kw">let </span><span class="kw-2">mut </span>peers =
+            serde_json::from_str::&lt;Vec&lt;PeerInfo&gt;&gt;(<span class="kw-2">&amp;</span>read_to_string(<span class="kw-2">&amp;</span>cfg.initial_peers_file)<span class="question-mark">?</span>)<span class="question-mark">?
                 </span>.into_iter()
                 .map(|<span class="kw-2">mut </span>p| {
                     p.cleanup();
                     (p.ip, p)
-                }),
+                })
+                .collect::&lt;HashMap&lt;IpAddr, PeerInfo&gt;&gt;();
+        <span class="kw">if </span>cfg.peers_file.is_file() {
+            peers.extend(
+                <span class="comment">// previously known peers
+                </span>serde_json::from_str::&lt;Vec&lt;PeerInfo&gt;&gt;(<span class="kw-2">&amp;</span>read_to_string(<span class="kw-2">&amp;</span>cfg.peers_file)<span class="question-mark">?</span>)<span class="question-mark">?
+                    </span>.into_iter()
+                    .map(|<span class="kw-2">mut </span>p| {
+                        p.cleanup();
+                        (p.ip, p)
+                    }),
             );
         }
 
@@ -1182,10 +1188,11 @@
         <span class="kw">let </span>peers_file_dump_interval = cfg.peers_file_dump_interval;
         <span class="kw">let </span>(saver_watch_tx, <span class="kw-2">mut </span>saver_watch_rx) = watch::channel(peers.clone());
         <span class="kw">let </span><span class="kw-2">mut </span>need_dump = <span class="bool-val">false</span>;
-        <span class="kw">let </span>saver_join_handle = tokio::spawn(<span class="kw">async move </span>{
+        <span class="kw">let </span>saver_join_handle = runtime.spawn(<span class="kw">async move </span>{
             <span class="kw">let </span>delay = sleep(Duration::from_millis(<span class="number">0</span>));
             <span class="macro">tokio::pin!</span>(delay);
             <span class="kw">loop </span>{
+                <span class="kw">let </span>peers_file = peers_file.clone();
                 <span class="macro">tokio::select! </span>{
                     opt_p = saver_watch_rx.changed() =&gt; <span class="kw">match </span>opt_p {
                         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="kw">if </span>!need_dump {
@@ -1196,8 +1203,13 @@
                     </span>},
                     <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>delay, <span class="kw">if </span>need_dump =&gt; {
                         <span class="kw">let </span>to_dump = saver_watch_rx.borrow().clone();
-                        <span class="kw">match </span>dump_peers(<span class="kw-2">&amp;</span>to_dump, <span class="kw-2">&amp;</span>peers_file).<span class="kw">await </span>{
-                            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; { need_dump = <span class="bool-val">false</span>; },
+                        <span class="kw">let </span>res = Handle::current()
+                            .spawn_blocking(<span class="kw">move </span>|| dump_peers(<span class="kw-2">&amp;</span>to_dump, <span class="kw-2">&amp;</span>peers_file))
+                            .<span class="kw">await</span>;
+                        <span class="kw">match </span>res {
+                            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                                need_dump = <span class="bool-val">false</span>;
+                            }
                             <span class="prelude-val">Err</span>(e) =&gt; {
                                 <span class="macro">warn!</span>(<span class="string">&quot;could not dump peers to file: {}&quot;</span>, e);
                                 delay.set(sleep(peers_file_dump_interval.to_duration()));
@@ -1221,10 +1233,10 @@
 
     <span class="doccomment">/// Cleanly closes `peerInfoDatabase`, performing one last peer dump.
     /// A warning is raised on dump failure.
-    </span><span class="kw">pub async fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    </span><span class="kw">pub fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         drop(<span class="self">self</span>.saver_watch_tx);
-        <span class="self">self</span>.saver_join_handle.<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = dump_peers(<span class="kw-2">&amp;</span><span class="self">self</span>.peers, <span class="kw-2">&amp;</span><span class="self">self</span>.network_settings.peers_file).<span class="kw">await </span>{
+        <span class="self">self</span>.saver_join_handle.abort();
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = dump_peers(<span class="kw-2">&amp;</span><span class="self">self</span>.peers, <span class="kw-2">&amp;</span><span class="self">self</span>.network_settings.peers_file) {
             <span class="macro">warn!</span>(<span class="string">&quot;could not dump peers to file: {}&quot;</span>, e);
         }
         <span class="prelude-val">Ok</span>(())
@@ -1324,7 +1336,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub async fn </span>whitelist(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    <span class="kw">pub fn </span>whitelist(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">for </span>ip <span class="kw">in </span>ips.into_iter() {
             <span class="kw">let </span>ip = ip.to_canonical();
             <span class="kw">let </span>old_pt = <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip) {
@@ -1361,7 +1373,7 @@
         <span class="self">self</span>.update()
     }
 
-    <span class="kw">pub async fn </span>remove_from_whitelist(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+    <span class="kw">pub fn </span>remove_from_whitelist(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
         <span class="kw">for </span>ip <span class="kw">in </span>ips.into_iter() {
             <span class="kw">let </span>ip = ip.to_canonical();
             <span class="kw">let </span>old_pt = <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get_mut(<span class="kw-2">&amp;</span>ip) {

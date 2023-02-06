@@ -1335,6 +1335,13 @@
 <a href="#1335" id="1335">1335</a>
 <a href="#1336" id="1336">1336</a>
 <a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1685,8 +1692,9 @@
         seller_addr: Address,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// process roll sell operations only
-        </span><span class="kw">let </span>OperationType::RollSell { roll_count } = operation <span class="kw">else  </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>);
+        </span><span class="kw">let </span>roll_count = <span class="kw">match </span>operation {
+            OperationType::RollSell { roll_count } =&gt; roll_count,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
         };
 
         <span class="comment">// acquire write access to the context
@@ -1723,8 +1731,9 @@
         buyer_addr: Address,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// process roll buy operations only
-        </span><span class="kw">let </span>OperationType::RollBuy { roll_count } = operation <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>);
+        </span><span class="kw">let </span>roll_count = <span class="kw">match </span>operation {
+            OperationType::RollBuy { roll_count } =&gt; roll_count,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
         };
 
         <span class="comment">// acquire write access to the context
@@ -1740,11 +1749,14 @@
         }];
 
         <span class="comment">// compute the amount of coins to spend
-        </span><span class="kw">let </span><span class="prelude-val">Some</span>(spend_coins) = <span class="self">self</span>.config.roll_price.checked_mul_u64(<span class="kw-2">*</span>roll_count) <span class="kw">else </span>{
+        </span><span class="kw">let </span>spend_coins = <span class="kw">match </span><span class="self">self</span>.config.roll_price.checked_mul_u64(<span class="kw-2">*</span>roll_count) {
+            <span class="prelude-val">Some</span>(v) =&gt; v,
+            <span class="prelude-val">None </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RollBuyError(<span class="macro">format!</span>(
                     <span class="string">&quot;{} failed to buy {} rolls: overflow on the required coin amount&quot;</span>,
                     buyer_addr, roll_count
                 )));
+            }
         };
 
         <span class="comment">// spend `roll_price` * `roll_count` coins from the buyer
@@ -1774,11 +1786,12 @@
         sender_addr: Address,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// process transaction operations only
-        </span><span class="kw">let </span>OperationType::Transaction {
-            recipient_address,
-            amount,
-        } = operation <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>);
+        </span><span class="kw">let </span>(recipient_address, amount) = <span class="kw">match </span>operation {
+            OperationType::Transaction {
+                recipient_address,
+                amount,
+            } =&gt; (recipient_address, amount),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
         };
 
         <span class="comment">// acquire write access to the context
@@ -1818,13 +1831,14 @@
         sender_addr: Address,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// process ExecuteSC operations only
-        </span><span class="kw">let </span>OperationType::ExecuteSC {
-            data: bytecode,
-            max_gas,
-            datastore,
-            ..
-        } = <span class="kw-2">&amp;</span>operation <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>);
+        </span><span class="kw">let </span>(bytecode, max_gas, datastore) = <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
+            OperationType::ExecuteSC {
+                data,
+                max_gas,
+                datastore,
+                ..
+            } =&gt; (data, max_gas, datastore),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
         };
 
         {

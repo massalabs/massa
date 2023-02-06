@@ -473,6 +473,8 @@
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -785,18 +787,20 @@
     <span class="doccomment">/// Retrieves the amount of rolls a given address has at a given cycle
     </span><span class="kw">pub fn </span>get_address_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
         <span class="comment">// get lookback cycle index
-        </span><span class="kw">let </span><span class="prelude-val">Some</span>(lookback_cycle) = cycle.checked_sub(<span class="number">3</span>) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="self">self</span>.initial_rolls.get(addr).cloned();
-        };
-        <span class="kw">let </span><span class="prelude-val">Some</span>(lookback_index) = <span class="self">self</span>.get_cycle_index(lookback_cycle) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        };
-
-        <span class="comment">// get rolls
-        </span><span class="self">self</span>.cycle_history[lookback_index]
-            .roll_counts
-            .get(addr)
-            .cloned()
+        </span><span class="kw">let </span>lookback_cycle = cycle.checked_sub(<span class="number">3</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(lookback_cycle) = lookback_cycle {
+            <span class="kw">let </span>lookback_index = <span class="kw">match </span><span class="self">self</span>.get_cycle_index(lookback_cycle) {
+                <span class="prelude-val">Some</span>(idx) =&gt; idx,
+                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+            };
+            <span class="comment">// get rolls
+            </span><span class="self">self</span>.cycle_history[lookback_index]
+                .roll_counts
+                .get(addr)
+                .cloned()
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.initial_rolls.get(addr).cloned()
+        }
     }
 
     <span class="doccomment">/// Retrieves every deferred credit of the given slot

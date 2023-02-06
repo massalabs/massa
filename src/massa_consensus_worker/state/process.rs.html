@@ -1556,12 +1556,12 @@
                     <span class="comment">// was previously sent as a blockclique element
                     </span><span class="kw">return </span><span class="prelude-val">None</span>;
                 }
-
-                <span class="kw">let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
-                    a_block: <span class="kw">_</span>,
-                    storage,
-                }) = <span class="self">self</span>.block_statuses.get(b_id) <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;final block not found in active blocks&quot;</span>);
+                <span class="kw">let </span>storage = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(b_id) {
+                    <span class="prelude-val">Some</span>(BlockStatus::Active {
+                        a_block: <span class="kw">_</span>,
+                        storage,
+                    }) =&gt; storage,
+                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;final block not found in active blocks&quot;</span>),
                 };
                 <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, storage.clone()))
             })

@@ -1051,6 +1051,7 @@
 <a href="#1051" id="1051">1051</a>
 <a href="#1052" id="1052">1052</a>
 <a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1395,9 +1396,9 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
-        <span class="kw">let </span>(network_stats_result, peers_result) = <span class="macro">tokio::join!</span>(
+        <span class="kw">let </span>(network_stats_result, peers_result) = (
             network_command_sender.get_network_stats(),
-            network_command_sender.get_peers()
+            network_command_sender.get_peers(),
         );
 
         <span class="kw">let </span>network_stats = <span class="kw">match </span>network_stats_result {
@@ -1738,8 +1739,9 @@
 
         <span class="kw">let </span>block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
 
-        <span class="kw">let </span><span class="prelude-val">Some</span>(block_id) = block_id_option <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+        <span class="kw">let </span>block_id = <span class="kw">match </span>block_id_option {
+            <span class="prelude-val">Some</span>(id) =&gt; id,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         };
 
         <span class="kw">let </span>res = storage

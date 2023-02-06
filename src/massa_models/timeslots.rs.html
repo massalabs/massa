@@ -296,6 +296,7 @@
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! warning: assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`
@@ -463,12 +464,13 @@
     timestamp: MassaTime,
 ) -&gt; Slot {
     <span class="comment">// get the latest past slot at this timestamp (if any)
-    </span><span class="kw">let </span><span class="prelude-val">Some</span>(latest_past_slot) =
-        get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, timestamp)
-        .unwrap() <span class="kw">else
-    </span>{
-        <span class="kw">return </span>Slot::new(<span class="number">0</span>, <span class="number">0</span>); <span class="comment">// we are before genesis
-    </span>};
+    </span><span class="kw">let </span>latest_past_slot =
+        <span class="kw">match </span>get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, timestamp)
+            .unwrap()
+        {
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span>Slot::new(<span class="number">0</span>, <span class="number">0</span>), <span class="comment">// we are before genesis
+            </span><span class="prelude-val">Some</span>(s) =&gt; s,
+        };
 
     <span class="comment">// compute the time of the latest past slot
     </span><span class="kw">let </span>t_latest = get_block_slot_timestamp(

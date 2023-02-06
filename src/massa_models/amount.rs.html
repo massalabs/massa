@@ -344,6 +344,7 @@
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -395,8 +396,9 @@
     /// ```
     </span><span class="kw">pub const fn </span>from_mantissa_scale(mantissa: u64, scale: u32) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>raw_mantissa = (mantissa <span class="kw">as </span>u128) * (AMOUNT_DECIMAL_FACTOR <span class="kw">as </span>u128);
-        <span class="kw">let </span><span class="prelude-val">Some</span>(scale_factor) = <span class="number">10u128</span>.checked_pow(scale) <span class="kw">else </span>{
-            <span class="macro">panic!</span>();
+        <span class="kw">let </span>scale_factor = <span class="kw">match </span><span class="number">10u128</span>.checked_pow(scale) {
+            <span class="prelude-val">Some</span>(v) =&gt; v,
+            <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(),
         };
         <span class="macro">assert!</span>(raw_mantissa % scale_factor == <span class="number">0</span>);
         <span class="kw">let </span>res = raw_mantissa / scale_factor;

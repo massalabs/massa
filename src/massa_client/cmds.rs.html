@@ -1446,6 +1446,9 @@
 <a href="#1446" id="1446">1446</a>
 <a href="#1447" id="1447">1447</a>
 <a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
@@ -2635,10 +2638,11 @@
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(cli_op) = parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() <span class="kw">else </span>{
-                        <span class="macro">bail!</span>(
+                    <span class="kw">let </span>cli_op = <span class="kw">match </span>parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() {
+                        <span class="prelude-val">Ok</span>(op) =&gt; op,
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">bail!</span>(
                             <span class="string">&quot;failed to parse operation, supported operations are: [add, remove]&quot;
-                        </span>);
+                        </span>),
                     };
                     <span class="kw">let </span>args = <span class="kw-2">&amp;</span>parameters[<span class="number">1</span>..];
                     <span class="kw">if </span>args.is_empty() {
@@ -2691,10 +2695,11 @@
                         }
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(cli_op) = parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() <span class="kw">else </span>{
-                        <span class="macro">bail!</span>(
+                    <span class="kw">let </span>cli_op = <span class="kw">match </span>parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() {
+                        <span class="prelude-val">Ok</span>(op) =&gt; op,
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">bail!</span>(
                             <span class="string">&quot;failed to parse operation, supported operations are: [add, remove, allow-all]&quot;
-                        </span>);
+                        </span>),
                     };
                     <span class="kw">let </span>args = <span class="kw-2">&amp;</span>parameters[<span class="number">1</span>..];
                     <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; = <span class="kw">match </span>cli_op {
@@ -2760,10 +2765,11 @@
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(cli_op) = parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() <span class="kw">else </span>{
-                        <span class="macro">bail!</span>(
+                    <span class="kw">let </span>cli_op = <span class="kw">match </span>parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() {
+                        <span class="prelude-val">Ok</span>(op) =&gt; op,
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">bail!</span>(
                             <span class="string">&quot;failed to parse operation, supported operations are: [add, remove]&quot;
-                        </span>);
+                        </span>),
                     };
                     <span class="kw">let </span>args = <span class="kw-2">&amp;</span>parameters[<span class="number">1</span>..];
                     <span class="kw">if </span>args.is_empty() {
