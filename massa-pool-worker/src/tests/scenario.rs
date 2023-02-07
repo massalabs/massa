@@ -17,6 +17,7 @@ use std::time::Duration;
 
 use crate::tests::tools::create_some_operations;
 use crate::tests::tools::pool_test;
+use crate::tests::tools::OpGenerator;
 use massa_execution_exports::test_exports::MockExecutionControllerMessage as ControllerMsg;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -51,7 +52,8 @@ fn test_simple_get_operations() {
         config,
         |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
             let keypair = KeyPair::generate();
-            storage.store_operations(create_some_operations(10, &keypair, 1));
+            let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
+            storage.store_operations(create_some_operations(10, &op_gen));
 
             let creator_address = Address::from_public_key(&keypair.get_public_key());
             let creator_thread = creator_address.get_thread(config.thread_count);
@@ -143,7 +145,8 @@ fn test_get_operations_overflow() {
     let mut max_block_size = 0;
     let keypair = KeyPair::generate();
     let creator_address = Address::from_public_key(&keypair.get_public_key());
-    let operations = create_some_operations(OP_LEN, &keypair, 1);
+    let op_gen = OpGenerator::default().expirery(1).creator(keypair);
+    let operations = create_some_operations(OP_LEN, &op_gen);
     operations
         .iter()
         .take(MAX_OP_LEN)

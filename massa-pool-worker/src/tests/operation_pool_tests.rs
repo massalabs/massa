@@ -17,24 +17,19 @@
 //! latest period given his own thread. All operation which doesn't fit these
 //! requirements are "irrelevant"
 //!
+use crate::tests::tools::OpGenerator;
+
 use super::tools::{create_some_operations, operation_pool_test, pool_test};
 use massa_execution_exports::test_exports::MockExecutionControllerMessage;
-use massa_models::{
-    address::Address,
-    amount::Amount,
-    operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
-    prehash::PreHashMap,
-    secure_share::SecureShareContent,
-    slot::Slot,
-};
+use massa_models::{amount::Amount, prehash::PreHashMap, slot::Slot};
 use massa_pool_exports::PoolConfig;
-use massa_signature::KeyPair;
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 #[test]
 fn test_add_operation() {
     operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
-        storage.store_operations(create_some_operations(10, &KeyPair::generate(), 2));
+        let op_gen = OpGenerator::default().expirery(2);
+        storage.store_operations(create_some_operations(10, &op_gen));
         operation_pool.add_operations(storage);
         assert_eq!(operation_pool.storage.get_op_refs().len(), 10);
     });
@@ -47,28 +42,12 @@ fn test_add_irrelevant_operation() {
     let pool_config = PoolConfig::default();
     let thread_count = pool_config.thread_count;
     operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
-        storage.store_operations(create_some_operations(10, &KeyPair::generate(), 1));
+        let op_gen = OpGenerator::default().expirery(2);
+        storage.store_operations(create_some_operations(10, &op_gen));
         operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
         operation_pool.add_operations(storage);
         assert_eq!(operation_pool.storage.get_op_refs().len(), 0);
     });
-}
-
-fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
-    let sender_keypair = KeyPair::generate();
-
-    let recv_keypair = KeyPair::generate();
-
-    let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
-        amount: Amount::default(),
-    };
-    let content = Operation {
-        fee: Amount::from_str(&fee.to_string()).unwrap(),
-        op,
-        expire_period,
-    };
-    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// TODO refactor old tests
@@ -85,7 +64,11 @@ fn test_pool() {
                 let expire_period: u64 = 40 + i;
                 let start_period =
                     expire_period.saturating_sub(pool_config.operation_validity_periods);
-                let op = get_transaction(expire_period, fee);
+
+                let op = OpGenerator::default()
+                    .expirery(expire_period)
+                    .fee(Amount::from_raw(fee))
+                    .generate(); //get_transaction(expire_period, fee);
                 let id = op.id;
 
                 let mut ops = PreHashMap::default();
@@ -201,9 +184,11 @@ fn test_pool() {
             {
                 //TODO: update current slot
                 //pool.update_current_slot(Slot::new(10, 0));
-                let fee = 1000;
                 let expire_period: u64 = 300;
-                let op = get_transaction(expire_period, fee);
+                let op = OpGenerator::default()
+                    .expirery(expire_period)
+                    .fee(Amount::from_raw(1000))
+                    .generate();
                 let mut storage = storage_base.clone_without_refs();
                 storage.store_operations(vec![op.clone()]);
                 pool.add_operations(storage);
