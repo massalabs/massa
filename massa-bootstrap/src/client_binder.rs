@@ -39,7 +39,6 @@ impl BootstrapClientBinder {
     pub fn new(duplex: Duplex, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
         let size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
-            // max_bootstrap_message_size,
             size_field_len,
             remote_pubkey,
             duplex: <Limiter>::new(cfg.max_bytes_read_write).limit(duplex),
