@@ -2414,6 +2414,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test 0.10.0",
+ "substruct",
  "tempfile",
  "thiserror",
  "tokio",
@@ -4428,6 +4429,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
+ "syn",
+]
+
+[[package]]
+name = "substruct"
+version = "0.1.0"
+source = "git+https://github.com/sydhds/substruct#2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"
+dependencies = [
+ "quote",
  "syn",
 ]
 

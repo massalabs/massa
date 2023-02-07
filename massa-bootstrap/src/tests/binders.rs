@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
+use crate::settings::BootstrapClientConfig;
 use crate::types::Duplex;
 use crate::BootstrapConfig;
 use crate::{
@@ -31,33 +32,32 @@ lazy_static::lazy_static! {
 
 impl BootstrapClientBinder {
     pub fn test_default(client_duplex: Duplex, remote_pubkey: PublicKey) -> Self {
-        BootstrapClientBinder::new(
-            client_duplex,
-            remote_pubkey,
-            f64::INFINITY,
-            MAX_BOOTSTRAP_MESSAGE_SIZE,
-            ENDORSEMENT_COUNT,
-            MAX_ADVERTISE_LENGTH,
-            MAX_BOOTSTRAP_BLOCKS,
-            MAX_OPERATIONS_PER_BLOCK,
-            THREAD_COUNT,
-            BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-            MAX_BOOTSTRAP_ERROR_LENGTH,
-            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-            MAX_DATASTORE_ENTRY_COUNT,
-            MAX_DATASTORE_KEY_LENGTH,
-            MAX_DATASTORE_VALUE_LENGTH,
-            MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-            MAX_ASYNC_POOL_LENGTH,
-            MAX_ASYNC_MESSAGE_DATA,
-            MAX_LEDGER_CHANGES_COUNT,
-            1000,
-            MAX_ROLLS_COUNT_LENGTH,
-            MAX_PRODUCTION_STATS_LENGTH,
-            MAX_DEFERRED_CREDITS_LENGTH,
-            MAX_EXECUTED_OPS_LENGTH,
-            MAX_EXECUTED_OPS_CHANGES_LENGTH,
-        )
+        let cfg = BootstrapClientConfig {
+            max_bytes_read_write: f64::INFINITY,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_advertise_length: MAX_ADVERTISE_LENGTH,
+            max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            thread_count: THREAD_COUNT,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
+            max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+            max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+            max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
+            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
+            max_changes_slot_count: 1000,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
+            max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
+            max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
+        };
+        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg)
     }
 }
 
