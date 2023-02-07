@@ -69,7 +69,7 @@ impl Key {
 
 pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
     let mut prefix = Vec::new();
-    prefix.extend(address.into_bytes());
+    prefix.extend(address.prefixed_bytes());
     prefix.extend([DATASTORE_IDENT]);
     prefix
 }
