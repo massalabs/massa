@@ -120,16 +120,15 @@ fn launch_basic_get_block_operation_execution_mock(
 ) {
     let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(10));
     std::thread::spawn(move || {
-        use ControllerMsg::GetFinalAndCandidateBalance as GetFinal;
-        use ControllerMsg::UnexecutedOpsAmong as Unexecuted;
-
         match receive(&recvr) {
-            Ok(Unexecuted { response_tx, .. }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
+            Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
+                response_tx.send(unexecuted_ops.clone()).unwrap()
+            }
             Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
             Err(_) => panic!("execution never called"),
         }
         match receive(&recvr) {
-            Ok(GetFinal { response_tx, .. }) => response_tx
+            Ok(ControllerMsg::GetFinalAndCandidateBalance { response_tx, .. }) => response_tx
                 .send(vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
                 .unwrap(),
             Ok(op) => panic!(
@@ -140,7 +139,7 @@ fn launch_basic_get_block_operation_execution_mock(
         }
 
         (1..operations_len).for_each(|_| {
-            if let Ok(Unexecuted { response_tx, .. }) = receive(&recvr) {
+            if let Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) = receive(&recvr) {
                 response_tx.send(unexecuted_ops.clone()).unwrap();
             }
         })
