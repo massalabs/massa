@@ -60,45 +60,13 @@ fn test_simple_get_operations() {
 
             // Start mock execution thread.
             // Provides the data for `pool_controller.get_block_operations`
-            std::thread::spawn(move || {
-                match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
-                        response_tx.send(unexecuted_ops.clone()).unwrap();
-                    }
-                    Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
-                    Err(_) => panic!("execution never called"),
-                }
-                match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(ControllerMsg::GetFinalAndCandidateBalance {
-                        addresses,
-                        response_tx,
-                        ..
-                    }) => {
-                        assert_eq!(addresses.len(), 1);
-                        assert_eq!(addresses[0], creator_address);
-                        response_tx
-                            .send(vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
-                            .unwrap();
-                    }
-                    Ok(op) => panic!(
-                        "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
-                        op
-                    ),
-                    Err(_) => panic!("execution never called"),
-                }
-
-                (0..9).for_each(|_| {
-                    match execution_receiver.recv_timeout(Duration::from_millis(100)) {
-                        Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
-                            response_tx.send(unexecuted_ops.clone()).unwrap();
-                        }
-                        Ok(op) => {
-                            panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op)
-                        }
-                        Err(_) => panic!("execution never called"),
-                    }
-                })
-            });
+            launch_basic_get_block_operation_execution_mock(
+                10,
+                unexecuted_ops,
+                execution_receiver,
+                creator_address,
+                vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+            );
 
             // This is what we are testing....
             let block_operations_storage = pool_controller
@@ -113,10 +81,12 @@ fn test_simple_get_operations() {
 }
 
 /// Launch a default mock for execution controller on call `get_block_operation` API.
-fn launch_basic_get_block_operation_execution_mock(
+pub fn launch_basic_get_block_operation_execution_mock(
     operations_len: usize,
     unexecuted_ops: PreHashSet<OperationId>,
     recvr: Receiver<ControllerMsg>,
+    creator_address: Address,
+    balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
 ) {
     let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(10));
     std::thread::spawn(move || {
@@ -128,9 +98,15 @@ fn launch_basic_get_block_operation_execution_mock(
             Err(_) => panic!("execution never called"),
         }
         match receive(&recvr) {
-            Ok(ControllerMsg::GetFinalAndCandidateBalance { response_tx, .. }) => response_tx
-                .send(vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
-                .unwrap(),
+            Ok(ControllerMsg::GetFinalAndCandidateBalance {
+                addresses,
+                response_tx,
+                ..
+            }) => {
+                assert_eq!(addresses.len(), 1);
+                assert_eq!(addresses[0], creator_address);
+                response_tx.send(balance_vec).unwrap();
+            }
             Ok(op) => panic!(
                 "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
                 op
@@ -190,6 +166,8 @@ fn test_get_operations_overflow() {
                 OP_LEN,
                 unexecuted_ops,
                 execution_receiver,
+                creator_address,
+                vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
             );
 
             let block_operations_storage = pool_controller
