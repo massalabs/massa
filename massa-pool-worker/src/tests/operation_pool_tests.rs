@@ -19,7 +19,9 @@
 //!
 use super::tools::{create_some_operations, operation_pool_test};
 use crate::operation_pool::OperationPool;
-use massa_execution_exports::test_exports::MockExecutionController;
+use massa_execution_exports::test_exports::{
+    MockExecutionController, MockExecutionControllerMessage,
+};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -31,7 +33,7 @@ use massa_models::{
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 use tokio::sync::broadcast;
 
 #[test]
@@ -76,9 +78,8 @@ fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
 
 /// TODO refactor old tests
 #[test]
-#[ignore]
 fn test_pool() {
-    let (execution_controller, _execution_receiver) = MockExecutionController::new_with_receiver();
+    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
     let pool_config = PoolConfig::default();
     let storage_base = Storage::create_root();
     let operation_sender = broadcast::channel(pool_config.broadcast_operations_capacity).0;
@@ -117,6 +118,26 @@ fn test_pool() {
             .get_thread(pool_config.thread_count);
         thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
     }
+    std::thread::spawn(move || loop {
+        match execution_receiver.recv_timeout(Duration::from_millis(100)) {
+            // forward on the operations
+            Ok(MockExecutionControllerMessage::UnexecutedOpsAmong {
+                ops, response_tx, ..
+            }) => {
+                response_tx.send(ops).unwrap();
+            }
+            // we want the operations to be paid for...
+            Ok(MockExecutionControllerMessage::GetFinalAndCandidateBalance {
+                response_tx, ..
+            }) => response_tx
+                .send(vec![(
+                    Some(Amount::from_raw(60 * 1000000000)),
+                    Some(Amount::from_raw(60 * 1000000000)),
+                )])
+                .unwrap(),
+            _ => {}
+        }
+    });
 
     // sort from bigger fee to smaller and truncate
     for lst in thread_tx_lists.iter_mut() {
@@ -130,6 +151,7 @@ fn test_pool() {
             let target_slot = Slot::new(period, thread);
             let max_count = 3;
             let (ids, storage) = pool.get_block_operations(&target_slot);
+
             assert!(ids
                 .iter()
                 .map(|id| (
@@ -189,7 +211,7 @@ fn test_pool() {
         let fee = 1000;
         let expire_period: u64 = 300;
         let op = get_transaction(expire_period, fee);
-        let mut storage = Storage::create_root();
+        let mut storage = storage_base.clone_without_refs();
         storage.store_operations(vec![op.clone()]);
         pool.add_operations(storage);
         //TODO: compare

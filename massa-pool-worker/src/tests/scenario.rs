@@ -19,6 +19,7 @@ use crate::tests::tools::create_some_operations;
 use crate::tests::tools::pool_test;
 use massa_execution_exports::test_exports::MockExecutionControllerMessage as ControllerMsg;
 use massa_models::address::Address;
+use massa_models::amount::Amount;
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
@@ -44,7 +45,6 @@ use massa_signature::KeyPair;
 /// The block operation storage built for all threads is expected to have the
 /// same length than those added previously.
 #[test]
-#[ignore]
 fn test_simple_get_operations() {
     let config = PoolConfig::default();
     pool_test(
@@ -58,14 +58,14 @@ fn test_simple_get_operations() {
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
 
-            // start mock execution thread
+            // Start mock execution thread.
+            // Provides the data for `pool_controller.get_block_operations`
             std::thread::spawn(move || {
-                // TODO following behavior is not valid anymore
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
                     Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
                         response_tx.send(unexecuted_ops.clone()).unwrap();
                     }
-                    Ok(_) => panic!("unexpected controller request"),
+                    Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
                     Err(_) => panic!("execution never called"),
                 }
                 match execution_receiver.recv_timeout(Duration::from_millis(100)) {
@@ -76,22 +76,31 @@ fn test_simple_get_operations() {
                     }) => {
                         assert_eq!(addresses.len(), 1);
                         assert_eq!(addresses[0], creator_address);
-                        response_tx.send(vec![]).unwrap();
+                        response_tx
+                            .send(vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
+                            .unwrap();
                     }
-                    Ok(_) => panic!("unexpected controller request"),
+                    Ok(op) => panic!(
+                        "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
+                        op
+                    ),
                     Err(_) => panic!("execution never called"),
                 }
+
                 (0..9).for_each(|_| {
                     match execution_receiver.recv_timeout(Duration::from_millis(100)) {
                         Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
                             response_tx.send(unexecuted_ops.clone()).unwrap();
                         }
-                        Ok(_) => panic!("unexpected controller request"),
+                        Ok(op) => {
+                            panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op)
+                        }
                         Err(_) => panic!("execution never called"),
                     }
                 })
             });
 
+            // This is what we are testing....
             let block_operations_storage = pool_controller
                 .get_block_operations(&Slot::new(1, creator_thread))
                 .1;
@@ -114,12 +123,22 @@ fn launch_basic_get_block_operation_execution_mock(
         use ControllerMsg::GetFinalAndCandidateBalance as GetFinal;
         use ControllerMsg::UnexecutedOpsAmong as Unexecuted;
 
-        if let Ok(Unexecuted { response_tx, .. }) = receive(&recvr) {
-            response_tx.send(unexecuted_ops.clone()).unwrap();
+        match receive(&recvr) {
+            Ok(Unexecuted { response_tx, .. }) => response_tx.send(unexecuted_ops.clone()).unwrap(),
+            Ok(op) => panic!("Expected `ControllerMsg::UnexecutedOpsAmong`, got {:?}", op),
+            Err(_) => panic!("execution never called"),
         }
-        if let Ok(GetFinal { response_tx, .. }) = receive(&recvr) {
-            response_tx.send(vec![]).unwrap();
+        match receive(&recvr) {
+            Ok(GetFinal { response_tx, .. }) => response_tx
+                .send(vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))])
+                .unwrap(),
+            Ok(op) => panic!(
+                "Expected `ControllerMsg::GetFinalAndCandidateBalance`, got {:?}",
+                op
+            ),
+            Err(_) => panic!("execution never called"),
         }
+
         (1..operations_len).for_each(|_| {
             if let Ok(Unexecuted { response_tx, .. }) = receive(&recvr) {
                 response_tx.send(unexecuted_ops.clone()).unwrap();
@@ -143,7 +162,6 @@ fn launch_basic_get_block_operation_execution_mock(
 /// The block operation storage built for all threads is expected to have
 /// only 5 operations.
 #[test]
-#[ignore]
 fn test_get_operations_overflow() {
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;

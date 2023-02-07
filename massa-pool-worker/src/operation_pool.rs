@@ -182,6 +182,10 @@ impl OperationPool {
     }
 
     /// get operations for block creation
+    ///
+    /// Searches the available operations, and selects the sub-set of operations that:
+    /// - fit inside the block
+    /// - is the most profitable for block producer
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
         // init list of selected operation IDs
         let mut op_ids = Vec::new();

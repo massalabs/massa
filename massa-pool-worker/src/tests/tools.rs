@@ -52,6 +52,7 @@ pub fn create_some_operations(
         .collect()
 }
 
+/// Creates module mocks, providing the environment needed to run the provided closure
 pub fn pool_test<F>(cfg: PoolConfig, test: F)
 where
     F: FnOnce(
