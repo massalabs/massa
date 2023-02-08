@@ -36,11 +36,7 @@ pub struct MockListener {
 }
 
 impl MockListener {
-    pub async fn accept(
-        &mut self,
-        _whitelist: &Option<HashSet<IpAddr>>,
-        _blacklist: &Option<HashSet<IpAddr>>,
-    ) -> std::io::Result<(Duplex, SocketAddr)> {
+    pub async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
         let (addr, sender) = self.connection_listener_rx.recv().await.ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Other,

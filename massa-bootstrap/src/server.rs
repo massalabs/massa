@@ -15,6 +15,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::{hash_map, HashMap, HashSet},
+    io,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
     sync::Arc,
@@ -28,6 +29,7 @@ use crate::{
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     tools::normalize_ip,
+    types::Duplex,
     BootstrapConfig, Establisher,
 };
 
@@ -187,11 +189,18 @@ impl BootstrapServer {
                 }
 
                 // listener
-                res_connection = listener.accept(&whitelist, &blacklist) => {
+                res_connection = listener.accept() => {
                     let (dplx, remote_addr) = if res_connection.is_ok() {
-                        res_connection.unwrap()
+                        let (dplx, remote_addr) = res_connection.unwrap();
+                        // check whether incoming peer IP is allowed or return an error which is ignored
+                        let res = self.is_ip_allowed(dplx, remote_addr, &whitelist, &blacklist).await;
+                        if res.is_ok() {
+                            res.unwrap()
+                        } else {
+                            continue
+                        }
                     } else {
-                        continue;
+                        continue
                     };
                     if bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
 
@@ -299,6 +308,49 @@ impl BootstrapServer {
         while bootstrap_sessions.next().await.is_some() {}
 
         Ok(())
+    }
+
+    // whether the peer IP address is banned
+    async fn is_ip_allowed(
+        &self,
+        duplex: Duplex,
+        remote_address: SocketAddr,
+        whitelist: &Option<HashSet<IpAddr>>,
+        blacklist: &Option<HashSet<IpAddr>>,
+    ) -> io::Result<(Duplex, SocketAddr)> {
+        let ip = normalize_ip(remote_address.ip());
+        // whether the peer IP address is blacklisted, send back an error message
+        if let Some(ip_list) = &blacklist && ip_list.contains(&ip) {
+            let config = self.bootstrap_config.clone();
+            let mut server = BootstrapServerBinder::new(duplex, self.keypair.clone(), config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
+            let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                error: format!("IP {} is blacklisted.", &ip)
+            })).await {
+                Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, format!("IP {} is blacklisted send timed out", &ip)).into()),
+                Ok(Err(e)) => Err(e),
+                Ok(Ok(_)) => Ok(()),
+            };
+
+            massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_address});
+            return  Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, format!("IP {} is blacklisted.", &ip)));
+        }
+
+        // whether the peer IP address is not present in the whitelist, send back an error message
+        if let Some(ip_list) = &whitelist && !ip_list.contains(&ip){
+            let config = self.bootstrap_config.clone();
+            let mut server = BootstrapServerBinder::new(duplex, self.keypair.clone(), config.max_bytes_read_write, config.max_bootstrap_message_size, config.thread_count, config.max_datastore_key_length, config.randomness_size_bytes, config.consensus_bootstrap_part_size);
+            let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                error: format!("A whitelist exists and the IP {} is not whitelisted.", &ip)
+            })).await {
+                Err(_) => Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, format!("A whitelist exists and the IP {} is not whitelisted timed out", &ip)).into()),
+                Ok(Err(e)) => Err(e),
+                Ok(Ok(_)) => Ok(()),
+            };
+
+            massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_address});
+            return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied,format!("A whitelist exists and the IP {} is not whitelisted.", &ip)));
+        }
+        Ok((duplex, remote_address))
     }
 }
 
