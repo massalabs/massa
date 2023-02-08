@@ -238,8 +238,12 @@ pub fn get_random_final_state_bootstrap(
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
     // insert the last possible address to prevent the last cursor to move when testing the changes
+    // The magic number at idx 0 is to account for address variant leader. At time of writing,
+    // the highest value for encoding this variant in serialized form is `1`.
+    let mut bytes = [255; 33];
+    bytes[0] = 1;
     sorted_ledger.insert(
-        Address::from_bytes_without_version(1, &[255; 32].as_slice()).unwrap(),
+        Address::from_prefixed_bytes(&bytes).unwrap(),
         get_random_ledger_entry(),
     );
 
@@ -264,17 +268,17 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_public_key() -> PublicKey {
-    let priv_key = KeyPair::generate(0).unwrap();
+    let priv_key = KeyPair::generate();
     priv_key.get_public_key()
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = KeyPair::generate(0).unwrap();
+    let priv_key = KeyPair::generate();
     Address::from_public_key(&priv_key.get_public_key())
 }
 
 pub fn get_dummy_signature(s: &str) -> Signature {
-    let priv_key = KeyPair::generate(0).unwrap();
+    let priv_key = KeyPair::generate();
     priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
@@ -374,7 +378,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> BootstrapableGraph {
-    let keypair = KeyPair::generate(0).unwrap();
+    let keypair = KeyPair::generate();
 
     let block = Block::new_verifiable(
         Block {

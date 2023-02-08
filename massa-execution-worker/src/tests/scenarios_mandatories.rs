@@ -448,7 +448,7 @@ fn local_execution() {
     assert_eq!(events[1].context.call_stack.len(), 1);
     assert_eq!(
         events[1].context.call_stack.back().unwrap(),
-        &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+        &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
     );
     assert_eq!(events[2].data, "one local execution completed");
     let amount = Amount::from_raw(events[5].data.parse().unwrap());
@@ -460,7 +460,7 @@ fn local_execution() {
     assert_eq!(events[5].context.call_stack.len(), 1);
     assert_eq!(
         events[1].context.call_stack.back().unwrap(),
-        &Address::from_str("A12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+        &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
     );
     assert_eq!(events[6].data, "one local call completed");
 
@@ -535,7 +535,12 @@ fn sc_deployment() {
     });
 
     // match the events
-    assert!(events.len() == 3, "3 events were expected");
+    if events.len() != 3 {
+        for (i, ev) in events.iter().enumerate() {
+            eprintln!("ev {}: {}", i, ev);
+        }
+        panic!("3 events were expected");
+    }
     assert_eq!(events[0].data, "sc created");
     assert_eq!(events[1].data, "constructor exists and will be called");
     assert_eq!(events[2].data, "constructor called by deployer");
@@ -550,7 +555,7 @@ fn sc_deployment() {
 ///
 /// 1. a block is created containing an `execute_sc` operation
 /// 2. this operation deploy a smart contract and call his function `test`
-/// 3. `test` generates an event and place a message to be triggered once again if `test2` datastore key of address `A12DDxjqtBVshdQ4nLqYg6GwRddY5LzEC7bnatVxB5SFtpbCFj8E` is created/modify
+/// 3. `test` generates an event and place a message to be triggered once again if `test2` datastore key of address `AS12DDxjqtBVshdQ4nLqYg6GwRddY5LzEC7bnatVxB5SFtpbCFj8E` is created/modify
 /// 4. we set the created block as finalized so the message is actually sent
 /// 5. we execute the following slots for 300 milliseconds to reach the message execution period
 /// 6. We send a new operation with a smart contract that modify `test` datastore key and so doesn't trigger the message.
@@ -628,7 +633,7 @@ fn send_and_receive_async_message_with_trigger() {
     });
 
     // match the events
-    assert!(events.len() == 2, "Two event was expected");
+    assert_eq!(events.len(), 2, "Two events were expected");
     assert_eq!(events[0].data, "Triggered");
 
     // keypair associated to thread 1
@@ -694,7 +699,7 @@ fn send_and_receive_async_message_with_trigger() {
     });
 
     // match the events
-    assert!(events.len() == 1, "One event was expected");
+    assert_eq!(events.len(), 1, "One event was expected");
     assert_eq!(events[0].data, "Triggered");
     assert_eq!(events[0].data, "Triggered");
 
