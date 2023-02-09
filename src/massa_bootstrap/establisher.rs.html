@@ -98,25 +98,6 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#[cfg(test)]
@@ -133,13 +114,8 @@
 <span class="attr">#[cfg(not(test))]
 </span><span class="doccomment">/// Connection types
 </span><span class="kw">pub mod </span>types {
-    <span class="kw">use </span><span class="kw">crate</span>::tools::normalize_ip;
     <span class="kw">use </span>massa_time::MassaTime;
-    <span class="kw">use </span>std::{
-        collections::HashSet,
-        io,
-        net::{IpAddr, SocketAddr},
-    };
+    <span class="kw">use </span>std::{io, net::SocketAddr};
     <span class="kw">use </span>tokio::{
         net::{TcpListener, TcpStream},
         time::timeout,
@@ -159,23 +135,9 @@
 
     <span class="kw">impl </span>DefaultListener {
         <span class="doccomment">/// Accepts a new incoming connection from this listener.
-        </span><span class="kw">pub async fn </span>accept(
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            whitelist: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
-            blacklist: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
-        ) -&gt; io::Result&lt;(Duplex, SocketAddr)&gt; {
+        </span><span class="kw">pub async fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(Duplex, SocketAddr)&gt; {
             <span class="comment">// accept
             </span><span class="kw">let </span>(sock, <span class="kw-2">mut </span>remote_addr) = <span class="self">self</span>.<span class="number">0</span>.accept().<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>ip = normalize_ip(remote_addr.ip());
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(blacklist) = blacklist &amp;&amp; blacklist.contains(<span class="kw-2">&amp;</span>ip) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(io::Error::new(io::ErrorKind::Other, <span class="string">&quot;IP is blacklisted&quot;</span>));
-            }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(whitelist) = whitelist &amp;&amp; !whitelist.contains(<span class="kw-2">&amp;</span>ip) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(io::Error::new(
-                    io::ErrorKind::Other,
-                    <span class="string">&quot;A whitelist exists and the IP is not whitelisted&quot;</span>,
-                ));
-            }
             <span class="comment">// normalize address
             </span>remote_addr.set_ip(remote_addr.ip().to_canonical());
             <span class="prelude-val">Ok</span>((sock, remote_addr))
