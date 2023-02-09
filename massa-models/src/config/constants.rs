@@ -45,7 +45,7 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1675346400000.into()  // Thursday, February 02, 2022 14:00:00 AM UTC
+        1675951200000.into()  // Thursday, February 09, 2022 02:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.19.1"
+            "TEST.19.2"
         }
         .parse()
         .unwrap()
