@@ -362,6 +362,10 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Here are happening handshakes.
@@ -407,11 +411,13 @@
 
 <span class="doccomment">/// Messages sent by the network worker to the handshake manager.
 </span><span class="kw">pub enum </span>HandshakeManagerMsg {
-    NewWorker {
+    <span class="doccomment">/// Start a new handshake.
+    </span>NewWorker {
         connection_id: ConnectionId,
         worker: HandshakeWorker,
     },
-    SendPeerList {
+    <span class="doccomment">/// Send a list of peers to an IP.
+    </span>SendPeerList {
         peer_list: Vec&lt;IpAddr&gt;,
         ip: IpAddr,
         reader: ReadHalf,
@@ -421,11 +427,13 @@
 
 <span class="doccomment">/// Messages sent from async tasks to the handshake manager.
 </span><span class="kw">pub enum </span>HandshakeResultMsg {
-    HandshakeReturnType {
+    <span class="doccomment">/// The result of running a handshake.
+    </span>HandshakeReturnType {
         connection_id: ConnectionId,
         result: HandshakeReturnType,
     },
-    PeerListSendingDone(IpAddr),
+    <span class="doccomment">/// Sending a list of peer to this IP is done.
+    </span>PeerListSendingDone(IpAddr),
 }
 
 <span class="doccomment">/// Start a thread, that will be responsible for running handshake workers,
