@@ -51,12 +51,14 @@ fn test_simple_get_operations() {
     pool_test(
         config,
         |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
+            //setup meta-data
             let keypair = KeyPair::generate();
             let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
-            storage.store_operations(create_some_operations(10, &op_gen));
-
             let creator_address = Address::from_public_key(&keypair.get_public_key());
             let creator_thread = creator_address.get_thread(config.thread_count);
+
+            // setup storage
+            storage.store_operations(create_some_operations(10, &op_gen));
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
 
@@ -140,6 +142,7 @@ pub fn launch_basic_get_block_operation_execution_mock(
 /// only 5 operations.
 #[test]
 fn test_get_operations_overflow() {
+    // setup metadata
     static OP_LEN: usize = 10;
     static MAX_OP_LEN: usize = 5;
     let mut max_block_size = 0;
@@ -159,8 +162,8 @@ fn test_get_operations_overflow() {
     pool_test(
         config,
         |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {
+            // setup storage
             storage.store_operations(operations);
-
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
 
