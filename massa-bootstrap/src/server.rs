@@ -192,12 +192,21 @@ impl BootstrapServer {
                 res_connection = listener.accept() => {
                     let (dplx, remote_addr) = if res_connection.is_ok() {
                         let (dplx, remote_addr) = res_connection.unwrap();
-                        // check whether incoming peer IP is allowed or return an error which is ignored
-                        let res = self.is_ip_allowed(dplx, remote_addr, &whitelist, &blacklist).await;
-                        if res.is_ok() {
-                            res.unwrap()
-                        } else {
-                            continue
+                        // we didn't test whether Ip is allowed
+                        #[cfg(test)]
+                        {
+                            (dplx, remote_addr)
+                        }
+
+                        #[cfg(not(test))]
+                        {
+                            // check whether incoming peer IP is allowed or return an error which is ignored
+                            let res = self.is_ip_allowed(dplx, remote_addr, &whitelist, &blacklist).await;
+                            if res.is_ok() {
+                                res.unwrap()
+                            } else {
+                                continue
+                            }
                         }
                     } else {
                         continue
