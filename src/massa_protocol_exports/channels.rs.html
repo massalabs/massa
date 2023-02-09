@@ -18,8 +18,8 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
-</pre><pre class="rust"><code><span class="kw">use </span>crossbeam_channel::Receiver;
-<span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkEventReceiver};
+</pre><pre class="rust"><code><span class="kw">use </span>massa_network_exports::{NetworkCommandSender, NetworkEventReceiver};
+<span class="kw">use </span>tokio::sync::mpsc;
 
 <span class="kw">use </span><span class="kw">crate</span>::ProtocolCommand;
 
@@ -36,7 +36,7 @@
     <span class="doccomment">/// network event receiver
     </span><span class="kw">pub </span>network_event_receiver: NetworkEventReceiver,
     <span class="doccomment">/// protocol command receiver
-    </span><span class="kw">pub </span>protocol_command_receiver: Receiver&lt;ProtocolCommand&gt;,
+    </span><span class="kw">pub </span>protocol_command_receiver: mpsc::Receiver&lt;ProtocolCommand&gt;,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
