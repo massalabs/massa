@@ -21,7 +21,7 @@ use crate::tests::tools::OpGenerator;
 
 use super::tools::{create_some_operations, operation_pool_test, pool_test};
 use massa_execution_exports::test_exports::MockExecutionControllerMessage;
-use massa_models::{amount::Amount, prehash::PreHashMap, slot::Slot};
+use massa_models::{amount::Amount, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use std::time::Duration;
 
@@ -59,36 +59,35 @@ fn test_pool() {
         |mut pool_manager, mut pool, execution_receiver, storage_base| {
             // generate (id, transactions, range of validity) by threads
             let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
-            for i in 0..18 {
-                let fee = 40 + i;
-                let expire_period: u64 = 40 + i;
-                let start_period =
-                    expire_period.saturating_sub(pool_config.operation_validity_periods);
 
+            for i in 0..18 {
+                let expire_period: u64 = 40 + i;
                 let op = OpGenerator::default()
                     .expirery(expire_period)
-                    .fee(Amount::from_raw(fee))
+                    .fee(Amount::from_raw(40 + i))
                     .generate(); //get_transaction(expire_period, fee);
-                let id = op.id;
 
-                let mut ops = PreHashMap::default();
-                ops.insert(id, op.clone());
                 let mut storage = storage_base.clone_without_refs();
-                storage.store_operations(ops.values().cloned().collect());
+                storage.store_operations(vec![op.clone()]);
                 pool.add_operations(storage);
+
                 //TODO: compare
                 // assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
 
                 // duplicate
-                let mut storage = storage_base.clone_without_refs();
-                storage.store_operations(ops.values().cloned().collect());
-                pool.add_operations(storage);
+                // let mut storage = storage_base.clone_without_refs();
+                // storage.store_operations(vec![op.clone()]);
+                // pool.add_operations(storage);
                 //TODO: compare
                 //assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
 
                 let op_thread = op
                     .content_creator_address
                     .get_thread(pool_config.thread_count);
+
+                let start_period =
+                    expire_period.saturating_sub(pool_config.operation_validity_periods);
+
                 thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
             }
             std::thread::spawn(move || loop {
