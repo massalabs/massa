@@ -2,9 +2,8 @@
 
 use massa_models::config::{CHANNEL_SIZE, MAX_DUPLEX_BUFFER_SIZE};
 use massa_time::MassaTime;
-use std::collections::HashSet;
 use std::io;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
