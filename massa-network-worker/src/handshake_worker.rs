@@ -11,6 +11,7 @@ use super::{
 use crossbeam_channel::{bounded, select, Receiver, Sender};
 use futures::future::try_join;
 use massa_hash::Hash;
+use massa_logging::massa_trace;
 use massa_models::{
     config::{
         constants::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
@@ -25,13 +26,14 @@ use massa_models::{
     node::NodeId,
 };
 use massa_network_exports::{
-    throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
-    WriteHalf,
+    throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkConfig, NetworkError,
+    ReadHalf, WriteHalf,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::thread::{self, JoinHandle};
 use tokio::runtime::Handle;
 use tokio::time::timeout;
@@ -39,54 +41,163 @@ use tokio::time::timeout;
 /// Type alias for more readability
 pub type HandshakeReturnType = Result<(NodeId, ReadBinder, WriteBinder), NetworkError>;
 
+/// Messages sent by the network worker to the handshake manager.
+pub enum HandshakeManagerMsg {
+    /// Start a new handshake.
+    NewWorker {
+        connection_id: ConnectionId,
+        worker: HandshakeWorker,
+    },
+    /// Send a list of peers to an IP.
+    SendPeerList {
+        peer_list: Vec<IpAddr>,
+        ip: IpAddr,
+        reader: ReadHalf,
+        writer: WriteHalf,
+    },
+}
+
+/// Messages sent from async tasks to the handshake manager.
+pub enum HandshakeResultMsg {
+    /// The result of running a handshake.
+    HandshakeReturnType {
+        connection_id: ConnectionId,
+        result: HandshakeReturnType,
+    },
+    /// Sending a list of peer to this IP is done.
+    PeerListSendingDone(IpAddr),
+}
+
 /// Start a thread, that will be responsible for running handshake workers,
 /// and sending the results back to the network worker.
 pub fn start_handshake_manager(
-    worker_rx: Receiver<(ConnectionId, HandshakeWorker)>,
+    worker_rx: Receiver<HandshakeManagerMsg>,
     connection_sender: Sender<(ConnectionId, HandshakeReturnType)>,
     runtime_handle: Handle,
+    cfg: NetworkConfig,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         let mut task_handles = HashMap::new();
-        let (result_tx, result_rx) = bounded::<(ConnectionId, HandshakeReturnType)>(1);
+        let mut handshake_peer_list_futures = HashMap::new();
+        let (result_tx, result_rx) = bounded(1);
         loop {
             select! {
                 recv(worker_rx) -> msg => {
                     match msg {
                         Err(_) => break,
-                        Ok((connection_id, new_handshake_worker)) => {
+                        Ok(HandshakeManagerMsg::NewWorker {
+                            connection_id,
+                            worker,
+                        }) => {
                             let result_tx = result_tx.clone();
                             // Spawn an async task to run the handshake.
                             let handle = runtime_handle.spawn(async move {
-                                let result = new_handshake_worker.run().await;
+                                let result = worker.run().await;
                                 // Spawn a blocking task to send the result back on the channel.
                                 Handle::current()
                                     .spawn_blocking(move || {
                                         result_tx
-                                            .send((connection_id, result))
-                                            .expect("Failed to send new connection message to network worker.")
+                                            .send(HandshakeResultMsg::HandshakeReturnType{connection_id, result})
+                                            .expect("Failed to send handshake return type message.")
                                     })
                                     .await.expect("Failed to spawn blocking call.");
                             });
                             task_handles.insert(connection_id, handle);
+                        },
+                        Ok(HandshakeManagerMsg::SendPeerList{peer_list, ip, reader, writer}) => {
+                            if cfg.max_in_connection_overflow > handshake_peer_list_futures.len() {
+                                let result_tx = result_tx.clone();
+                                let msg = Message::PeerList(peer_list);
+                                let timeout = cfg.peer_list_send_timeout.to_duration();
+                                let max_bytes_read = cfg.max_bytes_read;
+                                let max_bytes_write = cfg.max_bytes_write;
+                                let max_ask_blocks = cfg.max_ask_blocks;
+                                let max_operations_per_block = cfg.max_operations_per_block;
+                                let thread_count = cfg.thread_count;
+                                let endorsement_count = cfg.endorsement_count;
+                                let max_advertise_length = cfg.max_peer_advertise_length;
+                                let max_endorsements_per_message = cfg.max_endorsements_per_message;
+                                let max_operations_per_message = cfg.max_operations_per_message;
+                                let max_message_size = cfg.max_message_size;
+                                let max_datastore_value_length = cfg.max_datastore_value_length;
+                                let max_function_name_length = cfg.max_function_name_length;
+                                let max_parameters_size = cfg.max_parameters_size;
+                                let max_op_datastore_entry_count = cfg.max_op_datastore_entry_count;
+                                let max_op_datastore_key_length = cfg.max_op_datastore_key_length;
+                                let max_op_datastore_value_length = cfg.max_op_datastore_value_length;
+                                handshake_peer_list_futures
+                                    .insert(ip.clone(), runtime_handle.spawn(async move {
+                                        let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
+                                        let mut reader = ReadBinder::new(
+                                            reader,
+                                            max_bytes_write,
+                                            max_message_size,
+                                            MessageDeserializer::new(
+                                                thread_count,
+                                                endorsement_count,
+                                                max_advertise_length,
+                                                max_ask_blocks,
+                                                max_operations_per_block,
+                                                max_operations_per_message,
+                                                max_endorsements_per_message,
+                                                max_datastore_value_length,
+                                                max_function_name_length,
+                                                max_parameters_size,
+                                                max_op_datastore_entry_count,
+                                                max_op_datastore_key_length,
+                                                max_op_datastore_value_length,
+                                            ),
+                                        );
+                                        match tokio::time::timeout(
+                                            timeout,
+                                            try_join(writer.send(&msg), reader.next()),
+                                        )
+                                        .await
+                                        {
+                                            Ok(Err(e)) => {
+                                                massa_trace!("Ignored network error when sending peer list", {
+                                                    "error": format!("{:?}", e)
+                                                })
+                                            }
+                                            Err(_) => massa_trace!("Ignored timeout error when sending peer list", {}),
+                                            _ => (),
+                                        }
+                                        // Notify end of task to network worker.
+                                        Handle::current()
+                                            .spawn_blocking(move || {
+                                                result_tx
+                                                    .send(HandshakeResultMsg::PeerListSendingDone(ip))
+                                                    .expect("Failed to send peer list sending done message.")
+                                            })
+                                            .await
+                                            .expect("Failed to run task to send peer list task end notification to network worker.");
+                                    }));
+                            }
                         }
                     }
                 },
                 recv(result_rx) -> msg => {
                     match msg {
                         Err(_) => break,
-                        Ok((connection_id, result)) => {
+                        Ok(HandshakeResultMsg::HandshakeReturnType{connection_id, result}) => {
                             connection_sender
                                 .send((connection_id, result))
                                 .expect("Failed to send new connection message to network worker.");
                             task_handles.remove(&connection_id);
-                        }
+                        },
+                        Ok(HandshakeResultMsg::PeerListSendingDone(ip)) => {
+                            handshake_peer_list_futures.remove(&ip);
+                        },
                     }
                 }
             }
         }
         // Abort all outstanding handshakes.
-        for handle in task_handles.values() {
+        for (_, handle) in task_handles.drain() {
+            handle.abort();
+        }
+        // Abort all the pending peerlist tasks
+        for (_, handle) in handshake_peer_list_futures.drain() {
             handle.abort();
         }
     })

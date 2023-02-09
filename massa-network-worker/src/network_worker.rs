@@ -2,12 +2,12 @@
 
 //! The network worker actually does the job of managing connections
 use super::{
-    handshake_worker::HandshakeReturnType, node_worker::NodeWorker, peer_info_database::*,
+    handshake_worker::{HandshakeManagerMsg, HandshakeReturnType},
+    node_worker::NodeWorker,
+    peer_info_database::*,
 };
 use crate::{
-    binders::{ReadBinder, WriteBinder},
     handshake_worker::{start_handshake_manager, HandshakeWorker},
-    messages::{Message, MessageDeserializer},
     network_event::EventSender,
 };
 use crossbeam_channel::{bounded, select, Receiver, Sender};
@@ -68,18 +68,14 @@ pub struct NetworkWorker {
     runtime: Runtime,
     /// A channel to receive the results of running a handshake.
     connections_rx: Receiver<(ConnectionId, HandshakeReturnType)>,
-    /// A channel to send handshake workers to be run on by the handshake manager.
-    handshake_tx: Sender<(ConnectionId, HandshakeWorker)>,
+    /// A channel to send handshake messages to the handshake manager.
+    handshake_tx: Sender<HandshakeManagerMsg>,
     /// The handle to the handshake manager.
     handshake_manager_join_handle: JoinHandle<()>,
     /// A channel to receive the result of closing a node worker.
     node_result_rx: Receiver<(NodeId, Result<ConnectionClosureReason, NetworkError>)>,
     /// A channel, cloned for each node worker, to send the result of closing a node worker.
     node_result_tx: Sender<(NodeId, Result<ConnectionClosureReason, NetworkError>)>,
-    /// A channel used to send the result of sending a list of peers.
-    handshake_peer_list_tx: Sender<IpAddr>,
-    /// A channel used to receive the result of sending a list of peers.
-    handshake_peer_list_rx: Receiver<IpAddr>,
 }
 
 pub struct NetworkWorkerChannels {
@@ -118,18 +114,14 @@ impl NetworkWorker {
 
         let (conn_tx, connections_rx) =
             bounded::<(ConnectionId, HandshakeReturnType)>(cfg.handshake_manager_channel_size);
-        let (handshake_tx, handshake_rx) =
-            bounded::<(ConnectionId, HandshakeWorker)>(cfg.handshake_manager_channel_size);
+        let (handshake_tx, handshake_rx) = bounded(cfg.handshake_manager_channel_size);
         let handshake_manager_join_handle =
-            start_handshake_manager(handshake_rx, conn_tx, runtime.handle().clone());
+            start_handshake_manager(handshake_rx, conn_tx, runtime.handle().clone(), cfg.clone());
 
         let (node_result_tx, node_result_rx) = bounded::<(
             NodeId,
             Result<ConnectionClosureReason, NetworkError>,
         )>(cfg.node_result_channel_size);
-
-        let (handshake_peer_list_tx, handshake_peer_list_rx) =
-            bounded::<IpAddr>(cfg.handshake_peer_list_channel_size);
 
         let (node_event_tx, node_event_rx) = bounded::<NodeEvent>(cfg.node_event_channel_size);
         let max_wait_event = cfg.max_send_wait_network_event.to_duration();
@@ -155,8 +147,6 @@ impl NetworkWorker {
             handshake_manager_join_handle,
             node_result_rx,
             node_result_tx,
-            handshake_peer_list_tx,
-            handshake_peer_list_rx,
         }
     }
 
@@ -263,16 +253,6 @@ impl NetworkWorker {
                     self.on_node_event(
                         evt.map_err(|_| NetworkError::ChannelError("node event rx failed".into()))?
                     )?;
-                }
-
-                // Try peer list future finished.
-                recv(self.handshake_peer_list_rx) -> msg => {
-                    match msg {
-                        Err(_) => {},
-                        Ok(ip) => {
-                           self.handshake_peer_list_futures.remove(&ip);
-                        }
-                    }
                 }
 
                 // Listener socket received.
@@ -772,73 +752,16 @@ impl NetworkWorker {
             "Maximum connection count reached. Inbound connection refused, trying to send a list of peers",
             {"address": remote_addr}
         );
-        if self.cfg.max_in_connection_overflow > self.handshake_peer_list_futures.len() {
-            let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
-            let timeout = self.cfg.peer_list_send_timeout.to_duration();
-            let max_bytes_read = self.cfg.max_bytes_read;
-            let max_bytes_write = self.cfg.max_bytes_write;
-            let max_ask_blocks = self.cfg.max_ask_blocks;
-            let max_operations_per_block = self.cfg.max_operations_per_block;
-            let thread_count = self.cfg.thread_count;
-            let endorsement_count = self.cfg.endorsement_count;
-            let max_advertise_length = self.cfg.max_peer_advertise_length;
-            let max_endorsements_per_message = self.cfg.max_endorsements_per_message;
-            let max_operations_per_message = self.cfg.max_operations_per_message;
-            let max_message_size = self.cfg.max_message_size;
-            let max_datastore_value_length = self.cfg.max_datastore_value_length;
-            let max_function_name_length = self.cfg.max_function_name_length;
-            let max_parameters_size = self.cfg.max_parameters_size;
-            let max_op_datastore_entry_count = self.cfg.max_op_datastore_entry_count;
-            let max_op_datastore_key_length = self.cfg.max_op_datastore_key_length;
-            let max_op_datastore_value_length = self.cfg.max_op_datastore_value_length;
-            let sender_clone = self.handshake_peer_list_tx.clone();
-            let ip = remote_addr.ip();
-            self.handshake_peer_list_futures
-                .insert(remote_addr.ip(), self.runtime.spawn(async move {
-                    let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
-                    let mut reader = ReadBinder::new(
-                        reader,
-                        max_bytes_write,
-                        max_message_size,
-                        MessageDeserializer::new(
-                            thread_count,
-                            endorsement_count,
-                            max_advertise_length,
-                            max_ask_blocks,
-                            max_operations_per_block,
-                            max_operations_per_message,
-                            max_endorsements_per_message,
-                            max_datastore_value_length,
-                            max_function_name_length,
-                            max_parameters_size,
-                            max_op_datastore_entry_count,
-                            max_op_datastore_key_length,
-                            max_op_datastore_value_length,
-                        ),
-                    );
-                    match tokio::time::timeout(
-                        timeout,
-                        futures::future::try_join(writer.send(&msg), reader.next()),
-                    )
-                    .await
-                    {
-                        Ok(Err(e)) => {
-                            massa_trace!("Ignored network error when sending peer list", {
-                                "error": format!("{:?}", e)
-                            })
-                        }
-                        Err(_) => massa_trace!("Ignored timeout error when sending peer list", {}),
-                        _ => (),
-                    }
-                    // Notify end of task to network worker.
-                    Handle::current()
-                        .spawn_blocking(move || {
-                            let _ = sender_clone.send(ip);
-                        })
-                        .await
-                        .expect("Failed to run task to send peer list task end notification to network worker.");
-                }));
-        }
+        let ip = remote_addr.ip();
+        let peer_list = self.peer_info_db.get_advertisable_peer_ips();
+        self.handshake_tx
+            .send(HandshakeManagerMsg::SendPeerList {
+                peer_list,
+                ip,
+                reader,
+                writer,
+            })
+            .expect("Failed to send send peer list message to handshake manager.");
     }
 
     /// Manage a successful incoming and outgoing connection.
@@ -863,7 +786,14 @@ impl NetworkWorker {
             self.cfg.max_bytes_read,
             self.cfg.max_bytes_write,
         );
-        if self.handshake_tx.send((connection_id, worker)).is_err() {
+        if self
+            .handshake_tx
+            .send(HandshakeManagerMsg::NewWorker {
+                connection_id,
+                worker,
+            })
+            .is_err()
+        {
             return Err(NetworkError::HandshakeError(
                 HandshakeErrorType::ManagementFailed,
             ));
