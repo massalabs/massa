@@ -101,8 +101,8 @@
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
 };
 <span class="kw">pub use </span>server::{start_bootstrap_server, BootstrapManager};
-<span class="kw">pub use </span>settings::BootstrapConfig;
 <span class="kw">pub use </span>settings::IpType;
+<span class="kw">pub use </span>settings::{BootstrapConfig, BootstrapServerMessageDeserializerArgs};
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>tests;
