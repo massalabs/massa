@@ -12,7 +12,7 @@ fn test_block_index_slot() {
     storage.store_block(block.clone());
     let blocks = storage.read_blocks();
     let stored_blocks = blocks.get_blocks_by_slot(&slot).unwrap();
-    assert_eq!(stored_blocks.len(), 1);
+    assert_eq!(stored_blocks.len(), 1, "{:?}", stored_blocks);
     assert_eq!(stored_blocks.get(&block.id).unwrap(), &block.id);
 }
 
