@@ -35,6 +35,10 @@ use std::{collections::hash_map, sync::Arc};
 
 /// A storage system for objects (blocks, operations...), shared by various components.
 pub struct Storage {
+    global: StorageGlobal,
+    local: StorageLocal,
+}
+pub struct StorageGlobal {
     /// global block storage
     blocks: Arc<RwLock<BlockIndexes>>,
     /// global operation storage
@@ -48,13 +52,14 @@ pub struct Storage {
     operation_owners: Arc<RwLock<PreHashMap<OperationId, usize>>>,
     /// global endorsement reference counter
     endorsement_owners: Arc<RwLock<PreHashMap<EndorsementId, usize>>>,
-
+}
+pub struct StorageLocal {
     /// locally used block references
-    local_used_blocks: PreHashSet<BlockId>,
+    used_blocks: PreHashSet<BlockId>,
     /// locally used operation references
-    local_used_ops: PreHashSet<OperationId>,
+    used_ops: PreHashSet<OperationId>,
     /// locally used endorsement references
-    local_used_endorsements: PreHashSet<EndorsementId>,
+    used_endorsements: PreHashSet<EndorsementId>,
 }
 
 impl Debug for Storage {
@@ -70,23 +75,23 @@ impl Clone for Storage {
 
         // claim one more user of the op refs
         Storage::internal_claim_refs(
-            &self.local_used_ops.clone(),
-            &mut res.operation_owners.write(),
-            &mut res.local_used_ops,
+            &self.local.used_ops.clone(),
+            &mut res.global.operation_owners.write(),
+            &mut res.local.used_ops,
         );
 
         // claim one more user of the block refs
         Storage::internal_claim_refs(
-            &self.local_used_blocks.clone(),
-            &mut res.block_owners.write(),
-            &mut res.local_used_blocks,
+            &self.local.used_blocks.clone(),
+            &mut res.global.block_owners.write(),
+            &mut res.local.used_blocks,
         );
 
         // claim one more user of the endorsement refs
         Storage::internal_claim_refs(
-            &self.local_used_endorsements.clone(),
-            &mut res.endorsement_owners.write(),
-            &mut res.local_used_endorsements,
+            &self.local.used_endorsements.clone(),
+            &mut res.global.endorsement_owners.write(),
+            &mut res.local.used_endorsements,
         );
 
         res
@@ -98,34 +103,42 @@ impl Storage {
     /// - In the main for the node
     /// - At the top of the test in tests
     /// All others instances of Storage mush cloned from this one suing `clone()` or `clone_without_refs()`.
-    pub fn create_root() -> Storage {
-        Storage {
-            blocks: Default::default(),
-            operations: Default::default(),
-            endorsements: Default::default(),
-            block_owners: Default::default(),
-            operation_owners: Default::default(),
-            endorsement_owners: Default::default(),
-            local_used_blocks: Default::default(),
-            local_used_ops: Default::default(),
-            local_used_endorsements: Default::default(),
+    pub fn create_root() -> Self {
+        Self {
+            global: StorageGlobal {
+                blocks: Default::default(),
+                operations: Default::default(),
+                endorsements: Default::default(),
+                block_owners: Default::default(),
+                operation_owners: Default::default(),
+                endorsement_owners: Default::default(),
+            },
+            local: StorageLocal {
+                used_blocks: Default::default(),
+                used_ops: Default::default(),
+                used_endorsements: Default::default(),
+            },
         }
     }
 
     /// Clones the object to a new one that has no references
     pub fn clone_without_refs(&self) -> Self {
         Self {
-            blocks: self.blocks.clone(),
-            operations: self.operations.clone(),
-            endorsements: self.endorsements.clone(),
-            operation_owners: self.operation_owners.clone(),
-            block_owners: self.block_owners.clone(),
-            endorsement_owners: self.endorsement_owners.clone(),
+            global: StorageGlobal {
+                blocks: self.global.blocks.clone(),
+                operations: self.global.operations.clone(),
+                endorsements: self.global.endorsements.clone(),
+                operation_owners: self.global.operation_owners.clone(),
+                block_owners: self.global.block_owners.clone(),
+                endorsement_owners: self.global.endorsement_owners.clone(),
+            },
 
-            // do not clone local ref lists
-            local_used_ops: Default::default(),
-            local_used_blocks: Default::default(),
-            local_used_endorsements: Default::default(),
+            local: StorageLocal {
+                // do not clone local ref lists
+                used_ops: Default::default(),
+                used_blocks: Default::default(),
+                used_endorsements: Default::default(),
+            },
         }
     }
 
@@ -133,24 +146,27 @@ impl Storage {
     pub fn extend(&mut self, mut other: Storage) {
         // Take ownership ot `other`'s references.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
-        self.local_used_ops.extend(
+        self.local.used_ops.extend(
             &other
-                .local_used_ops
-                .drain_filter(|id| !self.local_used_ops.contains(id))
+                .local
+                .used_ops
+                .drain_filter(|id| !self.local.used_ops.contains(id))
                 .collect::<Vec<_>>(),
         );
 
-        self.local_used_blocks.extend(
+        self.local.used_blocks.extend(
             &other
-                .local_used_blocks
-                .drain_filter(|id| !self.local_used_blocks.contains(id))
+                .local
+                .used_blocks
+                .drain_filter(|id| !self.local.used_blocks.contains(id))
                 .collect::<Vec<_>>(),
         );
 
-        self.local_used_endorsements.extend(
+        self.local.used_endorsements.extend(
             &other
-                .local_used_endorsements
-                .drain_filter(|id| !self.local_used_endorsements.contains(id))
+                .local
+                .used_endorsements
+                .drain_filter(|id| !self.local.used_endorsements.contains(id))
                 .collect::<Vec<_>>(),
         );
     }
@@ -169,28 +185,31 @@ impl Storage {
         // Define the ref ownership of the new Storage as all the listed objects that we managed to remove from `self`.
         // Note that this does not require updating counters.
 
-        res.local_used_blocks = blocks
+        res.local.used_blocks = blocks
             .iter()
             .map(|id| {
-                self.local_used_blocks
+                self.local
+                    .used_blocks
                     .take(id)
                     .expect("split block ref not owned by source")
             })
             .collect();
 
-        res.local_used_ops = operations
+        res.local.used_ops = operations
             .iter()
             .map(|id| {
-                self.local_used_ops
+                self.local
+                    .used_ops
                     .take(id)
                     .expect("split op ref not owned by source")
             })
             .collect();
 
-        res.local_used_endorsements = endorsements
+        res.local.used_endorsements = endorsements
             .iter()
             .map(|id| {
-                self.local_used_endorsements
+                self.local
+                    .used_endorsements
                     .take(id)
                     .expect("split endorsement ref not owned by source")
             })
@@ -214,7 +233,7 @@ impl Storage {
 
     /// get the block reference ownership
     pub fn get_block_refs(&self) -> &PreHashSet<BlockId> {
-        &self.local_used_blocks
+        &self.local.used_blocks
     }
 
     /// Claim block references.
@@ -226,13 +245,13 @@ impl Storage {
             return claimed;
         }
 
-        let owners = &mut self.block_owners.write();
+        let owners = &mut self.global.block_owners.write();
 
         // check that all IDs are owned
         claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
 
         // effectively add local ownership on the refs
-        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_blocks);
+        Storage::internal_claim_refs(&claimed, owners, &mut self.local.used_blocks);
 
         claimed
     }
@@ -242,10 +261,10 @@ impl Storage {
         if ids.is_empty() {
             return;
         }
-        let mut owners = self.block_owners.write();
+        let mut owners = self.global.block_owners.write();
         let mut orphaned_ids = Vec::new();
         for id in ids {
-            if !self.local_used_blocks.remove(id) {
+            if !self.local.used_blocks.remove(id) {
                 // the object was already not referenced locally
                 continue;
             }
@@ -270,7 +289,7 @@ impl Storage {
         }
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
-            let mut blocks = self.blocks.write();
+            let mut blocks = self.global.blocks.write();
             for b_id in orphaned_ids {
                 blocks.remove(&b_id);
             }
@@ -281,14 +300,14 @@ impl Storage {
     /// Note that this also claims a local reference to the block
     pub fn store_block(&mut self, block: SecureShareBlock) {
         let id = block.id;
-        let mut owners = self.block_owners.write();
-        let mut blocks = self.blocks.write();
+        let mut owners = self.global.block_owners.write();
+        let mut blocks = self.global.blocks.write();
         blocks.insert(block);
         // update local reference counters
         Storage::internal_claim_refs(
             &vec![id].into_iter().collect(),
             &mut owners,
-            &mut self.local_used_blocks,
+            &mut self.local.used_blocks,
         );
     }
 
@@ -304,20 +323,20 @@ impl Storage {
             return claimed;
         }
 
-        let owners = &mut self.operation_owners.write();
+        let owners = &mut self.global.operation_owners.write();
 
         // check that all IDs are owned
         claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
 
         // effectively add local ownership on the refs
-        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_ops);
+        Storage::internal_claim_refs(&claimed, owners, &mut self.local.used_ops);
 
         claimed
     }
 
     /// get the operation reference ownership
     pub fn get_op_refs(&self) -> &PreHashSet<OperationId> {
-        &self.local_used_ops
+        &self.local.used_ops
     }
 
     /// Drop local operation references.
@@ -326,10 +345,10 @@ impl Storage {
         if ids.is_empty() {
             return;
         }
-        let mut owners = self.operation_owners.write();
+        let mut owners = self.global.operation_owners.write();
         let mut orphaned_ids = Vec::new();
         for id in ids {
-            if !self.local_used_ops.remove(id) {
+            if !self.local.used_ops.remove(id) {
                 // the object was already not referenced locally
                 continue;
             }
@@ -354,7 +373,7 @@ impl Storage {
         }
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
-            let mut ops = self.operations.write();
+            let mut ops = self.global.operations.write();
             for id in orphaned_ids {
                 ops.remove(&id);
             }
@@ -367,28 +386,28 @@ impl Storage {
         if operations.is_empty() {
             return;
         }
-        let mut owners = self.operation_owners.write();
-        let mut op_store = self.operations.write();
+        let mut owners = self.global.operation_owners.write();
+        let mut op_store = self.global.operations.write();
         let ids: PreHashSet<OperationId> = operations.iter().map(|op| op.id).collect();
         for op in operations {
             op_store.insert(op);
         }
-        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
+        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local.used_ops);
     }
 
     /// Gets a read reference to the operations index
     pub fn read_operations(&self) -> RwLockReadGuard<OperationIndexes> {
-        self.operations.read()
+        self.global.operations.read()
     }
 
     /// Gets a read reference to the endorsements index
     pub fn read_endorsements(&self) -> RwLockReadGuard<EndorsementIndexes> {
-        self.endorsements.read()
+        self.global.endorsements.read()
     }
 
     /// Gets a read reference to the blocks index
     pub fn read_blocks(&self) -> RwLockReadGuard<BlockIndexes> {
-        self.blocks.read()
+        self.global.blocks.read()
     }
 
     /// Claim endorsement references.
@@ -403,19 +422,19 @@ impl Storage {
             return claimed;
         }
 
-        let owners = &mut self.endorsement_owners.write();
+        let owners = &mut self.global.endorsement_owners.write();
 
         // check that all IDs are owned
         claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
 
         // effectively add local ownership on the refs
-        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_endorsements);
+        Storage::internal_claim_refs(&claimed, owners, &mut self.local.used_endorsements);
         claimed
     }
 
     /// get the endorsement reference ownership
     pub fn get_endorsement_refs(&self) -> &PreHashSet<EndorsementId> {
-        &self.local_used_endorsements
+        &self.local.used_endorsements
     }
 
     /// Drop local endorsement references.
@@ -424,10 +443,10 @@ impl Storage {
         if ids.is_empty() {
             return;
         }
-        let mut owners = self.endorsement_owners.write();
+        let mut owners = self.global.endorsement_owners.write();
         let mut orphaned_ids = Vec::new();
         for id in ids {
-            if !self.local_used_endorsements.remove(id) {
+            if !self.local.used_endorsements.remove(id) {
                 // the object was already not referenced locally
                 continue;
             }
@@ -452,7 +471,7 @@ impl Storage {
         }
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
-            let mut endos = self.endorsements.write();
+            let mut endos = self.global.endorsements.write();
             for id in orphaned_ids {
                 endos.remove(&id);
             }
@@ -465,13 +484,13 @@ impl Storage {
         if endorsements.is_empty() {
             return;
         }
-        let mut owners = self.endorsement_owners.write();
-        let mut endo_store = self.endorsements.write();
+        let mut owners = self.global.endorsement_owners.write();
+        let mut endo_store = self.global.endorsements.write();
         let ids: PreHashSet<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
         for endorsement in endorsements {
             endo_store.insert(endorsement);
         }
-        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_endorsements);
+        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local.used_endorsements);
     }
 }
 
@@ -479,12 +498,12 @@ impl Drop for Storage {
     /// cleanup on Storage instance drop
     fn drop(&mut self) {
         // release all blocks
-        self.drop_block_refs(&self.local_used_blocks.clone());
+        self.drop_block_refs(&self.local.used_blocks.clone());
 
         // release all ops
-        self.drop_operation_refs(&self.local_used_ops.clone());
+        self.drop_operation_refs(&self.local.used_ops.clone());
 
         // release all endorsements
-        self.drop_endorsement_refs(&self.local_used_endorsements.clone());
+        self.drop_endorsement_refs(&self.local.used_endorsements.clone());
     }
 }
