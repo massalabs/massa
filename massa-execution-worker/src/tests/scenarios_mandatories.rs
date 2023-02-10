@@ -6,7 +6,7 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget,
 };
-use massa_models::config::{LEDGER_ENTRY_DATASTORE_BASE_SIZE};
+use massa_models::config::LEDGER_ENTRY_DATASTORE_BASE_SIZE;
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{

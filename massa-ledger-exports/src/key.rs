@@ -90,22 +90,27 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        
-        let result_addr = match self.address_deserializer.deserialize::<massa_serialization::DeserializeError>(&value) {
+        let result_addr = match self
+            .address_deserializer
+            .deserialize::<massa_serialization::DeserializeError>(&value)
+        {
             Ok((rest, addr)) => Ok((rest, addr)),
-            Err(_) => { Err(SerializeError::GeneralError(String::from("The key does not contain a valid address"))) }
+            Err(_) => Err(SerializeError::GeneralError(String::from(
+                "The key does not contain a valid address",
+            ))),
         };
         if result_addr.is_err() {
-            return Err(SerializeError::GeneralError(String::from("The key does not contain a valid address")));
+            return Err(SerializeError::GeneralError(String::from(
+                "The key does not contain a valid address",
+            )));
         }
         let (rest, addr): (&[u8], Address) = result_addr.unwrap();
 
         buffer.extend(addr.to_prefixed_bytes());
-        
+
         if rest[0] == DATASTORE_IDENT {
             if rest.len() > 0 {
-                self.vec_u8_serializer
-                    .serialize(&rest.to_vec(), buffer)?;
+                self.vec_u8_serializer.serialize(&rest.to_vec(), buffer)?;
             } else {
                 return Err(SerializeError::GeneralError(
                     "datastore keys can not be empty".to_string(),

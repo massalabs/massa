@@ -242,13 +242,12 @@ pub fn get_random_final_state_bootstrap(
     let mut data: Vec<u8> = Slot::max().to_bytes_key().to_vec();
     data.append(&mut u64::MAX.to_be_bytes().to_vec());
     data.push(1u8);
-    let address = Address::SC(SCAddress::from_bytes_without_version(1, &data).expect("Could not create the sc address"));
+    let address = Address::SC(
+        SCAddress::from_bytes_without_version(1, &data).expect("Could not create the sc address"),
+    );
     //let address = Address::SC(SCAddress::from_bytes_without_version(1, &data)));
 
-    sorted_ledger.insert(
-        address,
-        get_random_ledger_entry(),
-    );
+    sorted_ledger.insert(address, get_random_ledger_entry());
 
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);

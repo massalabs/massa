@@ -122,7 +122,8 @@ fn test_pool() {
 
         let op_thread = op
             .content_creator_address
-            .get_thread(pool_config.thread_count).unwrap();
+            .get_thread(pool_config.thread_count)
+            .unwrap();
         thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
     }
 
@@ -204,7 +205,8 @@ fn test_pool() {
         //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
         let op_thread = op
             .content_creator_address
-            .get_thread(pool_config.thread_count).unwrap();
+            .get_thread(pool_config.thread_count)
+            .unwrap();
         let (ids, _) = pool.get_block_operations(&Slot::new(expire_period - 1, op_thread));
         assert!(ids.is_empty());
     }

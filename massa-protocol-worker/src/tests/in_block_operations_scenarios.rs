@@ -50,7 +50,8 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
             let op = create_operation_with_expire_period(&keypair, 5);
             let op_thread = op
                 .content_creator_address
-                .get_thread(protocol_config.thread_count).unwrap();
+                .get_thread(protocol_config.thread_count)
+                .unwrap();
 
             let block = create_block_with_operations(
                 &creator_node.keypair,
@@ -161,7 +162,8 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let op = create_operation_with_expire_period(&keypair, 5);
                 let op_thread = op
                     .content_creator_address
-                    .get_thread(protocol_config.thread_count).unwrap();
+                    .get_thread(protocol_config.thread_count)
+                    .unwrap();
 
                 let block = create_block_with_operations(
                     &creator_node.keypair,
@@ -215,7 +217,8 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let op = create_operation_with_expire_period(&keypair, 5);
                 let op_thread = op
                     .content_creator_address
-                    .get_thread(protocol_config.thread_count).unwrap();
+                    .get_thread(protocol_config.thread_count)
+                    .unwrap();
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
@@ -280,7 +283,8 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let mut op = create_operation_with_expire_period(&keypair, 5);
                 let op_thread = op
                     .content_creator_address
-                    .get_thread(protocol_config.thread_count).unwrap();
+                    .get_thread(protocol_config.thread_count)
+                    .unwrap();
                 op.id = OperationId::new(Hash::compute_from("wrong signature".as_bytes()));
                 let block = create_block_with_operations(
                     &creator_node.keypair,

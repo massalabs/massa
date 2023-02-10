@@ -2,10 +2,11 @@
 
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use crate::slot::{Slot, SLOT_KEY_SIZE, SlotDeserializer};
+use crate::slot::{Slot, SlotDeserializer, SLOT_KEY_SIZE};
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_serialization::{
-    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 use massa_signature::{PublicKey, PublicKeyV0, PublicKeyV1};
 /*use nom::branch::alt;
@@ -14,7 +15,7 @@ use nom::sequence::preceded;*/
 use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
-use std::ops::Bound::{Excluded,Included};
+use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 use transition::Versioned;
 
@@ -37,14 +38,14 @@ pub struct SCAddress {
     /// The data directly
     #[transition::field(versions("1"))]
     pub slot: Slot,
-    
+
     /// The data directly
     #[transition::field(versions("1"))]
     pub created_addr_index: u64,
-    
+
     /// The data directly
     #[transition::field(versions("1"))]
-    pub read_only: bool
+    pub read_only: bool,
 }
 
 /// Derived from a public key.
@@ -130,13 +131,13 @@ impl std::fmt::Display for SCAddress {
         u64_serializer
             .serialize(&Self::VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-            bytes.extend(self.slot.to_bytes_key());
-            bytes.extend(self.created_addr_index.to_be_bytes());
-            if self.read_only {
-                bytes.push(0u8);
-            } else {
-                bytes.push(1u8);
-            }
+        bytes.extend(self.slot.to_bytes_key());
+        bytes.extend(self.created_addr_index.to_be_bytes());
+        if self.read_only {
+            bytes.push(0u8);
+        } else {
+            bytes.push(1u8);
+        }
 
         write!(
             f,
@@ -308,7 +309,6 @@ impl Address {
 }
 
 impl UserAddress {
-    
     /// Gets the associated thread. Depends on the `thread_count`
     fn get_thread(&self, thread_count: u8) -> u8 {
         match self {
@@ -401,7 +401,6 @@ impl UserAddress {
     }
 }
 
-
 #[transition::impl_version(versions("0", "1"), structures("UserAddress", "PublicKey"))]
 impl UserAddress {
     /// Computes address associated with given public key
@@ -411,15 +410,10 @@ impl UserAddress {
 }
 
 #[transition::impl_version(versions("0"))]
-impl UserAddress {
-
-}
+impl UserAddress {}
 
 #[transition::impl_version(versions("1"))]
-impl UserAddress {
-
-}
-
+impl UserAddress {}
 
 impl SCAddress {
     fn from_str_without_prefixed_type(s: &str) -> Result<Self, ModelsError> {
@@ -452,8 +446,12 @@ impl SCAddress {
 
     pub fn from_bytes_without_version(version: u64, data: &[u8]) -> Result<SCAddress, ModelsError> {
         match version {
-            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](<SCAddress!["0"]>::from_bytes_without_version(data)?,)),
-            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](<SCAddress!["1"]>::from_bytes_without_version(data)?,)),
+            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
+                <SCAddress!["0"]>::from_bytes_without_version(data)?,
+            )),
+            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
+                <SCAddress!["1"]>::from_bytes_without_version(data)?,
+            )),
             _ => Err(ModelsError::AddressParseError),
         }
     }
@@ -483,17 +481,16 @@ impl SCAddress {
     }
 
     fn from_bytes_without_version(data: &[u8]) -> Result<SCAddress, ModelsError> {
-        Ok(SCAddress{hash: Hash::from_bytes(&data.try_into().map_err(
-            |_| {
+        Ok(SCAddress {
+            hash: Hash::from_bytes(&data.try_into().map_err(|_| {
                 ModelsError::BufferError(format!(
                     "expected a buffer of size {}, but found a size of {}",
                     HASH_SIZE_BYTES,
                     &data.len()
                 ))
-            },
-        )?)})
+            })?),
+        })
     }
-    
 }
 
 #[transition::impl_version(versions("1"))]
@@ -508,20 +505,18 @@ impl SCAddress {
         addr_vers_ser
             .serialize(&Self::VERSION, &mut buff)
             .expect("impl always returns Ok(())");
-            buff.extend_from_slice(&self.slot.to_bytes_key()[..]);
-            buff.extend_from_slice(&self.created_addr_index.to_be_bytes()[..]);
-            if self.read_only {
-                buff.push(0u8);
-            } else {
-                buff.push(1u8);
-            }
+        buff.extend_from_slice(&self.slot.to_bytes_key()[..]);
+        buff.extend_from_slice(&self.created_addr_index.to_be_bytes()[..]);
+        if self.read_only {
+            buff.push(0u8);
+        } else {
+            buff.push(1u8);
+        }
         buff
     }
 
     fn from_bytes_without_version(data: &[u8]) -> Result<SCAddress, ModelsError> {
-
-        if data.len() != SLOT_KEY_SIZE + 9
-        {
+        if data.len() != SLOT_KEY_SIZE + 9 {
             return Err(ModelsError::BufferError(format!(
                 "expected a buffer of size  than {}, but found a size of {}",
                 SLOT_KEY_SIZE + 9,
@@ -529,27 +524,37 @@ impl SCAddress {
             )));
         }
 
-        let err = Err(ModelsError::BufferError(String::from("could not deserialize buffer from_bytes_without_version")));
+        let err = Err(ModelsError::BufferError(String::from(
+            "could not deserialize buffer from_bytes_without_version",
+        )));
 
         let (data_slot, rest) = data.split_at(SLOT_KEY_SIZE);
-        let (data_created_addr_index, data_read_only) = rest.split_at(rest.len()-1);
-        
+        let (data_created_addr_index, data_read_only) = rest.split_at(rest.len() - 1);
+
         let slot = Slot::from_bytes_key(&data_slot.try_into().expect("Unexpected error"));
-        let created_addr_index = u64::from_be_bytes(data_created_addr_index.try_into().expect("Unexpected error"));
+        let created_addr_index = u64::from_be_bytes(
+            data_created_addr_index
+                .try_into()
+                .expect("Unexpected error"),
+        );
         let read_only = match data_read_only {
-            [0_u8] => { false },
-            [1_u8] => { true },
-            _ => { return err; },
+            [0_u8] => false,
+            [1_u8] => true,
+            _ => {
+                return err;
+            }
         };
 
-        Ok(SCAddress { slot, created_addr_index, read_only })
+        Ok(SCAddress {
+            slot,
+            created_addr_index,
+            read_only,
+        })
     }
-
 }
 
 /* /!\ SCAddressV1 not prehashed! */
 impl PreHashed for Address {}
-
 
 /// Serializer for `Address`
 #[derive(Default, Clone)]
@@ -633,7 +638,6 @@ impl Serializer<SCAddress> for AddressSerializer {
     }
 }
 
-
 /// Deserializer for `Address`
 #[derive(Clone)]
 pub struct AddressDeserializer {
@@ -654,11 +658,14 @@ impl Default for AddressDeserializer {
 impl AddressDeserializer {
     /// Creates a new deserializer for `Address`
     pub const fn new() -> Self {
-        Self {   
+        Self {
             type_deserializer: U64VarIntDeserializer::new(Included(0), Excluded(1)),
             version_deserializer: U64VarIntDeserializer::new(Included(0), Excluded(u64::MAX)),
             hash_deserializer: HashDeserializer::new(),
-            slot_deserializer: SlotDeserializer::new((Included(0), Excluded(u64::MAX)), (Included(0), Excluded(u8::MAX))),
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Excluded(u64::MAX)),
+                (Included(0), Excluded(u8::MAX)),
+            ),
             u64_deserializer: U64Deserializer::new(),
             u8_deserializer: U8Deserializer::new(),
         }
@@ -673,8 +680,12 @@ impl Deserializer<Address> for AddressDeserializer {
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
-        let (rest, addr_type) = self.type_deserializer.deserialize(buffer)
-        .map_err(|_: nom::Err<E>| {nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))})?;
+        let (rest, addr_type) =
+            self.type_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
         match addr_type {
             USER_PREFIX => {
                 let (rest, addr) = self.deserialize(&rest)?;
@@ -697,8 +708,12 @@ impl Deserializer<UserAddress> for AddressDeserializer {
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
-        let (rest, addr_vers) = self.version_deserializer.deserialize(buffer)
-        .map_err(|_: nom::Err<E>| {nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))})?;
+        let (rest, addr_vers) =
+            self.version_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
         match addr_vers {
             <UserAddress!["0"]>::VERSION => {
                 let (rest, addr) = self.deserialize(&rest)?;
@@ -735,8 +750,12 @@ impl Deserializer<SCAddress> for AddressDeserializer {
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
-        let (rest, addr_vers) = self.version_deserializer.deserialize(buffer)
-        .map_err(|_: nom::Err<E>| {nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))})?;
+        let (rest, addr_vers) =
+            self.version_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
         match addr_vers {
             <SCAddress!["0"]>::VERSION => {
                 let (rest, addr) = self.deserialize(&rest)?;
@@ -760,7 +779,7 @@ impl Deserializer<SCAddress> for AddressDeserializer {
         context("Failed SCAddress deserialization", |input| {
             self.hash_deserializer.deserialize(input)
         })
-        .map(|h| SCAddress{hash: h})
+        .map(|h| SCAddress { hash: h })
         .parse(buffer)
     }
 }
@@ -778,12 +797,16 @@ impl Deserializer<SCAddress> for AddressDeserializer {
             let read_only = match read_only_byte {
                 0u8 => false,
                 1u8 => true,
-                _ => { return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)))}
+                _ => return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
             };
-            
+
             Ok((rest, (slot, created_addr_index, read_only)))
         })
-        .map(|(slot, created_addr_index, read_only)| SCAddress{slot, created_addr_index, read_only})
+        .map(|(slot, created_addr_index, read_only)| SCAddress {
+            slot,
+            created_addr_index,
+            read_only,
+        })
         .parse(buffer)
     }
 }
@@ -819,9 +842,11 @@ impl Deserializer<u64> for U64Deserializer {
         }
         let (u64_bytes, rest) = buffer.split_at(8);
 
-        let u64 = u64::from_be_bytes(u64_bytes.try_into()
-        .map_err(|_| nom::Err::Error(
-            E::from_error_kind(buffer, ErrorKind::Eof)))?);
+        let u64 = u64::from_be_bytes(
+            u64_bytes
+                .try_into()
+                .map_err(|_| nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)))?,
+        );
         Ok((rest, u64))
     }
 }
@@ -855,14 +880,12 @@ pub struct ExecutionAddressCycleInfo {
     pub active_rolls: Option<u64>,
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_address() {
-        
         let hash = massa_hash::Hash::compute_from(&"ADDR".as_bytes());
 
         let slot = Slot::new(10, 2);
@@ -872,12 +895,15 @@ mod test {
         let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
         let user_addr_1 = Address::User(UserAddress::UserAddressV1(UserAddressV1(hash)));
         let sc_addr_0 = Address::SC(SCAddress::SCAddressV0(SCAddressV0 { hash }));
-        let sc_addr_1 = Address::SC(SCAddress::SCAddressV1(SCAddressV1 { slot, created_addr_index, read_only }));
+        let sc_addr_1 = Address::SC(SCAddress::SCAddressV1(SCAddressV1 {
+            slot,
+            created_addr_index,
+            read_only,
+        }));
 
         println!("user_addr_0: {}", user_addr_0);
         println!("user_addr_1: {}", user_addr_1);
         println!("sc_addr_0: {}", sc_addr_0);
         println!("sc_addr_1: {}", sc_addr_1);
-
     }
 }

@@ -242,24 +242,27 @@ impl LedgerDB {
         opt.set_iterate_range(data_prefix!(addr).clone()..end_prefix(data_prefix!(addr)).unwrap());
 
         /*let mut iter = self
-            .db
-            .iterator_cf_opt(handle, opt, IteratorMode::Start)
-            .flatten()
-            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec())
-            .peekable();*/
-            
-        let mut iter = self
         .db
         .iterator_cf_opt(handle, opt, IteratorMode::Start)
         .flatten()
-        .map(|(key, _)| {
-            let res: Result<(&[u8], Address), _> = address_deserializer.deserialize::<massa_serialization::DeserializeError>(&key);    
-            match res {
+        .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec())
+        .peekable();*/
+
+        let mut iter = self
+            .db
+            .iterator_cf_opt(handle, opt, IteratorMode::Start)
+            .flatten()
+            .map(|(key, _)| {
+                let res: Result<(&[u8], Address), _> =
+                    address_deserializer.deserialize::<massa_serialization::DeserializeError>(&key);
+                match res {
                     Ok((rest, _addr)) => rest.to_vec(),
-                    Err(_) => { vec![] }
+                    Err(_) => {
+                        vec![]
+                    }
                 }
-        })
-        .peekable();
+            })
+            .peekable();
 
         // Return None if empty
         // TODO: function should return None if complete entry does not exist
@@ -604,18 +607,18 @@ impl LedgerDB {
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
-        self
-        .db
-        .iterator_cf_opt(handle, opt, IteratorMode::Start)
-        .flatten()
-        .map(|(key, data)| {
-            let res: Result<(&[u8], Address), _> = address_deserializer.deserialize::<massa_serialization::DeserializeError>(&key);    
-            match res {
-                    Ok((rest, _addr)) => (rest.to_vec(),data.to_vec()),
-                    Err(_) => { (vec![], vec![]) }
+        self.db
+            .iterator_cf_opt(handle, opt, IteratorMode::Start)
+            .flatten()
+            .map(|(key, data)| {
+                let res: Result<(&[u8], Address), _> =
+                    address_deserializer.deserialize::<massa_serialization::DeserializeError>(&key);
+                match res {
+                    Ok((rest, _addr)) => (rest.to_vec(), data.to_vec()),
+                    Err(_) => (vec![], vec![]),
                 }
-        })
-        .collect()
+            })
+            .collect()
     }
 }
 
