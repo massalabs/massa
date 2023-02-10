@@ -2,7 +2,8 @@
     "Address": [
         {
             "slot": {
-                "period": 0,
+                "start_period": 0,
+                "end_period": 99,
                 "thread": 0
             },
             "min_balance": 10000,
@@ -10,7 +11,8 @@
         },
         {
             "slot": {
-                "period": 100,
+                "start_period": 100,
+                "end_period": 199,
                 "thread": 0
             },
             "min_balance": 1000,
