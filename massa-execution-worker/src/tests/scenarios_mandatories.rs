@@ -190,7 +190,7 @@ fn test_nested_call_gas_usage() {
     std::thread::sleep(Duration::from_millis(100));
 
     // length of the sub contract test.wasm
-    let bytecode_sub_contract_len = 4374;
+    // let bytecode_sub_contract_len = 4374;
 
     // let balance = sample_state
     //     .read()
@@ -198,10 +198,10 @@ fn test_nested_call_gas_usage() {
     //     .get_balance(&Address::from_public_key(&keypair.get_public_key()))
     //     .unwrap();
 
-    let exec_cost = exec_cfg
-        .storage_costs_constants
-        .ledger_cost_per_byte
-        .saturating_mul_u64(bytecode_sub_contract_len);
+    // let exec_cost = exec_cfg
+    //     .storage_costs_constants
+    //     .ledger_cost_per_byte
+    //     .saturating_mul_u64(bytecode_sub_contract_len);
 
     // let balance_expected = Amount::from_str("300000")
     //     .unwrap()
