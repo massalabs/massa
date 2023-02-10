@@ -8,10 +8,10 @@
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
-<span class="kw">let </span>address = Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap();
+<span class="kw">let </span>address = Address::from_str(<span class="string">&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap();
 <span class="kw">let </span>store_key = Hash::compute_from(<span class="string">b&quot;test&quot;</span>);
 <span class="kw">let </span><span class="kw-2">mut </span>key = Vec::new();
-key.extend(address.prefixed_bytes());
+key.extend(address.to_bytes());
 key.push(DATASTORE_IDENT);
 key.extend(store_key.to_bytes());
 KeySerializer::new().serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized).unwrap();</code></pre></div>

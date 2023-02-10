@@ -375,10 +375,6 @@
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="attr">#![feature(async_closure)]
@@ -476,12 +472,8 @@
 
 <span class="doccomment">/// API v2 content
 </span><span class="kw">pub struct </span>ApiV2 {
-    <span class="doccomment">/// link to the consensus component
-    </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     <span class="doccomment">/// link(channels) to the consensus component
     </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
-    <span class="doccomment">/// link to the execution component
-    </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     <span class="doccomment">/// link(channels) to the pool component
     </span><span class="kw">pub </span>pool_channels: PoolChannels,
     <span class="doccomment">/// API settings
