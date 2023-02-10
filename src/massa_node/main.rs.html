@@ -882,6 +882,9 @@
 <a href="#882" id="882">882</a>
 <a href="#883" id="883">883</a>
 <a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1425,7 +1428,9 @@
 
     <span class="comment">// spawn Massa API
     </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(
+        consensus_controller.clone(),
         consensus_channels,
+        execution_controller.clone(),
         pool_channels,
         api_config.clone(),
         <span class="kw-2">*</span>VERSION,
@@ -1673,7 +1678,8 @@
     <span class="comment">// load or create wallet, asking for password if necessary
     </span><span class="kw">let </span>node_wallet = load_wallet(args.password, <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path)<span class="question-mark">?</span>;
 
-    <span class="kw">loop </span>{
+    <span class="comment">// HYPOTHESIS: This loop only runs once; why would you need `launch` in the loop?
+    </span><span class="kw">loop </span>{
         <span class="kw">let </span>(
             consensus_event_receiver,
             bootstrap_manager,
