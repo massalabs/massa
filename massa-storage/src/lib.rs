@@ -260,6 +260,7 @@ impl Storage {
 
     /// Drop block references
     pub fn drop_block_refs(&mut self, ids: &PreHashSet<BlockId>) {
+        todo!("implement me for `StorageLocal`, and access the global  through the singleton");
         if ids.is_empty() {
             return;
         }
@@ -512,5 +513,12 @@ impl Drop for Storage {
 
         // release all endorsements
         self.drop_endorsement_refs(&self.local.used_endorsements.clone());
+    }
+}
+
+// this is critical, and will rely on a global singleton pattern
+impl Drop for StorageLocal {
+    fn drop(&mut self) {
+        todo!("This will only work once the global singleton is in play.");
     }
 }
