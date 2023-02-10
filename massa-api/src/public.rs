@@ -546,7 +546,7 @@ impl MassaRpcServer for API<Public> {
                 is_final,
                 thread: operation
                     .content_creator_address
-                    .get_thread(api_cfg.thread_count),
+                    .get_thread(api_cfg.thread_count).unwrap(),
                 operation,
                 in_blocks: in_blocks.into_iter().collect(),
             });
@@ -866,7 +866,7 @@ impl MassaRpcServer for API<Public> {
             res.push(AddressInfo {
                 // general address info
                 address,
-                thread: address.get_thread(self.0.api_settings.thread_count),
+                thread: address.get_thread(self.0.api_settings.thread_count).unwrap(),
 
                 // final execution info
                 final_balance: execution_infos.final_balance,

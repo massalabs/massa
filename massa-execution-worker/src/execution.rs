@@ -228,7 +228,7 @@ impl ExecutionState {
         let sender_addr = operation.content_creator_address;
 
         // get the thread to which the operation belongs
-        let op_thread = sender_addr.get_thread(self.config.thread_count);
+        let op_thread = sender_addr.get_thread(self.config.thread_count).unwrap();
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {

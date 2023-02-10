@@ -54,7 +54,7 @@ fn test_simple_get_operations() {
             storage.store_operations(create_some_operations(10, &keypair, 1));
 
             let creator_address = Address::from_public_key(&keypair.get_public_key());
-            let creator_thread = creator_address.get_thread(config.thread_count);
+            let creator_thread = creator_address.get_thread(config.thread_count).unwrap();
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
 
@@ -159,7 +159,7 @@ fn test_get_operations_overflow() {
         max_block_size,
         ..Default::default()
     };
-    let creator_thread = creator_address.get_thread(config.thread_count);
+    let creator_thread = creator_address.get_thread(config.thread_count).unwrap();
     pool_test(
         config,
         |mut pool_manager, mut pool_controller, execution_receiver, mut storage| {

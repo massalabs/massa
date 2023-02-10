@@ -1,5 +1,5 @@
 use massa_models::{
-    address::{Address, AddressDeserializer, ADDRESS_SIZE_BYTES},
+    address::{Address, AddressDeserializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
@@ -14,7 +14,7 @@ pub const DATASTORE_IDENT: u8 = 2u8;
 #[macro_export]
 macro_rules! balance_key {
     ($addr:expr) => {
-        [&$addr.prefixed_bytes()[..], &[BALANCE_IDENT]].concat()
+        [&$addr.to_prefixed_bytes()[..], &[BALANCE_IDENT]].concat()
     };
 }
 
@@ -24,7 +24,7 @@ macro_rules! balance_key {
 #[macro_export]
 macro_rules! bytecode_key {
     ($addr:expr) => {
-        [&$addr.prefixed_bytes()[..], &[BYTECODE_IDENT]].concat()
+        [&$addr.to_prefixed_bytes()[..], &[BYTECODE_IDENT]].concat()
     };
 }
 
@@ -34,7 +34,7 @@ macro_rules! bytecode_key {
 #[macro_export]
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {
-        [&$addr.prefixed_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
+        [&$addr.to_prefixed_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
     };
 }
 
@@ -42,7 +42,7 @@ macro_rules! data_key {
 #[macro_export]
 macro_rules! data_prefix {
     ($addr:expr) => {
-        &[&$addr.prefixed_bytes()[..], &[DATASTORE_IDENT]].concat()
+        &[&$addr.to_prefixed_bytes()[..], &[DATASTORE_IDENT]].concat()
     };
 }
 
@@ -58,6 +58,7 @@ pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
 /// Basic key serializer
 #[derive(Default, Clone)]
 pub struct KeySerializer {
+    address_deserializer: AddressDeserializer,
     vec_u8_serializer: VecU8Serializer,
 }
 
@@ -65,6 +66,7 @@ impl KeySerializer {
     /// Creates a new `KeySerializer`
     pub fn new() -> Self {
         Self {
+            address_deserializer: AddressDeserializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
         }
     }
@@ -88,12 +90,22 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        let limit = ADDRESS_SIZE_BYTES + 1;
-        buffer.extend(&value[..limit]);
-        if value[limit - 1] == DATASTORE_IDENT {
-            if value.len() > limit {
+        
+        let result_addr = match self.address_deserializer.deserialize::<massa_serialization::DeserializeError>(&value) {
+            Ok((rest, addr)) => Ok((rest, addr)),
+            Err(_) => { Err(SerializeError::GeneralError(String::from("The key does not contain a valid address"))) }
+        };
+        if result_addr.is_err() {
+            return Err(SerializeError::GeneralError(String::from("The key does not contain a valid address")));
+        }
+        let (rest, addr): (&[u8], Address) = result_addr.unwrap();
+
+        buffer.extend(addr.to_prefixed_bytes());
+        
+        if rest[0] == DATASTORE_IDENT {
+            if rest.len() > 0 {
                 self.vec_u8_serializer
-                    .serialize(&value[limit..].to_vec(), buffer)?;
+                    .serialize(&rest.to_vec(), buffer)?;
             } else {
                 return Err(SerializeError::GeneralError(
                     "datastore keys can not be empty".to_string(),
@@ -160,7 +172,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
-        let (rest, address) = self.address_deserializer.deserialize(buffer)?;
+        let (rest, address): (&[u8], Address) = self.address_deserializer.deserialize(buffer)?;
         let error = nom::Err::Error(ParseError::from_error_kind(
             buffer,
             nom::error::ErrorKind::Fail,

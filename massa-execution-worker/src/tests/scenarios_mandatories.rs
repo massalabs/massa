@@ -6,7 +6,7 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget,
 };
-use massa_models::config::{LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE};
+use massa_models::config::{LEDGER_ENTRY_DATASTORE_BASE_SIZE};
 use massa_models::prehash::PreHashMap;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -709,6 +709,7 @@ fn send_and_receive_async_message_with_trigger() {
 #[test]
 #[serial]
 pub fn send_and_receive_transaction() {
+    let LEDGER_ENTRY_BASE_SIZE = 40;
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),

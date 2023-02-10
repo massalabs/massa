@@ -1,11 +1,11 @@
 use crate::active_history::ActiveHistory;
 use massa_execution_exports::ExecutionOutput;
 use massa_models::slot::Slot;
+use massa_signature::KeyPair;
 use std::collections::{BTreeMap, VecDeque};
 
 use massa_final_state::StateChanges;
-use massa_hash::Hash;
-use massa_models::address::{Address, UserAddress};
+use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::prehash::{CapacityAllocator, PreHashMap};
 use massa_pos_exports::{DeferredCredits, PoSChanges};
@@ -17,8 +17,11 @@ fn test_active_history_deferred_credits() {
     let slot1 = Slot::new(2, 2);
     let slot2 = Slot::new(4, 11);
 
-    let addr1 = Address::User(UserAddress(Hash::compute_from("AU1".as_bytes())));
-    let addr2 = Address::User(UserAddress(Hash::compute_from("AU2".as_bytes())));
+    let keypair1 = KeyPair::generate(0).unwrap();
+    let keypair2 = KeyPair::generate(0).unwrap();
+
+    let addr1 = Address::from_public_key(&keypair1.get_public_key());
+    let addr2 = Address::from_public_key(&keypair2.get_public_key());
 
     let amount_a1_s1 = Amount::from_raw(500);
     let amount_a2_s1 = Amount::from_raw(2702);

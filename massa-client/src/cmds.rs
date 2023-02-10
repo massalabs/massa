@@ -1380,7 +1380,7 @@ async fn send_operation(
     let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)?
         .unwrap_or_else(|| Slot::new(0, 0));
     let mut expire_period = slot.period + cfg.operation_validity_periods;
-    if slot.thread >= addr.get_thread(cfg.thread_count) {
+    if slot.thread >= addr.get_thread(cfg.thread_count).unwrap() {
         expire_period += 1;
     };
 

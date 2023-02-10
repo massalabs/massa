@@ -38,19 +38,19 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
 
             let mut keypair = KeyPair::generate(0).unwrap();
             let mut address = Address::from_public_key(&keypair.get_public_key());
-            let mut thread = address.get_thread(2);
+            let mut thread = address.get_thread(2).unwrap();
 
             while thread != 0 {
                 keypair = KeyPair::generate(0).unwrap();
                 address = Address::from_public_key(&keypair.get_public_key());
-                thread = address.get_thread(2);
+                thread = address.get_thread(2).unwrap();
             }
 
             // block with ok operation
             let op = create_operation_with_expire_period(&keypair, 5);
             let op_thread = op
                 .content_creator_address
-                .get_thread(protocol_config.thread_count);
+                .get_thread(protocol_config.thread_count).unwrap();
 
             let block = create_block_with_operations(
                 &creator_node.keypair,
@@ -148,12 +148,12 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             let mut keypair = KeyPair::generate(0).unwrap();
             let mut address = Address::from_public_key(&keypair.get_public_key());
-            let mut thread = address.get_thread(2);
+            let mut thread = address.get_thread(2).unwrap();
 
             while thread != 0 {
                 keypair = KeyPair::generate(0).unwrap();
                 address = Address::from_public_key(&keypair.get_public_key());
-                thread = address.get_thread(2);
+                thread = address.get_thread(2).unwrap();
             }
 
             // block with ok operation
@@ -161,7 +161,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let op = create_operation_with_expire_period(&keypair, 5);
                 let op_thread = op
                     .content_creator_address
-                    .get_thread(protocol_config.thread_count);
+                    .get_thread(protocol_config.thread_count).unwrap();
 
                 let block = create_block_with_operations(
                     &creator_node.keypair,
@@ -215,7 +215,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let op = create_operation_with_expire_period(&keypair, 5);
                 let op_thread = op
                     .content_creator_address
-                    .get_thread(protocol_config.thread_count);
+                    .get_thread(protocol_config.thread_count).unwrap();
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
@@ -280,7 +280,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let mut op = create_operation_with_expire_period(&keypair, 5);
                 let op_thread = op
                     .content_creator_address
-                    .get_thread(protocol_config.thread_count);
+                    .get_thread(protocol_config.thread_count).unwrap();
                 op.id = OperationId::new(Hash::compute_from("wrong signature".as_bytes()));
                 let block = create_block_with_operations(
                     &creator_node.keypair,

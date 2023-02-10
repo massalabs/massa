@@ -5,7 +5,7 @@
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES_V1},
+    address::{Address, AddressDeserializer},
     amount::AmountSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -235,17 +235,31 @@ impl LedgerDB {
     /// # Returns
     /// A `BTreeSet` of the datastore keys
     pub fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+        let address_deserializer = AddressDeserializer::new();
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_range(data_prefix!(addr).clone()..end_prefix(data_prefix!(addr)).unwrap());
 
-        let mut iter = self
+        /*let mut iter = self
             .db
             .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
             .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec())
-            .peekable();
+            .peekable();*/
+            
+        let mut iter = self
+        .db
+        .iterator_cf_opt(handle, opt, IteratorMode::Start)
+        .flatten()
+        .map(|(key, _)| {
+            let res: Result<(&[u8], Address), _> = address_deserializer.deserialize::<massa_serialization::DeserializeError>(&key);    
+            match res {
+                    Ok((rest, _addr)) => rest.to_vec(),
+                    Err(_) => { vec![] }
+                }
+        })
+        .peekable();
 
         // Return None if empty
         // TODO: function should return None if complete entry does not exist
@@ -547,7 +561,6 @@ impl LedgerDB {
     pub fn get_every_address(
         &self,
     ) -> std::collections::BTreeMap<Address, massa_models::amount::Amount> {
-        use massa_models::address::AddressDeserializer;
         use massa_serialization::DeserializeError;
 
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -585,25 +598,24 @@ impl LedgerDB {
         &self,
         addr: &Address,
     ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
+        let address_deserializer = AddressDeserializer::new();
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
-        self.db
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(data_prefix!(addr), Direction::Forward),
-            )
-            .flatten()
-            .map(|(key, data)| {
-                (
-                    key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec(),
-                    data.to_vec(),
-                )
-            })
-            .collect()
+        self
+        .db
+        .iterator_cf_opt(handle, opt, IteratorMode::Start)
+        .flatten()
+        .map(|(key, data)| {
+            let res: Result<(&[u8], Address), _> = address_deserializer.deserialize::<massa_serialization::DeserializeError>(&key);    
+            match res {
+                    Ok((rest, _addr)) => (rest.to_vec(),data.to_vec()),
+                    Err(_) => { (vec![], vec![]) }
+                }
+        })
+        .collect()
     }
 }
 

@@ -10,6 +10,7 @@ use massa_time::MassaTime;
 impl Default for ExecutionConfig {
     /// default configuration used for testing
     fn default() -> Self {
+        let LEDGER_ENTRY_BASE_SIZE = 40;
         let storage_costs_constants = StorageCostsConstants {
             ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
             ledger_entry_base_cost: LEDGER_COST_PER_BYTE

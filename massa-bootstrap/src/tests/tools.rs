@@ -30,7 +30,7 @@ use massa_models::config::{
 };
 use massa_models::node::NodeId;
 use massa_models::{
-    address::Address,
+    address::{Address, SCAddress},
     amount::Amount,
     block::Block,
     block::BlockSerializer,
@@ -93,7 +93,7 @@ pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
     let mut changes = LedgerChanges::default();
     for _ in 0..r_limit {
         changes.0.insert(
-            get_random_address(),
+            get_random_address(0),
             SetUpdateOrDelete::Set(LedgerEntry {
                 balance: Amount::from_raw(r_limit),
                 bytecode: Vec::default(),
@@ -119,9 +119,9 @@ fn get_random_pos_cycles_info(
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
     for i in 0u64..r_limit {
-        roll_counts.insert(get_random_address(), i);
+        roll_counts.insert(get_random_address(0), i);
         production_stats.insert(
-            get_random_address(),
+            get_random_address(0),
             ProductionStats {
                 block_success_count: i * 3,
                 block_failure_count: i,
@@ -143,7 +143,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
     for i in 0u64..r_limit {
         let mut credits = PreHashMap::default();
         for j in 0u64..r_limit {
-            credits.insert(get_random_address(), Amount::from_raw(j));
+            credits.insert(get_random_address(0), Amount::from_raw(j));
         }
         deferred_credits.credits.insert(
             Slot {
@@ -235,15 +235,18 @@ pub fn get_random_final_state_bootstrap(
         messages.0.push(Change::Add(message.compute_id(), message));
     }
     for _ in 0..r_limit {
-        sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
+        sorted_ledger.insert(get_random_address(0), get_random_ledger_entry());
     }
     // insert the last possible address to prevent the last cursor to move when testing the changes
-    // The magic number at idx 0 is to account for address variant leader. At time of writing,
-    // the highest value for encoding this variant in serialized form is `1`.
-    let mut bytes = [255; 33];
-    bytes[0] = 1;
+    // This is the max address version of the max address type (SCAddressV1), with every field to the max.
+    let mut data: Vec<u8> = Slot::max().to_bytes_key().to_vec();
+    data.append(&mut u64::MAX.to_be_bytes().to_vec());
+    data.push(1u8);
+    let address = Address::SC(SCAddress::from_bytes_without_version(1, &data).expect("Could not create the sc address"));
+    //let address = Address::SC(SCAddress::from_bytes_without_version(1, &data)));
+
     sorted_ledger.insert(
-        Address::from_prefixed_bytes(&bytes).unwrap(),
+        address,
         get_random_ledger_entry(),
     );
 
@@ -267,18 +270,18 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
 }
 
-pub fn get_random_public_key() -> PublicKey {
-    let priv_key = KeyPair::generate();
+pub fn get_random_public_key(version: u64) -> PublicKey {
+    let priv_key = KeyPair::generate(version).unwrap();
     priv_key.get_public_key()
 }
 
-pub fn get_random_address() -> Address {
-    let priv_key = KeyPair::generate();
+pub fn get_random_address(version: u64) -> Address {
+    let priv_key = KeyPair::generate(version).unwrap();
     Address::from_public_key(&priv_key.get_public_key())
 }
 
-pub fn get_dummy_signature(s: &str) -> Signature {
-    let priv_key = KeyPair::generate();
+pub fn get_dummy_signature(version: u64, s: &str) -> Signature {
+    let priv_key = KeyPair::generate(version).unwrap();
     priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
@@ -378,7 +381,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> BootstrapableGraph {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
 
     let block = Block::new_verifiable(
         Block {
