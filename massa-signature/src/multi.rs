@@ -458,7 +458,7 @@ impl KeyPair {
         version_serializer
             .serialize(&Self::VERSION, &mut bytes)
             .expect("Failed to serialize KeyPair version");
-        bytes[Self::VERSION_VARINT_SIZE_BYTES..].copy_from_slice(&self.a.to_bytes());
+        bytes.extend_from_slice(&self.a.to_bytes());
         bytes
     }
 

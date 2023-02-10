@@ -709,7 +709,7 @@ fn send_and_receive_async_message_with_trigger() {
 #[test]
 #[serial]
 pub fn send_and_receive_transaction() {
-    let LEDGER_ENTRY_BASE_SIZE = 40;
+    let ledger_entry_base_size = 40;
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: 100.into(),
@@ -783,7 +783,7 @@ pub fn send_and_receive_transaction() {
                 exec_cfg
                     .storage_costs_constants
                     .ledger_cost_per_byte
-                    .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
+                    .saturating_mul_u64(ledger_entry_base_size as u64)
             )
     );
     // stop the execution controller

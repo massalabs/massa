@@ -92,7 +92,7 @@ impl Serializer<Vec<u8>> for KeySerializer {
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let result_addr = match self
             .address_deserializer
-            .deserialize::<massa_serialization::DeserializeError>(&value)
+            .deserialize::<massa_serialization::DeserializeError>(value)
         {
             Ok((rest, addr)) => Ok((rest, addr)),
             Err(_) => Err(SerializeError::GeneralError(String::from(
@@ -109,7 +109,7 @@ impl Serializer<Vec<u8>> for KeySerializer {
         buffer.extend(addr.to_prefixed_bytes());
 
         if rest[0] == DATASTORE_IDENT {
-            if rest.len() > 0 {
+            if !rest.is_empty() {
                 self.vec_u8_serializer.serialize(&rest.to_vec(), buffer)?;
             } else {
                 return Err(SerializeError::GeneralError(

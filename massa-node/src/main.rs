@@ -301,12 +301,12 @@ async fn launch(
         .compute_initial_draws()
         .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
-    let LEDGER_ENTRY_BASE_SIZE = 40;
+    let ledger_entry_base_size = 40;
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
         ledger_entry_base_cost: LEDGER_COST_PER_BYTE
-            .checked_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
+            .checked_mul_u64(ledger_entry_base_size as u64)
             .expect("Overflow when creating constant ledger_entry_base_cost"),
         ledger_entry_datastore_base_cost: LEDGER_COST_PER_BYTE
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
