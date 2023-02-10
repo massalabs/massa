@@ -38,7 +38,7 @@ pub struct Storage {
     global: StorageGlobal,
     local: StorageLocal,
 }
-pub struct StorageGlobal {
+struct StorageGlobal {
     /// global block storage
     blocks: Arc<RwLock<BlockIndexes>>,
     /// global operation storage
@@ -53,7 +53,7 @@ pub struct StorageGlobal {
     /// global endorsement reference counter
     endorsement_owners: Arc<RwLock<PreHashMap<EndorsementId, usize>>>,
 }
-pub struct StorageLocal {
+struct StorageLocal {
     /// locally used block references
     used_blocks: PreHashSet<BlockId>,
     /// locally used operation references
