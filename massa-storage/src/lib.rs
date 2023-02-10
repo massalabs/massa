@@ -109,6 +109,17 @@ lazy_static::lazy_static!(
 );
 
 impl Storage {
+    // TODO: clear the need for this
+    pub fn create_root() -> Self {
+        Self {
+            local: StorageLocal {
+                // do not clone local ref lists
+                used_ops: Default::default(),
+                used_blocks: Default::default(),
+                used_endorsements: Default::default(),
+            },
+        }
+    }
     /// Clones the object to a new one that has no references
     pub fn clone_without_refs(&self) -> Self {
         Self {
@@ -339,6 +350,23 @@ impl Storage {
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local.used_endorsements);
     }
 
+    /// wrapper to access the inner, local, method
+    /// Drop local endorsement references.
+    /// Ignores already-absent refs.
+    pub fn drop_endorsement_refs(&mut self, ids: &PreHashSet<EndorsementId>) {
+        self.local.drop_endorsement_refs(ids)
+    }
+    /// wrapper to access the inner, local, method
+    /// Drop local operation references.
+    /// Ignores already-absent refs.
+    pub fn drop_operation_refs(&mut self, ids: &PreHashSet<OperationId>) {
+        self.local.drop_operation_refs(ids)
+    }
+    /// wrapper to access the inner, local, method
+    /// Drop block references
+    pub fn drop_block_refs(&mut self, ids: &PreHashSet<BlockId>) {
+        self.local.drop_block_refs(ids)
+    }
     /// wrapper to access the inner, local, method
     /// get the operation reference ownership
     pub fn get_op_refs(&self) -> &PreHashSet<OperationId> {
