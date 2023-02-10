@@ -74,6 +74,7 @@ use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
 
 async fn launch(
+    args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
@@ -593,25 +594,25 @@ async fn launch(
         // only for #[cfg]
         use parking_lot::deadlock;
         use std::thread;
-        use std::time::Duration;
-        // Create a background thread which checks for deadlocks every 10s
+
+        let interval = Duration::from_secs(args.dl_interval);
+        warn!("deadlocks detector will run every {:?}", interval);
+
+        // Create a background thread which checks for deadlocks at the defined interval
         let thread_builder = thread::Builder::new().name("deadlock-detection".into());
         thread_builder
             .spawn(move || loop {
-                thread::sleep(Duration::from_secs(10));
+                thread::sleep(interval);
                 let deadlocks = deadlock::check_deadlock();
-                println!("deadlocks check");
-
                 if deadlocks.is_empty() {
                     continue;
                 }
-
-                println!("{} deadlocks detected", deadlocks.len());
+                warn!("{} deadlocks detected", deadlocks.len());
                 for (i, threads) in deadlocks.iter().enumerate() {
-                    println!("Deadlock #{}", i);
+                    warn!("Deadlock #{}", i);
                     for t in threads {
-                        println!("Thread Id {:#?}", t.thread_id());
-                        println!("{:#?}", t.backtrace());
+                        warn!("Thread Id {:#?}", t.thread_id());
+                        warn!("{:#?}", t.backtrace());
                     }
                 }
             })
@@ -717,6 +718,17 @@ struct Args {
     /// Wallet password
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
+
+    #[cfg(feature = "deadlock_detection")]
+    /// Deadlocks detector
+    #[structopt(
+        name = "deadlocks interval",
+        about = "Define the interval of launching a deadlocks checking.",
+        short = "i",
+        long = "dli",
+        default_value = "10"
+    )]
+    dl_interval: u64,
 }
 
 /// Load wallet, asking for passwords if necessary
@@ -789,7 +801,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-    let node_wallet = load_wallet(args.password, &SETTINGS.factory.staking_wallet_path)?;
+    let node_wallet = load_wallet(args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
 
     loop {
         let (
@@ -806,7 +818,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
-        ) = launch(node_wallet.clone()).await;
+        ) = launch(&args, node_wallet.clone()).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);
