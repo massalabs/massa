@@ -613,9 +613,9 @@ impl ExecutionState {
             bytecode = context.get_bytecode(&target_addr).unwrap_or_default();
         }
 
-        // run the VM on the bytecode loaded from the target address
-        let mut module_lock = self.module_cache.write();
-        let module = module_lock.get_module(&bytecode, max_gas)?;
+        // Execute bytecode
+        // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
+        let module = self.module_cache.write().get_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -625,7 +625,9 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                module_lock.save_module(&bytecode, module, init_cost);
+                self.module_cache
+                    .write()
+                    .save_module(&bytecode, module, init_cost);
                 Ok(())
             }
             Err(err) => Err(ExecutionError::RuntimeError(format!(
@@ -703,9 +705,12 @@ impl ExecutionState {
             bytecode
         };
 
-        // run the VM on the bytecode contained in the operation
-        let mut module_lock = self.module_cache.write();
-        let module = module_lock.get_module(&bytecode, message.max_gas)?;
+        // Execute bytecode
+        // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
+        let module = self
+            .module_cache
+            .write()
+            .get_module(&bytecode, message.max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -715,7 +720,9 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                module_lock.save_module(&bytecode, module, init_cost);
+                self.module_cache
+                    .write()
+                    .save_module(&bytecode, module, init_cost);
                 Ok(())
             }
             Err(err) => {
@@ -1110,9 +1117,12 @@ impl ExecutionState {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
-                // run the target function in the bytecode
-                let mut module_lock = self.module_cache.write();
-                let module = module_lock.get_module(&bytecode, req.max_gas)?;
+                // Execute bytecode
+                // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
+                let module = self
+                    .module_cache
+                    .write()
+                    .get_module(&bytecode, req.max_gas)?;
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module.clone(),
@@ -1127,7 +1137,9 @@ impl ExecutionState {
                         err,
                     ))
                 })?;
-                module_lock.save_module(&bytecode, module, response.init_cost);
+                self.module_cache
+                    .write()
+                    .save_module(&bytecode, module, response.init_cost);
                 response
             }
         };
