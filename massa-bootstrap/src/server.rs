@@ -25,6 +25,7 @@ use tracing::{debug, info, warn};
 
 use crate::{
     error::BootstrapError,
+    establisher::types::Duplex,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     tools::normalize_ip,
@@ -273,49 +274,19 @@ impl BootstrapServer {
                         let keypair = self.keypair.clone();
                         let config = self.bootstrap_config.clone();
 
-                        bootstrap_sessions.push(async move {
-                            let mut server = BootstrapServerBinder::new(
+                        bootstrap_sessions.push(
+                            push_bootstrap_session(
                                 dplx,
                                 keypair,
-                                config.max_bytes_read_write,
-                                config.max_bootstrap_message_size,
-                                config.thread_count,
-                                config.max_datastore_key_length,
-                                config.randomness_size_bytes,
-                                config.consensus_bootstrap_part_size
-                            );
+                                config,
+                                remote_addr,
+                                data_execution,
+                                version,
+                                consensus_command_sender,
+                                network_command_sender
+                            )
+                        );
 
-                            debug!("awaiting on bootstrap of peer {}", remote_addr);
-                            match tokio::time::timeout(
-                                config.bootstrap_timeout.into(),
-                                manage_bootstrap(
-                                    &config,
-                                    &mut server,
-                                    data_execution,
-                                    version,
-                                    consensus_command_sender,
-                                    network_command_sender
-                                )
-                            ).await {
-                                Ok(mgmt) => match mgmt {
-                                    Ok(_) => {
-                                        info!("bootstrapped peer {}", remote_addr)
-                                    },
-                                    Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
-                                    Err(err) => {
-                                        debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
-                                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                        let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
-                                    },
-                                }
-                                Err(_timeout) => {
-                                    debug!("bootstrap timeout for peer {}", remote_addr);
-                                    // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: format!("Bootstrap process timedout ({})", format_duration(config.bootstrap_timeout.to_duration())) })).await;
-                                }
-                            }
-
-                        });
                         massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                     } else {
                         let config = self.bootstrap_config.clone();
@@ -346,6 +317,81 @@ impl BootstrapServer {
         while bootstrap_sessions.next().await.is_some() {}
 
         Ok(())
+    }
+}
+
+/// TODO: Doc-comment me
+async fn push_bootstrap_session(
+    dplx: Duplex,
+    keypair: KeyPair,
+    config: BootstrapConfig,
+    remote_addr: SocketAddr,
+    data_execution: Arc<RwLock<FinalState>>,
+    version: Version,
+    consensus_command_sender: Box<dyn ConsensusController>,
+    network_command_sender: NetworkCommandSender,
+) {
+    let mut server = BootstrapServerBinder::new(
+        dplx,
+        keypair,
+        config.max_bytes_read_write,
+        config.max_bootstrap_message_size,
+        config.thread_count,
+        config.max_datastore_key_length,
+        config.randomness_size_bytes,
+        config.consensus_bootstrap_part_size,
+    );
+
+    debug!("awaiting on bootstrap of peer {}", remote_addr);
+    match tokio::time::timeout(
+        config.bootstrap_timeout.into(),
+        manage_bootstrap(
+            &config,
+            &mut server,
+            data_execution,
+            version,
+            consensus_command_sender,
+            network_command_sender,
+        ),
+    )
+    .await
+    {
+        Ok(mgmt) => match mgmt {
+            Ok(_) => {
+                info!("bootstrapped peer {}", remote_addr)
+            }
+            Err(BootstrapError::ReceivedError(error)) => debug!(
+                "bootstrap serving error received from peer {}: {}",
+                remote_addr, error
+            ),
+            Err(err) => {
+                debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                // We allow unused result because we don't care if an error is thrown when
+                // sending the error message to the server we will close the socket anyway.
+                let _ = tokio::time::timeout(
+                    config.write_error_timeout.into(),
+                    server.send(BootstrapServerMessage::BootstrapError {
+                        error: err.to_string(),
+                    }),
+                )
+                .await;
+            }
+        },
+        Err(_timeout) => {
+            debug!("bootstrap timeout for peer {}", remote_addr);
+            // We allow unused result because we don't care if an error is thrown when
+            // sending the error message to the server we will close the socket anyway.
+            let _ = tokio::time::timeout(
+                config.write_error_timeout.into(),
+                server.send(BootstrapServerMessage::BootstrapError {
+                    error: format!(
+                        "Bootstrap process timedout ({})",
+                        format_duration(config.bootstrap_timeout.to_duration())
+                    ),
+                }),
+            )
+            .await;
+        }
     }
 }
 
