@@ -73,6 +73,7 @@ use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
 
+#[cfg_attr(not(feature = "deadlock_detection"), allow(unused_variables))]
 async fn launch(
     args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
