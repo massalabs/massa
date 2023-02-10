@@ -2564,7 +2564,7 @@
                 }
             }
             Command::read_only_execute_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">2 </span>&amp;&amp; parameters.len() &lt;= <span class="number">4 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">5 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2597,7 +2597,7 @@
                 }
             }
             Command::read_only_call =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">4 </span>&amp;&amp; parameters.len() &lt;= <span class="number">6 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">6 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2611,8 +2611,8 @@
                     <span class="prelude-val">None
                 </span>};
                 <span class="kw">let </span>is_final = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">5</span>) {
-                    adr.parse::&lt;bool&gt;()<span class="question-mark">?
-                </span>} <span class="kw">else </span>{
+                    adr.parse::&lt;bool&gt;().unwrap_or(<span class="bool-val">false</span>)
+                } <span class="kw">else </span>{
                     <span class="bool-val">false
                 </span>};
                 <span class="kw">match </span>client
