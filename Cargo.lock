@@ -2696,6 +2696,7 @@ dependencies = [
  "num_enum",
  "rust_decimal",
  "serde",
+ "serde_json",
  "serde_with",
  "serial_test 0.10.0",
  "thiserror",

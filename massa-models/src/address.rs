@@ -883,6 +883,7 @@ pub struct ExecutionAddressCycleInfo {
 #[cfg(test)]
 mod test {
     use super::*;
+    use serde_json;
 
     #[test]
     fn test_address() {
@@ -905,5 +906,33 @@ mod test {
         println!("user_addr_1: {}", user_addr_1);
         println!("sc_addr_0: {}", sc_addr_0);
         println!("sc_addr_1: {}", sc_addr_1);
+
+        let str = "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF";
+        let addr = Address::from_str(str);
+        println!("str: {}", str);
+        assert!(addr.is_ok());
+        println!("addr: {}", addr.clone().ok().unwrap());
+
+        let mut buffer: Vec<u8> = vec![];
+
+        let addr_to_ser = addr.clone().ok().unwrap();
+
+        let _ = AddressSerializer::new().serialize(&addr_to_ser, &mut buffer);
+
+        println!("buffer: {:?}", &buffer);
+
+        let addr2: Result<(&[u8], Address), _> = AddressDeserializer::new().deserialize::<massa_serialization::DeserializeError>(&buffer);
+
+        assert!(addr2.is_ok());
+        println!("addr2: {}", addr2.ok().unwrap().1);
+
+        
+        let j = serde_json::to_string(&addr.clone().ok().unwrap());
+        
+        assert!(j.is_ok());
+        
+        println!("j: {}", j.ok().unwrap());
+
+
     }
 }
