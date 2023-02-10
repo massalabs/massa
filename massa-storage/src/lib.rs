@@ -232,12 +232,6 @@ impl Storage {
         }
     }
 
-    // local only
-    /// get the block reference ownership
-    pub fn get_block_refs(&self) -> &PreHashSet<BlockId> {
-        &self.local.used_blocks
-    }
-
     /// Claim block references.
     /// Returns the set of block refs that were found and claimed.
     pub fn claim_block_refs(&mut self, ids: &PreHashSet<BlockId>) -> PreHashSet<BlockId> {
@@ -337,12 +331,6 @@ impl Storage {
         claimed
     }
 
-    // local only
-    /// get the operation reference ownership
-    pub fn get_op_refs(&self) -> &PreHashSet<OperationId> {
-        &self.local.used_ops
-    }
-
     /// Drop local operation references.
     /// Ignores already-absent refs.
     pub fn drop_operation_refs(&mut self, ids: &PreHashSet<OperationId>) {
@@ -439,12 +427,6 @@ impl Storage {
         claimed
     }
 
-    // local only
-    /// get the endorsement reference ownership
-    pub fn get_endorsement_refs(&self) -> &PreHashSet<EndorsementId> {
-        &self.local.used_endorsements
-    }
-
     /// Drop local endorsement references.
     /// Ignores already-absent refs.
     pub fn drop_endorsement_refs(&mut self, ids: &PreHashSet<EndorsementId>) {
@@ -499,6 +481,40 @@ impl Storage {
             endo_store.insert(endorsement);
         }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local.used_endorsements);
+    }
+
+    /// wrapper to access the inner, local, method
+    /// get the operation reference ownership
+    pub fn get_op_refs(&self) -> &PreHashSet<OperationId> {
+        &self.local.get_op_refs()
+    }
+
+    /// wrapper to access the inner, local, method
+    /// get the endorsement reference ownership
+    pub fn get_endorsement_refs(&self) -> &PreHashSet<EndorsementId> {
+        &self.local.get_endorsement_refs()
+    }
+
+    /// wrapper to access the inner, local, method
+    /// get the block reference ownership
+    pub fn get_block_refs(&self) -> &PreHashSet<BlockId> {
+        &self.local.get_block_refs()
+    }
+}
+
+impl StorageLocal {
+    /// get the endorsement reference ownership
+    pub fn get_endorsement_refs(&self) -> &PreHashSet<EndorsementId> {
+        &self.used_endorsements
+    }
+    /// get the operation reference ownership
+    pub fn get_op_refs(&self) -> &PreHashSet<OperationId> {
+        &self.used_ops
+    }
+    // local only
+    /// get the block reference ownership
+    pub fn get_block_refs(&self) -> &PreHashSet<BlockId> {
+        &self.used_blocks
     }
 }
 
