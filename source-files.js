@@ -29,7 +29,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_protocol_worker":["",[],["cache.rs","checked_operations.rs","lib.rs","node_info.rs","protocol_network.rs","protocol_worker.rs","sig_verifier.rs","worker_operations_impl.rs"]],\
 "massa_sdk":["",[],["config.rs","lib.rs"]],\
 "massa_serialization":["",[],["lib.rs"]],\
-"massa_signature":["",[],["error.rs","lib.rs","multi.rs"]],\
+"massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
 "massa_storage":["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]],\
 "massa_time":["",[],["error.rs","lib.rs"]],\
 "massa_wallet":["",[],["error.rs","lib.rs"]]\

@@ -756,7 +756,7 @@
             Message::HandshakeReply { signature } =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>(MessageTypeId::HandshakeReply <span class="kw">as </span>u32), buffer)<span class="question-mark">?</span>;
-                buffer.extend(signature.into_bytes());
+                buffer.extend(signature.to_bytes());
             }
             Message::BlockHeader(header) =&gt; {
                 <span class="self">self</span>.u32_serializer
@@ -1176,7 +1176,7 @@
         );
         <span class="kw">let </span><span class="kw-2">mut </span>random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
         StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>random_bytes);
-        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>keypair = KeyPair::generate();
         <span class="kw">let </span>msg = Message::HandshakeInitiation {
             public_key: keypair.get_public_key(),
             random_bytes,

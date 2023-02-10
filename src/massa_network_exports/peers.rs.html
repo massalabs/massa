@@ -289,13 +289,6 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::settings::PeerTypeConnectionConfig;
 <span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>enum_map::Enum;
@@ -443,23 +436,10 @@
 /// There is a defined number of slots for each category.
 /// Order matters: less prioritized peer type first
 </span><span class="attr">#[derive(
-    Default,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Display,
-    Enum,
+    Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
 )]
 </span><span class="kw">pub enum </span>PeerType {
     <span class="doccomment">/// Just a peer
-    </span><span class="attr">#[default]
     </span>Standard,
     <span class="doccomment">/// Connection from these nodes are always accepted
     </span>WhiteListed,
@@ -477,6 +457,12 @@
         <span class="kw">use </span><span class="kw">crate</span>::peers::PeerType;
         <span class="macro">assert!</span>(PeerType::Bootstrap &gt; PeerType::WhiteListed);
         <span class="macro">assert!</span>(PeerType::WhiteListed &gt; PeerType::Standard);
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>PeerType {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        PeerType::Standard
     }
 }
 

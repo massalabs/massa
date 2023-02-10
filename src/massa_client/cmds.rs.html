@@ -2239,7 +2239,7 @@
             Command::wallet_generate_secret_key =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
-                <span class="kw">let </span>key = KeyPair::generate(<span class="number">0</span>).unwrap();
+                <span class="kw">let </span>key = KeyPair::generate();
                 <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
                 <span class="kw">if </span>json {
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
@@ -2564,7 +2564,7 @@
                 }
             }
             Command::read_only_execute_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">2 </span>&amp;&amp; parameters.len() &lt;= <span class="number">4 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">5 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2597,7 +2597,7 @@
                 }
             }
             Command::read_only_call =&gt; {
-                <span class="kw">if </span>parameters.len() != <span class="number">4 </span>&amp;&amp; parameters.len() &lt;= <span class="number">6 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">6 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2831,7 +2831,7 @@
     <span class="kw">let </span>slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)<span class="question-mark">?
         </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
     <span class="kw">let </span><span class="kw-2">mut </span>expire_period = slot.period + cfg.operation_validity_periods;
-    <span class="kw">if </span>slot.thread &gt;= addr.get_thread(cfg.thread_count).unwrap() {
+    <span class="kw">if </span>slot.thread &gt;= addr.get_thread(cfg.thread_count) {
         expire_period += <span class="number">1</span>;
     };
 
