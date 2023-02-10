@@ -1,17 +1,17 @@
 {
     "Address": [
         {
-            "Slot": {
-                "Period": 0,
-                "Thread": 0
+            "slot": {
+                "period": 0,
+                "thread": 0
             },
             "min_balance": 10000,
             "max_rolls": 100
         },
         {
-            "Slot": {
-                "Period": 100,
-                "Thread": 0
+            "slot": {
+                "period": 100,
+                "thread": 0
             },
             "min_balance": 1000,
             "max_rolls": 10
