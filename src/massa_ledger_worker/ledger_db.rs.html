@@ -726,6 +726,21 @@
 <a href="#726" id="726">726</a>
 <a href="#727" id="727">727</a>
 <a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -733,7 +748,7 @@
 </span><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::<span class="kw-2">*</span>;
 <span class="kw">use </span>massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES},
+    address::{Address, AddressDeserializer},
     amount::AmountSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -963,16 +978,33 @@
     /// # Returns
     /// A `BTreeSet` of the datastore keys
     </span><span class="kw">pub fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+        <span class="kw">let </span>address_deserializer = AddressDeserializer::new();
         <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         opt.set_iterate_range(<span class="macro">data_prefix!</span>(addr).clone()..end_prefix(<span class="macro">data_prefix!</span>(addr)).unwrap());
 
-        <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
+        <span class="comment">/*let mut iter = self
+        .db
+        .iterator_cf_opt(handle, opt, IteratorMode::Start)
+        .flatten()
+        .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES_V1 + 1).1.to_vec())
+        .peekable();*/
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
             </span>.db
             .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
-            .map(|(key, <span class="kw">_</span>)| key.split_at(ADDRESS_SIZE_BYTES + <span class="number">1</span>).<span class="number">1</span>.to_vec())
+            .map(|(key, <span class="kw">_</span>)| {
+                <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], Address), <span class="kw">_</span>&gt; =
+                    address_deserializer.deserialize::&lt;massa_serialization::DeserializeError&gt;(<span class="kw-2">&amp;</span>key);
+                <span class="kw">match </span>res {
+                    <span class="prelude-val">Ok</span>((rest, _addr)) =&gt; rest.to_vec(),
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="macro">vec!</span>[]
+                    }
+                }
+            })
             .peekable();
 
         <span class="comment">// Return None if empty
@@ -1275,7 +1307,6 @@
     </span><span class="kw">pub fn </span>get_every_address(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; std::collections::BTreeMap&lt;Address, massa_models::amount::Amount&gt; {
-        <span class="kw">use </span>massa_models::address::AddressDeserializer;
         <span class="kw">use </span>massa_serialization::DeserializeError;
 
         <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -1313,23 +1344,22 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
     ) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span>address_deserializer = AddressDeserializer::new();
         <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(<span class="macro">data_prefix!</span>(addr)).unwrap());
 
         <span class="self">self</span>.db
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(<span class="macro">data_prefix!</span>(addr), Direction::Forward),
-            )
+            .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
             .map(|(key, data)| {
-                (
-                    key.split_at(ADDRESS_SIZE_BYTES + <span class="number">1</span>).<span class="number">1</span>.to_vec(),
-                    data.to_vec(),
-                )
+                <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], Address), <span class="kw">_</span>&gt; =
+                    address_deserializer.deserialize::&lt;massa_serialization::DeserializeError&gt;(<span class="kw-2">&amp;</span>key);
+                <span class="kw">match </span>res {
+                    <span class="prelude-val">Ok</span>((rest, _addr)) =&gt; (rest.to_vec(), data.to_vec()),
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; (<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]),
+                }
             })
             .collect()
     }
@@ -1402,7 +1432,7 @@
     <span class="doccomment">/// Functional test of `LedgerDB`
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_ledger_db() {
-        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate().get_public_key());
+        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
         <span class="kw">let </span>(db, data) = init_test_ledger(addr);
         <span class="kw">let </span>ledger_hash = db.get_ledger_hash();
         <span class="kw">let </span>amount_deserializer =
@@ -1441,7 +1471,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_ledger_parts() {
-        <span class="kw">let </span>pub_a = KeyPair::generate().get_public_key();
+        <span class="kw">let </span>pub_a = KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key();
         <span class="kw">let </span>a = Address::from_public_key(<span class="kw-2">&amp;</span>pub_a);
         <span class="kw">let </span>(db, <span class="kw">_</span>) = init_test_ledger(a);
         <span class="kw">let </span>res = db.get_ledger_part(StreamingStep::Started).unwrap();

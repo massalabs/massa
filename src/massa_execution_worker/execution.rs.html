@@ -1572,7 +1572,7 @@
         </span><span class="kw">let </span>sender_addr = operation.content_creator_address;
 
         <span class="comment">// get the thread to which the operation belongs
-        </span><span class="kw">let </span>op_thread = sender_addr.get_thread(<span class="self">self</span>.config.thread_count);
+        </span><span class="kw">let </span>op_thread = sender_addr.get_thread(<span class="self">self</span>.config.thread_count).unwrap();
 
         <span class="comment">// check block/op thread compatibility
         </span><span class="kw">if </span>op_thread != block_slot.thread {

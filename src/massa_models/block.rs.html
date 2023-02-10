@@ -1203,7 +1203,7 @@
     </span><span class="kw">pub </span>operations: Vec&lt;(OperationId, <span class="prelude-ty">Option</span>&lt;SecureShareOperation&gt;)&gt;,
 }
 
-<span class="doccomment">/// Block with assosciated meta-data and interfaces allowing trust of data in untrusted network
+<span class="doccomment">/// Block with associated meta-data and interfaces allowing trust of data in untrusted network
 </span><span class="kw">pub type </span>SecureShareBlock = SecureShare&lt;Block, BlockId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Block {
@@ -1291,7 +1291,7 @@
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
@@ -1386,7 +1386,7 @@
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// let keypair = KeyPair::generate();
+    /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
@@ -1667,7 +1667,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_genesis_block_serialization() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// create block header
@@ -1739,7 +1739,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_endorsements() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// Genesis block do not have any parents and thus cannot embed endorsements
@@ -1801,7 +1801,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_parents() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
@@ -1850,7 +1850,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_no_parents() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
 
         // create block header
@@ -1897,7 +1897,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_parent_count() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">0</span>..=THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
@@ -2018,7 +2018,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_low_parent_count() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">1</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
@@ -2068,7 +2068,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_endo_count() {
-        <span class="kw">let </span>keypair = KeyPair::generate();
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
