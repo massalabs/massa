@@ -142,6 +142,7 @@ impl Storage {
         }
     }
 
+    // local only?
     /// Efficiently extends the current Storage by consuming the refs of another storage.
     pub fn extend(&mut self, mut other: Storage) {
         // Take ownership ot `other`'s references.
@@ -231,6 +232,7 @@ impl Storage {
         }
     }
 
+    // local only
     /// get the block reference ownership
     pub fn get_block_refs(&self) -> &PreHashSet<BlockId> {
         &self.local.used_blocks
@@ -334,6 +336,7 @@ impl Storage {
         claimed
     }
 
+    // local only
     /// get the operation reference ownership
     pub fn get_op_refs(&self) -> &PreHashSet<OperationId> {
         &self.local.used_ops
@@ -395,16 +398,19 @@ impl Storage {
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local.used_ops);
     }
 
+    // global only
     /// Gets a read reference to the operations index
     pub fn read_operations(&self) -> RwLockReadGuard<OperationIndexes> {
         self.global.operations.read()
     }
 
+    // global only
     /// Gets a read reference to the endorsements index
     pub fn read_endorsements(&self) -> RwLockReadGuard<EndorsementIndexes> {
         self.global.endorsements.read()
     }
 
+    // global only
     /// Gets a read reference to the blocks index
     pub fn read_blocks(&self) -> RwLockReadGuard<BlockIndexes> {
         self.global.blocks.read()
@@ -432,6 +438,7 @@ impl Storage {
         claimed
     }
 
+    // local only
     /// get the endorsement reference ownership
     pub fn get_endorsement_refs(&self) -> &PreHashSet<EndorsementId> {
         &self.local.used_endorsements
