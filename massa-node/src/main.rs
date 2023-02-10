@@ -73,9 +73,8 @@ use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
 
-#[cfg_attr(not(feature = "deadlock_detection"), allow(unused_variables))]
 async fn launch(
-    args: &Args,
+    _args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
@@ -596,7 +595,7 @@ async fn launch(
         use parking_lot::deadlock;
         use std::thread;
 
-        let interval = Duration::from_secs(args.dl_interval);
+        let interval = Duration::from_secs(_args.dl_interval);
         warn!("deadlocks detector will run every {:?}", interval);
 
         // Create a background thread which checks for deadlocks at the defined interval
