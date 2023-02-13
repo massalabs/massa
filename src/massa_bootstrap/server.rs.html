@@ -886,16 +886,16 @@
 
                 <span class="comment">// listener
                 </span>res_connection = listener.accept() =&gt; {
-                        <span class="kw">let </span>(<span class="kw-2">mut </span>server, remote_addr) = <span class="kw">if let </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = res_connection {
-                            <span class="kw">let </span>server = BootstrapServerBinder::new(
-                                dplx,
-                                <span class="self">self</span>.keypair.clone(),
-                                <span class="self">self</span>.bootstrap_config.max_bytes_read_write,
-                                <span class="self">self</span>.bootstrap_config.max_bootstrap_message_size,
-                                <span class="self">self</span>.bootstrap_config.thread_count,
-                                <span class="self">self</span>.bootstrap_config.max_datastore_key_length,
-                                <span class="self">self</span>.bootstrap_config.randomness_size_bytes,
-                                <span class="self">self</span>.bootstrap_config.consensus_bootstrap_part_size);
+                    <span class="kw">let </span>(<span class="kw-2">mut </span>server, remote_addr) = <span class="kw">if let </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = res_connection {
+                        <span class="kw">let </span>server = BootstrapServerBinder::new(
+                            dplx,
+                            <span class="self">self</span>.keypair.clone(),
+                            <span class="self">self</span>.bootstrap_config.max_bytes_read_write,
+                            <span class="self">self</span>.bootstrap_config.max_bootstrap_message_size,
+                            <span class="self">self</span>.bootstrap_config.thread_count,
+                            <span class="self">self</span>.bootstrap_config.max_datastore_key_length,
+                            <span class="self">self</span>.bootstrap_config.randomness_size_bytes,
+                            <span class="self">self</span>.bootstrap_config.consensus_bootstrap_part_size);
 
                         <span class="comment">// we didn&#39;t test whether Ip is allowed
                         </span><span class="attr">#[cfg(test)]
