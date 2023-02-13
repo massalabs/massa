@@ -885,10 +885,16 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `op_id`: operation ID
+    /// * `op_exec_status` : the status of the execution of the operation (true: success, false: failed).
     /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
-    pub fn insert_executed_op(&mut self, op_id: OperationId, op_valid_until_slot: Slot) {
+    pub fn insert_executed_op(
+        &mut self,
+        op_id: OperationId,
+        op_exec_status: bool,
+        op_valid_until_slot: Slot,
+    ) {
         self.speculative_executed_ops
-            .insert_executed_op(op_id, op_valid_until_slot)
+            .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
     }
 
     /// gets the cycle information for an address

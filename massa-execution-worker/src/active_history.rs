@@ -5,7 +5,7 @@ use massa_ledger_exports::{
 use massa_models::{
     address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
 };
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Default)]
 /// History of the outputs of recently executed slots.
@@ -258,5 +258,20 @@ impl ActiveHistory {
                 (idx1..idx2.saturating_add(1), false, false)
             }
         }
+    }
+
+    /// Get the execution statuses of operations
+    ///
+    /// # Return Value
+    ///
+    /// A hashmap with
+    /// * the operation id as the key
+    /// * and a bool as the value: true: execution succeeded, false: execution failed
+    pub fn get_op_exec_status(&self) -> HashMap<OperationId, bool> {
+        self.0
+            .iter()
+            .flat_map(|exec_output| exec_output.state_changes.executed_ops_changes.clone())
+            .map(|(op_id, (status, _))| (op_id, status))
+            .collect()
     }
 }
