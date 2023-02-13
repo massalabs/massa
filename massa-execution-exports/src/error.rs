@@ -44,4 +44,7 @@ pub enum ExecutionError {
 
     /// Include operation error: {0}
     IncludeOperationError(String),
+
+    /// Error when initialize vesting addresses
+    InitVestingError(String),
 }

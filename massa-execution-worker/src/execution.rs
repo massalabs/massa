@@ -23,7 +23,8 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashSet, PreHashMap};
+use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::slot::VestingRange;
 use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
@@ -35,8 +36,10 @@ use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
+use std::borrow::BorrowMut;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
+use tracing::log::error;
 use tracing::{debug, info, warn};
 
 /// Used to acquire a lock on the execution context
@@ -73,7 +76,8 @@ pub(crate) struct ExecutionState {
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
     module_cache: Arc<RwLock<ModuleCache>>,
-    vesting_registry: PreHashMap<Address, Vec<VestingRange>>
+    // Map of vesting addresses
+    vesting_registry: PreHashMap<Address, Vec<VestingRange>>,
 }
 
 impl ExecutionState {
@@ -113,6 +117,15 @@ impl ExecutionState {
             execution_context.clone(),
         ));
 
+        // Initialize the map of vesting addresses from file
+        let vesting_registry = match ExecutionState::init_vesting_registry(&config) {
+            Ok(map) => map,
+            Err(e) => {
+                error!("{}", e);
+                PreHashMap::default()
+            }
+        };
+
         // build the execution state
         ExecutionState {
             final_state,
@@ -128,6 +141,7 @@ impl ExecutionState {
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             module_cache,
             config,
+            vesting_registry,
         }
     }
 
@@ -1341,5 +1355,55 @@ impl ExecutionState {
     /// Get future deferred credits of an address
     pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    }
+
+    /// Initialize the hashmap of addresses from the vesting file
+    fn init_vesting_registry(
+        config: &ExecutionConfig,
+    ) -> Result<PreHashMap<Address, Vec<VestingRange>>, ExecutionError> {
+        let mut hashmap: PreHashMap<Address, Vec<VestingRange>> = serde_json::from_str(
+            &std::fs::read_to_string(&config.initial_vesting_path).map_err(|err| {
+                ExecutionError::InitVestingError(format!(
+                    "error loading initial vesting file  {}",
+                    err
+                ))
+            })?,
+        )
+        .map_err(|err| {
+            ExecutionError::InitVestingError(format!(
+                "error on deserialize initial vesting file  {}",
+                err
+            ))
+        })?;
+
+        for (_k, v) in hashmap.borrow_mut() {
+            let mut current_index = 1;
+            let temp_list = v.clone();
+
+            for vesting_slot in v {
+                if let Some(next) = temp_list.get(current_index) {
+                    // if a vesting slot is present on the vector
+                    // we set the actual end of the current range at (next - 1) slot
+                    let prev_slot =
+                        next.start_slot
+                            .get_prev_slot(config.thread_count)
+                            .map_err(|e| {
+                                ExecutionError::InitVestingError(format!(
+                                    "error on get prev slot for init vesting : {}",
+                                    e
+                                ))
+                            })?;
+                    vesting_slot.end_slot = prev_slot;
+                } else {
+                    vesting_slot.end_slot = Slot {
+                        thread: config.thread_count,
+                        period: u64::MAX,
+                    }
+                }
+                current_index += 1;
+            }
+        }
+
+        Ok(hashmap)
     }
 }

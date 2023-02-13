@@ -344,3 +344,28 @@ impl std::fmt::Display for IndexedSlot {
         writeln!(f, "Slot: {}, Index: {}", self.slot, self.index)
     }
 }
+
+/// Represent a vesting range
+#[derive(Clone, Copy, Deserialize, Debug)]
+pub struct VestingRange {
+    /// start slot of range
+    /// use "slot" field in the initial_vesting.json file
+    #[serde(rename(deserialize = "slot"))]
+    pub start_slot: Slot,
+
+    /// end slot for the range
+    /// Init with 0,0
+    #[serde(default = "init_end_slot_range")]
+    pub end_slot: Slot,
+
+    /// minimal balance for specific range
+    pub min_balance: i32,
+
+    /// max rolls for specific range
+    pub max_rolls: i32,
+}
+
+/// init the end_slot on startup
+fn init_end_slot_range() -> Slot {
+    Slot::new(0, 0)
+}

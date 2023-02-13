@@ -21,6 +21,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
 use massa_models::prehash::PreHashMap;
+use massa_models::slot::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -200,6 +201,7 @@ impl ExecutionContext {
             stack: self.stack.clone(),
             events: self.events.clone(),
             unsafe_rng: self.unsafe_rng.clone(),
+            vesting_registry: PreHashMap::default(),
         }
     }
 
@@ -588,9 +590,12 @@ impl ExecutionContext {
                 }
             }
         }
-        self.get_address_cycle_infos(from_addr, periods_per_cycle);
-        self.get_balance(from_addr);
+
+        // todo
+        // self.get_address_cycle_infos(from_addr, periods_per_cycle);
+        // self.get_balance(from_addr);
         // Check if the transfer is valid with vesting registry
+
         // do the transfer
         self.speculative_ledger
             .transfer_coins(from_addr, to_addr, amount)
