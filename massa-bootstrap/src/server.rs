@@ -88,6 +88,7 @@ pub async fn start_bootstrap_server(
     });
     Ok(Some(BootstrapManager {
         join_handle,
+        // Send on this channel to trigger the tokio::select! loop to break
         manager_tx,
     }))
 }
