@@ -20,6 +20,7 @@ use massa_execution_exports::{
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
+use massa_models::prehash::PreHashMap;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -62,6 +63,8 @@ pub struct ExecutionContextSnapshot {
 
     /// generated events during this execution, with multiple indexes
     pub events: EventStore,
+
+    pub vesting_registry: PreHashMap<Address, Vec<VestingRange>>,
 
     /// Unsafe random state
     pub unsafe_rng: Xoshiro256PlusPlus,
@@ -585,6 +588,9 @@ impl ExecutionContext {
                 }
             }
         }
+        self.get_address_cycle_infos(from_addr, periods_per_cycle);
+        self.get_balance(from_addr);
+        // Check if the transfer is valid with vesting registry
         // do the transfer
         self.speculative_ledger
             .transfer_coins(from_addr, to_addr, amount)

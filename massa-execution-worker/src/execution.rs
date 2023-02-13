@@ -23,7 +23,7 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashSet, PreHashMap};
 use massa_models::stats::ExecutionStats;
 use massa_models::{
     address::Address,
@@ -73,6 +73,7 @@ pub(crate) struct ExecutionState {
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
     module_cache: Arc<RwLock<ModuleCache>>,
+    vesting_registry: PreHashMap<Address, Vec<VestingRange>>
 }
 
 impl ExecutionState {
