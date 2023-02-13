@@ -10,4 +10,7 @@ mod scenarios_mandatories;
 mod tests_active_history;
 
 #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+mod interface;
+
+#[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
 pub use mock::get_sample_state;
