@@ -617,7 +617,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     }
 }
 
-/// Serializer for `OperationType`
+/// Deserializer for `OperationType`
 pub struct OperationTypeDeserializer {
     id_deserializer: U32VarIntDeserializer,
     rolls_number_deserializer: U64VarIntDeserializer,

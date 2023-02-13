@@ -8,7 +8,7 @@ use massa_models::{
 use massa_signature::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
 
-use crate::display_if_true;
+use crate::{display_if_true, display_option_bool};
 
 /// operation input
 #[derive(Serialize, Deserialize, Debug)]
@@ -32,21 +32,29 @@ pub struct OperationInfo {
     /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
     /// true if the operation is final (for example in a final block)
-    pub is_final: bool,
+    pub is_operation_final: Option<bool>,
     /// Thread in which the operation can be included
     pub thread: u8,
     /// the operation itself
     pub operation: SecureShareOperation,
+    /// true if the operation execution succeeded, false if failed, None means unknown
+    pub op_exec_status: Option<bool>,
 }
 
 impl std::fmt::Display for OperationInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "Operation {}{}{}",
+            "Operation {}{}{}{}",
             self.id,
-            display_if_true(self.in_pool, " (in pool)"),
-            display_if_true(self.is_final, " (final)")
+            display_if_true(self.in_pool, "in pool"),
+            display_option_bool(
+                self.is_operation_final,
+                "operation is final",
+                "operation is not final",
+                "finality unkown"
+            ),
+            display_option_bool(self.op_exec_status, "succes", "failed", "status unkown")
         )?;
         writeln!(f, "In blocks:")?;
         for block_id in &self.in_blocks {

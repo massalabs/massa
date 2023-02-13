@@ -209,15 +209,18 @@ pub fn get_random_executed_ops(
     executed_ops
 }
 
-pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, Slot> {
+pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, (bool, Slot)> {
     let mut ops_changes = PreHashMap::default();
     for i in 0..r_limit {
         ops_changes.insert(
             OperationId::new(Hash::compute_from(&get_some_random_bytes())),
-            Slot {
-                period: i + 10,
-                thread: 0,
-            },
+            (
+                true,
+                Slot {
+                    period: i + 10,
+                    thread: 0,
+                },
+            ),
         );
     }
     ops_changes

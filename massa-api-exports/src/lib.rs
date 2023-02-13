@@ -47,6 +47,26 @@ fn display_if_true(value: bool, text: &str) -> String {
     }
 }
 
+/// Help to format Optional bool
+fn display_option_bool(
+    value: Option<bool>,
+    text_true: &str,
+    text_false: &str,
+    text_none: &str,
+) -> String {
+    match value {
+        Some(true) => {
+            format!("[{}]", text_true)
+        }
+        Some(false) => {
+            format!("[{}]", text_false)
+        }
+        None => {
+            format!("[{}]", text_none)
+        }
+    }
+}
+
 /// Just a wrapper with a optional beginning and end
 #[derive(Debug, Deserialize, Clone, Copy, Serialize)]
 pub struct TimeInterval {
