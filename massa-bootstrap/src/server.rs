@@ -189,16 +189,16 @@ impl BootstrapServer {
 
                 // listener
                 res_connection = listener.accept() => {
-                        let (mut server, remote_addr) = if let Ok((dplx, remote_addr)) = res_connection {
-                            let server = BootstrapServerBinder::new(
-                                dplx,
-                                self.keypair.clone(),
-                                self.bootstrap_config.max_bytes_read_write,
-                                self.bootstrap_config.max_bootstrap_message_size,
-                                self.bootstrap_config.thread_count,
-                                self.bootstrap_config.max_datastore_key_length,
-                                self.bootstrap_config.randomness_size_bytes,
-                                self.bootstrap_config.consensus_bootstrap_part_size);
+                    let (mut server, remote_addr) = if let Ok((dplx, remote_addr)) = res_connection {
+                        let server = BootstrapServerBinder::new(
+                            dplx,
+                            self.keypair.clone(),
+                            self.bootstrap_config.max_bytes_read_write,
+                            self.bootstrap_config.max_bootstrap_message_size,
+                            self.bootstrap_config.thread_count,
+                            self.bootstrap_config.max_datastore_key_length,
+                            self.bootstrap_config.randomness_size_bytes,
+                            self.bootstrap_config.consensus_bootstrap_part_size);
 
                         // we didn't test whether Ip is allowed
                         #[cfg(test)]
