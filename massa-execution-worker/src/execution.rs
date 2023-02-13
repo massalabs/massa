@@ -1376,7 +1376,7 @@ impl ExecutionState {
             ))
         })?;
 
-        for (_k, v) in hashmap.borrow_mut() {
+        for v in hashmap.values_mut() {
             let mut current_index = 1;
             let temp_list = v.clone();
 
