@@ -200,20 +200,11 @@ impl BootstrapServer {
                             self.bootstrap_config.randomness_size_bytes,
                             self.bootstrap_config.consensus_bootstrap_part_size);
 
-                        // we didn't test whether Ip is allowed
-                        #[cfg(test)]
-                        {
-                        (server, remote_addr)
-                        }
-
-                        #[cfg(not(test))]
-                        {
                         // check whether incoming peer IP is allowed or return an error which is ignored
                         let Ok((server, remote_addr)) = self.is_ip_allowed(remote_addr, server, &whitelist, &blacklist).await else {
                             continue;
                         };
                         (server, remote_addr)
-                        }
                     } else {
                         continue
                     };
@@ -302,8 +293,7 @@ impl BootstrapServer {
                         });
                         massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                     } else {
-                        let config = self.bootstrap_config.clone();
-                        let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                        let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                             error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
                         })).await {
                             Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
@@ -321,53 +311,61 @@ impl BootstrapServer {
         Ok(())
     }
 
-    #[cfg(not(test))]
     // whether the peer IP address is banned
     async fn is_ip_allowed(
         &self,
-        remote_address: SocketAddr,
+        remote_addr: SocketAddr,
         mut server: BootstrapServerBinder,
         whitelist: &Option<HashSet<IpAddr>>,
         blacklist: &Option<HashSet<IpAddr>>,
     ) -> io::Result<(BootstrapServerBinder, SocketAddr)> {
-        let ip = normalize_ip(remote_address.ip());
-        // whether the peer IP address is blacklisted
-        let not_allowed_msg = if let Some(ip_list) = &blacklist && ip_list.contains(&ip) {
-            massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_address});
+        // we didn't test whether Ip is allowed
+        #[cfg(test)]
+        {
+            Ok((server, remote_addr))
+        }
+        // we didn't test whether Ip is allowed
+        #[cfg(not(test))]
+        {
+            let ip = normalize_ip(remote_addr.ip());
+            // whether the peer IP address is blacklisted
+            let not_allowed_msg = if let Some(ip_list) = &blacklist && ip_list.contains(&ip) {
+            massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
             Some(format!("IP {} is blacklisted", &ip))
         // whether the peer IP address is not present in the whitelist
         } else if let Some(ip_list) = &whitelist && !ip_list.contains(&ip){
-            massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_address});
+            massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
             Some(format!("A whitelist exists and the IP {} is not whitelisted", &ip))
         } else {
             None
         };
 
-        // whether the peer IP address is not allowed, send back an error message
-        if let Some(error_msg) = not_allowed_msg {
-            let _ = match tokio::time::timeout(
-                self.bootstrap_config.write_error_timeout.into(),
-                server.send(BootstrapServerMessage::BootstrapError {
-                    error: error_msg.clone(),
-                }),
-            )
-            .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    format!("{}  timed out", &error_msg),
+            // whether the peer IP address is not allowed, send back an error message
+            if let Some(error_msg) = not_allowed_msg {
+                let _ = match tokio::time::timeout(
+                    self.bootstrap_config.write_error_timeout.into(),
+                    server.send(BootstrapServerMessage::BootstrapError {
+                        error: error_msg.clone(),
+                    }),
                 )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
-            };
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                error_msg,
-            ));
-        }
+                .await
+                {
+                    Err(_) => Err(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        format!("{}  timed out", &error_msg),
+                    )
+                    .into()),
+                    Ok(Err(e)) => Err(e),
+                    Ok(Ok(_)) => Ok(()),
+                };
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    error_msg,
+                ));
+            }
 
-        Ok((server, remote_address))
+            Ok((server, remote_addr))
+        }
     }
 }
 
