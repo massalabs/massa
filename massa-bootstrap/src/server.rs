@@ -189,8 +189,7 @@ impl BootstrapServer {
 
                 // listener
                 res_connection = listener.accept() => {
-                        let (mut server, remote_addr) = if res_connection.is_ok() {
-                            let (dplx, remote_addr) = res_connection.unwrap();
+                        let (mut server, remote_addr) = if let Ok((dplx, remote_addr)) = res_connection {
                             let server = BootstrapServerBinder::new(
                                 dplx,
                                 self.keypair.clone(),
@@ -200,25 +199,25 @@ impl BootstrapServer {
                                 self.bootstrap_config.max_datastore_key_length,
                                 self.bootstrap_config.randomness_size_bytes,
                                 self.bootstrap_config.consensus_bootstrap_part_size);
-                            // we didn't test whether Ip is allowed
+
+                        // we didn't test whether Ip is allowed
                         #[cfg(test)]
                         {
-                            (server, remote_addr)
+                        (server, remote_addr)
                         }
 
                         #[cfg(not(test))]
                         {
-                            // check whether incoming peer IP is allowed or return an error which is ignored
-                            let res = self.is_ip_allowed(remote_addr, server, &whitelist, &blacklist).await;
-                            if res.is_ok() {
-                                res.unwrap()
-                            } else {
-                                continue
-                            }
+                        // check whether incoming peer IP is allowed or return an error which is ignored
+                        let Ok((server, remote_addr)) = self.is_ip_allowed(remote_addr, server, &whitelist, &blacklist).await else {
+                            continue;
+                        };
+                        (server, remote_addr)
                         }
                     } else {
                         continue
                     };
+
                     if bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
                         massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                         let now = Instant::now();
