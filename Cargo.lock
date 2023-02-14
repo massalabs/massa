@@ -2389,7 +2389,6 @@ dependencies = [
  "async-speed-limit",
  "bitvec",
  "displaydoc",
- "futures",
  "humantime",
  "lazy_static",
  "massa_async_pool",

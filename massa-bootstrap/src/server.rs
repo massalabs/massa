@@ -205,7 +205,7 @@ impl BootstrapServer {
                 // the actual bootstrapping. Cancellation would occur through the Stop command going through
                 Ok((dplx, remote_addr)) = listener.accept(&whitelist, &blacklist) => {
 
-                    let max_bootstraps: u32 = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
+                    let max_bootstraps: u32 = self.bootstrap_config.max_simultaneous_bootstraps;
                     let mut binding = BootstrapServerBinder::new(
                         dplx,
                         self.keypair.clone(),
@@ -269,6 +269,8 @@ impl BootstrapServer {
                             consensus_command_sender,
                             network_command_sender
                         ));
+                        // increment the number of active bootstraps. Will be decremented when handling the
+                        // Complete message that is sent when complete.
                         bootstrap_sessions.fetch_add(1, Ordering::Relaxed);
 
                         massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.load(Ordering::Relaxed)});
@@ -342,6 +344,7 @@ impl BootstrapServer {
 }
 
 /// TODO: Doc-comment me
+#[allow(clippy::too_many_arguments)]
 async fn run_bootstrap_session(
     mut server: BootstrapServerBinder,
     controller_tx: mpsc::Sender<BSInternalMessage>,
