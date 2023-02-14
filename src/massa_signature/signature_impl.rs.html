@@ -1287,7 +1287,7 @@
 
 <span class="kw">const </span>PUBLIC_PREFIX: char = <span class="string">&#39;P&#39;</span>;
 
-<span class="attr">#[allow(clippy::derive_hash_xor_eq)]
+<span class="attr">#[allow(clippy::derived_hash_with_manual_eq)]
 </span><span class="kw">impl </span>std::hash::Hash <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
         <span class="self">self</span>.<span class="number">0</span>.as_bytes().hash(state);

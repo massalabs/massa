@@ -843,6 +843,14 @@
 <a href="#843" id="843">843</a>
 <a href="#844" id="844">844</a>
 <a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -921,9 +929,17 @@
 
     <span class="doccomment">/// speculative ledger state,
     /// as seen after everything that happened so far in the context
-    </span><span class="attr">#[cfg(all(not(feature = <span class="string">&quot;gas_calibration&quot;</span>), not(feature = <span class="string">&quot;benchmarking&quot;</span>)))]
+    </span><span class="attr">#[cfg(all(
+        not(feature = <span class="string">&quot;gas_calibration&quot;</span>),
+        not(feature = <span class="string">&quot;benchmarking&quot;</span>),
+        not(feature = <span class="string">&quot;testing&quot;</span>)
+    ))]
     </span>speculative_ledger: SpeculativeLedger,
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
+    <span class="attr">#[cfg(any(
+        feature = <span class="string">&quot;gas_calibration&quot;</span>,
+        feature = <span class="string">&quot;benchmarking&quot;</span>,
+        feature = <span class="string">&quot;testing&quot;
+    </span>))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) speculative_ledger: SpeculativeLedger,
 
     <span class="doccomment">/// speculative asynchronous pool state,
