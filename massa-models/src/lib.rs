@@ -61,6 +61,8 @@ pub mod streaming_step;
 pub mod timeslots;
 /// versions
 pub mod version;
+/// versioning
+pub mod versioning;
 
 /// Test utils
 #[cfg(feature = "testing")]
