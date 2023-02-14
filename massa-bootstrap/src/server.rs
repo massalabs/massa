@@ -202,26 +202,21 @@ impl BootstrapServer {
                 // listener
                 // Potential issue: because it's async, a connection match could be cancelled before spawning
                 // the actual bootstrapping. Cancellation would occur through the Stop command going through
-                res_connection = listener.accept() => {
-                    let (mut server, remote_addr) = if let Ok((dplx, remote_addr)) = res_connection {
-                        let server = BootstrapServerBinder::new(
-                            dplx,
-                            self.keypair.clone(),
-                            self.bootstrap_config.max_bytes_read_write,
-                            self.bootstrap_config.max_bootstrap_message_size,
-                            self.bootstrap_config.thread_count,
-                            self.bootstrap_config.max_datastore_key_length,
-                            self.bootstrap_config.randomness_size_bytes,
-                            self.bootstrap_config.consensus_bootstrap_part_size
-                        );
+                Ok((dplx, remote_addr)) = listener.accept() => {
+                    let server = BootstrapServerBinder::new(
+                        dplx,
+                        self.keypair.clone(),
+                        self.bootstrap_config.max_bytes_read_write,
+                        self.bootstrap_config.max_bootstrap_message_size,
+                        self.bootstrap_config.thread_count,
+                        self.bootstrap_config.max_datastore_key_length,
+                        self.bootstrap_config.randomness_size_bytes,
+                        self.bootstrap_config.consensus_bootstrap_part_size
+                    );
 
-                        // check whether incoming peer IP is allowed or return an error which is ignored
-                        let Ok((server, remote_addr)) = self.is_ip_allowed(remote_addr, server, &whitelist, &blacklist).await else {
-                            continue;
-                        };
-                        (server, remote_addr)
-                    } else {
-                        continue
+                    // check whether incoming peer IP is allowed or return an error which is ignored
+                    let Ok((mut server, remote_addr)) = self.is_ip_allowed(remote_addr, server, &whitelist, &blacklist).await else {
+                        continue;
                     };
 
                     let max_bootstraps: usize = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
