@@ -45,5 +45,6 @@
   "assembly_script_transfer_coins": 176,
   "assembly_script_transfer_coins_for": 208,
   "assembly_script_unsafe_random": 145,
+  "assembly_script_hash_sha256": 244,
   "launch": 7752
 }
