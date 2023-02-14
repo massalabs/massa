@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["TimeError"],"struct":["MassaTime","MassaTimeDeserializer","MassaTimeSerializer"]};
+window.SIDEBAR_ITEMS = {"enum":[["TimeError","Time related errors"]],"struct":[["MassaTime","Time structure used everywhere. milliseconds since 01/01/1970."],["MassaTimeDeserializer","Deserializer for `MassaTime`"],["MassaTimeSerializer","Serializer for `MassaTime`"]]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["StreamingStep"],"struct":["StreamingStepDeserializer","StreamingStepSerializer"]};
+window.SIDEBAR_ITEMS = {"enum":[["StreamingStep","Streaming step cursor"]],"struct":[["StreamingStepDeserializer","`StreamingStep` deserializer"],["StreamingStepSerializer","`StreamingStep` serializer"]]};
