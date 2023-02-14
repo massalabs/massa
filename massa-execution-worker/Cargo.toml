@@ -38,6 +38,7 @@ massa_final_state = { path = "../massa-final-state" }
 [dev-dependencies]
 massa_pos_worker = { path = "../massa-pos-worker" }
 serial_test = "0.10"
+hex-literal = "0.3.4"
 tempfile = "3.2"
 massa_ledger_worker = { path = "../massa-ledger-worker" }
 # custom modules with testing enabled
