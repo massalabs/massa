@@ -24,7 +24,11 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
 
-#[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 use massa_models::datastore::Datastore;
 
 /// helper for locking the context mutex
@@ -53,7 +57,11 @@ impl InterfaceImpl {
         InterfaceImpl { config, context }
     }
 
-    #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+    #[cfg(any(
+        feature = "gas_calibration",
+        feature = "benchmarking",
+        feature = "testing"
+    ))]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(
         sender_addr: Address,
@@ -65,7 +73,7 @@ impl InterfaceImpl {
         use parking_lot::RwLock;
 
         let config = ExecutionConfig::default();
-        let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
+        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
         let mut execution_context = ExecutionContext::new(
             config.clone(),

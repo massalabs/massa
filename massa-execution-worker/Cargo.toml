@@ -65,6 +65,10 @@ testing = [
     "massa_ledger_exports/testing",
     "massa_pos_exports/testing",
     "massa_final_state/testing",
+    "massa-sc-runtime/testing",
+    "tempfile",
+    "massa_pos_worker",
+    "massa_ledger_worker",
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks
