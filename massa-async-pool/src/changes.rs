@@ -180,7 +180,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
     ///     })
     /// );
-    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message), Change::Delete(message.compute_id())]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
     /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
@@ -214,6 +214,14 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                     .map(|(id, message)| Change::Add(id, message))
                     .parse(&input[1..]),
                     Some(1) => context(
+                        "Failed Change::Activate deserialization",
+                        context("Failed id deserialization", |input| {
+                            self.id_deserializer.deserialize(input)
+                        }),
+                    )
+                    .map(Change::Activate)
+                    .parse(&input[1..]),
+                    Some(2) => context(
                         "Failed Change::Delete deserialization",
                         context("Failed id deserialization", |input| {
                             self.id_deserializer.deserialize(input)
