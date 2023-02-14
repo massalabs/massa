@@ -175,7 +175,9 @@ impl BootstrapServer {
                 * bootstrap sessions (rare)
                 * listener: most frequent => last
         */
-        let mut bootstrap_sessions: u32 = 0;
+
+        // Use the strong-count of this variable to track the session count
+        let bootstrap_sessions: Arc<()> = Arc::new(());
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
@@ -189,10 +191,7 @@ impl BootstrapServer {
                             break
                         },
                         BSInternalMessage::Complete => {
-                            let Some(remain) = bootstrap_sessions.checked_sub(1) else {
-                                return Err(BootstrapError::GeneralError("Active session counting error".into()));
-                            };
-                            massa_trace!("bootstrap.session.finished", {"active_count": remain});
+                            massa_trace!("bootstrap.session.finished", {"active_count": Arc::strong_count(&bootstrap_sessions) - 1});
                         }
                     }
                 }
@@ -225,8 +224,8 @@ impl BootstrapServer {
                         continue
                     };
 
-                    let max_bootstraps: u32 = self.bootstrap_config.max_simultaneous_bootstraps;
-                    if bootstrap_sessions < max_bootstraps {
+                    let max_bootstraps: usize = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
+                    if Arc::strong_count(&bootstrap_sessions) < max_bootstraps {
 
                         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
                         massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
@@ -272,6 +271,7 @@ impl BootstrapServer {
                         tokio::spawn(run_bootstrap_session(
                             binding,
                             self.manager_tx.clone(),
+                            bootstrap_sessions.clone(),
                             config,
                             remote_addr,
                             data_execution,
@@ -281,9 +281,8 @@ impl BootstrapServer {
                         ));
                         // increment the number of active bootstraps. Will be decremented when handling the
                         // Complete message that is sent when complete.
-                        bootstrap_sessions += 1;
 
-                        massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions});
+                        massa_trace!("bootstrap.session.started", {"active_count": Arc::strong_count(&bootstrap_sessions) - 1});
                     } else {
                         let config = self.bootstrap_config.clone();
                         let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
@@ -419,6 +418,7 @@ impl BootstrapServer {
 async fn run_bootstrap_session(
     mut server: BootstrapServerBinder,
     controller_tx: mpsc::Sender<BSInternalMessage>,
+    arc_counter: Arc<()>,
     config: BootstrapConfig,
     remote_addr: SocketAddr,
     data_execution: Arc<RwLock<FinalState>>,
@@ -439,6 +439,8 @@ async fn run_bootstrap_session(
         ),
     )
     .await;
+    // This drop allows the server to accept new connections without having to complete the error notifications
+    drop(arc_counter);
     let _ = controller_tx.send(BSInternalMessage::Complete).await;
     match res {
         Ok(mgmt) => match mgmt {
