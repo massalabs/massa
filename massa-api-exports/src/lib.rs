@@ -72,7 +72,7 @@ pub enum ScrudOperation {
     Delete,
 }
 
-/// Bootsrap lists types
+/// Bootstrap lists types
 #[derive(strum::Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum ListType {
