@@ -801,9 +801,6 @@
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -981,7 +978,9 @@
                 * bootstrap sessions (rare)
                 * listener: most frequent =&gt; last
         */
-        </span><span class="kw">let </span><span class="kw-2">mut </span>bootstrap_sessions: u32 = <span class="number">0</span>;
+
+        // Use the strong-count of this variable to track the session count
+        </span><span class="kw">let </span>bootstrap_sessions: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">loop </span>{
             <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select&quot;</span>, {});
             <span class="macro">tokio::select! </span>{
@@ -995,10 +994,7 @@
                             <span class="kw">break
                         </span>},
                         BSInternalMessage::Complete =&gt; {
-                            <span class="kw">let </span><span class="prelude-val">Some</span>(remain) = bootstrap_sessions.checked_sub(<span class="number">1</span>) <span class="kw">else </span>{
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;Active session counting error&quot;</span>.into()));
-                            };
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: remain});
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions) - <span class="number">1</span>});
                         }
                     }
                 }
@@ -1009,30 +1005,25 @@
                 <span class="comment">// listener
                 // Potential issue: because it&#39;s async, a connection match could be cancelled before spawning
                 // the actual bootstrapping. Cancellation would occur through the Stop command going through
-                </span>res_connection = listener.accept() =&gt; {
-                    <span class="kw">let </span>(<span class="kw-2">mut </span>server, remote_addr) = <span class="kw">if let </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = res_connection {
-                        <span class="kw">let </span>server = BootstrapServerBinder::new(
-                            dplx,
-                            <span class="self">self</span>.keypair.clone(),
-                            <span class="self">self</span>.bootstrap_config.max_bytes_read_write,
-                            <span class="self">self</span>.bootstrap_config.max_bootstrap_message_size,
-                            <span class="self">self</span>.bootstrap_config.thread_count,
-                            <span class="self">self</span>.bootstrap_config.max_datastore_key_length,
-                            <span class="self">self</span>.bootstrap_config.randomness_size_bytes,
-                            <span class="self">self</span>.bootstrap_config.consensus_bootstrap_part_size
-                        );
+                </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = listener.accept() =&gt; {
+                    <span class="kw">let </span>server = BootstrapServerBinder::new(
+                        dplx,
+                        <span class="self">self</span>.keypair.clone(),
+                        <span class="self">self</span>.bootstrap_config.max_bytes_read_write,
+                        <span class="self">self</span>.bootstrap_config.max_bootstrap_message_size,
+                        <span class="self">self</span>.bootstrap_config.thread_count,
+                        <span class="self">self</span>.bootstrap_config.max_datastore_key_length,
+                        <span class="self">self</span>.bootstrap_config.randomness_size_bytes,
+                        <span class="self">self</span>.bootstrap_config.consensus_bootstrap_part_size
+                    );
 
-                        <span class="comment">// check whether incoming peer IP is allowed or return an error which is ignored
-                        </span><span class="kw">let </span><span class="prelude-val">Ok</span>((server, remote_addr)) = <span class="self">self</span>.is_ip_allowed(remote_addr, server, <span class="kw-2">&amp;</span>whitelist, <span class="kw-2">&amp;</span>blacklist).<span class="kw">await else </span>{
-                            <span class="kw">continue</span>;
-                        };
-                        (server, remote_addr)
-                    } <span class="kw">else </span>{
-                        <span class="kw">continue
-                    </span>};
+                    <span class="comment">// check whether incoming peer IP is allowed or return an error which is ignored
+                    </span><span class="kw">let </span><span class="prelude-val">Ok</span>((<span class="kw-2">mut </span>server, remote_addr)) = <span class="self">self</span>.is_ip_allowed(remote_addr, server, <span class="kw-2">&amp;</span>whitelist, <span class="kw-2">&amp;</span>blacklist).<span class="kw">await else </span>{
+                        <span class="kw">continue</span>;
+                    };
 
-                    <span class="kw">let </span>max_bootstraps: u32 = <span class="self">self</span>.bootstrap_config.max_simultaneous_bootstraps;
-                    <span class="kw">if </span>bootstrap_sessions &lt; max_bootstraps {
+                    <span class="kw">let </span>max_bootstraps: usize = <span class="self">self</span>.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|<span class="kw">_</span>| BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()))<span class="question-mark">?</span>;
+                    <span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions) &lt; max_bootstraps {
 
                         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
@@ -1078,6 +1069,7 @@
                         tokio::spawn(run_bootstrap_session(
                             binding,
                             <span class="self">self</span>.manager_tx.clone(),
+                            bootstrap_sessions.clone(),
                             config,
                             remote_addr,
                             data_execution,
@@ -1087,9 +1079,8 @@
                         ));
                         <span class="comment">// increment the number of active bootstraps. Will be decremented when handling the
                         // Complete message that is sent when complete.
-                        </span>bootstrap_sessions += <span class="number">1</span>;
 
-                        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: bootstrap_sessions});
+                        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions) - <span class="number">1</span>});
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
                         <span class="kw">let _ </span>= <span class="kw">match </span>tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
@@ -1108,7 +1099,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// check IP&#39;s bootstrap attempt history, consuming the duplex if fail, giving it back for later use otherwise.
+    <span class="doccomment">/// check IP&#39;s bootstrap attempt history, consuming the server if fail, giving it back for later use otherwise.
     </span><span class="kw">async fn </span>bootstrap_client_check(
         <span class="kw-2">mut </span>server: BootstrapServerBinder,
         ip_hist_map: <span class="kw-2">&amp;mut </span>HashMap&lt;IpAddr, Instant&gt;,
@@ -1225,6 +1216,7 @@
 </span><span class="kw">async fn </span>run_bootstrap_session(
     <span class="kw-2">mut </span>server: BootstrapServerBinder,
     controller_tx: mpsc::Sender&lt;BSInternalMessage&gt;,
+    arc_counter: Arc&lt;()&gt;,
     config: BootstrapConfig,
     remote_addr: SocketAddr,
     data_execution: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
@@ -1245,6 +1237,8 @@
         ),
     )
     .<span class="kw">await</span>;
+    <span class="comment">// This drop allows the server to accept new connections without having to complete the error notifications
+    </span>drop(arc_counter);
     <span class="kw">let _ </span>= controller_tx.send(BSInternalMessage::Complete).<span class="kw">await</span>;
     <span class="kw">match </span>res {
         <span class="prelude-val">Ok</span>(mgmt) =&gt; <span class="kw">match </span>mgmt {
