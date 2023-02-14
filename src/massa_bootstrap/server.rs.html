@@ -801,6 +801,9 @@
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -980,7 +983,7 @@
         */
 
         // Use the strong-count of this variable to track the session count
-        </span><span class="kw">let </span>bootstrap_sessions: Arc&lt;()&gt; = Arc::new(());
+        </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">loop </span>{
             <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select&quot;</span>, {});
             <span class="macro">tokio::select! </span>{
@@ -994,7 +997,7 @@
                             <span class="kw">break
                         </span>},
                         BSInternalMessage::Complete =&gt; {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions) - <span class="number">1</span>});
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1</span>});
                         }
                     }
                 }
@@ -1006,6 +1009,8 @@
                 // Potential issue: because it&#39;s async, a connection match could be cancelled before spawning
                 // the actual bootstrapping. Cancellation would occur through the Stop command going through
                 </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = listener.accept() =&gt; {
+                    <span class="comment">// claim a slot in the max_bootstrap_sessions
+                    </span><span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
                     <span class="kw">let </span>server = BootstrapServerBinder::new(
                         dplx,
                         <span class="self">self</span>.keypair.clone(),
@@ -1023,7 +1028,8 @@
                     };
 
                     <span class="kw">let </span>max_bootstraps: usize = <span class="self">self</span>.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|<span class="kw">_</span>| BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()))<span class="question-mark">?</span>;
-                    <span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions) &lt; max_bootstraps {
+                    <span class="comment">// TODO: double-check OBO errors here, or find a better way to track count
+                    </span><span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) &lt; max_bootstraps {
 
                         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
@@ -1069,7 +1075,7 @@
                         tokio::spawn(run_bootstrap_session(
                             binding,
                             <span class="self">self</span>.manager_tx.clone(),
-                            bootstrap_sessions.clone(),
+                            bootstrap_count_token,
                             config,
                             remote_addr,
                             data_execution,
@@ -1080,7 +1086,7 @@
                         <span class="comment">// increment the number of active bootstraps. Will be decremented when handling the
                         // Complete message that is sent when complete.
 
-                        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions) - <span class="number">1</span>});
+                        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1</span>});
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
                         <span class="kw">let _ </span>= <span class="kw">match </span>tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
