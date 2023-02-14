@@ -27,7 +27,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-14
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -51,7 +51,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-14
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
@@ -72,7 +72,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-14
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -103,7 +103,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-14
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
@@ -139,7 +139,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-14
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -174,7 +174,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-14
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
