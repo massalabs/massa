@@ -15,10 +15,7 @@ use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
     path::PathBuf,
-    sync::{
-        atomic::{AtomicU32, Ordering},
-        Arc,
-    },
+    sync::Arc,
     time::{Duration, Instant},
 };
 use tokio::{sync::mpsc, task::JoinHandle};
@@ -177,7 +174,7 @@ impl BootstrapServer {
                 * bootstrap sessions (rare)
                 * listener: most frequent => last
         */
-        let bootstrap_sessions = Arc::new(AtomicU32::new(0));
+        let mut bootstrap_sessions: u32 = 0;
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
@@ -191,8 +188,10 @@ impl BootstrapServer {
                             break
                         },
                         BSInternalMessage::Complete => {
-                            massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.load(Ordering::Relaxed)});
-                            bootstrap_sessions.fetch_sub(1, Ordering::Relaxed);
+                            let Some(remain) = bootstrap_sessions.checked_sub(1) else {
+                                return Err(BootstrapError::GeneralError("Active session counting error".into()));
+                            };
+                            massa_trace!("bootstrap.session.finished", {"active_count": remain});
                         }
                     }
                 }
@@ -216,7 +215,7 @@ impl BootstrapServer {
                         self.bootstrap_config.randomness_size_bytes,
                         self.bootstrap_config.consensus_bootstrap_part_size
                     );
-                    if bootstrap_sessions.load(Ordering::Relaxed) < max_bootstraps {
+                    if bootstrap_sessions < max_bootstraps {
 
                         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
                         massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
@@ -271,9 +270,9 @@ impl BootstrapServer {
                         ));
                         // increment the number of active bootstraps. Will be decremented when handling the
                         // Complete message that is sent when complete.
-                        bootstrap_sessions.fetch_add(1, Ordering::Relaxed);
+                        bootstrap_sessions += 1;
 
-                        massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.load(Ordering::Relaxed)});
+                        massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions});
                     } else {
                         let config = self.bootstrap_config.clone();
                         let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), binding.send(BootstrapServerMessage::BootstrapError {
