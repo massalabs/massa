@@ -36,7 +36,6 @@ use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use std::borrow::BorrowMut;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::log::error;
@@ -1377,14 +1376,11 @@ impl ExecutionState {
         })?;
 
         for v in hashmap.values_mut() {
-            let mut current_index = 1;
-            let temp_list = v.clone();
-
-            for vesting_slot in v {
-                if let Some(next) = temp_list.get(current_index) {
-                    // if a vesting slot is present on the vector
-                    // we set the actual end of the current range at (next - 1) slot
-                    let prev_slot =
+            *v = v
+                .windows(2)
+                .map(|elements| {
+                    let (mut prev, next) = (elements[0], elements[1]);
+                    let end_slot =
                         next.start_slot
                             .get_prev_slot(config.thread_count)
                             .map_err(|e| {
@@ -1393,15 +1389,10 @@ impl ExecutionState {
                                     e
                                 ))
                             })?;
-                    vesting_slot.end_slot = prev_slot;
-                } else {
-                    vesting_slot.end_slot = Slot {
-                        thread: config.thread_count,
-                        period: u64::MAX,
-                    }
-                }
-                current_index += 1;
-            }
+                    prev.end_slot = end_slot;
+                    Ok(prev)
+                })
+                .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
         }
 
         Ok(hashmap)
