@@ -1,5 +1,3 @@
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -17,7 +15,10 @@ use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
     path::PathBuf,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
 };
 use tokio::{sync::mpsc, task::JoinHandle};
@@ -34,14 +35,21 @@ use crate::{
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     join_handle: JoinHandle<Result<(), BootstrapError>>,
-    manager_tx: mpsc::Sender<()>,
+    manager_tx: mpsc::Sender<BSInternalMessage>,
+}
+
+enum BSInternalMessage {
+    // Signals the Manager to stop
+    Stop,
+    // Client has completed a bootstrap
+    Complete,
 }
 
 impl BootstrapManager {
     /// stop the bootstrap server
     pub async fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.manager_tx.send(()).await.is_err() {
+        if self.manager_tx.send(BSInternalMessage::Stop).await.is_err() {
             warn!("bootstrap server already dropped");
         }
         let _ = self.join_handle.await?;
@@ -67,8 +75,9 @@ pub async fn start_bootstrap_server(
     let Some(bind) = bootstrap_config.bind else {
         return Ok(None);
     };
-    let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
+    let (manager_tx, manager_rx) = mpsc::channel::<BSInternalMessage>(1024);
 
+    let cloned_tx = manager_tx.clone();
     let join_handle = tokio::spawn(async move {
         BootstrapServer {
             consensus_controller,
@@ -76,6 +85,7 @@ pub async fn start_bootstrap_server(
             final_state,
             establisher,
             manager_rx,
+            manager_tx: cloned_tx,
             bind,
             keypair,
             version,
@@ -97,7 +107,8 @@ struct BootstrapServer {
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     establisher: Establisher,
-    manager_rx: mpsc::Receiver<()>,
+    manager_rx: mpsc::Receiver<BSInternalMessage>,
+    manager_tx: mpsc::Sender<BSInternalMessage>,
     bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -150,7 +161,7 @@ impl BootstrapServer {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
-        let mut bootstrap_sessions = FuturesUnordered::new();
+        // let mut bootstrap_sessions = FuturesUnordered::new();
         let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
         let (mut whitelist, mut blacklist) = reload_whitelist_blacklist(
             &self.bootstrap_config.bootstrap_whitelist_path,
@@ -166,32 +177,35 @@ impl BootstrapServer {
                 * bootstrap sessions (rare)
                 * listener: most frequent => last
         */
+        let bootstrap_sessions = Arc::new(AtomicU32::new(0));
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
-                // managed commands
-                _ = self.manager_rx.recv() => {
-                    massa_trace!("bootstrap.lib.run.select.manager", {});
-                    break
-                },
-
-                // Whitelist cache timeout
+                msg = self.manager_rx.recv() => {
+                    let Some(msg) = msg else {
+                        return Err(BootstrapError::GeneralError("command channel closed prematurely".into()));
+                    };
+                    match  msg {
+                        BSInternalMessage::Stop => {
+                            massa_trace!("bootstrap.lib.run.select.manager", {});
+                            break
+                        },
+                        BSInternalMessage::Complete => {
+                            massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.load(Ordering::Relaxed)});
+                            bootstrap_sessions.fetch_sub(1, Ordering::Relaxed);
+                        }
+                    }
+                }
                 _ = cache_interval.tick() => {
                     (whitelist, blacklist) = reload_whitelist_blacklist(&self.bootstrap_config.bootstrap_whitelist_path, &self.bootstrap_config.bootstrap_blacklist_path)?;
                 }
 
-                // bootstrap session finished
-                Some(_) = bootstrap_sessions.next() => {
-                    massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
-                }
-
                 // listener
-                res_connection = listener.accept(&whitelist, &blacklist) => {
-                    let Ok((dplx, remote_addr)) =  res_connection else {
-                        continue;
-                    };
+                // Potential issue: because it's async, a connection match could be cancelled before spawning
+                // the actual bootstrapping. Cancellation would occur through the Stop command going through
+                Ok((dplx, remote_addr)) = listener.accept(&whitelist, &blacklist) => {
 
-                    let max_bootstraps = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
+                    let max_bootstraps: u32 = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
                     let mut binding = BootstrapServerBinder::new(
                         dplx,
                         self.keypair.clone(),
@@ -202,7 +216,7 @@ impl BootstrapServer {
                         self.bootstrap_config.randomness_size_bytes,
                         self.bootstrap_config.consensus_bootstrap_part_size
                     );
-                    if bootstrap_sessions.len() < max_bootstraps {
+                    if bootstrap_sessions.load(Ordering::Relaxed) < max_bootstraps {
 
                         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
                         massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
@@ -245,19 +259,19 @@ impl BootstrapServer {
                         let network_command_sender = self.network_command_sender.clone();
                         let config = self.bootstrap_config.clone();
 
-                        bootstrap_sessions.push(
-                            push_bootstrap_session(
-                                binding,
-                                config,
-                                remote_addr,
-                                data_execution,
-                                version,
-                                consensus_command_sender,
-                                network_command_sender
-                            )
-                        );
+                        tokio::spawn(run_bootstrap_session(
+                            binding,
+                            self.manager_tx.clone(),
+                            config,
+                            remote_addr,
+                            data_execution,
+                            version,
+                            consensus_command_sender,
+                            network_command_sender
+                        ));
+                        bootstrap_sessions.fetch_add(1, Ordering::Relaxed);
 
-                        massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
+                        massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.load(Ordering::Relaxed)});
                     } else {
                         let config = self.bootstrap_config.clone();
                         let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), binding.send(BootstrapServerMessage::BootstrapError {
@@ -272,9 +286,6 @@ impl BootstrapServer {
                 }
             }
         }
-
-        // wait for bootstrap sessions to finish
-        while bootstrap_sessions.next().await.is_some() {}
 
         Ok(())
     }
@@ -331,8 +342,9 @@ impl BootstrapServer {
 }
 
 /// TODO: Doc-comment me
-async fn push_bootstrap_session(
+async fn run_bootstrap_session(
     mut server: BootstrapServerBinder,
+    controller_tx: mpsc::Sender<BSInternalMessage>,
     config: BootstrapConfig,
     remote_addr: SocketAddr,
     data_execution: Arc<RwLock<FinalState>>,
@@ -341,7 +353,7 @@ async fn push_bootstrap_session(
     network_command_sender: NetworkCommandSender,
 ) {
     debug!("awaiting on bootstrap of peer {}", remote_addr);
-    match tokio::time::timeout(
+    let res = tokio::time::timeout(
         config.bootstrap_timeout.into(),
         manage_bootstrap(
             &config,
@@ -352,8 +364,9 @@ async fn push_bootstrap_session(
             network_command_sender,
         ),
     )
-    .await
-    {
+    .await;
+    let _ = controller_tx.send(BSInternalMessage::Complete).await;
+    match res {
         Ok(mgmt) => match mgmt {
             Ok(_) => {
                 info!("bootstrapped peer {}", remote_addr)
