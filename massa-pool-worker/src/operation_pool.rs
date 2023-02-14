@@ -10,6 +10,7 @@ use massa_models::{
 };
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
+use tracing::debug;
 use std::collections::BTreeSet;
 
 use crate::types::{OperationInfo, PoolOperationCursor};
@@ -73,7 +74,10 @@ impl OperationPool {
     pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final slot counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
-
+        debug!(
+            "notified of new final consensus periods: {:?}",
+            self.last_cs_final_periods
+        );
         // prune old ops
         let mut removed_ops: PreHashSet<_> = Default::default();
         while let Some((expire_slot, op_id)) = self.ops_per_expiration.first().copied() {

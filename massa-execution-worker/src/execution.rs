@@ -147,6 +147,7 @@ impl ExecutionState {
 
         // count stats
         if exec_out.block_id.is_some() {
+            debug!("added stats one block and {} operations for slot {}", exec_out.state_changes.executed_ops_changes.len(), exec_out.slot);
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
@@ -767,6 +768,7 @@ impl ExecutionState {
 
         // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(self.config.max_async_gas);
+        debug!("executing {} messages at slot {}", messages.len(), slot);
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
@@ -802,6 +804,8 @@ impl ExecutionState {
                     })
                     .collect::<Vec<_>>()
             };
+
+            debug!("executing {} operations at slot {}", operations.len(), slot);
 
             // gather all available endorsement creators and target blocks
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
