@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["build_massa_settings","Merge the settings"]],"mod":[["constants","DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES"]],"struct":[["CompactConfig","Compact representation of key values of consensus algorithm used in API"]]};
+window.SIDEBAR_ITEMS = {"fn":["build_massa_settings"],"mod":["constants"],"struct":["CompactConfig"]};

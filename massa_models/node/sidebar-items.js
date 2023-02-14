@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["NodeId","`NodeId` wraps a public key to uniquely identify a node."]]};
+window.SIDEBAR_ITEMS = {"struct":["NodeId"]};
