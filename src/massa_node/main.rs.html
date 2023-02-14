@@ -882,21 +882,6 @@
 <a href="#882" id="882">882</a>
 <a href="#883" id="883">883</a>
 <a href="#884" id="884">884</a>
-<a href="#885" id="885">885</a>
-<a href="#886" id="886">886</a>
-<a href="#887" id="887">887</a>
-<a href="#888" id="888">888</a>
-<a href="#889" id="889">889</a>
-<a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -973,7 +958,6 @@
 <span class="kw">mod </span>settings;
 
 <span class="kw">async fn </span>launch(
-    _args: <span class="kw-2">&amp;</span>Args,
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
@@ -1441,9 +1425,7 @@
 
     <span class="comment">// spawn Massa API
     </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(
-        consensus_controller.clone(),
         consensus_channels,
-        execution_controller.clone(),
         pool_channels,
         api_config.clone(),
         <span class="kw-2">*</span>VERSION,
@@ -1493,25 +1475,25 @@
         <span class="comment">// only for #[cfg]
         </span><span class="kw">use </span>parking_lot::deadlock;
         <span class="kw">use </span>std::thread;
-
-        <span class="kw">let </span>interval = Duration::from_secs(_args.dl_interval);
-        <span class="macro">warn!</span>(<span class="string">&quot;deadlocks detector will run every {:?}&quot;</span>, interval);
-
-        <span class="comment">// Create a background thread which checks for deadlocks at the defined interval
+        <span class="kw">use </span>std::time::Duration;
+        <span class="comment">// Create a background thread which checks for deadlocks every 10s
         </span><span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;deadlock-detection&quot;</span>.into());
         thread_builder
             .spawn(<span class="kw">move </span>|| <span class="kw">loop </span>{
-                thread::sleep(interval);
+                thread::sleep(Duration::from_secs(<span class="number">10</span>));
                 <span class="kw">let </span>deadlocks = deadlock::check_deadlock();
+                <span class="macro">println!</span>(<span class="string">&quot;deadlocks check&quot;</span>);
+
                 <span class="kw">if </span>deadlocks.is_empty() {
                     <span class="kw">continue</span>;
                 }
-                <span class="macro">warn!</span>(<span class="string">&quot;{} deadlocks detected&quot;</span>, deadlocks.len());
+
+                <span class="macro">println!</span>(<span class="string">&quot;{} deadlocks detected&quot;</span>, deadlocks.len());
                 <span class="kw">for </span>(i, threads) <span class="kw">in </span>deadlocks.iter().enumerate() {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Deadlock #{}&quot;</span>, i);
+                    <span class="macro">println!</span>(<span class="string">&quot;Deadlock #{}&quot;</span>, i);
                     <span class="kw">for </span>t <span class="kw">in </span>threads {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Thread Id {:#?}&quot;</span>, t.thread_id());
-                        <span class="macro">warn!</span>(<span class="string">&quot;{:#?}&quot;</span>, t.backtrace());
+                        <span class="macro">println!</span>(<span class="string">&quot;Thread Id {:#?}&quot;</span>, t.thread_id());
+                        <span class="macro">println!</span>(<span class="string">&quot;{:#?}&quot;</span>, t.backtrace());
                     }
                 }
             })
@@ -1617,17 +1599,6 @@
     <span class="doccomment">/// Wallet password
     </span><span class="attr">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
-
-    <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
-    </span><span class="doccomment">/// Deadlocks detector
-    </span><span class="attr">#[structopt(
-        name = <span class="string">&quot;deadlocks interval&quot;</span>,
-        about = <span class="string">&quot;Define the interval of launching a deadlocks checking.&quot;</span>,
-        short = <span class="string">&quot;i&quot;</span>,
-        long = <span class="string">&quot;dli&quot;</span>,
-        default_value = <span class="string">&quot;10&quot;
-    </span>)]
-    </span>dl_interval: u64,
 }
 
 <span class="doccomment">/// Load wallet, asking for passwords if necessary
@@ -1700,10 +1671,9 @@
     }));
 
     <span class="comment">// load or create wallet, asking for password if necessary
-    </span><span class="kw">let </span>node_wallet = load_wallet(args.password.clone(), <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>node_wallet = load_wallet(args.password, <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path)<span class="question-mark">?</span>;
 
-    <span class="comment">// HYPOTHESIS: This loop only runs once; why would you need `launch` in the loop?
-    </span><span class="kw">loop </span>{
+    <span class="kw">loop </span>{
         <span class="kw">let </span>(
             consensus_event_receiver,
             bootstrap_manager,
@@ -1718,7 +1688,7 @@
             api_private_handle,
             api_public_handle,
             api_handle,
-        ) = launch(<span class="kw-2">&amp;</span>args, node_wallet.clone()).<span class="kw">await</span>;
+        ) = launch(node_wallet.clone()).<span class="kw">await</span>;
 
         <span class="comment">// interrupt signal listener
         </span><span class="kw">let </span>(tx, rx) = crossbeam_channel::bounded(<span class="number">1</span>);
