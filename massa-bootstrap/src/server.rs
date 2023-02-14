@@ -296,7 +296,7 @@ impl BootstrapServer {
         Ok(())
     }
 
-    /// check IP's bootstrap attempt history, consuming the duplex if fail, giving it back for later use otherwise.
+    /// check IP's bootstrap attempt history, consuming the server if fail, giving it back for later use otherwise.
     async fn bootstrap_client_check(
         mut server: BootstrapServerBinder,
         ip_hist_map: &mut HashMap<IpAddr, Instant>,
