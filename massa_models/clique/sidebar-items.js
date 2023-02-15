@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Clique","Mutually compatible blocks in the graph"],["CliqueDeserializer","Basic deserializer for `Clique`"],["CliqueSerializer","Basic serializer for `Clique`"]]};
+window.SIDEBAR_ITEMS = {"struct":["Clique","CliqueDeserializer","CliqueSerializer"]};

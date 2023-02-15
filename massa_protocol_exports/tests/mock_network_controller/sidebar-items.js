@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["MockNetworkController","mock network controller"]]};
+window.SIDEBAR_ITEMS = {"struct":["MockNetworkController"]};

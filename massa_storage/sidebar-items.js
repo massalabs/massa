@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Storage","A storage system for objects (blocks, operations…), shared by various components."]]};
+window.SIDEBAR_ITEMS = {"struct":["Storage"]};
