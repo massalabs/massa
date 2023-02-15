@@ -147,7 +147,6 @@ impl ExecutionState {
 
         // count stats
         if exec_out.block_id.is_some() {
-            debug!("added stats one block and {} operations for slot {}", exec_out.state_changes.executed_ops_changes.len(), exec_out.slot);
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
@@ -965,11 +964,10 @@ impl ExecutionState {
         }
 
         let exec_out = self.execute_slot(slot, exec_target, selector);
-        debug!("execute_candidate_slot: execution finished");
 
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);
-        debug!("execute_candidate_slot: execution state applied");
+        debug!("execute_candidate_slot: execution finished & state applied");
     }
 
     /// Execute an SCE-final slot
@@ -1026,11 +1024,10 @@ impl ExecutionState {
         // execute slot
         debug!("execute_final_slot: execution started");
         let exec_out = self.execute_slot(slot, exec_target, selector);
-        debug!("execute_final_slot: execution finished");
 
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
-        debug!("execute_final_slot: execution result applied");
+        debug!("execute_final_slot: execution finished & result applied");
     }
 
     /// Runs a read-only execution request.

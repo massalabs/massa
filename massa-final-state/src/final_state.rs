@@ -88,16 +88,10 @@ impl FinalState {
         // 1. init hash concatenation with the ledger hash
         let ledger_hash = self.ledger.get_ledger_hash();
         let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
-        // debug!("ledger hash at slot {}: {}", slot, ledger_hash);
         // 2. async_pool hash
         hash_concat.extend(self.async_pool.hash.to_bytes());
-        // debug!("async_pool hash at slot {}: {}", slot, self.async_pool.hash);
         // 3. pos deferred_credit hash
         hash_concat.extend(self.pos_state.deferred_credits.hash.to_bytes());
-        // debug!(
-        //     "deferred_credit hash at slot {}: {}",
-        //     slot, self.pos_state.deferred_credits.hash
-        // );
         // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
             as usize;
@@ -110,10 +104,6 @@ impl FinalState {
         }
         // 5. executed operations hash
         hash_concat.extend(self.executed_ops.hash.to_bytes());
-        // debug!(
-        //     "executed_ops hash at slot {}: {}",
-        //     slot, self.executed_ops.hash
-        // );
         // 6. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
         info!(
