@@ -160,13 +160,13 @@ impl BootstrapServer {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
-        // let mut bootstrap_sessions = FuturesUnordered::new();
         let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
         let (mut whitelist, mut blacklist) = reload_whitelist_blacklist(
             &self.bootstrap_config.bootstrap_whitelist_path,
             &self.bootstrap_config.bootstrap_blacklist_path,
         )?;
         let mut cache_interval = tokio::time::interval(cache_timeout);
+        let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         /*
             select! without the "biased" modifier will randomly select the 1st branch to check,
             then will check the next ones in the order they are written.
@@ -223,10 +223,15 @@ impl BootstrapServer {
                     };
 
                     let max_bootstraps: usize = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
-                    // TODO: double-check OBO errors here, or find a better way to track count
+                    // TODO: find a better way to track count
+                    // the `- 1` is to account for the top-level Arc that is created at the top
+                    // of this method. subsequent counts correspond to each `clone` that is passed
+                    // into a thread
+                    // TODO: If we don't find a way to handle the counting automagically, make
+                    //       a dedicated wrapper-type with doc-comments, manual drop impl that
+                    //       integrates logging, etc...
                     if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
 
-                        let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
                         massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                         let now = Instant::now();
 
@@ -241,7 +246,7 @@ impl BootstrapServer {
                         }
 
                         // check IP's bootstrap attempt history
-                        let Ok(binding) =  BootstrapServer::bootstrap_client_check(server, &mut self.ip_hist_map, self.bootstrap_config.write_error_timeout.into(), remote_addr, now, per_ip_min_interval).await else {
+                        let Ok(server) =  BootstrapServer::bootstrap_client_check(server, &mut self.ip_hist_map, self.bootstrap_config.write_error_timeout.into(), remote_addr, now, per_ip_min_interval).await else {
                             continue;
                         };
 
@@ -268,7 +273,7 @@ impl BootstrapServer {
                         let config = self.bootstrap_config.clone();
 
                         tokio::spawn(run_bootstrap_session(
-                            binding,
+                            server,
                             self.manager_tx.clone(),
                             bootstrap_count_token,
                             config,
@@ -278,13 +283,10 @@ impl BootstrapServer {
                             consensus_command_sender,
                             network_command_sender
                         ));
-                        // increment the number of active bootstraps. Will be decremented when handling the
-                        // Complete message that is sent when complete.
 
                         massa_trace!("bootstrap.session.started", {"active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1});
                     } else {
-                        let config = self.bootstrap_config.clone();
-                        let _ = match tokio::time::timeout(config.clone().write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                        let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                             error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
                         })).await {
                             Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
@@ -438,7 +440,7 @@ async fn run_bootstrap_session(
         ),
     )
     .await;
-    // This drop allows the server to accept new connections without having to complete the error notifications
+    // This drop allows the server to accept new connections before having to complete the error notifications
     drop(arc_counter);
     let _ = controller_tx.send(BSInternalMessage::Complete).await;
     match res {
