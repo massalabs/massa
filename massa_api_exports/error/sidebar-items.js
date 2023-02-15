@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ApiError","Errors of the api component."]]};
+window.SIDEBAR_ITEMS = {"enum":["ApiError"]};

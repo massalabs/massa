@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Client","Client"],["ClientConfig","Client common settings. the client common settings"],["ClientV2","Client V2"],["HttpConfig","Http client settings. the Http client settings"],["RpcClient","Rpc client"],["RpcClientV2","Rpc V2 client"],["WsConfig","WebSocket client settings. the WebSocket client settings"]]};
+window.SIDEBAR_ITEMS = {"struct":["Client","ClientConfig","ClientV2","HttpConfig","RpcClient","RpcClientV2","WsConfig"]};
