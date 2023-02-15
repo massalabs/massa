@@ -36,6 +36,7 @@ pub struct BootstrapManager {
     manager_tx: mpsc::Sender<BSInternalMessage>,
 }
 
+#[derive(Debug)]
 enum BSInternalMessage {
     // Signals the Manager to stop
     Stop,
@@ -223,7 +224,7 @@ impl BootstrapServer {
 
                     let max_bootstraps: usize = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
                     // TODO: double-check OBO errors here, or find a better way to track count
-                    if Arc::strong_count(&bootstrap_sessions_counter) < max_bootstraps {
+                    if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
 
                         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
                         massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
