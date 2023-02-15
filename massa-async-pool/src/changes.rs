@@ -180,7 +180,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
     ///     })
     /// );
-    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message), Change::Delete(message.compute_id())]);
+    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
     /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
