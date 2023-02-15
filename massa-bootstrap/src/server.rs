@@ -302,7 +302,13 @@ impl BootstrapServer {
         Ok(())
     }
 
-    /// check IP's bootstrap attempt history, consuming the server if fail, giving it back for later use otherwise.
+    /// Helper method to check IP's bootstrap attempt history, consuming the server in the process.
+    ///
+    /// On success, will return the server for later use.
+    /// On failure, includes a side effect of sending an error message to the client.
+    ///
+    /// The intended use of the `Result` is to signal a `continue` to the calling context on failure.
+    /// ...I know, not the best. This function is largely a cut-paste of code that existed in the main-loop `BootstrapServer::run()` method, and where that code would invoke a `continue`, here we return `Err`
     async fn bootstrap_client_check(
         mut server: BootstrapServerBinder,
         ip_hist_map: &mut HashMap<IpAddr, Instant>,
@@ -414,7 +420,13 @@ impl BootstrapServer {
     }
 }
 
-/// TODO: Doc-comment me
+/// To be called from a `tokio::spawn` invocation
+///
+/// Runs the bootstrap management in a tokio::timeout context. A failed bootstrap session
+/// will fail silently locally, but will send a message to the client with an error message.
+///
+/// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
+/// sessions.
 #[allow(clippy::too_many_arguments)]
 async fn run_bootstrap_session(
     mut server: BootstrapServerBinder,
@@ -690,7 +702,6 @@ pub async fn stream_bootstrap_information(
     Ok(())
 }
 
-#[allow(clippy::manual_async_fn)]
 #[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,

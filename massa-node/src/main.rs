@@ -803,7 +803,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
     // load or create wallet, asking for password if necessary
     let node_wallet = load_wallet(args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
 
-    // HYPOTHESIS: This loop only runs once; why would you need `launch` in the loop?
     loop {
         let (
             consensus_event_receiver,
