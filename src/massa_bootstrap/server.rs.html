@@ -807,6 +807,17 @@
 <a href="#807" id="807">807</a>
 <a href="#808" id="808">808</a>
 <a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -1111,7 +1122,13 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// check IP&#39;s bootstrap attempt history, consuming the server if fail, giving it back for later use otherwise.
+    <span class="doccomment">/// Helper method to check IP&#39;s bootstrap attempt history, consuming the server in the process.
+    ///
+    /// On success, will return the server for later use.
+    /// On failure, includes a side effect of sending an error message to the client.
+    ///
+    /// The intended use of the `Result` is to signal a `continue` to the calling context on failure.
+    /// ...I know, not the best. This function is largely a cut-paste of code that existed in the main-loop `BootstrapServer::run()` method, and where that code would invoke a `continue`, here we return `Err`
     </span><span class="kw">async fn </span>bootstrap_client_check(
         <span class="kw-2">mut </span>server: BootstrapServerBinder,
         ip_hist_map: <span class="kw-2">&amp;mut </span>HashMap&lt;IpAddr, Instant&gt;,
@@ -1223,7 +1240,13 @@
     }
 }
 
-<span class="doccomment">/// TODO: Doc-comment me
+<span class="doccomment">/// To be called from a `tokio::spawn` invocation
+///
+/// Runs the bootstrap management in a tokio::timeout context. A failed bootstrap session
+/// will fail silently locally, but will send a message to the client with an error message.
+///
+/// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
+/// sessions.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">async fn </span>run_bootstrap_session(
     <span class="kw-2">mut </span>server: BootstrapServerBinder,
@@ -1499,8 +1522,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="attr">#[allow(clippy::manual_async_fn)]
-#[allow(clippy::too_many_arguments)]
+<span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">async fn </span>manage_bootstrap(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
