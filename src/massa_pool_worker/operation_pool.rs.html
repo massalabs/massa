@@ -273,10 +273,6 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -289,7 +285,6 @@
 };
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig};
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>tracing::debug;
 <span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span><span class="kw">crate</span>::types::{OperationInfo, PoolOperationCursor};
@@ -353,10 +348,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>notify_final_cs_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, final_cs_periods: <span class="kw-2">&amp;</span>[u64]) {
         <span class="comment">// update internal final slot counter
         </span><span class="self">self</span>.last_cs_final_periods = final_cs_periods.to_vec();
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;notified of new final consensus periods: {:?}&quot;</span>,
-            <span class="self">self</span>.last_cs_final_periods
-        );
+
         <span class="comment">// prune old ops
         </span><span class="kw">let </span><span class="kw-2">mut </span>removed_ops: PreHashSet&lt;<span class="kw">_</span>&gt; = Default::default();
         <span class="kw">while let </span><span class="prelude-val">Some</span>((expire_slot, op_id)) = <span class="self">self</span>.ops_per_expiration.first().copied() {

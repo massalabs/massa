@@ -279,6 +279,8 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_network_exports::{ConnectionId, NetworkError, NetworkEvent, NodeCommand, NodeEvent};
 <span class="kw">use </span>std::time::Duration;
@@ -384,6 +386,7 @@
         from: NodeId,
         list: <span class="kw-2">&amp;</span>[IpAddr],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;node_id={} sent us a peer list ({} ips)&quot;</span>, from, list.len());
         <span class="macro">massa_trace!</span>(<span class="string">&quot;peer_list_received&quot;</span>, {
             <span class="string">&quot;node_id&quot;</span>: from,
             <span class="string">&quot;ips&quot;</span>: list
@@ -447,6 +450,7 @@
         worker: <span class="kw-2">&amp;mut </span>NetworkWorker,
         from: NodeId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;node_id={} asked us for peer list&quot;</span>, from);
         <span class="macro">massa_trace!</span>(<span class="string">&quot;node_asked_peer_list&quot;</span>, { <span class="string">&quot;node_id&quot;</span>: from });
         <span class="kw">let </span>peer_list = worker.peer_info_db.get_advertisable_peer_ips();
         <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, node_command_tx)) = worker.active_nodes.get(<span class="kw-2">&amp;</span>from) {

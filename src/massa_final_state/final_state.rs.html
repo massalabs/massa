@@ -381,6 +381,16 @@
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -471,10 +481,16 @@
         <span class="comment">// 1. init hash concatenation with the ledger hash
         </span><span class="kw">let </span>ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
         <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = ledger_hash.to_bytes().to_vec();
+        <span class="macro">debug!</span>(<span class="string">&quot;ledger hash at slot {}: {}&quot;</span>, slot, ledger_hash);
         <span class="comment">// 2. async_pool hash
         </span>hash_concat.extend(<span class="self">self</span>.async_pool.hash.to_bytes());
+        <span class="macro">debug!</span>(<span class="string">&quot;async_pool hash at slot {}: {}&quot;</span>, slot, <span class="self">self</span>.async_pool.hash);
         <span class="comment">// 3. pos deferred_credit hash
         </span>hash_concat.extend(<span class="self">self</span>.pos_state.deferred_credits.hash.to_bytes());
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;deferred_credit hash at slot {}: {}&quot;</span>,
+            slot, <span class="self">self</span>.pos_state.deferred_credits.hash
+        );
         <span class="comment">// 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         </span><span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
             <span class="kw">as </span>usize;
@@ -487,6 +503,10 @@
         }
         <span class="comment">// 5. executed operations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;executed_ops hash at slot {}: {}&quot;</span>,
+            slot, <span class="self">self</span>.executed_ops.hash
+        );
         <span class="comment">// 6. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
         <span class="macro">info!</span>(

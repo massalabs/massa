@@ -757,6 +757,11 @@
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
 <a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -1210,6 +1215,7 @@
             .as_ref()
             .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>keys: Vec&lt;Vec&lt;u8&gt;&gt; = datastore.keys().cloned().collect();
+        <span class="macro">debug!</span>(<span class="string">&quot;[abi get_op_keys] keys {:?}&quot;</span>, keys);
         <span class="prelude-val">Ok</span>(keys)
     }
 
@@ -1222,6 +1228,7 @@
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
     </span><span class="kw">fn </span>has_op_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;[abi has_op_key] checking key {:?}&quot;</span>, key);
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
@@ -1229,6 +1236,7 @@
             .as_ref()
             .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>has_key = datastore.contains_key(key);
+        <span class="macro">debug!</span>(<span class="string">&quot;[abi has_op_key] has key {}&quot;</span>, has_key);
         <span class="prelude-val">Ok</span>(has_key)
     }
 
@@ -1241,6 +1249,7 @@
     /// # Returns
     /// The operation datastore value matching the provided key, if found, otherwise an error.
     </span><span class="kw">fn </span>get_op_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;[abi get_op_data] data for {:?}&quot;</span>, key);
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
@@ -1251,6 +1260,7 @@
             .get(key)
             .cloned()
             .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;Unknown key: {:?}&quot;</span>, key));
+        <span class="macro">debug!</span>(<span class="string">&quot;[abi get_op_data] has key {:?}&quot;</span>, data);
         data
     }
 
