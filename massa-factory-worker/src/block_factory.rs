@@ -198,10 +198,15 @@ impl BlockFactoryWorker {
                 .collect::<Vec<u8>>(),
         );
 
+        // TODO: UPDATE FROM STRUCTURE
+        //let announced_version = versioning_middleware.get_current_version_to_announce();
+        let announced_version = 1_u32;
+
         // create header
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 slot,
+                announced_version,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
                 endorsements,

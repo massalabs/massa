@@ -12,6 +12,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: *slot,
+            announced_version: 0,
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),

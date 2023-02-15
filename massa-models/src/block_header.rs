@@ -28,6 +28,8 @@ use std::fmt::Formatter;
 pub struct BlockHeader {
     /// slot
     pub slot: Slot,
+    /// announced version for BIP-34 impl
+    pub announced_version: u32,
     /// parents
     pub parents: Vec<BlockId>,
     /// all operations hash
@@ -172,6 +174,11 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// ```
     fn serialize(&self, value: &BlockHeader, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.slot_serializer.serialize(&value.slot, buffer)?;
+
+        self.u32_serializer.serialize(&value.announced_version,
+            buffer,
+        )?;
+
         // parents (note: there should be none if slot period=0)
         if value.parents.is_empty() {
             buffer.push(0);
@@ -206,6 +213,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
     endorsement_serializer: EndorsementSerializer,
+    announced_version_deserializer: U32VarIntDeserializer,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     thread_count: u8,
@@ -224,6 +232,10 @@ impl BlockHeaderDeserializer {
             length_endorsements_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(endorsement_count),
+            ),
+            announced_version_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(u32::MAX),
             ),
             hash_deserializer: HashDeserializer::new(),
             thread_count,
@@ -286,11 +298,14 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        let (rest, (slot, parents, operation_merkle_root)): (&[u8], (Slot, Vec<BlockId>, Hash)) =
+        let (rest, (slot, announced_version, parents, operation_merkle_root)): (&[u8], (Slot, u32, Vec<BlockId>, Hash)) =
             context("Failed BlockHeader deserialization", |input| {
-                let (rest, (slot, parents)) = tuple((
+                let (rest, (slot, announced_version, parents)) = tuple((
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
+                    }),
+                    context("Failed announced_version deserialization", |input| {
+                        self.announced_version_deserializer.deserialize(input)
                     }),
                     context(
                         "Failed parents deserialization",
@@ -334,13 +349,14 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                     self.hash_deserializer.deserialize(input)
                 })
                 .parse(rest)?;
-                Ok((rest, (slot, parents, merkle)))
+                Ok((rest, (slot, announced_version, parents, merkle)))
             })
             .parse(buffer)?;
 
         if parents.is_empty() {
             let res = BlockHeader {
                 slot,
+                announced_version,
                 parents,
                 operation_merkle_root,
                 endorsements: Vec::new(),
@@ -402,6 +418,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
         let header = BlockHeader {
             slot,
+            announced_version,
             parents,
             operation_merkle_root,
             endorsements,

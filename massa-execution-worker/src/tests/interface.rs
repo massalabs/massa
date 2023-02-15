@@ -1,6 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 #[cfg(test)]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 mod tests {
     use hex_literal::hex;
     use massa_models::address::Address;
