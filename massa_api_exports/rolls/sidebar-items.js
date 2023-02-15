@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RollsInfo"]};
+window.SIDEBAR_ITEMS = {"struct":[["RollsInfo","Roll counts"]]};

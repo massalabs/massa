@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BlockId","BlockIdDeserializer","BlockIdSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":[["BlockId","block id"],["BlockIdDeserializer","Deserializer for `BlockId`"],["BlockIdSerializer","Serializer for `BlockId`"]]};
