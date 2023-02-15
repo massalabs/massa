@@ -1,0 +1,12 @@
+**Technical specification**
+
+Example:  
+- ABI on massa-sc-runtime side : `assembly_script_sha256(bytes: &[u8]) -> &[u8]`  
+- Behavior of the function: Computing the sha256 of the passed parameter and return the hash as a byte array.
+
+**Related pull request**
+
+Example:
+- massa-sc-runtime: Not dev yet.  
+- massa-as-sdk: Link to pr
+- massa-web3: Shouldn't modify anything on Massa-web3
