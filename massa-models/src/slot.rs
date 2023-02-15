@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::amount::Amount;
 use crate::error::ModelsError;
 use massa_hash::Hash;
 use massa_serialization::{
@@ -354,15 +355,15 @@ pub struct VestingRange {
     pub start_slot: Slot,
 
     /// end slot for the range
-    /// Init with 0,0
+    /// Init with 0,0 and calculate on load
     #[serde(default = "init_end_slot_range")]
     pub end_slot: Slot,
 
     /// minimal balance for specific range
-    pub min_balance: i32,
+    pub min_balance: Amount,
 
     /// max rolls for specific range
-    pub max_rolls: i32,
+    pub max_rolls: u64,
 }
 
 /// init the end_slot on startup

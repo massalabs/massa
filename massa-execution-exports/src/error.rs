@@ -47,4 +47,7 @@ pub enum ExecutionError {
 
     /// Error when initialize vesting addresses
     InitVestingError(String),
+
+    /// We reach the vesting constraint (min_balance or max_rolls)
+    VestingError(String),
 }
