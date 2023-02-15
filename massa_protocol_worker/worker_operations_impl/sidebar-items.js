@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["OperationBatchItem"],"type":["OperationBatchBuffer"]};
+window.SIDEBAR_ITEMS = {"struct":[["OperationBatchItem","Structure containing a Batch of `operation_ids` we would like to ask to a `node_id` now or later. Mainly used in protocol and translated into simple combination of a `node_id` and `operations_prefix_ids`"]],"type":[["OperationBatchBuffer","Queue containing every `[OperationsBatchItem]` we want to ask now or later."]]};

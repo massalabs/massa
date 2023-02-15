@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_consensus_worker"]};
+window.SIDEBAR_ITEMS = {"fn":[["start_consensus_worker","Create a new consensus worker thread."]]};
