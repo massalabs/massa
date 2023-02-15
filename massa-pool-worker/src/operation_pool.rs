@@ -10,8 +10,8 @@ use massa_models::{
 };
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
-use tracing::debug;
 use std::collections::BTreeSet;
+use tracing::debug;
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
