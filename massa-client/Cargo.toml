@@ -30,5 +30,5 @@ massa_sdk = { path = "../massa-sdk" }
 massa_wallet = { path = "../massa-wallet" }
 
 [dev-dependencies]
-toml_edit = "0.16"
+toml_edit = "0.19"
 

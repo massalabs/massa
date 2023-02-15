@@ -19,5 +19,5 @@ massa_hash = { path = "../massa-hash" }
 massa_serialization = { path = "../massa-serialization" }
 
 [dev-dependencies]
-serial_test = "0.10"
+serial_test = "1.0.0"
 serde_json = "1.0"
