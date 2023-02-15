@@ -33,22 +33,14 @@ use crate::{
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     join_handle: JoinHandle<Result<(), BootstrapError>>,
-    manager_tx: mpsc::Sender<BSInternalMessage>,
-}
-
-#[derive(Debug)]
-enum BSInternalMessage {
-    // Signals the Manager to stop
-    Stop,
-    // Client has completed a bootstrap
-    Complete,
+    manager_tx: mpsc::Sender<()>,
 }
 
 impl BootstrapManager {
     /// stop the bootstrap server
     pub async fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.manager_tx.send(BSInternalMessage::Stop).await.is_err() {
+        if self.manager_tx.send(()).await.is_err() {
             warn!("bootstrap server already dropped");
         }
         let _ = self.join_handle.await?;
@@ -74,9 +66,8 @@ pub async fn start_bootstrap_server(
     let Some(bind) = bootstrap_config.bind else {
         return Ok(None);
     };
-    let (manager_tx, manager_rx) = mpsc::channel::<BSInternalMessage>(1024);
+    let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
 
-    let cloned_tx = manager_tx.clone();
     let join_handle = tokio::spawn(async move {
         BootstrapServer {
             consensus_controller,
@@ -84,7 +75,6 @@ pub async fn start_bootstrap_server(
             final_state,
             establisher,
             manager_rx,
-            manager_tx: cloned_tx,
             bind,
             keypair,
             version,
@@ -106,8 +96,7 @@ struct BootstrapServer {
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     establisher: Establisher,
-    manager_rx: mpsc::Receiver<BSInternalMessage>,
-    manager_tx: mpsc::Sender<BSInternalMessage>,
+    manager_rx: mpsc::Receiver<()>,
     bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -183,18 +172,11 @@ impl BootstrapServer {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
                 msg = self.manager_rx.recv() => {
-                    let Some(msg) = msg else {
+                    let Some(_) = msg else {
                         return Err(BootstrapError::GeneralError("command channel closed prematurely".into()));
                     };
-                    match  msg {
-                        BSInternalMessage::Stop => {
-                            massa_trace!("bootstrap.lib.run.select.manager", {});
-                            break
-                        },
-                        BSInternalMessage::Complete => {
-                            massa_trace!("bootstrap.session.finished", {"active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1});
-                        }
-                    }
+                    massa_trace!("bootstrap.lib.run.select.manager", {});
+                    break;
                 }
                 _ = cache_interval.tick() => {
                     (whitelist, blacklist) = reload_whitelist_blacklist(&self.bootstrap_config.bootstrap_whitelist_path, &self.bootstrap_config.bootstrap_blacklist_path)?;
@@ -274,7 +256,6 @@ impl BootstrapServer {
 
                         tokio::spawn(run_bootstrap_session(
                             server,
-                            self.manager_tx.clone(),
                             bootstrap_count_token,
                             config,
                             remote_addr,
@@ -430,7 +411,6 @@ impl BootstrapServer {
 #[allow(clippy::too_many_arguments)]
 async fn run_bootstrap_session(
     mut server: BootstrapServerBinder,
-    controller_tx: mpsc::Sender<BSInternalMessage>,
     arc_counter: Arc<()>,
     config: BootstrapConfig,
     remote_addr: SocketAddr,
@@ -453,8 +433,10 @@ async fn run_bootstrap_session(
     )
     .await;
     // This drop allows the server to accept new connections before having to complete the error notifications
+    massa_trace!("bootstrap.session.finished", {
+        "active_count": Arc::strong_count(&arc_counter) - 1
+    });
     drop(arc_counter);
-    let _ = controller_tx.send(BSInternalMessage::Complete).await;
     match res {
         Ok(mgmt) => match mgmt {
             Ok(_) => {
