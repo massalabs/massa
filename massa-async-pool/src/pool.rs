@@ -51,6 +51,14 @@ impl AsyncPool {
         }
     }
 
+    /// Resets the pool to its initial state
+    ///
+    /// USED ONLY FOR BOOTSTRAP
+    pub fn reset(&mut self) {
+        self.messages.clear();
+        self.hash = Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES);
+    }
+
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
     /// This function is used when applying pre-compiled `AsyncPoolChanges` to an `AsyncPool`.
     ///
