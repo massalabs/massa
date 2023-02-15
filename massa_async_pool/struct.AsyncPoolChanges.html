@@ -48,7 +48,7 @@ No add/delete compensations are done.</p>
        datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
     })
 );
-<span class="kw">let </span>changes: AsyncPoolChanges = AsyncPoolChanges(<span class="macro">vec!</span>[Change::Add(message.compute_id(), message), Change::Delete(message.compute_id())]);
+<span class="kw">let </span>changes: AsyncPoolChanges = AsyncPoolChanges(<span class="macro">vec!</span>[Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
 <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
 <span class="kw">let </span>serializer = AsyncPoolChangesSerializer::new();
 <span class="kw">let </span>deserializer = AsyncPoolChangesDeserializer::new(<span class="number">32</span>, <span class="number">100000</span>, <span class="number">100000</span>, <span class="number">100000</span>);
