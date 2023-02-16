@@ -134,7 +134,7 @@ impl BootstrapServer {
             self.bootstrap_config.bootstrap_whitelist_path.clone(),
             self.bootstrap_config.bootstrap_blacklist_path.clone(),
         )
-        .map_err(|msg| BootstrapError::GeneralError(msg))?;
+        .map_err(BootstrapError::GeneralError)?;
         let mut updaters_list = allow_block_list.clone();
         std::thread::spawn(move || loop {
             std::thread::sleep(list_update_timeout);

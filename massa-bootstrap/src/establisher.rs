@@ -1,17 +1,17 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-// #[cfg(test)]
-// pub mod types {
-//     pub type Duplex = crate::tests::mock_establisher::Duplex;
+#[cfg(test)]
+pub mod types {
+    pub type Duplex = crate::tests::mock_establisher::Duplex;
 
-//     pub type Listener = crate::tests::mock_establisher::MockListener;
+    pub type Listener = crate::tests::mock_establisher::MockListener;
 
-//     pub type Connector = crate::tests::mock_establisher::MockConnector;
+    pub type Connector = crate::tests::mock_establisher::MockConnector;
 
-//     pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
-// }
+    pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
+}
 
-// #[cfg(not(test))]
+#[cfg(not(test))]
 /// Connection types
 pub mod types {
     use massa_time::MassaTime;
