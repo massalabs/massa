@@ -163,10 +163,23 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>crossbeam_channel::{after, bounded, select, Receiver, Sender};
-<span class="kw">use </span>massa_models::{
+</span><span class="kw">use </span>massa_models::{
     block_header::SecuredHeader, block_id::BlockId, endorsement::SecureShareEndorsement,
 };
 <span class="kw">use </span>massa_models::{
@@ -174,27 +187,32 @@
     node::NodeId,
     operation::{OperationId, SecureShareOperation},
 };
-<span class="kw">use </span>massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkEvent};
+<span class="kw">use </span>massa_network_exports::{
+    AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkCommandSender, NetworkEvent,
+    NetworkEventReceiver,
+};
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>tokio::{sync::mpsc, time::sleep};
 
 <span class="doccomment">/// mock network controller
 </span><span class="kw">pub struct </span>MockNetworkController {
-    network_command_rx: Receiver&lt;NetworkCommand&gt;,
-    network_event_tx: Sender&lt;NetworkEvent&gt;,
+    network_command_rx: mpsc::Receiver&lt;NetworkCommand&gt;,
+    network_event_tx: mpsc::Sender&lt;NetworkEvent&gt;,
 }
 
 <span class="kw">impl </span>MockNetworkController {
     <span class="doccomment">/// new mock network controller
-    </span><span class="kw">pub fn </span>new() -&gt; (<span class="self">Self</span>, Sender&lt;NetworkCommand&gt;, Receiver&lt;NetworkEvent&gt;) {
-        <span class="kw">let </span>(network_command_tx, network_command_rx) = bounded::&lt;NetworkCommand&gt;(CHANNEL_SIZE);
-        <span class="kw">let </span>(network_event_tx, network_event_rx) = bounded::&lt;NetworkEvent&gt;(CHANNEL_SIZE);
+    </span><span class="kw">pub fn </span>new() -&gt; (<span class="self">Self</span>, NetworkCommandSender, NetworkEventReceiver) {
+        <span class="kw">let </span>(network_command_tx, network_command_rx) =
+            mpsc::channel::&lt;NetworkCommand&gt;(CHANNEL_SIZE);
+        <span class="kw">let </span>(network_event_tx, network_event_rx) = mpsc::channel::&lt;NetworkEvent&gt;(CHANNEL_SIZE);
         (
             MockNetworkController {
                 network_event_tx,
                 network_command_rx,
             },
-            network_command_tx,
-            network_event_rx,
+            NetworkCommandSender(network_command_tx),
+            NetworkEventReceiver(network_event_rx),
         )
     }
 
@@ -203,14 +221,15 @@
     <span class="kw">where
         </span>F: Fn(NetworkCommand) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt;,
     {
-        <span class="kw">let </span>timer = after(timeout.into());
+        <span class="kw">let </span>timer = sleep(timeout.into());
+        <span class="macro">tokio::pin!</span>(timer);
         <span class="kw">loop </span>{
-            <span class="macro">select! </span>{
-                recv(<span class="self">self</span>.network_command_rx) -&gt; cmd_opt =&gt; <span class="kw">match </span>cmd_opt {
-                    <span class="prelude-val">Ok</span>(orig_cmd) =&gt; <span class="kw">if let </span><span class="prelude-val">Some</span>(res_cmd) = filter_map(orig_cmd) { <span class="kw">return </span><span class="prelude-val">Some</span>(res_cmd); },
-                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected closure of network command channel.&quot;</span>),
+            <span class="macro">tokio::select! </span>{
+                cmd_opt = <span class="self">self</span>.network_command_rx.recv() =&gt; <span class="kw">match </span>cmd_opt {
+                    <span class="prelude-val">Some</span>(orig_cmd) =&gt; <span class="kw">if let </span><span class="prelude-val">Some</span>(res_cmd) = filter_map(orig_cmd) { <span class="kw">return </span><span class="prelude-val">Some</span>(res_cmd); },
+                    <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected closure of network command channel.&quot;</span>),
                 },
-                recv(timer) -&gt; <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None
+                <span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>timer =&gt; <span class="kw">return </span><span class="prelude-val">None
             </span>}
         }
     }
@@ -219,14 +238,16 @@
     </span><span class="kw">pub async fn </span>new_connection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_node_id: NodeId) {
         <span class="self">self</span>.network_event_tx
             .send(NetworkEvent::NewConnection(new_node_id))
-            .expect(<span class="string">&quot;Couldn&#39;t connect node to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t connect node to protocol.&quot;</span>);
     }
 
     <span class="doccomment">/// close connection
     </span><span class="kw">pub async fn </span>close_connection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_id: NodeId) {
         <span class="self">self</span>.network_event_tx
             .send(NetworkEvent::ConnectionClosed(node_id))
-            .expect(<span class="string">&quot;Couldn&#39;t connect node to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t connect node to protocol.&quot;</span>);
     }
 
     <span class="doccomment">/// send header
@@ -237,7 +258,8 @@
                 source_node_id,
                 header,
             })
-            .expect(<span class="string">&quot;Couldn&#39;t send header to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t send header to protocol.&quot;</span>);
     }
 
     <span class="doccomment">/// send operations
@@ -252,7 +274,8 @@
                 node: source_node_id,
                 operations,
             })
-            .expect(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
     }
 
     <span class="doccomment">/// send operation ids
@@ -267,7 +290,8 @@
                 node: source_node_id,
                 operation_prefix_ids: operation_ids.iter().map(|id| id.into_prefix()).collect(),
             })
-            .expect(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
     }
 
     <span class="doccomment">/// received ask for operation from node
@@ -282,7 +306,8 @@
                 node: source_node_id,
                 operation_prefix_ids: operation_ids.iter().map(|id| id.into_prefix()).collect(),
             })
-            .expect(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
     }
 
     <span class="doccomment">/// send endorsements
@@ -297,7 +322,8 @@
                 node: source_node_id,
                 endorsements,
             })
-            .expect(<span class="string">&quot;Couldn&#39;t send endorsements to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t send endorsements to protocol.&quot;</span>);
     }
 
     <span class="doccomment">///ask for block
@@ -311,7 +337,8 @@
                 node: source_node_id,
                 list,
             })
-            .expect(<span class="string">&quot;Couldn&#39;t send ask for block to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t send ask for block to protocol.&quot;</span>);
     }
 
     <span class="doccomment">/// Send info about block
@@ -325,7 +352,8 @@
                 node: source_node_id,
                 info: list,
             })
-            .expect(<span class="string">&quot;Couldn&#39;t send ask for block to protocol.&quot;</span>);
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;Couldn&#39;t send ask for block to protocol.&quot;</span>);
     }
 }
 </code></pre></div>

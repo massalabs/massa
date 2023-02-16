@@ -398,13 +398,60 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use super</span>::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
-<span class="kw">use </span>crossbeam_channel::{bounded, select, tick, Receiver, SendTimeoutError, Sender};
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{node::NodeId, secure_share::Id};
@@ -412,9 +459,12 @@
     ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
 };
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>tokio::runtime::Handle;
-<span class="kw">use </span>tokio::time::timeout;
-<span class="kw">use </span>tracing::{debug, warn};
+<span class="kw">use </span>tokio::{
+    sync::mpsc,
+    sync::mpsc::{error::SendTimeoutError, Sender},
+    time::timeout,
+};
+<span class="kw">use </span>tracing::{debug, trace, warn};
 
 <span class="doccomment">/// Manages connections
 /// One worker per node.
@@ -423,17 +473,16 @@
     </span>cfg: NetworkConfig,
     <span class="doccomment">/// Node id associated to that worker.
     </span>node_id: NodeId,
-    <span class="doccomment">/// Optional reader for incoming data.
-    </span>socket_reader_opt: <span class="prelude-ty">Option</span>&lt;ReadBinder&gt;,
+    <span class="doccomment">/// Reader for incoming data.
+    </span>socket_reader: ReadBinder,
     <span class="doccomment">/// Optional writer to send data.
     </span>socket_writer_opt: <span class="prelude-ty">Option</span>&lt;WriteBinder&gt;,
+    <span class="doccomment">/// Channel to send node commands.
+    </span>node_command_tx: mpsc::Sender&lt;NodeCommand&gt;,
     <span class="doccomment">/// Channel to receive node commands.
-    </span>node_command_rx: Receiver&lt;NodeCommand&gt;,
+    </span>node_command_rx: mpsc::Receiver&lt;NodeCommand&gt;,
     <span class="doccomment">/// Channel to send node events.
-    </span>node_event_tx: Sender&lt;NodeEvent&gt;,
-    <span class="doccomment">/// Handle to the networking runtime.
-    /// TODO: move to read/write binders.
-    </span>runtime_handle: Handle,
+    </span>node_event_tx: mpsc::Sender&lt;NodeEvent&gt;,
 }
 
 <span class="kw">impl </span>NodeWorker {
@@ -452,312 +501,275 @@
         node_id: NodeId,
         socket_reader: ReadBinder,
         socket_writer: WriteBinder,
-        node_command_rx: Receiver&lt;NodeCommand&gt;,
-        node_event_tx: Sender&lt;NodeEvent&gt;,
-        runtime_handle: Handle,
+        node_command_tx: mpsc::Sender&lt;NodeCommand&gt;,
+        node_command_rx: mpsc::Receiver&lt;NodeCommand&gt;,
+        node_event_tx: mpsc::Sender&lt;NodeEvent&gt;,
     ) -&gt; NodeWorker {
         NodeWorker {
             cfg,
             node_id,
-            socket_reader_opt: <span class="prelude-val">Some</span>(socket_reader),
+            socket_reader,
             socket_writer_opt: <span class="prelude-val">Some</span>(socket_writer),
+            node_command_tx,
             node_command_rx,
             node_event_tx,
-            runtime_handle,
         }
-    }
-
-    <span class="doccomment">/// Send a node event upstream.
-    </span><span class="kw">fn </span>send_node_event(<span class="kw-2">&amp;</span><span class="self">self</span>, event: NodeEvent) {
-        <span class="kw">let </span>result = <span class="self">self
-            </span>.node_event_tx
-            .send_timeout(event, <span class="self">self</span>.cfg.max_send_wait_node_event.to_duration());
-        <span class="kw">match </span>result {
-            <span class="prelude-val">Ok</span>(()) =&gt; {}
-            <span class="prelude-val">Err</span>(SendTimeoutError::Disconnected(event)) =&gt; {
-                <span class="macro">warn!</span>(
-                    <span class="string">&quot;Failed to send NodeEvent due to channel closure: {:?}.&quot;</span>,
-                    event
-                );
-            }
-            <span class="prelude-val">Err</span>(SendTimeoutError::Timeout(event)) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Failed to send NodeEvent due to timeout: {:?}.&quot;</span>, event);
-            }
-        }
-    }
-
-    <span class="doccomment">/// Handle an incoming message from the node.
-    </span><span class="kw">fn </span>handle_message(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: Message) -&gt; <span class="prelude-ty">Result</span>&lt;(), NetworkError&gt; {
-        <span class="kw">match </span>msg {
-            Message::BlockHeader(header) =&gt; {
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;node_worker.run_loop. receive Message::BlockHeader&quot;</span>,
-                    {<span class="string">&quot;block_id&quot;</span>: header.id.get_hash(), <span class="string">&quot;header&quot;</span>: header, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id}
-                );
-                <span class="kw">let </span>event = NodeEvent(<span class="self">self</span>.node_id, NodeEventType::ReceivedBlockHeader(header));
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::AskForBlocks(list) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id});
-                <span class="kw">let </span>event = NodeEvent(<span class="self">self</span>.node_id, NodeEventType::ReceivedAskForBlocks(list));
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::ReplyForBlocks(list) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id});
-                <span class="kw">let </span>event = NodeEvent(<span class="self">self</span>.node_id, NodeEventType::ReceivedReplyForBlocks(list));
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::PeerList(pl) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::PeerList&quot;</span>, {<span class="string">&quot;peerlist&quot;</span>: pl, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id});
-                <span class="kw">let </span>event = NodeEvent(<span class="self">self</span>.node_id, NodeEventType::ReceivedPeerList(pl));
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::AskPeerList =&gt; {
-                <span class="kw">let </span>event = NodeEvent(<span class="self">self</span>.node_id, NodeEventType::AskedPeerList);
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::Operations(operations) =&gt; {
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;node_worker.run_loop. receive Message::Operations: &quot;</span>,
-                    {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id, <span class="string">&quot;operations&quot;</span>: operations}
-                );
-                <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::Operations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operations});
-                </span><span class="kw">let </span>event = NodeEvent(<span class="self">self</span>.node_id, NodeEventType::ReceivedOperations(operations));
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::AskForOperations(operation_prefix_ids) =&gt; {
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;node_worker.run_loop. receive Message::AskForOperations: &quot;</span>,
-                    {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids}
-                );
-                <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::AskForOperations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operation_ids});
-                </span><span class="kw">let </span>event = NodeEvent(
-                    <span class="self">self</span>.node_id,
-                    NodeEventType::ReceivedAskForOperations(operation_prefix_ids),
-                );
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::OperationsAnnouncement(operation_prefix_ids) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::OperationsBatch&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id, <span class="string">&quot;operation_prefix_ids&quot;</span>: operation_prefix_ids});
-                <span class="kw">let </span>event = NodeEvent(
-                    <span class="self">self</span>.node_id,
-                    NodeEventType::ReceivedOperationAnnouncements(operation_prefix_ids),
-                );
-                <span class="self">self</span>.send_node_event(event);
-            }
-            Message::Endorsements(endorsements) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::Endorsement&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
-                <span class="kw">let </span>event = NodeEvent(
-                    <span class="self">self</span>.node_id,
-                    NodeEventType::ReceivedEndorsements(endorsements),
-                );
-                <span class="self">self</span>.send_node_event(event);
-            }
-            <span class="kw">_ </span>=&gt; {
-                <span class="comment">// TODO: Write a more user-friendly warning/logout after several consecutive fails? see #1082
-                </span><span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning&quot;</span>,
-                    {}
-                );
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// node event loop. Consumes self.
-    </span><span class="kw">pub fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt; {
+    </span><span class="kw">pub async fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConnectionClosureReason, NetworkError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>socket_writer = <span class="self">self</span>.socket_writer_opt.take().ok_or_else(|| {
             NetworkError::GeneralProtocolError(
                 <span class="string">&quot;NodeWorker call run_loop more than once&quot;</span>.to_string(),
             )
         })<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>socket_reader = <span class="self">self</span>.socket_reader_opt.take().ok_or_else(|| {
-            NetworkError::GeneralProtocolError(
-                <span class="string">&quot;NodeWorker call run_loop more than once(2)&quot;</span>.to_string(),
-            )
-        })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>(message_tx, message_rx) = bounded::&lt;Message&gt;(<span class="self">self</span>.cfg.node_message_channel_size);
-        <span class="kw">let </span>node_reader_handle = <span class="self">self
-            </span>.runtime_handle
-            .spawn(<span class="kw">async move </span>{ node_reader_handle(<span class="kw-2">&amp;mut </span>socket_reader, message_tx).<span class="kw">await </span>});
-        <span class="macro">tokio::pin!</span>(node_reader_handle);
-
-        <span class="kw">let </span>ask_peer_list_interval = tick(<span class="self">self</span>.cfg.ask_peer_list_interval.to_duration());
-        <span class="kw">let </span>exit_reason = <span class="kw">loop </span>{
-            <span class="kw">let </span>cmd = <span class="macro">select! </span>{
-                recv(message_rx) -&gt; msg =&gt; {
-                    <span class="kw">match </span>msg {
-                        <span class="prelude-val">Ok</span>(msg) =&gt; <span class="self">self</span>.handle_message(msg)<span class="question-mark">?</span>,
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="kw">break </span>ConnectionClosureReason::Failed;
-                        }
-                     }
-                     <span class="kw">continue</span>;
-                }
-                recv(<span class="self">self</span>.node_command_rx) -&gt; cmd =&gt; cmd,
-                recv(ask_peer_list_interval) -&gt; <span class="kw">_ </span>=&gt; {
-                    <span class="macro">debug!</span>(<span class="string">&quot;timer-based asking node_id={} for peer list&quot;</span>, <span class="self">self</span>.node_id);
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. timer_ask_peer_list&quot;</span>, {<span class="string">&quot;node_id&quot;</span>: <span class="self">self</span>.node_id});
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.select.timer send Message::AskPeerList&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id});
-                    <span class="prelude-val">Ok</span>(NodeCommand::AskPeerList)
-                }
-            };
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = node_writer_handle(
+        <span class="kw">let </span>node_writer_handle = tokio::spawn(<span class="kw">async move </span>{
+            node_writer_handle(
                 <span class="kw-2">&amp;mut </span>socket_writer,
-                cmd.ok(),
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.node_command_rx,
                 <span class="self">self</span>.cfg.message_timeout,
                 <span class="self">self</span>.node_id,
                 <span class="self">self</span>.cfg.max_ask_blocks,
                 <span class="self">self</span>.cfg.max_operations_per_message,
                 <span class="self">self</span>.cfg.max_endorsements_per_message,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.runtime_handle,
-            ) {
-                <span class="kw">break </span>err;
+            )
+            .<span class="kw">await
+        </span>});
+        <span class="macro">tokio::pin!</span>(node_writer_handle);
+        <span class="kw">let </span><span class="kw-2">mut </span>writer_joined = <span class="bool-val">false</span>;
+
+        <span class="kw">let </span>node_reader_handle = tokio::spawn(<span class="kw">async move </span>{
+            node_reader_handle(
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.socket_reader,
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.node_event_tx,
+                <span class="self">self</span>.node_id,
+                <span class="self">self</span>.cfg.max_send_wait_node_event,
+            )
+            .<span class="kw">await
+        </span>});
+        <span class="macro">tokio::pin!</span>(node_reader_handle);
+        <span class="kw">let </span><span class="kw-2">mut </span>reader_joined = <span class="bool-val">false</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>ask_peer_list_interval =
+            tokio::time::interval(<span class="self">self</span>.cfg.ask_peer_list_interval.to_duration());
+        <span class="kw">let </span><span class="kw-2">mut </span>exit_reason = ConnectionClosureReason::Normal;
+        <span class="kw">let </span><span class="kw-2">mut </span>_exit_reason_reader = ConnectionClosureReason::Normal;
+
+        <span class="lifetime">&#39;select_loop</span>: <span class="kw">loop </span>{
+            <span class="comment">/*
+                select! without the &quot;biased&quot; modifier will randomly select the 1st branch to check,
+                then will check the next ones in the order they are written.
+                We choose this order:
+                    * node_writer_handle (rare) to immediately register a stop and avoid wasting resources
+                    * incoming socket data (high frequency): forward incoming data in priority to avoid contention
+                    * node commands (high frequency): try to send, fail on contention
+                    * ask peers: low frequency, non-critical
+            */
+            </span><span class="macro">tokio::select! </span>{
+                res = <span class="kw-2">&amp;mut </span>node_writer_handle =&gt; {
+                    writer_joined = <span class="bool-val">true</span>;
+                    exit_reason = <span class="kw">match </span>res {
+                        <span class="prelude-val">Ok</span>(r) =&gt; {
+                            r
+                        },
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">debug!</span>(<span class="string">&quot;node_worker.run_loop.node_writer.error: {}&quot;</span>, e);
+                            ConnectionClosureReason::Failed
+                        }
+                    };
+                    <span class="kw">break</span>;
+                },
+
+                <span class="comment">// incoming socket data
+                </span>res = <span class="kw-2">&amp;mut </span>node_reader_handle =&gt; {
+                    reader_joined = <span class="bool-val">true</span>;
+                    _exit_reason_reader = <span class="kw">match </span>res {
+                        <span class="prelude-val">Ok</span>(r) =&gt; {
+                            r
+                        },
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">debug!</span>(<span class="string">&quot;node_worker.run_loop.node_reader.error: {}&quot;</span>, e);
+                            ConnectionClosureReason::Failed
+                        }
+                    };
+                    <span class="kw">break</span>;
+                }
+                <span class="kw">_ </span>= ask_peer_list_interval.tick() =&gt; {
+                    <span class="macro">debug!</span>(<span class="string">&quot;timer-based asking node_id={} for peer list&quot;</span>, <span class="self">self</span>.node_id);
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. timer_ask_peer_list&quot;</span>, {<span class="string">&quot;node_id&quot;</span>: <span class="self">self</span>.node_id});
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.select.timer send Message::AskPeerList&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.node_id});
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.node_command_tx.send(NodeCommand::AskPeerList).<span class="kw">await </span>{
+                        <span class="macro">debug!</span>(<span class="string">&quot;Node worker {}: unable to send ask peer list: {}&quot;</span>, <span class="self">self</span>.node_id, e);
+                        <span class="kw">break </span><span class="lifetime">&#39;select_loop</span>;
+                    }
+
+                    <span class="macro">trace!</span>(<span class="string">&quot;after sending Message::AskPeerList from writer_command_tx in node_worker run_loop&quot;</span>);
+                }
             }
-        };
+        }
+
+        <span class="comment">// Stop the writer handle.
+        </span><span class="kw">if </span>!writer_joined {
+            <span class="macro">debug!</span>(
+                <span class="string">&quot;node_worker.run_loop.cleanup.node_reader_handle.abort, node_id: {}&quot;</span>,
+                <span class="self">self</span>.node_id
+            );
+            node_writer_handle.abort();
+        }
 
         <span class="comment">// 3- Stop node_reader_handle
-        // Abort the task otherwise socket_reader.next() is stuck, waiting for some data to read
-        </span><span class="macro">debug!</span>(
-            <span class="string">&quot;node_worker.run_loop.cleanup.node_reader_handle.abort, node_id: {}&quot;</span>,
-            <span class="self">self</span>.node_id
-        );
-        node_reader_handle.abort();
+        </span><span class="kw">if </span>!reader_joined {
+            <span class="comment">// Abort the task otherwise socket_reader.next() is stuck, waiting for some data to read
+            </span><span class="macro">debug!</span>(
+                <span class="string">&quot;node_worker.run_loop.cleanup.node_reader_handle.abort, node_id: {}&quot;</span>,
+                <span class="self">self</span>.node_id
+            );
+            node_reader_handle.abort();
+        }
 
         <span class="prelude-val">Ok</span>(exit_reason)
     }
 }
 
 <span class="doccomment">/// Handle incoming node command, convert to message(s) and write that to socket
-</span><span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">fn </span>node_writer_handle(
+</span><span class="kw">async fn </span>node_writer_handle(
     socket_writer: <span class="kw-2">&amp;mut </span>WriteBinder,
-    node_command: <span class="prelude-ty">Option</span>&lt;NodeCommand&gt;,
+    node_command_rx: <span class="kw-2">&amp;mut </span>mpsc::Receiver&lt;NodeCommand&gt;,
     write_timeout: MassaTime,
     node_id: NodeId,
     max_ask_blocks: u32,
     max_operations_per_message: u32,
     max_endorsements_per_message: u32,
-    runtime_handle: <span class="kw-2">&amp;</span>Handle,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConnectionClosureReason&gt; {
-    <span class="kw">let </span>messages_: <span class="prelude-ty">Option</span>&lt;Vec&lt;Message&gt;&gt; = <span class="kw">match </span>node_command {
-        <span class="prelude-val">Some</span>(NodeCommand::Close(r)) =&gt; {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(r);
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::SendPeerList(ip_vec)) =&gt; {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::PeerList&quot;</span>, {<span class="string">&quot;peerlist&quot;</span>: ip_vec, <span class="string">&quot;node&quot;</span>: node_id});
-            <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[Message::PeerList(ip_vec)])
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::SendBlockHeader(header)) =&gt; {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::BlockHeader&quot;</span>, {<span class="string">&quot;hash&quot;</span>: header.id, <span class="string">&quot;node&quot;</span>: node_id});
-            <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[Message::BlockHeader(header)])
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::AskForBlocks(list)) =&gt; {
-            <span class="comment">// cut hash list on sub list if exceed max_ask_blocks_per_message
-            </span><span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: node_id});
-            <span class="kw">let </span>messages = list
-                .chunks(max_ask_blocks <span class="kw">as </span>usize)
-                .map(|to_send| Message::AskForBlocks(to_send.to_vec()))
-                .collect();
-            <span class="prelude-val">Some</span>(messages)
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::ReplyForBlocks(list)) =&gt; {
-            <span class="comment">// cut hash list on sub list if exceed max_ask_blocks_per_message
-            </span><span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::ReplyForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: node_id});
-            <span class="kw">let </span>messages = list
-                .chunks(max_ask_blocks <span class="kw">as </span>usize)
-                .map(|to_send| Message::ReplyForBlocks(to_send.to_vec()))
-                .collect();
-            <span class="prelude-val">Some</span>(messages)
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::SendOperations(operations)) =&gt; {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendOperations&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operations&quot;</span>: operations});
-            <span class="kw">let </span>messages = operations
-                .chunks(max_operations_per_message <span class="kw">as </span>usize)
-                .map(|to_send| Message::Operations(to_send.to_vec()))
-                .collect();
-            <span class="prelude-val">Some</span>(messages)
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::SendOperationAnnouncements(operation_prefix_ids)) =&gt; {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::OperationsAnnouncement&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids});
-            <span class="kw">let </span>messages = operation_prefix_ids
-                .into_iter()
-                .chunks(max_operations_per_message <span class="kw">as </span>usize)
-                .into_iter()
-                .map(|chunk| chunk.collect())
-                .map(Message::OperationsAnnouncement)
-                .collect();
-            <span class="prelude-val">Some</span>(messages)
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::AskForOperations(operation_prefix_ids)) =&gt; {
-            <span class="macro">massa_trace!</span>(
-                <span class="string">&quot;node_worker.run_loop. send Message::AskForOperations&quot;</span>,
-                {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids}
-            );
-            <span class="kw">let </span>messages = operation_prefix_ids
-                .into_iter()
-                .chunks(max_operations_per_message <span class="kw">as </span>usize)
-                .into_iter()
-                .map(|chunk| chunk.collect())
-                .map(Message::AskForOperations)
-                .collect();
-            <span class="prelude-val">Some</span>(messages)
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::SendEndorsements(endorsements)) =&gt; {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendEndorsements&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
-            <span class="comment">// cut endorsement list if it exceed max_endorsements_per_message
-            </span><span class="kw">let </span>messages = endorsements
-                .chunks(max_endorsements_per_message <span class="kw">as </span>usize)
-                .map(|endos| Message::Endorsements(endos.to_vec()))
-                .collect();
-            <span class="prelude-val">Some</span>(messages)
-        }
-        <span class="prelude-val">Some</span>(NodeCommand::AskPeerList) =&gt; <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[Message::AskPeerList]),
-        <span class="prelude-val">None </span>=&gt; {
-            <span class="comment">// Note: this should never happen,
-            // since it implies the network worker dropped its node command sender
-            // before having shut-down the node and joined on its handle.
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ConnectionClosureReason::Failed);
-        }
-    };
+) -&gt; ConnectionClosureReason {
+    <span class="kw">let </span><span class="kw-2">mut </span>exit_reason = ConnectionClosureReason::Normal;
 
-    <span class="comment">// safe to unwrap here
-    </span><span class="kw">let </span>messages = messages_.unwrap();
+    <span class="lifetime">&#39;writer_loop</span>: <span class="kw">loop </span>{
+        <span class="kw">let </span>messages_: <span class="prelude-ty">Option</span>&lt;Vec&lt;Message&gt;&gt; = <span class="kw">match </span>node_command_rx.recv().<span class="kw">await </span>{
+            <span class="prelude-val">Some</span>(NodeCommand::Close(r)) =&gt; {
+                exit_reason = r;
+                <span class="prelude-val">None
+            </span>}
+            <span class="prelude-val">Some</span>(NodeCommand::SendPeerList(ip_vec)) =&gt; {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::PeerList&quot;</span>, {<span class="string">&quot;peerlist&quot;</span>: ip_vec, <span class="string">&quot;node&quot;</span>: node_id});
+                <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[Message::PeerList(ip_vec)])
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::SendBlockHeader(header)) =&gt; {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::BlockHeader&quot;</span>, {<span class="string">&quot;hash&quot;</span>: header.id, <span class="string">&quot;node&quot;</span>: node_id});
+                <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[Message::BlockHeader(header)])
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::AskForBlocks(list)) =&gt; {
+                <span class="comment">// cut hash list on sub list if exceed max_ask_blocks_per_message
+                </span><span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: node_id});
+                <span class="kw">let </span>messages = list
+                    .chunks(max_ask_blocks <span class="kw">as </span>usize)
+                    .map(|to_send| Message::AskForBlocks(to_send.to_vec()))
+                    .collect();
+                <span class="prelude-val">Some</span>(messages)
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::ReplyForBlocks(list)) =&gt; {
+                <span class="comment">// cut hash list on sub list if exceed max_ask_blocks_per_message
+                </span><span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::ReplyForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: node_id});
+                <span class="kw">let </span>messages = list
+                    .chunks(max_ask_blocks <span class="kw">as </span>usize)
+                    .map(|to_send| Message::ReplyForBlocks(to_send.to_vec()))
+                    .collect();
+                <span class="prelude-val">Some</span>(messages)
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::SendOperations(operations)) =&gt; {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendOperations&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operations&quot;</span>: operations});
+                <span class="kw">let </span>messages = operations
+                    .chunks(max_operations_per_message <span class="kw">as </span>usize)
+                    .map(|to_send| Message::Operations(to_send.to_vec()))
+                    .collect();
+                <span class="prelude-val">Some</span>(messages)
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::SendOperationAnnouncements(operation_prefix_ids)) =&gt; {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::OperationsAnnouncement&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids});
+                <span class="kw">let </span>messages = operation_prefix_ids
+                    .into_iter()
+                    .chunks(max_operations_per_message <span class="kw">as </span>usize)
+                    .into_iter()
+                    .map(|chunk| chunk.collect())
+                    .map(Message::OperationsAnnouncement)
+                    .collect();
+                <span class="prelude-val">Some</span>(messages)
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::AskForOperations(operation_prefix_ids)) =&gt; {
+                <span class="macro">massa_trace!</span>(
+                    <span class="string">&quot;node_worker.run_loop. send Message::AskForOperations&quot;</span>,
+                    {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids}
+                );
+                <span class="kw">let </span>messages = operation_prefix_ids
+                    .into_iter()
+                    .chunks(max_operations_per_message <span class="kw">as </span>usize)
+                    .into_iter()
+                    .map(|chunk| chunk.collect())
+                    .map(Message::AskForOperations)
+                    .collect();
+                <span class="prelude-val">Some</span>(messages)
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::SendEndorsements(endorsements)) =&gt; {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendEndorsements&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
+                <span class="comment">// cut endorsement list if it exceed max_endorsements_per_message
+                </span><span class="kw">let </span>messages = endorsements
+                    .chunks(max_endorsements_per_message <span class="kw">as </span>usize)
+                    .map(|endos| Message::Endorsements(endos.to_vec()))
+                    .collect();
+                <span class="prelude-val">Some</span>(messages)
+            }
+            <span class="prelude-val">Some</span>(NodeCommand::AskPeerList) =&gt; <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[Message::AskPeerList]),
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// Note: this should never happen,
+                // since it implies the network worker dropped its node command sender
+                // before having shut-down the node and joined on its handle.
+                </span>exit_reason = ConnectionClosureReason::Failed;
+                <span class="kw">break </span><span class="lifetime">&#39;writer_loop</span>;
+            }
+        };
 
-    <span class="kw">for </span>msg <span class="kw">in </span>messages.iter() {
-        <span class="kw">let </span>res = runtime_handle.block_on(<span class="kw">async </span>{
-            timeout(write_timeout.to_duration(), socket_writer.send(msg)).<span class="kw">await
-        </span>});
-        <span class="kw">match </span>res {
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.timeout&quot;</span>, {
-                    <span class="string">&quot;node&quot;</span>: node_id,
-                });
-                <span class="macro">debug!</span>(<span class="string">&quot;Node data writing timed out: {}&quot;</span>, err);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ConnectionClosureReason::Failed);
-            }
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(err)) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.error&quot;</span>, {
-                    <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;err&quot;</span>:  <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err),
-                });
-                <span class="macro">debug!</span>(<span class="string">&quot;Node data writing error: {:?}&quot;</span>, err);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ConnectionClosureReason::Failed);
-            }
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(id)) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.ok&quot;</span>, {
-                                <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;msg_id&quot;</span>: id});
+        <span class="kw">if </span>messages_.is_none() {
+            <span class="kw">break</span>;
+        }
+        <span class="comment">// safe to unwrap here
+        </span><span class="kw">let </span>messages = messages_.unwrap();
+
+        <span class="kw">for </span>msg <span class="kw">in </span>messages.iter() {
+            <span class="kw">match </span>timeout(write_timeout.to_duration(), socket_writer.send(msg)).<span class="kw">await </span>{
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.timeout&quot;</span>, {
+                        <span class="string">&quot;node&quot;</span>: node_id,
+                    });
+                    <span class="macro">debug!</span>(<span class="string">&quot;Node data writing timed out: {}&quot;</span>, err);
+                    exit_reason = ConnectionClosureReason::Failed;
+                    <span class="kw">break </span><span class="lifetime">&#39;writer_loop</span>;
+                }
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(err)) =&gt; {
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.error&quot;</span>, {
+                        <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;err&quot;</span>:  <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err),
+                    });
+                    <span class="macro">debug!</span>(<span class="string">&quot;Node data writing error: {:?}&quot;</span>, err);
+                    exit_reason = ConnectionClosureReason::Failed;
+                    <span class="kw">break </span><span class="lifetime">&#39;writer_loop</span>;
+                }
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(id)) =&gt; {
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.ok&quot;</span>, {
+                                    <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;msg_id&quot;</span>: id});
+                }
             }
         }
     }
-    <span class="prelude-val">Ok</span>(())
+
+    exit_reason
 }
 
 <span class="doccomment">/// Handle socket read function until a message is received then send it
 </span><span class="comment">// via &#39;node_event_tx&#39; queue
 </span><span class="kw">async fn </span>node_reader_handle(
     socket_reader: <span class="kw-2">&amp;mut </span>ReadBinder,
-    message_chan: Sender&lt;Message&gt;,
+    node_event_tx: <span class="kw-2">&amp;mut </span>Sender&lt;NodeEvent&gt;,
+    node_id: NodeId,
+    max_send_wait: MassaTime,
 ) -&gt; ConnectionClosureReason {
     <span class="kw">let </span><span class="kw-2">mut </span>exit_reason = ConnectionClosureReason::Normal;
 
@@ -767,15 +779,75 @@
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive self.socket_reader.next()&quot;</span>, {
                     <span class="string">&quot;index&quot;</span>: index
                 });
-                <span class="kw">let </span>chan_clone = message_chan.clone();
-                Handle::current()
-                    .spawn_blocking(<span class="kw">move </span>|| {
-                        chan_clone
-                            .send(msg)
-                            .expect(<span class="string">&quot;Failed to send node message to node worker.&quot;</span>);
-                    })
-                    .<span class="kw">await
-                    </span>.expect(<span class="string">&quot;Failed to run task to send node message to node worker.&quot;</span>);
+                <span class="kw">match </span>msg {
+                    Message::BlockHeader(header) =&gt; {
+                        <span class="macro">massa_trace!</span>(
+                            <span class="string">&quot;node_worker.run_loop. receive Message::BlockHeader&quot;</span>,
+                            {<span class="string">&quot;block_id&quot;</span>: header.id.get_hash(), <span class="string">&quot;header&quot;</span>: header, <span class="string">&quot;node&quot;</span>: node_id}
+                        );
+                        <span class="kw">let </span>event = NodeEvent(node_id, NodeEventType::ReceivedBlockHeader(header));
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::AskForBlocks(list) =&gt; {
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: node_id});
+                        <span class="kw">let </span>event = NodeEvent(node_id, NodeEventType::ReceivedAskForBlocks(list));
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::ReplyForBlocks(list) =&gt; {
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: list, <span class="string">&quot;node&quot;</span>: node_id});
+                        <span class="kw">let </span>event = NodeEvent(node_id, NodeEventType::ReceivedReplyForBlocks(list));
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::PeerList(pl) =&gt; {
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::PeerList&quot;</span>, {<span class="string">&quot;peerlist&quot;</span>: pl, <span class="string">&quot;node&quot;</span>: node_id});
+                        <span class="kw">let </span>event = NodeEvent(node_id, NodeEventType::ReceivedPeerList(pl));
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::AskPeerList =&gt; {
+                        <span class="kw">let </span>event = NodeEvent(node_id, NodeEventType::AskedPeerList);
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::Operations(operations) =&gt; {
+                        <span class="macro">massa_trace!</span>(
+                            <span class="string">&quot;node_worker.run_loop. receive Message::Operations: &quot;</span>,
+                            {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operations&quot;</span>: operations}
+                        );
+                        <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::Operations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operations});
+                        </span><span class="kw">let </span>event =
+                            NodeEvent(node_id, NodeEventType::ReceivedOperations(operations));
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::AskForOperations(operation_prefix_ids) =&gt; {
+                        <span class="macro">massa_trace!</span>(
+                            <span class="string">&quot;node_worker.run_loop. receive Message::AskForOperations: &quot;</span>,
+                            {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operation_ids&quot;</span>: operation_prefix_ids}
+                        );
+                        <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::AskForOperations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operation_ids});
+                        </span><span class="kw">let </span>event = NodeEvent(
+                            node_id,
+                            NodeEventType::ReceivedAskForOperations(operation_prefix_ids),
+                        );
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::OperationsAnnouncement(operation_prefix_ids) =&gt; {
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::OperationsBatch&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;operation_prefix_ids&quot;</span>: operation_prefix_ids});
+                        <span class="kw">let </span>event = NodeEvent(
+                            node_id,
+                            NodeEventType::ReceivedOperationAnnouncements(operation_prefix_ids),
+                        );
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    Message::Endorsements(endorsements) =&gt; {
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::Endorsement&quot;</span>, {<span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
+                        <span class="kw">let </span>event =
+                            NodeEvent(node_id, NodeEventType::ReceivedEndorsements(endorsements));
+                        send_node_event(node_event_tx, event, max_send_wait).<span class="kw">await
+                    </span>}
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="comment">// TODO: Write a more user-friendly warning/logout after several consecutive fails? see #1082
+                        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning&quot;</span>, {});
+                    }
+                }
             }
             <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
                 <span class="macro">massa_trace!</span>(
@@ -797,6 +869,30 @@
     }
 
     exit_reason
+}
+
+<span class="doccomment">/// Send a node event
+</span><span class="comment">// via node_event_tx queue - used by &#39;node_reader_handle&#39;
+</span><span class="kw">async fn </span>send_node_event(
+    node_event_tx: <span class="kw-2">&amp;mut </span>Sender&lt;NodeEvent&gt;,
+    event: NodeEvent,
+    max_send_wait: MassaTime,
+) {
+    <span class="kw">let </span>result = node_event_tx
+        .send_timeout(event, max_send_wait.to_duration())
+        .<span class="kw">await</span>;
+    <span class="kw">match </span>result {
+        <span class="prelude-val">Ok</span>(()) =&gt; {}
+        <span class="prelude-val">Err</span>(SendTimeoutError::Closed(event)) =&gt; {
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;Failed to send NodeEvent due to channel closure: {:?}.&quot;</span>,
+                event
+            );
+        }
+        <span class="prelude-val">Err</span>(SendTimeoutError::Timeout(event)) =&gt; {
+            <span class="macro">warn!</span>(<span class="string">&quot;Failed to send NodeEvent due to timeout: {:?}.&quot;</span>, event);
+        }
+    }
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_network_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (065852def 2023-02-13)" data-search-js="search-abe1d547ad11c273.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

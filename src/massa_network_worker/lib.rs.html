@@ -150,10 +150,6 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![feature(async_closure)]
@@ -167,7 +163,6 @@
     network_worker::{NetworkWorker, NetworkWorkerChannels},
     peer_info_database::PeerInfoDatabase,
 };
-<span class="kw">use </span>crossbeam_channel::bounded;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{node::NodeId, version::Version};
 <span class="kw">use </span>massa_network_exports::{
@@ -175,8 +170,7 @@
     NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,
 };
 <span class="kw">use </span>massa_signature::KeyPair;
-<span class="kw">use </span>std::thread;
-<span class="kw">use </span>tokio::runtime::Runtime;
+<span class="kw">use </span>tokio::sync::mpsc;
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 
 <span class="comment">//pub use establisher::Establisher;
@@ -250,11 +244,9 @@
     <span class="comment">// create listener
     </span><span class="kw">let </span>listener = establisher.get_listener(network_settings.bind).<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="kw">let </span>runtime = Runtime::new().expect(<span class="string">&quot;Failed to initialize networking runtime.&quot;</span>);
-
     <span class="macro">debug!</span>(<span class="string">&quot;Loading peer database&quot;</span>);
     <span class="comment">// load peer info database
-    </span><span class="kw">let </span><span class="kw-2">mut </span>peer_info_db = PeerInfoDatabase::new(network_settings, runtime.handle().clone())<span class="question-mark">?</span>;
+    </span><span class="kw">let </span><span class="kw-2">mut </span>peer_info_db = PeerInfoDatabase::new(network_settings).<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="comment">// add bootstrap peers
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(peers) = initial_peers {
@@ -263,13 +255,13 @@
 
     <span class="comment">// launch controller
     </span><span class="kw">let </span>(command_tx, controller_command_rx) =
-        bounded::&lt;NetworkCommand&gt;(network_settings.controller_channel_size);
+        mpsc::channel::&lt;NetworkCommand&gt;(network_settings.controller_channel_size);
     <span class="kw">let </span>(controller_event_tx, event_rx) =
-        bounded::&lt;NetworkEvent&gt;(network_settings.event_channel_size);
-    <span class="kw">let </span>(manager_tx, controller_manager_rx) = bounded::&lt;NetworkManagementCommand&gt;(<span class="number">1</span>);
+        mpsc::channel::&lt;NetworkEvent&gt;(network_settings.event_channel_size);
+    <span class="kw">let </span>(manager_tx, controller_manager_rx) = mpsc::channel::&lt;NetworkManagementCommand&gt;(<span class="number">1</span>);
     <span class="kw">let </span>cfg_copy = network_settings.clone();
     <span class="kw">let </span>keypair_cloned = keypair.clone();
-    <span class="kw">let </span>join_handle = thread::spawn(<span class="kw">move </span>|| {
+    <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">let </span>res = NetworkWorker::new(
             cfg_copy,
             keypair_cloned,
@@ -282,9 +274,9 @@
                 controller_manager_rx,
             },
             version,
-            runtime,
         )
-        .run_loop();
+        .run_loop()
+        .<span class="kw">await</span>;
         <span class="kw">match </span>res {
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;network worker crashed: {}&quot;</span>, err);
