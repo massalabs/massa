@@ -30,6 +30,7 @@ async fn stream_final_state_and_consensus(
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
+    first: &bool,
 ) -> Result<(), BootstrapError> {
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
         match tokio::time::timeout(
@@ -139,6 +140,10 @@ async fn stream_final_state_and_consensus(
                         last_ops_step,
                         last_consensus_step,
                     };
+                    if *first {
+                        std::thread::sleep(Duration::from_millis(30000));
+                        return Err(BootstrapError::GeneralError("test".to_string()));
+                    }
 
                     // Logs for an easier diagnostic if needed
                     debug!(
@@ -199,6 +204,7 @@ async fn bootstrap_from_server(
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
+    first: &bool,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.bootstrap_from_server", {});
 
@@ -307,6 +313,7 @@ async fn bootstrap_from_server(
                     client,
                     next_bootstrap_message,
                     global_bootstrap_state,
+                    first,
                 )
                 .await?;
             }
@@ -477,6 +484,7 @@ pub async fn get_state(
             last_consensus_step: StreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
+    let mut first = true;
 
     loop {
         for (addr, node_id) in filtered_bootstrap_list.iter() {
@@ -495,7 +503,7 @@ pub async fn get_state(
             .await
             {
                 Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
+                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version, &first)
                     .await  // cancellable
                     {
                         Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
@@ -517,5 +525,6 @@ pub async fn get_state(
             info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
             sleep(bootstrap_config.retry_delay.into()).await;
         }
+        first = false;
     }
 }
