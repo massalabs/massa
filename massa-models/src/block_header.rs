@@ -20,13 +20,15 @@ use nom::sequence::{preceded, tuple};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::collections::Bound::{Excluded, Included};
+use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Formatter;
-use std::collections::VecDeque;
 
 const NB_BLOCKS_CONSIDERED: usize = 5;
 const THRESHOLD: usize = 2;
 
+/// Struct used to keep track of announced versions in previous blocks
+/// Contains additional utilities
 pub struct VersioningMiddleware {
     latest_announcements: VecDeque<u32>,
     counts: HashMap<u32, usize>,
@@ -35,9 +37,16 @@ pub struct VersioningMiddleware {
     current_announced_version: u32,
 }
 
+impl Default for VersioningMiddleware {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VersioningMiddleware {
+    /// Creates a new empty versioning middleware.
     pub fn new() -> Self {
-        VersioningMiddleware { 
+        VersioningMiddleware {
             latest_announcements: VecDeque::with_capacity(NB_BLOCKS_CONSIDERED + 1),
             counts: HashMap::new(),
             current_active_version: 0,
@@ -46,11 +55,13 @@ impl VersioningMiddleware {
         }
     }
 
+    /// Add the announced version of a new block
+    /// If needed, remove the info related to a ancient block
     pub fn new_block(&mut self, version: u32) {
         self.latest_announcements.push_back(version);
 
-        *self.counts.entry(version).or_default() +=1;
-        
+        *self.counts.entry(version).or_default() += 1;
+
         // If the queue is too large, remove the most ancient block and its associated count
         if self.latest_announcements.len() > NB_BLOCKS_CONSIDERED {
             let prev_version = self.latest_announcements.pop_front();
@@ -60,50 +71,59 @@ impl VersioningMiddleware {
         }
     }
 
+    /// Get version that was announced the most in the previous blocks,
+    /// as well as the count
     pub fn most_announced_version(&mut self) -> (u32, usize) {
-        match self.counts.iter().max_by_key(|(&k,&v)| v) {
+        match self.counts.iter().max_by_key(|(_, &v)| v) {
             Some((max_count_version, count)) => (*max_count_version, *count),
-            None => (0,0)
+            None => (0, 0),
         }
     }
 
+    /// Checks whether a given version should become active
     pub fn is_count_above_threshold(&mut self, version: u32) -> bool {
         match self.counts.get(&version) {
             Some(count) => *count >= THRESHOLD,
-            None => false
+            None => false,
         }
     }
 
+    /// Get the current active version
     pub fn get_current_active_version(&self) -> u32 {
         self.current_active_version
     }
 
+    /// Set the current active version
     pub fn set_current_active_version(&mut self, version: u32) {
         self.current_active_version = version;
     }
-    
+
+    /// Get the current supported versions
     pub fn get_current_supported_versions(&self) -> Vec<u32> {
         self.current_supported_versions.clone()
     }
-    
+
+    /// Add a new version to the currently supported versions list
     pub fn add_supported_version(&mut self, version: u32) {
         if !self.current_supported_versions.contains(&version) {
             self.current_supported_versions.push(version)
         }
     }
 
+    /// Remove a version to the currently supported versions list
     pub fn remove_supported_version(&mut self, version: u32) {
         self.current_supported_versions.retain(|&x| x != version)
     }
-    
+
+    /// Get the current version to announce
     pub fn get_current_announced_version(&self) -> u32 {
         self.current_announced_version
     }
-    
+
+    /// Set the current version to announce
     pub fn set_current_announced_version(&mut self, version: u32) {
         self.current_announced_version = version;
     }
-
 }
 
 #[cfg(test)]
@@ -112,7 +132,6 @@ mod test {
 
     #[test]
     fn test_versioning_middleware() {
-        
         let mut vm = VersioningMiddleware::new();
 
         vm.new_block(1);
@@ -135,7 +154,6 @@ mod test {
         println!("{:?}", vm.most_announced_version());
     }
 }
-
 
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -289,9 +307,8 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     fn serialize(&self, value: &BlockHeader, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.slot_serializer.serialize(&value.slot, buffer)?;
 
-        self.u32_serializer.serialize(&value.announced_version,
-            buffer,
-        )?;
+        self.u32_serializer
+            .serialize(&value.announced_version, buffer)?;
 
         // parents (note: there should be none if slot period=0)
         if value.parents.is_empty() {
@@ -412,60 +429,59 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        let (rest, (slot, announced_version, parents, operation_merkle_root)): (&[u8], (Slot, u32, Vec<BlockId>, Hash)) =
-            context("Failed BlockHeader deserialization", |input| {
-                let (rest, (slot, announced_version, parents)) = tuple((
-                    context("Failed slot deserialization", |input| {
-                        self.slot_deserializer.deserialize(input)
-                    }),
-                    context("Failed announced_version deserialization", |input| {
-                        self.announced_version_deserializer.deserialize(input)
-                    }),
-                    context(
-                        "Failed parents deserialization",
-                        alt((
-                            preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
-                            preceded(
-                                tag(&[1]),
-                                count(
-                                    context("Failed block_id deserialization", |input| {
-                                        self.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    self.thread_count as usize,
-                                ),
+        let (rest, (slot, announced_version, parents, operation_merkle_root)): (
+            &[u8],
+            (Slot, u32, Vec<BlockId>, Hash),
+        ) = context("Failed BlockHeader deserialization", |input| {
+            let (rest, (slot, announced_version, parents)) = tuple((
+                context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed announced_version deserialization", |input| {
+                    self.announced_version_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed parents deserialization",
+                    alt((
+                        preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
+                        preceded(
+                            tag(&[1]),
+                            count(
+                                context("Failed block_id deserialization", |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                                self.thread_count as usize,
                             ),
-                        )),
-                    ),
-                ))
-                .parse(input)?;
-
-                // validate the parent/slot invariats before moving on to other fields
-                if slot.period == 0 && !parents.is_empty() {
-                    return Err(nom::Err::Failure(ContextError::add_context(
-                        rest,
-                        "Genesis block cannot contain parents",
-                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                    )));
-                } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
-                    return Err(nom::Err::Failure(ContextError::add_context(
-                        rest,
-                        const_format::formatcp!(
-                            "Non-genesis block must have {} parents",
-                            THREAD_COUNT
                         ),
-                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                    )));
-                }
+                    )),
+                ),
+            ))
+            .parse(input)?;
 
-                let (rest, merkle) = context("Failed operation_merkle_root", |input| {
-                    self.hash_deserializer.deserialize(input)
-                })
-                .parse(rest)?;
-                Ok((rest, (slot, announced_version, parents, merkle)))
+            // validate the parent/slot invariats before moving on to other fields
+            if slot.period == 0 && !parents.is_empty() {
+                return Err(nom::Err::Failure(ContextError::add_context(
+                    rest,
+                    "Genesis block cannot contain parents",
+                    ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                )));
+            } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
+                return Err(nom::Err::Failure(ContextError::add_context(
+                    rest,
+                    const_format::formatcp!("Non-genesis block must have {} parents", THREAD_COUNT),
+                    ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                )));
+            }
+
+            let (rest, merkle) = context("Failed operation_merkle_root", |input| {
+                self.hash_deserializer.deserialize(input)
             })
-            .parse(buffer)?;
+            .parse(rest)?;
+            Ok((rest, (slot, announced_version, parents, merkle)))
+        })
+        .parse(buffer)?;
 
         if parents.is_empty() {
             let res = BlockHeader {
