@@ -15,7 +15,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
-    collections::{hash_map, HashMap},
+    collections::HashMap,
     net::{IpAddr, SocketAddr},
     sync::Arc,
     time::{Duration, Instant},
@@ -216,14 +216,38 @@ impl BootstrapServer {
                 }
 
                 // check IP's bootstrap attempt history
-                let Ok(server) =  BootstrapServer::bootstrap_client_check(
-                    server,
+                if let Err(msg) = BootstrapServer::greedy_client_check(
                     &mut self.ip_hist_map,
-                    &self.bootstrap_config.write_error_timeout,
                     remote_addr,
                     now,
-                    per_ip_min_interval
-                ).await else {
+                    per_ip_min_interval,
+                ) {
+                    let send_timeout = tokio::time::timeout(
+                        self.bootstrap_config.write_error_timeout.into(),
+
+                        server.send(BootstrapServerMessage::BootstrapError {
+                            error: format!(
+                                "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
+                                format_duration(msg),
+                                format_duration(per_ip_min_interval.saturating_sub(msg))
+                            )
+                        }),
+                    )
+                    .await;
+
+                    let _ = match send_timeout {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap error too early retry bootstrap send timed out",
+                        )
+                        .into()),
+                        Ok(Err(e)) => Err(e),
+                        Ok(Ok(_)) => Ok(()),
+                    };
+                    // in list, non-expired => refuse
+                    massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
+                        "remote_addr": remote_addr
+                    });
                     continue;
                 };
 
@@ -277,60 +301,29 @@ impl BootstrapServer {
         Ok(())
     }
 
-    /// Helper method to check IP's bootstrap attempt history, consuming the server in the process.
+    /// Helper method to check if this IP is being greedy, i.e. not enough elapsed time since last attempt
     ///
-    /// On success, will return the server for later use.
-    /// On failure, includes a side effect of sending an error message to the client.
-    ///
-    /// The intended use of the `Result` is to signal a `continue` to the calling context on failure.
-    /// ...I know, not the best. This function is largely a cut-paste of code that existed in the main-loop `BootstrapServer::run()` method, and where that code would invoke a `continue`, here we return `Err`
-    async fn bootstrap_client_check(
-        mut server: BootstrapServerBinder,
+    /// # Error
+    /// The elapsed time which is insufficient
+    fn greedy_client_check(
         ip_hist_map: &mut HashMap<IpAddr, Instant>,
-        error_to: &MassaTime,
         remote_addr: SocketAddr,
         now: Instant,
         per_ip_min_interval: Duration,
-    ) -> Result<BootstrapServerBinder, ()> {
-        match ip_hist_map.entry(remote_addr.ip()) {
-            hash_map::Entry::Occupied(mut occ) => {
-                if now.duration_since(*occ.get()) <= per_ip_min_interval {
-                    let send_timeout = tokio::time::timeout(
-                                        (*error_to).into(),
-                                        server.send(
-                                            BootstrapServerMessage::BootstrapError {
-                                                error: format!(
-                                                    "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
-                                                    format_duration(occ.get().elapsed()),
-                                                    format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed()))
-                                                )
-                                            }
-                                        )).await;
-
-                    let _ = match send_timeout {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap error too early retry bootstrap send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
-                    };
-                    // in list, non-expired => refuse
-                    massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
-                        "remote_addr": remote_addr
-                    });
-                    return Err(());
+    ) -> Result<(), Duration> {
+        let mut res = Ok(());
+        ip_hist_map
+            .entry(remote_addr.ip())
+            .and_modify(|occ| {
+                if now.duration_since(*occ) <= per_ip_min_interval {
+                    res = Err(occ.elapsed());
                 } else {
                     // in list, expired
-                    occ.insert(now);
+                    *occ = now;
                 }
-            }
-            hash_map::Entry::Vacant(vac) => {
-                vac.insert(now);
-            }
-        }
-        Ok(server)
+            })
+            .or_insert(now);
+        res
     }
 
     // #[cfg(test)]
