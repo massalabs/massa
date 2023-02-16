@@ -335,6 +335,15 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -387,6 +396,15 @@
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
         }
+    }
+
+    <span class="doccomment">/// Reset the executed operations
+    ///
+    /// USED FOR BOOTSTRAP ONLY
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.sorted_ops.clear();
+        <span class="self">self</span>.ops.clear();
+        <span class="self">self</span>.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
     }
 
     <span class="doccomment">/// Returns the number of executed operations
