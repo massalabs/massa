@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_factory"]};
+window.SIDEBAR_ITEMS = {"fn":[["start_factory","Start factory"]]};
