@@ -30,7 +30,6 @@ use massa_models::{
     address::Address,
     block_id::BlockId,
     operation::{OperationId, OperationType, SecureShareOperation},
-    timeslots,
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
@@ -408,40 +407,25 @@ impl ExecutionState {
             _ => panic!("unexpected operation type"),
         };
 
-        // acquire write access to the context
-        let mut context = context_guard!(self);
-
-        if let Some(vec) = self.vesting_registry.get(&buyer_addr) {
-            // if the address of the buyer is in the vesting_config we should check the max rolls field
-            if let Some(current_slot) = timeslots::get_current_latest_block_slot(
-                self.config.thread_count,
-                self.config.t0,
-                self.config.genesis_timestamp,
-            )
-            .map_err(|e| {
-                ExecutionError::RuntimeError(format!("can not get the current block slot : {}", e))
-            })? {
-                match vec.into_iter().find(|vesting| {
-                    vesting.start_slot <= current_slot && vesting.end_slot >= current_slot
-                }) {
-                    None => {
-                        return Err(ExecutionError::VestingError(format!(
-                            "vesting range not found for addr:{}",
-                            &buyer_addr
-                        )))
-                    }
-                    Some(vesting_range) => {
-                        let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
-                        // (final_rolls + amount to buy)
-                        if (rolls.0 + roll_count) >= vesting_range.max_rolls {
-                            return Err(ExecutionError::VestingError(
-                                "max rolls reached".to_string(),
-                            ));
-                        }
-                    }
-                }
+        // control vesting max_rolls for buyer address
+        if let Some(vesting_range) = VestingRange::find_vesting_range(
+            &buyer_addr,
+            &self.vesting_registry,
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+        ) {
+            let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
+            // (candidate_rolls + amount to buy)
+            if (rolls.1 + roll_count) >= vesting_range.max_rolls {
+                return Err(ExecutionError::VestingError(
+                    "max rolls reached".to_string(),
+                ));
             }
         }
+
+        // acquire write access to the context
+        let mut context = context_guard!(self);
 
         // Set call stack
         // This needs to be defined before anything can fail, so that the emitted event contains the right stack
@@ -1396,47 +1380,6 @@ impl ExecutionState {
     fn init_vesting_registry(
         config: &ExecutionConfig,
     ) -> Result<PreHashMap<Address, Vec<VestingRange>>, ExecutionError> {
-        // todo rework
-        // let mut hashmap: PreHashMap<Address, Vec<VestingRange>> = serde_json::from_str(
-        //     &std::fs::read_to_string(&config.initial_vesting_path).map_err(|err| {
-        //         ExecutionError::InitVestingError(format!(
-        //             "error loading initial vesting file  {}",
-        //             err
-        //         ))
-        //     })?,
-        // ).map(|res| {
-        //     info!("coucou");
-        //     res
-        // }).map_err(|err| {
-        //     ExecutionError::InitVestingError(format!(
-        //         "error on deserialize initial vesting file  {}",
-        //         err
-        //     ))
-        // })?;
-        //
-        //
-        // for v in hashmap.values_mut() {
-        //     *v = v
-        //         .windows(2)
-        //         .map(|elements| {
-        //
-        //                 let (mut prev, next) = (elements[0], elements[1]);
-        //
-        //
-        //                 let end_slot =
-        //                     next.start_slot
-        //                         .get_prev_slot(config.thread_count)
-        //                         .map_err(|e| {
-        //                             ExecutionError::InitVestingError(format!(
-        //                                 "error on get prev slot for init vesting : {}",
-        //                                 e
-        //                             ))
-        //                         })?;
-        //                 prev.end_slot = end_slot;
-        //                 Ok(prev)
-        //         })
-        //         .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
-        // }
         let mut hashmap: PreHashMap<Address, Vec<VestingRange>> = serde_json::from_str(
             &std::fs::read_to_string(&config.initial_vesting_path).map_err(|err| {
                 ExecutionError::InitVestingError(format!(
@@ -1453,14 +1396,11 @@ impl ExecutionState {
         })?;
 
         for v in hashmap.values_mut() {
-            let mut current_index = 1;
-            let temp_list = v.clone();
-
-            for vesting_slot in v {
-                if let Some(next) = temp_list.get(current_index) {
-                    // if a vesting slot is present on the vector
-                    // we set the actual end of the current range at (next - 1) slot
-                    let prev_slot =
+            *v = v
+                .windows(2)
+                .map(|elements| {
+                    let (mut prev, next) = (elements[0], elements[1]);
+                    let end_slot =
                         next.start_slot
                             .get_prev_slot(config.thread_count)
                             .map_err(|e| {
@@ -1469,15 +1409,10 @@ impl ExecutionState {
                                     e
                                 ))
                             })?;
-                    vesting_slot.end_slot = prev_slot;
-                } else {
-                    vesting_slot.end_slot = Slot {
-                        thread: config.thread_count,
-                        period: u64::MAX,
-                    }
-                }
-                current_index += 1;
-            }
+                    prev.end_slot = end_slot;
+                    Ok(prev)
+                })
+                .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
         }
 
         Ok(hashmap)

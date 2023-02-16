@@ -21,8 +21,8 @@
                 "period": 40,
                 "thread": 0
             },
-            "min_balance": "1000",
-            "max_rolls": 55
+            "min_balance": "0",
+            "max_rolls": 18446744073709551615
         }
     ],
     "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF": [
@@ -39,8 +39,8 @@
                 "period": 30,
                 "thread": 6
             },
-            "min_balance": "1000",
-            "max_rolls": 50
+            "min_balance": "0",
+            "max_rolls": 18446744073709551615
         }
     ]
 }

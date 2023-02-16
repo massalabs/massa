@@ -29,7 +29,6 @@ use massa_models::{
     operation::OperationId,
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
-    timeslots,
 };
 use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
@@ -606,45 +605,26 @@ impl ExecutionContext {
                 }
             }
 
-            if let Some(vec) = self.vesting_registry.get(from_addr) {
-                // If the sender address is in the vesting_file we should control the balance
-
-                if let Some(current_slot) = timeslots::get_current_latest_block_slot(
-                    self.config.thread_count,
-                    self.config.t0,
-                    self.config.genesis_timestamp,
-                )
-                .map_err(|e| {
-                    ExecutionError::RuntimeError(format!(
-                        "can not get the current block slot : {}",
-                        e
-                    ))
-                })? {
-                    match vec.into_iter().find(|vesting| {
-                        vesting.start_slot <= current_slot && vesting.end_slot >= current_slot
-                    }) {
-                        None => {
-                            return Err(ExecutionError::VestingError(format!(
-                                "vesting range not found for addr:{}",
-                                &from_addr
-                            )))
-                        }
-                        Some(vesting_range) => {
-                            let new_balance = self
-                                .get_balance(&from_addr)
-                                .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
-                                .checked_sub(amount)
-                                .ok_or_else(|| {
-                                    ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
-                                        .get_balance(&from_addr).unwrap_or_default()))
-                                })?;
-                            if new_balance < vesting_range.min_balance {
-                                return Err(ExecutionError::VestingError(
-                                    "min_balance from vesting is reached".to_string(),
-                                ));
-                            }
-                        }
-                    }
+            // control vesting min_balance for sender address
+            if let Some(vesting_range) = VestingRange::find_vesting_range(
+                &from_addr,
+                &self.vesting_registry,
+                self.config.thread_count,
+                self.config.t0,
+                self.config.genesis_timestamp,
+            ) {
+                let new_balance = self
+                    .get_balance(&from_addr)
+                    .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
+                    .checked_sub(amount)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                            .get_balance(&from_addr).unwrap_or_default()))
+                    })?;
+                if new_balance < vesting_range.min_balance {
+                    return Err(ExecutionError::VestingError(
+                        "min_balance from vesting is reached".to_string(),
+                    ));
                 }
             }
         }
