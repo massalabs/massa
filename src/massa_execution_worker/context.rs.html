@@ -851,6 +851,50 @@
 <a href="#851" id="851">851</a>
 <a href="#852" id="852">852</a>
 <a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -873,6 +917,8 @@
 <span class="kw">use </span>massa_final_state::{FinalState, StateChanges};
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
+<span class="kw">use </span>massa_models::prehash::PreHashMap;
+<span class="kw">use </span>massa_models::slot::VestingRange;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
@@ -991,6 +1037,9 @@
 
     <span class="comment">// cache of compiled runtime modules
     </span><span class="kw">pub </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
+
+    <span class="comment">// Map of vesting addresses
+    </span><span class="kw">pub </span>vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -1009,6 +1058,7 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
+        vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -1042,6 +1092,7 @@
             origin_operation_id: Default::default(),
             module_cache,
             config,
+            vesting_registry,
         }
     }
 
@@ -1114,8 +1165,8 @@
         call_stack: Vec&lt;ExecutionStackElement&gt;,
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
-
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
+        vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -1139,7 +1190,13 @@
             stack: call_stack,
             read_only: <span class="bool-val">true</span>,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history, module_cache)
+            ..ExecutionContext::new(
+                config,
+                final_state,
+                active_history,
+                module_cache,
+                vesting_registry,
+            )
         }
     }
 
@@ -1180,6 +1237,7 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
+        vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -1201,7 +1259,13 @@
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history, module_cache)
+            ..ExecutionContext::new(
+                config,
+                final_state,
+                active_history,
+                module_cache,
+                vesting_registry,
+            )
         }
     }
 
@@ -1292,7 +1356,7 @@
             <span class="prelude-val">None </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
                     <span class="string">&quot;owned addresses not found in context stack&quot;</span>.into(),
-                ))
+                ));
             }
         };
 
@@ -1435,9 +1499,9 @@
         amount: Amount,
         check_rights: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
-        <span class="comment">// check access rights
-        </span><span class="kw">if </span>check_rights {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
+            <span class="comment">// check access rights
+            </span><span class="kw">if </span>check_rights {
                 <span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                         <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
@@ -1445,7 +1509,31 @@
                     )));
                 }
             }
+
+            <span class="comment">// control vesting min_balance for sender address
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_range) = VestingRange::find_vesting_range(
+                <span class="kw-2">&amp;</span>from_addr,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.vesting_registry,
+                <span class="self">self</span>.config.thread_count,
+                <span class="self">self</span>.config.t0,
+                <span class="self">self</span>.config.genesis_timestamp,
+            ) {
+                <span class="kw">let </span>new_balance = <span class="self">self
+                    </span>.get_balance(<span class="kw-2">&amp;</span>from_addr)
+                    .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, from_addr)))<span class="question-mark">?
+                    </span>.checked_sub(amount)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed check transfer {} from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
+                            </span>.get_balance(<span class="kw-2">&amp;</span>from_addr).unwrap_or_default()))
+                    })<span class="question-mark">?</span>;
+                <span class="kw">if </span>new_balance &lt; vesting_range.min_balance {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(
+                        <span class="string">&quot;min_balance from vesting is reached&quot;</span>.to_string(),
+                    ));
+                }
+            }
         }
+
         <span class="comment">// do the transfer
         </span><span class="self">self</span>.speculative_ledger
             .transfer_coins(from_addr, to_addr, amount)
@@ -1621,7 +1709,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(creator_address) = <span class="self">self</span>.creator_address &amp;&amp; <span class="kw-2">&amp;</span>creator_address == address {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;
                 can&#39;t set the bytecode of address {} because this is not a smart contract address&quot;</span>,
-                address)))
+                                                            address)));
         }
 
         <span class="comment">// set data entry
