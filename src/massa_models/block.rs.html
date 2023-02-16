@@ -1139,6 +1139,17 @@
 <a href="#1139" id="1139">1139</a>
 <a href="#1140" id="1140">1140</a>
 <a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="comment">// use crate::config::THREAD_COUNT;
@@ -1599,6 +1610,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[endo1, endo2],
@@ -1674,6 +1686,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
@@ -1753,6 +1766,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[Endorsement::new_verifiable(
@@ -1810,6 +1824,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
@@ -1857,6 +1872,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                announced_version: <span class="number">0</span>,
                 parents: <span class="macro">vec!</span>[],
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
@@ -1907,6 +1923,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
@@ -1979,6 +1996,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements,
@@ -2028,6 +2046,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
@@ -2092,6 +2111,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements,
@@ -2161,6 +2181,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[endo1],
@@ -2242,6 +2263,7 @@
         </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                announced_version: <span class="number">0</span>,
                 parents,
                 operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[endo1, endo2],
