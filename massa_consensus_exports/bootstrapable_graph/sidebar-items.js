@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["BootstrapableGraph","Bootstrap graph"],["BootstrapableGraphDeserializer","Basic deserializer for `BootstrapableGraph`"],["BootstrapableGraphSerializer","Basic serializer for `BootstrapableGraph`"]]};
+window.SIDEBAR_ITEMS = {"struct":["BootstrapableGraph","BootstrapableGraphDeserializer","BootstrapableGraphSerializer"]};
