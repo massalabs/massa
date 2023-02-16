@@ -156,6 +156,31 @@ impl BootstrapServer {
         )?;
         let mut cache_interval = tokio::time::interval(cache_timeout);
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
+
+        let Ok(max_bootstraps) = self.bootstrap_config.max_simultaneous_bootstraps.try_into() else {
+            todo!("handle failed conversion");
+        };
+
+        let (listener_tx, listener_rx) = crossbeam::channel::bounded(max_bootstraps);
+
+        let listener_handle = tokio::spawn(async move {
+            loop {
+                // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
+                let Ok((dplx, remote_addr)) = listener.accept().await else {
+                    continue;
+                };
+                listener_tx.send((dplx, remote_addr));
+            }
+        });
+        let updater_handle = std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(cache_timeout);
+                let Ok((_, _)) = reload_whitelist_blacklist(&self.bootstrap_config.bootstrap_whitelist_path, &self.bootstrap_config.bootstrap_blacklist_path) else {
+                    todo!("handle list update error. Probably send a stop?");
+                };
+                // TODO: update the data in a way that minimises contention
+            }
+        });
         /*
             select! without the "biased" modifier will randomly select the 1st branch to check,
             then will check the next ones in the order they are written.
@@ -170,22 +195,19 @@ impl BootstrapServer {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
-            tokio::select! {
-                msg = self.manager_rx.recv() => {
-                    let Some(_) = msg else {
-                        return Err(BootstrapError::GeneralError("command channel closed prematurely".into()));
-                    };
+            crossbeam::select! {
+                recv(self.manager_rx) -> Ok(msg) => {
+                    // let Some(_) = msg else {
+                    //     return Err(BootstrapError::GeneralError("command channel closed prematurely".into()));
+                    // };
                     massa_trace!("bootstrap.lib.run.select.manager", {});
                     break;
-                }
-                _ = cache_interval.tick() => {
-                    (whitelist, blacklist) = reload_whitelist_blacklist(&self.bootstrap_config.bootstrap_whitelist_path, &self.bootstrap_config.bootstrap_blacklist_path)?;
                 }
 
                 // listener
                 // Potential issue: because it's async, a connection match could be cancelled before spawning
                 // the actual bootstrapping. Cancellation would occur through the Stop command going through
-                Ok((dplx, remote_addr)) = listener.accept() => {
+                recv(listener_rx) -> Ok((dplx, remote_addr)) => {
                     // claim a slot in the max_bootstrap_sessions
                     let bootstrap_count_token = bootstrap_sessions_counter.clone();
                     let server = BootstrapServerBinder::new(
@@ -204,7 +226,6 @@ impl BootstrapServer {
                         continue;
                     };
 
-                    let max_bootstraps: usize = self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))?;
                     // TODO: find a better way to track count
                     // the `- 1` is to account for the top-level Arc that is created at the top
                     // of this method. subsequent counts correspond to each `clone` that is passed
@@ -279,6 +300,9 @@ impl BootstrapServer {
                 }
             }
         }
+        listener_handle.abort();
+        updater_handle.abort();
+        // TODO?: Join the spawned bootstraps?
 
         Ok(())
     }
