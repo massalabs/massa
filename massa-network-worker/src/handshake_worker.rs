@@ -108,23 +108,26 @@ pub fn start_handshake_manager(
                             if cfg.max_in_connection_overflow > handshake_peer_list_futures.len() {
                                 let result_tx = result_tx.clone();
                                 let msg = Message::PeerList(peer_list);
-                                let timeout = cfg.peer_list_send_timeout.to_duration();
-                                let max_bytes_read = cfg.max_bytes_read;
-                                let max_bytes_write = cfg.max_bytes_write;
-                                let max_ask_blocks = cfg.max_ask_blocks;
-                                let max_operations_per_block = cfg.max_operations_per_block;
-                                let thread_count = cfg.thread_count;
-                                let endorsement_count = cfg.endorsement_count;
-                                let max_advertise_length = cfg.max_peer_advertise_length;
-                                let max_endorsements_per_message = cfg.max_endorsements_per_message;
-                                let max_operations_per_message = cfg.max_operations_per_message;
-                                let max_message_size = cfg.max_message_size;
-                                let max_datastore_value_length = cfg.max_datastore_value_length;
-                                let max_function_name_length = cfg.max_function_name_length;
-                                let max_parameters_size = cfg.max_parameters_size;
-                                let max_op_datastore_entry_count = cfg.max_op_datastore_entry_count;
-                                let max_op_datastore_key_length = cfg.max_op_datastore_key_length;
-                                let max_op_datastore_value_length = cfg.max_op_datastore_value_length;
+                                let NetworkConfig {
+                                    peer_list_send_timeout: timeout,
+                                    max_bytes_read,
+                                    max_bytes_write,
+                                    max_ask_blocks,
+                                    max_operations_per_block,
+                                    thread_count,
+                                    endorsement_count,
+                                    max_peer_advertise_length: max_advertise_length,
+                                    max_endorsements_per_message,
+                                    max_operations_per_message,
+                                    max_message_size,
+                                    max_datastore_value_length,
+                                    max_function_name_length,
+                                    max_parameters_size,
+                                    max_op_datastore_entry_count,
+                                    max_op_datastore_key_length,
+                                    max_op_datastore_value_length,
+                                    ..
+                                } = cfg;
                                 handshake_peer_list_futures
                                     .insert(ip.clone(), runtime_handle.spawn(async move {
                                         let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
@@ -149,7 +152,7 @@ pub fn start_handshake_manager(
                                             ),
                                         );
                                         match tokio::time::timeout(
-                                            timeout,
+                                            timeout.to_duration(),
                                             try_join(writer.send(&msg), reader.next()),
                                         )
                                         .await
