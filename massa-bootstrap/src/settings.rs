@@ -119,6 +119,8 @@ pub struct BootstrapConfig {
     pub max_ops_changes_length: u64,
     /// consensus bootstrap part size
     pub consensus_bootstrap_part_size: u64,
+    /// max number of consensus block ids when sending a bootstrap cursor from the client
+    pub max_consensus_block_ids: u64,
 }
 
 /// Bootstrap client config

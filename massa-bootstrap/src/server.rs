@@ -198,7 +198,7 @@ impl BootstrapServer {
                             self.bootstrap_config.thread_count,
                             self.bootstrap_config.max_datastore_key_length,
                             self.bootstrap_config.randomness_size_bytes,
-                            self.bootstrap_config.consensus_bootstrap_part_size);
+                            self.bootstrap_config.max_consensus_block_ids);
 
                         // check whether incoming peer IP is allowed or return an error which is ignored
                         let Ok((server, remote_addr)) = self.is_ip_allowed(remote_addr, server, &whitelist, &blacklist).await else {
