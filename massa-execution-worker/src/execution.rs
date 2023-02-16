@@ -11,7 +11,6 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
-use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
@@ -32,6 +31,7 @@ use massa_models::{
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
+use massa_sc_module_cache::controller::ModuleCache;
 use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};

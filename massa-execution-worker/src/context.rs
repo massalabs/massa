@@ -7,7 +7,6 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-use crate::module_cache::ModuleCache;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
@@ -29,6 +28,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pos_exports::PoSChanges;
+use massa_sc_module_cache::controller::ModuleCache;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;

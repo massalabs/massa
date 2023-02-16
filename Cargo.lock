@@ -2278,6 +2278,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa-sc-module-cache"
+version = "0.1.0"
+dependencies = [
+ "massa-sc-runtime",
+ "massa_execution_exports",
+ "massa_hash",
+ "massa_models",
+ "schnellru",
+]
+
+[[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
 source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_20#d4285409be743ba5331d95f4842e21ef280ac5cc"
@@ -2517,6 +2528,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "hex-literal",
+ "massa-sc-module-cache",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_executed_ops",
@@ -2535,7 +2547,6 @@ dependencies = [
  "parking_lot",
  "rand 0.8.5",
  "rand_xoshiro",
- "schnellru",
  "serde_json",
  "serial_test 0.10.0",
  "sha2 0.10.6",
