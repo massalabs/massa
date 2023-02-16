@@ -519,6 +519,15 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -551,6 +560,7 @@
     client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
+    first: <span class="kw-2">&amp;</span>bool,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="kw">if let </span>BootstrapClientMessage::AskBootstrapPart { .. } = <span class="kw-2">&amp;</span>next_bootstrap_message {
         <span class="kw">match </span>tokio::time::timeout(
@@ -660,6 +670,10 @@
                         last_ops_step,
                         last_consensus_step,
                     };
+                    <span class="kw">if </span><span class="kw-2">*</span>first {
+                        std::thread::sleep(Duration::from_millis(<span class="number">30000</span>));
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;test&quot;</span>.to_string()));
+                    }
 
                     <span class="comment">// Logs for an easier diagnostic if needed
                     </span><span class="macro">debug!</span>(
@@ -720,6 +734,7 @@
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
     our_version: Version,
+    first: <span class="kw-2">&amp;</span>bool,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.bootstrap_from_server&quot;</span>, {});
 
@@ -828,6 +843,7 @@
                     client,
                     next_bootstrap_message,
                     global_bootstrap_state,
+                    first,
                 )
                 .<span class="kw">await</span><span class="question-mark">?</span>;
             }
@@ -998,6 +1014,7 @@
             last_consensus_step: StreamingStep::Started,
         };
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
+    <span class="kw">let </span><span class="kw-2">mut </span>first = <span class="bool-val">true</span>;
 
     <span class="kw">loop </span>{
         <span class="kw">for </span>(addr, node_id) <span class="kw">in </span>filtered_bootstrap_list.iter() {
@@ -1016,7 +1033,7 @@
             .<span class="kw">await
             </span>{
                 <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>client) =&gt; {
-                    <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
+                    <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version, <span class="kw-2">&amp;</span>first)
                     .<span class="kw">await  </span><span class="comment">// cancellable
                     </span>{
                         <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, error),
@@ -1038,6 +1055,7 @@
             <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.&quot;</span>, addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
             sleep(bootstrap_config.retry_delay.into()).<span class="kw">await</span>;
         }
+        first = <span class="bool-val">false</span>;
     }
 }
 </code></pre></div>
