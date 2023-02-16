@@ -1,6 +1,7 @@
 mod allow_block_list;
 use allow_block_list::*;
 
+use crossbeam::channel::Receiver;
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -27,6 +28,7 @@ use crate::{
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
+    types::Duplex,
     BootstrapConfig, Establisher,
 };
 
@@ -63,7 +65,7 @@ pub async fn start_bootstrap_server(
     let Some(bind) = bootstrap_config.bind else {
         return Ok(None);
     };
-    // zero-cap channel is being tried. The idea being is that the receiver can then be a dedicated
+    // zero-capacity channel is being tried. The idea being is that the receiver can then be a dedicated
     // thread that will only be activated when the stop signal is finally activated
     let (manager_tx, manager_rx) = crossbeam::channel::bounded::<()>(0);
 
@@ -95,7 +97,7 @@ struct BootstrapServer {
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     establisher: Establisher,
-    manager_rx: crossbeam::channel::Receiver<()>,
+    manager_rx: Receiver<()>,
     bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -108,7 +110,7 @@ impl BootstrapServer {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
-        let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
+        let list_update_timeout = self.bootstrap_config.cache_duration.to_duration();
 
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
 
@@ -117,22 +119,8 @@ impl BootstrapServer {
         };
 
         // This is the primary interface between the async-listener, and the (soon to be) sync worker
-        let (listener_tx, listener_rx) = crossbeam::channel::bounded(max_bootstraps);
-
-        // This handle needs to be aborted after the main loop.
-        // TODO: put the main loop into a `run_loop` fn.
-        let listener_handle = tokio::spawn(async move {
-            loop {
-                // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
-                let Ok((dplx, remote_addr)) = listener.accept().await else {
-                    continue;
-                };
-                match listener_tx.send((dplx, remote_addr)) {
-                    Ok(_) => {}
-                    Err(e) => todo!("handle closed channel after accept: {:?}", e.into_inner().1),
-                }
-            }
-        });
+        let (listener_tx, listener_rx) =
+            crossbeam::channel::bounded::<(Duplex, SocketAddr)>(max_bootstraps);
 
         // As far as the bootstrap thread is concerned, the lists are auto-magically kept upt to date
         // This is done by providing an opaque interface, behind which, is an Arc<RwLock<lists>> data
@@ -148,10 +136,42 @@ impl BootstrapServer {
         );
         let mut updaters_list = allow_block_list.clone();
         std::thread::spawn(move || loop {
-            std::thread::sleep(cache_timeout);
+            std::thread::sleep(list_update_timeout);
             updaters_list.update();
         });
 
+        let listener_handle = tokio::spawn(async move {
+            loop {
+                // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
+                let Ok((dplx, remote_addr)) = listener.accept().await else {
+                    continue;
+                };
+                match listener_tx.send((dplx, remote_addr)) {
+                    Ok(_) => {}
+                    Err(e) => todo!("handle closed channel after accept: {:?}", e.into_inner().1),
+                }
+            }
+        });
+
+        self.run_loop(
+            listener_rx,
+            allow_block_list,
+            max_bootstraps,
+            per_ip_min_interval,
+        )
+        .await;
+        listener_handle.abort();
+
+        Ok(())
+    }
+
+    async fn run_loop(
+        &mut self,
+        listener_rx: Receiver<(Duplex, SocketAddr)>,
+        allow_block_list: SharedAllowBlockList,
+        max_bootstraps: usize,
+        per_ip_min_interval: Duration,
+    ) {
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         loop {
@@ -314,9 +334,6 @@ impl BootstrapServer {
                 debug!("did not bootstrap {}: no available slots", remote_addr);
             }
         }
-        listener_handle.abort();
-
-        Ok(())
     }
 
     /// Helper method to check if this IP is being greedy, i.e. not enough elapsed time since last attempt
