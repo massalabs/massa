@@ -351,6 +351,15 @@ impl LedgerDB {
             ))
         }
     }
+
+    pub fn reset(&mut self) {
+        self.db.drop_cf(LEDGER_CF).expect("Error dropping ledger cf");
+        self.db.drop_cf(METADATA_CF).expect("Error dropping metadata cf");
+        let mut db_opts = Options::default();
+        db_opts.set_error_if_exists(true);
+        self.db.create_cf(LEDGER_CF, &db_opts).expect("Error creating ledger cf");
+        self.db.create_cf(METADATA_CF, &db_opts).expect("Error creating metadata cf");
+    }
 }
 
 // Private helpers

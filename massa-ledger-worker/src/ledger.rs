@@ -174,14 +174,7 @@ impl LedgerController for FinalLedger {
     ///
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self) {
-        std::fs::remove_dir_all(self.config.disk_ledger_path.clone())
-            .expect("disk ledger delete failed");
-        self.sorted_ledger = LedgerDB::new(
-            self.config.disk_ledger_path.clone(),
-            self.config.thread_count,
-            self.config.max_key_length,
-            self.config.max_ledger_part_size,
-        );
+        self.sorted_ledger.reset();
     }
 
     /// Get every address and their corresponding balance.
