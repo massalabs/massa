@@ -97,10 +97,6 @@ impl FinalState {
             as usize;
         for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
             hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
-            debug!(
-                "cycle ({}) hash at slot {}: {}",
-                cycle_info.cycle, slot, cycle_info.cycle_global_hash
-            );
         }
         // 5. executed operations hash
         hash_concat.extend(self.executed_ops.hash.to_bytes());
