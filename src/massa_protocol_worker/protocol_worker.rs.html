@@ -1131,29 +1131,6 @@
 <a href="#1131" id="1131">1131</a>
 <a href="#1132" id="1132">1132</a>
 <a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
-<a href="#1156" id="1156">1156</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cache::{LinearHashCacheMap, LinearHashCacheSet};
@@ -1182,15 +1159,14 @@
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
     ProtocolReceivers, ProtocolSenders,
 };
+
+<span class="kw">use </span>crossbeam_channel::{after, bounded, select, Receiver};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::{MassaTime, TimeError};
 <span class="kw">use </span>std::collections::{HashMap, HashSet};
 <span class="kw">use </span>std::mem;
-<span class="kw">use </span>std::pin::Pin;
-<span class="kw">use </span>tokio::{
-    sync::mpsc,
-    time::{sleep, sleep_until, Instant, Sleep},
-};
+<span class="kw">use </span>std::thread;
+<span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 
 <span class="doccomment">/// start a new `ProtocolController` from a `ProtocolConfig`
@@ -1204,7 +1180,7 @@
 /// * `receivers`: receiver(s) channel(s) to communicate with other modules
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
-</span><span class="kw">pub async fn </span>start_protocol_controller(
+</span><span class="kw">pub fn </span>start_protocol_controller(
     config: ProtocolConfig,
     receivers: ProtocolReceivers,
     senders: ProtocolSenders,
@@ -1215,9 +1191,9 @@
     <span class="macro">debug!</span>(<span class="string">&quot;starting protocol controller&quot;</span>);
 
     <span class="comment">// launch worker
-    </span><span class="kw">let </span>(manager_tx, controller_manager_rx) = mpsc::channel::&lt;ProtocolManagementCommand&gt;(<span class="number">1</span>);
+    </span><span class="kw">let </span>(manager_tx, controller_manager_rx) = bounded::&lt;ProtocolManagementCommand&gt;(<span class="number">1</span>);
     <span class="kw">let </span>pool_controller = pool_controller.clone();
-    <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
+    <span class="kw">let </span>join_handle = thread::spawn(<span class="kw">move </span>|| {
         <span class="kw">let </span>res = ProtocolWorker::new(
             config,
             ProtocolWorkerChannels {
@@ -1230,8 +1206,7 @@
             pool_controller,
             storage,
         )
-        .run_loop()
-        .<span class="kw">await</span>;
+        .run_loop();
         <span class="kw">match </span>res {
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;protocol worker crashed: {}&quot;</span>, err);
@@ -1285,9 +1260,9 @@
     <span class="doccomment">/// Channel to send protocol pool events to the controller.
     </span>pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     <span class="doccomment">/// Channel receiving commands from the controller.
-    </span>controller_command_rx: mpsc::Receiver&lt;ProtocolCommand&gt;,
+    </span>controller_command_rx: Receiver&lt;ProtocolCommand&gt;,
     <span class="doccomment">/// Channel to send management commands to the controller.
-    </span>controller_manager_rx: mpsc::Receiver&lt;ProtocolManagementCommand&gt;,
+    </span>controller_manager_rx: Receiver&lt;ProtocolManagementCommand&gt;,
     <span class="doccomment">/// Ids of active nodes mapped to node info.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) active_nodes: HashMap&lt;NodeId, NodeInfo&gt;,
     <span class="doccomment">/// List of wanted blocks,
@@ -1307,6 +1282,14 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) storage: Storage,
     <span class="doccomment">/// Operations to announce at the next interval.
     </span>operations_to_announce: Vec&lt;OperationId&gt;,
+    <span class="doccomment">/// Block timer
+    </span>block_ask_timer: Receiver&lt;Instant&gt;,
+    <span class="doccomment">/// Operation pruning timer.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operation_prune_timer: Receiver&lt;Instant&gt;,
+    <span class="doccomment">/// Operation announcement timer.
+    </span>operation_announcement_interval: Receiver&lt;Instant&gt;,
+    <span class="doccomment">/// Operation batch proc period timer.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operation_batch_proc_period_timer: Receiver&lt;Instant&gt;,
 }
 
 <span class="doccomment">/// channels used by the protocol worker
@@ -1316,9 +1299,9 @@
     <span class="doccomment">/// network event receiver
     </span><span class="kw">pub </span>network_event_receiver: NetworkEventReceiver,
     <span class="doccomment">/// protocol command receiver
-    </span><span class="kw">pub </span>controller_command_rx: mpsc::Receiver&lt;ProtocolCommand&gt;,
+    </span><span class="kw">pub </span>controller_command_rx: Receiver&lt;ProtocolCommand&gt;,
     <span class="doccomment">/// protocol management command receiver
-    </span><span class="kw">pub </span>controller_manager_rx: mpsc::Receiver&lt;ProtocolManagementCommand&gt;,
+    </span><span class="kw">pub </span>controller_manager_rx: Receiver&lt;ProtocolManagementCommand&gt;,
 }
 
 <span class="kw">impl </span>ProtocolWorker {
@@ -1342,6 +1325,11 @@
         pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
         storage: Storage,
     ) -&gt; ProtocolWorker {
+        <span class="comment">// TODO: Config variable for the moment 10000 (prune) (100 seconds)
+        </span><span class="kw">let </span>block_ask_timer = after(config.ask_block_timeout.into());
+        <span class="kw">let </span>operation_prune_timer = after(config.asked_operations_pruning_period.into());
+        <span class="kw">let </span>operation_announcement_interval = after(config.operation_announcement_interval.into());
+        <span class="kw">let </span>operation_batch_proc_period_timer = after(config.operation_batch_proc_period.into());
         ProtocolWorker {
             config,
             network_command_sender,
@@ -1363,6 +1351,10 @@
             operations_to_announce: Vec::with_capacity(
                 config.operation_announcement_buffer_capacity,
             ),
+            block_ask_timer,
+            operation_prune_timer,
+            operation_announcement_interval,
+            operation_batch_proc_period_timer,
         }
     }
 
@@ -1375,81 +1367,62 @@
     /// - `node_event_rx`
     /// And at the end every thing is closed properly
     /// Consensus work is managed here.
-    /// It&#39;s mostly a `tokio::select!` within a loop.
-    </span><span class="kw">pub async fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
-        <span class="comment">// TODO: Config variable for the moment 10000 (prune) (100 seconds)
-        </span><span class="kw">let </span>operation_prune_timer = sleep(<span class="self">self</span>.config.asked_operations_pruning_period.into());
-        <span class="macro">tokio::pin!</span>(operation_prune_timer);
-        <span class="kw">let </span>block_ask_timer = sleep(<span class="self">self</span>.config.ask_block_timeout.into());
-        <span class="macro">tokio::pin!</span>(block_ask_timer);
-        <span class="kw">let </span>operation_batch_proc_period_timer =
-            sleep(<span class="self">self</span>.config.operation_batch_proc_period.into());
-        <span class="macro">tokio::pin!</span>(operation_batch_proc_period_timer);
-        <span class="kw">let </span>operation_announcement_interval =
-            sleep(<span class="self">self</span>.config.operation_announcement_interval.into());
-        <span class="macro">tokio::pin!</span>(operation_announcement_interval);
+    /// It&#39;s mostly a `crossbeam::select!` within a loop.
+    </span><span class="kw">pub fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NetworkEventReceiver, ProtocolError&gt; {
         <span class="kw">loop </span>{
             <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.begin&quot;</span>, {});
-            <span class="comment">/*
-                select! without the &quot;biased&quot; modifier will randomly select the 1st branch to check,
-                then will check the next ones in the order they are written.
-                We choose this order:
-                    * manager commands: low freq, avoid having to wait to stop
-                    * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
-                    * network events (high frequency): process incoming events
-                    * ask for blocks (timing not important)
-            */
-            </span><span class="macro">tokio::select! </span>{
+            <span class="macro">select! </span>{
                 <span class="comment">// listen to management commands
-                </span>cmd = <span class="self">self</span>.controller_manager_rx.recv() =&gt; {
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.controller_manager_rx&quot;</span>, { <span class="string">&quot;cmd&quot;</span>: cmd });
-                    <span class="kw">match </span>cmd {
-                        <span class="prelude-val">None </span>=&gt; <span class="kw">break</span>,
-                        <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; {}
-                    };
+                </span>recv(<span class="self">self</span>.controller_manager_rx) -&gt; cmd =&gt; {
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.controller_manager_rx&quot;</span>, { });
+                    <span class="kw">if </span>cmd.is_err() {
+                        <span class="kw">break
+                    </span>}
                 }
 
                 <span class="comment">// listen to incoming commands
-                </span><span class="prelude-val">Some</span>(cmd) = <span class="self">self</span>.controller_command_rx.recv() =&gt; {
-                    <span class="self">self</span>.process_command(cmd, <span class="kw-2">&amp;mut
-                        </span>block_ask_timer,
-                        <span class="kw-2">&amp;mut </span>operation_announcement_interval).<span class="kw">await</span><span class="question-mark">?</span>;
+                </span>recv(<span class="self">self</span>.controller_command_rx) -&gt; msg =&gt; {
+                    <span class="kw">match </span>msg {
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">break</span>,
+                        <span class="prelude-val">Ok</span>(cmd) =&gt; <span class="self">self</span>.process_command(cmd)<span class="question-mark">?
+                    </span>};
                 }
 
                 <span class="comment">// listen to network controller events
-                </span>evt = <span class="self">self</span>.network_event_receiver.wait_event() =&gt; {
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.network_event_rx&quot;</span>, {});
-                    <span class="self">self</span>.on_network_event(evt<span class="question-mark">?</span>, <span class="kw-2">&amp;mut </span>block_ask_timer, <span class="kw-2">&amp;mut </span>operation_announcement_interval).<span class="kw">await</span><span class="question-mark">?</span>;
+                </span>recv(<span class="self">self</span>.network_event_receiver.<span class="number">0</span>) -&gt; msg =&gt; {
+                    <span class="kw">match </span>msg {
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">break</span>,
+                        <span class="prelude-val">Ok</span>(evt) =&gt; <span class="self">self</span>.on_network_event(evt)<span class="question-mark">?
+                    </span>};
                 }
 
                 <span class="comment">// block ask timer
-                </span><span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>block_ask_timer =&gt; {
+                </span>recv(<span class="self">self</span>.block_ask_timer) -&gt; <span class="kw">_ </span>=&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.block_ask_timer&quot;</span>, { });
-                    <span class="self">self</span>.update_ask_block(<span class="kw-2">&amp;mut </span>block_ask_timer).<span class="kw">await</span><span class="question-mark">?</span>;
+                    <span class="self">self</span>.update_ask_block()<span class="question-mark">?</span>;
                 }
 
                 <span class="comment">// Operation announcement interval.
-                </span><span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>operation_announcement_interval =&gt; {
+                </span>recv(<span class="self">self</span>.operation_announcement_interval) -&gt; <span class="kw">_ </span>=&gt; {
                     <span class="comment">// Announce operations.
-                    </span><span class="self">self</span>.announce_ops(<span class="kw-2">&amp;mut </span>operation_announcement_interval).<span class="kw">await</span>;
+                    </span><span class="self">self</span>.announce_ops();
                 }
 
                 <span class="comment">// operation ask timer
-                </span><span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>operation_batch_proc_period_timer =&gt; {
+                </span>recv(<span class="self">self</span>.operation_batch_proc_period_timer) -&gt; <span class="kw">_ </span>=&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.operation_ask_and_announce_timer&quot;</span>, { });
 
                     <span class="comment">// Update operations to ask.
-                    </span><span class="self">self</span>.update_ask_operation(<span class="kw-2">&amp;mut </span>operation_batch_proc_period_timer).<span class="kw">await</span><span class="question-mark">?</span>;
+                    </span><span class="self">self</span>.update_ask_operation()<span class="question-mark">?</span>;
                 }
                 <span class="comment">// operation prune timer
-                </span><span class="kw">_ </span>= <span class="kw-2">&amp;mut </span>operation_prune_timer =&gt; {
+                </span>recv(<span class="self">self</span>.operation_prune_timer) -&gt; <span class="kw">_ </span>=&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.operation_prune_timer&quot;</span>, { });
-                    <span class="self">self</span>.prune_asked_operations(<span class="kw-2">&amp;mut </span>operation_prune_timer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.prune_asked_operations()<span class="question-mark">?</span>;
                 }
             }
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.end&quot;</span>, {});
         }
-
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.run_loop.end&quot;</span>, {});
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.network_event_receiver)
     }
 
@@ -1457,7 +1430,7 @@
     /// Side effects:
     /// - notes nodes as knowing about those operations from now on.
     /// - empties the buffer of operations to announce.
-    </span><span class="kw">async fn </span>announce_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>, timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;) {
+    </span><span class="kw">fn </span>announce_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Quit if empty  to avoid iterating on nodes
         </span><span class="kw">if </span><span class="self">self</span>.operations_to_announce.is_empty() {
             <span class="comment">// Reset timer.
@@ -1465,7 +1438,7 @@
             <span class="kw">let </span>next_tick = now
                 .checked_add(<span class="self">self</span>.config.operation_announcement_interval.into())
                 .expect(<span class="string">&quot;time overflow&quot;</span>);
-            timer.set(sleep_until(next_tick));
+            <span class="self">self</span>.operation_announcement_interval = after(next_tick.elapsed());
             <span class="kw">return</span>;
         }
         <span class="kw">let </span>operation_ids = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.operations_to_announce);
@@ -1481,10 +1454,10 @@
             <span class="kw">if </span>!new_ops.is_empty() {
                 node_info.insert_known_ops(new_ops.iter().map(|id| id.prefix()));
 
-                <span class="kw">let </span>res = <span class="self">self
-                    </span>.network_command_sender
-                    .announce_operations(<span class="kw-2">*</span>node, new_ops.iter().map(|id| id.into_prefix()).collect())
-                    .<span class="kw">await</span>;
+                <span class="kw">let </span>res = <span class="self">self</span>.network_command_sender.announce_operations(
+                    <span class="kw-2">*</span>node,
+                    new_ops.iter().map(|id| id.into_prefix()).collect(),
+                );
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = res {
                     <span class="macro">debug!</span>(<span class="string">&quot;could not send operation batch to node {}: {}&quot;</span>, node, err);
                 }
@@ -1496,16 +1469,12 @@
         <span class="kw">let </span>next_tick = now
             .checked_add(<span class="self">self</span>.config.operation_announcement_interval.into())
             .expect(<span class="string">&quot;time overflow&quot;</span>);
-        timer.set(sleep_until(next_tick));
+        <span class="self">self</span>.operation_announcement_interval = after(next_tick.elapsed());
     }
 
     <span class="doccomment">/// Add an list of operations to a buffer for announcement at the next interval,
     /// or immediately if the buffer is full.
-    </span><span class="kw">async fn </span>note_operations_to_announce(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        operations: <span class="kw-2">&amp;</span>[OperationId],
-        timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
-    ) {
+    </span><span class="kw">fn </span>note_operations_to_announce(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operations: <span class="kw-2">&amp;</span>[OperationId]) {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;protocol.protocol_worker.note_operations_to_announce.begin&quot;</span>,
             { <span class="string">&quot;operations&quot;</span>: operations }
@@ -1517,11 +1486,11 @@
         // announce operations immediately,
         // clearing the data at the same time.
         </span><span class="kw">if </span><span class="self">self</span>.operations_to_announce.len() &gt; <span class="self">self</span>.config.operation_announcement_buffer_capacity {
-            <span class="self">self</span>.announce_ops(timer).<span class="kw">await</span>;
+            <span class="self">self</span>.announce_ops();
         }
     }
 
-    <span class="kw">async fn </span>propagate_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, storage: <span class="kw-2">&amp;</span>Storage) {
+    <span class="kw">fn </span>propagate_endorsements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, storage: <span class="kw-2">&amp;</span>Storage) {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;protocol.protocol_worker.process_command.propagate_endorsements.begin&quot;</span>,
             { <span class="string">&quot;endorsements&quot;</span>: storage.get_endorsement_refs() }
@@ -1545,8 +1514,7 @@
             <span class="kw">if </span>!to_send.is_empty() {
                 <span class="kw">let </span>res = <span class="self">self
                     </span>.network_command_sender
-                    .send_endorsements(<span class="kw-2">*</span>node, to_send)
-                    .<span class="kw">await</span>;
+                    .send_endorsements(<span class="kw-2">*</span>node, to_send);
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = res {
                     <span class="macro">debug!</span>(
                         <span class="string">&quot;could not send endorsements batch to node {}: {}&quot;</span>,
@@ -1557,12 +1525,7 @@
         }
     }
 
-    <span class="kw">async fn </span>process_command(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        cmd: ProtocolCommand,
-        block_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
-        op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    <span class="kw">fn </span>process_command(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cmd: ProtocolCommand) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="kw">match </span>cmd {
             ProtocolCommand::IntegratedBlock { block_id, storage } =&gt; {
                 <span class="macro">massa_trace!</span>(
@@ -1589,8 +1552,7 @@
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.send_header&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id, <span class="string">&quot;block_id&quot;</span>: block_id});
                         <span class="self">self</span>.network_command_sender
                             .send_block_header(<span class="kw-2">*</span>node_id, header.clone())
-                            .<span class="kw">await
-                            </span>.map_err(|<span class="kw">_</span>| {
+                            .map_err(|<span class="kw">_</span>| {
                                 ProtocolError::ChannelError(
                                     <span class="string">&quot;send block header network command send failed&quot;</span>.into(),
                                 )
@@ -1620,7 +1582,7 @@
                     .collect();
                 <span class="kw">for </span>id <span class="kw">in </span>to_ban.iter() {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.attack_block_detected.ban_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: id, <span class="string">&quot;block_id&quot;</span>: block_id });
-                    <span class="self">self</span>.ban_node(id).<span class="kw">await</span><span class="question-mark">?</span>;
+                    <span class="self">self</span>.ban_node(id)<span class="question-mark">?</span>;
                 }
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;protocol.protocol_worker.process_command.attack_block_detected.end&quot;</span>,
@@ -1642,7 +1604,7 @@
                 </span><span class="kw">for </span>block_id <span class="kw">in </span>remove.iter() {
                     <span class="self">self</span>.block_wishlist.remove(block_id);
                 }
-                <span class="self">self</span>.update_ask_block(block_timer).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="self">self</span>.update_ask_block()<span class="question-mark">?</span>;
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;protocol.protocol_worker.process_command.wishlist_delta.end&quot;</span>,
                     {}
@@ -1662,11 +1624,10 @@
 
                 <span class="comment">// Announce operations to active nodes not knowing about it.
                 </span><span class="kw">let </span>to_announce: Vec&lt;OperationId&gt; = operation_ids.iter().copied().collect();
-                <span class="self">self</span>.note_operations_to_announce(<span class="kw-2">&amp;</span>to_announce, op_timer)
-                    .<span class="kw">await</span>;
+                <span class="self">self</span>.note_operations_to_announce(<span class="kw-2">&amp;</span>to_announce);
             }
             ProtocolCommand::PropagateEndorsements(endorsements) =&gt; {
-                <span class="self">self</span>.propagate_endorsements(<span class="kw-2">&amp;</span>endorsements).<span class="kw">await</span>;
+                <span class="self">self</span>.propagate_endorsements(<span class="kw-2">&amp;</span>endorsements);
             }
         }
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.end&quot;</span>, {});
@@ -1689,12 +1650,9 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>update_ask_block(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        ask_block_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_ask_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.update_ask_block.begin&quot;</span>, {});
-        <span class="kw">let </span>now = Instant::now();
+        <span class="kw">let </span>now = std::time::Instant::now();
 
         <span class="comment">// init timer
         </span><span class="kw">let </span><span class="kw-2">mut </span>next_tick = now
@@ -1883,20 +1841,19 @@
             //});
             </span><span class="self">self</span>.network_command_sender
                 .ask_for_block_list(ask_block_list)
-                .<span class="kw">await
-                </span>.map_err(|<span class="kw">_</span>| {
+                .map_err(|<span class="kw">_</span>| {
                     ProtocolError::ChannelError(<span class="string">&quot;ask for block node command send failed&quot;</span>.into())
                 })<span class="question-mark">?</span>;
         }
 
-        <span class="comment">// reset timer
-        </span>ask_block_timer.set(sleep_until(next_tick));
+        <span class="comment">// Update timer.
+        </span><span class="self">self</span>.block_ask_timer = after(next_tick.elapsed());
 
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Ban a node.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_id: <span class="kw-2">&amp;</span>NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_id: <span class="kw-2">&amp;</span>NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.ban_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: node_id });
         <span class="self">self</span>.active_nodes.remove(node_id);
         <span class="kw">if </span><span class="self">self</span>.active_nodes.is_empty() {
@@ -1904,8 +1861,7 @@
         }
         <span class="self">self</span>.network_command_sender
             .node_ban_by_ids(<span class="macro">vec!</span>[<span class="kw-2">*</span>node_id])
-            .<span class="kw">await
-            </span>.map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;Ban node command send failed&quot;</span>.into()))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;Ban node command send failed&quot;</span>.into()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1926,7 +1882,7 @@
     /// - Unique indices.
     /// - Slot matches that of the block.
     /// - Block matches that of the block.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_header_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_header_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         header: <span class="kw-2">&amp;</span>SecuredHeader,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
@@ -1973,10 +1929,11 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, <span class="bool-val">false</span>)));
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-            </span>.note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, <span class="bool-val">false</span>)
-            .<span class="kw">await
-        </span>{
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_endorsements_from_node(
+            header.content.endorsements.clone(),
+            source_node_id,
+            <span class="bool-val">false</span>,
+        ) {
             <span class="macro">warn!</span>(
                 <span class="string">&quot;node {} sent us a header containing critically incorrect endorsements: {}&quot;</span>,
                 source_node_id, err
@@ -2041,11 +1998,10 @@
     ///
     /// Checks performed:
     /// - Valid signature
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_operations_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_operations_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         operations: Vec&lt;SecureShareOperation&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
-        op_timer: <span class="kw-2">&amp;mut </span>Pin&lt;<span class="kw-2">&amp;mut </span>Sleep&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: source_node_id, <span class="string">&quot;operations&quot;</span>: operations });
         <span class="kw">let </span>length = operations.len();
@@ -2124,8 +2080,7 @@
             ops_to_propagate.drop_operation_refs(<span class="kw-2">&amp;</span>operations_to_not_propagate);
             <span class="kw">let </span>to_announce: Vec&lt;OperationId&gt; =
                 ops_to_propagate.get_op_refs().iter().copied().collect();
-            <span class="self">self</span>.note_operations_to_announce(<span class="kw-2">&amp;</span>to_announce, op_timer)
-                .<span class="kw">await</span>;
+            <span class="self">self</span>.note_operations_to_announce(<span class="kw-2">&amp;</span>to_announce);
 
             <span class="comment">// Add to pool
             </span><span class="self">self</span>.pool_controller.add_operations(ops);
@@ -2143,7 +2098,7 @@
     ///
     /// Checks performed:
     /// - Valid signature.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>note_endorsements_from_node(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_node(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         endorsements: Vec&lt;SecureShareEndorsement&gt;,
         source_node_id: <span class="kw-2">&amp;</span>NodeId,
@@ -2227,8 +2182,7 @@
                         .collect()
                 };
                 endorsements_to_propagate.drop_endorsement_refs(<span class="kw-2">&amp;</span>endorsements_to_not_propagate);
-                <span class="self">self</span>.propagate_endorsements(<span class="kw-2">&amp;</span>endorsements_to_propagate)
-                    .<span class="kw">await</span>;
+                <span class="self">self</span>.propagate_endorsements(<span class="kw-2">&amp;</span>endorsements_to_propagate);
             }
 
             <span class="comment">// Add to pool

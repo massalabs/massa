@@ -382,6 +382,7 @@
 //! remember which node know what.
 
 </span><span class="kw">use crate</span>::{BootstrapPeers, ConnectionClosureReason, Peers};
+<span class="kw">use </span>crossbeam_channel::Sender;
 <span class="kw">use </span>massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -393,7 +394,6 @@
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
-<span class="kw">use </span>tokio::sync::oneshot;
 
 <span class="doccomment">/// network command
 </span><span class="attr">#[derive(Clone, Debug)]
@@ -488,9 +488,9 @@
         </span>header: SecuredHeader,
     },
     <span class="doccomment">/// `(PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list` of associated Id nodes in connection out (true)
-    </span>GetPeers(oneshot::Sender&lt;Peers&gt;),
+    </span>GetPeers(Sender&lt;Peers&gt;),
     <span class="doccomment">/// get peers for bootstrap server
-    </span>GetBootstrapPeers(oneshot::Sender&lt;BootstrapPeers&gt;),
+    </span>GetBootstrapPeers(Sender&lt;BootstrapPeers&gt;),
     <span class="doccomment">/// Ban a list of peer by their node id
     </span>NodeBanByIds(Vec&lt;NodeId&gt;),
     <span class="doccomment">/// Ban a list of peer by their ip address
@@ -512,12 +512,12 @@
         <span class="doccomment">/// arbitrary message
         </span>msg: Vec&lt;u8&gt;,
         <span class="doccomment">/// response channels
-        </span>response_tx: oneshot::Sender&lt;PubkeySig&gt;,
+        </span>response_tx: Sender&lt;PubkeySig&gt;,
     },
     <span class="doccomment">/// gets network stats
     </span>GetStats {
         <span class="doccomment">/// response channels
-        </span>response_tx: oneshot::Sender&lt;NetworkStats&gt;,
+        </span>response_tx: Sender&lt;NetworkStats&gt;,
     },
     <span class="doccomment">/// Send a batch of full operations
     </span>SendOperations {

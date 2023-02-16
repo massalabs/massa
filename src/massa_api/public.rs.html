@@ -1396,9 +1396,9 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
-        <span class="kw">let </span>(network_stats_result, peers_result) = <span class="macro">tokio::join!</span>(
+        <span class="kw">let </span>(network_stats_result, peers_result) = (
             network_command_sender.get_network_stats(),
-            network_command_sender.get_peers()
+            network_command_sender.get_peers(),
         );
 
         <span class="kw">let </span>network_stats = <span class="kw">match </span>network_stats_result {

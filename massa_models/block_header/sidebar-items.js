@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BlockHeader","BlockHeaderDeserializer","BlockHeaderSerializer","VersioningMiddleware"],"type":["SecuredHeader"]};
+window.SIDEBAR_ITEMS = {"struct":["BlockHeader","BlockHeaderDeserializer","BlockHeaderSerializer"],"type":["SecuredHeader"]};

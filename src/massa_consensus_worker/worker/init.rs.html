@@ -308,7 +308,6 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -354,7 +353,6 @@
     <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(<span class="number">0</span>, thread_number),
-            announced_version: <span class="number">0</span>,
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
             endorsements: Vec::new(),

@@ -435,13 +435,6 @@
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -533,8 +526,7 @@
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         network_command_sender
             .node_sign_message(message)
-            .<span class="kw">await
-            </span>.map_err(|e| ApiError::NetworkError(e).into())
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     <span class="kw">async fn </span>add_staking_secret_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, secret_keys: Vec&lt;String&gt;) -&gt; RpcResult&lt;()&gt; {
@@ -583,32 +575,28 @@
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         network_command_sender
             .node_ban_by_ips(ips)
-            .<span class="kw">await
-            </span>.map_err(|e| ApiError::NetworkError(e).into())
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     <span class="kw">async fn </span>node_ban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         network_command_sender
             .node_ban_by_ids(ids)
-            .<span class="kw">await
-            </span>.map_err(|e| ApiError::NetworkError(e).into())
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     <span class="kw">async fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         network_command_sender
             .node_unban_by_ids(ids)
-            .<span class="kw">await
-            </span>.map_err(|e| ApiError::NetworkError(e).into())
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     <span class="kw">async fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         network_command_sender
             .node_unban_ips(ips)
-            .<span class="kw">await
-            </span>.map_err(|e| ApiError::NetworkError(e).into())
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     <span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
@@ -664,7 +652,7 @@
 
     <span class="kw">async fn </span>node_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
-        <span class="kw">match </span>network_command_sender.get_peers().<span class="kw">await </span>{
+        <span class="kw">match </span>network_command_sender.get_peers() {
             <span class="prelude-val">Ok</span>(peers) =&gt; <span class="prelude-val">Ok</span>(peers.peers.into_keys().sorted().collect::&lt;Vec&lt;IpAddr&gt;&gt;()),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(ApiError::NetworkError(e).into()),
         }
@@ -674,16 +662,14 @@
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         network_command_sender
             .add_to_whitelist(ips)
-            .<span class="kw">await
-            </span>.map_err(|e| ApiError::NetworkError(e).into())
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     <span class="kw">async fn </span>node_remove_from_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">let </span>network_command_sender = <span class="self">self</span>.<span class="number">0</span>.network_command_sender.clone();
         network_command_sender
             .remove_from_whitelist(ips)
-            .<span class="kw">await
-            </span>.map_err(|e| ApiError::NetworkError(e).into())
+            .map_err(|e| ApiError::NetworkError(e).into())
     }
 
     <span class="kw">async fn </span>node_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt; {

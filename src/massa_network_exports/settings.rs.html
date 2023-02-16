@@ -256,6 +256,24 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>enum_map::EnumMap;
@@ -350,6 +368,14 @@
     </span><span class="kw">pub </span>node_command_channel_size: usize,
     <span class="doccomment">/// Node event channel size
     </span><span class="kw">pub </span>node_event_channel_size: usize,
+    <span class="doccomment">/// Handshake manager channel size
+    </span><span class="kw">pub </span>handshake_manager_channel_size: usize,
+    <span class="doccomment">/// Node result channel size
+    </span><span class="kw">pub </span>node_result_channel_size: usize,
+    <span class="doccomment">/// Handshake peer list chanel size
+    </span><span class="kw">pub </span>handshake_peer_list_channel_size: usize,
+    <span class="doccomment">/// Node message channel size
+    </span><span class="kw">pub </span>node_message_channel_size: usize,
 }
 
 <span class="doccomment">/// Connection configuration for a peer type
@@ -371,12 +397,14 @@
     <span class="kw">use crate</span>::{test_exports::tools::get_temp_keypair_file, PeerType};
     <span class="kw">use </span>enum_map::enum_map;
     <span class="kw">use </span>massa_models::config::{
-        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-        MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-        MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        ENDORSEMENT_COUNT, HANDSHAKE_MANAGER_CHANNEL_SIZE, HANDSHAKE_PEER_LIST_CHANNEL_SIZE,
+        MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE, MAX_DATASTORE_VALUE_LENGTH,
+        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
+        MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         MAX_PARAMETERS_SIZE, NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
-        NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, THREAD_COUNT,
+        NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE,
+        NODE_MESSAGE_CHANNEL_SIZE, NODE_RESULT_CHANNEL_SIZE, THREAD_COUNT,
     };
     <span class="kw">use </span>massa_time::MassaTime;
     <span class="kw">use </span>std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -443,6 +471,10 @@
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+                handshake_manager_channel_size: HANDSHAKE_MANAGER_CHANNEL_SIZE,
+                node_result_channel_size: NODE_RESULT_CHANNEL_SIZE,
+                handshake_peer_list_channel_size: HANDSHAKE_PEER_LIST_CHANNEL_SIZE,
+                node_message_channel_size: NODE_MESSAGE_CHANNEL_SIZE,
             }
         }
     }
@@ -510,6 +542,10 @@
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+                handshake_manager_channel_size: HANDSHAKE_MANAGER_CHANNEL_SIZE,
+                node_result_channel_size: NODE_RESULT_CHANNEL_SIZE,
+                handshake_peer_list_channel_size: HANDSHAKE_PEER_LIST_CHANNEL_SIZE,
+                node_message_channel_size: NODE_MESSAGE_CHANNEL_SIZE,
             }
         }
     }
