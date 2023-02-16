@@ -48,9 +48,6 @@ impl BootstrapManager {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-/// TODO merging the command senders into one channel structure may allow removing that allow
-///
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.
 pub async fn start_bootstrap_server(
@@ -116,7 +113,7 @@ impl BootstrapServer {
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
 
         let Ok(max_bootstraps) = self.bootstrap_config.max_simultaneous_bootstraps.try_into() else {
-            todo!("handle failed conversion");
+            return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
         };
 
         // This is the primary interface between the async-listener, and the (soon to be) sync worker
@@ -186,9 +183,30 @@ impl BootstrapServer {
             );
 
             // check whether incoming peer IP is allowed.
-            // TODO: Handle error according to the previous `is_ip_allowed` fn
-            if let Err(_msg) = allow_block_list.is_ip_allowed(&remote_addr) {
-                todo!("handle error message");
+            // TODO: confirm error handled according to the previous `is_ip_allowed` fn
+            if let Err(error_msg) = allow_block_list.is_ip_allowed(&remote_addr) {
+                let _ = match tokio::time::timeout(
+                    self.bootstrap_config.write_error_timeout.into(),
+                    server.send(BootstrapServerMessage::BootstrapError {
+                        error: error_msg.clone(),
+                    }),
+                )
+                .await
+                {
+                    Err(_) => Err(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        format!("{}  timed out", &error_msg),
+                    )
+                    .into()),
+                    Ok(Err(e)) => Err(e),
+                    Ok(Ok(_)) => Ok(()),
+                };
+                // not exactly sure what to do here
+                // return Err(std::io::Error::new(
+                //     std::io::ErrorKind::PermissionDenied,
+                //     error_msg,
+                // ));
+                continue;
             };
 
             // TODO: find a better way to track count
