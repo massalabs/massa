@@ -8,7 +8,7 @@ use std::{
 use massa_logging::massa_trace;
 use parking_lot::RwLock;
 
-use crate::{error::BootstrapError, tools::normalize_ip};
+use crate::tools::normalize_ip;
 
 /// A wrapper around the allow/block lists that allows efficient sharing between threads
 // TODO: don't clone the path-bufs...
@@ -20,24 +20,22 @@ pub(crate) struct SharedAllowBlockList {
 }
 
 impl SharedAllowBlockList {
-    pub(crate) fn new(allow_path: PathBuf, block_path: PathBuf) -> Self {
-        let Ok((allow_list, block_list)) = AllowBlockListInner::load_allow_block_lists(&allow_path, &block_path) else {
-            todo!("handle path loading error");
-        };
-        Self {
+    pub(crate) fn new(allow_path: PathBuf, block_path: PathBuf) -> Result<Self, String> {
+        let (allow_list, block_list) =
+            AllowBlockListInner::load_allow_block_lists(&allow_path, &block_path)?;
+        Ok(Self {
             inner: Arc::new(RwLock::new(AllowBlockListInner {
                 allow_list,
                 block_list,
             })),
             allow_path,
             block_path,
-        }
+        })
     }
-    pub(crate) fn update(&mut self) {
+    pub(crate) fn update(&mut self) -> Result<(), String> {
         let read_lock = self.inner.read();
-        let Ok((new_allow, new_block)) = AllowBlockListInner::load_allow_block_lists(&self.allow_path, &self.block_path) else {
-            todo!("handle reload error");
-        };
+        let (new_allow, new_block) =
+            AllowBlockListInner::load_allow_block_lists(&self.allow_path, &self.block_path)?;
         let allow_delta = new_allow != read_lock.allow_list;
         let block_delta = new_block != read_lock.block_list;
         if allow_delta || block_delta {
@@ -54,6 +52,7 @@ impl SharedAllowBlockList {
                 mut_inner.block_list = new_block;
             }
         }
+        Ok(())
     }
     pub(crate) fn is_ip_allowed(&self, remote_addr: &SocketAddr) -> Result<(), String> {
         let ip = normalize_ip(remote_addr.ip());
@@ -78,23 +77,19 @@ impl AllowBlockListInner {
     fn load_allow_block_lists(
         allowlist_path: &PathBuf,
         blocklist_path: &PathBuf,
-    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
+    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), String> {
         let allow_list = Self::load_list(allowlist_path)?;
         let block_list = Self::load_list(blocklist_path)?;
         Ok((allow_list, block_list))
     }
 
-    fn load_list(list_path: &PathBuf) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
+    fn load_list(list_path: &PathBuf) -> Result<Option<HashSet<IpAddr>>, String> {
         let Ok(list) = std::fs::read_to_string(list_path) else {
             return Ok(None);
         };
         let res = Some(
             serde_json::from_str::<HashSet<IpAddr>>(list.as_str())
-                .map_err(|_| {
-                    BootstrapError::GeneralError(String::from(
-                        "Failed to parse bootstrap whitelist",
-                    ))
-                })?
+                .map_err(|_| String::from("Failed to parse bootstrap whitelist"))?
                 .into_iter()
                 .map(normalize_ip)
                 .collect(),

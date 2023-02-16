@@ -133,11 +133,13 @@ impl BootstrapServer {
         let allow_block_list = SharedAllowBlockList::new(
             self.bootstrap_config.bootstrap_whitelist_path.clone(),
             self.bootstrap_config.bootstrap_blacklist_path.clone(),
-        );
+        )
+        .map_err(|msg| BootstrapError::GeneralError(msg))?;
         let mut updaters_list = allow_block_list.clone();
         std::thread::spawn(move || loop {
             std::thread::sleep(list_update_timeout);
-            updaters_list.update();
+            // TODO: Do we want to handle shutting things down if the update errors out?
+            let _ = updaters_list.update();
         });
 
         let listener_handle = tokio::spawn(async move {
@@ -179,6 +181,7 @@ impl BootstrapServer {
             // before handling a bootstrap, check if the stopper has sent a trigger.
             // TODO: There is probably a better way to do this, such as using an Arc<AtomicBool>...
             let stop = self.manager_rx.try_recv();
+            // give the compiler optimisation hints
             if unlikely(stop.is_ok()) {
                 massa_trace!("bootstrap.lib.run.select.manager", {});
                 break;
