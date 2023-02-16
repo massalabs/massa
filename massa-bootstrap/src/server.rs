@@ -325,66 +325,6 @@ impl BootstrapServer {
             .or_insert(now);
         res
     }
-
-    // #[cfg(test)]
-    // // TODO we didn't test whether the peer IP address is banned
-    // async fn is_ip_allowed(
-    //     &self,
-    //     remote_addr: SocketAddr,
-    //     server: BootstrapServerBinder,
-    //     _whitelist: &Option<HashSet<IpAddr>>,
-    //     _blacklist: &Option<HashSet<IpAddr>>,
-    // ) -> io::Result<(BootstrapServerBinder, SocketAddr)> {
-    //     Ok((server, remote_addr))
-    // }
-
-    // #[cfg(not(test))]
-    // whether the peer IP address is banned
-    // async fn is_ip_allowed(
-    //     remote_addr: &SocketAddr,
-    //     whitelist: Option<HashSet<IpAddr>>,
-    //     blacklist: Option<HashSet<IpAddr>>,
-    // ) -> Result<(), String> {
-    //     let ip = normalize_ip(remote_addr.ip());
-    //     // whether the peer IP address is blacklisted
-    //     let not_allowed_msg = if let Some(ip_list) = &blacklist && ip_list.contains(&ip) {
-    //         massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
-    //         Err(format!("IP {} is blacklisted", &ip))
-    //     // whether the peer IP address is not present in the whitelist
-    //     } else if let Some(ip_list) = &whitelist && !ip_list.contains(&ip){
-    //         massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
-    //         Err(format!("A whitelist exists and the IP {} is not whitelisted", &ip))
-    //     } else {
-    //         Ok(())
-    //     };
-
-    //     todo!("move this error handling to caller");
-    //     // whether the peer IP address is not allowed, send back an error message
-    //     if let Some(error_msg) = not_allowed_msg {
-    //         let _ = match tokio::time::timeout(
-    //             self.bootstrap_config.write_error_timeout.into(),
-    //             server.send(BootstrapServerMessage::BootstrapError {
-    //                 error: error_msg.clone(),
-    //             }),
-    //         )
-    //         .await
-    //         {
-    //             Err(_) => Err(std::io::Error::new(
-    //                 std::io::ErrorKind::PermissionDenied,
-    //                 format!("{}  timed out", &error_msg),
-    //             )
-    //             .into()),
-    //             Ok(Err(e)) => Err(e),
-    //             Ok(Ok(_)) => Ok(()),
-    //         };
-    //         return Err(std::io::Error::new(
-    //             std::io::ErrorKind::PermissionDenied,
-    //             error_msg,
-    //         ));
-    //     }
-
-    //     Ok((server, remote_addr))
-    // }
 }
 
 /// To be called from a `tokio::spawn` invocation
