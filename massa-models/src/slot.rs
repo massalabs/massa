@@ -380,7 +380,7 @@ impl VestingRange {
         t0: MassaTime,
         genesis_timestamp: MassaTime,
     ) -> Option<&'a VestingRange> {
-        let Some(vesting) = registry.get(addr) else {
+        let Some(vector) = registry.get(addr) else {
             return None;
         };
 
@@ -389,8 +389,8 @@ impl VestingRange {
             return None;
         };
 
-        vesting
-            .into_iter()
+        vector
+            .iter()
             .find(|vesting| vesting.start_slot <= current_slot && vesting.end_slot >= current_slot)
     }
 }

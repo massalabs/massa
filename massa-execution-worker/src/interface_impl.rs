@@ -66,11 +66,16 @@ impl InterfaceImpl {
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
+        let vesting_registry = Arc::new(
+            crate::execution::ExecutionState::init_vesting_registry(&config).unwrap_or_default(),
+        );
+
         let mut execution_context = ExecutionContext::new(
             config.clone(),
             final_state,
             Default::default(),
             module_cache,
+            vesting_registry,
         );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,

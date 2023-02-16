@@ -38,8 +38,7 @@ use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use tracing::log::error;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -1377,7 +1376,7 @@ impl ExecutionState {
     }
 
     /// Initialize the hashmap of addresses from the vesting file
-    fn init_vesting_registry(
+    pub fn init_vesting_registry(
         config: &ExecutionConfig,
     ) -> Result<PreHashMap<Address, Vec<VestingRange>>, ExecutionError> {
         let mut hashmap: PreHashMap<Address, Vec<VestingRange>> = serde_json::from_str(
