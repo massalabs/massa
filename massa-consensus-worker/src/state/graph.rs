@@ -168,7 +168,7 @@ impl ConsensusState {
             self.discarded_index.insert(*block_id);
             Ok(())
         } else {
-            return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id)));
+            Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id)))
         }
     }
 

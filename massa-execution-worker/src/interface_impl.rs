@@ -18,12 +18,17 @@ use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
 
-#[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 use massa_models::datastore::Datastore;
 
 /// helper for locking the context mutex
@@ -52,7 +57,11 @@ impl InterfaceImpl {
         InterfaceImpl { config, context }
     }
 
-    #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+    #[cfg(any(
+        feature = "gas_calibration",
+        feature = "benchmarking",
+        feature = "testing"
+    ))]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(
         sender_addr: Address,
@@ -64,7 +73,7 @@ impl InterfaceImpl {
         use parking_lot::RwLock;
 
         let config = ExecutionConfig::default();
-        let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
+        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
         let vesting_registry = Arc::new(
             crate::execution::ExecutionState::init_vesting_registry(&config).unwrap_or_default(),
@@ -765,5 +774,19 @@ impl Interface for InterfaceImpl {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }
+    }
+
+    /// Hashes givens byte array with sha256
+    ///
+    /// # Arguments
+    /// * bytes: byte array to hash
+    ///
+    /// # Returns
+    /// The vector of bytes representation of the resulting hash
+    fn hash_sha256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        let hash = hasher.finalize().into();
+        Ok(hash)
     }
 }
