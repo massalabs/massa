@@ -257,11 +257,20 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
+    address::Address,
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
@@ -275,11 +284,12 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
+    str::FromStr,
     sync::{mpsc, Arc},
     thread,
     time::Instant,
 };
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="doccomment">/// Structure gathering all elements needed by the factory thread
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockFactoryWorker {
@@ -391,11 +401,17 @@
             }
         };
 
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;block factory selected block producer address for slot {}: {}&quot;</span>,
+            slot, block_producer_addr
+        );
+
         <span class="comment">// check if the block producer address is handled by the wallet
         </span><span class="kw">let </span>block_producer_keypair_ref = <span class="self">self</span>.wallet.read();
-        <span class="kw">let </span>block_producer_keypair = <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) =
-            block_producer_keypair_ref.find_associated_keypair(<span class="kw-2">&amp;</span>block_producer_addr)
-        {
+        <span class="kw">let </span>block_producer_keypair = <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) = block_producer_keypair_ref
+            .find_associated_keypair(
+                <span class="kw-2">&amp;</span>Address::from_str(<span class="string">&quot;A12irbDfYNwyZRbnpBrfCBPCxrktp8f8riK2sQddWbzQ3g43G7bb&quot;</span>).unwrap(),
+            ) {
             <span class="comment">// the selected block producer is managed locally =&gt; continue to attempt block production
             </span>kp
         } <span class="kw">else </span>{
@@ -491,10 +507,10 @@
         );
 
         <span class="comment">// send full block to consensus
-        </span><span class="self">self</span>.channels
-            .consensus
-            .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
-    }
+        // self.channels
+        //     .consensus
+        //     .register_block(block_id, slot, block_storage, true);
+    </span>}
 
     <span class="doccomment">/// main run loop of the block creator thread
     </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
