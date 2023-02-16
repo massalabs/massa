@@ -894,7 +894,6 @@
 <a href="#894" id="894">894</a>
 <a href="#895" id="895">895</a>
 <a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1158,6 +1157,7 @@
     ///
     /// # returns
     /// A `ExecutionContext` instance ready for a read-only execution
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>readonly(
         config: ExecutionConfig,
         slot: Slot,
@@ -1501,30 +1501,28 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
             <span class="comment">// check access rights
-            </span><span class="kw">if </span>check_rights {
-                <span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
-                        from_addr
-                    )));
-                }
+            </span><span class="kw">if </span>check_rights &amp;&amp; !<span class="self">self</span>.has_write_rights_on(from_addr) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
+                    from_addr
+                )));
             }
 
             <span class="comment">// control vesting min_balance for sender address
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_range) = VestingRange::find_vesting_range(
-                <span class="kw-2">&amp;</span>from_addr,
+                from_addr,
                 <span class="kw-2">&amp;</span><span class="self">self</span>.vesting_registry,
                 <span class="self">self</span>.config.thread_count,
                 <span class="self">self</span>.config.t0,
                 <span class="self">self</span>.config.genesis_timestamp,
             ) {
                 <span class="kw">let </span>new_balance = <span class="self">self
-                    </span>.get_balance(<span class="kw-2">&amp;</span>from_addr)
+                    </span>.get_balance(from_addr)
                     .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, from_addr)))<span class="question-mark">?
                     </span>.checked_sub(amount)
                     .ok_or_else(|| {
                         ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed check transfer {} from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
-                            </span>.get_balance(<span class="kw-2">&amp;</span>from_addr).unwrap_or_default()))
+                            </span>.get_balance(from_addr).unwrap_or_default()))
                     })<span class="question-mark">?</span>;
                 <span class="kw">if </span>new_balance &lt; vesting_range.min_balance {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(
