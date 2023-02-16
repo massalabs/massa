@@ -20,7 +20,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
-    consensus_bootstrap_part_size: u64,
+    max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
@@ -48,12 +48,12 @@ impl BootstrapServerBinder {
         thread_count: u8,
         max_datastore_key_length: u8,
         randomness_size_bytes: usize,
-        consensus_bootstrap_part_size: u64,
+        max_consensus_block_ids: u64,
     ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
-            consensus_bootstrap_part_size,
+            max_consensus_block_ids,
             size_field_len,
             local_keypair,
             duplex: <Limiter>::new(limit).limit(duplex),
@@ -186,7 +186,7 @@ impl BootstrapServerBinder {
         let (_, msg) = BootstrapClientMessageDeserializer::new(
             self.thread_count,
             self.max_datastore_key_length,
-            self.consensus_bootstrap_part_size,
+            self.max_consensus_block_ids,
         )
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;

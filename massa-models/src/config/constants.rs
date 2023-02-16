@@ -117,6 +117,8 @@ pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
 pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
 /// Maximum number of consensus blocks in a bootstrap batch
 pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
+/// Maximum number of consensus block ids when sending a bootstrap cursor from the client
+pub const MAX_CONSENSUS_BLOCKS_IDS: u64 = 300;
 /// Maximum size of proof-of-stake rolls
 pub const MAX_ROLLS_COUNT_LENGTH: u64 = 10_000;
 /// Maximum size of proof-of-stake production stats
