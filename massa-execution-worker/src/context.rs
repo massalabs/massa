@@ -261,6 +261,7 @@ impl ExecutionContext {
     ///
     /// # returns
     /// A `ExecutionContext` instance ready for a read-only execution
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn readonly(
         config: ExecutionConfig,
         slot: Slot,
@@ -604,30 +605,28 @@ impl ExecutionContext {
     ) -> Result<(), ExecutionError> {
         if let Some(from_addr) = &from_addr {
             // check access rights
-            if check_rights {
-                if !self.has_write_rights_on(from_addr) {
-                    return Err(ExecutionError::RuntimeError(format!(
-                        "spending from address {} is not allowed in this context",
-                        from_addr
-                    )));
-                }
+            if check_rights && !self.has_write_rights_on(from_addr) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "spending from address {} is not allowed in this context",
+                    from_addr
+                )));
             }
 
             // control vesting min_balance for sender address
             if let Some(vesting_range) = VestingRange::find_vesting_range(
-                &from_addr,
+                from_addr,
                 &self.vesting_registry,
                 self.config.thread_count,
                 self.config.t0,
                 self.config.genesis_timestamp,
             ) {
                 let new_balance = self
-                    .get_balance(&from_addr)
+                    .get_balance(from_addr)
                     .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
                     .checked_sub(amount)
                     .ok_or_else(|| {
                         ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
-                            .get_balance(&from_addr).unwrap_or_default()))
+                            .get_balance(from_addr).unwrap_or_default()))
                     })?;
                 if new_balance < vesting_range.min_balance {
                     return Err(ExecutionError::VestingError(
