@@ -328,10 +328,6 @@ impl NetworkWorker {
         match outcome {
             // a handshake finished, and succeeded
             Ok((new_node_id, socket_reader, socket_writer)) => {
-                debug!(
-                    "handshake with connection_id={} succeeded => node_id={}",
-                    new_connection_id, new_node_id
-                );
                 massa_trace!("handshake_ok", {
                     "connection_id": new_connection_id,
                     "node_id": new_node_id
@@ -438,10 +434,6 @@ impl NetworkWorker {
             }
             // a handshake finished and failed
             Err(err) => {
-                debug!(
-                    "handshake failed with connection_id={}: {}",
-                    new_connection_id, err
-                );
                 massa_trace!("handshake_failed", {
                     "connection_id": new_connection_id,
                     "err": err.to_string()

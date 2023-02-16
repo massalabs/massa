@@ -148,7 +148,6 @@ impl NodeWorker {
                     break;
                 }
                 _ = ask_peer_list_interval.tick() => {
-                    debug!("timer-based asking node_id={} for peer list", self.node_id);
                     massa_trace!("node_worker.run_loop. timer_ask_peer_list", {"node_id": self.node_id});
                     massa_trace!("node_worker.run_loop.select.timer send Message::AskPeerList", {"node": self.node_id});
                     if let Err(e) = self.node_command_tx.send(NodeCommand::AskPeerList).await {
