@@ -20,8 +20,122 @@ use nom::sequence::{preceded, tuple};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::collections::Bound::{Excluded, Included};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Formatter;
+use std::collections::VecDeque;
+
+const NB_BLOCKS_CONSIDERED: usize = 5;
+const THRESHOLD: usize = 2;
+
+pub struct VersioningMiddleware {
+    latest_announcements: VecDeque<u32>,
+    counts: HashMap<u32, usize>,
+    current_active_version: u32,
+    current_supported_versions: Vec<u32>,
+    current_announced_version: u32,
+}
+
+impl VersioningMiddleware {
+    pub fn new() -> Self {
+        VersioningMiddleware { 
+            latest_announcements: VecDeque::with_capacity(NB_BLOCKS_CONSIDERED + 1),
+            counts: HashMap::new(),
+            current_active_version: 0,
+            current_supported_versions: Vec::new(),
+            current_announced_version: 0,
+        }
+    }
+
+    pub fn new_block(&mut self, version: u32) {
+        self.latest_announcements.push_back(version);
+
+        *self.counts.entry(version).or_default() +=1;
+        
+        // If the queue is too large, remove the most ancient block and its associated count
+        if self.latest_announcements.len() > NB_BLOCKS_CONSIDERED {
+            let prev_version = self.latest_announcements.pop_front();
+            if let Some(prev_version) = prev_version {
+                *self.counts.entry(prev_version).or_insert(1) -= 1;
+            }
+        }
+    }
+
+    pub fn most_announced_version(&mut self) -> (u32, usize) {
+        match self.counts.iter().max_by_key(|(&k,&v)| v) {
+            Some((max_count_version, count)) => (*max_count_version, *count),
+            None => (0,0)
+        }
+    }
+
+    pub fn is_count_above_threshold(&mut self, version: u32) -> bool {
+        match self.counts.get(&version) {
+            Some(count) => *count >= THRESHOLD,
+            None => false
+        }
+    }
+
+    pub fn get_current_active_version(&self) -> u32 {
+        self.current_active_version
+    }
+
+    pub fn set_current_active_version(&mut self, version: u32) {
+        self.current_active_version = version;
+    }
+    
+    pub fn get_current_supported_versions(&self) -> Vec<u32> {
+        self.current_supported_versions.clone()
+    }
+    
+    pub fn add_supported_version(&mut self, version: u32) {
+        if !self.current_supported_versions.contains(&version) {
+            self.current_supported_versions.push(version)
+        }
+    }
+
+    pub fn remove_supported_version(&mut self, version: u32) {
+        self.current_supported_versions.retain(|&x| x != version)
+    }
+    
+    pub fn get_current_announced_version(&self) -> u32 {
+        self.current_announced_version
+    }
+    
+    pub fn set_current_announced_version(&mut self, version: u32) {
+        self.current_announced_version = version;
+    }
+
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_versioning_middleware() {
+        
+        let mut vm = VersioningMiddleware::new();
+
+        vm.new_block(1);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(1);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(2);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(2);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(2);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(2);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(2);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(2);
+        println!("{:?}", vm.most_announced_version());
+        vm.new_block(2);
+        println!("{:?}", vm.most_announced_version());
+    }
+}
+
 
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
