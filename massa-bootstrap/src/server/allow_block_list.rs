@@ -21,7 +21,7 @@ pub(crate) struct SharedAllowBlockList {
 
 impl SharedAllowBlockList {
     pub(crate) fn new(allow_path: PathBuf, block_path: PathBuf) -> Self {
-        let Ok((allow_list, block_list)) = AllowBlockListInner::load_whitelist_blacklist(&allow_path, &block_path) else {
+        let Ok((allow_list, block_list)) = AllowBlockListInner::load_allow_block_lists(&allow_path, &block_path) else {
             todo!("handle path loading error");
         };
         Self {
@@ -35,14 +35,17 @@ impl SharedAllowBlockList {
     }
     pub(crate) fn update(&mut self) {
         let read_lock = self.inner.read();
-        let Ok((new_allow, new_block)) = AllowBlockListInner::load_whitelist_blacklist(&self.allow_path, &self.block_path) else {
+        let Ok((new_allow, new_block)) = AllowBlockListInner::load_allow_block_lists(&self.allow_path, &self.block_path) else {
             todo!("handle reload error");
         };
         let allow_delta = new_allow != read_lock.allow_list;
         let block_delta = new_block != read_lock.block_list;
         if allow_delta || block_delta {
-            drop(read_lock);
-            let mut mut_inner = self.inner.write();
+            // Ideally this scope would be atomic
+            let mut mut_inner = {
+                drop(read_lock);
+                self.inner.write()
+            };
 
             if allow_delta {
                 mut_inner.allow_list = new_allow;
@@ -56,7 +59,7 @@ impl SharedAllowBlockList {
         let ip = normalize_ip(remote_addr.ip());
         // whether the peer IP address is blacklisted
         let read = self.inner.read();
-        let not_allowed_msg = if let Some(ip_list) = &read.block_list && ip_list.contains(&ip) {
+        if let Some(ip_list) = &read.block_list && ip_list.contains(&ip) {
             massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
             Err(format!("IP {} is blacklisted", &ip))
             // whether the peer IP address is not present in the whitelist
@@ -65,50 +68,38 @@ impl SharedAllowBlockList {
             Err(format!("A whitelist exists and the IP {} is not whitelisted", &ip))
         } else {
             Ok(())
-        };
-        return not_allowed_msg;
+        }
     }
 }
 
 impl AllowBlockListInner {
     #[allow(clippy::result_large_err)]
     #[allow(clippy::type_complexity)]
-    fn load_whitelist_blacklist(
+    fn load_allow_block_lists(
         allowlist_path: &PathBuf,
         blocklist_path: &PathBuf,
     ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
-        let whitelist = if let Ok(whitelist) = std::fs::read_to_string(allowlist_path) {
-            Some(
-                serde_json::from_str::<HashSet<IpAddr>>(whitelist.as_str())
-                    .map_err(|_| {
-                        BootstrapError::GeneralError(String::from(
-                            "Failed to parse bootstrap whitelist",
-                        ))
-                    })?
-                    .into_iter()
-                    .map(normalize_ip)
-                    .collect(),
-            )
-        } else {
-            None
-        };
+        let allow_list = Self::load_list(allowlist_path)?;
+        let block_list = Self::load_list(blocklist_path)?;
+        Ok((allow_list, block_list))
+    }
 
-        let blacklist = if let Ok(blacklist) = std::fs::read_to_string(blocklist_path) {
-            Some(
-                serde_json::from_str::<HashSet<IpAddr>>(blacklist.as_str())
-                    .map_err(|_| {
-                        BootstrapError::GeneralError(String::from(
-                            "Failed to parse bootstrap blacklist",
-                        ))
-                    })?
-                    .into_iter()
-                    .map(normalize_ip)
-                    .collect(),
-            )
-        } else {
-            None
+    fn load_list(list_path: &PathBuf) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
+        let Ok(list) = std::fs::read_to_string(list_path) else {
+            return Ok(None);
         };
-        Ok((whitelist, blacklist))
+        let res = Some(
+            serde_json::from_str::<HashSet<IpAddr>>(list.as_str())
+                .map_err(|_| {
+                    BootstrapError::GeneralError(String::from(
+                        "Failed to parse bootstrap whitelist",
+                    ))
+                })?
+                .into_iter()
+                .map(normalize_ip)
+                .collect(),
+        );
+        Ok(res)
     }
 }
 
