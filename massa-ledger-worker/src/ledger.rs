@@ -170,6 +170,13 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
     }
 
+    /// Reset the disk ledger.
+    ///
+    /// USED FOR BOOTSTRAP ONLY
+    fn reset(&mut self) {
+        self.sorted_ledger.reset();
+    }
+
     /// Get every address and their corresponding balance.
     ///
     /// IMPORTANT: This should only be used for debug and test purposes.

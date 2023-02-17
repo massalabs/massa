@@ -52,6 +52,15 @@ impl ExecutedOps {
         }
     }
 
+    /// Reset the executed operations
+    ///
+    /// USED FOR BOOTSTRAP ONLY
+    pub fn reset(&mut self) {
+        self.sorted_ops.clear();
+        self.ops.clear();
+        self.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
+    }
+
     /// Returns the number of executed operations
     pub fn len(&self) -> usize {
         self.ops.len()

@@ -26,7 +26,7 @@ massa_signature = { path = "../massa-signature" }
 
 [dev-dependencies]
 lazy_static = "1.4"
-serial_test = "0.10"
+serial_test = "1.0"
 futures = "0.3"
 
 massa_signature = { path = "../massa-signature" }

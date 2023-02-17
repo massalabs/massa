@@ -679,7 +679,7 @@ impl BootstrapClientMessageDeserializer {
     pub fn new(
         thread_count: u8,
         max_datastore_key_length: u8,
-        consensus_bootstrap_part_size: u64,
+        max_consensus_block_ids: u64,
     ) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -706,7 +706,7 @@ impl BootstrapClientMessageDeserializer {
                 PreHashSetDeserializer::new(
                     BlockIdDeserializer::new(),
                     Included(0),
-                    Included(consensus_bootstrap_part_size),
+                    Included(max_consensus_block_ids),
                 ),
             ),
         }

@@ -1113,7 +1113,7 @@ impl Command {
                 }
             }
             Command::read_only_execute_smart_contract => {
-                if parameters.len() != 2 && parameters.len() <= 4 {
+                if parameters.len() < 2 || parameters.len() > 4 {
                     bail!("wrong number of parameters");
                 }
 
@@ -1146,7 +1146,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() != 4 && parameters.len() <= 6 {
+                if parameters.len() < 4 || parameters.len() > 6 {
                     bail!("wrong number of parameters");
                 }
 

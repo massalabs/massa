@@ -329,7 +329,7 @@ pub struct PublicKey(ed25519_dalek::PublicKey);
 
 const PUBLIC_PREFIX: char = 'P';
 
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for PublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.as_bytes().hash(state);
