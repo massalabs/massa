@@ -126,13 +126,13 @@ pub struct BootstrapConfig {
 #[derive(Debug, Deserialize, Clone, SubStruct)]
 #[parent(type = "BootstrapConfig")]
 pub struct BootstrapSrvBindCfg {
-    max_bytes_read_write: f64,
-    max_bootstrap_message_size: u32,
-    thread_count: u8,
-    max_datastore_key_length: u8,
-    randomness_size_bytes: usize,
-    consensus_bootstrap_part_size: u64,
-    write_error_timeout: MassaTime,
+    pub max_bytes_read_write: f64,
+    pub max_bootstrap_message_size: u32,
+    pub thread_count: u8,
+    pub max_datastore_key_length: u8,
+    pub randomness_size_bytes: usize,
+    pub consensus_bootstrap_part_size: u64,
+    pub write_error_timeout: MassaTime,
 }
 
 /// Bootstrap client config

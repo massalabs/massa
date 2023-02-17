@@ -19,6 +19,7 @@ use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     sync::Arc,
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 use tokio::runtime::Runtime;
@@ -34,18 +35,25 @@ use crate::{
 
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    join_handle: std::thread::JoinHandle<Result<(), BootstrapError>>,
-    manager_tx: crossbeam::channel::Sender<()>,
+    update_handle: std::thread::JoinHandle<Result<(), String>>,
+    listen_handle: tokio::task::JoinHandle<Result<(), Box<BootstrapError>>>,
+    main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    stopper_tx: crossbeam::channel::Sender<()>,
 }
 
 impl BootstrapManager {
     /// stop the bootstrap server
-    pub fn stop(self) -> Result<(), BootstrapError> {
+    pub fn stop(self) -> Result<(), Box<BootstrapError>> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.manager_tx.send(()).is_err() {
+        if self.stopper_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");
         }
-        self.join_handle.join().unwrap()
+        self.listen_handle.abort();
+        self.update_handle
+            .join()
+            .unwrap()
+            .map_err(BootstrapError::GeneralError)?;
+        self.main_handle.join().unwrap()
     }
 }
 
@@ -59,22 +67,23 @@ pub async fn start_bootstrap_server(
     mut establisher: Establisher,
     keypair: KeyPair,
     version: Version,
-) -> Result<Option<BootstrapManager>, BootstrapError> {
+) -> Result<Option<BootstrapManager>, Box<BootstrapError>> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
     let Some(listen_addr) = config.listen_addr else {
         return Ok(None);
     };
     // zero-capacity channel is being tried. The idea being is that the receiver can then be a dedicated
     // thread that will only be activated when the stop signal is finally activated
-    let (manager_tx, manager_rx) = crossbeam::channel::bounded::<()>(0);
+    let (stopper_tx, manager_rx) = crossbeam::channel::bounded::<()>(0);
 
     let runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
-    let Ok(listener) = establisher.get_listener(listen_addr).await else {
-        todo!();
-    };
+    let listener = establisher
+        .get_listener(listen_addr)
+        .await
+        .map_err(BootstrapError::IoError)?;
 
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
-        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
+        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
     };
     // This is the primary interface between the async-listener, and the (soon to be) sync worker
     let (listener_tx, listener_rx) =
@@ -86,29 +95,35 @@ pub async fn start_bootstrap_server(
     )
     .map_err(BootstrapError::GeneralError)?;
 
-    let join_handle = std::thread::spawn(move || {
+    let update_handle =
+        BootstrapServer::run_updater(allow_block_list.clone(), config.cache_duration.into());
+    let listen_handle = runtime
+        .handle()
+        .clone()
+        .spawn(BootstrapServer::run_listener(listener, listener_tx));
+
+    let main_handle = std::thread::spawn(move || {
         BootstrapServer {
             consensus_controller,
             network_command_sender,
             final_state,
-            listener,
-            listener_tx,
             listener_rx,
-            manager_rx,
+            stopper_rx: manager_rx,
             allow_block_list,
-            bind: listen_addr,
             keypair,
             version,
             ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
             bootstrap_config: config,
             runtime,
         }
-        .run()
+        .run_loop(max_bootstraps)
     });
     Ok(Some(BootstrapManager {
-        join_handle,
+        update_handle,
+        listen_handle,
+        main_handle,
         // Send on this channel to trigger the tokio::select! loop to break
-        manager_tx,
+        stopper_tx,
     }))
 }
 
@@ -116,12 +131,9 @@ struct BootstrapServer {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    listener: DefaultListener,
-    listener_tx: Sender<(Duplex, SocketAddr)>,
     listener_rx: Receiver<(Duplex, SocketAddr)>,
-    manager_rx: Receiver<()>,
+    stopper_rx: Receiver<()>,
     allow_block_list: SharedAllowBlockList,
-    bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
@@ -130,76 +142,90 @@ struct BootstrapServer {
 }
 
 impl BootstrapServer {
-    pub fn run(mut self) -> Result<(), BootstrapError> {
-        debug!("starting bootstrap server");
-        massa_trace!("bootstrap.lib.run", {});
-        // let mut listener = self
-        //     .runtime
-        //     .block_on(self.establisher.get_listener(self.bind))?;
-        let list_update_timeout = self.bootstrap_config.cache_duration.to_duration();
-
-        let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-
-        // As far as the bootstrap thread is concerned, the lists are auto-magically kept upt to date
-        // This is done by providing an opaque interface, behind which, is an Arc<RwLock<lists>> data
-        // that is thread-safe updated with minimal contention by the update method.
-        // The cost of this, is when an update is run, the thread does expensive file read and
-        // deserialization ops.
-        //
-        // Ideally, we would cache a set of add/remove to the two lists, and periodically
-        // check and apply the changes.
-        let mut updaters_list = self.allow_block_list.clone();
+    fn run_updater(
+        mut list: SharedAllowBlockList,
+        interval: Duration,
+    ) -> JoinHandle<Result<(), String>> {
         std::thread::spawn(move || loop {
-            std::thread::sleep(list_update_timeout);
+            std::thread::sleep(interval);
             // TODO: Do we want to handle shutting things down if the update errors out?
-            let _ = updaters_list.update();
-        });
-
-        let listener_handle = self.runtime.spawn(async move {
-            // todo!("it seems this context doesn't run, causing everything to lock-up");
-            loop {
-                // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
-                let Ok((dplx, remote_addr)) = listener.accept().await else {
-                    continue;
-                };
-                match listener_tx.send((dplx, remote_addr)) {
-                    Ok(_) => {}
-                    Err(e) => todo!("handle closed channel after accept: {:?}", e.into_inner().1),
-                }
-            }
-        });
-
-        let loop_handle = std::thread::spawn(move || self.run_loop());
-        let _ = loop_handle.join().unwrap();
-        listener_handle.abort();
-
-        Ok(())
+            list.update()?;
+        })
     }
+    async fn run_listener(
+        mut listener: DefaultListener,
+        listener_tx: Sender<(Duplex, SocketAddr)>,
+    ) -> Result<(), Box<BootstrapError>> {
+        loop {
+            let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
+            let Ok(_) = listener_tx.send(msg) else {
+                todo!("handle send error. even better, make this channel a tokio channel");
+            };
+        }
+    }
+    // pub fn run(mut self) -> Result<(), BootstrapError> {
+    //     debug!("starting bootstrap server");
+    //     massa_trace!("bootstrap.lib.run", {});
+    //     // let mut listener = self
+    //     //     .runtime
+    //     //     .block_on(self.establisher.get_listener(self.bind))?;
+    //     let list_update_timeout = self.bootstrap_config.cache_duration.to_duration();
 
-    fn run_loop(
-        &mut self,
-        listener_rx: Receiver<(Duplex, SocketAddr)>,
-        allow_block_list: SharedAllowBlockList,
-        max_bootstraps: usize,
-        per_ip_min_interval: Duration,
-    ) {
+    //     let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
+
+    //     // As far as the bootstrap thread is concerned, the lists are auto-magically kept upt to date
+    //     // This is done by providing an opaque interface, behind which, is an Arc<RwLock<lists>> data
+    //     // that is thread-safe updated with minimal contention by the update method.
+    //     // The cost of this, is when an update is run, the thread does expensive file read and
+    //     // deserialization ops.
+    //     //
+    //     // Ideally, we would cache a set of add/remove to the two lists, and periodically
+    //     // check and apply the changes.
+    //     let mut updaters_list = self.allow_block_list.clone();
+
+    //     let listener_handle = self.runtime.spawn(async move {
+    //         // todo!("it seems this context doesn't run, causing everything to lock-up");
+    //         loop {
+    //             // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
+    //             let Ok((dplx, remote_addr)) = listener.accept().await else {
+    //                 continue;
+    //             };
+    //             match listener_tx.send((dplx, remote_addr)) {
+    //                 Ok(_) => {}
+    //                 Err(e) => todo!("handle closed channel after accept: {:?}", e.into_inner().1),
+    //             }
+    //         }
+    //     });
+
+    //     let loop_handle = std::thread::spawn(move || self.run_loop());
+    //     let _ = loop_handle.join().unwrap();
+    //     listener_handle.abort();
+
+    //     Ok(())
+    // }
+
+    fn run_loop(&mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
+        let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             // before handling a bootstrap, check if the stopper has sent a trigger.
             // TODO: There is probably a better way to do this, such as using an Arc<AtomicBool>...
-            let stop = self.manager_rx.try_recv();
+            let stop = self.stopper_rx.try_recv();
             // give the compiler optimisation hints
             if unlikely(stop.is_ok()) {
                 massa_trace!("bootstrap.lib.run.select.manager", {});
                 break;
             } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                todo!("handle closed stopper")
+                return Err(BootstrapError::GeneralError(
+                    "Unexpected stop-channel disconnection".to_string(),
+                )
+                .into());
             };
 
             // listener
-            let  Ok((dplx, remote_addr)) = listener_rx.recv() else {continue;};
+            let  Ok((dplx, remote_addr)) = self.listener_rx.recv() else {continue;};
 
             // claim a slot in the max_bootstrap_sessions
             let bootstrap_count_token = bootstrap_sessions_counter.clone();
@@ -211,7 +237,7 @@ impl BootstrapServer {
 
             // check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
-            if let Err(error_msg) = allow_block_list.is_ip_allowed(&dbg!(remote_addr)) {
+            if let Err(error_msg) = self.allow_block_list.is_ip_allowed(&dbg!(remote_addr)) {
                 let _ = match self.runtime.block_on(server.send_error(error_msg.clone())) {
                     Err(_) => Err(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,
@@ -330,6 +356,7 @@ impl BootstrapServer {
                 debug!("did not bootstrap {}: no available slots", remote_addr);
             }
         }
+        Ok(())
     }
 
     /// Helper method to check if this IP is being greedy, i.e. not enough elapsed time since last attempt
@@ -376,7 +403,6 @@ async fn run_bootstrap_session(
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
 ) {
-    panic!("running session");
     debug!("awaiting on bootstrap of peer {}", remote_addr);
     let res = tokio::time::timeout(
         config.bootstrap_timeout.into(),
