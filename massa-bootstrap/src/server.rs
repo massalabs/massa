@@ -29,7 +29,7 @@ use crate::{
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    types::{DefaultListener, Duplex},
+    types::{Duplex, Listener},
     BootstrapConfig, Establisher,
 };
 
@@ -153,7 +153,7 @@ impl BootstrapServer {
         })
     }
     async fn run_listener(
-        mut listener: DefaultListener,
+        mut listener: Listener,
         listener_tx: Sender<(Duplex, SocketAddr)>,
     ) -> Result<(), Box<BootstrapError>> {
         loop {
