@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::BootstrapClientConfig;
@@ -20,6 +21,7 @@ use massa_models::config::{
 use massa_models::node::NodeId;
 use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
+use massa_time::MassaTime;
 use serial_test::serial;
 use tokio::io::duplex;
 
@@ -76,6 +78,7 @@ async fn test_binders() {
         MAX_DATASTORE_KEY_LENGTH,
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         CONSENSUS_BOOTSTRAP_PART_SIZE,
+        MassaTime::from_millis(1000),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -172,6 +175,7 @@ async fn test_binders_double_send_server_works() {
         MAX_DATASTORE_KEY_LENGTH,
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         CONSENSUS_BOOTSTRAP_PART_SIZE,
+        MassaTime::from_millis(1000),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -253,6 +257,7 @@ async fn test_binders_try_double_send_client_works() {
         MAX_DATASTORE_KEY_LENGTH,
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         CONSENSUS_BOOTSTRAP_PART_SIZE,
+        MassaTime::from_millis(1000),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,

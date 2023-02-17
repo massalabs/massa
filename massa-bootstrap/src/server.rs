@@ -146,7 +146,7 @@ impl BootstrapServer {
             let _ = updaters_list.update();
         });
 
-        let listener_handle = tokio::spawn(async move {
+        let listener_handle = self.runtime.spawn(async move {
             // todo!("it seems this context doesn't run, causing everything to lock-up");
             loop {
                 // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
@@ -160,18 +160,21 @@ impl BootstrapServer {
             }
         });
 
-        self.runtime.handle().clone().block_on(self.run_loop(
-            listener_rx,
-            allow_block_list,
-            max_bootstraps,
-            per_ip_min_interval,
-        ));
+        let loop_handle = std::thread::spawn(move || {
+            self.run_loop(
+                listener_rx,
+                allow_block_list,
+                max_bootstraps,
+                per_ip_min_interval,
+            )
+        });
+        let _ = loop_handle.join().unwrap();
         listener_handle.abort();
 
         Ok(())
     }
 
-    async fn run_loop(
+    fn run_loop(
         &mut self,
         listener_rx: Receiver<(Duplex, SocketAddr)>,
         allow_block_list: SharedAllowBlockList,
@@ -212,8 +215,8 @@ impl BootstrapServer {
 
             // check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
-            if let Err(error_msg) = allow_block_list.is_ip_allowed(&remote_addr) {
-                let _ = match server.send_error(error_msg.clone()).await {
+            if let Err(error_msg) = allow_block_list.is_ip_allowed(&dbg!(remote_addr)) {
+                let _ = match self.runtime.block_on(server.send_error(error_msg.clone())) {
                     Err(_) => Err(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,
                         format!("{}  timed out", &error_msg),
@@ -269,8 +272,8 @@ impl BootstrapServer {
                                 format_duration(per_ip_min_interval.saturating_sub(msg))
                             )
 
-                    )
-                    .await;
+                    );
+                    let send_timeout = self.runtime.block_on(send_timeout);
 
                     let _ = match send_timeout {
                         Err(_) => Err(std::io::Error::new(
@@ -308,7 +311,7 @@ impl BootstrapServer {
                 let network_command_sender = self.network_command_sender.clone();
                 let config = self.bootstrap_config.clone();
 
-                tokio::spawn(run_bootstrap_session(
+                self.runtime.spawn(run_bootstrap_session(
                     server,
                     bootstrap_count_token,
                     config,
@@ -323,7 +326,7 @@ impl BootstrapServer {
                     "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
                 });
             } else {
-                let _ = match  server.send_error("Bootstrap failed because the bootstrap server currently has no slots available.".to_string()).await {
+                let _ = match  self.runtime.block_on(server.send_error("Bootstrap failed because the bootstrap server currently has no slots available.".to_string())) {
                             Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
                             Ok(Err(e)) => Err(e),
                             Ok(Ok(_)) => Ok(()),
@@ -377,6 +380,7 @@ async fn run_bootstrap_session(
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
 ) {
+    panic!("running session");
     debug!("awaiting on bootstrap of peer {}", remote_addr);
     let res = tokio::time::timeout(
         config.bootstrap_timeout.into(),

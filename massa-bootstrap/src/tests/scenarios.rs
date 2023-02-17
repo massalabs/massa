@@ -155,7 +155,6 @@ async fn test_bootstrap_server() {
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
     )
-    .await
     .unwrap()
     .unwrap();
 
@@ -347,7 +346,6 @@ async fn test_bootstrap_server() {
     // stop bootstrap server
     bootstrap_manager
         .stop()
-        .await
         .expect("could not stop bootstrap server");
 
     // stop selector controllers
