@@ -60,7 +60,7 @@ pub struct VersioningWorker {
     /// Shared storage.
     pub(crate) storage: Storage,
     /// Versioning Middleware
-    versioning_middleware: VersioningMiddleware
+    versioning_middleware: VersioningMiddleware,
 }
 
 /// channels used by the versioning worker
@@ -80,14 +80,13 @@ impl VersioningWorker {
         }: VersioningWorkerChannels,
         storage: Storage,
     ) -> VersioningWorker {
-        
         let versioning_middleware = VersioningMiddleware::new();
         VersioningWorker {
             config,
             controller_command_rx,
             controller_manager_rx,
             storage,
-            versioning_middleware
+            versioning_middleware,
         }
     }
 
@@ -110,11 +109,8 @@ impl VersioningWorker {
 
         Ok(())
     }
-    
-    async fn process_command(
-        &mut self,
-        cmd: VersioningCommand,
-    ) -> Result<(), VersioningError> {
+
+    async fn process_command(&mut self, cmd: VersioningCommand) -> Result<(), VersioningError> {
         match cmd {
             VersioningCommand::FinalizedBlockHeader { header } => {
                 let version = header.announced_version;
