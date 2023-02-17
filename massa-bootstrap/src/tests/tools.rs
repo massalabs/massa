@@ -285,7 +285,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
 
 pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
-        bind: Some("0.0.0.0:31244".parse().unwrap()),
+        listen_addr: Some("0.0.0.0:31244".parse().unwrap()),
         bootstrap_protocol: IpType::Both,
         bootstrap_timeout: 120000.into(),
         connect_timeout: 200.into(),

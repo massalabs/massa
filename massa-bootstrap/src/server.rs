@@ -55,13 +55,13 @@ pub fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    bootstrap_config: BootstrapConfig,
+    config: BootstrapConfig,
     establisher: Establisher,
     keypair: KeyPair,
     version: Version,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
-    let Some(bind) = bootstrap_config.bind else {
+    let Some(listen_addr) = config.listen_addr else {
         return Ok(None);
     };
     // zero-capacity channel is being tried. The idea being is that the receiver can then be a dedicated
@@ -77,11 +77,11 @@ pub fn start_bootstrap_server(
             final_state,
             establisher,
             manager_rx,
-            bind,
+            bind: listen_addr,
             keypair,
             version,
-            ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
-            bootstrap_config,
+            ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
+            bootstrap_config: config,
             runtime,
         }
         .run()

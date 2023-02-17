@@ -31,7 +31,7 @@ pub struct BootstrapConfig {
     /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
     pub bootstrap_blacklist_path: PathBuf,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
-    pub bind: Option<SocketAddr>,
+    pub listen_addr: Option<SocketAddr>,
     /// connection timeout
     pub connect_timeout: MassaTime,
     /// Time allocated to managing the bootstrapping process,
