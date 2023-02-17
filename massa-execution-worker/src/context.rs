@@ -630,9 +630,7 @@ impl ExecutionContext {
                                 .get_balance(from_addr).unwrap_or_default()))
                         })?;
                     if new_balance < vesting_range.min_balance {
-                        return Err(ExecutionError::VestingError(
-                            "min_balance from vesting is reached".to_string(),
-                        ));
+                        return Err(ExecutionError::VestingError("min_balance".to_string()));
                     }
                 }
             }

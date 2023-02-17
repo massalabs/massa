@@ -411,17 +411,13 @@ impl ExecutionState {
         };
 
         // control vesting max_rolls for buyer address
-        if let Some(vesting_range) = VestingRange::find_vesting_range(
-            &buyer_addr,
-            current_slot.clone(),
-            &self.vesting_registry,
-        ) {
+        if let Some(vesting_range) =
+            VestingRange::find_vesting_range(&buyer_addr, current_slot, &self.vesting_registry)
+        {
             let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
             // (candidate_rolls + amount to buy)
             if (rolls.1 + roll_count) >= vesting_range.max_rolls {
-                return Err(ExecutionError::VestingError(
-                    "max rolls reached".to_string(),
-                ));
+                return Err(ExecutionError::VestingError("max rolls".to_string()));
             }
         }
 

@@ -4,7 +4,6 @@ use crate::address::Address;
 use crate::amount::Amount;
 use crate::error::ModelsError;
 use crate::prehash::PreHashMap;
-use crate::timeslots;
 use massa_hash::Hash;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -351,16 +350,17 @@ impl std::fmt::Display for IndexedSlot {
 }
 
 /// Represent a vesting range
-#[derive(Clone, Copy, Deserialize, Debug)]
+#[derive(Clone, Copy, Deserialize, Serialize, Debug)]
 pub struct VestingRange {
     /// start slot of range
     /// use "slot" field in the initial_vesting.json file
-    #[serde(rename(deserialize = "slot"))]
+    #[serde(rename(deserialize = "slot", serialize = "slot"))]
     pub start_slot: Slot,
 
     /// end slot for the range
     /// Init with 0,0 and calculate on load
     #[serde(default = "init_end_slot_range")]
+    #[serde(skip_serializing)]
     pub end_slot: Slot,
 
     /// minimal balance for specific range
