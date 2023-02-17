@@ -29,14 +29,18 @@ impl LRUCache {
     /// If the module is contained in the cache:
     /// * retrieve a copy of it
     /// * move it up in the LRU cache
-    pub fn get(&mut self, hash: Hash, limit: u64) -> Result<Option<RuntimeModule>, ExecutionError> {
+    pub fn get(
+        &mut self,
+        hash: Hash,
+        limit: u64,
+    ) -> Result<Option<(RuntimeModule, u64)>, ExecutionError> {
         if let Some((cached_module, init_cost)) = self.cache.get(&hash) {
             if limit < *init_cost {
                 return Err(ExecutionError::RuntimeError(
                     "given gas cannot cover the initialization costs".to_string(),
                 ));
             }
-            Ok(Some(cached_module.clone()))
+            Ok(Some((cached_module.clone(), init_cost)))
         } else {
             Ok(None)
         }

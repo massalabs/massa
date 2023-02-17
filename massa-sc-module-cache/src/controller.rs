@@ -32,6 +32,29 @@ impl ModuleCache {
         }
     }
 
+    /// Save a module in the global cache system
+    pub fn save_module_from_bytecode(&self, bytecode: &[u8]) {
+        let hash = Hash::compute_from(bytecode);
+        if let Some((hd_module, hd_init_cost)) = self.hd_cache.get_and_incr(hash) {
+            self.lru_cache.insert(hash, hd_module, hd_init_cost);
+        } else {
+            if let Some((lru_module, lru_init_cost)) = self.lru_cache.get(hash, limit)? {
+                self.hd_cache.insert(hash, lru_module, lru_init_cost);
+            } else {
+                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone())
+                    .map_err(|err| {
+                        ExecutionError::RuntimeError(format!(
+                            "compilation of missing cache module failed: {}",
+                            err
+                        ))
+                    })?;
+                // NOTE: issue in the flow here
+                self.hd_cache.insert(hash, new_module.clone(), 42);
+                self.lru_cache.insert(hash, module, 42);
+            }
+        }
+    }
+
     /// Load a module from the global cache system
     pub fn load_module(
         &mut self,
@@ -57,7 +80,7 @@ impl ModuleCache {
                             err
                         ))
                     })?;
-                self.hd_cache.insert(hash, new_module.clone());
+                // NOTE: might need to add an arbitrary execution identifier here
                 Ok(new_module)
             }
         }

@@ -8,7 +8,9 @@ impl HDCache {
         Self {}
     }
 
-    pub fn insert(&self, hash: Hash, module: RuntimeModule) {}
+    pub fn insert(&self, hash: Hash, module: RuntimeModule, init_cost: u64) {}
+
+    pub fn get_and_incr(&self, hash: Hash) -> Option<(RuntimeModule, u64)> {}
 
     pub fn get(&self, hash: Hash) -> Option<(RuntimeModule, u64)> {
         None
