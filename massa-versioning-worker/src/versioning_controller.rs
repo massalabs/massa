@@ -1,8 +1,5 @@
 use std::collections::{HashMap, VecDeque};
 
-const NB_BLOCKS_CONSIDERED: usize = 5;
-const THRESHOLD: usize = 3;
-
 /// Struct used to keep track of announced versions in previous blocks
 /// Contains additional utilities
 pub struct VersioningMiddleware {
@@ -11,23 +8,21 @@ pub struct VersioningMiddleware {
     current_active_version: u32,
     current_supported_versions: Vec<u32>,
     current_announced_version: u32,
-}
-
-impl Default for VersioningMiddleware {
-    fn default() -> Self {
-        Self::new()
-    }
+    nb_blocks_considered: usize,
+    threshold: f32,
 }
 
 impl VersioningMiddleware {
     /// Creates a new empty versioning middleware.
-    pub fn new() -> Self {
+    pub fn new(nb_blocks_considered: usize, threshold: f32) -> Self {
         VersioningMiddleware {
-            latest_announcements: VecDeque::with_capacity(NB_BLOCKS_CONSIDERED + 1),
+            latest_announcements: VecDeque::with_capacity(nb_blocks_considered + 1),
             counts: HashMap::new(),
             current_active_version: 0,
             current_supported_versions: Vec::new(),
             current_announced_version: 0,
+            nb_blocks_considered,
+            threshold,
         }
     }
 
@@ -39,7 +34,7 @@ impl VersioningMiddleware {
         *self.counts.entry(version).or_default() += 1;
 
         // If the queue is too large, remove the most ancient block and its associated count
-        if self.latest_announcements.len() > NB_BLOCKS_CONSIDERED {
+        if self.latest_announcements.len() > self.nb_blocks_considered {
             let prev_version = self.latest_announcements.pop_front();
             if let Some(prev_version) = prev_version {
                 *self.counts.entry(prev_version).or_insert(1) -= 1;
@@ -59,7 +54,7 @@ impl VersioningMiddleware {
     /// Checks whether a given version should become active
     pub fn is_count_above_threshold(&mut self, version: u32) -> bool {
         match self.counts.get(&version) {
-            Some(count) => *count >= THRESHOLD,
+            Some(count) => *count >= (self.threshold * self.nb_blocks_considered as f32) as usize,
             None => false,
         }
     }
@@ -108,9 +103,7 @@ mod test {
 
     #[test]
     fn test_versioning_middleware() {
-        let mut vm = VersioningMiddleware::new();
-
-        assert!(THRESHOLD <= NB_BLOCKS_CONSIDERED);
+        let mut vm = VersioningMiddleware::new(5, 0.6);
 
         //In the following, we assume:
         //const NB_BLOCKS_CONSIDERED: usize = 5;

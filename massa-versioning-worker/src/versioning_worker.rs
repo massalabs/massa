@@ -80,7 +80,9 @@ impl VersioningWorker {
         }: VersioningWorkerChannels,
         storage: Storage,
     ) -> VersioningWorker {
-        let versioning_middleware = VersioningMiddleware::new();
+        let versioning_middleware =
+            VersioningMiddleware::new(config.nb_blocks_considered, config.threshold);
+
         VersioningWorker {
             config,
             controller_command_rx,

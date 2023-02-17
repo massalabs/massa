@@ -30,15 +30,13 @@ pub struct VersioningManager {
 }
 
 impl VersioningManager {
-    /// new protocol manager
+    /// new versioning manager
     pub fn new(manager_tx: mpsc::Sender<VersioningManagementCommand>) -> Self {
         VersioningManager { manager_tx }
     }
 
-    /// Stop the protocol controller
-    pub async fn stop(self) -> Result<(), VersioningError> {
+    /// Stop the versioning controller
+    pub fn stop(self) {
         drop(self.manager_tx);
-
-        Ok(())
     }
 }
