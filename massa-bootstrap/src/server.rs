@@ -1,7 +1,7 @@
 mod allow_block_list;
 use allow_block_list::*;
 
-use crossbeam::channel::Receiver;
+use crossbeam::channel::{Receiver, Sender};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -28,7 +28,7 @@ use crate::{
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    types::Duplex,
+    types::{DefaultListener, Duplex},
     BootstrapConfig, Establisher,
 };
 
@@ -51,12 +51,12 @@ impl BootstrapManager {
 
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.
-pub fn start_bootstrap_server(
+pub async fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
-    establisher: Establisher,
+    mut establisher: Establisher,
     keypair: KeyPair,
     version: Version,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
@@ -69,14 +69,33 @@ pub fn start_bootstrap_server(
     let (manager_tx, manager_rx) = crossbeam::channel::bounded::<()>(0);
 
     let runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
+    let Ok(listener) = establisher.get_listener(listen_addr).await else {
+        todo!();
+    };
+
+    let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
+        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
+    };
+    // This is the primary interface between the async-listener, and the (soon to be) sync worker
+    let (listener_tx, listener_rx) =
+        crossbeam::channel::bounded::<(Duplex, SocketAddr)>(max_bootstraps);
+
+    let allow_block_list = SharedAllowBlockList::new(
+        config.bootstrap_whitelist_path.clone(),
+        config.bootstrap_blacklist_path.clone(),
+    )
+    .map_err(BootstrapError::GeneralError)?;
 
     let join_handle = std::thread::spawn(move || {
         BootstrapServer {
             consensus_controller,
             network_command_sender,
             final_state,
-            establisher,
+            listener,
+            listener_tx,
+            listener_rx,
             manager_rx,
+            allow_block_list,
             bind: listen_addr,
             keypair,
             version,
@@ -97,8 +116,11 @@ struct BootstrapServer {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    establisher: Establisher,
+    listener: DefaultListener,
+    listener_tx: Sender<(Duplex, SocketAddr)>,
+    listener_rx: Receiver<(Duplex, SocketAddr)>,
     manager_rx: Receiver<()>,
+    allow_block_list: SharedAllowBlockList,
     bind: SocketAddr,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -111,20 +133,12 @@ impl BootstrapServer {
     pub fn run(mut self) -> Result<(), BootstrapError> {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
-        let mut listener = self
-            .runtime
-            .block_on(self.establisher.get_listener(self.bind))?;
+        // let mut listener = self
+        //     .runtime
+        //     .block_on(self.establisher.get_listener(self.bind))?;
         let list_update_timeout = self.bootstrap_config.cache_duration.to_duration();
 
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-
-        let Ok(max_bootstraps) = self.bootstrap_config.max_simultaneous_bootstraps.try_into() else {
-            return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
-        };
-
-        // This is the primary interface between the async-listener, and the (soon to be) sync worker
-        let (listener_tx, listener_rx) =
-            crossbeam::channel::bounded::<(Duplex, SocketAddr)>(max_bootstraps);
 
         // As far as the bootstrap thread is concerned, the lists are auto-magically kept upt to date
         // This is done by providing an opaque interface, behind which, is an Arc<RwLock<lists>> data
@@ -134,12 +148,7 @@ impl BootstrapServer {
         //
         // Ideally, we would cache a set of add/remove to the two lists, and periodically
         // check and apply the changes.
-        let allow_block_list = SharedAllowBlockList::new(
-            self.bootstrap_config.bootstrap_whitelist_path.clone(),
-            self.bootstrap_config.bootstrap_blacklist_path.clone(),
-        )
-        .map_err(BootstrapError::GeneralError)?;
-        let mut updaters_list = allow_block_list.clone();
+        let mut updaters_list = self.allow_block_list.clone();
         std::thread::spawn(move || loop {
             std::thread::sleep(list_update_timeout);
             // TODO: Do we want to handle shutting things down if the update errors out?
@@ -160,14 +169,7 @@ impl BootstrapServer {
             }
         });
 
-        let loop_handle = std::thread::spawn(move || {
-            self.run_loop(
-                listener_rx,
-                allow_block_list,
-                max_bootstraps,
-                per_ip_min_interval,
-            )
-        });
+        let loop_handle = std::thread::spawn(move || self.run_loop());
         let _ = loop_handle.join().unwrap();
         listener_handle.abort();
 
