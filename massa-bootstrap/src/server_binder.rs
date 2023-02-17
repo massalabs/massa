@@ -14,8 +14,10 @@ use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::time::error::Elapsed;
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
@@ -30,6 +32,7 @@ pub struct BootstrapServerBinder {
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
+    write_error_timeout: MassaTime,
 }
 
 impl BootstrapServerBinder {
@@ -49,6 +52,7 @@ impl BootstrapServerBinder {
         max_datastore_key_length: u8,
         randomness_size_bytes: usize,
         consensus_bootstrap_part_size: u64,
+        write_error_timeout: MassaTime,
     ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
@@ -63,6 +67,7 @@ impl BootstrapServerBinder {
             randomness_size_bytes,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
+            write_error_timeout,
         }
     }
 }
@@ -93,6 +98,17 @@ impl BootstrapServerBinder {
         self.prev_message = Some(msg_hash);
 
         Ok(())
+    }
+
+    pub async fn send_error(
+        &mut self,
+        error: String,
+    ) -> Result<Result<(), BootstrapError>, Elapsed> {
+        tokio::time::timeout(
+            self.write_error_timeout.into(),
+            self.send(BootstrapServerMessage::BootstrapError { error }),
+        )
+        .await
     }
 
     /// Writes the next message. NOT cancel-safe

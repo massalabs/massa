@@ -143,7 +143,7 @@ impl BootstrapServer {
         });
 
         let listener_handle = tokio::spawn(async move {
-            todo!("it seems this context doesn't run, causing everything to lock-up");
+            // todo!("it seems this context doesn't run, causing everything to lock-up");
             loop {
                 // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
                 let Ok((dplx, remote_addr)) = listener.accept().await else {
@@ -204,19 +204,13 @@ impl BootstrapServer {
                 self.bootstrap_config.max_datastore_key_length,
                 self.bootstrap_config.randomness_size_bytes,
                 self.bootstrap_config.consensus_bootstrap_part_size,
+                self.bootstrap_config.write_error_timeout,
             );
 
             // check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
             if let Err(error_msg) = allow_block_list.is_ip_allowed(&remote_addr) {
-                let _ = match tokio::time::timeout(
-                    self.bootstrap_config.write_error_timeout.into(),
-                    server.send(BootstrapServerMessage::BootstrapError {
-                        error: error_msg.clone(),
-                    }),
-                )
-                .await
-                {
+                let _ = match server.send_error(error_msg.clone()).await {
                     Err(_) => Err(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,
                         format!("{}  timed out", &error_msg),
@@ -264,16 +258,14 @@ impl BootstrapServer {
                     now,
                     per_ip_min_interval,
                 ) {
-                    let send_timeout = tokio::time::timeout(
-                        self.bootstrap_config.write_error_timeout.into(),
+                    let send_timeout = server.send_error(
 
-                        server.send(BootstrapServerMessage::BootstrapError {
-                            error: format!(
+                            format!(
                                 "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
                                 format_duration(msg),
                                 format_duration(per_ip_min_interval.saturating_sub(msg))
                             )
-                        }),
+
                     )
                     .await;
 
@@ -328,9 +320,7 @@ impl BootstrapServer {
                     "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
                 });
             } else {
-                let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
-                            error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
-                        })).await {
+                let _ = match  server.send_error("Bootstrap failed because the bootstrap server currently has no slots available.".to_string()).await {
                             Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
                             Ok(Err(e)) => Err(e),
                             Ok(Ok(_)) => Ok(()),
@@ -415,29 +405,19 @@ async fn run_bootstrap_session(
                 debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
                 // We allow unused result because we don't care if an error is thrown when
                 // sending the error message to the server we will close the socket anyway.
-                let _ = tokio::time::timeout(
-                    config.write_error_timeout.into(),
-                    server.send(BootstrapServerMessage::BootstrapError {
-                        error: err.to_string(),
-                    }),
-                )
-                .await;
+                let _ = server.send_error(err.to_string()).await;
             }
         },
         Err(_timeout) => {
             debug!("bootstrap timeout for peer {}", remote_addr);
             // We allow unused result because we don't care if an error is thrown when
             // sending the error message to the server we will close the socket anyway.
-            let _ = tokio::time::timeout(
-                config.write_error_timeout.into(),
-                server.send(BootstrapServerMessage::BootstrapError {
-                    error: format!(
-                        "Bootstrap process timedout ({})",
-                        format_duration(config.bootstrap_timeout.to_duration())
-                    ),
-                }),
-            )
-            .await;
+            let _ = server
+                .send_error(format!(
+                    "Bootstrap process timedout ({})",
+                    format_duration(config.bootstrap_timeout.to_duration())
+                ))
+                .await;
         }
     }
 }
