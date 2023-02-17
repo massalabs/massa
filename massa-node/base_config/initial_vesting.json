@@ -5,7 +5,7 @@
                 "period": 0,
                 "thread": 0
             },
-            "min_balance": "10000",
+            "min_balance": "100000",
             "max_rolls": 45
         },
         {
@@ -13,7 +13,7 @@
                 "period": 4,
                 "thread": 0
             },
-            "min_balance": "5000",
+            "min_balance": "50000",
             "max_rolls": 50
         },
         {
@@ -25,13 +25,13 @@
             "max_rolls": 18446744073709551615
         }
     ],
-    "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF": [
+    "A12bzpAjJjjpmmavV7rxEpxK3Ehhxp7htgE4CixWt3hTLJN8jD4v": [
         {
             "slot": {
-                "period": 4,
+                "period": 35,
                 "thread": 4
             },
-            "min_balance": "10000",
+            "min_balance": "100000",
             "max_rolls": 10
         },
         {

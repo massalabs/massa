@@ -596,12 +596,14 @@ impl ExecutionContext {
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
+    /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
     pub fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
         amount: Amount,
         check_rights: bool,
+        current_slot: Option<Slot>,
     ) -> Result<(), ExecutionError> {
         if let Some(from_addr) = &from_addr {
             // check access rights
@@ -612,26 +614,26 @@ impl ExecutionContext {
                 )));
             }
 
-            // control vesting min_balance for sender address
-            if let Some(vesting_range) = VestingRange::find_vesting_range(
-                from_addr,
-                &self.vesting_registry,
-                self.config.thread_count,
-                self.config.t0,
-                self.config.genesis_timestamp,
-            ) {
-                let new_balance = self
-                    .get_balance(from_addr)
-                    .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
-                    .checked_sub(amount)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
-                            .get_balance(from_addr).unwrap_or_default()))
-                    })?;
-                if new_balance < vesting_range.min_balance {
-                    return Err(ExecutionError::VestingError(
-                        "min_balance from vesting is reached".to_string(),
-                    ));
+            if let Some(current_slot) = current_slot {
+                // control vesting min_balance for sender address
+                if let Some(vesting_range) = VestingRange::find_vesting_range(
+                    from_addr,
+                    current_slot,
+                    &self.vesting_registry,
+                ) {
+                    let new_balance = self
+                        .get_balance(from_addr)
+                        .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
+                        .checked_sub(amount)
+                        .ok_or_else(|| {
+                            ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                                .get_balance(from_addr).unwrap_or_default()))
+                        })?;
+                    if new_balance < vesting_range.min_balance {
+                        return Err(ExecutionError::VestingError(
+                            "min_balance from vesting is reached".to_string(),
+                        ));
+                    }
                 }
             }
         }
@@ -654,7 +656,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
-        if let Err(e) = self.transfer_coins(None, Some(msg.sender), msg.coins, false) {
+        if let Err(e) = self.transfer_coins(None, Some(msg.sender), msg.coins, false, None) {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
                 msg.sender, e
@@ -727,7 +729,7 @@ impl ExecutionContext {
                 .entry(address)
                 .and_modify(|credit_amount| *credit_amount = Amount::default())
                 .or_default();
-            if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
+            if let Err(e) = self.transfer_coins(None, Some(address), amount, false, None) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
                     amount, address, slot, e

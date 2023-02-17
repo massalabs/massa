@@ -9,7 +9,6 @@ use massa_hash::Hash;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_time::MassaTime;
 use nom::error::{context, ContextError, ParseError};
 use serde::{Deserialize, Serialize};
 use std::ops::{Bound, RangeBounds};
@@ -375,17 +374,10 @@ impl VestingRange {
     /// find a vesting range in the registry, otherwise return None
     pub fn find_vesting_range<'a>(
         addr: &Address,
+        current_slot: Slot,
         registry: &'a Arc<PreHashMap<Address, Vec<VestingRange>>>,
-        thread_count: u8,
-        t0: MassaTime,
-        genesis_timestamp: MassaTime,
     ) -> Option<&'a VestingRange> {
         let Some(vector) = registry.get(addr) else {
-            return None;
-        };
-
-        // can unwrap get_current_latest_block_slot OR should return Result<Option<&VestingRange>, E> ?
-        let Some(current_slot) = timeslots::get_current_latest_block_slot(thread_count, t0, genesis_timestamp).unwrap_or(None) else {
             return None;
         };
 

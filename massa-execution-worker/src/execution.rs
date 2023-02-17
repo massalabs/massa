@@ -38,7 +38,7 @@ use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -99,8 +99,7 @@ impl ExecutionState {
         let vesting_registry = match ExecutionState::init_vesting_registry(&config) {
             Ok(map) => Arc::new(map),
             Err(e) => {
-                error!("{}", e);
-                Arc::new(PreHashMap::default())
+                panic!("{}", e);
             }
         };
 
@@ -271,9 +270,13 @@ impl ExecutionState {
 
             // debit the fee from the operation sender
             // fail execution if there are not enough coins
-            if let Err(err) =
-                context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
-            {
+            if let Err(err) = context.transfer_coins(
+                Some(sender_addr),
+                None,
+                operation.content.fee,
+                false,
+                Some(block_slot),
+            ) {
                 return Err(ExecutionError::IncludeOperationError(format!(
                     "could not spend fees: {}",
                     err
@@ -315,16 +318,16 @@ impl ExecutionState {
                 self.execute_executesc_op(&operation.content.op, sender_addr)
             }
             OperationType::CallSC { .. } => {
-                self.execute_callsc_op(&operation.content.op, sender_addr)
+                self.execute_callsc_op(&operation.content.op, sender_addr, block_slot)
             }
             OperationType::RollBuy { .. } => {
-                self.execute_roll_buy_op(&operation.content.op, sender_addr)
+                self.execute_roll_buy_op(&operation.content.op, sender_addr, block_slot)
             }
             OperationType::RollSell { .. } => {
                 self.execute_roll_sell_op(&operation.content.op, sender_addr)
             }
             OperationType::Transaction { .. } => {
-                self.execute_transaction_op(&operation.content.op, sender_addr)
+                self.execute_transaction_op(&operation.content.op, sender_addr, block_slot)
             }
         };
 
@@ -399,6 +402,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         buyer_addr: Address,
+        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
         let roll_count = match operation {
@@ -409,10 +413,8 @@ impl ExecutionState {
         // control vesting max_rolls for buyer address
         if let Some(vesting_range) = VestingRange::find_vesting_range(
             &buyer_addr,
+            current_slot.clone(),
             &self.vesting_registry,
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
         ) {
             let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
             // (candidate_rolls + amount to buy)
@@ -447,7 +449,13 @@ impl ExecutionState {
         };
 
         // spend `roll_price` * `roll_count` coins from the buyer
-        if let Err(err) = context.transfer_coins(Some(buyer_addr), None, spend_coins, false) {
+        if let Err(err) = context.transfer_coins(
+            Some(buyer_addr),
+            None,
+            spend_coins,
+            false,
+            Some(current_slot),
+        ) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
                 buyer_addr, roll_count, err
@@ -471,6 +479,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
+        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process transaction operations only
         let (recipient_address, amount) = match operation {
@@ -494,9 +503,13 @@ impl ExecutionState {
         }];
 
         // send `roll_price` * `roll_count` coins from the sender to the recipient
-        if let Err(err) =
-            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, false)
-        {
+        if let Err(err) = context.transfer_coins(
+            Some(sender_addr),
+            Some(*recipient_address),
+            *amount,
+            false,
+            Some(current_slot),
+        ) {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
                 amount, sender_addr, recipient_address, err
@@ -582,6 +595,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
+        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process CallSC operations only
         let (max_gas, target_addr, target_func, param, coins) = match &operation {
@@ -620,7 +634,9 @@ impl ExecutionState {
             ];
 
             // Debit the sender's balance with the coins to transfer
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, coins, false) {
+            if let Err(err) =
+                context.transfer_coins(Some(sender_addr), None, coins, false, Some(current_slot))
+            {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to debit operation sender {} with {} operation coins: {}",
                     sender_addr, coins, err
@@ -628,7 +644,7 @@ impl ExecutionState {
             }
 
             // Credit the operation target with coins.
-            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false) {
+            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false, None) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to credit operation target {} with {} operation coins: {}",
                     target_addr, coins, err
@@ -721,7 +737,7 @@ impl ExecutionState {
 
             // credit coins to the target address
             if let Err(err) =
-                context.transfer_coins(None, Some(message.destination), message.coins, false)
+                context.transfer_coins(None, Some(message.destination), message.coins, false, None)
             {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
@@ -906,6 +922,7 @@ impl ExecutionState {
                     Some(*endorsement_creator),
                     block_credit_part,
                     false,
+                    None,
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
@@ -924,6 +941,7 @@ impl ExecutionState {
                     Some(endorsement_target_creator),
                     block_credit_part,
                     false,
+                    None,
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
@@ -938,9 +956,13 @@ impl ExecutionState {
             }
 
             // Credit block creator with remaining_credit
-            if let Err(err) =
-                context.transfer_coins(None, Some(block_creator_addr), remaining_credit, false)
-            {
+            if let Err(err) = context.transfer_coins(
+                None,
+                Some(block_creator_addr),
+                remaining_credit,
+                false,
+                None,
+            ) {
                 debug!(
                     "failed to credit {} coins to block creator {} on block execution: {}",
                     remaining_credit, block_creator_addr, err

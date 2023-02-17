@@ -139,7 +139,7 @@ impl Interface for InterfaceImpl {
     /// The target bytecode or an error
     fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
         // get target address
-        let to_address = massa_models::address::Address::from_str(address)?;
+        let to_address = Address::from_str(address)?;
 
         // write-lock context
         let mut context = context_guard!(self);
@@ -157,9 +157,15 @@ impl Interface for InterfaceImpl {
         };
 
         // transfer coins from caller to target address
-        let coins = massa_models::amount::Amount::from_raw(raw_coins);
-        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, true)
-        {
+        let coins = Amount::from_raw(raw_coins);
+        let slot = context.slot;
+        if let Err(err) = context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            coins,
+            true,
+            Some(slot),
+        ) {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
                 coins,
@@ -566,11 +572,18 @@ impl Interface for InterfaceImpl {
     /// * `to_address`: string representation of the address to which the coins are sent
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
-        let to_address = massa_models::address::Address::from_str(to_address)?;
-        let amount = massa_models::amount::Amount::from_raw(raw_amount);
+        let to_address = Address::from_str(to_address)?;
+        let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
-        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        let slot = context.slot;
+        context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            amount,
+            true,
+            Some(slot),
+        )?;
         Ok(())
     }
 
@@ -586,11 +599,18 @@ impl Interface for InterfaceImpl {
         to_address: &str,
         raw_amount: u64,
     ) -> Result<()> {
-        let from_address = massa_models::address::Address::from_str(from_address)?;
-        let to_address = massa_models::address::Address::from_str(to_address)?;
-        let amount = massa_models::amount::Amount::from_raw(raw_amount);
+        let from_address = Address::from_str(from_address)?;
+        let to_address = Address::from_str(to_address)?;
+        let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        let slot = context.slot;
+        context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            amount,
+            true,
+            Some(slot),
+        )?;
         Ok(())
     }
 
@@ -710,8 +730,9 @@ impl Interface for InterfaceImpl {
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
         let fee = Amount::from_raw(raw_fee);
-        execution_context.transfer_coins(Some(sender), None, coins, true)?;
-        execution_context.transfer_coins(Some(sender), None, fee, true)?;
+        let slot = execution_context.slot;
+        execution_context.transfer_coins(Some(sender), None, coins, true, Some(slot.clone()))?;
+        execution_context.transfer_coins(Some(sender), None, fee, true, Some(slot))?;
         execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
