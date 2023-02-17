@@ -121,6 +121,20 @@ pub struct BootstrapConfig {
     pub consensus_bootstrap_part_size: u64,
 }
 
+/// Bootstrap server binding
+#[allow(missing_docs)]
+#[derive(Debug, Deserialize, Clone, SubStruct)]
+#[parent(type = "BootstrapConfig")]
+pub struct BootstrapSrvBindCfg {
+    max_bytes_read_write: f64,
+    max_bootstrap_message_size: u32,
+    thread_count: u8,
+    max_datastore_key_length: u8,
+    randomness_size_bytes: usize,
+    consensus_bootstrap_part_size: u64,
+    write_error_timeout: MassaTime,
+}
+
 /// Bootstrap client config
 #[allow(missing_docs)]
 #[derive(Debug, Deserialize, Clone, SubStruct)]

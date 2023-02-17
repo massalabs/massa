@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
-use crate::settings::BootstrapClientConfig;
+use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::types::Duplex;
 use crate::BootstrapConfig;
 use crate::{
@@ -72,13 +72,15 @@ async fn test_binders() {
     let mut server = BootstrapServerBinder::new(
         server,
         server_keypair.clone(),
-        f64::INFINITY,
-        MAX_BOOTSTRAP_MESSAGE_SIZE,
-        THREAD_COUNT,
-        MAX_DATASTORE_KEY_LENGTH,
-        BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-        CONSENSUS_BOOTSTRAP_PART_SIZE,
-        MassaTime::from_millis(1000),
+        BootstrapSrvBindCfg {
+            max_bytes_read_write: f64::INFINITY,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
     );
     let mut client = BootstrapClientBinder::test_default(
         client,

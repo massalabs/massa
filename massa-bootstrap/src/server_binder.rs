@@ -6,6 +6,7 @@ use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
 };
+use crate::settings::BootstrapSrvBindCfg;
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
@@ -43,17 +44,16 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        duplex: Duplex,
-        local_keypair: KeyPair,
-        limit: f64,
-        max_bootstrap_message_size: u32,
-        thread_count: u8,
-        max_datastore_key_length: u8,
-        randomness_size_bytes: usize,
-        consensus_bootstrap_part_size: u64,
-        write_error_timeout: MassaTime,
-    ) -> Self {
+    pub fn new(duplex: Duplex, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+        let BootstrapSrvBindCfg {
+            max_bytes_read_write: limit,
+            max_bootstrap_message_size,
+            thread_count,
+            max_datastore_key_length,
+            randomness_size_bytes,
+            consensus_bootstrap_part_size,
+            write_error_timeout,
+        } = cfg;
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
