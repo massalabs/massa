@@ -21,7 +21,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use tokio::task::JoinHandle;
+use tokio::runtime::Runtime;
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -34,25 +34,24 @@ use crate::{
 
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    join_handle: JoinHandle<Result<(), BootstrapError>>,
+    join_handle: std::thread::JoinHandle<Result<(), BootstrapError>>,
     manager_tx: crossbeam::channel::Sender<()>,
 }
 
 impl BootstrapManager {
     /// stop the bootstrap server
-    pub async fn stop(self) -> Result<(), BootstrapError> {
+    pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
         if self.manager_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");
         }
-        let _ = self.join_handle.await?;
-        Ok(())
+        self.join_handle.join().unwrap()
     }
 }
 
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.
-pub async fn start_bootstrap_server(
+pub fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
@@ -69,7 +68,9 @@ pub async fn start_bootstrap_server(
     // thread that will only be activated when the stop signal is finally activated
     let (manager_tx, manager_rx) = crossbeam::channel::bounded::<()>(0);
 
-    let join_handle = tokio::spawn(async move {
+    let runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
+
+    let join_handle = std::thread::spawn(move || {
         BootstrapServer {
             consensus_controller,
             network_command_sender,
@@ -81,9 +82,9 @@ pub async fn start_bootstrap_server(
             version,
             ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
             bootstrap_config,
+            runtime,
         }
         .run()
-        .await
     });
     Ok(Some(BootstrapManager {
         join_handle,
@@ -103,13 +104,16 @@ struct BootstrapServer {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    runtime: Runtime,
 }
 
 impl BootstrapServer {
-    pub async fn run(mut self) -> Result<(), BootstrapError> {
+    pub fn run(mut self) -> Result<(), BootstrapError> {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
-        let mut listener = self.establisher.get_listener(self.bind).await?;
+        let mut listener = self
+            .runtime
+            .block_on(self.establisher.get_listener(self.bind))?;
         let list_update_timeout = self.bootstrap_config.cache_duration.to_duration();
 
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
@@ -156,13 +160,12 @@ impl BootstrapServer {
             }
         });
 
-        self.run_loop(
+        self.runtime.handle().clone().block_on(self.run_loop(
             listener_rx,
             allow_block_list,
             max_bootstraps,
             per_ip_min_interval,
-        )
-        .await;
+        ));
         listener_handle.abort();
 
         Ok(())

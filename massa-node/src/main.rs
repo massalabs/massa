@@ -666,7 +666,6 @@ async fn stop(
     if let Some(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .await
             .expect("bootstrap server shutdown failed")
     }
 
