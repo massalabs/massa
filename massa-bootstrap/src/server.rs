@@ -143,6 +143,7 @@ impl BootstrapServer {
         });
 
         let listener_handle = tokio::spawn(async move {
+            todo!("it seems this context doesn't run, causing everything to lock-up");
             loop {
                 // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
                 let Ok((dplx, remote_addr)) = listener.accept().await else {
