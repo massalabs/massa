@@ -222,6 +222,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     let header = BlockHeader::new_verifiable(
                         BlockHeader {
                             slot: Slot::new(1, op_thread),
+                            active_version: 0,
                             announced_version: 0,
                             parents: Vec::new(),
                             operation_merkle_root,

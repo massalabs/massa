@@ -1,0 +1,22 @@
+[package]
+name = "massa_versioning_worker"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.23", features = ["full"] }
+tracing = "0.1"
+# custom modules
+massa_logging = { path = "../massa-logging" }
+massa_models = { path = "../massa-models" }
+massa_storage = { path = "../massa-storage" }
+massa_versioning_exports = { path = "../massa-versioning-exports" }
+
+[dev-dependencies]
+
+[features]
+
+#testing = ["massa_consensus_exports/testing", "massa_network_exports/testing", "massa_pool_exports/testing", "massa_protocol_exports/testing"]

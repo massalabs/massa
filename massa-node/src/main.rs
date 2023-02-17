@@ -59,6 +59,11 @@ use massa_protocol_exports::{
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning_exports::{
+    VersioningCommand, VersioningCommandSender, VersioningConfig, VersioningManager,
+    VersioningReceivers, VersioningSenders,
+};
+use massa_versioning_worker::start_versioning_worker;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::path::PathBuf;

@@ -2292,6 +2292,8 @@ dependencies = [
  "massa_protocol_worker",
  "massa_storage",
  "massa_time",
+ "massa_versioning_exports",
+ "massa_versioning_worker",
  "massa_wallet",
  "parking_lot",
  "paw",
@@ -2942,6 +2944,32 @@ dependencies = [
  "serde",
  "thiserror",
  "time 0.3.17",
+]
+
+[[package]]
+name = "massa_versioning_exports"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "massa_logging",
+ "massa_models",
+ "massa_storage",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_versioning_worker"
+version = "0.1.0"
+dependencies = [
+ "massa_logging",
+ "massa_models",
+ "massa_storage",
+ "massa_versioning_exports",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

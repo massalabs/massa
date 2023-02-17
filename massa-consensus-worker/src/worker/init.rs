@@ -43,6 +43,7 @@ pub fn create_genesis_block(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(0, thread_number),
+            active_version: 0,
             announced_version: 0,
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
