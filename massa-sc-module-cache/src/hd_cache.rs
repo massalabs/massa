@@ -1,18 +1,18 @@
 use massa_hash::Hash;
 use massa_sc_runtime::RuntimeModule;
 
-pub struct HDCache {}
+pub(crate) struct HDCache {}
 
 impl HDCache {
     pub fn new() -> Self {
         Self {}
     }
 
-    pub fn add(&self, bc_hash: Hash) {}
+    pub fn insert(&self, hash: Hash, module: RuntimeModule) {}
 
-    pub fn get(&self, bc_hash: Hash) -> Option<RuntimeModule> {
+    pub fn get(&self, hash: Hash) -> Option<(RuntimeModule, u64)> {
         None
     }
 
-    pub fn delete(&self, bc_hash: Hash) {}
+    pub fn remove(&self, hash: Hash) {}
 }
