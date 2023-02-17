@@ -4,6 +4,7 @@ use massa_models::block_header::BlockHeader;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
+use massa_versioning_exports::VersioningCommandSender;
 
 use crate::events::ConsensusEvent;
 
@@ -17,6 +18,7 @@ pub struct ConsensusChannels {
     pub pool_command_sender: Box<dyn PoolController>,
     pub controller_event_tx: crossbeam_channel::Sender<ConsensusEvent>,
     pub protocol_command_sender: ProtocolCommandSender,
+    pub versioning_command_sender: VersioningCommandSender,
     pub block_sender: tokio::sync::broadcast::Sender<Block>,
     pub block_header_sender: tokio::sync::broadcast::Sender<BlockHeader>,
     pub filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,

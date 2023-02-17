@@ -2,7 +2,6 @@
 
 use crate::error::VersioningError;
 
-use massa_models::block_header::BlockHeader;
 use serde::Serialize;
 
 use tokio::sync::mpsc;
@@ -11,7 +10,7 @@ use tokio::sync::mpsc;
 #[derive(Debug)]
 pub enum VersioningCommand {
     /// Notify new finalized block header
-    FinalizedBlockHeader { header: BlockHeader },
+    FinalizedBlockVersion { announced_version: u32 },
 }
 
 /// protocol management commands
@@ -22,7 +21,15 @@ pub enum VersioningManagementCommand {}
 #[derive(Clone)]
 pub struct VersioningCommandSender(pub mpsc::Sender<VersioningCommand>);
 
-impl VersioningCommandSender {}
+impl VersioningCommandSender {
+    pub fn send_block_version(&mut self, announced_version: u32) -> Result<(), VersioningError> {
+        self.0
+            .blocking_send(VersioningCommand::FinalizedBlockVersion { announced_version })
+            .map_err(|_| {
+                VersioningError::ChannelError("send_block_header command send error".into())
+            })
+    }
+}
 
 /// versioning manager used to stop the protocol
 pub struct VersioningManager {

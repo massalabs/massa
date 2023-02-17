@@ -62,7 +62,7 @@ use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning_exports::{
-    VersioningCommand, /*VersioningCommandSender,*/ VersioningConfig, VersioningManager,
+    VersioningCommand, VersioningCommandSender, VersioningConfig, VersioningManager,
     VersioningReceivers, VersioningSenders,
 };
 use massa_versioning_worker::start_versioning_worker;
@@ -423,6 +423,7 @@ async fn launch(
         pool_command_sender: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+        versioning_command_sender: VersioningCommandSender(versioning_command_sender.clone()),
         block_header_sender: broadcast::channel(consensus_config.broadcast_blocks_headers_capacity)
             .0,
         block_sender: broadcast::channel(consensus_config.broadcast_blocks_capacity).0,

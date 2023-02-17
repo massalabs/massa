@@ -2483,6 +2483,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "massa_versioning_exports",
  "nom",
  "serde",
  "serde_json",
@@ -2964,6 +2965,7 @@ dependencies = [
 name = "massa_versioning_worker"
 version = "0.1.0"
 dependencies = [
+ "massa_consensus_exports",
  "massa_logging",
  "massa_models",
  "massa_storage",

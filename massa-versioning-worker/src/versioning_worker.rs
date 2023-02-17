@@ -18,12 +18,12 @@ use tracing::{debug, error, info};
 pub async fn start_versioning_worker(
     config: VersioningConfig,
     receivers: VersioningReceivers,
-    senders: VersioningSenders,
+    _senders: VersioningSenders,
     storage: Storage,
 ) -> Result<VersioningManager, VersioningError> {
     // launch worker
     let (manager_tx, controller_manager_rx) = mpsc::channel::<VersioningManagementCommand>(1);
-    let join_handle = tokio::spawn(async move {
+    let _join_handle = tokio::spawn(async move {
         let res = VersioningWorker::new(
             config,
             VersioningWorkerChannels {
@@ -114,9 +114,8 @@ impl VersioningWorker {
 
     async fn process_command(&mut self, cmd: VersioningCommand) -> Result<(), VersioningError> {
         match cmd {
-            VersioningCommand::FinalizedBlockHeader { header } => {
-                let version = header.announced_version;
-                self.versioning_middleware.new_block(version);
+            VersioningCommand::FinalizedBlockVersion { announced_version } => {
+                self.versioning_middleware.new_block(announced_version);
             }
         }
         Ok(())
