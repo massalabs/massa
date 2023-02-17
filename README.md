@@ -69,7 +69,6 @@ Don't hesitate to ask questions in the
 ## Technical documentation
 
 -   [API](https://docs.massa.net/en/latest/technical-doc/api.html)
--   [Concurrency](https://docs.massa.net/en/latest/technical-doc/concurrency.html)
--   [Smart contract VM block feed process](https://docs.massa.net/en/latest/technical-doc/vm-block-feed.html)
--   [VM ledger interaction](https://docs.massa.net/en/latest/technical-doc/vm-ledger-interaction.html)
--   [Dummy network generation](https://docs.massa.net/en/latest/technical-doc/dummy-network-generation.html)
+-   [Architecture](https://docs.massa.net/en/latest/general-doc/architecture.html)
+-   [Smart contract Execution](https://docs.massa.net/en/latest/web3-dev/smart-contracts/sc-execution.html)
+-   [Local network generation](https://docs.massa.net/en/latest/web3-dev/dummy-network-generation.html)
