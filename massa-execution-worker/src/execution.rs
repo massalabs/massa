@@ -582,7 +582,7 @@ impl ExecutionState {
                 },
                 ExecutionStackElement {
                     address: target_addr,
-                    coins: coins,
+                    coins,
                     owned_addresses: vec![target_addr],
                     operation_datastore: None,
                 },

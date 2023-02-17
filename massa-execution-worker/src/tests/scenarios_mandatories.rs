@@ -335,11 +335,12 @@ mod tests {
         assert!(!events.is_empty(), "One event was expected");
         let address = events[0].clone().data;
         // Call the function test of the smart contract
+        let coins_sent = Amount::from_str("10").unwrap();
         let operation = create_call_sc_operation(
             &keypair,
             10000000,
             Amount::from_str("0").unwrap(),
-            Amount::from_str("10").unwrap(),
+            coins_sent,
             Address::from_str(&address).unwrap(),
             String::from("test"),
             address.as_bytes().to_vec(),
@@ -367,7 +368,12 @@ mod tests {
             start: Some(Slot::new(2, 0)),
             ..Default::default()
         });
-        println!("events: {:#?}", events);
+        println!("events {:#?}", events);
+        assert!(events[0].data.contains(&format!(
+            "tokens sent to the SC during the call : {}",
+            coins_sent.to_raw()
+        )));
+
         // stop the execution controller
         manager.stop();
     }
@@ -448,10 +454,6 @@ mod tests {
             end: Some(Slot::new(20, 1)),
             ..Default::default()
         });
-
-        assert!(events[0]
-            .data
-            .contains("tokens sent to the SC during the call : 10000000000"));
 
         // match the events
         assert!(events.len() == 1, "One event was expected");
