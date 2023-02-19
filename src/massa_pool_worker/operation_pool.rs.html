@@ -281,6 +281,12 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -294,7 +300,6 @@
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::BTreeSet;
-<span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::types::{OperationInfo, PoolOperationCursor};
 
@@ -357,10 +362,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>notify_final_cs_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, final_cs_periods: <span class="kw-2">&amp;</span>[u64]) {
         <span class="comment">// update internal final slot counter
         </span><span class="self">self</span>.last_cs_final_periods = final_cs_periods.to_vec();
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;notified of new final consensus periods: {:?}&quot;</span>,
-            <span class="self">self</span>.last_cs_final_periods
-        );
+
         <span class="comment">// prune old ops
         </span><span class="kw">let </span><span class="kw-2">mut </span>removed_ops: PreHashSet&lt;<span class="kw">_</span>&gt; = Default::default();
         <span class="kw">while let </span><span class="prelude-val">Some</span>((expire_slot, op_id)) = <span class="self">self</span>.ops_per_expiration.first().copied() {
@@ -481,6 +483,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_space = <span class="self">self</span>.config.max_block_size <span class="kw">as </span>usize;
         <span class="comment">// init remaining gas
         </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_gas = <span class="self">self</span>.config.max_block_gas;
+        <span class="comment">// init remaining number of operations
+        </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_ops = <span class="self">self</span>.config.max_operations_per_block;
         <span class="comment">// cache of balances
         </span><span class="kw">let </span><span class="kw-2">mut </span>balance_cache: PreHashMap&lt;Address, Amount&gt; = Default::default();
 
@@ -504,6 +508,11 @@
             <span class="comment">// exclude ops that require too much gas
             </span><span class="kw">if </span>op_info.max_gas &gt; remaining_gas {
                 <span class="kw">continue</span>;
+            }
+
+            <span class="comment">// if we have reached the maximum number of operations, stop
+            </span><span class="kw">if </span>remaining_ops == <span class="number">0 </span>{
+                <span class="kw">break</span>;
             }
 
             <span class="comment">// check if the op was already executed
@@ -548,6 +557,9 @@
 
             <span class="comment">// update remaining block gas
             </span>remaining_gas -= op_info.max_gas;
+
+            <span class="comment">// update remaining number of operations
+            </span>remaining_ops -= <span class="number">1</span>;
 
             <span class="comment">// update balance cache
             </span><span class="kw-2">*</span>creator_balance = creator_balance.saturating_sub(op_info.max_spending);
