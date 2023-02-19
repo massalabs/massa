@@ -194,6 +194,8 @@ impl OperationPool {
         let mut remaining_space = self.config.max_block_size as usize;
         // init remaining gas
         let mut remaining_gas = self.config.max_block_gas;
+        // init remaining number of operations
+        let mut remaining_ops = self.config.max_operations_per_block;
         // cache of balances
         let mut balance_cache: PreHashMap<Address, Amount> = Default::default();
 
@@ -217,6 +219,11 @@ impl OperationPool {
             // exclude ops that require too much gas
             if op_info.max_gas > remaining_gas {
                 continue;
+            }
+
+            // if we have reached the maximum number of operations, stop
+            if remaining_ops == 0 {
+                break;
             }
 
             // check if the op was already executed
@@ -261,6 +268,9 @@ impl OperationPool {
 
             // update remaining block gas
             remaining_gas -= op_info.max_gas;
+
+            // update remaining number of operations
+            remaining_ops -= 1;
 
             // update balance cache
             *creator_balance = creator_balance.saturating_sub(op_info.max_spending);
