@@ -17,6 +17,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::convert::TryInto;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::error::Elapsed;
 
@@ -100,6 +101,13 @@ impl BootstrapServerBinder {
         Ok(())
     }
 
+    pub async fn send_msg(
+        &mut self,
+        timeout: Duration,
+        msg: BootstrapServerMessage,
+    ) -> Result<Result<(), BootstrapError>, Elapsed> {
+        tokio::time::timeout(timeout, self.send(msg)).await
+    }
     pub async fn send_error(
         &mut self,
         error: String,

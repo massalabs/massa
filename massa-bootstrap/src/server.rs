@@ -540,11 +540,9 @@ pub async fn stream_bootstrap_information(
         }
 
         if slot_too_old {
-            match tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::SlotTooOld),
-            )
-            .await
+            match server
+                .send_msg(write_timeout, BootstrapServerMessage::SlotTooOld)
+                .await
             {
                 Err(_) => Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
@@ -607,11 +605,9 @@ pub async fn stream_bootstrap_information(
             && final_state_changes_step.finished()
             && last_consensus_step.finished()
         {
-            match tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::BootstrapFinished),
-            )
-            .await
+            match server
+                .send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)
+                .await
             {
                 Err(_) => Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
@@ -625,21 +621,22 @@ pub async fn stream_bootstrap_information(
         }
 
         // At this point we know that consensus, final state or both are not finished
-        match tokio::time::timeout(
-            write_timeout,
-            server.send(BootstrapServerMessage::BootstrapPart {
-                slot: current_slot,
-                ledger_part,
-                async_pool_part,
-                pos_cycle_part,
-                pos_credits_part,
-                exec_ops_part,
-                final_state_changes,
-                consensus_part,
-                consensus_outdated_ids,
-            }),
-        )
-        .await
+        match server
+            .send_msg(
+                write_timeout,
+                BootstrapServerMessage::BootstrapPart {
+                    slot: current_slot,
+                    ledger_part,
+                    async_pool_part,
+                    pos_cycle_part,
+                    pos_credits_part,
+                    exec_ops_part,
+                    final_state_changes,
+                    consensus_part,
+                    consensus_outdated_ids,
+                },
+            )
+            .await
         {
             Err(_) => Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -696,14 +693,15 @@ async fn manage_bootstrap(
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match tokio::time::timeout(
-        write_timeout,
-        server.send(BootstrapServerMessage::BootstrapTime {
-            server_time,
-            version,
-        }),
-    )
-    .await
+    match server
+        .send_msg(
+            write_timeout,
+            BootstrapServerMessage::BootstrapTime {
+                server_time,
+                version,
+            },
+        )
+        .await
     {
         Err(_) => Err(std::io::Error::new(
             std::io::ErrorKind::TimedOut,
@@ -720,13 +718,14 @@ async fn manage_bootstrap(
             Ok(Err(e)) => break Err(e),
             Ok(Ok(msg)) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
-                    match tokio::time::timeout(
-                        write_timeout,
-                        server.send(BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.get_bootstrap_peers().await?,
-                        }),
-                    )
-                    .await
+                    match server
+                        .send_msg(
+                            write_timeout,
+                            BootstrapServerMessage::BootstrapPeers {
+                                peers: network_command_sender.get_bootstrap_peers().await?,
+                            },
+                        )
+                        .await
                     {
                         Err(_) => Err(std::io::Error::new(
                             std::io::ErrorKind::TimedOut,
