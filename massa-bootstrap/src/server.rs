@@ -158,46 +158,6 @@ impl BootstrapServer {
             };
         }
     }
-    // pub fn run(mut self) -> Result<(), BootstrapError> {
-    //     debug!("starting bootstrap server");
-    //     massa_trace!("bootstrap.lib.run", {});
-    //     // let mut listener = self
-    //     //     .runtime
-    //     //     .block_on(self.establisher.get_listener(self.bind))?;
-    //     let list_update_timeout = self.bootstrap_config.cache_duration.to_duration();
-
-    //     let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-
-    //     // As far as the bootstrap thread is concerned, the lists are auto-magically kept upt to date
-    //     // This is done by providing an opaque interface, behind which, is an Arc<RwLock<lists>> data
-    //     // that is thread-safe updated with minimal contention by the update method.
-    //     // The cost of this, is when an update is run, the thread does expensive file read and
-    //     // deserialization ops.
-    //     //
-    //     // Ideally, we would cache a set of add/remove to the two lists, and periodically
-    //     // check and apply the changes.
-    //     let mut updaters_list = self.allow_block_list.clone();
-
-    //     let listener_handle = self.runtime.spawn(async move {
-    //         // todo!("it seems this context doesn't run, causing everything to lock-up");
-    //         loop {
-    //             // This needs to become sync somehow? the blocking send might include other async runtimes otherwise...
-    //             let Ok((dplx, remote_addr)) = listener.accept().await else {
-    //                 continue;
-    //             };
-    //             match listener_tx.send((dplx, remote_addr)) {
-    //                 Ok(_) => {}
-    //                 Err(e) => todo!("handle closed channel after accept: {:?}", e.into_inner().1),
-    //             }
-    //         }
-    //     });
-
-    //     let loop_handle = std::thread::spawn(move || self.run_loop());
-    //     let _ = loop_handle.join().unwrap();
-    //     listener_handle.abort();
-
-    //     Ok(())
-    // }
 
     fn run_loop(&mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
         // Use the strong-count of this variable to track the session count
