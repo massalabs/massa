@@ -167,7 +167,7 @@ pub fn create_block(
 }
 
 /// get the mocked file for initial vesting
-#[cfg(any(feature = "testing"))]
+#[allow(dead_code)]
 pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
     let file = NamedTempFile::new().unwrap();
     let mut map = PreHashMap::default();
