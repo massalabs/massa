@@ -1354,6 +1354,7 @@
 <a href="#1354" id="1354">1354</a>
 <a href="#1355" id="1355">1355</a>
 <a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2123,6 +2124,7 @@
 
         <span class="comment">// Get asynchronous messages to execute
         </span><span class="kw">let </span>messages = execution_context.take_async_batch(<span class="self">self</span>.config.max_async_gas);
+        <span class="macro">debug!</span>(<span class="string">&quot;executing {} messages at slot {}&quot;</span>, messages.len(), slot);
 
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
@@ -2158,6 +2160,8 @@
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             };
+
+            <span class="macro">debug!</span>(<span class="string">&quot;executing {} operations at slot {}&quot;</span>, operations.len(), slot);
 
             <span class="comment">// gather all available endorsement creators and target blocks
             </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
@@ -2317,11 +2321,10 @@
         }
 
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to active state
         </span><span class="self">self</span>.apply_active_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution state applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished &amp; state applied&quot;</span>);
     }
 
     <span class="doccomment">/// Execute an SCE-final slot
@@ -2378,11 +2381,10 @@
         <span class="comment">// execute slot
         </span><span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution started&quot;</span>);
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution result applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished &amp; result applied&quot;</span>);
     }
 
     <span class="doccomment">/// Runs a read-only execution request.
