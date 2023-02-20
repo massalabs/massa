@@ -19,7 +19,6 @@ use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     sync::Arc,
-    thread::JoinHandle,
     time::{Duration, Instant},
 };
 use tokio::runtime::Runtime;
@@ -35,7 +34,7 @@ use crate::{
 
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    update_handle: std::thread::JoinHandle<Result<(), String>>,
+    update_handle: tokio::task::JoinHandle<Result<(), String>>,
     listen_handle: tokio::task::JoinHandle<Result<(), Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     stopper_tx: crossbeam::channel::Sender<()>,
@@ -43,16 +42,13 @@ pub struct BootstrapManager {
 
 impl BootstrapManager {
     /// stop the bootstrap server
-    pub fn stop(self) -> Result<(), Box<BootstrapError>> {
+    pub async fn stop(self) -> Result<(), Box<BootstrapError>> {
         massa_trace!("bootstrap.lib.stop", {});
         if self.stopper_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");
         }
         self.listen_handle.abort();
-        self.update_handle
-            .join()
-            .unwrap()
-            .map_err(BootstrapError::GeneralError)?;
+        self.update_handle.abort();
         self.main_handle.join().unwrap()
     }
 }
@@ -72,9 +68,9 @@ pub async fn start_bootstrap_server(
     let Some(listen_addr) = config.listen_addr else {
         return Ok(None);
     };
-    // zero-capacity channel is being tried. The idea being is that the receiver can then be a dedicated
-    // thread that will only be activated when the stop signal is finally activated
-    let (stopper_tx, manager_rx) = crossbeam::channel::bounded::<()>(0);
+
+    // TODO(low prio): See if a zero capacity channel model can work
+    let (stopper_tx, manager_rx) = crossbeam::channel::bounded::<()>(1);
 
     let runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
     let listener = establisher
@@ -95,8 +91,10 @@ pub async fn start_bootstrap_server(
     )
     .map_err(BootstrapError::GeneralError)?;
 
-    let update_handle =
-        BootstrapServer::run_updater(allow_block_list.clone(), config.cache_duration.into());
+    let update_handle = runtime.handle().clone().spawn(BootstrapServer::run_updater(
+        allow_block_list.clone(),
+        config.cache_duration.into(),
+    ));
     let listen_handle = runtime
         .handle()
         .clone()
@@ -142,15 +140,12 @@ struct BootstrapServer {
 }
 
 impl BootstrapServer {
-    fn run_updater(
-        mut list: SharedAllowBlockList,
-        interval: Duration,
-    ) -> JoinHandle<Result<(), String>> {
-        std::thread::spawn(move || loop {
-            std::thread::sleep(interval);
-            // TODO: Do we want to handle shutting things down if the update errors out?
+    async fn run_updater(mut list: SharedAllowBlockList, interval: Duration) -> Result<(), String> {
+        let mut interval = tokio::time::interval(interval);
+        loop {
+            interval.tick().await;
             list.update()?;
-        })
+        }
     }
     async fn run_listener(
         mut listener: Listener,
@@ -237,7 +232,7 @@ impl BootstrapServer {
 
             // check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
-            if let Err(error_msg) = self.allow_block_list.is_ip_allowed(&dbg!(remote_addr)) {
+            if let Err(error_msg) = self.allow_block_list.is_ip_allowed(&remote_addr) {
                 let _ = match self.runtime.block_on(server.send_error(error_msg.clone())) {
                     Err(_) => Err(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,
@@ -424,7 +419,7 @@ async fn run_bootstrap_session(
     match res {
         Ok(mgmt) => match mgmt {
             Ok(_) => {
-                info!("bootstrapped peer {}", remote_addr)
+                info!("bootstrapped peer {}", remote_addr);
             }
             Err(BootstrapError::ReceivedError(error)) => debug!(
                 "bootstrap serving error received from peer {}: {}",

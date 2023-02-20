@@ -347,6 +347,7 @@ async fn test_bootstrap_server() {
     // stop bootstrap server
     bootstrap_manager
         .stop()
+        .await
         .expect("could not stop bootstrap server");
 
     // stop selector controllers
