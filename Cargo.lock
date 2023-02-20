@@ -2723,6 +2723,7 @@ dependencies = [
  "nom",
  "num",
  "num_enum",
+ "parking_lot",
  "rust_decimal",
  "serde",
  "serde_with",
