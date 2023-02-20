@@ -83,19 +83,18 @@ mod types {
         /// # Argument
         /// * `addr`: `SocketAddr` we want to bind to.
         pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
+            use socket2::{Domain, Socket, Type};
 
-            use socket2::{Socket, Domain, Type};
-        
             // Create a TCP listener bound to two addresses.
             let socket = Socket::new(Domain::IPV6, Type::STREAM, None)?;
-    
+
             socket.set_only_v6(false)?;
-    
+
             socket.bind(&addr.into())?;
             socket.set_nonblocking(true)?;
-    
+
             socket.listen(128)?;
-            
+
             let std_listener: std::net::TcpListener = socket.into();
             let tokio_listener = tokio::net::TcpListener::from_std(std_listener)?;
 
