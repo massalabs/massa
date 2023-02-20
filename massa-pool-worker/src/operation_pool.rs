@@ -201,6 +201,10 @@ impl OperationPool {
 
         // iterate over pool operations in the right thread, from best to worst
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+            // if we have reached the maximum number of operations, stop
+            if remaining_ops == 0 {
+                break;
+            }
             let op_info = self
                 .operations
                 .get(&cursor.get_id())
@@ -219,11 +223,6 @@ impl OperationPool {
             // exclude ops that require too much gas
             if op_info.max_gas > remaining_gas {
                 continue;
-            }
-
-            // if we have reached the maximum number of operations, stop
-            if remaining_ops == 0 {
-                break;
             }
 
             // check if the op was already executed
