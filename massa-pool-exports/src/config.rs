@@ -16,6 +16,8 @@ pub struct PoolConfig {
     pub roll_price: Amount,
     /// operation validity periods
     pub operation_validity_periods: u64,
+    /// max operations per block
+    pub max_operations_per_block: u32,
     /// max operation pool size per thread (in number of operations)
     pub max_operation_pool_size_per_thread: usize,
     /// max endorsement pool size per thread (in number of endorsements)
