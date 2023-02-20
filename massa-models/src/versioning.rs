@@ -1,13 +1,29 @@
 use std::collections::HashMap;
+use std::ops::Bound::{Excluded, Included};
 use std::sync::Arc;
 use std::time::Duration;
 
 use machine::{machine, transitions};
+use nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult, Parser,
+};
+use num::ToPrimitive; // for function: to_u64()
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
+use rust_decimal::Decimal;
+
+use crate::amount::{Amount, AmountDeserializer, AmountSerializer};
+use massa_serialization::{
+    DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
+    U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 
 // TODO: add more items here
 /// Versioning component enum
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
 pub enum VersioningComponent {
     Address,
     Block,
@@ -153,7 +169,242 @@ pub struct VersioningStore(pub Arc<RwLock<VersioningStoreRaw>>);
 /// Store of all versioning info
 #[derive(Debug, Clone)]
 pub struct VersioningStoreRaw {
+    // TODO: rename to store?
     pub versioning_info: HashMap<VersioningInfo, VersioningState>,
+}
+
+/// Ser / Der
+
+/// Serializer for `VersioningInfo`
+#[derive(Clone)]
+pub struct VersioningInfoSerializer {
+    u32_serializer: U32VarIntSerializer,
+    len_serializer: U64VarIntSerializer, // name length
+    amount_serializer: AmountSerializer, // start / timeout
+}
+
+impl VersioningInfoSerializer {
+    /// Creates a new `Serializer`
+    pub fn new() -> Self {
+        VersioningInfoSerializer {
+            u32_serializer: U32VarIntSerializer::new(),
+            len_serializer: U64VarIntSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
+        }
+    }
+}
+
+impl Default for VersioningInfoSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<VersioningInfo> for VersioningInfoSerializer {
+    fn serialize(
+        &self,
+        value: &VersioningInfo,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        // name
+        // TODO: add max size for name?
+        self.len_serializer
+            .serialize(&(value.name.len() as u64), buffer)?;
+        buffer.extend(value.name.as_bytes());
+        // version
+        self.u32_serializer.serialize(&value.version, buffer)?;
+        // component
+        let component = match &value.component {
+            VersioningComponent::Address => u32::from(VersioningComponent::Address),
+            VersioningComponent::Block => u32::from(VersioningComponent::Block),
+            VersioningComponent::VM => u32::from(VersioningComponent::VM),
+        };
+        self.u32_serializer.serialize(&component, buffer)?;
+        // start
+        let start = value.start.as_secs_f32();
+        let start_as_decimal =
+            Decimal::from_f32_retain(start).ok_or(SerializeError::GeneralError(format!(
+                "Could not convert start from f32: {:?} to Decimal",
+                start
+            )))?;
+        let start_as_u64 = start_as_decimal
+            .to_u64()
+            .ok_or(SerializeError::GeneralError(format!(
+                "Could not convert Decimal: {:?} to u64",
+                start_as_decimal
+            )))?;
+        let amount = Amount::from_raw(start_as_u64);
+        self.amount_serializer.serialize(&amount, buffer)?;
+        // timeout
+        let timeout = value.timeout.as_secs_f32();
+        let timeout_as_decimal =
+            Decimal::from_f32_retain(timeout).ok_or(SerializeError::GeneralError(format!(
+                "Could not convert timeout from f32: {:?} to Decimal",
+                start
+            )))?;
+        let timeout_as_u64 = timeout_as_decimal
+            .to_u64()
+            .ok_or(SerializeError::GeneralError(format!(
+                "Could not convert Decimal: {:?} to u64",
+                start_as_decimal
+            )))?;
+        let amount = Amount::from_raw(timeout_as_u64);
+        self.amount_serializer.serialize(&amount, buffer)?;
+        Ok(())
+    }
+}
+
+pub struct VersioningInfoDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    u32_deserializer: U32VarIntDeserializer,
+    amount_deserializer: AmountDeserializer,
+}
+
+impl VersioningInfoDeserializer {
+    /// Creates a new `EndorsementDeserializerLW`
+    pub fn new() -> Self {
+        Self {
+            // FIXME
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
+            // FIXME
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Excluded(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+        }
+    }
+}
+
+impl Deserializer<VersioningInfo> for VersioningInfoDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], VersioningInfo, E> {
+        context(
+            "Failed VersioningInfo deserialization",
+            tuple((
+                context("Failed name deserialization", |input| {
+                    let len = self.u64_deserializer.deserialize(input)?;
+                    todo!()
+                }),
+                context("Failed version deserialization", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+                context("Failed component deserialization", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+                context("Failed start deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed timeout deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(name, version, component, start, timeout)| {
+            // TODO: no unwrap() / default()
+            VersioningInfo {
+                name: name,
+                version: version,
+                component: VersioningComponent::try_from(component).unwrap(),
+                start: Default::default(),
+                timeout: Default::default(),
+            }
+        })
+        .parse(buffer)
+    }
+}
+
+/// Serializer for `VersioningState`
+#[derive(Clone)]
+pub struct VersioningStateSerializer {
+    u32_serializer: U32VarIntSerializer,
+    amount_serializer: AmountSerializer,
+}
+
+impl VersioningStateSerializer {
+    /// Creates a new `Serializer`
+    pub fn new() -> Self {
+        VersioningStateSerializer {
+            u32_serializer: U32VarIntSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
+        }
+    }
+}
+
+impl Default for VersioningStateSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<VersioningState> for VersioningStateSerializer {
+    fn serialize(
+        &self,
+        value: &VersioningState,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        let (state, threshold_): (u32, Option<f32>) = match value {
+            VersioningState::Error => (0, None),
+            VersioningState::Defined(_) => (1, None),
+            VersioningState::Started(Started { threshold }) => (2, Some(*threshold)),
+            VersioningState::LockedIn(_) => (3, None),
+            VersioningState::Active(_) => (4, None),
+            VersioningState::Failed(_) => (5, None),
+        };
+
+        self.u32_serializer.serialize(&state, buffer)?;
+        if let Some(threshold) = threshold_ {
+            let start_as_decimal = Decimal::from_f32_retain(threshold).unwrap();
+            let amount = Amount::from_raw(start_as_decimal.to_u64().unwrap());
+            self.amount_serializer.serialize(&amount, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Serializer for `VersioningStoreRaw`
+#[derive(Clone)]
+pub struct VersioningStoreRawSerializer {
+    u64_serializer: U64VarIntSerializer,
+    info_serializer: VersioningInfoSerializer,
+    state_serializer: VersioningStateSerializer,
+}
+
+impl VersioningStoreRawSerializer {
+    /// Creates a new `Serializer`
+    pub fn new() -> Self {
+        VersioningStoreRawSerializer {
+            u64_serializer: U64VarIntSerializer::new(),
+            info_serializer: VersioningInfoSerializer::new(),
+            state_serializer: VersioningStateSerializer::new(),
+        }
+    }
+}
+
+impl Default for VersioningStoreRawSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<VersioningStoreRaw> for VersioningStoreRawSerializer {
+    fn serialize(
+        &self,
+        value: &VersioningStoreRaw,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        let entry_count: u64 = value.versioning_info.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(format!("too many entries in VersioningStoreRaw: {}", err))
+        })?;
+        self.u64_serializer.serialize(&entry_count, buffer)?;
+        for (key, value) in value.versioning_info.iter() {
+            self.info_serializer.serialize(key, buffer)?;
+            self.state_serializer.serialize(value, buffer)?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -299,5 +550,20 @@ mod test {
         let mut state: VersioningState = VersioningState::Started(Default::default());
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, VersioningState::Failed(Failed {}));
+    }
+
+    #[test]
+    fn test_versioning_store_ser_der() {
+        let vi = get_default_version_info();
+        let state = VersioningState::Started(Started::new(25.7));
+        let v_store = VersioningStoreRaw {
+            versioning_info: HashMap::from([(vi, state)]),
+        };
+
+        let mut buffer: Vec<u8> = Vec::new();
+        let serializer = VersioningStoreRawSerializer::new();
+        serializer.serialize(&v_store, &mut buffer).unwrap();
+
+        // TODO: der
     }
 }

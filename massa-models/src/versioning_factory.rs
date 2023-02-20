@@ -117,6 +117,7 @@ pub trait VersioningFactory {
         let res = versions.iter().next().or(Some(&0));
         return *res.unwrap();
     }
+
     fn get_versions(&self) -> Vec<u32> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
