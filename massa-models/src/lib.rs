@@ -63,6 +63,8 @@ pub mod timeslots;
 pub mod version;
 /// versioning
 pub mod versioning;
+/// versioning factory
+pub mod versioning_factory;
 
 /// Test utils
 #[cfg(feature = "testing")]

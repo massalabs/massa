@@ -1,30 +1,32 @@
 use std::collections::HashMap;
-// use std::sync::LockResult;
-use machine::{machine, transitions};
+use std::sync::Arc;
 use std::time::Duration;
+
+use machine::{machine, transitions};
+use parking_lot::RwLock;
 
 // TODO: add more items here
 /// Versioning component enum
-#[derive(Clone, Debug, PartialEq)]
-enum VersioningComponent {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum VersioningComponent {
     Address,
     Block,
     VM,
 }
 
 /// Version info per component
-#[derive(Clone, Debug, PartialEq)]
-struct VersioningInfo {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct VersioningInfo {
     /// brief description of the versioning
-    name: String,
+    pub(crate) name: String,
     /// version
-    version: u32,
+    pub(crate) version: u32,
     /// Component concerned by this versioning (e.g. a new Block version)
-    component: VersioningComponent,
+    pub(crate) component: VersioningComponent,
     /// a timestamp at which the version gains its meaning (e.g. accepted in block header)
-    start: Duration,
+    pub(crate) start: Duration,
     /// a timestamp at which the deployment is considered failed (timeout > start)
-    timeout: Duration,
+    pub(crate) timeout: Duration,
 }
 
 machine!(
@@ -143,9 +145,15 @@ impl Failed {
     }
 }
 
+// Let's define it if needed
+
+#[derive(Debug, Clone)]
+pub struct VersioningStore(pub Arc<RwLock<VersioningStoreRaw>>);
+
 /// Store of all versioning info
-struct VersioningStore {
-    versioning_info: HashMap<VersioningInfo, VersioningState>,
+#[derive(Debug, Clone)]
+pub struct VersioningStoreRaw {
+    pub versioning_info: HashMap<VersioningInfo, VersioningState>,
 }
 
 #[cfg(test)]
@@ -277,7 +285,7 @@ mod test {
         // Test Versioning state transition (to state: Failed)
         let vi = get_default_version_info();
         let now = vi.start + Duration::from_secs(1);
-        let mut advance_msg = Advance {
+        let advance_msg = Advance {
             start_timestamp: vi.start,
             timeout: vi.start,
             threshold: 0.0,
