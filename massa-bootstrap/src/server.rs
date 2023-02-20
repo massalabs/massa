@@ -144,6 +144,8 @@ impl BootstrapServer {
         let mut interval = tokio::time::interval(interval);
         loop {
             interval.tick().await;
+            // TODO: loop interval here is tick + update time. Implement a state-based,
+            // rather than time-based, trigger (such as delta-count);
             list.update()?;
         }
     }
@@ -311,6 +313,8 @@ impl BootstrapServer {
                 debug!("did not bootstrap {}: no available slots", remote_addr);
             }
         }
+        // TODO: clean up the listener and updater here.
+        // TODO: do we drop(self.runtime) here?
         Ok(())
     }
 
