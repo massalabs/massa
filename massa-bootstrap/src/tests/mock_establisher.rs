@@ -2,12 +2,12 @@
 
 use massa_models::config::{CHANNEL_SIZE, MAX_DUPLEX_BUFFER_SIZE};
 use massa_time::MassaTime;
+use socket2 as _;
 use std::io;
 use std::net::SocketAddr;
 use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
-use socket2 as _;
 
 pub type Duplex = DuplexStream;
 
