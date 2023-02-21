@@ -120,9 +120,6 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">mod </span>types {
@@ -208,25 +205,22 @@
         /// # Argument
         /// * `addr`: `SocketAddr` we want to bind to.
         </span><span class="kw">pub async fn </span>get_listener(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;DefaultListener&gt; {
-            <span class="kw">use </span>socket2::{Domain, Socket, Type};
-
-            <span class="comment">// Create a TCP listener bound to two addresses.
-            </span><span class="kw">let </span>socket = Socket::new(Domain::IPV6, Type::STREAM, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+            <span class="comment">// Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
+            </span><span class="kw">let </span>socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
             socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
             socket.bind(<span class="kw-2">&amp;</span>addr.into())<span class="question-mark">?</span>;
             socket.set_nonblocking(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
-            socket.listen(<span class="number">128</span>)<span class="question-mark">?</span>;
+            <span class="comment">// Number of connections to queue, set to the hardcoded value used by tokio
+            </span>socket.listen(<span class="number">1024</span>)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>std_listener: std::net::TcpListener = socket.into();
             <span class="kw">let </span>tokio_listener = tokio::net::TcpListener::from_std(std_listener)<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(DefaultListener(tokio_listener))
-
-            <span class="comment">//Ok(DefaultListener(TcpListener::bind(addr).await?))
-        </span>}
+        }
 
         <span class="doccomment">/// Get the connector with associated timeout
         ///
