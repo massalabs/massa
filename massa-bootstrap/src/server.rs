@@ -69,7 +69,7 @@ pub struct BootstrapManager {
 
 impl BootstrapManager {
     /// stop the bootstrap server
-    pub async fn stop(self) -> Result<(), Box<BootstrapError>> {
+    pub fn stop(self) -> Result<(), Box<BootstrapError>> {
         massa_trace!("bootstrap.lib.stop", {});
         if self.stopper_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");

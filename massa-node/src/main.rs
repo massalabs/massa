@@ -664,9 +664,7 @@ async fn stop(
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
-        bootstrap_manager
-            .stop()
-            .expect("bootstrap server shutdown failed")
+        bootstrap_manager.stop().unwrap();
     }
 
     // stop public API
