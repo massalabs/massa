@@ -27,7 +27,7 @@
 mod allow_block_list;
 use allow_block_list::*;
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, Select, Sender};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -96,7 +96,7 @@ pub async fn start_bootstrap_server(
     };
 
     // TODO(low prio): See if a zero capacity channel model can work
-    let (stopper_tx, manager_rx) = crossbeam::channel::bounded::<()>(1);
+    let (stopper_tx, stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
     let runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
     let listener = establisher
@@ -132,7 +132,7 @@ pub async fn start_bootstrap_server(
             network_command_sender,
             final_state,
             listener_rx,
-            stopper_rx: manager_rx,
+            stopper_rx,
             allow_block_list,
             keypair,
             version,
