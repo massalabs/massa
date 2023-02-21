@@ -19,6 +19,7 @@ use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
     sync::Arc,
+    thread,
     time::{Duration, Instant},
 };
 use tokio::runtime::Runtime;
@@ -290,16 +291,18 @@ impl BootstrapServer {
                 let network_command_sender = self.network_command_sender.clone();
                 let config = self.bootstrap_config.clone();
 
-                self.runtime.spawn(run_bootstrap_session(
-                    server,
-                    bootstrap_count_token,
-                    config,
-                    remote_addr,
-                    data_execution,
-                    version,
-                    consensus_command_sender,
-                    network_command_sender,
-                ));
+                thread::spawn(move || {
+                    run_bootstrap_session(
+                        server,
+                        bootstrap_count_token,
+                        config,
+                        remote_addr,
+                        data_execution,
+                        version,
+                        consensus_command_sender,
+                        network_command_sender,
+                    )
+                });
 
                 massa_trace!("bootstrap.session.started", {
                     "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
@@ -352,7 +355,7 @@ impl BootstrapServer {
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
 #[allow(clippy::too_many_arguments)]
-async fn run_bootstrap_session(
+fn run_bootstrap_session(
     mut server: BootstrapServerBinder,
     arc_counter: Arc<()>,
     config: BootstrapConfig,
@@ -363,51 +366,54 @@ async fn run_bootstrap_session(
     network_command_sender: NetworkCommandSender,
 ) {
     debug!("awaiting on bootstrap of peer {}", remote_addr);
-    let res = tokio::time::timeout(
-        config.bootstrap_timeout.into(),
-        manage_bootstrap(
-            &config,
-            &mut server,
-            data_execution,
-            version,
-            consensus_command_sender,
-            network_command_sender,
-        ),
-    )
-    .await;
-    // This drop allows the server to accept new connections before having to complete the error notifications
-    massa_trace!("bootstrap.session.finished", {
-        "active_count": Arc::strong_count(&arc_counter) - 1
-    });
-    drop(arc_counter);
-    match res {
-        Ok(mgmt) => match mgmt {
-            Ok(_) => {
-                info!("bootstrapped peer {}", remote_addr);
-            }
-            Err(BootstrapError::ReceivedError(error)) => debug!(
-                "bootstrap serving error received from peer {}: {}",
-                remote_addr, error
+    let session_context = Runtime::new().unwrap();
+    session_context.handle().block_on(async move {
+        let res = tokio::time::timeout(
+            config.bootstrap_timeout.into(),
+            manage_bootstrap(
+                &config,
+                &mut server,
+                data_execution,
+                version,
+                consensus_command_sender,
+                network_command_sender,
             ),
-            Err(err) => {
-                debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+        )
+        .await;
+        // This drop allows the server to accept new connections before having to complete the error notifications
+        massa_trace!("bootstrap.session.finished", {
+            "active_count": Arc::strong_count(&arc_counter) - 1
+        });
+        drop(arc_counter);
+        match res {
+            Ok(mgmt) => match mgmt {
+                Ok(_) => {
+                    info!("bootstrapped peer {}", remote_addr);
+                }
+                Err(BootstrapError::ReceivedError(error)) => debug!(
+                    "bootstrap serving error received from peer {}: {}",
+                    remote_addr, error
+                ),
+                Err(err) => {
+                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                    // We allow unused result because we don't care if an error is thrown when
+                    // sending the error message to the server we will close the socket anyway.
+                    let _ = server.send_error(err.to_string()).await;
+                }
+            },
+            Err(_timeout) => {
+                debug!("bootstrap timeout for peer {}", remote_addr);
                 // We allow unused result because we don't care if an error is thrown when
                 // sending the error message to the server we will close the socket anyway.
-                let _ = server.send_error(err.to_string()).await;
+                let _ = server
+                    .send_error(format!(
+                        "Bootstrap process timedout ({})",
+                        format_duration(config.bootstrap_timeout.to_duration())
+                    ))
+                    .await;
             }
-        },
-        Err(_timeout) => {
-            debug!("bootstrap timeout for peer {}", remote_addr);
-            // We allow unused result because we don't care if an error is thrown when
-            // sending the error message to the server we will close the socket anyway.
-            let _ = server
-                .send_error(format!(
-                    "Bootstrap process timedout ({})",
-                    format_duration(config.bootstrap_timeout.to_duration())
-                ))
-                .await;
         }
-    }
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
