@@ -1,6 +1,7 @@
 use massa_models::versioning::{Advance, VersioningInfo, VersioningStore};
 use massa_versioning_exports::VersioningError;
 use std::collections::{HashMap, VecDeque};
+use std::time::Instant;
 
 /// Struct used to keep track of announced versions in previous blocks
 pub struct VersioningMiddleware {
@@ -36,7 +37,8 @@ impl VersioningMiddleware {
             }
         }
 
-        let _ = self.create_and_send_advance_message(*self.counts.get(&version).unwrap(), version);
+        //let _ = self.create_and_send_advance_message(*self.counts.get(&version).unwrap(), version);
+        let _ = self.create_and_send_advance_message_for_all();
     }
 
     fn get_version_info(&self, version: u32) -> Option<VersioningInfo> {
@@ -51,6 +53,29 @@ impl VersioningMiddleware {
             0 => None,
             _ => Some(res[0].0.clone()),
         }
+    }
+
+    fn create_and_send_advance_message_for_all(&self) -> Result<(), VersioningError> {
+
+        let mut store = self.versioning_store.0.write().versioning_info.clone();
+
+        let now = Instant::now();
+
+        for (vi,state) in store.iter_mut() {
+            
+            let ratio_counts = *self.counts.get(&vi.version).unwrap_or(&0) as f32 / self.nb_blocks_considered as f32;
+
+            let advance_msg = Advance {
+                start_timestamp: vi.start,
+                timeout: vi.timeout,
+                threshold: ratio_counts,
+                now,
+            };
+
+            *state = state.on_advance(advance_msg);
+        }
+        
+        Ok(())
     }
 
     fn create_and_send_advance_message(
@@ -69,7 +94,7 @@ impl VersioningMiddleware {
             Some(vi) => {
                 let now = std::time::Instant::now();
 
-                let ratio_counts = self.nb_blocks_considered as f32 / count as f32;
+                let ratio_counts = count as f32 / self.nb_blocks_considered as f32;
 
                 let advance_msg = Advance {
                     start_timestamp: vi.start,
@@ -172,13 +197,13 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 2,
             component: VersioningComponent::Address,
-            start: Instant::now() + Duration::from_secs(3),
-            timeout: Instant::now() + Duration::from_secs(9999),
+            start: Instant::now() + Duration::from_secs(2),
+            timeout: Instant::now() + Duration::from_secs(5),
         };
     }
 
-    #[test]
-    fn test_versioning_middleware() {
+    #[tokio::test]
+    async fn test_versioning_middleware() {
         let vi = get_default_version_info();
         let state: VersioningState = Default::default();
 
@@ -188,23 +213,38 @@ mod test {
         raw_store.versioning_info.insert(vi, state);
 
         let store = VersioningStore(Arc::new(RwLock::new(raw_store)));
-        let mut vm = VersioningMiddleware::new(5, store);
+        let mut vm = VersioningMiddleware::new(5, store.clone());
 
-        //In the following, we assume:
-        //const NB_BLOCKS_CONSIDERED: usize = 5;
-        //const THRESHOLD: usize = 3;
-        vm.new_block(1);
-        vm.new_block(1);
+        assert_eq!(store.get_current_active_version(), 0);
+        assert_eq!(store.get_current_version_to_announce(), 0);
+
+        vm.new_block(0);
+        vm.new_block(0);
+        vm.new_block(0);
+        vm.new_block(0);
+        vm.new_block(0);
+        vm.new_block(0);
+
+        assert_eq!(store.get_current_active_version(), 0);
+        assert_eq!(store.get_current_version_to_announce(), 0);
+
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        
+        assert_eq!(store.get_current_active_version(), 0);
+        assert_eq!(store.get_current_version_to_announce(), 2);
 
         vm.new_block(2);
-        vm.new_block(1);
-        /*
-                assert!(store.0.read().versioning_info.get(&vi) ;
-                vm.new_block(2);
-                vm.new_block(2);
+        vm.new_block(2);
+        vm.new_block(2);
+        vm.new_block(2);
+        vm.new_block(2);
 
-                vm.new_block(1);
-                vm.new_block(1);
-        */
+        assert_eq!(store.get_current_active_version(), 0);
+        assert_eq!(store.get_current_version_to_announce(), 2);
+
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        
+        assert_eq!(store.get_current_active_version(), 2);
+        assert_eq!(store.get_current_version_to_announce(), 2);
     }
 }
