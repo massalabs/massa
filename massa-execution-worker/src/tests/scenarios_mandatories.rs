@@ -230,6 +230,7 @@ mod tests {
             &keypair,
             10000000,
             Amount::from_str("0").unwrap(),
+            Amount::from_str("0").unwrap(),
             Address::from_str(&address).unwrap(),
             String::from("test"),
             address.as_bytes().to_vec(),
@@ -263,6 +264,116 @@ mod tests {
             events.is_sorted_by_key(|event| Reverse(event.data.parse::<u64>().unwrap())),
             "Gas is not going down through the execution."
         );
+        // stop the execution controller
+        manager.stop();
+    }
+
+    /// Test the ABI get call coins
+    ///
+    /// Deploy an SC with a method `test` that generate an event saying how many coins he received
+    /// Calling the SC in a second time
+    #[test]
+    #[serial]
+    fn test_get_call_coins() {
+        // setup the period duration
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            cursor_delay: 0.into(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // get random keypair
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        // load bytecodes
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/get_call_coins_main.wasm");
+        let datastore_bytecode = include_bytes!("./wasm/get_call_coins_test.wasm").to_vec();
+        let mut datastore = BTreeMap::new();
+        datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+        // create the block containing the smart contract execution operation
+        let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks.clone(),
+            Default::default(),
+            block_storage.clone(),
+        );
+
+        std::thread::sleep(Duration::from_millis(100));
+
+        // assert_eq!(balance, balance_expected);
+        // retrieve events emitted by smart contracts
+        let events = controller.get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(0, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+        // match the events
+        assert!(!events.is_empty(), "One event was expected");
+        let address = events[0].clone().data;
+        // Call the function test of the smart contract
+        let coins_sent = Amount::from_str("10").unwrap();
+        let operation = create_call_sc_operation(
+            &keypair,
+            10000000,
+            Amount::from_str("0").unwrap(),
+            coins_sent,
+            Address::from_str(&address).unwrap(),
+            String::from("test"),
+            address.as_bytes().to_vec(),
+        )
+        .unwrap();
+        // Init new storage for this block
+        let mut storage = Storage::create_root();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(2, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(100));
+        // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
+        let events = controller.get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(2, 0)),
+            ..Default::default()
+        });
+        println!("events {:#?}", events);
+        assert!(events[0].data.contains(&format!(
+            "tokens sent to the SC during the call : {}",
+            coins_sent.to_raw()
+        )));
+
         // stop the execution controller
         manager.stop();
     }
@@ -343,8 +454,6 @@ mod tests {
             end: Some(Slot::new(20, 1)),
             ..Default::default()
         });
-
-        println!("events: {:?}", events);
 
         // match the events
         assert!(events.len() == 1, "One event was expected");
@@ -1381,6 +1490,7 @@ mod tests {
         sender_keypair: &KeyPair,
         max_gas: u64,
         fee: Amount,
+        coins: Amount,
         target_addr: Address,
         target_func: String,
         param: Vec<u8>,
@@ -1388,7 +1498,7 @@ mod tests {
         let op = OperationType::CallSC {
             max_gas,
             target_addr,
-            coins: Amount::from_str("0").unwrap(),
+            coins,
             target_func,
             param,
         };
