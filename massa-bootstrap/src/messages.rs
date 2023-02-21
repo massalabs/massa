@@ -23,6 +23,9 @@ use massa_models::streaming_step::{
     StreamingStep, StreamingStepDeserializer, StreamingStepSerializer,
 };
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
+use massa_models::versioning::{
+    VersioningStoreRaw, VersioningStoreRawDeserializer, VersioningStoreRawSerializer,
+};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
@@ -61,6 +64,10 @@ pub enum BootstrapServerMessage {
     BootstrapPeers {
         /// Server peers
         peers: BootstrapPeers,
+    },
+    BootstrapVersioningStore {
+        /// Server versioning store
+        store: VersioningStoreRaw,
     },
     /// Part of final state and consensus
     BootstrapPart {
@@ -103,6 +110,7 @@ enum MessageServerTypeId {
     FinalStateFinished = 3u32,
     SlotTooOld = 4u32,
     BootstrapError = 5u32,
+    VersioningStore = 6u32,
 }
 
 /// Serializer for `BootstrapServerMessage`
@@ -121,6 +129,7 @@ pub struct BootstrapServerMessageSerializer {
     opt_pos_cycle_serializer: OptionSerializer<CycleInfo, CycleInfoSerializer>,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
+    store_serializer: VersioningStoreRawSerializer,
 }
 
 impl Default for BootstrapServerMessageSerializer {
@@ -147,6 +156,7 @@ impl BootstrapServerMessageSerializer {
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
+            store_serializer: VersioningStoreRawSerializer::new(),
         }
     }
 }
@@ -187,6 +197,11 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::Peers), buffer)?;
                 self.peers_serializer.serialize(peers, buffer)?;
+            }
+            BootstrapServerMessage::BootstrapVersioningStore { store } => {
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::VersioningStore), buffer)?;
+                self.store_serializer.serialize(store, buffer)?;
             }
             BootstrapServerMessage::BootstrapPart {
                 slot,
@@ -274,6 +289,7 @@ pub struct BootstrapServerMessageDeserializer {
     opt_pos_cycle_deserializer: OptionDeserializer<CycleInfo, CycleInfoDeserializer>,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
+    store_deserializer: VersioningStoreRawDeserializer,
 }
 
 impl BootstrapServerMessageDeserializer {
@@ -345,6 +361,7 @@ impl BootstrapServerMessageDeserializer {
                 args.max_executed_ops_length,
                 args.max_operations_per_block as u64,
             ),
+            store_deserializer: VersioningStoreRawDeserializer::new(),
         }
     }
 }
@@ -428,6 +445,13 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 })
                 .map(|peers| BootstrapServerMessage::BootstrapPeers { peers })
                 .parse(input),
+                MessageServerTypeId::VersioningStore => {
+                    context("Failed versioning store deserialization", |input| {
+                        self.store_deserializer.deserialize(input)
+                    })
+                    .map(|store| BootstrapServerMessage::BootstrapVersioningStore { store })
+                    .parse(input)
+                }
                 MessageServerTypeId::FinalStatePart => tuple((
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
@@ -534,6 +558,8 @@ pub enum BootstrapClientMessage {
         /// Last received consensus block slot
         last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
     },
+    /// Ask for versioning store
+    AskBootstrapVersioningStore,
     /// Bootstrap error
     BootstrapError {
         /// Error message
@@ -550,6 +576,7 @@ enum MessageClientTypeId {
     AskFinalStatePart = 1u32,
     BootstrapError = 2u32,
     BootstrapSuccess = 3u32,
+    AskBootstrapVersioningStore = 4u32,
 }
 
 /// Serializer for `BootstrapClientMessage`
@@ -612,6 +639,12 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
             BootstrapClientMessage::AskBootstrapPeers => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageClientTypeId::AskBootstrapPeers), buffer)?;
+            }
+            BootstrapClientMessage::AskBootstrapVersioningStore => {
+                self.u32_serializer.serialize(
+                    &u32::from(MessageClientTypeId::AskBootstrapVersioningStore),
+                    buffer,
+                )?;
             }
             BootstrapClientMessage::AskBootstrapPart {
                 last_slot,
@@ -754,6 +787,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
             match id? {
                 MessageClientTypeId::AskBootstrapPeers => {
                     Ok((input, BootstrapClientMessage::AskBootstrapPeers))
+                }
+                MessageClientTypeId::AskBootstrapVersioningStore => {
+                    Ok((input, BootstrapClientMessage::AskBootstrapVersioningStore))
                 }
                 MessageClientTypeId::AskFinalStatePart => {
                     if input.is_empty() {

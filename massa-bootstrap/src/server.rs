@@ -594,6 +594,24 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
+                BootstrapClientMessage::AskBootstrapVersioningStore => {
+                    match tokio::time::timeout(
+                        write_timeout,
+                        server.send(BootstrapServerMessage::BootstrapVersioningStore {
+                            store: Default::default(),
+                        }),
+                    )
+                    .await
+                    {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap peers send timed out",
+                        )
+                        .into()),
+                        Ok(Err(e)) => Err(e),
+                        Ok(Ok(_)) => Ok(()),
+                    }?;
+                }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
                     last_ledger_step,

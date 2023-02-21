@@ -67,6 +67,17 @@ impl Default for VersioningState {
     }
 }
 
+#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+enum VersioningStateTypeId {
+    Error = 0,
+    Defined = 1,
+    Started = 2,
+    LockedIn = 3,
+    Active = 4,
+    Failed = 5,
+}
+
 const THRESHOLD_TRANSITION_ACCEPTED: &str = "75.0";
 
 /// A message to update the `VersioningState`
@@ -188,7 +199,16 @@ pub struct VersioningStore(pub Arc<RwLock<VersioningStoreRaw>>);
 /// Store of all versioning info
 #[derive(Debug, Clone, PartialEq)]
 pub struct VersioningStoreRaw {
+    // TODO: no need to name field?
     pub data: HashMap<VersioningInfo, VersioningState>,
+}
+
+impl Default for VersioningStoreRaw {
+    fn default() -> Self {
+        Self {
+            data: Default::default(),
+        }
+    }
 }
 
 /// Ser / Der
@@ -370,12 +390,14 @@ impl Serializer<VersioningState> for VersioningStateSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         let (state, threshold_): (u32, Option<Amount>) = match value {
-            VersioningState::Error => (0, None),
-            VersioningState::Defined(_) => (1, None),
-            VersioningState::Started(Started { threshold }) => (2, Some(*threshold)),
-            VersioningState::LockedIn(_) => (3, None),
-            VersioningState::Active(_) => (4, None),
-            VersioningState::Failed(_) => (5, None),
+            VersioningState::Error => (u32::from(VersioningStateTypeId::Error), None),
+            VersioningState::Defined(_) => (u32::from(VersioningStateTypeId::Defined), None),
+            VersioningState::Started(Started { threshold }) => {
+                (u32::from(VersioningStateTypeId::Started), Some(*threshold))
+            }
+            VersioningState::LockedIn(_) => (u32::from(VersioningStateTypeId::LockedIn), None),
+            VersioningState::Active(_) => (u32::from(VersioningStateTypeId::Active), None),
+            VersioningState::Failed(_) => (u32::from(VersioningStateTypeId::Failed), None),
         };
         self.u32_serializer.serialize(&state, buffer)?;
         if let Some(threshold) = threshold_ {
@@ -412,23 +434,29 @@ impl Deserializer<VersioningState> for VersioningStateDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], VersioningState, E> {
-        let (rem, enum_value) = context("Failed enum value der", |input| {
+        let (rem, enum_value_) = context("Failed enum value der", |input| {
             self.state_deserializer.deserialize(input)
         })
         .parse(buffer)?;
 
+        let enum_value = VersioningStateTypeId::try_from(enum_value_).map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Eof,
+            ))
+        })?;
         let (rem2, state): (&[u8], VersioningState) = match enum_value {
-            1 => (rem, VersioningState::Defined(Defined::new())),
-            2 => {
+            VersioningStateTypeId::Defined => (rem, VersioningState::Defined(Defined::new())),
+            VersioningStateTypeId::Started => {
                 let (rem2, threshold) = context("Failed threshold value der", |input| {
                     self.amount_deserializer.deserialize(input)
                 })
                 .parse(rem)?;
                 (rem2, VersioningState::Started(Started::new(threshold)))
             }
-            3 => (rem, VersioningState::LockedIn(LockedIn::new())),
-            4 => (rem, VersioningState::Active(Active::new())),
-            5 => (rem, VersioningState::Failed(Failed::new())),
+            VersioningStateTypeId::LockedIn => (rem, VersioningState::LockedIn(LockedIn::new())),
+            VersioningStateTypeId::Active => (rem, VersioningState::Active(Active::new())),
+            VersioningStateTypeId::Failed => (rem, VersioningState::Failed(Failed::new())),
             _ => (rem, VersioningState::Error),
         };
 
