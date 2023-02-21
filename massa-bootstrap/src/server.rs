@@ -142,6 +142,7 @@ pub async fn start_bootstrap_server(
         }
         .run_loop(max_bootstraps)
     });
+    // does `runtime` get dropped here?
     Ok(Some(BootstrapManager {
         update_handle,
         listen_handle,
@@ -193,6 +194,24 @@ impl BootstrapServer {
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
+            let mut selector = Select::new();
+            selector.recv(&self.stopper_rx);
+            selector.recv(&self.listener_rx);
+            loop {
+                let rdy = selector.ready();
+                // just end it, because the stopper has been triggered
+                if rdy == 0 {
+                    break;
+                }
+
+                if rdy == 1 {
+                    let breaker = selector[0].try_recv().is_ok();
+                    // the breaker
+                    if breaker {
+                        break;
+                    }
+                }
+            }
             // before handling a bootstrap, check if the stopper has sent a trigger.
             // TODO: There is probably a better way to do this, such as using an Arc<AtomicBool>...
             let stop = self.stopper_rx.try_recv();
@@ -209,6 +228,12 @@ impl BootstrapServer {
 
             // listener
             let  Ok((dplx, remote_addr)) = self.listener_rx.recv() else {continue;};
+            crossbeam::select! {
+                recv(self.listener_rx) -> Ok((dplx, remote_addr)) => {}
+
+            }
+            // problem: If the channel is empty, and stopper has been set, will still block
+            // untill the listener wakes us up. A crossbeam::select could help here?
 
             // claim a slot in the max_bootstrap_sessions
             let bootstrap_count_token = bootstrap_sessions_counter.clone();
@@ -341,6 +366,7 @@ impl BootstrapServer {
                 debug!("did not bootstrap {}: no available slots", remote_addr);
             }
         }
+        // abort listener and updater here?
         // TODO: clean up the listener and updater here.
         // TODO: do we drop(self.runtime) here?
         Ok(())
