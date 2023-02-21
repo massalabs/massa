@@ -83,24 +83,21 @@ mod types {
         /// # Argument
         /// * `addr`: `SocketAddr` we want to bind to.
         pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
-            use socket2::{Domain, Socket, Type};
-
-            // Create a TCP listener bound to two addresses.
-            let socket = Socket::new(Domain::IPV6, Type::STREAM, None)?;
+            // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
+            let socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, None)?;
 
             socket.set_only_v6(false)?;
 
             socket.bind(&addr.into())?;
             socket.set_nonblocking(true)?;
 
-            socket.listen(128)?;
+            // Number of connections to queue, set to the hardcoded value used by tokio
+            socket.listen(1024)?;
 
             let std_listener: std::net::TcpListener = socket.into();
             let tokio_listener = tokio::net::TcpListener::from_std(std_listener)?;
 
             Ok(DefaultListener(tokio_listener))
-
-            //Ok(DefaultListener(TcpListener::bind(addr).await?))
         }
 
         /// Get the connector with associated timeout
