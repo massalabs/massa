@@ -1,28 +1,23 @@
+use massa_models::versioning::{Advance, VersioningInfo, VersioningStore};
+use massa_versioning_exports::VersioningError;
 use std::collections::{HashMap, VecDeque};
 
 /// Struct used to keep track of announced versions in previous blocks
-/// Contains additional utilities
 pub struct VersioningMiddleware {
     latest_announcements: VecDeque<u32>,
     counts: HashMap<u32, usize>,
-    current_active_version: u32,
-    current_supported_versions: Vec<u32>,
-    current_announced_version: u32,
     nb_blocks_considered: usize,
-    threshold: f32,
+    versioning_store: VersioningStore,
 }
 
 impl VersioningMiddleware {
     /// Creates a new empty versioning middleware.
-    pub fn new(nb_blocks_considered: usize, threshold: f32) -> Self {
+    pub fn new(nb_blocks_considered: usize, versioning_store: VersioningStore) -> Self {
         VersioningMiddleware {
             latest_announcements: VecDeque::with_capacity(nb_blocks_considered + 1),
             counts: HashMap::new(),
-            current_active_version: 0,
-            current_supported_versions: Vec::new(),
-            current_announced_version: 0,
             nb_blocks_considered,
-            threshold,
+            versioning_store,
         }
     }
 
@@ -40,70 +35,160 @@ impl VersioningMiddleware {
                 *self.counts.entry(prev_version).or_insert(1) -= 1;
             }
         }
+
+        let _ = self.create_and_send_advance_message(*self.counts.get(&version).unwrap(), version);
     }
 
-    /// Get version that was announced the most in the previous blocks,
-    /// as well as the count
-    pub fn most_announced_version(&mut self) -> (u32, usize) {
-        match self.counts.iter().max_by_key(|(_, &v)| v) {
-            Some((max_count_version, count)) => (*max_count_version, *count),
-            None => (0, 0),
+    fn get_version_info(&self, version: u32) -> Option<VersioningInfo> {
+        let store = (*self.versioning_store.0.read()).versioning_info.clone();
+
+        let res: Vec<_> = store
+            .iter()
+            .filter(|&(k, _v)| k.version == version)
+            .collect();
+
+        match res.len() {
+            0 => None,
+            _ => Some(res[0].0.clone()),
         }
     }
 
-    /// Checks whether a given version should become active
-    pub fn is_count_above_threshold(&mut self, version: u32) -> bool {
-        match self.counts.get(&version) {
-            Some(count) => *count >= (self.threshold * self.nb_blocks_considered as f32) as usize,
-            None => false,
+    fn create_and_send_advance_message(
+        &self,
+        count: usize,
+        version: u32,
+    ) -> Result<(), VersioningError> {
+        match self.get_version_info(version) {
+            None => {
+                return Err(VersioningError::ModelsError(
+                    massa_models::error::ModelsError::InvalidVersionError(String::from(
+                        "Unknown version",
+                    )),
+                ))
+            }
+            Some(vi) => {
+                let now = std::time::Instant::now();
+
+                let ratio_counts = self.nb_blocks_considered as f32 / count as f32;
+
+                let advance_msg = Advance {
+                    start_timestamp: vi.start,
+                    timeout: vi.timeout,
+                    threshold: ratio_counts,
+                    now,
+                };
+
+                let store_clone = self.versioning_store.clone();
+
+                let mut raw_store = store_clone.0.write();
+
+                let state = raw_store.versioning_info.get_mut(&vi).unwrap();
+
+                *state = state.on_advance(advance_msg.clone());
+            }
         }
+        Ok(())
     }
 
-    /// Get the current active version
-    pub fn get_current_active_version(&self) -> u32 {
-        self.current_active_version
-    }
-
-    /// Set the current active version
-    pub fn set_current_active_version(&mut self, version: u32) {
-        self.current_active_version = version;
-    }
-
-    /// Get the current supported versions
-    pub fn get_current_supported_versions(&self) -> Vec<u32> {
-        self.current_supported_versions.clone()
-    }
-
-    /// Add a new version to the currently supported versions list
-    pub fn add_supported_version(&mut self, version: u32) {
-        if !self.current_supported_versions.contains(&version) {
-            self.current_supported_versions.push(version)
+    /*
+        /// Get version that was announced the most in the previous blocks,
+        /// as well as the count
+        pub fn most_announced_version(&mut self) -> (u32, usize) {
+            match self.counts.iter().max_by_key(|(_, &v)| v) {
+                Some((max_count_version, count)) => (*max_count_version, *count),
+                None => (0, 0),
+            }
         }
-    }
 
-    /// Remove a version to the currently supported versions list
-    pub fn remove_supported_version(&mut self, version: u32) {
-        self.current_supported_versions.retain(|&x| x != version)
-    }
+        /// Checks whether a given version should become active
+        pub fn is_count_above_threshold(&mut self, version: u32) -> bool {
+            match self.counts.get(&version) {
+                Some(count) => *count >= (self.threshold * self.nb_blocks_considered as f32) as usize,
+                None => false,
+            }
+        }
+    */
 
-    /// Get the current version to announce
-    pub fn get_current_announced_version(&self) -> u32 {
-        self.current_announced_version
-    }
+    /*
+        /// Get the current active version
+        pub fn get_current_active_version(&self) -> u32 {
+            self.current_active_version
+        }
 
-    /// Set the current version to announce
-    pub fn set_current_announced_version(&mut self, version: u32) {
-        self.current_announced_version = version;
-    }
+        /// Set the current active version
+        pub fn set_current_active_version(&mut self, version: u32) {
+            self.current_active_version = version;
+        }
+
+        /// Get the current supported versions
+        pub fn get_current_supported_versions(&self) -> Vec<u32> {
+            (*self.current_supported_versions.read().unwrap()).clone()
+        }
+
+        /// Add a new version to the currently supported versions list
+        pub fn add_supported_version(&mut self, version: u32) {
+            let mut write_supported_versions = (*self.current_supported_versions.write().unwrap()).clone();
+            if !write_supported_versions.contains(&version) {
+                write_supported_versions.push(version)
+            }
+        }
+
+        /// Remove a version to the currently supported versions list
+        pub fn remove_supported_version(&mut self, version: u32) {
+            let mut write_supported_versions = (*self.current_supported_versions.write().unwrap()).clone();
+            write_supported_versions.retain(|&x| x != version)
+        }
+
+        /// Get the current version to announce
+        pub fn get_current_announced_version(&self) -> u32 {
+            *self.current_announced_version.read().unwrap()
+        }
+
+        /// Set the current version to announce
+        pub fn set_current_announced_version(&mut self, version: u32) {
+            let mut write_announced_version = *self.current_announced_version.write().unwrap();
+            write_announced_version = version;
+        }
+    */
 }
 
 #[cfg(test)]
 mod test {
+    use massa_models::versioning::VersioningComponent;
+    use parking_lot::RwLock;
+    use std::sync::Arc;
+    use std::time::Instant;
+
+    use core::time::Duration;
+    use massa_models::versioning::VersioningState;
+    use massa_models::versioning::VersioningStoreRaw;
+
     use super::*;
+
+    fn get_default_version_info() -> VersioningInfo {
+        // A default VersioningInfo used in many tests
+        // Models a Massa Improvments Proposal (MIP-0002), transitioning component address to v2
+        return VersioningInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            component: VersioningComponent::Address,
+            start: Instant::now() + Duration::from_secs(3),
+            timeout: Instant::now() + Duration::from_secs(9999),
+        };
+    }
 
     #[test]
     fn test_versioning_middleware() {
-        let mut vm = VersioningMiddleware::new(5, 0.6);
+        let vi = get_default_version_info();
+        let state: VersioningState = Default::default();
+
+        let mut raw_store = VersioningStoreRaw {
+            versioning_info: HashMap::new(),
+        };
+        raw_store.versioning_info.insert(vi, state);
+
+        let store = VersioningStore(Arc::new(RwLock::new(raw_store)));
+        let mut vm = VersioningMiddleware::new(5, store);
 
         //In the following, we assume:
         //const NB_BLOCKS_CONSIDERED: usize = 5;
@@ -111,22 +196,15 @@ mod test {
         vm.new_block(1);
         vm.new_block(1);
 
-        assert!(!vm.is_count_above_threshold(1));
-
         vm.new_block(2);
         vm.new_block(1);
+        /*
+                assert!(store.0.read().versioning_info.get(&vi) ;
+                vm.new_block(2);
+                vm.new_block(2);
 
-        assert!(vm.is_count_above_threshold(1));
-
-        vm.new_block(2);
-        vm.new_block(2);
-
-        assert!(vm.is_count_above_threshold(2));
-        assert!(vm.most_announced_version() == (2, 3));
-
-        vm.new_block(1);
-        vm.new_block(1);
-
-        assert!(!vm.is_count_above_threshold(2));
+                vm.new_block(1);
+                vm.new_block(1);
+        */
     }
 }

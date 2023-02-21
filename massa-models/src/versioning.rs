@@ -46,7 +46,7 @@ pub struct VersioningInfo {
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     enum VersioningState {
         /// Initial state
         Defined,
@@ -557,6 +557,50 @@ impl Deserializer<VersioningStoreRaw> for VersioningStoreRawDeserializer {
             data: items.into_iter().collect(),
         })
         .parse(buffer)
+    }
+}
+    
+
+impl VersioningStore {
+    pub fn new() -> Self {
+        let raw_store = VersioningStoreRaw {
+            data: HashMap::new(),
+        };
+        VersioningStore(Arc::new(RwLock::new(raw_store)))
+    }
+
+    pub fn get_current_active_version(&self) -> u32 {
+        let store = (*self.0.read()).data.clone();
+
+        let mut all_active_versions: Vec<_> = store
+            .iter()
+            .filter(|&(_k, v)| v == &VersioningState::Active(Active::new()))
+            .map(|(k, _v)| k)
+            .collect();
+
+        // Check the sort here
+        // Currently, we consider that the most active is the last "start date", but there may be edge cases?
+        all_active_versions.sort_by_key(|&k| k.start);
+        match all_active_versions.len() {
+            0 => 0,
+            n => all_active_versions[n - 1].version,
+        }
+    }
+
+    pub fn get_current_version_to_announce(&self) -> u32 {
+        let store = (*self.0.read()).data.clone();
+
+        // Check the filter and the sort here
+        let mut filtered_versions: Vec<_> = store
+            .iter()
+            .filter(|&(_k, v)| matches!(v, &VersioningState::Started(_)))
+            .map(|(k, _v)| k)
+            .collect();
+        filtered_versions.sort_by_key(|&k| k.start);
+        match filtered_versions.len() {
+            0 => 0,
+            _ => filtered_versions[0].version,
+        }
     }
 }
 

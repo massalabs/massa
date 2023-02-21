@@ -48,6 +48,7 @@ use massa_models::config::constants::{
     VERSIONING_NB_BLOCKS_CONSIDERED,
 };
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
+use massa_models::versioning::VersioningStore;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -501,11 +502,14 @@ async fn launch(
         versioning_command_receiver,
     };
 
+    let versioning_store = VersioningStore::new();
+
     let versioning_manager = start_versioning_worker(
         versioning_config,
         versioning_receivers,
         versioning_senders.clone(),
         shared_storage.clone(),
+        versioning_store.clone(),
     )
     .await
     .expect("could not start versioning controller");

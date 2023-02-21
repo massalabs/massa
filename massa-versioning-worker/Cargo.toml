@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.23", features = ["full"] }
 tracing = "0.1"
+parking_lot = "0.12"
 # custom modules
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }

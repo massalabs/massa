@@ -7,6 +7,8 @@ use massa_versioning_exports::{
 
 use crate::versioning_controller::VersioningMiddleware;
 
+use massa_models::versioning::VersioningStore;
+
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
@@ -20,6 +22,7 @@ pub async fn start_versioning_worker(
     receivers: VersioningReceivers,
     _senders: VersioningSenders,
     storage: Storage,
+    store: VersioningStore,
 ) -> Result<VersioningManager, VersioningError> {
     // launch worker
     let (manager_tx, controller_manager_rx) = mpsc::channel::<VersioningManagementCommand>(1);
@@ -31,6 +34,7 @@ pub async fn start_versioning_worker(
                 controller_manager_rx,
             },
             storage,
+            store,
         )
         .run_loop()
         .await;
@@ -61,6 +65,7 @@ pub struct VersioningWorker {
     pub(crate) storage: Storage,
     /// Versioning Middleware
     versioning_middleware: VersioningMiddleware,
+    store: VersioningStore,
 }
 
 /// channels used by the versioning worker
@@ -79,9 +84,10 @@ impl VersioningWorker {
             controller_manager_rx,
         }: VersioningWorkerChannels,
         storage: Storage,
+        store: VersioningStore,
     ) -> VersioningWorker {
         let versioning_middleware =
-            VersioningMiddleware::new(config.nb_blocks_considered, config.threshold);
+            VersioningMiddleware::new(config.nb_blocks_considered, store.clone());
 
         VersioningWorker {
             config,
@@ -89,6 +95,7 @@ impl VersioningWorker {
             controller_manager_rx,
             storage,
             versioning_middleware,
+            store,
         }
     }
 

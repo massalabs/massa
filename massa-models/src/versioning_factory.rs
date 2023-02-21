@@ -117,7 +117,6 @@ pub trait VersioningFactory {
         let res = versions.iter().next().or(Some(&0));
         return *res.unwrap();
     }
-    /// Get all active versions
     fn get_versions(&self) -> Vec<u32> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
@@ -125,7 +124,7 @@ pub trait VersioningFactory {
 
         let state_active = VersioningState::Active(Active::new());
         let versions: Vec<u32> = vi_store
-            .data
+            .versioning_info
             .iter()
             .filter(|(k, v)| k.component == component && **v == state_active)
             .map(|(k, _v)| k.version)
@@ -155,7 +154,10 @@ pub trait VersioningFactoryArgs: VersioningFactory {
 mod test {
     use super::*;
     use parking_lot::RwLock;
-    use std::sync::Arc;
+    use std::{
+        sync::Arc,
+        time::{Duration, Instant},
+    };
 
     use crate::versioning::{Active, Defined, VersioningInfo, VersioningStoreRaw};
 
@@ -340,23 +342,25 @@ mod test {
             name: "MIP-0002".to_string(),
             version: 1,
             component: VersioningComponent::Address,
-            start: Default::default(),
-            timeout: Default::default(),
+            start: Instant::now() + Duration::from_secs(3),
+            timeout: Instant::now() + Duration::from_secs(9999),
         };
 
         let vsi_blk1 = VersioningInfo {
             name: "MIP-0003".to_string(),
             version: 1,
             component: VersioningComponent::Block,
-            start: Default::default(),
-            timeout: Default::default(),
+            start: Instant::now() + Duration::from_secs(3),
+            timeout: Instant::now() + Duration::from_secs(9999),
         };
 
         let info = HashMap::from([
             (vsi_sca1.clone(), VersioningState::Defined(Defined::new())),
             (vsi_blk1.clone(), VersioningState::Active(Active::new())),
         ]);
-        let vs_raw = VersioningStoreRaw { data: info };
+        let vs_raw = VersioningStoreRaw {
+            versioning_info: info,
+        };
         let vs = VersioningStore {
             0: Arc::new(RwLock::new(vs_raw)),
         };
@@ -382,7 +386,7 @@ mod test {
         vs.clone()
             .0
             .write()
-            .data
+            .versioning_info
             .entry(vsi_sca1)
             .and_modify(|e| *e = VersioningState::Active(Active::new()));
 
