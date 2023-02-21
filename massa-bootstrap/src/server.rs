@@ -1,3 +1,29 @@
+//! start the bootstrapping system using [`start_bootstrap_server`]
+//! Once your node will be ready, you may want other to bootstrap from you.
+//!
+//! # Listener
+//!
+//! Runs in the server-dedication tokio async runtime
+//! Accepts bootstrap connections in an async-loop
+//! Upon connection, pushes the accepted connection onto a channel for the worker loop to consume
+//!
+//! # Updater
+//!
+//! Runs in the same runtime as the listener.
+//! Shares an Arc<RwLock>> guarded list of white and blacklists with the main worker.
+//! Periodically does a read-only check to see if list needs updating.
+//! Creates an updated list then swaps it out with write-locked list
+//! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
+//! under the hood, making write contention virtually non-existant.
+//!
+//! # Worker loop
+//!
+//! 1. Checks if the stopper has been invoked.
+//! 2. Checks if the client is permited under the allow/block list rules
+//! 3. Checks if there are not too many active sessions already
+//! 4. Checks if the client has attempted too recently
+//! 5. All checks have passed: spawn a thread on which to run the bootstrap session
+//!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod allow_block_list;
 use allow_block_list::*;
 
@@ -54,8 +80,7 @@ impl BootstrapManager {
     }
 }
 
-/// start a bootstrap server.
-/// Once your node will be ready, you may want other to bootstrap from you.
+/// See module level documentation for details
 pub async fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
