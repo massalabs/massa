@@ -31,6 +31,7 @@ mod settings;
 mod tools;
 pub use client::get_state;
 pub use establisher::types;
+use massa_models::versioning::VersioningStoreRaw;
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
@@ -52,6 +53,9 @@ pub struct GlobalBootstrapState {
 
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
+
+    /// Versioning store
+    pub versioning_store: Option<VersioningStoreRaw>,
 }
 
 impl GlobalBootstrapState {
@@ -60,6 +64,7 @@ impl GlobalBootstrapState {
             final_state,
             graph: None,
             peers: None,
+            versioning_store: None,
         }
     }
 }

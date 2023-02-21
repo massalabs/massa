@@ -3,6 +3,7 @@ use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
+use massa_models::versioning::{VersioningStore, VersioningStoreRaw};
 use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
@@ -327,6 +328,26 @@ async fn bootstrap_from_server(
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
                 global_bootstrap_state.peers = Some(peers);
+                *next_bootstrap_message = BootstrapClientMessage::AskBootstrapVersioningStore;
+            }
+            BootstrapClientMessage::AskBootstrapVersioningStore => {
+                let versioning_store: VersioningStoreRaw = match send_client_message(
+                    next_bootstrap_message,
+                    client,
+                    write_timeout,
+                    cfg.read_timeout.into(),
+                    "ask bootstrap versioning store timed out",
+                )
+                .await?
+                {
+                    BootstrapServerMessage::BootstrapVersioningStore { store } => store,
+                    BootstrapServerMessage::BootstrapError { error } => {
+                        return Err(BootstrapError::ReceivedError(error))
+                    }
+                    other => return Err(BootstrapError::UnexpectedServerMessage(other)),
+                };
+
+                global_bootstrap_state.versioning_store = Some(versioning_store);
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
