@@ -569,6 +569,30 @@ impl VersioningStore {
         VersioningStore(Arc::new(RwLock::new(raw_store)))
     }
 
+    // Used to check if a received block header is valid or not
+    // The given timestamp is the slot time of the block
+    // It is valid if the version is the
+    pub fn get_active_version_at_timestamp(&self, timestamp: Instant) -> u32 {
+        let store = self.0.read().versioning_info.clone();
+
+        // We filter the versions that were not active back in timestamp.
+        let mut all_active_versions: Vec<_> = store
+            .iter()
+            .filter(|&(k, v)| {
+                v == &VersioningState::Active(Active::new()) && k.timeout <= timestamp
+            })
+            .map(|(k, _v)| k)
+            .collect();
+
+        // Check the sort here
+        // Currently, we consider that the most active is the last "timeout date", but there may be edge cases?
+        all_active_versions.sort_by_key(|&k| k.timeout);
+        match all_active_versions.len() {
+            0 => 0,
+            n => all_active_versions[n - 1].version,
+        }
+    }
+
     pub fn get_current_active_version(&self) -> u32 {
         let store = (*self.0.read()).data.clone();
 
@@ -579,8 +603,8 @@ impl VersioningStore {
             .collect();
 
         // Check the sort here
-        // Currently, we consider that the most active is the last "start date", but there may be edge cases?
-        all_active_versions.sort_by_key(|&k| k.start);
+        // Currently, we consider that the most active is the last "timeout date", but there may be edge cases?
+        all_active_versions.sort_by_key(|&k| k.timeout);
         match all_active_versions.len() {
             0 => 0,
             n => all_active_versions[n - 1].version,
@@ -609,6 +633,8 @@ mod test {
     use super::*;
     use chrono::{NaiveDate, NaiveDateTime};
     use massa_serialization::DeserializeError;
+
+    use std::time::Duration;
 
     fn get_default_version_info() -> VersioningInfo {
         // A default VersioningInfo used in many tests

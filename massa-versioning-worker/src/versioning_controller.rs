@@ -40,7 +40,7 @@ impl VersioningMiddleware {
     }
 
     fn get_version_info(&self, version: u32) -> Option<VersioningInfo> {
-        let store = (*self.versioning_store.0.read()).versioning_info.clone();
+        let store = self.versioning_store.0.read().versioning_info.clone();
 
         let res: Vec<_> = store
             .iter()
@@ -84,7 +84,7 @@ impl VersioningMiddleware {
 
                 let state = raw_store.versioning_info.get_mut(&vi).unwrap();
 
-                *state = state.on_advance(advance_msg.clone());
+                *state = state.on_advance(advance_msg);
             }
         }
         Ok(())

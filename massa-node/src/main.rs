@@ -439,6 +439,29 @@ async fn launch(
         shared_storage.clone(),
     );
 
+    let versioning_store = VersioningStore::new();
+
+    let versioning_config = VersioningConfig {
+        nb_blocks_considered: VERSIONING_NB_BLOCKS_CONSIDERED,
+        threshold: VERSIONING_BLOCK_THRESHOLD_PROPORTION,
+    };
+
+    let versioning_senders = VersioningSenders {};
+
+    let versioning_receivers = VersioningReceivers {
+        versioning_command_receiver,
+    };
+
+    let versioning_manager = start_versioning_worker(
+        versioning_config,
+        versioning_receivers,
+        versioning_senders.clone(),
+        shared_storage.clone(),
+        versioning_store.clone(),
+    )
+    .await
+    .expect("could not start versioning controller");
+
     // launch protocol controller
     let protocol_config = ProtocolConfig {
         thread_count: THREAD_COUNT,
@@ -487,32 +510,10 @@ async fn launch(
         consensus_controller.clone(),
         pool_controller.clone(),
         shared_storage.clone(),
-    )
-    .await
-    .expect("could not start protocol controller");
-
-    let versioning_config = VersioningConfig {
-        nb_blocks_considered: VERSIONING_NB_BLOCKS_CONSIDERED,
-        threshold: VERSIONING_BLOCK_THRESHOLD_PROPORTION,
-    };
-
-    let versioning_senders = VersioningSenders {};
-
-    let versioning_receivers = VersioningReceivers {
-        versioning_command_receiver,
-    };
-
-    let versioning_store = VersioningStore::new();
-
-    let versioning_manager = start_versioning_worker(
-        versioning_config,
-        versioning_receivers,
-        versioning_senders.clone(),
-        shared_storage.clone(),
         versioning_store.clone(),
     )
     .await
-    .expect("could not start versioning controller");
+    .expect("could not start protocol controller");
 
     // launch factory
     let factory_config = FactoryConfig {
@@ -530,7 +531,12 @@ async fn launch(
         protocol: ProtocolCommandSender(protocol_command_sender.clone()),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    let factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        versioning_store.clone(),
+    );
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(

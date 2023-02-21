@@ -14,7 +14,7 @@ use massa_factory_exports::{
 use massa_models::{
     address::Address, block_id::BlockId, config::ENDORSEMENT_COUNT,
     endorsement::SecureShareEndorsement, operation::SecureShareOperation, prehash::PreHashMap,
-    slot::Slot, test_exports::get_next_slot_instant,
+    slot::Slot, test_exports::get_next_slot_instant, versioning::VersioningStore,
 };
 use massa_pool_exports::test_exports::{
     MockPoolController, MockPoolControllerMessage, PoolEventReceiver,
@@ -72,6 +72,8 @@ impl TestFactory {
             storage.store_block(block);
         }
 
+        let versioning_store = VersioningStore::new();
+
         accounts.insert(producer_address, producer_keypair.clone());
         factory_config.t0 = MassaTime::from_millis(400);
         factory_config.genesis_timestamp = factory_config
@@ -88,6 +90,7 @@ impl TestFactory {
                 protocol: protocol_command_sender,
                 storage: storage.clone_without_refs(),
             },
+            versioning_store.clone(),
         );
 
         TestFactory {

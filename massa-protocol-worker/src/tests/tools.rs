@@ -3,7 +3,7 @@ use futures::Future;
 use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
     block::SecureShareBlock, block_id::BlockId, node::NodeId, operation::SecureShareOperation,
-    prehash::PreHashSet,
+    prehash::PreHashSet, versioning::VersioningStore,
 };
 use massa_network_exports::BlockInfoReply;
 use massa_pool_exports::test_exports::{MockPoolController, PoolEventReceiver};
@@ -33,6 +33,7 @@ where
         ),
     >,
 {
+    let versioning_store = VersioningStore::new();
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -57,6 +58,7 @@ where
         consensus_controller,
         pool_controller,
         Storage::create_root(),
+        versioning_store.clone(),
     )
     .await
     .expect("could not start protocol controller");
@@ -103,6 +105,7 @@ where
         ),
     >,
 {
+    let versioning_store = VersioningStore::new();
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
     let (pool_controller, mock_pool_receiver) = MockPoolController::new_with_receiver();
@@ -129,6 +132,7 @@ where
         consensus_controller,
         pool_controller,
         storage.clone(),
+        versioning_store.clone(),
     )
     .await
     .expect("could not start protocol controller");

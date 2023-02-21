@@ -63,8 +63,10 @@ pub mod timeslots;
 /// versions
 pub mod version;
 /// versioning
+#[allow(missing_docs)]
 pub mod versioning;
 /// versioning factory
+#[allow(missing_docs)]
 pub mod versioning_factory;
 
 /// Test utils
