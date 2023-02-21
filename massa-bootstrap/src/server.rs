@@ -192,109 +192,111 @@ impl BootstrapServer {
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
+        let mut selector = Select::new();
+        selector.recv(&self.stopper_rx);
+        selector.recv(&self.listener_rx);
+        // TODO: Work out how to integration-test this
         loop {
-            massa_trace!("bootstrap.lib.run.select", {});
-            let mut selector = Select::new();
-            selector.recv(&self.stopper_rx);
-            selector.recv(&self.listener_rx);
-            loop {
-                let rdy = selector.ready();
-                // just end it, because the stopper has been triggered
-                if rdy == 0 {
+            // Block untill either of the channels have something to read
+            let rdy = selector.ready();
+
+            // The stopper is ready, so confirm and break
+            if rdy == 0 && self.stopper_rx.try_recv().is_ok() {
+                dbg!("the stopper is ready, and try_recv is good");
+                break;
+            }
+
+            // we have a message...
+            if rdy == 1 {
+                // ...but lets check stopper first
+                dbg!("something from the listener is ready...");
+                if self.stopper_rx.try_recv().is_ok() {
+                    dbg!("...but we try_recv on the stopper, and so we are stopping");
                     break;
                 }
-
-                if rdy == 1 {
-                    let breaker = selector[0].try_recv().is_ok();
-                    // the breaker
-                    if breaker {
-                        break;
-                    }
-                }
-            }
-            // before handling a bootstrap, check if the stopper has sent a trigger.
-            // TODO: There is probably a better way to do this, such as using an Arc<AtomicBool>...
-            let stop = self.stopper_rx.try_recv();
-            // give the compiler optimisation hints
-            if unlikely(stop.is_ok()) {
-                massa_trace!("bootstrap.lib.run.select.manager", {});
-                break;
-            } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                return Err(BootstrapError::GeneralError(
-                    "Unexpected stop-channel disconnection".to_string(),
-                )
-                .into());
-            };
-
-            // listener
-            let  Ok((dplx, remote_addr)) = self.listener_rx.recv() else {continue;};
-            crossbeam::select! {
-                recv(self.listener_rx) -> Ok((dplx, remote_addr)) => {}
-
-            }
-            // problem: If the channel is empty, and stopper has been set, will still block
-            // untill the listener wakes us up. A crossbeam::select could help here?
-
-            // claim a slot in the max_bootstrap_sessions
-            let bootstrap_count_token = bootstrap_sessions_counter.clone();
-            let mut server = BootstrapServerBinder::new(
-                dplx,
-                self.keypair.clone(),
-                (&self.bootstrap_config).into(),
-            );
-
-            // check whether incoming peer IP is allowed.
-            // TODO: confirm error handled according to the previous `is_ip_allowed` fn
-            if let Err(error_msg) = self.allow_block_list.is_ip_allowed(&remote_addr) {
-                let _ = match self.runtime.block_on(server.send_error(error_msg.clone())) {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::PermissionDenied,
-                        format!("{}  timed out", &error_msg),
+                dbg!("...and the stopper seems to be dormant, so let's goooooo!");
+                // carry on with the bootstrap
+                // here, neither is ready, so we loop back to the next blocking `ready`
+                massa_trace!("bootstrap.lib.run.select", {});
+                // before handling a bootstrap, check if the stopper has sent a trigger.
+                // TODO: There is probably a better way to do this, such as using an Arc<AtomicBool>...
+                let stop = self.stopper_rx.try_recv();
+                // give the compiler optimisation hints
+                if unlikely(stop.is_ok()) {
+                    massa_trace!("bootstrap.lib.run.select.manager", {});
+                    break;
+                } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
+                    return Err(BootstrapError::GeneralError(
+                        "Unexpected stop-channel disconnection".to_string(),
                     )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
+                    .into());
                 };
-                // not exactly sure what to do here
-                // return Err(std::io::Error::new(
-                //     std::io::ErrorKind::PermissionDenied,
-                //     error_msg,
-                // ));
-                continue;
-            };
 
-            // TODO: find a better way to track count
-            // the `- 1` is to account for the top-level Arc that is created at the top
-            // of this method. subsequent counts correspond to each `clone` that is passed
-            // into a thread
-            // TODO: If we don't find a way to handle the counting automagically, make
-            //       a dedicated wrapper-type with doc-comments, manual drop impl that
-            //       integrates logging, etc...
-            if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
-                massa_trace!("bootstrap.lib.run.select.accept", {
-                    "remote_addr": remote_addr
-                });
-                let now = Instant::now();
+                // listener
+                let  Ok((dplx, remote_addr)) = self.listener_rx.recv() else {continue;};
+                // problem: If the channel is empty, and stopper has been set, will still block
+                // untill the listener wakes us up. A crossbeam::select could help here?
 
-                // clear IP history if necessary
-                if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                    self.ip_hist_map
-                        .retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
+                // claim a slot in the max_bootstrap_sessions
+                let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                let mut server = BootstrapServerBinder::new(
+                    dplx,
+                    self.keypair.clone(),
+                    (&self.bootstrap_config).into(),
+                );
+
+                // check whether incoming peer IP is allowed.
+                // TODO: confirm error handled according to the previous `is_ip_allowed` fn
+                if let Err(error_msg) = self.allow_block_list.is_ip_allowed(&remote_addr) {
+                    let _ = match self.runtime.block_on(server.send_error(error_msg.clone())) {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::PermissionDenied,
+                            format!("{}  timed out", &error_msg),
+                        )
+                        .into()),
+                        Ok(Err(e)) => Err(e),
+                        Ok(Ok(_)) => Ok(()),
+                    };
+                    // not exactly sure what to do here
+                    // return Err(std::io::Error::new(
+                    //     std::io::ErrorKind::PermissionDenied,
+                    //     error_msg,
+                    // ));
+                    continue;
+                };
+
+                // TODO: find a better way to track count
+                // the `- 1` is to account for the top-level Arc that is created at the top
+                // of this method. subsequent counts correspond to each `clone` that is passed
+                // into a thread
+                // TODO: If we don't find a way to handle the counting automagically, make
+                //       a dedicated wrapper-type with doc-comments, manual drop impl that
+                //       integrates logging, etc...
+                if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
+                    massa_trace!("bootstrap.lib.run.select.accept", {
+                        "remote_addr": remote_addr
+                    });
+                    let now = Instant::now();
+
+                    // clear IP history if necessary
                     if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                        // too many IPs are spamming us: clear cache
-                        warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
-                        self.ip_hist_map.clear();
+                        self.ip_hist_map
+                            .retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
+                        if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
+                            // too many IPs are spamming us: clear cache
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
+                            self.ip_hist_map.clear();
+                        }
                     }
-                }
 
-                // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::greedy_client_check(
-                    &mut self.ip_hist_map,
-                    remote_addr,
-                    now,
-                    per_ip_min_interval,
-                ) {
-                    let send_timeout = server.send_error(
+                    // check IP's bootstrap attempt history
+                    if let Err(msg) = BootstrapServer::greedy_client_check(
+                        &mut self.ip_hist_map,
+                        remote_addr,
+                        now,
+                        per_ip_min_interval,
+                    ) {
+                        let send_timeout = server.send_error(
 
                             format!(
                                 "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
@@ -303,67 +305,68 @@ impl BootstrapServer {
                             )
 
                     );
-                    let send_timeout = self.runtime.block_on(send_timeout);
+                        let send_timeout = self.runtime.block_on(send_timeout);
 
-                    let _ = match send_timeout {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap error too early retry bootstrap send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
+                        let _ = match send_timeout {
+                            Err(_) => Err(std::io::Error::new(
+                                std::io::ErrorKind::TimedOut,
+                                "bootstrap error too early retry bootstrap send timed out",
+                            )
+                            .into()),
+                            Ok(Err(e)) => Err(e),
+                            Ok(Ok(_)) => Ok(()),
+                        };
+                        // in list, non-expired => refuse
+                        massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
+                            "remote_addr": remote_addr
+                        });
+                        continue;
                     };
-                    // in list, non-expired => refuse
-                    massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
-                        "remote_addr": remote_addr
+
+                    // load cache if absent
+                    // if bootstrap_data.is_none() {
+                    //     massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
+
+                    //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
+                    //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
+                    //     // If the consensus state snapshot is older than the execution state snapshot,
+                    //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
+                    //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
+                    //     cache_timer.set(sleep(cache_timeout));
+                    // }
+                    massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+
+                    // launch bootstrap
+                    let version = self.version;
+                    let data_execution = self.final_state.clone();
+                    let consensus_command_sender = self.consensus_controller.clone();
+                    let network_command_sender = self.network_command_sender.clone();
+                    let config = self.bootstrap_config.clone();
+
+                    thread::spawn(move || {
+                        run_bootstrap_session(
+                            server,
+                            bootstrap_count_token,
+                            config,
+                            remote_addr,
+                            data_execution,
+                            version,
+                            consensus_command_sender,
+                            network_command_sender,
+                        )
                     });
-                    continue;
-                };
 
-                // load cache if absent
-                // if bootstrap_data.is_none() {
-                //     massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
-
-                //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
-                //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
-                //     // If the consensus state snapshot is older than the execution state snapshot,
-                //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
-                //     cache_timer.set(sleep(cache_timeout));
-                // }
-                massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
-
-                // launch bootstrap
-                let version = self.version;
-                let data_execution = self.final_state.clone();
-                let consensus_command_sender = self.consensus_controller.clone();
-                let network_command_sender = self.network_command_sender.clone();
-                let config = self.bootstrap_config.clone();
-
-                thread::spawn(move || {
-                    run_bootstrap_session(
-                        server,
-                        bootstrap_count_token,
-                        config,
-                        remote_addr,
-                        data_execution,
-                        version,
-                        consensus_command_sender,
-                        network_command_sender,
-                    )
-                });
-
-                massa_trace!("bootstrap.session.started", {
-                    "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
-                });
-            } else {
-                let _ = match  self.runtime.block_on(server.send_error("Bootstrap failed because the bootstrap server currently has no slots available.".to_string())) {
+                    massa_trace!("bootstrap.session.started", {
+                        "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
+                    });
+                } else {
+                    let _ = match  self.runtime.block_on(server.send_error("Bootstrap failed because the bootstrap server currently has no slots available.".to_string())) {
                             Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
                             Ok(Err(e)) => Err(e),
                             Ok(Ok(_)) => Ok(()),
                         };
-                debug!("did not bootstrap {}: no available slots", remote_addr);
+                    debug!("did not bootstrap {}: no available slots", remote_addr);
+                }
             }
         }
         // abort listener and updater here?
