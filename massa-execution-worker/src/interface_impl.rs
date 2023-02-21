@@ -159,13 +159,9 @@ impl Interface for InterfaceImpl {
         // transfer coins from caller to target address
         let coins = Amount::from_raw(raw_coins);
         let slot = context.slot;
-        if let Err(err) = context.transfer_coins(
-            Some(from_address),
-            Some(to_address),
-            coins,
-            true,
-            Some(slot),
-        ) {
+        if let Err(err) =
+            context.transfer_coins(Some(from_address), Some(to_address), coins, true, &slot)
+        {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
                 coins,
@@ -577,13 +573,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
         let slot = context.slot;
-        context.transfer_coins(
-            Some(from_address),
-            Some(to_address),
-            amount,
-            true,
-            Some(slot),
-        )?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true, &slot)?;
         Ok(())
     }
 
@@ -604,13 +594,7 @@ impl Interface for InterfaceImpl {
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let slot = context.slot;
-        context.transfer_coins(
-            Some(from_address),
-            Some(to_address),
-            amount,
-            true,
-            Some(slot),
-        )?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true, &slot)?;
         Ok(())
     }
 
@@ -731,8 +715,8 @@ impl Interface for InterfaceImpl {
         let coins = Amount::from_raw(raw_coins);
         let fee = Amount::from_raw(raw_fee);
         let slot = execution_context.slot;
-        execution_context.transfer_coins(Some(sender), None, coins, true, Some(slot))?;
-        execution_context.transfer_coins(Some(sender), None, fee, true, Some(slot))?;
+        execution_context.transfer_coins(Some(sender), None, coins, true, &slot)?;
+        execution_context.transfer_coins(Some(sender), None, fee, true, &slot)?;
         execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,

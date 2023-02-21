@@ -24,8 +24,8 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
-use massa_models::slot::VestingRange;
 use massa_models::stats::ExecutionStats;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -275,7 +275,7 @@ impl ExecutionState {
                 None,
                 operation.content.fee,
                 false,
-                Some(block_slot),
+                &block_slot,
             ) {
                 return Err(ExecutionError::IncludeOperationError(format!(
                     "could not spend fees: {}",
@@ -411,13 +411,15 @@ impl ExecutionState {
         };
 
         // control vesting max_rolls for buyer address
-        if let Some(vesting_range) =
-            VestingRange::find_vesting_range(&buyer_addr, current_slot, &self.vesting_registry)
-        {
+        if let Some(vesting_range) = self.find_vesting_range(&buyer_addr, &current_slot) {
             let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
             // (candidate_rolls + amount to buy)
-            if (rolls.1 + roll_count) >= vesting_range.max_rolls {
-                return Err(ExecutionError::VestingError("max rolls".to_string()));
+            let max_rolls = rolls.1 + roll_count;
+            if max_rolls >= vesting_range.max_rolls {
+                return Err(ExecutionError::VestingError(format!(
+                    "vesting_max_rolls={} with value max_rolls={} ",
+                    vesting_range.max_rolls, max_rolls
+                )));
             }
         }
 
@@ -445,13 +447,9 @@ impl ExecutionState {
         };
 
         // spend `roll_price` * `roll_count` coins from the buyer
-        if let Err(err) = context.transfer_coins(
-            Some(buyer_addr),
-            None,
-            spend_coins,
-            false,
-            Some(current_slot),
-        ) {
+        if let Err(err) =
+            context.transfer_coins(Some(buyer_addr), None, spend_coins, false, &current_slot)
+        {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
                 buyer_addr, roll_count, err
@@ -504,7 +502,7 @@ impl ExecutionState {
             Some(*recipient_address),
             *amount,
             false,
-            Some(current_slot),
+            &current_slot,
         ) {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
@@ -631,7 +629,7 @@ impl ExecutionState {
 
             // Debit the sender's balance with the coins to transfer
             if let Err(err) =
-                context.transfer_coins(Some(sender_addr), None, coins, false, Some(current_slot))
+                context.transfer_coins(Some(sender_addr), None, coins, false, &current_slot)
             {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to debit operation sender {} with {} operation coins: {}",
@@ -640,7 +638,9 @@ impl ExecutionState {
             }
 
             // Credit the operation target with coins.
-            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false, None) {
+            if let Err(err) =
+                context.transfer_coins(None, Some(target_addr), coins, false, &current_slot)
+            {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to credit operation target {} with {} operation coins: {}",
                     target_addr, coins, err
@@ -732,8 +732,9 @@ impl ExecutionState {
             };
 
             // credit coins to the target address
+            let slot = context.slot;
             if let Err(err) =
-                context.transfer_coins(None, Some(message.destination), message.coins, false, None)
+                context.transfer_coins(None, Some(message.destination), message.coins, false, &slot)
             {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
@@ -918,7 +919,7 @@ impl ExecutionState {
                     Some(*endorsement_creator),
                     block_credit_part,
                     false,
-                    None,
+                    slot,
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
@@ -937,7 +938,7 @@ impl ExecutionState {
                     Some(endorsement_target_creator),
                     block_credit_part,
                     false,
-                    None,
+                    slot,
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
@@ -957,7 +958,7 @@ impl ExecutionState {
                 Some(block_creator_addr),
                 remaining_credit,
                 false,
-                None,
+                slot,
             ) {
                 debug!(
                     "failed to credit {} coins to block creator {} on block execution: {}",
@@ -1445,5 +1446,16 @@ impl ExecutionState {
         }
 
         Ok(hashmap)
+    }
+
+    /// find a vesting range in the registry, otherwise return None
+    fn find_vesting_range(&self, addr: &Address, current_slot: &Slot) -> Option<&VestingRange> {
+        let Some(vector) = self.vesting_registry.get(addr) else {
+            return None;
+        };
+
+        vector.iter().find(|vesting| {
+            vesting.start_slot <= *current_slot && vesting.end_slot >= *current_slot
+        })
     }
 }

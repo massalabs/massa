@@ -4,7 +4,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
 use massa_models::prehash::PreHashMap;
-use massa_models::slot::VestingRange;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,

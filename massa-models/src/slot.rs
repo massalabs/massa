@@ -1,9 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::address::Address;
-use crate::amount::Amount;
 use crate::error::ModelsError;
-use crate::prehash::PreHashMap;
 use massa_hash::Hash;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -12,7 +9,6 @@ use nom::error::{context, ContextError, ParseError};
 use serde::{Deserialize, Serialize};
 use std::ops::{Bound, RangeBounds};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::{cmp::Ordering, convert::TryInto};
 
 /// a point in time where a block is expected
@@ -347,47 +343,4 @@ impl std::fmt::Display for IndexedSlot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Slot: {}, Index: {}", self.slot, self.index)
     }
-}
-
-/// Represent a vesting range
-#[derive(Clone, Copy, Deserialize, Serialize, Debug)]
-pub struct VestingRange {
-    /// start slot of range
-    /// use "slot" field in the initial_vesting.json file
-    #[serde(rename(deserialize = "slot", serialize = "slot"))]
-    pub start_slot: Slot,
-
-    /// end slot for the range
-    /// Init with 0,0 and calculate on load
-    #[serde(default = "init_end_slot_range")]
-    #[serde(skip_serializing)]
-    pub end_slot: Slot,
-
-    /// minimal balance for specific range
-    pub min_balance: Amount,
-
-    /// max rolls for specific range
-    pub max_rolls: u64,
-}
-
-impl VestingRange {
-    /// find a vesting range in the registry, otherwise return None
-    pub fn find_vesting_range<'a>(
-        addr: &Address,
-        current_slot: Slot,
-        registry: &'a Arc<PreHashMap<Address, Vec<VestingRange>>>,
-    ) -> Option<&'a VestingRange> {
-        let Some(vector) = registry.get(addr) else {
-            return None;
-        };
-
-        vector
-            .iter()
-            .find(|vesting| vesting.start_slot <= current_slot && vesting.end_slot >= current_slot)
-    }
-}
-
-/// init the end_slot on startup
-fn init_end_slot_range() -> Slot {
-    Slot::new(0, 0)
 }

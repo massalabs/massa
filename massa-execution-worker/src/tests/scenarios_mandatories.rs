@@ -839,7 +839,7 @@ mod tests {
                 expire_period: 10,
                 op: OperationType::Transaction {
                     recipient_address,
-                    amount: Amount::from_str("110000").unwrap(),
+                    amount: Amount::from_str("120000").unwrap(),
                 },
             },
             OperationSerializer::new(),
@@ -868,7 +868,7 @@ mod tests {
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0]
             .data
-            .contains("We reach the vesting constraint : min_balance"));
+            .contains("We reach the vesting constraint : vesting_min_balance=200000 with value min_balance=190000"));
 
         // check recipient balance
         assert!(sample_state
@@ -951,9 +951,9 @@ mod tests {
         // retrieve the event emitted by the execution error
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         assert!(events[0].data.contains("massa_execution_error"));
-        assert!(events[0]
-            .data
-            .contains("We reach the vesting constraint : max rolls"));
+        assert!(events[0].data.contains(
+            "We reach the vesting constraint : vesting_max_rolls=150 with value max_rolls=160"
+        ));
 
         // check roll count of the buyer address and its balance, same as start because operation was rejected
         let sample_read = sample_state.read();

@@ -21,7 +21,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
 use massa_models::prehash::PreHashMap;
-use massa_models::slot::VestingRange;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -603,7 +603,7 @@ impl ExecutionContext {
         to_addr: Option<Address>,
         amount: Amount,
         check_rights: bool,
-        current_slot: Option<Slot>,
+        current_slot: &Slot,
     ) -> Result<(), ExecutionError> {
         if let Some(from_addr) = &from_addr {
             // check access rights
@@ -614,24 +614,47 @@ impl ExecutionContext {
                 )));
             }
 
-            if let Some(current_slot) = current_slot {
-                // control vesting min_balance for sender address
-                if let Some(vesting_range) = VestingRange::find_vesting_range(
+            // control vesting min_balance for sender address
+            if let Some(vesting_range) = self.find_vesting_range(from_addr, current_slot) {
+                let new_balance = self
+                    .get_balance(from_addr)
+                    .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
+                    .checked_sub(amount)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                            .get_balance(from_addr).unwrap_or_default()))
+                    })?;
+
+                let vec = self.speculative_roll_state.get_address_cycle_infos(
                     from_addr,
-                    current_slot,
-                    &self.vesting_registry,
-                ) {
-                    let new_balance = self
-                        .get_balance(from_addr)
-                        .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
-                        .checked_sub(amount)
-                        .ok_or_else(|| {
-                            ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
-                                .get_balance(from_addr).unwrap_or_default()))
-                        })?;
-                    if new_balance < vesting_range.min_balance {
-                        return Err(ExecutionError::VestingError("min_balance".to_string()));
-                    }
+                    self.config.periods_per_cycle,
+                    *current_slot,
+                );
+                let Some(exec_info) = vec.first() else {
+                    return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", from_addr)));
+                };
+
+                let rolls_value = exec_info
+                    .active_rolls
+                    .map(|rolls| Amount::from_raw(rolls * self.config.roll_price.to_raw()))
+                    .unwrap_or(Amount::zero());
+                let deferred_credits = self
+                    .speculative_roll_state
+                    .get_address_deferred_credits(from_addr, *current_slot)
+                    .get(current_slot)
+                    .copied()
+                    .unwrap_or(Amount::zero());
+
+                // min_balance = (rolls * roll_price) + balance + deferred_credits
+                let min_balance = new_balance
+                    .saturating_add(rolls_value)
+                    .saturating_add(deferred_credits);
+
+                if min_balance < vesting_range.min_balance {
+                    return Err(ExecutionError::VestingError(format!(
+                        "vesting_min_balance={} with value min_balance={} ",
+                        vesting_range.min_balance, min_balance
+                    )));
                 }
             }
         }
@@ -650,11 +673,17 @@ impl ExecutionContext {
     }
 
     /// Cancels an asynchronous message, reimbursing `msg.coins` to the sender
-    ///
+    ///x
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
-        if let Err(e) = self.transfer_coins(None, Some(msg.sender), msg.coins, false, None) {
+        if let Err(e) = self.transfer_coins(
+            None,
+            Some(msg.sender),
+            msg.coins,
+            false,
+            &msg.validity_start,
+        ) {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
                 msg.sender, e
@@ -727,7 +756,7 @@ impl ExecutionContext {
                 .entry(address)
                 .and_modify(|credit_amount| *credit_amount = Amount::default())
                 .or_default();
-            if let Err(e) = self.transfer_coins(None, Some(address), amount, false, None) {
+            if let Err(e) = self.transfer_coins(None, Some(address), amount, false, slot) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
                     amount, address, slot, e
@@ -892,5 +921,16 @@ impl ExecutionContext {
             .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
         self.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
+    }
+
+    /// find a vesting range in the registry, otherwise return None
+    pub fn find_vesting_range(&self, addr: &Address, current_slot: &Slot) -> Option<&VestingRange> {
+        let Some(vector) = self.vesting_registry.get(addr) else {
+            return None;
+        };
+
+        vector.iter().find(|vesting| {
+            vesting.start_slot <= *current_slot && vesting.end_slot >= *current_slot
+        })
     }
 }
