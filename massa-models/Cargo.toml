@@ -20,9 +20,9 @@ bitvec = { version = "1.0", features = ["serde"] }
 nom = "7.1"
 machine = "0.3"
 parking_lot = "0.12"
-unsigned-varint = { version = "0.7.1", features = [
-    "nom",
-], git = "https://github.com/cyphar/unsigned-varint.git", branch = "nom6-errors" }
+#unsigned-varint = { version = "0.7.1", features = [
+#    "nom",
+#], git = "https://github.com/cyphar/unsigned-varint.git", branch = "nom6-errors" }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }

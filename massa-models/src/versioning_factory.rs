@@ -117,7 +117,7 @@ pub trait VersioningFactory {
         let res = versions.iter().next().or(Some(&0));
         return *res.unwrap();
     }
-
+    /// Get all active versions
     fn get_versions(&self) -> Vec<u32> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
@@ -125,7 +125,7 @@ pub trait VersioningFactory {
 
         let state_active = VersioningState::Active(Active::new());
         let versions: Vec<u32> = vi_store
-            .versioning_info
+            .data
             .iter()
             .filter(|(k, v)| k.component == component && **v == state_active)
             .map(|(k, _v)| k.version)
@@ -356,9 +356,7 @@ mod test {
             (vsi_sca1.clone(), VersioningState::Defined(Defined::new())),
             (vsi_blk1.clone(), VersioningState::Active(Active::new())),
         ]);
-        let vs_raw = VersioningStoreRaw {
-            versioning_info: info,
-        };
+        let vs_raw = VersioningStoreRaw { data: info };
         let vs = VersioningStore {
             0: Arc::new(RwLock::new(vs_raw)),
         };
@@ -384,7 +382,7 @@ mod test {
         vs.clone()
             .0
             .write()
-            .versioning_info
+            .data
             .entry(vsi_sca1)
             .and_modify(|e| *e = VersioningState::Active(Active::new()));
 

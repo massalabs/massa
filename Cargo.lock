@@ -2733,7 +2733,6 @@ dependencies = [
  "serde_with",
  "serial_test 1.0.0",
  "thiserror",
- "unsigned-varint",
 ]
 
 [[package]]
