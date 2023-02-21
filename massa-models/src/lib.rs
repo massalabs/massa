@@ -6,6 +6,7 @@
 #![feature(bound_map)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
+#![feature(variant_count)]
 
 extern crate lazy_static;
 
