@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 use std::ops::Bound::{Excluded, Included};
+use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
 
 use machine::{machine, transitions};
+use nom::multi::length_count;
 use nom::{
     error::{context, ContextError, ParseError},
     sequence::tuple,
     IResult, Parser,
 };
-use num::ToPrimitive; // for function: to_u64()
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
-use rust_decimal::Decimal;
 
 use crate::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_serialization::{
@@ -40,9 +39,9 @@ pub struct VersioningInfo {
     /// Component concerned by this versioning (e.g. a new Block version)
     pub(crate) component: VersioningComponent,
     /// a timestamp at which the version gains its meaning (e.g. accepted in block header)
-    pub(crate) start: Duration,
+    pub(crate) start: u64,
     /// a timestamp at which the deployment is considered failed (timeout > start)
-    pub(crate) timeout: Duration,
+    pub(crate) timeout: u64,
 }
 
 machine!(
@@ -52,7 +51,7 @@ machine!(
         /// Initial state
         Defined,
         /// Past start
-        Started { threshold: f32 },
+        Started { threshold: Amount },
         /// TODO
         LockedIn,
         /// After LockedIn, deployment is considered successful
@@ -68,18 +67,18 @@ impl Default for VersioningState {
     }
 }
 
-const THRESHOLD_TRANSITION_ACCEPTED: f32 = 75.0;
+const THRESHOLD_TRANSITION_ACCEPTED: &str = "75.0";
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Advance {
     /// from VersioningInfo.start
-    start_timestamp: Duration,
+    start_timestamp: u64,
     /// from VersioningInfo.timeout
-    timeout: Duration,
+    timeout: u64,
     /// % of past blocks with this version
-    threshold: f32,
+    threshold: Amount,
     /// Current time (timestamp)
-    now: Duration,
+    now: u64,
 }
 
 transitions!(VersioningState,
@@ -100,14 +99,16 @@ impl Defined {
     pub fn on_advance(self, input: Advance) -> VersioningState {
         match input.now {
             n if n > input.timeout => VersioningState::Failed(Failed {}),
-            n if n > input.start_timestamp => VersioningState::Started(Started { threshold: 0.0 }),
+            n if n > input.start_timestamp => VersioningState::Started(Started {
+                threshold: Amount::zero(),
+            }),
             _ => VersioningState::Defined(Defined {}),
         }
     }
 }
 
 impl Started {
-    pub fn new(threshold: f32) -> Self {
+    pub fn new(threshold: Amount) -> Self {
         Self { threshold }
     }
 
@@ -116,7 +117,7 @@ impl Started {
             return VersioningState::Failed(Failed {});
         }
 
-        if input.threshold > THRESHOLD_TRANSITION_ACCEPTED {
+        if input.threshold > Amount::from_str(THRESHOLD_TRANSITION_ACCEPTED).unwrap() {
             VersioningState::LockedIn(LockedIn {})
         } else {
             VersioningState::Started(Started {
@@ -128,7 +129,9 @@ impl Started {
 
 impl Default for Started {
     fn default() -> Self {
-        return Self { threshold: 0.0 };
+        return Self {
+            threshold: Amount::zero(),
+        };
     }
 }
 
@@ -156,6 +159,9 @@ impl Active {
 }
 
 impl Failed {
+    pub fn new() -> Self {
+        Self {}
+    }
     pub fn on_advance(self, _input: Advance) -> Failed {
         Failed {}
     }
@@ -167,7 +173,7 @@ impl Failed {
 pub struct VersioningStore(pub Arc<RwLock<VersioningStoreRaw>>);
 
 /// Store of all versioning info
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VersioningStoreRaw {
     // TODO: rename to store?
     pub versioning_info: HashMap<VersioningInfo, VersioningState>,
@@ -221,39 +227,16 @@ impl Serializer<VersioningInfo> for VersioningInfoSerializer {
         };
         self.u32_serializer.serialize(&component, buffer)?;
         // start
-        let start = value.start.as_secs_f32();
-        let start_as_decimal =
-            Decimal::from_f32_retain(start).ok_or(SerializeError::GeneralError(format!(
-                "Could not convert start from f32: {:?} to Decimal",
-                start
-            )))?;
-        let start_as_u64 = start_as_decimal
-            .to_u64()
-            .ok_or(SerializeError::GeneralError(format!(
-                "Could not convert Decimal: {:?} to u64",
-                start_as_decimal
-            )))?;
-        let amount = Amount::from_raw(start_as_u64);
+        let amount = Amount::from_raw(value.start);
         self.amount_serializer.serialize(&amount, buffer)?;
         // timeout
-        let timeout = value.timeout.as_secs_f32();
-        let timeout_as_decimal =
-            Decimal::from_f32_retain(timeout).ok_or(SerializeError::GeneralError(format!(
-                "Could not convert timeout from f32: {:?} to Decimal",
-                start
-            )))?;
-        let timeout_as_u64 = timeout_as_decimal
-            .to_u64()
-            .ok_or(SerializeError::GeneralError(format!(
-                "Could not convert Decimal: {:?} to u64",
-                start_as_decimal
-            )))?;
-        let amount = Amount::from_raw(timeout_as_u64);
+        let amount = Amount::from_raw(value.timeout);
         self.amount_serializer.serialize(&amount, buffer)?;
         Ok(())
     }
 }
 
+/// Deserializer for VersioningInfo
 pub struct VersioningInfoDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     u32_deserializer: U32VarIntDeserializer,
@@ -261,7 +244,7 @@ pub struct VersioningInfoDeserializer {
 }
 
 impl VersioningInfoDeserializer {
-    /// Creates a new `EndorsementDeserializerLW`
+    /// Creates a new `VersioningInfoDeserializer`
     pub fn new() -> Self {
         Self {
             // FIXME
@@ -285,8 +268,17 @@ impl Deserializer<VersioningInfo> for VersioningInfoDeserializer {
             "Failed VersioningInfo deserialization",
             tuple((
                 context("Failed name deserialization", |input| {
-                    let len = self.u64_deserializer.deserialize(input)?;
-                    todo!()
+                    let (input_, len_) = self.u64_deserializer.deserialize(input)?;
+                    // FIXME: check
+                    let len = len_ as usize;
+                    let slice = &input_[..len];
+                    let name = String::from_utf8(slice.to_vec()).map_err(|_| {
+                        nom::Err::Error(ParseError::from_error_kind(
+                            input_,
+                            nom::error::ErrorKind::Fail,
+                        ))
+                    })?;
+                    IResult::Ok((&input_[len..], name))
                 }),
                 context("Failed version deserialization", |input| {
                     self.u32_deserializer.deserialize(input)
@@ -305,11 +297,11 @@ impl Deserializer<VersioningInfo> for VersioningInfoDeserializer {
         .map(|(name, version, component, start, timeout)| {
             // TODO: no unwrap() / default()
             VersioningInfo {
-                name: name,
-                version: version,
+                name,
+                version,
                 component: VersioningComponent::try_from(component).unwrap(),
-                start: Default::default(),
-                timeout: Default::default(),
+                start: start.to_raw(),
+                timeout: timeout.to_raw(),
             }
         })
         .parse(buffer)
@@ -345,7 +337,7 @@ impl Serializer<VersioningState> for VersioningStateSerializer {
         value: &VersioningState,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        let (state, threshold_): (u32, Option<f32>) = match value {
+        let (state, threshold_): (u32, Option<Amount>) = match value {
             VersioningState::Error => (0, None),
             VersioningState::Defined(_) => (1, None),
             VersioningState::Started(Started { threshold }) => (2, Some(*threshold)),
@@ -353,14 +345,60 @@ impl Serializer<VersioningState> for VersioningStateSerializer {
             VersioningState::Active(_) => (4, None),
             VersioningState::Failed(_) => (5, None),
         };
-
         self.u32_serializer.serialize(&state, buffer)?;
         if let Some(threshold) = threshold_ {
-            let start_as_decimal = Decimal::from_f32_retain(threshold).unwrap();
-            let amount = Amount::from_raw(start_as_decimal.to_u64().unwrap());
-            self.amount_serializer.serialize(&amount, buffer)?;
+            self.amount_serializer.serialize(&threshold, buffer)?;
         }
         Ok(())
+    }
+}
+
+pub struct VersioningStateDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    amount_deserializer: AmountDeserializer,
+}
+
+impl VersioningStateDeserializer {
+    /// Creates a new ``
+    pub fn new() -> Self {
+        Self {
+            // FIXME
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
+            // // FIXME
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+        }
+    }
+}
+
+impl Deserializer<VersioningState> for VersioningStateDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], VersioningState, E> {
+        let (rem, enum_value) = context("Failed enum value der", |input| {
+            self.u32_deserializer.deserialize(input)
+        })
+        .parse(buffer)?;
+
+        let (rem2, state): (&[u8], VersioningState) = match enum_value {
+            1 => (rem, VersioningState::Defined(Defined::new())),
+            2 => {
+                let (rem2, threshold) = context("Failed threshold value der", |input| {
+                    self.amount_deserializer.deserialize(input)
+                })
+                .parse(rem)?;
+                (rem2, VersioningState::Started(Started::new(threshold)))
+            }
+            3 => (rem, VersioningState::LockedIn(LockedIn::new())),
+            4 => (rem, VersioningState::Active(Active::new())),
+            5 => (rem, VersioningState::Failed(Failed::new())),
+            _ => (rem, VersioningState::Error),
+        };
+
+        IResult::Ok((rem2, state))
     }
 }
 
@@ -407,19 +445,69 @@ impl Serializer<VersioningStoreRaw> for VersioningStoreRawSerializer {
     }
 }
 
+/// A Deserializer for `VersioningStoreRaw
+pub struct VersioningStoreRawDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    info_deserializer: VersioningInfoDeserializer,
+    state_deserializer: VersioningStateDeserializer,
+}
+
+impl VersioningStoreRawDeserializer {
+    /// Creates a new ``
+    pub fn new() -> Self {
+        Self {
+            // FIXME
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Excluded(u64::MAX)),
+            info_deserializer: VersioningInfoDeserializer::new(),
+            state_deserializer: VersioningStateDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<VersioningStoreRaw> for VersioningStoreRawDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], VersioningStoreRaw, E> {
+        context(
+            "Failed VersioningStoreRaw len der",
+            length_count(
+                context("Failed len der", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed items der", |input| {
+                    let (rem, vi) = self.info_deserializer.deserialize(input)?;
+                    let (rem2, vs) = self.state_deserializer.deserialize(rem)?;
+                    IResult::Ok((rem2, (vi, vs)))
+                }),
+            ),
+        )
+        .map(|items| VersioningStoreRaw {
+            versioning_info: items.into_iter().collect(),
+        })
+        .parse(buffer)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    // use crate::streaming_step::StreamingStep::Started;
+    use chrono::{NaiveDate, NaiveDateTime};
 
     fn get_default_version_info() -> VersioningInfo {
         // A default VersioningInfo used in many tests
         // Models a Massa Improvments Proposal (MIP-0002), transitioning component address to v2
+        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 12)
+            .unwrap()
+            .and_hms_opt(17, 33, 44)
+            .unwrap();
         return VersioningInfo {
-            name: "MIP-0002".to_string(),
+            name: "MIP-0002AAA".to_string(),
             version: 2,
             component: VersioningComponent::Address,
             start: Default::default(),
-            timeout: Duration::from_secs(9999),
+            timeout: timeout.timestamp() as u64,
         };
     }
 
@@ -434,19 +522,24 @@ mod test {
         let mut advance_msg = Advance {
             start_timestamp: vi.start,
             timeout: vi.timeout,
-            threshold: 0.0,
+            threshold: Amount::zero(),
             now,
         };
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, VersioningState::Defined(Defined::new()));
 
-        let now = vi.start + Duration::from_secs(5);
+        let now = vi.start + 5;
         advance_msg.now = now;
         state = state.on_advance(advance_msg);
 
         // println!("state: {:?}", state);
-        assert_eq!(state, VersioningState::Started(Started { threshold: 0.0 }));
+        assert_eq!(
+            state,
+            VersioningState::Started(Started {
+                threshold: Amount::zero()
+            })
+        );
     }
 
     #[test]
@@ -456,8 +549,8 @@ mod test {
         let mut state: VersioningState = VersioningState::Started(Default::default());
 
         let now = vi.start;
-        let threshold_too_low = 74.9;
-        let threshold_ok = 82.42;
+        let threshold_too_low = Amount::from_str("74.9").unwrap();
+        let threshold_ok = Amount::from_str("82.42").unwrap();
         let mut advance_msg = Advance {
             start_timestamp: vi.start,
             timeout: vi.timeout,
@@ -485,14 +578,14 @@ mod test {
         let mut advance_msg = Advance {
             start_timestamp: vi.start,
             timeout: vi.timeout,
-            threshold: 0.0,
+            threshold: Amount::zero(),
             now,
         };
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, VersioningState::LockedIn(LockedIn::new()));
 
-        advance_msg.now = advance_msg.timeout + Duration::from_secs(1);
+        advance_msg.now = advance_msg.timeout + 1;
         state = state.on_advance(advance_msg);
         assert_eq!(state, VersioningState::Active(Active::new()));
     }
@@ -506,7 +599,7 @@ mod test {
         let advance = Advance {
             start_timestamp: vi.start,
             timeout: vi.timeout,
-            threshold: 0.0,
+            threshold: Amount::zero(),
             now,
         };
 
@@ -523,7 +616,7 @@ mod test {
         let advance = Advance {
             start_timestamp: vi.start,
             timeout: vi.timeout,
-            threshold: 0.0,
+            threshold: Amount::zero(),
             now,
         };
 
@@ -535,11 +628,11 @@ mod test {
     fn test_state_advance_to_failed() {
         // Test Versioning state transition (to state: Failed)
         let vi = get_default_version_info();
-        let now = vi.start + Duration::from_secs(1);
+        let now = vi.start + 1;
         let advance_msg = Advance {
             start_timestamp: vi.start,
             timeout: vi.start,
-            threshold: 0.0,
+            threshold: Amount::zero(),
             now,
         };
 
@@ -553,17 +646,63 @@ mod test {
     }
 
     #[test]
+    fn test_versioning_info_ser_der() {
+        let vi = get_default_version_info();
+
+        let mut buffer: Vec<u8> = Vec::new();
+        let ser = VersioningInfoSerializer::new();
+        ser.serialize(&vi, &mut buffer).unwrap();
+
+        let der = VersioningInfoDeserializer::new();
+        let (rem, vi_from_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert_eq!(vi, vi_from_der);
+        assert!(rem.is_empty());
+    }
+
+    #[test]
+    fn test_versioning_state_ser_der() {
+        let vs = VersioningState::Defined(Defined::new());
+
+        let mut buffer: Vec<u8> = Vec::new();
+        let ser = VersioningStateSerializer::new();
+        ser.serialize(&vs, &mut buffer).unwrap();
+
+        let der = VersioningStateDeserializer::new();
+        let (rem, vs_from_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert_eq!(vs, vs_from_der);
+        assert!(rem.is_empty());
+
+        let threshold = Amount::from_str("42.9876").unwrap();
+        let vs = VersioningState::Started(Started::new(threshold));
+
+        let mut buffer: Vec<u8> = Vec::new();
+        let ser = VersioningStateSerializer::new();
+        ser.serialize(&vs, &mut buffer).unwrap();
+
+        let der = VersioningStateDeserializer::new();
+        let (rem, vs_from_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert_eq!(vs, vs_from_der);
+        assert!(rem.is_empty());
+    }
+
+    #[test]
     fn test_versioning_store_ser_der() {
         let vi = get_default_version_info();
-        let state = VersioningState::Started(Started::new(25.7));
-        let v_store = VersioningStoreRaw {
+        let state = VersioningState::Started(Started::new(Amount::from_str("25.7").unwrap()));
+        let vs = VersioningStoreRaw {
             versioning_info: HashMap::from([(vi, state)]),
         };
 
         let mut buffer: Vec<u8> = Vec::new();
         let serializer = VersioningStoreRawSerializer::new();
-        serializer.serialize(&v_store, &mut buffer).unwrap();
+        serializer.serialize(&vs, &mut buffer).unwrap();
 
-        // TODO: der
+        let der = VersioningStoreRawDeserializer::new();
+        let (rem, vs_from_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
+        assert_eq!(vs, vs_from_der);
+        assert!(rem.is_empty());
     }
 }
