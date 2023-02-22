@@ -1573,10 +1573,10 @@
             .map(|op| {
                 <span class="kw">let </span>is_final = final_op_exec_statuses
                     .get(op)
-                    .and_then(|status| status.clone());
+                    .and_then(|status| <span class="kw-2">*</span>status);
                 <span class="kw">let </span>is_speculative = speculative_op_exec_statuses
                     .get(op)
-                    .and_then(|status| status.clone());
+                    .and_then(|status| <span class="kw-2">*</span>status);
                 <span class="kw">match </span>(is_final, is_speculative) {
                     (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="kw">_</span>) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)),
                     (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="kw">_</span>) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)),
