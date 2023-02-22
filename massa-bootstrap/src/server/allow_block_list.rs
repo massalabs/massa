@@ -59,7 +59,7 @@ impl SharedAllowBlockList<'_> {
         Ok(())
     }
 
-    #[cfg_attr(test, allow(unreachable, unused_variables))]
+    #[cfg_attr(test, allow(unreachable_code, unused_variables))]
     pub(crate) fn is_ip_allowed(&self, remote_addr: &SocketAddr) -> Result<(), String> {
         #[cfg(test)]
         return Ok(());

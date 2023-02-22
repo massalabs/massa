@@ -358,7 +358,7 @@ impl BootstrapServer<'_> {
     }
 
     /// this is a bit complicated, but the simple is bad:
-    /// ```rust
+    /// ```rust-ignore
     /// if self.stopper_rx.try_recv().is_ok() {
     ///     break;
     /// }
