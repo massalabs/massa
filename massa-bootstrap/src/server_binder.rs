@@ -6,6 +6,7 @@ use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
 };
+use crate::settings::BootstrapSrvBindCfg;
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
@@ -14,8 +15,11 @@ use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use std::convert::TryInto;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::time::error::Elapsed;
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
@@ -30,6 +34,7 @@ pub struct BootstrapServerBinder {
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
+    write_error_timeout: MassaTime,
 }
 
 impl BootstrapServerBinder {
@@ -40,16 +45,29 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        duplex: Duplex,
-        local_keypair: KeyPair,
-        limit: f64,
-        max_bootstrap_message_size: u32,
-        thread_count: u8,
-        max_datastore_key_length: u8,
-        randomness_size_bytes: usize,
-        max_consensus_block_ids: u64,
-    ) -> Self {
+    // <<<<<<< HEAD
+    //     pub fn new(
+    //         duplex: Duplex,
+    //         local_keypair: KeyPair,
+    //         limit: f64,
+    //         max_bootstrap_message_size: u32,
+    //         thread_count: u8,
+    //         max_datastore_key_length: u8,
+    //         randomness_size_bytes: usize,
+    //         max_consensus_block_ids: u64,
+    //     ) -> Self {
+    // =======
+    pub fn new(duplex: Duplex, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+        let BootstrapSrvBindCfg {
+            max_bytes_read_write: limit,
+            max_bootstrap_message_size,
+            thread_count,
+            max_datastore_key_length,
+            randomness_size_bytes,
+            consensus_bootstrap_part_size,
+            write_error_timeout,
+        } = cfg;
+        // >>>>>>> ac3037ae1
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
@@ -63,6 +81,7 @@ impl BootstrapServerBinder {
             randomness_size_bytes,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
+            write_error_timeout,
         }
     }
 }
@@ -93,6 +112,24 @@ impl BootstrapServerBinder {
         self.prev_message = Some(msg_hash);
 
         Ok(())
+    }
+
+    pub async fn send_msg(
+        &mut self,
+        timeout: Duration,
+        msg: BootstrapServerMessage,
+    ) -> Result<Result<(), BootstrapError>, Elapsed> {
+        tokio::time::timeout(timeout, self.send(msg)).await
+    }
+    pub async fn send_error(
+        &mut self,
+        error: String,
+    ) -> Result<Result<(), BootstrapError>, Elapsed> {
+        tokio::time::timeout(
+            self.write_error_timeout.into(),
+            self.send(BootstrapServerMessage::BootstrapError { error }),
+        )
+        .await
     }
 
     /// Writes the next message. NOT cancel-safe

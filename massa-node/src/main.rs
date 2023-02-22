@@ -178,7 +178,7 @@ async fn launch(
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
         bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
         bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
-        bind: SETTINGS.bootstrap.bind,
+        listen_addr: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         bootstrap_timeout: SETTINGS.bootstrap.bootstrap_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -668,7 +668,6 @@ async fn stop(
     if let Some(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .await
             .expect("bootstrap server shutdown failed")
     }
 
