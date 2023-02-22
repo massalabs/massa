@@ -2,7 +2,7 @@
     bootstrap_config: &amp;<a class="struct" href="struct.BootstrapConfig.html" title="struct massa_bootstrap::BootstrapConfig">BootstrapConfig</a>,
     final_state: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;FinalState&gt;&gt;,
     establisher: <a class="type" href="types/type.Establisher.html" title="type massa_bootstrap::types::Establisher">Establisher</a>,
-    version: <a class="struct" href="../massa_models/version/struct.Version.html" title="struct massa_models::version::Version">Version</a>,
+    version: Version,
     genesis_timestamp: <a class="struct" href="../massa_time/struct.MassaTime.html" title="struct massa_time::MassaTime">MassaTime</a>,
     end_timestamp: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../massa_time/struct.MassaTime.html" title="struct massa_time::MassaTime">MassaTime</a>&gt;
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.GlobalBootstrapState.html" title="struct massa_bootstrap::GlobalBootstrapState">GlobalBootstrapState</a>, BootstrapError&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Gets the state from a bootstrap server
