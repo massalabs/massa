@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(not(test))]
 use massa_logging::massa_trace;
 use parking_lot::RwLock;
 

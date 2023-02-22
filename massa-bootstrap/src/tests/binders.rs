@@ -1,6 +1,3 @@
-use std::str::FromStr;
-use std::time::Duration;
-
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::types::Duplex;
@@ -23,6 +20,7 @@ use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
 use serial_test::serial;
+use std::str::FromStr;
 use tokio::io::duplex;
 
 lazy_static::lazy_static! {
