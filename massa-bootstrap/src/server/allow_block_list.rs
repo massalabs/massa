@@ -34,6 +34,9 @@ impl SharedAllowBlockList<'_> {
             block_path: Cow::from(block_path),
         })
     }
+
+    /// Checks if the allow/block list is up to date with a read-lock
+    /// Creates a new list, and replaces the old one in a write-lock
     pub(crate) fn update(&mut self) -> Result<(), String> {
         let read_lock = self.inner.read();
         let (new_allow, new_block) =
