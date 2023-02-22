@@ -219,7 +219,7 @@ impl BootstrapServer<'_> {
             // block until we have a connection to work with, or break out of main-loop
             let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else {break};
             // claim a slot in the max_bootstrap_sessions
-            let mut server = BootstrapServerBinder::new(
+            let server = BootstrapServerBinder::new(
                 dplx,
                 self.keypair.clone(),
                 (&self.bootstrap_config).into(),
@@ -228,15 +228,7 @@ impl BootstrapServer<'_> {
             // check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                let _ = match self.runtime.block_on(server.send_error(error_msg.clone())) {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::PermissionDenied,
-                        format!("{}  timed out", &error_msg),
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                };
+                server.close_and_send_error(error_msg, remote_addr, move || {});
                 // not exactly sure what to do here
                 // return Err(std::io::Error::new(
                 //     std::io::ErrorKind::PermissionDenied,
@@ -276,30 +268,17 @@ impl BootstrapServer<'_> {
                     now,
                     per_ip_min_interval,
                 ) {
-                    let send_timeout = server.send_error(
-
-                            format!(
-                                "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
-                                format_duration(msg),
-                                format_duration(per_ip_min_interval.saturating_sub(msg))
-                            )
-
+                    let msg = format!(
+                        "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
+                        format_duration(msg),
+                        format_duration(per_ip_min_interval.saturating_sub(msg))
                     );
-                    let send_timeout = self.runtime.block_on(send_timeout);
-
-                    let _ = match send_timeout {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap error too early retry bootstrap send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
+                    let tracer = move || {
+                        massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
+                            "remote_addr": remote_addr
+                        })
                     };
-                    // in list, non-expired => refuse
-                    massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
-                        "remote_addr": remote_addr
-                    });
+                    server.close_and_send_error(msg, remote_addr, tracer);
                     continue;
                 };
 
@@ -343,12 +322,11 @@ impl BootstrapServer<'_> {
                     "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
                 });
             } else {
-                let _ = match  self.runtime.block_on(server.send_error("Bootstrap failed because the bootstrap server currently has no slots available.".to_string())) {
-                            Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
-                            Ok(Err(e)) => Err(e),
-                            Ok(Ok(_)) => Ok(()),
-                        };
-                debug!("did not bootstrap {}: no available slots", remote_addr);
+                server.close_and_send_error(
+                    "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
+                    remote_addr,
+                    move || debug!("did not bootstrap {}: no available slots", remote_addr)
+                );
             }
         }
         // TODO: when they are synchrenous, consider if we want to signal updater and listener

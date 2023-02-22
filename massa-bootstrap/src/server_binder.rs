@@ -17,9 +17,13 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::convert::TryInto;
+use std::net::SocketAddr;
+use std::thread;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::runtime::Runtime;
 use tokio::time::error::Elapsed;
+use tracing::error;
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
@@ -107,6 +111,26 @@ impl BootstrapServerBinder {
         msg: BootstrapServerMessage,
     ) -> Result<Result<(), BootstrapError>, Elapsed> {
         tokio::time::timeout(timeout, self.send(msg)).await
+    }
+    pub(crate) fn close_and_send_error<F>(mut self, msg: String, addr: SocketAddr, close_fn: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        thread::spawn(move || {
+            let msg_cloned = msg.clone();
+            let err_send = Runtime::new()
+                .unwrap()
+                .block_on(async move { self.send_error(msg_cloned).await });
+            match err_send {
+                Err(_) => error!(
+                    "bootstrap server timed out sending error '{}' to addr {}",
+                    msg, addr
+                ),
+                Ok(Err(e)) => error!("{}", e),
+                Ok(Ok(_)) => {}
+            }
+            close_fn();
+        });
     }
     pub async fn send_error(
         &mut self,
