@@ -59,11 +59,13 @@ use crate::{
     BootstrapConfig, Establisher,
 };
 
+/// Abstraction layer over data produced by the listener, and transported
+/// over to the worker via a channel
+type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     update_handle: tokio::task::JoinHandle<Result<(), String>>,
-    listen_handle:
-        tokio::task::JoinHandle<Result<Result<(), (Duplex, SocketAddr)>, Box<BootstrapError>>>,
+    listen_handle: tokio::task::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     stopper_tx: crossbeam::channel::Sender<()>,
 }
@@ -109,8 +111,7 @@ pub async fn start_bootstrap_server(
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
     };
     // This is the primary interface between the async-listener, and the (soon to be) sync worker
-    let (listener_tx, listener_rx) =
-        crossbeam::channel::bounded::<(Duplex, SocketAddr)>(max_bootstraps);
+    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps);
 
     let allow_block_list = SharedAllowBlockList::new(
         config.bootstrap_whitelist_path.clone(),
@@ -157,7 +158,7 @@ struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    listener_rx: Receiver<(Duplex, SocketAddr)>,
+    listener_rx: Receiver<BsConn>,
     stopper_rx: Receiver<()>,
     allow_block_list: SharedAllowBlockList<'a>,
     keypair: KeyPair,
@@ -189,8 +190,8 @@ impl BootstrapServer<'_> {
     /// Err(..) Error accepting a connection
     async fn run_listener(
         mut listener: Listener,
-        listener_tx: Sender<(Duplex, SocketAddr)>,
-    ) -> Result<Result<(), (Duplex, SocketAddr)>, Box<BootstrapError>> {
+        listener_tx: Sender<BsConn>,
+    ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {
             let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
             match listener_tx.send(msg) {
@@ -216,7 +217,7 @@ impl BootstrapServer<'_> {
         // TODO: Work out how to integration-test this
         loop {
             // block until we have a connection to work with, or break out of main-loop
-            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else {break};
+            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else {break};
             // claim a slot in the max_bootstrap_sessions
             let bootstrap_count_token = bootstrap_sessions_counter.clone();
             let mut server = BootstrapServerBinder::new(
@@ -376,10 +377,7 @@ impl BootstrapServer<'_> {
     /// - 3.a. double check the stop-signal is absent
     /// - 3.b. If present, fall-back to the stop behaviour
     /// - 3.c. If absent, all's clear to rock-n-roll.
-    fn receive_connection(
-        &self,
-        selector: &mut Select,
-    ) -> Result<Option<(Duplex, SocketAddr)>, BootstrapError> {
+    fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn>, String> {
         // 1. Block until _something_ is ready
         let rdy = selector.ready();
 
@@ -399,10 +397,7 @@ impl BootstrapServer<'_> {
                 massa_trace!("bootstrap.lib.run.select.manager", {});
                 return Ok(None);
             } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                return Err(BootstrapError::GeneralError(
-                    "Unexpected stop-channel disconnection".to_string(),
-                )
-                .into());
+                return Err("Unexpected stop-channel disconnection".to_string());
             };
         }
         // - 3.c. If absent, all's clear to rock-n-roll.
@@ -411,10 +406,7 @@ impl BootstrapServer<'_> {
             Err(try_rcv_err) => match try_rcv_err {
                 crossbeam::channel::TryRecvError::Empty => return Ok(None),
                 crossbeam::channel::TryRecvError::Disconnected => {
-                    return Err(BootstrapError::GeneralError(
-                        "listener recv channel disconnected unexpectedly".to_string(),
-                    )
-                    .into())
+                    return Err("listener recv channel disconnected unexpectedly".to_string())
                 }
             },
         };

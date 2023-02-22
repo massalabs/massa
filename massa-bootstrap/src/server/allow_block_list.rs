@@ -39,7 +39,7 @@ impl SharedAllowBlockList<'_> {
     pub(crate) fn update(&mut self) -> Result<(), String> {
         let read_lock = self.inner.read();
         let (new_allow, new_block) =
-            AllowBlockListInner::load_allow_block_lists(&*self.allow_path, &self.block_path)?;
+            AllowBlockListInner::load_allow_block_lists(&self.allow_path, &self.block_path)?;
         let allow_delta = new_allow != read_lock.allow_list;
         let block_delta = new_block != read_lock.block_list;
         if allow_delta || block_delta {
