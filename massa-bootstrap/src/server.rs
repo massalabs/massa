@@ -444,9 +444,9 @@ impl BootstrapServer<'_> {
     }
 }
 
-/// To be called from a `tokio::spawn` invocation
+/// To be called from a `thread::spawn` invocation
 ///
-/// Runs the bootstrap management in a tokio::timeout context. A failed bootstrap session
+/// Runs the bootstrap management in a dedicated tokio runtime context. A failed bootstrap session
 /// will fail silently locally, but will send a message to the client with an error message.
 ///
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
