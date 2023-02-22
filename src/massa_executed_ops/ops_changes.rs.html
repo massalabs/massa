@@ -108,20 +108,6 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -130,8 +116,7 @@
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 <span class="kw">use </span>massa_serialization::{
-    BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
-    SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
@@ -141,14 +126,13 @@
 };
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
-<span class="doccomment">/// Speculative changes for ExecutedOps
-</span><span class="kw">pub type </span>ExecutedOpsChanges = PreHashMap&lt;OperationId, (<span class="prelude-ty">Option</span>&lt;bool&gt;, Slot)&gt;;
+<span class="doccomment">/// Speculatives changes for ExecutedOps
+</span><span class="kw">pub type </span>ExecutedOpsChanges = PreHashMap&lt;OperationId, Slot&gt;;
 
 <span class="doccomment">/// `ExecutedOps` Serializer
 </span><span class="kw">pub struct </span>ExecutedOpsChangesSerializer {
     u64_serializer: U64VarIntSerializer,
     operation_id_serializer: OperationIdSerializer,
-    op_execution: OptionSerializer&lt;bool, BoolSerializer&gt;,
     slot_serializer: SlotSerializer,
 }
 
@@ -164,7 +148,6 @@
         ExecutedOpsChangesSerializer {
             u64_serializer: U64VarIntSerializer::new(),
             operation_id_serializer: OperationIdSerializer::new(),
-            op_execution: OptionSerializer::new(BoolSerializer::new()),
             slot_serializer: SlotSerializer::new(),
         }
     }
@@ -178,10 +161,8 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="self">self</span>.u64_serializer
             .serialize(<span class="kw-2">&amp;</span>(value.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-        <span class="kw">for </span>(op_id, (op_execution_succeeded, slot)) <span class="kw">in </span>value {
+        <span class="kw">for </span>(op_id, slot) <span class="kw">in </span>value {
             <span class="self">self</span>.operation_id_serializer.serialize(op_id, buffer)<span class="question-mark">?</span>;
-            <span class="self">self</span>.op_execution
-                .serialize(op_execution_succeeded, buffer)<span class="question-mark">?</span>;
             <span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -192,7 +173,6 @@
 </span><span class="kw">pub struct </span>ExecutedOpsChangesDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     operation_id_deserializer: OperationIdDeserializer,
-    op_execution_deserializer: OptionDeserializer&lt;bool, BoolDeserializer&gt;,
     slot_deserializer: SlotDeserializer,
 }
 
@@ -205,7 +185,6 @@
                 Included(max_ops_changes_length),
             ),
             operation_id_deserializer: OperationIdDeserializer::new(),
-            op_execution_deserializer: OptionDeserializer::new(BoolDeserializer::new()),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(thread_count)),
@@ -229,20 +208,13 @@
                     context(<span class="string">&quot;operation id&quot;</span>, |input| {
                         <span class="self">self</span>.operation_id_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;operation execution status&quot;</span>, |input| {
-                        <span class="self">self</span>.op_execution_deserializer.deserialize(input)
-                    }),
                     context(<span class="string">&quot;expiration slot&quot;</span>, |input| {
                         <span class="self">self</span>.slot_deserializer.deserialize(input)
                     }),
                 )),
             ),
         )
-        .map(|ids| {
-            ids.into_iter()
-                .map(|(id, op_exec_status, slot)| (id, (op_exec_status, slot)))
-                .collect()
-        })
+        .map(|ids| ids.into_iter().collect())
         .parse(buffer)
     }
 }

@@ -291,16 +291,6 @@
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -440,22 +430,6 @@
             .get_filtered_sc_output_event(filter)
     }
 
-    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values
-    ///
-    /// # Return value
-    /// * `Vec&lt;(final_data_entry, active_data_entry)&gt;`
-    </span><span class="kw">fn </span>get_final_and_active_data_entry(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
-    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
-        <span class="kw">let </span>lock = <span class="self">self</span>.execution_state.read();
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(input.len());
-        <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
-            result.push(lock.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
-        }
-        result
-    }
-
     <span class="doccomment">/// Get the final and candidate values of balance.
     ///
     /// # Return value
@@ -468,6 +442,22 @@
         <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(addresses.len());
         <span class="kw">for </span>addr <span class="kw">in </span>addresses {
             result.push(lock.get_final_and_candidate_balance(addr));
+        }
+        result
+    }
+
+    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values
+    ///
+    /// # Return value
+    /// * `Vec&lt;(final_data_entry, active_data_entry)&gt;`
+    </span><span class="kw">fn </span>get_final_and_active_data_entry(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
+    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
+        <span class="kw">let </span>lock = <span class="self">self</span>.execution_state.read();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(input.len());
+        <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
+            result.push(lock.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
         }
         result
     }
@@ -564,16 +554,6 @@
     /// see `massa-execution-exports/controller_traits.rs`
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
         Box::new(<span class="self">self</span>.clone())
-    }
-
-    <span class="doccomment">/// See trait definition
-    </span><span class="kw">fn </span>get_op_exec_status(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; (
-        HashMap&lt;OperationId, <span class="prelude-ty">Option</span>&lt;bool&gt;&gt;,
-        HashMap&lt;OperationId, <span class="prelude-ty">Option</span>&lt;bool&gt;&gt;,
-    ) {
-        <span class="self">self</span>.execution_state.read().get_op_exec_status()
     }
 }
 
