@@ -348,8 +348,8 @@ impl BootstrapServer<'_> {
                 debug!("did not bootstrap {}: no available slots", remote_addr);
             }
         }
-        // abort listener and updater here?
-        // TODO: clean up the listener and updater here.
+        // TODO: when they are synchrenous, consider if we want to signal updater and listener
+        //       here, or in the stop method.
         // TODO: do we drop(self.runtime) here?
         Ok(())
     }
