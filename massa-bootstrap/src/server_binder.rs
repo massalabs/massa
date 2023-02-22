@@ -112,6 +112,14 @@ impl BootstrapServerBinder {
     ) -> Result<Result<(), BootstrapError>, Elapsed> {
         tokio::time::timeout(timeout, self.send(msg)).await
     }
+
+    /// 1. Spawns a thread
+    /// 2. blocks on the passed in runtime
+    /// 3. uses passed in handle to send a message to the client
+    /// 4. logs an error if the send times out
+    /// 5. runs the passed in closure (typically a custom logging msg)
+    ///
+    /// consumes the binding in the process
     pub(crate) fn close_and_send_error<F>(
         mut self,
         server_outer_rt_hnd: Handle,
