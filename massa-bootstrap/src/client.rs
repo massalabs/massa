@@ -3,7 +3,7 @@ use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::versioning::{VersioningStore, VersioningStoreRaw};
+use massa_models::versioning::VersioningStoreRaw;
 use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
