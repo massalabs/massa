@@ -66,7 +66,6 @@ type BsConn = (Duplex, SocketAddr);
 pub struct BootstrapManager {
     update_handle: tokio::task::JoinHandle<Result<(), String>>,
     listen_handle: tokio::task::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
-    _runtime: Runtime,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     stopper_tx: crossbeam::channel::Sender<()>,
 }
@@ -80,7 +79,7 @@ impl BootstrapManager {
         }
         self.listen_handle.abort();
         self.update_handle.abort();
-        self.main_handle.join().unwrap()
+        dbg!(self.main_handle.join().unwrap())
     }
 }
 
@@ -102,7 +101,7 @@ pub async fn start_bootstrap_server(
     // TODO(low prio): See if a zero capacity channel model can work
     let (stopper_tx, stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
-    let runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
+    let outer_server_runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
     let listener = establisher
         .get_listener(listen_addr)
         .await
@@ -120,11 +119,14 @@ pub async fn start_bootstrap_server(
     )
     .map_err(BootstrapError::GeneralError)?;
 
-    let update_handle = runtime.handle().clone().spawn(BootstrapServer::run_updater(
-        white_black_list.clone(),
-        config.cache_duration.into(),
-    ));
-    let listen_handle = runtime
+    let update_handle = outer_server_runtime
+        .handle()
+        .clone()
+        .spawn(BootstrapServer::run_updater(
+            white_black_list.clone(),
+            config.cache_duration.into(),
+        ));
+    let listen_handle = outer_server_runtime
         .handle()
         .clone()
         .spawn(BootstrapServer::run_listener(listener, listener_tx));
@@ -141,6 +143,7 @@ pub async fn start_bootstrap_server(
             version,
             ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
             bootstrap_config: config,
+            _outer_server_runtime: outer_server_runtime,
         }
         .run_loop(max_bootstraps)
     });
@@ -150,7 +153,6 @@ pub async fn start_bootstrap_server(
         update_handle,
         listen_handle,
         main_handle,
-        _runtime: runtime,
         // Send on this channel to trigger the tokio::select! loop to break
         stopper_tx,
     }))
@@ -167,6 +169,7 @@ struct BootstrapServer<'a> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    _outer_server_runtime: Runtime,
 }
 
 impl BootstrapServer<'_> {

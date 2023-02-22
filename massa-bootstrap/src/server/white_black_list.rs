@@ -94,7 +94,7 @@ impl WhiteBlackListInner {
 
     fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, String> {
         let Ok(list) = std::fs::read_to_string(list_path) else {
-            return Err(format!("failed to read ip-list from file {}", list_path.display()));
+            return Ok(None);
         };
         let res = Some(
             serde_json::from_str::<HashSet<IpAddr>>(list.as_str())
