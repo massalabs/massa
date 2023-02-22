@@ -66,6 +66,9 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -74,6 +77,7 @@
 <span class="kw">use </span>massa_sc_runtime::GasCosts;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
+<span class="kw">use </span>std::path::PathBuf;
 
 <span class="doccomment">/// Storage cost constants
 </span><span class="attr">#[derive(Debug, Clone, Copy)]
@@ -133,6 +137,8 @@
     </span><span class="kw">pub </span>max_read_only_gas: u64,
     <span class="doccomment">/// Gas costs
     </span><span class="kw">pub </span>gas_costs: GasCosts,
+    <span class="doccomment">/// path of the initial vesting file
+    </span><span class="kw">pub </span>initial_vesting_path: PathBuf,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (065852def 2023-02-13)" data-search-js="search-abe1d547ad11c273.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
