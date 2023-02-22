@@ -87,17 +87,13 @@ mod types {
             let socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, None)?;
 
             socket.set_only_v6(false)?;
-
-            socket.bind(&addr.into())?;
             socket.set_nonblocking(true)?;
+            socket.bind(&addr.into())?;
 
             // Number of connections to queue, set to the hardcoded value used by tokio
             socket.listen(1024)?;
 
-            let std_listener: std::net::TcpListener = socket.into();
-            let tokio_listener = tokio::net::TcpListener::from_std(std_listener)?;
-
-            Ok(DefaultListener(tokio_listener))
+            Ok(DefaultListener(TcpListener::from_std(socket.into())?))
         }
 
         /// Get the connector with associated timeout
