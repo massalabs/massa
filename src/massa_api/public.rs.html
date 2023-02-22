@@ -1054,8 +1054,6 @@
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
 <a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1571,9 +1569,7 @@
         </span><span class="kw">let </span>(is_operation_final, statuses): (Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;, Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;) = ops
             .iter()
             .map(|op| {
-                <span class="kw">let </span>is_final = final_op_exec_statuses
-                    .get(op)
-                    .and_then(|status| <span class="kw-2">*</span>status);
+                <span class="kw">let </span>is_final = final_op_exec_statuses.get(op).and_then(|status| <span class="kw-2">*</span>status);
                 <span class="kw">let </span>is_speculative = speculative_op_exec_statuses
                     .get(op)
                     .and_then(|status| <span class="kw-2">*</span>status);
