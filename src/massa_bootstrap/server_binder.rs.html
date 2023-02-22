@@ -194,30 +194,6 @@
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -226,7 +202,6 @@
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
 };
-<span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapSrvBindCfg;
 <span class="kw">use </span>async_speed_limit::clock::StandardClock;
 <span class="kw">use </span>async_speed_limit::{Limiter, Resource};
 <span class="kw">use </span>massa_hash::Hash;
@@ -235,11 +210,8 @@
 <span class="kw">use </span>massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>massa_signature::KeyPair;
-<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::convert::TryInto;
-<span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>tokio::io::{AsyncReadExt, AsyncWriteExt};
-<span class="kw">use </span>tokio::time::error::Elapsed;
 
 <span class="doccomment">/// Bootstrap server binder
 </span><span class="kw">pub struct </span>BootstrapServerBinder {
@@ -254,7 +226,6 @@
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
-    write_error_timeout: MassaTime,
 }
 
 <span class="kw">impl </span>BootstrapServerBinder {
@@ -265,20 +236,20 @@
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(duplex: Duplex, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>BootstrapSrvBindCfg {
-            max_bytes_read_write: limit,
-            max_bootstrap_message_size,
-            thread_count,
-            max_datastore_key_length,
-            randomness_size_bytes,
-            consensus_bootstrap_part_size,
-            write_error_timeout,
-        } = cfg;
+    </span><span class="kw">pub fn </span>new(
+        duplex: Duplex,
+        local_keypair: KeyPair,
+        limit: f64,
+        max_bootstrap_message_size: u32,
+        thread_count: u8,
+        max_datastore_key_length: u8,
+        randomness_size_bytes: usize,
+        max_consensus_block_ids: u64,
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
-            max_consensus_block_ids: consensus_bootstrap_part_size,
+            max_consensus_block_ids,
             size_field_len,
             local_keypair,
             duplex: &lt;Limiter&gt;::new(limit).limit(duplex),
@@ -288,7 +259,6 @@
             randomness_size_bytes,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
-            write_error_timeout,
         }
     }
 }
@@ -320,24 +290,6 @@
 
         <span class="prelude-val">Ok</span>(())
     }
-
-    <span class="kw">pub async fn </span>send_msg(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        timeout: Duration,
-        msg: BootstrapServerMessage,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;, Elapsed&gt; {
-        tokio::time::timeout(timeout, <span class="self">self</span>.send(msg)).<span class="kw">await
-    </span>}
-    <span class="kw">pub async fn </span>send_error(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        error: String,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;, Elapsed&gt; {
-        tokio::time::timeout(
-            <span class="self">self</span>.write_error_timeout.into(),
-            <span class="self">self</span>.send(BootstrapServerMessage::BootstrapError { error }),
-        )
-        .<span class="kw">await
-    </span>}
 
     <span class="doccomment">/// Writes the next message. NOT cancel-safe
     </span><span class="kw">pub async fn </span>send(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: BootstrapServerMessage) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
