@@ -861,7 +861,7 @@ mod tests {
             Default::default(),
             block_storage.clone(),
         );
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_millis(100));
 
         // retrieve the event emitted by the execution error
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
@@ -946,7 +946,7 @@ mod tests {
             Default::default(),
             block_storage.clone(),
         );
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_millis(100));
 
         // retrieve the event emitted by the execution error
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
@@ -1020,7 +1020,7 @@ mod tests {
             Default::default(),
             block_storage.clone(),
         );
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_millis(100));
         // check roll count of the buyer address and its balance
         let sample_read = sample_state.read();
         assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);

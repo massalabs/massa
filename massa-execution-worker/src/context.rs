@@ -603,7 +603,6 @@ impl ExecutionContext {
         to_addr: Option<Address>,
         amount: Amount,
         check_rights: bool,
-        current_slot: &Slot,
     ) -> Result<(), ExecutionError> {
         if let Some(from_addr) = &from_addr {
             // check access rights
@@ -615,7 +614,7 @@ impl ExecutionContext {
             }
 
             // control vesting min_balance for sender address
-            if let Some(vesting_range) = self.find_vesting_range(from_addr, current_slot) {
+            if let Some(vesting_range) = self.find_vesting_range(from_addr, &self.slot) {
                 let new_balance = self
                     .get_balance(from_addr)
                     .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
@@ -625,25 +624,24 @@ impl ExecutionContext {
                             .get_balance(from_addr).unwrap_or_default()))
                     })?;
 
-                let vec = self.speculative_roll_state.get_address_cycle_infos(
-                    from_addr,
-                    self.config.periods_per_cycle,
-                    *current_slot,
-                );
-                let Some(exec_info) = vec.first() else {
+                let vec = self.get_address_cycle_infos(from_addr, self.config.periods_per_cycle);
+                let Some(exec_info) = vec.last() else {
                     return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", from_addr)));
                 };
 
                 let rolls_value = exec_info
                     .active_rolls
-                    .map(|rolls| Amount::from_raw(rolls * self.config.roll_price.to_raw()))
+                    .map(|rolls| self.config.roll_price.saturating_mul_u64(rolls))
                     .unwrap_or(Amount::zero());
-                let deferred_credits = self
+
+                let deferred_map = self
                     .speculative_roll_state
-                    .get_address_deferred_credits(from_addr, *current_slot)
-                    .get(current_slot)
-                    .copied()
-                    .unwrap_or(Amount::zero());
+                    .get_address_deferred_credits(from_addr, self.slot);
+                let deferred_credits = if deferred_map.is_empty() {
+                    Amount::zero()
+                } else {
+                    Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
+                };
 
                 // min_balance = (rolls * roll_price) + balance + deferred_credits
                 let min_balance = new_balance
@@ -677,13 +675,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
-        if let Err(e) = self.transfer_coins(
-            None,
-            Some(msg.sender),
-            msg.coins,
-            false,
-            &msg.validity_start,
-        ) {
+        if let Err(e) = self.transfer_coins(None, Some(msg.sender), msg.coins, false) {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
                 msg.sender, e
@@ -756,7 +748,7 @@ impl ExecutionContext {
                 .entry(address)
                 .and_modify(|credit_amount| *credit_amount = Amount::default())
                 .or_default();
-            if let Err(e) = self.transfer_coins(None, Some(address), amount, false, slot) {
+            if let Err(e) = self.transfer_coins(None, Some(address), amount, false) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
                     amount, address, slot, e

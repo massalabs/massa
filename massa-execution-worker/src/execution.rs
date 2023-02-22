@@ -270,13 +270,9 @@ impl ExecutionState {
 
             // debit the fee from the operation sender
             // fail execution if there are not enough coins
-            if let Err(err) = context.transfer_coins(
-                Some(sender_addr),
-                None,
-                operation.content.fee,
-                false,
-                &block_slot,
-            ) {
+            if let Err(err) =
+                context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
+            {
                 return Err(ExecutionError::IncludeOperationError(format!(
                     "could not spend fees: {}",
                     err
@@ -318,7 +314,7 @@ impl ExecutionState {
                 self.execute_executesc_op(&operation.content.op, sender_addr)
             }
             OperationType::CallSC { .. } => {
-                self.execute_callsc_op(&operation.content.op, sender_addr, block_slot)
+                self.execute_callsc_op(&operation.content.op, sender_addr)
             }
             OperationType::RollBuy { .. } => {
                 self.execute_roll_buy_op(&operation.content.op, sender_addr, block_slot)
@@ -327,7 +323,7 @@ impl ExecutionState {
                 self.execute_roll_sell_op(&operation.content.op, sender_addr)
             }
             OperationType::Transaction { .. } => {
-                self.execute_transaction_op(&operation.content.op, sender_addr, block_slot)
+                self.execute_transaction_op(&operation.content.op, sender_addr)
             }
         };
 
@@ -447,9 +443,7 @@ impl ExecutionState {
         };
 
         // spend `roll_price` * `roll_count` coins from the buyer
-        if let Err(err) =
-            context.transfer_coins(Some(buyer_addr), None, spend_coins, false, &current_slot)
-        {
+        if let Err(err) = context.transfer_coins(Some(buyer_addr), None, spend_coins, false) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
                 buyer_addr, roll_count, err
@@ -473,7 +467,6 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
-        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process transaction operations only
         let (recipient_address, amount) = match operation {
@@ -497,13 +490,9 @@ impl ExecutionState {
         }];
 
         // send `roll_price` * `roll_count` coins from the sender to the recipient
-        if let Err(err) = context.transfer_coins(
-            Some(sender_addr),
-            Some(*recipient_address),
-            *amount,
-            false,
-            &current_slot,
-        ) {
+        if let Err(err) =
+            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, false)
+        {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
                 amount, sender_addr, recipient_address, err
@@ -589,7 +578,6 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
-        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process CallSC operations only
         let (max_gas, target_addr, target_func, param, coins) = match &operation {
@@ -628,9 +616,7 @@ impl ExecutionState {
             ];
 
             // Debit the sender's balance with the coins to transfer
-            if let Err(err) =
-                context.transfer_coins(Some(sender_addr), None, coins, false, &current_slot)
-            {
+            if let Err(err) = context.transfer_coins(Some(sender_addr), None, coins, false) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to debit operation sender {} with {} operation coins: {}",
                     sender_addr, coins, err
@@ -638,9 +624,7 @@ impl ExecutionState {
             }
 
             // Credit the operation target with coins.
-            if let Err(err) =
-                context.transfer_coins(None, Some(target_addr), coins, false, &current_slot)
-            {
+            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to credit operation target {} with {} operation coins: {}",
                     target_addr, coins, err
@@ -732,9 +716,8 @@ impl ExecutionState {
             };
 
             // credit coins to the target address
-            let slot = context.slot;
             if let Err(err) =
-                context.transfer_coins(None, Some(message.destination), message.coins, false, &slot)
+                context.transfer_coins(None, Some(message.destination), message.coins, false)
             {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
@@ -919,7 +902,6 @@ impl ExecutionState {
                     Some(*endorsement_creator),
                     block_credit_part,
                     false,
-                    slot,
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
@@ -938,7 +920,6 @@ impl ExecutionState {
                     Some(endorsement_target_creator),
                     block_credit_part,
                     false,
-                    slot,
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
@@ -953,13 +934,9 @@ impl ExecutionState {
             }
 
             // Credit block creator with remaining_credit
-            if let Err(err) = context.transfer_coins(
-                None,
-                Some(block_creator_addr),
-                remaining_credit,
-                false,
-                slot,
-            ) {
+            if let Err(err) =
+                context.transfer_coins(None, Some(block_creator_addr), remaining_credit, false)
+            {
                 debug!(
                     "failed to credit {} coins to block creator {} on block execution: {}",
                     remaining_credit, block_creator_addr, err

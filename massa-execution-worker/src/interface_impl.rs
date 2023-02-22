@@ -158,9 +158,7 @@ impl Interface for InterfaceImpl {
 
         // transfer coins from caller to target address
         let coins = Amount::from_raw(raw_coins);
-        let slot = context.slot;
-        if let Err(err) =
-            context.transfer_coins(Some(from_address), Some(to_address), coins, true, &slot)
+        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, true)
         {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
@@ -572,8 +570,7 @@ impl Interface for InterfaceImpl {
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
-        let slot = context.slot;
-        context.transfer_coins(Some(from_address), Some(to_address), amount, true, &slot)?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
@@ -593,8 +590,7 @@ impl Interface for InterfaceImpl {
         let to_address = Address::from_str(to_address)?;
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        let slot = context.slot;
-        context.transfer_coins(Some(from_address), Some(to_address), amount, true, &slot)?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
@@ -714,9 +710,8 @@ impl Interface for InterfaceImpl {
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
         let fee = Amount::from_raw(raw_fee);
-        let slot = execution_context.slot;
-        execution_context.transfer_coins(Some(sender), None, coins, true, &slot)?;
-        execution_context.transfer_coins(Some(sender), None, fee, true, &slot)?;
+        execution_context.transfer_coins(Some(sender), None, coins, true)?;
+        execution_context.transfer_coins(Some(sender), None, fee, true)?;
         execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
