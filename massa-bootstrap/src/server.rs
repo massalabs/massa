@@ -66,6 +66,7 @@ type BsConn = (Duplex, SocketAddr);
 pub struct BootstrapManager {
     update_handle: tokio::task::JoinHandle<Result<(), String>>,
     listen_handle: tokio::task::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
+    _runtime: Runtime,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     stopper_tx: crossbeam::channel::Sender<()>,
 }
@@ -140,15 +141,16 @@ pub async fn start_bootstrap_server(
             version,
             ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
             bootstrap_config: config,
-            runtime,
         }
         .run_loop(max_bootstraps)
     });
-    // does `runtime` get dropped here?
+    // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
+    // TODO: make the tasks sync, so the runtime is redundant
     Ok(Some(BootstrapManager {
         update_handle,
         listen_handle,
         main_handle,
+        _runtime: runtime,
         // Send on this channel to trigger the tokio::select! loop to break
         stopper_tx,
     }))
@@ -165,7 +167,6 @@ struct BootstrapServer<'a> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
-    runtime: Runtime,
 }
 
 impl BootstrapServer<'_> {
