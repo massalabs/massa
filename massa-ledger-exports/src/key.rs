@@ -4,35 +4,88 @@ use massa_models::{
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
 pub const BALANCE_IDENT: u8 = 0u8;
 pub const BYTECODE_IDENT: u8 = 1u8;
 pub const DATASTORE_IDENT: u8 = 2u8;
 
+#[derive(PartialEq, Eq, Clone, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub enum KeyType {
+enum KeyTypeId {
     BALANCE = 0,
     BYTECODE = 1,
-    DATASTORE(Vec<u8>) = 2,
+    DATASTORE = 2,
 }
 
-impl KeyType {
-    pub fn from_u8(value: u8) -> Option<Self> {
-        match value {
-            0 => Some(KeyType::BALANCE),
-            1 => Some(KeyType::BYTECODE),
-            2 => Some(KeyType::DATASTORE(Vec::new())),
-            _ => None,
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum KeyType {
+    BALANCE,
+    BYTECODE,
+    DATASTORE(Vec<u8>),
+}
+
+#[derive(Default, Clone)]
+pub struct KeyTypeSerializer {
+    vec_u8_serializer: VecU8Serializer,
+}
+
+impl KeyTypeSerializer {
+    pub fn new() -> Self {
+        Self {
+            vec_u8_serializer: VecU8Serializer::new(),
         }
     }
+}
 
-    pub fn to_u8(&self) -> u8 {
-        match self {
-            KeyType::BALANCE => 0,
-            KeyType::BYTECODE => 1,
-            KeyType::DATASTORE(_) => 2,
+impl Serializer<KeyType> for KeyTypeSerializer {
+    fn serialize(&self, value: &KeyType, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        match value {
+            KeyType::BALANCE => buffer.extend(&[u8::from(KeyTypeId::BALANCE)]),
+            KeyType::BYTECODE => buffer.extend(&[u8::from(KeyTypeId::BYTECODE)]),
+            KeyType::DATASTORE(data) => {
+                buffer.extend(&[u8::from(KeyTypeId::DATASTORE)]);
+                self.vec_u8_serializer.serialize(data, buffer)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub struct KeyTypeDeserializer {
+    vec_u8_deserializer: VecU8Deserializer,
+}
+
+impl KeyTypeDeserializer {
+    pub fn new(max_datastore_key_length: u8) -> Self {
+        Self {
+            vec_u8_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(max_datastore_key_length as u64),
+            ),
+        }
+    }
+}
+
+impl Deserializer<KeyType> for KeyTypeDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        input: &'a [u8],
+    ) -> nom::IResult<&'a [u8], KeyType, E> {
+        let (rest, key_type) = nom::number::complete::le_u8(input)?;
+        match KeyTypeId::try_from(key_type) {
+            Ok(KeyTypeId::BALANCE) => Ok((rest, KeyType::BALANCE)),
+            Ok(KeyTypeId::BYTECODE) => Ok((rest, KeyType::BYTECODE)),
+            Ok(KeyTypeId::DATASTORE) => {
+                let (rest, data) = self.vec_u8_deserializer.deserialize(rest)?;
+                Ok((rest, KeyType::DATASTORE(data)))
+            }
+            Err(_) => Err(nom::Err::Error(E::from_error_kind(
+                rest,
+                nom::error::ErrorKind::Tag,
+            ))),
         }
     }
 }
@@ -66,7 +119,7 @@ pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
 #[derive(Default, Clone)]
 pub struct KeySerializer {
     address_serializer: AddressSerializer,
-    vec_u8_serializer: VecU8Serializer,
+    key_type_serializer: KeyTypeSerializer,
 }
 
 impl KeySerializer {
@@ -74,7 +127,7 @@ impl KeySerializer {
     pub fn new() -> Self {
         Self {
             address_serializer: AddressSerializer::new(),
-            vec_u8_serializer: VecU8Serializer::new(),
+            key_type_serializer: KeyTypeSerializer::new(),
         }
     }
 }
@@ -95,11 +148,8 @@ impl Serializer<Key> for KeySerializer {
     /// ```
     fn serialize(&self, value: &Key, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.address_serializer.serialize(&value.address, buffer)?;
-        buffer.extend(&[value.key_type.clone().to_u8()]);
-
-        if let KeyType::DATASTORE(data) = value.key_type.clone() {
-            self.vec_u8_serializer.serialize(&data, buffer)?;
-        }
+        self.key_type_serializer
+            .serialize(&value.key_type, buffer)?;
 
         Ok(())
     }
@@ -109,7 +159,7 @@ impl Serializer<Key> for KeySerializer {
 #[derive(Clone)]
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
-    datastore_key_deserializer: VecU8Deserializer,
+    key_type_deserializer: KeyTypeDeserializer,
 }
 
 impl KeyDeserializer {
@@ -117,10 +167,7 @@ impl KeyDeserializer {
     pub fn new(max_datastore_key_length: u8) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            datastore_key_deserializer: VecU8Deserializer::new(
-                Included(u64::MIN),
-                Included(max_datastore_key_length as u64),
-            ),
+            key_type_deserializer: KeyTypeDeserializer::new(max_datastore_key_length),
         }
     }
 }
@@ -157,40 +204,8 @@ impl Deserializer<Key> for KeyDeserializer {
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Key, E> {
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
-        let error = nom::Err::Error(ParseError::from_error_kind(
-            buffer,
-            nom::error::ErrorKind::Fail,
-        ));
-        match rest.first() {
-            Some(indent) => match KeyType::from_u8(*indent) {
-                Some(KeyType::BALANCE) => Ok((
-                    &rest[1..],
-                    Key {
-                        address,
-                        key_type: KeyType::BALANCE,
-                    },
-                )),
-                Some(KeyType::BYTECODE) => Ok((
-                    &rest[1..],
-                    Key {
-                        address,
-                        key_type: KeyType::BYTECODE,
-                    },
-                )),
-                Some(KeyType::DATASTORE(_)) => {
-                    println!("rest: {:?}", &rest[1..]);
-                    let (rest, hash) = self.datastore_key_deserializer.deserialize(&rest[1..])?;
-                    Ok((
-                        rest,
-                        Key {
-                            address,
-                            key_type: KeyType::DATASTORE(hash),
-                        },
-                    ))
-                }
-                _ => Err(error),
-            },
-            None => Err(error),
-        }
+        let (rest, key_type) = self.key_type_deserializer.deserialize(rest)?;
+
+        Ok((rest, Key { address, key_type }))
     }
 }

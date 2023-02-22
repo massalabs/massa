@@ -658,7 +658,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + 2).1.to_vec(), // DIRTY FIX: It's supposed to be 1 but 2 works. I couldn't find why.
+                    key.split_at(ADDRESS_SIZE_BYTES + 2).1.to_vec(), // +1 for the type byte, +1 for the length byte
                     data.to_vec(),
                 )
             })
