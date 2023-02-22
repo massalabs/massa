@@ -143,7 +143,7 @@ pub async fn start_bootstrap_server(
             version,
             ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
             bootstrap_config: config,
-            _outer_server_runtime: outer_server_runtime,
+            outer_server_runtime,
         }
         .run_loop(max_bootstraps)
     });
@@ -169,7 +169,7 @@ struct BootstrapServer<'a> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
-    _outer_server_runtime: Runtime,
+    outer_server_runtime: Runtime,
 }
 
 impl BootstrapServer<'_> {
@@ -232,7 +232,12 @@ impl BootstrapServer<'_> {
             // check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                server.close_and_send_error(error_msg, remote_addr, move || {});
+                server.close_and_send_error(
+                    self.outer_server_runtime.handle().clone(),
+                    error_msg,
+                    remote_addr,
+                    move || {},
+                );
                 // not exactly sure what to do here
                 // return Err(std::io::Error::new(
                 //     std::io::ErrorKind::PermissionDenied,
@@ -282,7 +287,12 @@ impl BootstrapServer<'_> {
                             "remote_addr": remote_addr
                         })
                     };
-                    server.close_and_send_error(msg, remote_addr, tracer);
+                    server.close_and_send_error(
+                        self.outer_server_runtime.handle().clone(),
+                        msg,
+                        remote_addr,
+                        tracer,
+                    );
                     continue;
                 };
 
@@ -327,6 +337,7 @@ impl BootstrapServer<'_> {
                 });
             } else {
                 server.close_and_send_error(
+                    self.outer_server_runtime.handle().clone(),
                     "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
                     remote_addr,
                     move || debug!("did not bootstrap {}: no available slots", remote_addr)
