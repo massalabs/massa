@@ -27,7 +27,7 @@
 mod allow_block_list;
 use allow_block_list::*;
 
-use crossbeam::channel::{Receiver, Select, Sender};
+use crossbeam::channel::{Receiver, Select, SendError, Sender};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -62,7 +62,8 @@ use crate::{
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     update_handle: tokio::task::JoinHandle<Result<(), String>>,
-    listen_handle: tokio::task::JoinHandle<Result<(), Box<BootstrapError>>>,
+    listen_handle:
+        tokio::task::JoinHandle<Result<Result<(), (Duplex, SocketAddr)>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     stopper_tx: crossbeam::channel::Sender<()>,
 }
@@ -179,14 +180,28 @@ impl BootstrapServer<'_> {
             list.update()?;
         }
     }
+
+    /// Listens on a channel for incoming connections, and loads them onto a crossbeam channel
+    /// for the main-loop to process.
+    ///
+    /// Ok(Ok(())) listener closed without issue
+    /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
+    /// Err(..) Error accepting a connection
     async fn run_listener(
         mut listener: Listener,
         listener_tx: Sender<(Duplex, SocketAddr)>,
-    ) -> Result<(), Box<BootstrapError>> {
+    ) -> Result<Result<(), (Duplex, SocketAddr)>, Box<BootstrapError>> {
         loop {
             let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
-            let Ok(_) = listener_tx.send(msg) else {
-                todo!("handle send error. even better, make this channel a tokio channel");
+            match listener_tx.send(msg) {
+                Ok(_) => continue,
+                Err(SendError((dplx, remote_addr))) => {
+                    warn!(
+                        "listener channel disconnected after accepting connection from {}",
+                        remote_addr
+                    );
+                    return Ok(Err((dplx, remote_addr)));
+                }
             };
         }
     }
