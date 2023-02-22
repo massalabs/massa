@@ -219,7 +219,6 @@ impl BootstrapServer<'_> {
             // block until we have a connection to work with, or break out of main-loop
             let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else {break};
             // claim a slot in the max_bootstrap_sessions
-            let bootstrap_count_token = bootstrap_sessions_counter.clone();
             let mut server = BootstrapServerBinder::new(
                 dplx,
                 self.keypair.clone(),
@@ -324,6 +323,7 @@ impl BootstrapServer<'_> {
                 let network_command_sender = self.network_command_sender.clone();
                 let config = self.bootstrap_config.clone();
 
+                let bootstrap_count_token = bootstrap_sessions_counter.clone();
                 let _ = thread::Builder::new()
                     .name(format!("bootstrap thread, peer: {}", remote_addr))
                     .spawn(move || {
