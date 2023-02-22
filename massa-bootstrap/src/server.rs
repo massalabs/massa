@@ -480,8 +480,9 @@ fn run_bootstrap_session(
         )
         .await;
         // This drop allows the server to accept new connections before having to complete the error notifications
+        // account for this session being finished, as well as the root-instance
         massa_trace!("bootstrap.session.finished", {
-            "active_count": Arc::strong_count(&arc_counter) - 1
+            "sessions_remaining": Arc::strong_count(&arc_counter) - 2
         });
         drop(arc_counter);
         match res {
