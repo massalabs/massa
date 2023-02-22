@@ -697,8 +697,160 @@
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
 <a href="#699" id="699">699</a>
-</pre><pre class="rust"><code><span class="kw">use </span>futures::stream::FuturesUnordered;
-<span class="kw">use </span>futures::StreamExt;
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+</pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
+//! Once your node will be ready, you may want other to bootstrap from you.
+//!
+//! # Listener
+//!
+//! Runs in the server-dedication tokio async runtime
+//! Accepts bootstrap connections in an async-loop
+//! Upon connection, pushes the accepted connection onto a channel for the worker loop to consume
+//!
+//! # Updater
+//!
+//! Runs in the same runtime as the listener.
+//! Shares an Arc&lt;RwLock&gt;&gt; guarded list of white and blacklists with the main worker.
+//! Periodically does a read-only check to see if list needs updating.
+//! Creates an updated list then swaps it out with write-locked list
+//! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
+//! under the hood, making write contention virtually non-existant.
+//!
+//! # Worker loop
+//!
+//! 1. Checks if the stopper has been invoked.
+//! 2. Checks if the client is permited under the allow/block list rules
+//! 3. Checks if there are not too many active sessions already
+//! 4. Checks if the client has attempted too recently
+//! 5. All checks have passed: spawn a thread on which to run the bootstrap session
+//!    This thread creates a new tokio runtime, and runs it with `block_on`
+</span><span class="kw">mod </span>allow_block_list;
+<span class="kw">use </span>allow_block_list::<span class="kw-2">*</span>;
+
+<span class="kw">use </span>crossbeam::channel::{Receiver, Select, Sender};
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -713,363 +865,438 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
-    collections::{hash_map, HashMap, HashSet},
-    io,
+    collections::HashMap,
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
     sync::Arc,
+    thread,
     time::{Duration, Instant},
 };
-<span class="kw">use </span>tokio::{sync::mpsc, task::JoinHandle};
+<span class="kw">use </span>tokio::runtime::Runtime;
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    tools::normalize_ip,
+    types::{Duplex, Listener},
     BootstrapConfig, Establisher,
 };
 
 <span class="doccomment">/// handle on the bootstrap server
 </span><span class="kw">pub struct </span>BootstrapManager {
-    join_handle: JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
-    manager_tx: mpsc::Sender&lt;()&gt;,
+    update_handle: tokio::task::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), String&gt;&gt;,
+    listen_handle: tokio::task::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
+    main_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
+    stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
 }
 
 <span class="kw">impl </span>BootstrapManager {
     <span class="doccomment">/// stop the bootstrap server
-    </span><span class="kw">pub async fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
+    </span><span class="kw">pub fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.stop&quot;</span>, {});
-        <span class="kw">if </span><span class="self">self</span>.manager_tx.send(()).<span class="kw">await</span>.is_err() {
+        <span class="kw">if </span><span class="self">self</span>.stopper_tx.send(()).is_err() {
             <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
         }
-        <span class="kw">let _ </span>= <span class="self">self</span>.join_handle.<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
+        <span class="self">self</span>.listen_handle.abort();
+        <span class="self">self</span>.update_handle.abort();
+        <span class="self">self</span>.main_handle.join().unwrap()
     }
 }
 
-<span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="doccomment">/// TODO merging the command senders into one channel structure may allow removing that allow
-///
-/// start a bootstrap server.
-/// Once your node will be ready, you may want other to bootstrap from you.
+<span class="doccomment">/// See module level documentation for details
 </span><span class="kw">pub async fn </span>start_bootstrap_server(
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: NetworkCommandSender,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    bootstrap_config: BootstrapConfig,
-    establisher: Establisher,
+    config: BootstrapConfig,
+    <span class="kw-2">mut </span>establisher: Establisher,
     keypair: KeyPair,
     version: Version,
-) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;, BootstrapError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;, Box&lt;BootstrapError&gt;&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.start_bootstrap_server&quot;</span>, {});
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(bind) = bootstrap_config.bind {
-        <span class="kw">let </span>(manager_tx, manager_rx) = mpsc::channel::&lt;()&gt;(<span class="number">1</span>);
+    <span class="kw">let </span><span class="prelude-val">Some</span>(listen_addr) = config.listen_addr <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+    };
 
-        <span class="kw">let </span>join_handle = tokio::spawn(<span class="kw">async move </span>{
-            BootstrapServer {
-                consensus_controller,
-                network_command_sender,
-                final_state,
-                establisher,
-                manager_rx,
-                bind,
-                keypair,
-                version,
-                ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
-                bootstrap_config,
-            }
-            .run()
-            .<span class="kw">await
-        </span>});
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(BootstrapManager {
-            join_handle,
-            manager_tx,
-        }))
-    } <span class="kw">else </span>{
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
-    }
+    <span class="comment">// TODO(low prio): See if a zero capacity channel model can work
+    </span><span class="kw">let </span>(stopper_tx, stopper_rx) = crossbeam::channel::bounded::&lt;()&gt;(<span class="number">1</span>);
+
+    <span class="kw">let </span>runtime = Runtime::new().expect(<span class="string">&quot;Failed to create a bootstrap runtime&quot;</span>);
+    <span class="kw">let </span>listener = establisher
+        .get_listener(listen_addr)
+        .<span class="kw">await
+        </span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span><span class="prelude-val">Ok</span>(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()).into());
+    };
+    <span class="comment">// This is the primary interface between the async-listener, and the (soon to be) sync worker
+    </span><span class="kw">let </span>(listener_tx, listener_rx) =
+        crossbeam::channel::bounded::&lt;(Duplex, SocketAddr)&gt;(max_bootstraps);
+
+    <span class="kw">let </span>allow_block_list = SharedAllowBlockList::new(
+        config.bootstrap_whitelist_path.clone(),
+        config.bootstrap_blacklist_path.clone(),
+    )
+    .map_err(BootstrapError::GeneralError)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>update_handle = runtime.handle().clone().spawn(BootstrapServer::run_updater(
+        allow_block_list.clone(),
+        config.cache_duration.into(),
+    ));
+    <span class="kw">let </span>listen_handle = runtime
+        .handle()
+        .clone()
+        .spawn(BootstrapServer::run_listener(listener, listener_tx));
+
+    <span class="kw">let </span>main_handle = std::thread::spawn(<span class="kw">move </span>|| {
+        BootstrapServer {
+            consensus_controller,
+            network_command_sender,
+            final_state,
+            listener_rx,
+            stopper_rx,
+            allow_block_list,
+            keypair,
+            version,
+            ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
+            bootstrap_config: config,
+            runtime,
+        }
+        .run_loop(max_bootstraps)
+    });
+    <span class="comment">// does `runtime` get dropped here?
+    </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(BootstrapManager {
+        update_handle,
+        listen_handle,
+        main_handle,
+        <span class="comment">// Send on this channel to trigger the tokio::select! loop to break
+        </span>stopper_tx,
+    }))
 }
 
 <span class="kw">struct </span>BootstrapServer {
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: NetworkCommandSender,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    establisher: Establisher,
-    manager_rx: mpsc::Receiver&lt;()&gt;,
-    bind: SocketAddr,
+    listener_rx: Receiver&lt;(Duplex, SocketAddr)&gt;,
+    stopper_rx: Receiver&lt;()&gt;,
+    allow_block_list: SharedAllowBlockList,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap&lt;IpAddr, Instant&gt;,
-}
-
-<span class="attr">#[allow(clippy::result_large_err)]
-#[allow(clippy::type_complexity)]
-</span><span class="kw">fn </span>reload_whitelist_blacklist(
-    whitelist_path: <span class="kw-2">&amp;</span>PathBuf,
-    blacklist_path: <span class="kw-2">&amp;</span>PathBuf,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), BootstrapError&gt; {
-    <span class="kw">let </span>whitelist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(whitelist) = std::fs::read_to_string(whitelist_path) {
-        <span class="prelude-val">Some</span>(
-            serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(whitelist.as_str())
-                .map_err(|<span class="kw">_</span>| {
-                    BootstrapError::GeneralError(String::from(
-                        <span class="string">&quot;Failed to parse bootstrap whitelist&quot;</span>,
-                    ))
-                })<span class="question-mark">?
-                </span>.into_iter()
-                .map(normalize_ip)
-                .collect(),
-        )
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
-
-    <span class="kw">let </span>blacklist = <span class="kw">if let </span><span class="prelude-val">Ok</span>(blacklist) = std::fs::read_to_string(blacklist_path) {
-        <span class="prelude-val">Some</span>(
-            serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(blacklist.as_str())
-                .map_err(|<span class="kw">_</span>| {
-                    BootstrapError::GeneralError(String::from(
-                        <span class="string">&quot;Failed to parse bootstrap blacklist&quot;</span>,
-                    ))
-                })<span class="question-mark">?
-                </span>.into_iter()
-                .map(normalize_ip)
-                .collect(),
-        )
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
-    <span class="prelude-val">Ok</span>((whitelist, blacklist))
+    runtime: Runtime,
 }
 
 <span class="kw">impl </span>BootstrapServer {
-    <span class="kw">pub async fn </span>run(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;starting bootstrap server&quot;</span>);
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run&quot;</span>, {});
-        <span class="kw">let </span><span class="kw-2">mut </span>listener = <span class="self">self</span>.establisher.get_listener(<span class="self">self</span>.bind).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>bootstrap_sessions = FuturesUnordered::new();
-        <span class="kw">let </span>cache_timeout = <span class="self">self</span>.bootstrap_config.cache_duration.to_duration();
-        <span class="kw">let </span>(<span class="kw-2">mut </span>whitelist, <span class="kw-2">mut </span>blacklist) = reload_whitelist_blacklist(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_whitelist_path,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_blacklist_path,
-        )<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>cache_interval = tokio::time::interval(cache_timeout);
+    <span class="kw">async fn </span>run_updater(<span class="kw-2">mut </span>list: SharedAllowBlockList, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>interval = tokio::time::interval(interval);
+        <span class="kw">loop </span>{
+            interval.tick().<span class="kw">await</span>;
+            <span class="comment">// TODO: loop interval here is tick + update time. Implement a state-based,
+            // rather than time-based, trigger (such as delta-count);
+            </span>list.update()<span class="question-mark">?</span>;
+        }
+    }
+    <span class="kw">async fn </span>run_listener(
+        <span class="kw-2">mut </span>listener: Listener,
+        listener_tx: Sender&lt;(Duplex, SocketAddr)&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>msg = listener.accept().<span class="kw">await</span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
+            <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = listener_tx.send(msg) <span class="kw">else </span>{
+                <span class="macro">todo!</span>(<span class="string">&quot;handle send error. even better, make this channel a tokio channel&quot;</span>);
+            };
+        }
+    }
+
+    <span class="kw">fn </span>run_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_bootstraps: usize) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
+        <span class="comment">// Use the strong-count of this variable to track the session count
+        </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
-        <span class="comment">/*
-            select! without the &quot;biased&quot; modifier will randomly select the 1st branch to check,
-            then will check the next ones in the order they are written.
-            We choose this order:
-                * manager commands to avoid waiting too long to stop in case of contention
-                * cache timeout to avoid skipping timeouts cleanup tasks (they are relatively rare)
-                * bootstrap sessions (rare)
-                * listener: most frequent =&gt; last
-        */
+        <span class="kw">let </span><span class="kw-2">mut </span>selector = Select::new();
+        selector.recv(<span class="kw-2">&amp;</span><span class="self">self</span>.stopper_rx);
+        selector.recv(<span class="kw-2">&amp;</span><span class="self">self</span>.listener_rx);
+        <span class="comment">// TODO: Work out how to integration-test this
         </span><span class="kw">loop </span>{
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select&quot;</span>, {});
-            <span class="macro">tokio::select! </span>{
-                <span class="comment">// managed commands
-                </span><span class="kw">_ </span>= <span class="self">self</span>.manager_rx.recv() =&gt; {
+            <span class="comment">// this is a bit complicated, but the simple is bad:
+            // ```rust
+            // if self.stopper_rx.try_recv().is_ok() {
+            //     break;
+            // }
+            // // if the server is stopped while blocked here, this risks never unblocking
+            // // OR: would serve as an OBO error; Server doesn&#39;t actually stop working until after
+            // // it&#39;s done processing one more connection _after_ it&#39;s been stopped.
+            // // Any bug fix at that point would be a downstream hack to an upstream
+            // // bug.
+            // let Ok(msg) = self.listener_rx.recv() else {continue};
+            // ```
+            //
+            // The solution here is to:
+            // - 1. Block until _something_ is ready
+            // - 2. If that something is a stop-signal, stop
+            // - 3. If that something is anything else:
+            // - 3.a. double check the stop-signal is absent
+            // - 3.b. If present, fall-back to the stop behaviour
+            // - 3.c. If absent, all&#39;s clear to rock-n-roll.
+
+            // 1. Block until _something_ is ready
+            </span><span class="kw">let </span>rdy = selector.ready();
+
+            <span class="comment">// 2. If that something is a stop-signal, stop
+            </span><span class="kw">if </span>rdy == <span class="number">0 </span>&amp;&amp; <span class="self">self</span>.stopper_rx.try_recv().is_ok() {
+                <span class="kw">break</span>;
+                <span class="comment">// - 3. If that something is anything else:
+            </span>} <span class="kw">else </span>{
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select&quot;</span>, {});
+
+                <span class="comment">// - 3.a. double check the stop-signal is absent
+                </span><span class="kw">let </span>stop = <span class="self">self</span>.stopper_rx.try_recv();
+                <span class="kw">if </span>unlikely(stop.is_ok()) {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.manager&quot;</span>, {});
-                    <span class="kw">break
-                </span>},
+                    <span class="kw">break</span>;
+                } <span class="kw">else if </span>unlikely(stop == <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Disconnected)) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
+                        <span class="string">&quot;Unexpected stop-channel disconnection&quot;</span>.to_string(),
+                    )
+                    .into());
+                };
+            }
+            <span class="comment">// - 3.c. If absent, all&#39;s clear to rock-n-roll.
 
-                <span class="comment">// Whitelist cache timeout
-                </span><span class="kw">_ </span>= cache_interval.tick() =&gt; {
-                    (whitelist, blacklist) = reload_whitelist_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_whitelist_path, <span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config.bootstrap_blacklist_path)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = <span class="self">self</span>.listener_rx.recv() <span class="kw">else </span>{<span class="kw">continue</span>;};
+
+            <span class="comment">// claim a slot in the max_bootstrap_sessions
+            </span><span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
+            <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(
+                dplx,
+                <span class="self">self</span>.keypair.clone(),
+                (<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config).into(),
+            );
+
+            <span class="comment">// check whether incoming peer IP is allowed.
+            // TODO: confirm error handled according to the previous `is_ip_allowed` fn
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.allow_block_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
+                <span class="kw">let _ </span>= <span class="kw">match </span><span class="self">self</span>.runtime.block_on(server.send_error(error_msg.clone())) {
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        <span class="macro">format!</span>(<span class="string">&quot;{}  timed out&quot;</span>, <span class="kw-2">&amp;</span>error_msg),
+                    )
+                    .into()),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
+                };
+                <span class="comment">// not exactly sure what to do here
+                // return Err(std::io::Error::new(
+                //     std::io::ErrorKind::PermissionDenied,
+                //     error_msg,
+                // ));
+                </span><span class="kw">continue</span>;
+            };
+
+            <span class="comment">// TODO: find a better way to track count
+            // the `- 1` is to account for the top-level Arc that is created at the top
+            // of this method. subsequent counts correspond to each `clone` that is passed
+            // into a thread
+            // TODO: If we don&#39;t find a way to handle the counting automagically, make
+            //       a dedicated wrapper-type with doc-comments, manual drop impl that
+            //       integrates logging, etc...
+            </span><span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1 </span>&lt; max_bootstraps {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {
+                    <span class="string">&quot;remote_addr&quot;</span>: remote_addr
+                });
+                <span class="kw">let </span>now = Instant::now();
+
+                <span class="comment">// clear IP history if necessary
+                </span><span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
+                    <span class="self">self</span>.ip_hist_map
+                        .retain(|_k, v| now.duration_since(<span class="kw-2">*</span>v) &lt;= per_ip_min_interval);
+                    <span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
+                        <span class="comment">// too many IPs are spamming us: clear cache
+                        </span><span class="macro">warn!</span>(<span class="string">&quot;high bootstrap load: at least {} different IPs attempted bootstrap in the last {}&quot;</span>, <span class="self">self</span>.ip_hist_map.len(),format_duration(<span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
+                        <span class="self">self</span>.ip_hist_map.clear();
+                    }
                 }
 
-                <span class="comment">// bootstrap session finished
-                </span><span class="prelude-val">Some</span>(<span class="kw">_</span>) = bootstrap_sessions.next() =&gt; {
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: bootstrap_sessions.len()});
-                }
+                <span class="comment">// check IP&#39;s bootstrap attempt history
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(msg) = BootstrapServer::greedy_client_check(
+                    <span class="kw-2">&amp;mut </span><span class="self">self</span>.ip_hist_map,
+                    remote_addr,
+                    now,
+                    per_ip_min_interval,
+                ) {
+                    <span class="kw">let </span>send_timeout = server.send_error(
 
-                <span class="comment">// listener
-                </span>res_connection = listener.accept() =&gt; {
-                    <span class="kw">let </span>(<span class="kw-2">mut </span>server, remote_addr) = <span class="kw">if let </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = res_connection {
-                        <span class="kw">let </span>server = BootstrapServerBinder::new(
-                            dplx,
-                            <span class="self">self</span>.keypair.clone(),
-                            <span class="self">self</span>.bootstrap_config.max_bytes_read_write,
-                            <span class="self">self</span>.bootstrap_config.max_bootstrap_message_size,
-                            <span class="self">self</span>.bootstrap_config.thread_count,
-                            <span class="self">self</span>.bootstrap_config.max_datastore_key_length,
-                            <span class="self">self</span>.bootstrap_config.randomness_size_bytes,
-                            <span class="self">self</span>.bootstrap_config.max_consensus_block_ids);
+                            <span class="macro">format!</span>(
+                                <span class="string">&quot;Your last bootstrap on this server was {} ago and you have to wait {} before retrying.&quot;</span>,
+                                format_duration(msg),
+                                format_duration(per_ip_min_interval.saturating_sub(msg))
+                            )
 
-                        <span class="comment">// check whether incoming peer IP is allowed or return an error which is ignored
-                        </span><span class="kw">let </span><span class="prelude-val">Ok</span>((server, remote_addr)) = <span class="self">self</span>.is_ip_allowed(remote_addr, server, <span class="kw-2">&amp;</span>whitelist, <span class="kw-2">&amp;</span>blacklist).<span class="kw">await else </span>{
-                            <span class="kw">continue</span>;
-                        };
-                        (server, remote_addr)
-                    } <span class="kw">else </span>{
-                        <span class="kw">continue
-                    </span>};
+                    );
+                    <span class="kw">let </span>send_timeout = <span class="self">self</span>.runtime.block_on(send_timeout);
 
-                    <span class="kw">if </span>bootstrap_sessions.len() &lt; <span class="self">self</span>.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|<span class="kw">_</span>| BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()))<span class="question-mark">? </span>{
-                        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-                        <span class="kw">let </span>now = Instant::now();
+                    <span class="kw">let _ </span>= <span class="kw">match </span>send_timeout {
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            <span class="string">&quot;bootstrap error too early retry bootstrap send timed out&quot;</span>,
+                        )
+                        .into()),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
+                    };
+                    <span class="comment">// in list, non-expired =&gt; refuse
+                    </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_limit&quot;</span>, {
+                        <span class="string">&quot;remote_addr&quot;</span>: remote_addr
+                    });
+                    <span class="kw">continue</span>;
+                };
 
-                        <span class="comment">// clear IP history if necessary
-                        </span><span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
-                            <span class="self">self</span>.ip_hist_map.retain(|_k, v| now.duration_since(<span class="kw-2">*</span>v) &lt;= per_ip_min_interval);
-                            <span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
-                                <span class="comment">// too many IPs are spamming us: clear cache
-                                </span><span class="macro">warn!</span>(<span class="string">&quot;high bootstrap load: at least {} different IPs attempted bootstrap in the last {}&quot;</span>, <span class="self">self</span>.ip_hist_map.len(),format_duration(<span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
-                                <span class="self">self</span>.ip_hist_map.clear();
-                            }
-                        }
+                <span class="comment">// load cache if absent
+                // if bootstrap_data.is_none() {
+                //     massa_trace!(&quot;bootstrap.lib.run.select.accept.cache_load.start&quot;, {});
 
-                        <span class="comment">// check IP&#39;s bootstrap attempt history
-                        </span><span class="kw">match </span><span class="self">self</span>.ip_hist_map.entry(remote_addr.ip()) {
-                            hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; {
-                                <span class="kw">if </span>now.duration_since(<span class="kw-2">*</span>occ.get()) &lt;= per_ip_min_interval {
-                                    <span class="kw">let _ </span>= <span class="kw">match </span>tokio::time::timeout(<span class="self">self</span>.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
-                                        error:
-                                        <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was {} ago and you have to wait {} before retrying.&quot;</span>, format_duration(occ.get().elapsed()), format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())))
-                                    })).<span class="kw">await </span>{
-                                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, <span class="string">&quot;bootstrap error too early retry bootstrap send timed out&quot;</span>).into()),
-                                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
-                                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
-                                    };
-                                    <span class="comment">// in list, non-expired =&gt; refuse
-                                    </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_limit&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-                                    <span class="kw">continue</span>;
-                                } <span class="kw">else </span>{
-                                    <span class="comment">// in list, expired
-                                    </span>occ.insert(now);
-                                }
-                            },
-                            hash_map::Entry::Vacant(vac) =&gt; {
-                                vac.insert(now);
-                            }
-                        }
+                //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
+                //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
+                //     // If the consensus state snapshot is older than the execution state snapshot,
+                //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
+                //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
+                //     cache_timer.set(sleep(cache_timeout));
+                // }
+                </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.cache_available&quot;</span>, {});
 
-                        <span class="comment">// load cache if absent
-                        // if bootstrap_data.is_none() {
-                        //     massa_trace!(&quot;bootstrap.lib.run.select.accept.cache_load.start&quot;, {});
+                <span class="comment">// launch bootstrap
+                </span><span class="kw">let </span>version = <span class="self">self</span>.version;
+                <span class="kw">let </span>data_execution = <span class="self">self</span>.final_state.clone();
+                <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.consensus_controller.clone();
+                <span class="kw">let </span>network_command_sender = <span class="self">self</span>.network_command_sender.clone();
+                <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
 
-                        //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
-                        //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
-                        //     // If the consensus state snapshot is older than the execution state snapshot,
-                        //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                        //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
-                        //     cache_timer.set(sleep(cache_timeout));
-                        // }
-                        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.cache_available&quot;</span>, {});
+                thread::spawn(<span class="kw">move </span>|| {
+                    run_bootstrap_session(
+                        server,
+                        bootstrap_count_token,
+                        config,
+                        remote_addr,
+                        data_execution,
+                        version,
+                        consensus_command_sender,
+                        network_command_sender,
+                    )
+                });
 
-                        <span class="comment">// launch bootstrap
-
-                        </span><span class="kw">let </span>version = <span class="self">self</span>.version;
-                        <span class="kw">let </span>data_execution = <span class="self">self</span>.final_state.clone();
-                        <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.consensus_controller.clone();
-                        <span class="kw">let </span>network_command_sender = <span class="self">self</span>.network_command_sender.clone();
-                        <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
-
-                        bootstrap_sessions.push(<span class="kw">async move </span>{
-                            <span class="macro">debug!</span>(<span class="string">&quot;awaiting on bootstrap of peer {}&quot;</span>, remote_addr);
-                            <span class="kw">match </span>tokio::time::timeout(config.bootstrap_timeout.into(), manage_bootstrap(<span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;mut </span>server, data_execution, version, consensus_command_sender, network_command_sender)).<span class="kw">await </span>{
-                                <span class="prelude-val">Ok</span>(mgmt) =&gt; <span class="kw">match </span>mgmt {
-                                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                                        <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr)
-                                    },
-                                    <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>, remote_addr, error),
-                                    <span class="prelude-val">Err</span>(err) =&gt; {
-                                        <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
-                                        <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                        </span><span class="kw">let _ </span>= tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).<span class="kw">await</span>;
-                                    },
-                                }
-                                <span class="prelude-val">Err</span>(_timeout) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;bootstrap timeout for peer {}&quot;</span>, remote_addr);
-                                    <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    </span><span class="kw">let _ </span>= tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: <span class="macro">format!</span>(<span class="string">&quot;Bootstrap process timedout ({})&quot;</span>, format_duration(config.bootstrap_timeout.to_duration())) })).<span class="kw">await</span>;
-                                }
-                            }
-
-                        });
-                        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: bootstrap_sessions.len()});
-                    } <span class="kw">else </span>{
-                        <span class="kw">let _ </span>= <span class="kw">match </span>tokio::time::timeout(<span class="self">self</span>.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
-                            error: <span class="string">&quot;Bootstrap failed because the bootstrap server currently has no slots available.&quot;</span>.to_string()
-                        })).<span class="kw">await </span>{
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {
+                    <span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1
+                </span>});
+            } <span class="kw">else </span>{
+                <span class="kw">let _ </span>= <span class="kw">match  </span><span class="self">self</span>.runtime.block_on(server.send_error(<span class="string">&quot;Bootstrap failed because the bootstrap server currently has no slots available.&quot;</span>.to_string())) {
                             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::TimedOut, <span class="string">&quot;bootstrap error no available slots send timed out&quot;</span>).into()),
                             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
                             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
                         };
-                        <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr);
-                    }
-                }
+                <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr);
             }
         }
-        <span class="comment">// wait for bootstrap sessions to finish
-        </span><span class="kw">while </span>bootstrap_sessions.next().<span class="kw">await</span>.is_some() {}
-
-        <span class="prelude-val">Ok</span>(())
+        <span class="comment">// abort listener and updater here?
+        // TODO: clean up the listener and updater here.
+        // TODO: do we drop(self.runtime) here?
+        </span><span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="comment">// TODO we didn&#39;t test whether the peer IP address is banned
-    </span><span class="kw">async fn </span>is_ip_allowed(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+    <span class="doccomment">/// Helper method to check if this IP is being greedy, i.e. not enough elapsed time since last attempt
+    ///
+    /// # Error
+    /// The elapsed time which is insufficient
+    </span><span class="kw">fn </span>greedy_client_check(
+        ip_hist_map: <span class="kw-2">&amp;mut </span>HashMap&lt;IpAddr, Instant&gt;,
         remote_addr: SocketAddr,
-        server: BootstrapServerBinder,
-        _whitelist: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
-        _blacklist: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
-    ) -&gt; io::Result&lt;(BootstrapServerBinder, SocketAddr)&gt; {
-        <span class="prelude-val">Ok</span>((server, remote_addr))
+        now: Instant,
+        per_ip_min_interval: Duration,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Duration&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="prelude-val">Ok</span>(());
+        ip_hist_map
+            .entry(remote_addr.ip())
+            .and_modify(|occ| {
+                <span class="kw">if </span>now.duration_since(<span class="kw-2">*</span>occ) &lt;= per_ip_min_interval {
+                    res = <span class="prelude-val">Err</span>(occ.elapsed());
+                } <span class="kw">else </span>{
+                    <span class="comment">// in list, expired
+                    </span><span class="kw-2">*</span>occ = now;
+                }
+            })
+            .or_insert(now);
+        res
     }
+}
 
-    <span class="attr">#[cfg(not(test))]
-    </span><span class="comment">// whether the peer IP address is banned
-    </span><span class="kw">async fn </span>is_ip_allowed(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        remote_addr: SocketAddr,
-        <span class="kw-2">mut </span>server: BootstrapServerBinder,
-        whitelist: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
-        blacklist: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
-    ) -&gt; io::Result&lt;(BootstrapServerBinder, SocketAddr)&gt; {
-        <span class="kw">let </span>ip = normalize_ip(remote_addr.ip());
-        <span class="comment">// whether the peer IP address is blacklisted
-        </span><span class="kw">let </span>not_allowed_msg = <span class="kw">if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>blacklist &amp;&amp; ip_list.contains(<span class="kw-2">&amp;</span>ip) {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_blacklisted&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-            <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;IP {} is blacklisted&quot;</span>, <span class="kw-2">&amp;</span>ip))
-        <span class="comment">// whether the peer IP address is not present in the whitelist
-        </span>} <span class="kw">else if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>whitelist &amp;&amp; !ip_list.contains(<span class="kw-2">&amp;</span>ip){
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_not_whitelisted&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-            <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;A whitelist exists and the IP {} is not whitelisted&quot;</span>, <span class="kw-2">&amp;</span>ip))
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>};
-
-        <span class="comment">// whether the peer IP address is not allowed, send back an error message
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(error_msg) = not_allowed_msg {
-            <span class="kw">let _ </span>= <span class="kw">match </span>tokio::time::timeout(
-                <span class="self">self</span>.bootstrap_config.write_error_timeout.into(),
-                server.send(BootstrapServerMessage::BootstrapError {
-                    error: error_msg.clone(),
-                }),
-            )
-            .<span class="kw">await
-            </span>{
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    <span class="macro">format!</span>(<span class="string">&quot;{}  timed out&quot;</span>, <span class="kw-2">&amp;</span>error_msg),
-                )
-                .into()),
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="prelude-val">Err</span>(e),
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
-            };
-            <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                error_msg,
-            ));
+<span class="doccomment">/// To be called from a `tokio::spawn` invocation
+///
+/// Runs the bootstrap management in a tokio::timeout context. A failed bootstrap session
+/// will fail silently locally, but will send a message to the client with an error message.
+///
+/// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
+/// sessions.
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">fn </span>run_bootstrap_session(
+    <span class="kw-2">mut </span>server: BootstrapServerBinder,
+    arc_counter: Arc&lt;()&gt;,
+    config: BootstrapConfig,
+    remote_addr: SocketAddr,
+    data_execution: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    version: Version,
+    consensus_command_sender: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
+    network_command_sender: NetworkCommandSender,
+) {
+    <span class="macro">debug!</span>(<span class="string">&quot;awaiting on bootstrap of peer {}&quot;</span>, remote_addr);
+    <span class="kw">let </span>session_context = Runtime::new().unwrap();
+    session_context.handle().block_on(<span class="kw">async move </span>{
+        <span class="kw">let </span>res = tokio::time::timeout(
+            config.bootstrap_timeout.into(),
+            manage_bootstrap(
+                <span class="kw-2">&amp;</span>config,
+                <span class="kw-2">&amp;mut </span>server,
+                data_execution,
+                version,
+                consensus_command_sender,
+                network_command_sender,
+            ),
+        )
+        .<span class="kw">await</span>;
+        <span class="comment">// This drop allows the server to accept new connections before having to complete the error notifications
+        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.finished&quot;</span>, {
+            <span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>arc_counter) - <span class="number">1
+        </span>});
+        drop(arc_counter);
+        <span class="kw">match </span>res {
+            <span class="prelude-val">Ok</span>(mgmt) =&gt; <span class="kw">match </span>mgmt {
+                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                    <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr);
+                }
+                <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">debug!</span>(
+                    <span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>,
+                    remote_addr, error
+                ),
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
+                    <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
+                    // sending the error message to the server we will close the socket anyway.
+                    </span><span class="kw">let _ </span>= server.send_error(err.to_string()).<span class="kw">await</span>;
+                }
+            },
+            <span class="prelude-val">Err</span>(_timeout) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;bootstrap timeout for peer {}&quot;</span>, remote_addr);
+                <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
+                // sending the error message to the server we will close the socket anyway.
+                </span><span class="kw">let _ </span>= server
+                    .send_error(<span class="macro">format!</span>(
+                        <span class="string">&quot;Bootstrap process timedout ({})&quot;</span>,
+                        format_duration(config.bootstrap_timeout.to_duration())
+                    ))
+                    .<span class="kw">await</span>;
+            }
         }
-
-        <span class="prelude-val">Ok</span>((server, remote_addr))
-    }
+    });
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
@@ -1166,11 +1393,9 @@
         }
 
         <span class="kw">if </span>slot_too_old {
-            <span class="kw">match </span>tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::SlotTooOld),
-            )
-            .<span class="kw">await
+            <span class="kw">match </span>server
+                .send_msg(write_timeout, BootstrapServerMessage::SlotTooOld)
+                .<span class="kw">await
             </span>{
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
@@ -1233,11 +1458,9 @@
             &amp;&amp; final_state_changes_step.finished()
             &amp;&amp; last_consensus_step.finished()
         {
-            <span class="kw">match </span>tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::BootstrapFinished),
-            )
-            .<span class="kw">await
+            <span class="kw">match </span>server
+                .send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)
+                .<span class="kw">await
             </span>{
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
@@ -1251,21 +1474,22 @@
         }
 
         <span class="comment">// At this point we know that consensus, final state or both are not finished
-        </span><span class="kw">match </span>tokio::time::timeout(
-            write_timeout,
-            server.send(BootstrapServerMessage::BootstrapPart {
-                slot: current_slot,
-                ledger_part,
-                async_pool_part,
-                pos_cycle_part,
-                pos_credits_part,
-                exec_ops_part,
-                final_state_changes,
-                consensus_part,
-                consensus_outdated_ids,
-            }),
-        )
-        .<span class="kw">await
+        </span><span class="kw">match </span>server
+            .send_msg(
+                write_timeout,
+                BootstrapServerMessage::BootstrapPart {
+                    slot: current_slot,
+                    ledger_part,
+                    async_pool_part,
+                    pos_cycle_part,
+                    pos_credits_part,
+                    exec_ops_part,
+                    final_state_changes,
+                    consensus_part,
+                    consensus_outdated_ids,
+                },
+            )
+            .<span class="kw">await
         </span>{
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -1279,8 +1503,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="attr">#[allow(clippy::manual_async_fn)]
-#[allow(clippy::too_many_arguments)]
+<span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">async fn </span>manage_bootstrap(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
@@ -1323,14 +1546,15 @@
     <span class="comment">// Sync clocks.
     </span><span class="kw">let </span>server_time = MassaTime::now()<span class="question-mark">?</span>;
 
-    <span class="kw">match </span>tokio::time::timeout(
-        write_timeout,
-        server.send(BootstrapServerMessage::BootstrapTime {
-            server_time,
-            version,
-        }),
-    )
-    .<span class="kw">await
+    <span class="kw">match </span>server
+        .send_msg(
+            write_timeout,
+            BootstrapServerMessage::BootstrapTime {
+                server_time,
+                version,
+            },
+        )
+        .<span class="kw">await
     </span>{
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
             std::io::ErrorKind::TimedOut,
@@ -1347,13 +1571,14 @@
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">break </span><span class="prelude-val">Err</span>(e),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="kw">match </span>msg {
                 BootstrapClientMessage::AskBootstrapPeers =&gt; {
-                    <span class="kw">match </span>tokio::time::timeout(
-                        write_timeout,
-                        server.send(BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.get_bootstrap_peers().<span class="kw">await</span><span class="question-mark">?</span>,
-                        }),
-                    )
-                    .<span class="kw">await
+                    <span class="kw">match </span>server
+                        .send_msg(
+                            write_timeout,
+                            BootstrapServerMessage::BootstrapPeers {
+                                peers: network_command_sender.get_bootstrap_peers().<span class="kw">await</span><span class="question-mark">?</span>,
+                            },
+                        )
+                        .<span class="kw">await
                     </span>{
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
                             std::io::ErrorKind::TimedOut,
@@ -1395,6 +1620,29 @@
             },
         };
     }
+}
+
+<span class="comment">// Stable means of providing compiler optimisation hints
+// Also provides a self-documenting tool to communicate likely/unlikely code-paths
+// https://users.rust-lang.org/t/compiler-hint-for-unlikely-likely-for-if-branches/62102/4
+</span><span class="attr">#[inline]
+#[cold]
+</span><span class="kw">fn </span>cold() {}
+
+<span class="attr">#[inline]
+</span><span class="kw">fn </span>_likely(b: bool) -&gt; bool {
+    <span class="kw">if </span>!b {
+        cold()
+    }
+    b
+}
+
+<span class="attr">#[inline]
+</span><span class="kw">fn </span>unlikely(b: bool) -&gt; bool {
+    <span class="kw">if </span>b {
+        cold()
+    }
+    b
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (065852def 2023-02-13)" data-search-js="search-abe1d547ad11c273.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

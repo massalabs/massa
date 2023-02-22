@@ -88,25 +88,6 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! All the structures that are used everywhere
 //!
@@ -153,25 +134,6 @@
         <span class="macro">format!</span>(<span class="string">&quot;[{}]&quot;</span>, text)
     } <span class="kw">else </span>{
         String::from(<span class="string">&quot;&quot;</span>)
-    }
-}
-
-<span class="kw">fn </span>display_option_bool(
-    value: <span class="prelude-ty">Option</span>&lt;bool&gt;,
-    text_true: <span class="kw-2">&amp;</span>str,
-    text_false: <span class="kw-2">&amp;</span>str,
-    text_none: <span class="kw-2">&amp;</span>str,
-) -&gt; String {
-    <span class="kw">match </span>value {
-        <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; {
-            <span class="macro">format!</span>(<span class="string">&quot;[{}]&quot;</span>, text_true)
-        }
-        <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; {
-            <span class="macro">format!</span>(<span class="string">&quot;[{}]&quot;</span>, text_false)
-        }
-        <span class="prelude-val">None </span>=&gt; {
-            <span class="macro">format!</span>(<span class="string">&quot;[{}]&quot;</span>, text_none)
-        }
     }
 }
 

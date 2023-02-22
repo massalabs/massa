@@ -260,16 +260,6 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
@@ -277,7 +267,7 @@
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
 };
-<span class="kw">use </span>std::collections::{HashMap, VecDeque};
+<span class="kw">use </span>std::collections::VecDeque;
 
 <span class="attr">#[derive(Default)]
 </span><span class="doccomment">/// History of the outputs of recently executed slots.
@@ -530,16 +520,6 @@
                 (idx1..idx2.saturating_add(<span class="number">1</span>), <span class="bool-val">false</span>, <span class="bool-val">false</span>)
             }
         }
-    }
-
-    <span class="kw">pub fn </span>get_op_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;OperationId, <span class="prelude-ty">Option</span>&lt;bool&gt;&gt; {
-        <span class="kw">let </span>ops = <span class="self">self
-            </span>.<span class="number">0
-            </span>.iter()
-            .flat_map(|exec_output| exec_output.state_changes.executed_ops_changes.clone())
-            .map(|(op_id, (status, <span class="kw">_</span>))| (op_id, status))
-            .collect();
-        ops
     }
 }
 </code></pre></div>

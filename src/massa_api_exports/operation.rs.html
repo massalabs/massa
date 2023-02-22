@@ -99,19 +99,6 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -122,7 +109,7 @@
 <span class="kw">use </span>massa_signature::{PublicKey, Signature};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="kw">use crate</span>::{display_if_true, display_option_bool};
+<span class="kw">use </span><span class="kw">crate</span>::display_if_true;
 
 <span class="doccomment">/// operation input
 </span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
@@ -146,34 +133,21 @@
     /// if it appears in multiple blocks, these blocks are in different cliques
     </span><span class="kw">pub </span>in_blocks: Vec&lt;BlockId&gt;,
     <span class="doccomment">/// true if the operation is final (for example in a final block)
-    </span><span class="kw">pub </span>is_operation_final: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    </span><span class="kw">pub </span>is_final: bool,
     <span class="doccomment">/// Thread in which the operation can be included
     </span><span class="kw">pub </span>thread: u8,
     <span class="doccomment">/// the operation itself
     </span><span class="kw">pub </span>operation: SecureShareOperation,
-    <span class="doccomment">/// true if the operation execution succeeded, false if failed, None means unknown
-    </span><span class="kw">pub </span>op_exec_status: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationInfo {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">writeln!</span>(
             f,
-            <span class="string">&quot;Operation {}{}{}{}&quot;</span>,
+            <span class="string">&quot;Operation {}{}{}&quot;</span>,
             <span class="self">self</span>.id,
             display_if_true(<span class="self">self</span>.in_pool, <span class="string">&quot; (in pool)&quot;</span>),
-            display_option_bool(
-                <span class="self">self</span>.is_operation_final,
-                <span class="string">&quot; (operation is final)&quot;</span>,
-                <span class="string">&quot; (operation is not final)&quot;</span>,
-                <span class="string">&quot; (finality unkown)&quot;
-            </span>),
-            display_option_bool(
-                <span class="self">self</span>.op_exec_status,
-                <span class="string">&quot; ( succes)&quot;</span>,
-                <span class="string">&quot; ( failed)&quot;</span>,
-                <span class="string">&quot; (status unkown)&quot;
-            </span>)
+            display_if_true(<span class="self">self</span>.is_final, <span class="string">&quot; (final)&quot;</span>)
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f, <span class="string">&quot;In blocks:&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>block_id <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.in_blocks {

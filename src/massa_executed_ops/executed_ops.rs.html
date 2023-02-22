@@ -344,14 +344,6 @@
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -376,7 +368,7 @@
     IResult, Parser,
 };
 <span class="kw">use </span>std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
@@ -393,8 +385,6 @@
     </span><span class="kw">pub </span>ops: PreHashSet&lt;OperationId&gt;,
     <span class="doccomment">/// Accumulated hash of the executed operations
     </span><span class="kw">pub </span>hash: Hash,
-    <span class="doccomment">/// successful operations
-    </span><span class="kw">pub </span>op_exec_status: HashMap&lt;OperationId, bool&gt;,
 }
 
 <span class="kw">impl </span>ExecutedOps {
@@ -405,7 +395,6 @@
             sorted_ops: BTreeMap::new(),
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
-            op_exec_status: HashMap::new(),
         }
     }
 
@@ -443,7 +432,7 @@
     <span class="doccomment">/// Apply speculative operations changes to the final executed operations state
     </span><span class="kw">pub fn </span>apply_changes(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: ExecutedOpsChanges, slot: Slot) {
         <span class="self">self</span>.extend_and_compute_hash(changes.keys());
-        <span class="kw">for </span>(op_id, (op_exec_success, slot)) <span class="kw">in </span>changes {
+        <span class="kw">for </span>(op_id, slot) <span class="kw">in </span>changes {
             <span class="self">self</span>.sorted_ops
                 .entry(slot)
                 .and_modify(|ids| {
@@ -454,11 +443,7 @@
                     new.insert(op_id);
                     new
                 });
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(status) = op_exec_success {
-                <span class="self">self</span>.op_exec_status.insert(op_id, status);
-            }
         }
-        <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.op_exec_status);
         <span class="self">self</span>.prune(slot);
     }
 
@@ -474,7 +459,6 @@
         <span class="kw">for </span>(<span class="kw">_</span>, ids) <span class="kw">in </span>removed {
             <span class="kw">for </span>op_id <span class="kw">in </span>ids {
                 <span class="self">self</span>.ops.remove(<span class="kw-2">&amp;</span>op_id);
-                <span class="self">self</span>.op_exec_status.remove(<span class="kw-2">&amp;</span>op_id);
                 <span class="self">self</span>.hash ^= <span class="kw-2">*</span>op_id.get_hash();
             }
         }
