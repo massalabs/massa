@@ -874,13 +874,13 @@
 //! # Worker loop
 //!
 //! 1. Checks if the stopper has been invoked.
-//! 2. Checks if the client is permited under the allow/block list rules
+//! 2. Checks if the client is permited under the white/black list rules
 //! 3. Checks if there are not too many active sessions already
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
-</span><span class="kw">mod </span>allow_block_list;
-<span class="kw">use </span>allow_block_list::<span class="kw-2">*</span>;
+</span><span class="kw">mod </span>white_black_list;
+<span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, Select, SendError, Sender};
 <span class="kw">use </span>humantime::format_duration;
@@ -968,14 +968,14 @@
     <span class="comment">// This is the primary interface between the async-listener, and the (soon to be) sync worker
     </span><span class="kw">let </span>(listener_tx, listener_rx) = crossbeam::channel::bounded::&lt;BsConn&gt;(max_bootstraps);
 
-    <span class="kw">let </span>allow_block_list = SharedAllowBlockList::new(
+    <span class="kw">let </span>white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
         config.bootstrap_blacklist_path.clone(),
     )
     .map_err(BootstrapError::GeneralError)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>update_handle = runtime.handle().clone().spawn(BootstrapServer::run_updater(
-        allow_block_list.clone(),
+        white_black_list.clone(),
         config.cache_duration.into(),
     ));
     <span class="kw">let </span>listen_handle = runtime
@@ -990,7 +990,7 @@
             final_state,
             listener_rx,
             stopper_rx,
-            allow_block_list,
+            white_black_list,
             keypair,
             version,
             ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
@@ -1015,7 +1015,7 @@
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     listener_rx: Receiver&lt;BsConn&gt;,
     stopper_rx: Receiver&lt;()&gt;,
-    allow_block_list: SharedAllowBlockList&lt;<span class="lifetime">&#39;a</span>&gt;,
+    white_black_list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;a</span>&gt;,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
@@ -1025,7 +1025,7 @@
 
 <span class="kw">impl </span>BootstrapServer&lt;<span class="lifetime">&#39;_</span>&gt; {
     <span class="kw">async fn </span>run_updater(
-        <span class="kw-2">mut </span>list: SharedAllowBlockList&lt;<span class="lifetime">&#39;_</span>&gt;,
+        <span class="kw-2">mut </span>list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;_</span>&gt;,
         interval: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>interval = tokio::time::interval(interval);
@@ -1074,8 +1074,7 @@
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
             </span><span class="kw">let </span><span class="prelude-val">Some</span>((dplx, remote_addr)) = <span class="self">self</span>.receive_connection(<span class="kw-2">&amp;mut </span>selector).map_err(BootstrapError::GeneralError)<span class="question-mark">? </span><span class="kw">else </span>{<span class="kw">break</span>};
             <span class="comment">// claim a slot in the max_bootstrap_sessions
-            </span><span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
-            <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(
+            </span><span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(
                 dplx,
                 <span class="self">self</span>.keypair.clone(),
                 (<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config).into(),
@@ -1083,7 +1082,7 @@
 
             <span class="comment">// check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.allow_block_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.white_black_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
                 <span class="kw">let _ </span>= <span class="kw">match </span><span class="self">self</span>.runtime.block_on(server.send_error(error_msg.clone())) {
                     <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,
@@ -1179,6 +1178,7 @@
                 <span class="kw">let </span>network_command_sender = <span class="self">self</span>.network_command_sender.clone();
                 <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
 
+                <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
                 <span class="kw">let _ </span>= thread::Builder::new()
                     .name(<span class="macro">format!</span>(<span class="string">&quot;bootstrap thread, peer: {}&quot;</span>, remote_addr))
                     .spawn(<span class="kw">move </span>|| {
