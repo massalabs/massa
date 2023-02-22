@@ -47,6 +47,7 @@ use massa_models::config::constants::{
     T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
+use massa_models::versioning::VersioningStore;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -148,6 +149,9 @@ async fn launch(
 
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone());
+
+    // Create versioning store
+    let versioning_store: VersioningStore = Default::default();
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -510,6 +514,7 @@ async fn launch(
         massa_bootstrap::Establisher::new(),
         private_key,
         *VERSION,
+        versioning_store.clone(),
     )
     .await
     .unwrap();

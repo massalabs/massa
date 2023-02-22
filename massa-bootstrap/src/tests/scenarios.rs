@@ -27,8 +27,12 @@ use massa_final_state::{
 };
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
+use massa_models::versioning::{
+    VersioningComponent, VersioningInfo, VersioningState, VersioningStoreRaw,
+};
 use massa_models::{
     address::Address, node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version,
+    versioning::VersioningStore,
 };
 use massa_models::{
     config::{
@@ -45,9 +49,11 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
+use std::collections::HashMap;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 use tokio::sync::mpsc;
+// use tracing::warn;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -68,6 +74,30 @@ async fn test_bootstrap_server() {
     let (consensus_controller, mut consensus_event_receiver) =
         MockConsensusController::new_with_receiver();
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
+
+    // versioning store
+    let vi_1 = VersioningInfo {
+        name: "MIP-0002".to_string(),
+        version: 2,
+        component: VersioningComponent::Address,
+        start: 0,
+        timeout: 0,
+    };
+    let vs_1 = VersioningState::try_from("Active").unwrap();
+    let vi_2 = VersioningInfo {
+        name: "MIP-0003".to_string(),
+        version: 3,
+        component: VersioningComponent::Block,
+        start: 0,
+        timeout: 0,
+    };
+    let vs_2 = VersioningState::try_from("Defined").unwrap();
+
+    let versioning_store = VersioningStore {
+        0: Arc::new(RwLock::new(VersioningStoreRaw {
+            data: HashMap::from([(vi_1, vs_1), (vi_2, vs_2)]),
+        })),
+    };
 
     // setup final state local config
     let temp_dir = TempDir::new().unwrap();
@@ -154,6 +184,7 @@ async fn test_bootstrap_server() {
         bootstrap_establisher,
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
+        versioning_store.clone(),
     )
     .await
     .unwrap()
@@ -340,6 +371,9 @@ async fn test_bootstrap_server() {
         bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );
+
+    let vs_raw_orig = versioning_store.0.read().to_owned();
+    assert_eq!(vs_raw_orig, bootstrap_res.versioning_store.unwrap(),);
 
     // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());

@@ -6,6 +6,7 @@ use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, Consensus
 use massa_final_state::{FinalState, FinalStateError};
 use massa_ledger_exports::Key as LedgerKey;
 use massa_logging::massa_trace;
+use massa_models::versioning::VersioningStore;
 use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
@@ -64,6 +65,7 @@ pub async fn start_bootstrap_server(
     establisher: Establisher,
     keypair: KeyPair,
     version: Version,
+    versioning_store: VersioningStore,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
     if let Some(bind) = bootstrap_config.bind {
@@ -81,6 +83,7 @@ pub async fn start_bootstrap_server(
                 version,
                 ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
                 bootstrap_config,
+                versioning_store,
             }
             .run()
             .await
@@ -105,6 +108,7 @@ struct BootstrapServer {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    versioning_store: VersioningStore,
 }
 
 #[allow(clippy::result_large_err)]
@@ -268,11 +272,13 @@ impl BootstrapServer {
                         let data_execution = self.final_state.clone();
                         let consensus_command_sender = self.consensus_controller.clone();
                         let network_command_sender = self.network_command_sender.clone();
+                        let versioning_store = self.versioning_store.clone();
+                        let keypair = self.keypair.clone();
                         let config = self.bootstrap_config.clone();
 
                         bootstrap_sessions.push(async move {
                             debug!("awaiting on bootstrap of peer {}", remote_addr);
-                            match tokio::time::timeout(config.bootstrap_timeout.into(), manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender)).await {
+                            match tokio::time::timeout(config.bootstrap_timeout.into(), manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender, versioning_store)).await {
                                 Ok(mgmt) => match mgmt {
                                     Ok(_) => {
                                         info!("bootstrapped peer {}", remote_addr)
@@ -590,6 +596,7 @@ async fn manage_bootstrap(
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
+    versioning_store: VersioningStore,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
@@ -667,10 +674,11 @@ async fn manage_bootstrap(
                     }?;
                 }
                 BootstrapClientMessage::AskBootstrapVersioningStore => {
+                    let vs = versioning_store.0.read().to_owned();
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::BootstrapVersioningStore {
-                            store: Default::default(),
+                            store: vs.clone(),
                         }),
                     )
                     .await
