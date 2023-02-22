@@ -6,7 +6,6 @@ use std::{
     sync::Arc,
 };
 
-#[cfg(not(test))]
 use massa_logging::massa_trace;
 use parking_lot::RwLock;
 
@@ -59,14 +58,12 @@ impl SharedAllowBlockList<'_> {
         }
         Ok(())
     }
-    #[cfg(test)]
-    // TODO we didn't test whether the peer IP address is banned
-    pub(crate) fn is_ip_allowed(&self, _remote_addr: &SocketAddr) -> Result<(), String> {
-        Ok(())
-    }
 
-    #[cfg(not(test))]
+    #[cfg_attr(test, allow(unreachable, unused_variables))]
     pub(crate) fn is_ip_allowed(&self, remote_addr: &SocketAddr) -> Result<(), String> {
+        #[cfg(test)]
+        return Ok(());
+
         let ip = normalize_ip(remote_addr.ip());
         // whether the peer IP address is blacklisted
         let read = self.inner.read();
