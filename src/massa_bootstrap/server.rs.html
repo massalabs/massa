@@ -821,6 +821,19 @@
 <a href="#821" id="821">821</a>
 <a href="#822" id="822">822</a>
 <a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1045,6 +1058,9 @@
             </span><span class="kw">let </span>rdy = selector.ready();
 
             <span class="comment">// 2. If that something is a stop-signal, stop
+            // from `crossbeam::Select::read()` documentation:
+            // &quot;Note that this method might return with success spuriously, so it’s a good idea
+            // to always double check if the operation is really ready.&quot;
             </span><span class="kw">if </span>rdy == <span class="number">0 </span>&amp;&amp; <span class="self">self</span>.stopper_rx.try_recv().is_ok() {
                 <span class="kw">break</span>;
                 <span class="comment">// - 3. If that something is anything else:
@@ -1064,8 +1080,18 @@
                 };
             }
             <span class="comment">// - 3.c. If absent, all&#39;s clear to rock-n-roll.
-
-            </span><span class="kw">let </span><span class="prelude-val">Ok</span>((dplx, remote_addr)) = <span class="self">self</span>.listener_rx.recv() <span class="kw">else </span>{<span class="kw">continue</span>;};
+            </span><span class="kw">let </span>(dplx, remote_addr) = <span class="kw">match </span><span class="self">self</span>.listener_rx.try_recv() {
+                <span class="prelude-val">Ok</span>(msg) =&gt; msg,
+                <span class="prelude-val">Err</span>(try_rcv_err) =&gt; <span class="kw">match </span>try_rcv_err {
+                    crossbeam::channel::TryRecvError::Empty =&gt; <span class="kw">continue</span>,
+                    crossbeam::channel::TryRecvError::Disconnected =&gt; {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
+                            <span class="string">&quot;listener recv channel disconnected unexpectedly&quot;</span>.to_string(),
+                        )
+                        .into())
+                    }
+                },
+            };
 
             <span class="comment">// claim a slot in the max_bootstrap_sessions
             </span><span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
