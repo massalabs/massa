@@ -323,18 +323,20 @@ impl BootstrapServer<'_> {
                 let network_command_sender = self.network_command_sender.clone();
                 let config = self.bootstrap_config.clone();
 
-                thread::spawn(move || {
-                    run_bootstrap_session(
-                        server,
-                        bootstrap_count_token,
-                        config,
-                        remote_addr,
-                        data_execution,
-                        version,
-                        consensus_command_sender,
-                        network_command_sender,
-                    )
-                });
+                let _ = thread::Builder::new()
+                    .name(format!("bootstrap thread, peer: {}", remote_addr))
+                    .spawn(move || {
+                        run_bootstrap_session(
+                            server,
+                            bootstrap_count_token,
+                            config,
+                            remote_addr,
+                            data_execution,
+                            version,
+                            consensus_command_sender,
+                            network_command_sender,
+                        )
+                    });
 
                 massa_trace!("bootstrap.session.started", {
                     "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
@@ -462,7 +464,7 @@ fn run_bootstrap_session(
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
 ) {
-    debug!("awaiting on bootstrap of peer {}", remote_addr);
+    debug!("running bootstrap for peer {}", remote_addr);
     let session_context = Runtime::new().unwrap();
     session_context.handle().block_on(async move {
         let res = tokio::time::timeout(
