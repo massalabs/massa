@@ -190,6 +190,20 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
@@ -223,7 +237,7 @@
     <span class="doccomment">/// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
     </span><span class="kw">pub </span>bootstrap_blacklist_path: PathBuf,
     <span class="doccomment">/// Port to listen if we choose to allow other nodes to use us as bootstrap node.
-    </span><span class="kw">pub </span>bind: <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;,
+    </span><span class="kw">pub </span>listen_addr: <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;,
     <span class="doccomment">/// connection timeout
     </span><span class="kw">pub </span>connect_timeout: MassaTime,
     <span class="doccomment">/// Time allocated to managing the bootstrapping process,
@@ -313,6 +327,20 @@
     </span><span class="kw">pub </span>consensus_bootstrap_part_size: u64,
     <span class="doccomment">/// max number of consensus block ids when sending a bootstrap cursor from the client
     </span><span class="kw">pub </span>max_consensus_block_ids: u64,
+}
+
+<span class="doccomment">/// Bootstrap server binding
+</span><span class="attr">#[allow(missing_docs)]
+#[derive(Debug, Deserialize, Clone, SubStruct)]
+#[parent(<span class="kw">type </span>= <span class="string">&quot;BootstrapConfig&quot;</span>)]
+</span><span class="kw">pub struct </span>BootstrapSrvBindCfg {
+    <span class="kw">pub </span>max_bytes_read_write: f64,
+    <span class="kw">pub </span>max_bootstrap_message_size: u32,
+    <span class="kw">pub </span>thread_count: u8,
+    <span class="kw">pub </span>max_datastore_key_length: u8,
+    <span class="kw">pub </span>randomness_size_bytes: usize,
+    <span class="kw">pub </span>consensus_bootstrap_part_size: u64,
+    <span class="kw">pub </span>write_error_timeout: MassaTime,
 }
 
 <span class="doccomment">/// Bootstrap client config
