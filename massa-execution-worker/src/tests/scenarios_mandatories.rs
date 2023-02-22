@@ -290,10 +290,12 @@ mod tests {
     #[test]
     #[serial]
     fn test_get_call_coins() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
