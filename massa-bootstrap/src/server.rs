@@ -222,6 +222,9 @@ impl BootstrapServer {
             let rdy = selector.ready();
 
             // 2. If that something is a stop-signal, stop
+            // from `crossbeam::Select::read()` documentation:
+            // "Note that this method might return with success spuriously, so it’s a good idea
+            // to always double check if the operation is really ready."
             if rdy == 0 && self.stopper_rx.try_recv().is_ok() {
                 break;
                 // - 3. If that something is anything else:
@@ -241,8 +244,18 @@ impl BootstrapServer {
                 };
             }
             // - 3.c. If absent, all's clear to rock-n-roll.
-
-            let Ok((dplx, remote_addr)) = self.listener_rx.recv() else {continue;};
+            let (dplx, remote_addr) = match self.listener_rx.try_recv() {
+                Ok(msg) => msg,
+                Err(try_rcv_err) => match try_rcv_err {
+                    crossbeam::channel::TryRecvError::Empty => continue,
+                    crossbeam::channel::TryRecvError::Disconnected => {
+                        return Err(BootstrapError::GeneralError(
+                            "listener recv channel disconnected unexpectedly".to_string(),
+                        )
+                        .into())
+                    }
+                },
+            };
 
             // claim a slot in the max_bootstrap_sessions
             let bootstrap_count_token = bootstrap_sessions_counter.clone();
