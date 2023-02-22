@@ -55,15 +55,15 @@ impl VersioningMiddleware {
         }
     }
 
-    fn create_and_send_advance_message_for_all(&self) -> Result<(), VersioningError> {
+    fn create_and_send_advance_message_for_all(&mut self) -> Result<(), VersioningError> {
 
-        let mut store = self.versioning_store.0.write().versioning_info.clone();
-
+        let mut store = self.versioning_store.0.write();
+        
         let now = Instant::now();
 
-        for (vi,state) in store.iter_mut() {
+        for (vi,state) in store.versioning_info.iter_mut() {
             
-            let ratio_counts = *self.counts.get(&vi.version).unwrap_or(&0) as f32 / self.nb_blocks_considered as f32;
+            let ratio_counts = 100.0 * *self.counts.get(&vi.version).unwrap_or(&0) as f32 / self.nb_blocks_considered as f32;
 
             let advance_msg = Advance {
                 start_timestamp: vi.start,
@@ -73,8 +73,10 @@ impl VersioningMiddleware {
             };
 
             *state = state.on_advance(advance_msg);
+
+            println!("New state: vi: {:?}, state: {:?}", vi, state);
         }
-        
+
         Ok(())
     }
 
@@ -94,7 +96,7 @@ impl VersioningMiddleware {
             Some(vi) => {
                 let now = std::time::Instant::now();
 
-                let ratio_counts = count as f32 / self.nb_blocks_considered as f32;
+                let ratio_counts = 100.0 * count as f32 / self.nb_blocks_considered as f32;
 
                 let advance_msg = Advance {
                     start_timestamp: vi.start,
@@ -230,19 +232,25 @@ mod test {
 
         tokio::time::sleep(Duration::from_secs(3)).await;
         
-        assert_eq!(store.get_current_active_version(), 0);
-        assert_eq!(store.get_current_version_to_announce(), 2);
-
-        vm.new_block(2);
-        vm.new_block(2);
-        vm.new_block(2);
-        vm.new_block(2);
-        vm.new_block(2);
+        vm.new_block(0);
 
         assert_eq!(store.get_current_active_version(), 0);
         assert_eq!(store.get_current_version_to_announce(), 2);
 
-        tokio::time::sleep(Duration::from_secs(3)).await;
+        vm.new_block(2);
+        vm.new_block(2);
+        vm.new_block(2);
+        vm.new_block(2);
+        vm.new_block(2);
+
+        assert_eq!(store.get_current_active_version(), 0);
+        assert_eq!(store.get_current_version_to_announce(), 2);
+
+        tokio::time::sleep(Duration::from_secs(5)).await;
+
+        vm.new_block(2);
+        vm.new_block(2);
+        vm.new_block(2);
         
         assert_eq!(store.get_current_active_version(), 2);
         assert_eq!(store.get_current_version_to_announce(), 2);

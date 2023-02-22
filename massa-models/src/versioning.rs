@@ -617,7 +617,7 @@ impl VersioningStore {
         // Check the filter and the sort here
         let mut filtered_versions: Vec<_> = store
             .iter()
-            .filter(|&(_k, v)| matches!(v, &VersioningState::Started(_)))
+            .filter(|&(_k, v)| matches!(v, &VersioningState::Started(_) | &VersioningState::LockedIn(_) | &VersioningState::Active(_)))
             .map(|(k, _v)| k)
             .collect();
         filtered_versions.sort_by_key(|&k| k.start);
