@@ -61,6 +61,7 @@ impl VersioningMiddleware {
         
         let now = Instant::now();
 
+        // Possible optimisation: filter the store to avoid advancing on failed and active versions
         for (vi,state) in store.versioning_info.iter_mut() {
             
             let ratio_counts = 100.0 * *self.counts.get(&vi.version).unwrap_or(&0) as f32 / self.nb_blocks_considered as f32;
