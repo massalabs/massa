@@ -8,7 +8,7 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a76fd60b23679b7d19bd066031410fb7e458ccc5e958eb5c325888ce4baedc97"
 dependencies = [
- "gimli 0.27.1",
+ "gimli 0.27.2",
 ]
 
 [[package]]
@@ -329,9 +329,9 @@ dependencies = [
 
 [[package]]
 name = "borsh"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3ef05d137e34b7ac51dbec170ee523a9b728cff71385796771d259771d592f8"
+checksum = "40f9ca3698b2e4cb7c15571db0abc5551dca417a21ae8140460b50309bb2cc62"
 dependencies = [
  "borsh-derive",
  "hashbrown 0.13.2",
@@ -339,9 +339,9 @@ dependencies = [
 
 [[package]]
 name = "borsh-derive"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "190b1188f062217531748807129459c8c14641b648e887e39681a433db7fc939"
+checksum = "598b3eacc6db9c3ee57b22707ad8f6a8d2f6d442bfe24ffeb8cbb70ca59e6a35"
 dependencies = [
  "borsh-derive-internal",
  "borsh-schema-derive-internal",
@@ -352,9 +352,9 @@ dependencies = [
 
 [[package]]
 name = "borsh-derive-internal"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fcf747a3e4eb47869441664df09d0eb88dcc9a85d499860efb82c2cfe6affc"
+checksum = "186b734fa1c9f6743e90c95d7233c9faab6360d1a96d4ffa19d9cfd1e9350f8a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -363,9 +363,9 @@ dependencies = [
 
 [[package]]
 name = "borsh-schema-derive-internal"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f671d085f791c5fd3331c843ded45454b034b6188bf0f78ed28e7fd66a8b3f69"
+checksum = "99b7ff1008316626f485991b960ade129253d4034014616b94f309a15366cc49"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -404,9 +404,9 @@ dependencies = [
 
 [[package]]
 name = "bstr"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7f0778972c64420fdedc63f09919c8a88bda7b25135357fd25a5d9f3257e832"
+checksum = "5ffdb39cb703212f3c11973452c2861b972f757b021158f3516ba10f2fa8b2c1"
 dependencies = [
  "memchr",
  "serde",
@@ -544,9 +544,9 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
-version = "1.4.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa2e27ae6ab525c3d369ded447057bca5438d86dc3a68f6faafb8269ba82ebf3"
+checksum = "77ed9a53e5d4d9c573ae844bfac6872b159cb1d1585a83b29e7a64b7eef7332a"
 dependencies = [
  "glob",
  "libc",
@@ -905,9 +905,9 @@ dependencies = [
 
 [[package]]
 name = "cxx"
-version = "1.0.90"
+version = "1.0.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90d59d9acd2a682b4e40605a242f6670eaa58c5957471cbf85e8aa6a0b97a5e8"
+checksum = "86d3488e7665a7a483b57e25bdd90d0aeb2bc7608c8d0346acf2ad3f1caf1d62"
 dependencies = [
  "cc",
  "cxxbridge-flags",
@@ -917,9 +917,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-build"
-version = "1.0.90"
+version = "1.0.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebfa40bda659dd5c864e65f4c9a2b0aff19bea56b017b9b77c73d3766a453a38"
+checksum = "48fcaf066a053a41a81dfb14d57d99738b767febb8b735c3016e469fac5da690"
 dependencies = [
  "cc",
  "codespan-reporting",
@@ -932,15 +932,15 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-flags"
-version = "1.0.90"
+version = "1.0.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "457ce6757c5c70dc6ecdbda6925b958aae7f959bda7d8fb9bde889e34a09dc03"
+checksum = "a2ef98b8b717a829ca5603af80e1f9e2e48013ab227b68ef37872ef84ee479bf"
 
 [[package]]
 name = "cxxbridge-macro"
-version = "1.0.90"
+version = "1.0.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebf883b7aacd7b2aeb2a7b338648ee19f57c140d4ee8e52c68979c6b2f7f2263"
+checksum = "086c685979a698443656e5cf7856c95c642295a38599f12fb1ff76fb28d19892"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1514,9 +1514,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.27.1"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "221996f774192f0f718773def8201c4ae31f02616a54ccfc2d358bb0e5cefdec"
+checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
 
 [[package]]
 name = "glob"
@@ -1691,9 +1691,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75f43d41e26995c17e71ee126451dd3941010b0514a81a9d11f3b341debc2399"
+checksum = "bd6effc99afb63425aff9b05836f029929e345a6148a14b7ecd5ab67af944482"
 dependencies = [
  "bytes",
  "fnv",
@@ -2228,7 +2228,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "tokio",
- "toml_edit 0.19.3",
+ "toml_edit 0.19.4",
 ]
 
 [[package]]
@@ -2280,7 +2280,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_20#d4285409be743ba5331d95f4842e21ef280ac5cc"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_20#3811a36746f2ca9d8e760213784bb0363e7928e0"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2289,6 +2289,7 @@ dependencies = [
  "displaydoc",
  "function_name",
  "loupe",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
  "more-asserts 0.3.1",
  "parking_lot",
  "rand 0.8.5",
@@ -2321,7 +2322,7 @@ dependencies = [
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2346,7 +2347,7 @@ dependencies = [
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_final_state",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
  "massa_network_exports",
  "massa_protocol_exports",
@@ -2367,11 +2368,11 @@ dependencies = [
  "displaydoc",
  "futures",
  "lazy_static",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_logging",
  "massa_models",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2399,7 +2400,7 @@ dependencies = [
  "massa_consensus_exports",
  "massa_executed_ops",
  "massa_final_state",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_logging",
@@ -2407,7 +2408,7 @@ dependencies = [
  "massa_network_exports",
  "massa_pos_exports",
  "massa_pos_worker",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2431,7 +2432,7 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm",
  "displaydoc",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "pbkdf2",
  "rand 0.8.5",
  "rand_core 0.6.4",
@@ -2449,12 +2450,12 @@ dependencies = [
  "displaydoc",
  "jsonrpsee",
  "massa_execution_exports",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2471,7 +2472,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "massa_consensus_exports",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_logging",
  "massa_models",
  "massa_signature",
@@ -2488,9 +2489,9 @@ dependencies = [
 name = "massa_executed_ops"
 version = "0.1.0"
 dependencies = [
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "nom",
 ]
 
@@ -2501,7 +2502,7 @@ dependencies = [
  "displaydoc",
  "massa-sc-runtime",
  "massa_final_state",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_models",
  "massa_storage",
@@ -2523,7 +2524,7 @@ dependencies = [
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
@@ -2552,13 +2553,13 @@ dependencies = [
  "displaydoc",
  "massa_consensus_exports",
  "massa_execution_exports",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2577,12 +2578,12 @@ dependencies = [
  "anyhow",
  "massa_consensus_exports",
  "massa_factory_exports",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2601,12 +2602,12 @@ dependencies = [
  "displaydoc",
  "massa_async_pool",
  "massa_executed_ops",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
  "massa_pos_exports",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "nom",
  "serde",
@@ -2621,7 +2622,7 @@ dependencies = [
  "blake3",
  "bs58",
  "displaydoc",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "nom",
  "serde",
  "serde_json",
@@ -2630,13 +2631,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_hash"
+version = "0.1.0"
+source = "git+https://github.com/massalabs/massa.git#589ae01ddc6ec19234e6cb726a8feab51acd4a43"
+dependencies = [
+ "blake3",
+ "bs58",
+ "displaydoc",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "nom",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "massa_ledger_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "nom",
  "serde",
@@ -2649,10 +2664,10 @@ dependencies = [
 name = "massa_ledger_worker"
 version = "0.1.0"
 dependencies = [
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_models",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "nom",
  "rocksdb",
@@ -2681,8 +2696,8 @@ dependencies = [
  "directories",
  "displaydoc",
  "lazy_static",
- "massa_hash",
- "massa_serialization",
+ "massa_hash 0.1.0",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2701,9 +2716,9 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "enum-map",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2723,11 +2738,11 @@ dependencies = [
  "enum-map",
  "futures",
  "itertools",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_logging",
  "massa_models",
  "massa_network_exports",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2757,7 +2772,7 @@ name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
  "massa_execution_exports",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
  "massa_pool_exports",
  "massa_signature",
@@ -2775,10 +2790,10 @@ dependencies = [
  "anyhow",
  "bitvec",
  "displaydoc",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_models",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2797,7 +2812,7 @@ version = "0.1.0"
 dependencies = [
  "bitvec",
  "massa_final_state",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
  "massa_pos_exports",
  "massa_signature",
@@ -2818,7 +2833,7 @@ dependencies = [
  "displaydoc",
  "futures",
  "lazy_static",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_logging",
  "massa_models",
  "massa_network_exports",
@@ -2839,13 +2854,13 @@ dependencies = [
  "futures",
  "lazy_static",
  "massa_consensus_exports",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_logging",
  "massa_models",
  "massa_network_exports",
  "massa_pool_exports",
  "massa_protocol_exports",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2878,14 +2893,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_serialization"
+version = "0.1.0"
+source = "git+https://github.com/massalabs/massa.git#589ae01ddc6ec19234e6cb726a8feab51acd4a43"
+dependencies = [
+ "displaydoc",
+ "nom",
+ "thiserror",
+ "unsigned-varint",
+]
+
+[[package]]
 name = "massa_signature"
 version = "0.1.0"
 dependencies = [
  "bs58",
  "displaydoc",
  "ed25519-dalek",
- "massa_hash",
- "massa_serialization",
+ "massa_hash 0.1.0",
+ "massa_serialization 0.1.0",
  "nom",
  "rand 0.7.3",
  "serde",
@@ -2912,7 +2938,7 @@ name = "massa_time"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "massa_serialization",
+ "massa_serialization 0.1.0",
  "nom",
  "serde",
  "thiserror",
@@ -2925,7 +2951,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "massa_cipher",
- "massa_hash",
+ "massa_hash 0.1.0",
  "massa_models",
  "massa_signature",
  "serde",
@@ -2943,9 +2969,9 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
 name = "memmap2"
-version = "0.5.8"
+version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b182332558b18d807c4ce1ca8ca983b34c3ee32765e47b3f0f69b90355cc1dc"
+checksum = "2af2c65375e552a67fe3829ca63e8a7c27a378a62824594f43b2851d682b5ec2"
 dependencies = [
  "libc",
 ]
@@ -3177,18 +3203,18 @@ dependencies = [
 
 [[package]]
 name = "num_enum"
-version = "0.5.9"
+version = "0.5.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d829733185c1ca374f17e52b762f24f535ec625d2cc1f070e34c8a9068f341b"
+checksum = "3e0072973714303aa6e3631c7e8e777970cf4bdd25dc4932e41031027b8bcc4e"
 dependencies = [
  "num_enum_derive",
 ]
 
 [[package]]
 name = "num_enum_derive"
-version = "0.5.9"
+version = "0.5.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2be1598bf1c313dcdd12092e3f1920f463462525a21b7b4e11b4168353d0123e"
+checksum = "0629cbd6b897944899b1f10496d9c4a7ac5878d45fd61bc22e9e79bfbbc29597"
 dependencies = [
  "proc-macro-crate 1.3.0",
  "proc-macro2",
@@ -3207,9 +3233,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.17.0"
+version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
+checksum = "b7e5500299e16ebb147ae15a00a942af264cf3688f47923b8fc2cd5858f23ad3"
 
 [[package]]
 name = "oorandom"
@@ -4317,9 +4343,9 @@ checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 
 [[package]]
 name = "slab"
-version = "0.4.7"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4614a76b2a8be0058caa9dbbaf66d988527d86d003c11a94fbd335d7661edcef"
+checksum = "6528351c9bc8ab22353f9d776db39a20288e8d6c37ef8cfe3317cf875eecfc2d"
 dependencies = [
  "autocfg",
 ]
@@ -4570,9 +4596,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.17"
+version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a561bf4617eebd33bca6434b988f39ed798e527f51a1e797d0ee4f61c0a38376"
+checksum = "53250a3b3fed8ff8fd988587d8925d26a83ac3845d9e03b220b37f34c2b8d6c2"
 dependencies = [
  "itoa",
  "serde",
@@ -4588,9 +4614,9 @@ checksum = "2e153e1f1acaef8acc537e68b44906d2db6436e2b35ac2c6b42640fff91f00fd"
 
 [[package]]
 name = "time-macros"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d967f99f534ca7e495c575c62638eebc2898a8c84c119b89e250477bc4ba16b2"
+checksum = "a460aeb8de6dcb0f381e1ee05f1cd56fcf5a5f6eb8187ff3d8f0b11078d38b7c"
 dependencies = [
  "time-core",
 ]
@@ -4649,9 +4675,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d660770404473ccd7bc9f8b28494a811bc18542b915c0855c51e8f419d5223ce"
+checksum = "8fb52b74f05dbf495a8fba459fdc331812b96aa086d9eb78101fa0d4569c3313"
 dependencies = [
  "futures-core",
  "pin-project-lite",
@@ -4708,13 +4734,13 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.19.3"
+version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e6a7712b49e1775fb9a7b998de6635b299237f48b404dde71704f2e0e7f37e5"
+checksum = "9a1eb0622d28f4b9c90adc4ea4b2b46b47663fde9ac5fafcb14a1369d5508825"
 dependencies = [
  "indexmap",
- "nom8",
  "toml_datetime 0.6.1",
+ "winnow",
 ]
 
 [[package]]
@@ -5083,9 +5109,9 @@ checksum = "0046fef7e28c3804e5e38bfa31ea2a0f73905319b677e57ebe37e49358989b5d"
 
 [[package]]
 name = "wasm-encoder"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c3e4bc09095436c8e7584d86d33e6c3ee67045af8fb262cbb9cc321de553428"
+checksum = "704553b4d614a47080b4a457a976b3c16174b19ce95b931b847561b590dd09ba"
 dependencies = [
  "leb128",
 ]
@@ -5248,9 +5274,9 @@ checksum = "718ed7c55c2add6548cca3ddd6383d738cd73b892df400e96b9aa876f0141d7a"
 
 [[package]]
 name = "wast"
-version = "53.0.0"
+version = "54.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8244fa24196b1d8fd3ca4a96a3a164c40f846498c5deab6caf414c67340ca4af"
+checksum = "f0d3df4a63b10958fe98ab9d7e9a57a7bc900209d2b4edd10535bfb0703e6516"
 dependencies = [
  "leb128",
  "memchr",
@@ -5260,9 +5286,9 @@ dependencies = [
 
 [[package]]
 name = "wat"
-version = "1.0.58"
+version = "1.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4620f1059add6dad511decb9d5d88b4a0a0d3e2e315ed34f79b0dc0dce18aa4b"
+checksum = "3e9a7c7d177696d0548178c36e377d49eba54170e885801d4270e2d44e82ac84"
 dependencies = [
  "wast",
 ]
@@ -5450,6 +5476,15 @@ name = "windows_x86_64_msvc"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
+
+[[package]]
+name = "winnow"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efdd927d1a3d5d98abcfc4cf8627371862ee6abfe52a988050621c50c66b4493"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "wyz"
