@@ -853,14 +853,6 @@
 <a href="#853" id="853">853</a>
 <a href="#854" id="854">854</a>
 <a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -922,11 +914,13 @@
     BootstrapConfig, Establisher,
 };
 
+<span class="doccomment">/// Abstraction layer over data produced by the listener, and transported
+/// over to the worker via a channel
+</span><span class="kw">type </span>BsConn = (Duplex, SocketAddr);
 <span class="doccomment">/// handle on the bootstrap server
 </span><span class="kw">pub struct </span>BootstrapManager {
     update_handle: tokio::task::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), String&gt;&gt;,
-    listen_handle:
-        tokio::task::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), (Duplex, SocketAddr)&gt;, Box&lt;BootstrapError&gt;&gt;&gt;,
+    listen_handle: tokio::task::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt;&gt;,
     main_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
     stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
 }
@@ -972,8 +966,7 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()).into());
     };
     <span class="comment">// This is the primary interface between the async-listener, and the (soon to be) sync worker
-    </span><span class="kw">let </span>(listener_tx, listener_rx) =
-        crossbeam::channel::bounded::&lt;(Duplex, SocketAddr)&gt;(max_bootstraps);
+    </span><span class="kw">let </span>(listener_tx, listener_rx) = crossbeam::channel::bounded::&lt;BsConn&gt;(max_bootstraps);
 
     <span class="kw">let </span>allow_block_list = SharedAllowBlockList::new(
         config.bootstrap_whitelist_path.clone(),
@@ -1020,7 +1013,7 @@
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     network_command_sender: NetworkCommandSender,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    listener_rx: Receiver&lt;(Duplex, SocketAddr)&gt;,
+    listener_rx: Receiver&lt;BsConn&gt;,
     stopper_rx: Receiver&lt;()&gt;,
     allow_block_list: SharedAllowBlockList&lt;<span class="lifetime">&#39;a</span>&gt;,
     keypair: KeyPair,
@@ -1052,8 +1045,8 @@
     /// Err(..) Error accepting a connection
     </span><span class="kw">async fn </span>run_listener(
         <span class="kw-2">mut </span>listener: Listener,
-        listener_tx: Sender&lt;(Duplex, SocketAddr)&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), (Duplex, SocketAddr)&gt;, Box&lt;BootstrapError&gt;&gt; {
+        listener_tx: Sender&lt;BsConn&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">loop </span>{
             <span class="kw">let </span>msg = listener.accept().<span class="kw">await</span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
             <span class="kw">match </span>listener_tx.send(msg) {
@@ -1079,7 +1072,7 @@
         <span class="comment">// TODO: Work out how to integration-test this
         </span><span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
-            </span><span class="kw">let </span><span class="prelude-val">Some</span>((dplx, remote_addr)) = <span class="self">self</span>.receive_connection(<span class="kw-2">&amp;mut </span>selector)<span class="question-mark">? </span><span class="kw">else </span>{<span class="kw">break</span>};
+            </span><span class="kw">let </span><span class="prelude-val">Some</span>((dplx, remote_addr)) = <span class="self">self</span>.receive_connection(<span class="kw-2">&amp;mut </span>selector).map_err(BootstrapError::GeneralError)<span class="question-mark">? </span><span class="kw">else </span>{<span class="kw">break</span>};
             <span class="comment">// claim a slot in the max_bootstrap_sessions
             </span><span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
             <span class="kw">let </span><span class="kw-2">mut </span>server = BootstrapServerBinder::new(
@@ -1239,10 +1232,7 @@
     /// - 3.a. double check the stop-signal is absent
     /// - 3.b. If present, fall-back to the stop behaviour
     /// - 3.c. If absent, all&#39;s clear to rock-n-roll.
-    </span><span class="kw">fn </span>receive_connection(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        selector: <span class="kw-2">&amp;mut </span>Select,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;(Duplex, SocketAddr)&gt;, BootstrapError&gt; {
+    </span><span class="kw">fn </span>receive_connection(<span class="kw-2">&amp;</span><span class="self">self</span>, selector: <span class="kw-2">&amp;mut </span>Select) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BsConn&gt;, String&gt; {
         <span class="comment">// 1. Block until _something_ is ready
         </span><span class="kw">let </span>rdy = selector.ready();
 
@@ -1262,10 +1252,7 @@
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.manager&quot;</span>, {});
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             } <span class="kw">else if </span>unlikely(stop == <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Disconnected)) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                    <span class="string">&quot;Unexpected stop-channel disconnection&quot;</span>.to_string(),
-                )
-                .into());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Unexpected stop-channel disconnection&quot;</span>.to_string());
             };
         }
         <span class="comment">// - 3.c. If absent, all&#39;s clear to rock-n-roll.
@@ -1274,10 +1261,7 @@
             <span class="prelude-val">Err</span>(try_rcv_err) =&gt; <span class="kw">match </span>try_rcv_err {
                 crossbeam::channel::TryRecvError::Empty =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
                 crossbeam::channel::TryRecvError::Disconnected =&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                        <span class="string">&quot;listener recv channel disconnected unexpectedly&quot;</span>.to_string(),
-                    )
-                    .into())
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;listener recv channel disconnected unexpectedly&quot;</span>.to_string())
                 }
             },
         };

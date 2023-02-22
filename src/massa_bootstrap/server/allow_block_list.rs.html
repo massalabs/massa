@@ -153,7 +153,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="kw">let </span>read_lock = <span class="self">self</span>.inner.read();
         <span class="kw">let </span>(new_allow, new_block) =
-            AllowBlockListInner::load_allow_block_lists(<span class="kw-2">&amp;*</span><span class="self">self</span>.allow_path, <span class="kw-2">&amp;</span><span class="self">self</span>.block_path)<span class="question-mark">?</span>;
+            AllowBlockListInner::load_allow_block_lists(<span class="kw-2">&amp;</span><span class="self">self</span>.allow_path, <span class="kw-2">&amp;</span><span class="self">self</span>.block_path)<span class="question-mark">?</span>;
         <span class="kw">let </span>allow_delta = new_allow != read_lock.allow_list;
         <span class="kw">let </span>block_delta = new_block != read_lock.block_list;
         <span class="kw">if </span>allow_delta || block_delta {
