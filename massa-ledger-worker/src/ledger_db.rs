@@ -57,9 +57,11 @@ pub enum LedgerSubEntry {
 impl LedgerSubEntry {
     fn derive_key(&self, addr: &Address) -> Key {
         match self {
-            LedgerSubEntry::Balance => Key::new_balance(addr),
-            LedgerSubEntry::Bytecode => Key::new_bytecode(addr),
-            LedgerSubEntry::Datastore(hash) => Key::new_datastore(addr, Some(hash.to_vec())),
+            LedgerSubEntry::Balance => Key::new(addr, KeyType::BALANCE),
+            LedgerSubEntry::Bytecode => Key::new(addr, KeyType::BYTECODE),
+            LedgerSubEntry::Datastore(hash) => {
+                Key::new(addr, KeyType::DATASTORE(Some(hash.to_vec())))
+            }
         }
     }
 }
@@ -435,19 +437,29 @@ impl LedgerDB {
             .unwrap();
 
         // balance
-        self.put_entry_value(handle, batch, &Key::new_balance(addr), &bytes_balance);
+        self.put_entry_value(
+            handle,
+            batch,
+            &Key::new(addr, KeyType::BALANCE),
+            &bytes_balance,
+        );
 
         // bytecode
         self.put_entry_value(
             handle,
             batch,
-            &Key::new_bytecode(addr),
+            &Key::new(addr, KeyType::BYTECODE),
             &ledger_entry.bytecode,
         );
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            self.put_entry_value(handle, batch, &Key::new_datastore(addr, Some(hash)), &entry);
+            self.put_entry_value(
+                handle,
+                batch,
+                &Key::new(addr, KeyType::DATASTORE(Some(hash))),
+                &entry,
+            );
         }
     }
 
@@ -505,19 +517,19 @@ impl LedgerDB {
                 .serialize(&balance, &mut bytes)
                 .unwrap();
 
-            let balance_key = Key::new_balance(addr);
+            let balance_key = Key::new(addr, KeyType::BALANCE);
             self.update_key_value(handle, batch, &balance_key, &bytes);
         }
 
         // bytecode
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
-            let bytecode_key = Key::new_bytecode(addr);
+            let bytecode_key = Key::new(addr, KeyType::BYTECODE);
             self.update_key_value(handle, batch, &bytecode_key, &bytecode);
         }
 
         // datastore
         for (hash, update) in entry_update.datastore {
-            let datastore_key = Key::new_datastore(addr, Some(hash));
+            let datastore_key = Key::new(addr, KeyType::DATASTORE(Some(hash)));
             match update {
                 SetOrDelete::Set(entry) => {
                     self.update_key_value(handle, batch, &datastore_key, &entry)
@@ -558,10 +570,10 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
-        self.delete_key(handle, batch, &Key::new_balance(addr));
+        self.delete_key(handle, batch, &Key::new(addr, KeyType::BALANCE));
 
         // bytecode
-        self.delete_key(handle, batch, &Key::new_bytecode(addr));
+        self.delete_key(handle, batch, &Key::new(addr, KeyType::BYTECODE));
 
         // datastore
         let mut opt = ReadOptions::default();

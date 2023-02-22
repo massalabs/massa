@@ -45,23 +45,9 @@ pub struct Key {
 }
 
 impl Key {
-    pub fn new_balance(address: &Address) -> Self {
+    pub fn new(address: &Address, key_type: KeyType) -> Self {
         Self {
-            key_type: KeyType::BALANCE,
-            address: *address,
-        }
-    }
-
-    pub fn new_bytecode(address: &Address) -> Self {
-        Self {
-            key_type: KeyType::BYTECODE,
-            address: *address,
-        }
-    }
-
-    pub fn new_datastore(address: &Address, key: Option<Vec<u8>>) -> Self {
-        Self {
-            key_type: KeyType::DATASTORE(key),
+            key_type,
             address: *address,
         }
     }
@@ -100,7 +86,7 @@ impl Serializer<Key> for KeySerializer {
     /// let mut serialized = Vec::new();
     /// let address = Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
-    /// let mut key = Key::new_datastore(&address, Some(store_key.into_bytes().to_vec()));
+    /// let mut key = Key::new(&address, KeyType::DATASTORE(Some(store_key.into_bytes().to_vec())));
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Key, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
@@ -155,14 +141,14 @@ impl Deserializer<Key> for KeyDeserializer {
     /// let address = Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
     ///
-    /// let mut key = Key::new_datastore(&address, Some(store_key.into_bytes().to_vec()));
+    /// let mut key = Key::new(&address, KeyType::DATASTORE(Some(store_key.into_bytes().to_vec())));
     /// let mut serialized = Vec::new();
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     ///
-    /// let mut key = Key::new_balance(&address);
+    /// let mut key = Key::new(&address, KeyType::BALANCE);
     /// let mut serialized = Vec::new();
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
