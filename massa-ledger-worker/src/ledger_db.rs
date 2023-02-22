@@ -59,9 +59,7 @@ impl LedgerSubEntry {
         match self {
             LedgerSubEntry::Balance => Key::new(addr, KeyType::BALANCE),
             LedgerSubEntry::Bytecode => Key::new(addr, KeyType::BYTECODE),
-            LedgerSubEntry::Datastore(hash) => {
-                Key::new(addr, KeyType::DATASTORE(Some(hash.to_vec())))
-            }
+            LedgerSubEntry::Datastore(hash) => Key::new(addr, KeyType::DATASTORE(hash.to_vec())),
         }
     }
 }
@@ -457,7 +455,7 @@ impl LedgerDB {
             self.put_entry_value(
                 handle,
                 batch,
-                &Key::new(addr, KeyType::DATASTORE(Some(hash))),
+                &Key::new(addr, KeyType::DATASTORE(hash)),
                 &entry,
             );
         }
@@ -529,7 +527,7 @@ impl LedgerDB {
 
         // datastore
         for (hash, update) in entry_update.datastore {
-            let datastore_key = Key::new(addr, KeyType::DATASTORE(Some(hash)));
+            let datastore_key = Key::new(addr, KeyType::DATASTORE(hash));
             match update {
                 SetOrDelete::Set(entry) => {
                     self.update_key_value(handle, batch, &datastore_key, &entry)

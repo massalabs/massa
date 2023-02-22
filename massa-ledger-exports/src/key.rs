@@ -15,7 +15,7 @@ pub const DATASTORE_IDENT: u8 = 2u8;
 pub enum KeyType {
     BALANCE = 0,
     BYTECODE = 1,
-    DATASTORE(Option<Vec<u8>>) = 2,
+    DATASTORE(Vec<u8>) = 2,
 }
 
 impl KeyType {
@@ -23,7 +23,7 @@ impl KeyType {
         match value {
             0 => Some(KeyType::BALANCE),
             1 => Some(KeyType::BYTECODE),
-            2 => Some(KeyType::DATASTORE(None)),
+            2 => Some(KeyType::DATASTORE(Vec::new())),
             _ => None,
         }
     }
@@ -55,7 +55,9 @@ impl Key {
 
 pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
     let mut prefix = Vec::new();
-    AddressSerializer::new().serialize(address, &mut prefix).unwrap();
+    AddressSerializer::new()
+        .serialize(address, &mut prefix)
+        .unwrap();
     prefix.extend([DATASTORE_IDENT]);
     prefix
 }
@@ -88,24 +90,17 @@ impl Serializer<Key> for KeySerializer {
     /// let mut serialized = Vec::new();
     /// let address = Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
-    /// let mut key = Key::new(&address, KeyType::DATASTORE(Some(store_key.into_bytes().to_vec())));
+    /// let mut key = Key::new(&address, KeyType::DATASTORE(store_key.into_bytes().to_vec()));
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Key, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.address_serializer.serialize(&value.address, buffer)?;
         buffer.extend(&[value.key_type.clone().to_u8()]);
 
-        match value.key_type.clone() {
-            KeyType::DATASTORE(Some(data)) => {
-                self.vec_u8_serializer.serialize(&data, buffer)?;
-            }
-            KeyType::DATASTORE(None) => {
-                return Err(SerializeError::GeneralError(
-                    "datastore keys can not be empty".to_string(),
-                ))
-            }
-            _ => {}
+        if let KeyType::DATASTORE(data) = value.key_type.clone() {
+            self.vec_u8_serializer.serialize(&data, buffer)?;
         }
+
         Ok(())
     }
 }
@@ -143,7 +138,7 @@ impl Deserializer<Key> for KeyDeserializer {
     /// let address = Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
     ///
-    /// let mut key = Key::new(&address, KeyType::DATASTORE(Some(store_key.into_bytes().to_vec())));
+    /// let mut key = Key::new(&address, KeyType::DATASTORE(store_key.into_bytes().to_vec()));
     /// let mut serialized = Vec::new();
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
@@ -183,12 +178,13 @@ impl Deserializer<Key> for KeyDeserializer {
                     },
                 )),
                 Some(KeyType::DATASTORE(_)) => {
+                    println!("rest: {:?}", &rest[1..]);
                     let (rest, hash) = self.datastore_key_deserializer.deserialize(&rest[1..])?;
                     Ok((
                         rest,
                         Key {
                             address,
-                            key_type: KeyType::DATASTORE(Some(hash)),
+                            key_type: KeyType::DATASTORE(hash),
                         },
                     ))
                 }
