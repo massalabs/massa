@@ -215,66 +215,8 @@ impl BootstrapServer<'_> {
         selector.recv(&self.listener_rx);
         // TODO: Work out how to integration-test this
         loop {
-            // this is a bit complicated, but the simple is bad:
-            // ```rust
-            // if self.stopper_rx.try_recv().is_ok() {
-            //     break;
-            // }
-            // // if the server is stopped while blocked here, this risks never unblocking
-            // // OR: would serve as an OBO error; Server doesn't actually stop working until after
-            // // it's done processing one more connection _after_ it's been stopped.
-            // // Any bug fix at that point would be a downstream hack to an upstream
-            // // bug.
-            // let Ok(msg) = self.listener_rx.recv() else {continue};
-            // ```
-            //
-            // The solution here is to:
-            // - 1. Block until _something_ is ready
-            // - 2. If that something is a stop-signal, stop
-            // - 3. If that something is anything else:
-            // - 3.a. double check the stop-signal is absent
-            // - 3.b. If present, fall-back to the stop behaviour
-            // - 3.c. If absent, all's clear to rock-n-roll.
-
-            // 1. Block until _something_ is ready
-            let rdy = selector.ready();
-
-            // 2. If that something is a stop-signal, stop
-            // from `crossbeam::Select::read()` documentation:
-            // "Note that this method might return with success spuriously, so it’s a good idea
-            // to always double check if the operation is really ready."
-            if rdy == 0 && self.stopper_rx.try_recv().is_ok() {
-                break;
-                // - 3. If that something is anything else:
-            } else {
-                massa_trace!("bootstrap.lib.run.select", {});
-
-                // - 3.a. double check the stop-signal is absent
-                let stop = self.stopper_rx.try_recv();
-                if unlikely(stop.is_ok()) {
-                    massa_trace!("bootstrap.lib.run.select.manager", {});
-                    break;
-                } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                    return Err(BootstrapError::GeneralError(
-                        "Unexpected stop-channel disconnection".to_string(),
-                    )
-                    .into());
-                };
-            }
-            // - 3.c. If absent, all's clear to rock-n-roll.
-            let (dplx, remote_addr) = match self.listener_rx.try_recv() {
-                Ok(msg) => msg,
-                Err(try_rcv_err) => match try_rcv_err {
-                    crossbeam::channel::TryRecvError::Empty => continue,
-                    crossbeam::channel::TryRecvError::Disconnected => {
-                        return Err(BootstrapError::GeneralError(
-                            "listener recv channel disconnected unexpectedly".to_string(),
-                        )
-                        .into())
-                    }
-                },
-            };
-
+            // block until we have a connection to work with, or break out of main-loop
+            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector)? else {break};
             // claim a slot in the max_bootstrap_sessions
             let bootstrap_count_token = bootstrap_sessions_counter.clone();
             let mut server = BootstrapServerBinder::new(
@@ -412,6 +354,70 @@ impl BootstrapServer<'_> {
         Ok(())
     }
 
+    /// this is a bit complicated, but the simple is bad:
+    /// ```rust
+    /// if self.stopper_rx.try_recv().is_ok() {
+    ///     break;
+    /// }
+    /// // if the server is stopped while blocked here, this risks never unblocking
+    /// // OR: would serve as an OBO error; Server doesn't actually stop working until after
+    /// // it's done processing one more connection _after_ it's been stopped.
+    /// // Any bug fix at that point would be a downstream hack to an upstream
+    /// // bug.
+    /// let Ok(msg) = self.listener_rx.recv() else {continue};
+    /// ```
+    ///
+    /// The solution here is to:
+    /// - 1. Block until _something_ is ready
+    /// - 2. If that something is a stop-signal, stop
+    /// - 3. If that something is anything else:
+    /// - 3.a. double check the stop-signal is absent
+    /// - 3.b. If present, fall-back to the stop behaviour
+    /// - 3.c. If absent, all's clear to rock-n-roll.
+    fn receive_connection(
+        &self,
+        selector: &mut Select,
+    ) -> Result<Option<(Duplex, SocketAddr)>, BootstrapError> {
+        // 1. Block until _something_ is ready
+        let rdy = selector.ready();
+
+        // 2. If that something is a stop-signal, stop
+        // from `crossbeam::Select::read()` documentation:
+        // "Note that this method might return with success spuriously, so it’s a good idea
+        // to always double check if the operation is really ready."
+        if rdy == 0 && self.stopper_rx.try_recv().is_ok() {
+            return Ok(None);
+            // - 3. If that something is anything else:
+        } else {
+            massa_trace!("bootstrap.lib.run.select", {});
+
+            // - 3.a. double check the stop-signal is absent
+            let stop = self.stopper_rx.try_recv();
+            if unlikely(stop.is_ok()) {
+                massa_trace!("bootstrap.lib.run.select.manager", {});
+                return Ok(None);
+            } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
+                return Err(BootstrapError::GeneralError(
+                    "Unexpected stop-channel disconnection".to_string(),
+                )
+                .into());
+            };
+        }
+        // - 3.c. If absent, all's clear to rock-n-roll.
+        let msg = match self.listener_rx.try_recv() {
+            Ok(msg) => msg,
+            Err(try_rcv_err) => match try_rcv_err {
+                crossbeam::channel::TryRecvError::Empty => return Ok(None),
+                crossbeam::channel::TryRecvError::Disconnected => {
+                    return Err(BootstrapError::GeneralError(
+                        "listener recv channel disconnected unexpectedly".to_string(),
+                    )
+                    .into())
+                }
+            },
+        };
+        Ok(Some(msg))
+    }
     /// Helper method to check if this IP is being greedy, i.e. not enough elapsed time since last attempt
     ///
     /// # Error
