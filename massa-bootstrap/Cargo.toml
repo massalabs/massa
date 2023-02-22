@@ -24,6 +24,7 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 tokio = { version = "1.23", features = ["full"] }
 tracing = "0.1"
 substruct = { git = "https://github.com/sydhds/substruct" }
+socket2 = "0.4.7"
 
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }

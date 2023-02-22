@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_time::MassaTime;
+use socket2 as _;
 use std::io;
 use std::net::SocketAddr;
 use tokio::io::DuplexStream;

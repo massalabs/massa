@@ -359,6 +359,7 @@ async fn launch(
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
