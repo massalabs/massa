@@ -45,18 +45,6 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    // <<<<<<< HEAD
-    //     pub fn new(
-    //         duplex: Duplex,
-    //         local_keypair: KeyPair,
-    //         limit: f64,
-    //         max_bootstrap_message_size: u32,
-    //         thread_count: u8,
-    //         max_datastore_key_length: u8,
-    //         randomness_size_bytes: usize,
-    //         max_consensus_block_ids: u64,
-    //     ) -> Self {
-    // =======
     pub fn new(duplex: Duplex, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
             max_bytes_read_write: limit,
@@ -67,11 +55,10 @@ impl BootstrapServerBinder {
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        // >>>>>>> ac3037ae1
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
-            max_consensus_block_ids,
+            max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
             duplex: <Limiter>::new(limit).limit(duplex),
