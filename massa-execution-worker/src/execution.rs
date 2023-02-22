@@ -411,7 +411,7 @@ impl ExecutionState {
             let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
             // (candidate_rolls + amount to buy)
             let max_rolls = rolls.1 + roll_count;
-            if max_rolls >= vesting_range.max_rolls {
+            if max_rolls > vesting_range.max_rolls {
                 return Err(ExecutionError::VestingError(format!(
                     "vesting_max_rolls={} with value max_rolls={} ",
                     vesting_range.max_rolls, max_rolls
