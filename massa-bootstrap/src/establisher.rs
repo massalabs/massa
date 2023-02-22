@@ -77,7 +77,17 @@ pub mod types {
         /// # Argument
         /// * `addr`: `SocketAddr` we want to bind to.
         pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
-            Ok(DefaultListener(TcpListener::bind(addr).await?))
+            // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
+            let socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, None)?;
+
+            socket.set_only_v6(false)?;
+            socket.set_nonblocking(true)?;
+            socket.bind(&addr.into())?;
+
+            // Number of connections to queue, set to the hardcoded value used by tokio
+            socket.listen(1024)?;
+
+            Ok(DefaultListener(TcpListener::from_std(socket.into())?))
         }
 
         /// Get the connector with associated timeout
