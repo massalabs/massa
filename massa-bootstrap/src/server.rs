@@ -152,13 +152,13 @@ pub async fn start_bootstrap_server(
     }))
 }
 
-struct BootstrapServer {
+struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     listener_rx: Receiver<(Duplex, SocketAddr)>,
     stopper_rx: Receiver<()>,
-    allow_block_list: SharedAllowBlockList,
+    allow_block_list: SharedAllowBlockList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
@@ -166,8 +166,11 @@ struct BootstrapServer {
     runtime: Runtime,
 }
 
-impl BootstrapServer {
-    async fn run_updater(mut list: SharedAllowBlockList, interval: Duration) -> Result<(), String> {
+impl BootstrapServer<'_> {
+    async fn run_updater(
+        mut list: SharedAllowBlockList<'_>,
+        interval: Duration,
+    ) -> Result<(), String> {
         let mut interval = tokio::time::interval(interval);
         loop {
             interval.tick().await;

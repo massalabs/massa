@@ -1,7 +1,8 @@
 use std::{
+    borrow::Cow,
     collections::HashSet,
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -14,13 +15,13 @@ use crate::tools::normalize_ip;
 /// A wrapper around the allow/block lists that allows efficient sharing between threads
 // TODO: don't clone the path-bufs...
 #[derive(Clone)]
-pub(crate) struct SharedAllowBlockList {
+pub(crate) struct SharedAllowBlockList<'a> {
     inner: Arc<RwLock<AllowBlockListInner>>,
-    allow_path: PathBuf,
-    block_path: PathBuf,
+    allow_path: Cow<'a, Path>,
+    block_path: Cow<'a, Path>,
 }
 
-impl SharedAllowBlockList {
+impl SharedAllowBlockList<'_> {
     pub(crate) fn new(allow_path: PathBuf, block_path: PathBuf) -> Result<Self, String> {
         let (allow_list, block_list) =
             AllowBlockListInner::load_allow_block_lists(&allow_path, &block_path)?;
@@ -29,14 +30,14 @@ impl SharedAllowBlockList {
                 allow_list,
                 block_list,
             })),
-            allow_path,
-            block_path,
+            allow_path: Cow::from(allow_path),
+            block_path: Cow::from(block_path),
         })
     }
     pub(crate) fn update(&mut self) -> Result<(), String> {
         let read_lock = self.inner.read();
         let (new_allow, new_block) =
-            AllowBlockListInner::load_allow_block_lists(&self.allow_path, &self.block_path)?;
+            AllowBlockListInner::load_allow_block_lists(&*self.allow_path, &self.block_path)?;
         let allow_delta = new_allow != read_lock.allow_list;
         let block_delta = new_block != read_lock.block_list;
         if allow_delta || block_delta {
@@ -83,15 +84,15 @@ impl AllowBlockListInner {
     #[allow(clippy::result_large_err)]
     #[allow(clippy::type_complexity)]
     fn load_allow_block_lists(
-        allowlist_path: &PathBuf,
-        blocklist_path: &PathBuf,
+        allowlist_path: &Path,
+        blocklist_path: &Path,
     ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), String> {
         let allow_list = Self::load_list(allowlist_path)?;
         let block_list = Self::load_list(blocklist_path)?;
         Ok((allow_list, block_list))
     }
 
-    fn load_list(list_path: &PathBuf) -> Result<Option<HashSet<IpAddr>>, String> {
+    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, String> {
         let Ok(list) = std::fs::read_to_string(list_path) else {
             return Ok(None);
         };
