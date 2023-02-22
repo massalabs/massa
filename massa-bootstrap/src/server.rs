@@ -19,13 +19,13 @@
 //! # Worker loop
 //!
 //! 1. Checks if the stopper has been invoked.
-//! 2. Checks if the client is permited under the allow/block list rules
+//! 2. Checks if the client is permited under the white/black list rules
 //! 3. Checks if there are not too many active sessions already
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
-mod allow_block_list;
-use allow_block_list::*;
+mod white_black_list;
+use white_black_list::*;
 
 use crossbeam::channel::{Receiver, Select, SendError, Sender};
 use humantime::format_duration;
@@ -113,14 +113,14 @@ pub async fn start_bootstrap_server(
     // This is the primary interface between the async-listener, and the (soon to be) sync worker
     let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps);
 
-    let allow_block_list = SharedAllowBlockList::new(
+    let white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
         config.bootstrap_blacklist_path.clone(),
     )
     .map_err(BootstrapError::GeneralError)?;
 
     let update_handle = runtime.handle().clone().spawn(BootstrapServer::run_updater(
-        allow_block_list.clone(),
+        white_black_list.clone(),
         config.cache_duration.into(),
     ));
     let listen_handle = runtime
@@ -135,7 +135,7 @@ pub async fn start_bootstrap_server(
             final_state,
             listener_rx,
             stopper_rx,
-            allow_block_list,
+            white_black_list,
             keypair,
             version,
             ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
@@ -160,7 +160,7 @@ struct BootstrapServer<'a> {
     final_state: Arc<RwLock<FinalState>>,
     listener_rx: Receiver<BsConn>,
     stopper_rx: Receiver<()>,
-    allow_block_list: SharedAllowBlockList<'a>,
+    white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
@@ -170,7 +170,7 @@ struct BootstrapServer<'a> {
 
 impl BootstrapServer<'_> {
     async fn run_updater(
-        mut list: SharedAllowBlockList<'_>,
+        mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
     ) -> Result<(), String> {
         let mut interval = tokio::time::interval(interval);
@@ -227,7 +227,7 @@ impl BootstrapServer<'_> {
 
             // check whether incoming peer IP is allowed.
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
-            if let Err(error_msg) = self.allow_block_list.is_ip_allowed(&remote_addr) {
+            if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
                 let _ = match self.runtime.block_on(server.send_error(error_msg.clone())) {
                     Err(_) => Err(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,

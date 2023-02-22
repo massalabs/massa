@@ -11,49 +11,49 @@ use parking_lot::RwLock;
 
 use crate::tools::normalize_ip;
 
-/// A wrapper around the allow/block lists that allows efficient sharing between threads
+/// A wrapper around the white/black lists that allows efficient sharing between threads
 // TODO: don't clone the path-bufs...
 #[derive(Clone)]
-pub(crate) struct SharedAllowBlockList<'a> {
-    inner: Arc<RwLock<AllowBlockListInner>>,
-    allow_path: Cow<'a, Path>,
-    block_path: Cow<'a, Path>,
+pub(crate) struct SharedWhiteBlackList<'a> {
+    inner: Arc<RwLock<WhiteBlackListInner>>,
+    white_path: Cow<'a, Path>,
+    black_path: Cow<'a, Path>,
 }
 
-impl SharedAllowBlockList<'_> {
-    pub(crate) fn new(allow_path: PathBuf, block_path: PathBuf) -> Result<Self, String> {
-        let (allow_list, block_list) =
-            AllowBlockListInner::load_allow_block_lists(&allow_path, &block_path)?;
+impl SharedWhiteBlackList<'_> {
+    pub(crate) fn new(white_path: PathBuf, black_path: PathBuf) -> Result<Self, String> {
+        let (white_list, black_list) =
+            WhiteBlackListInner::load_white_black_lists(&white_path, &black_path)?;
         Ok(Self {
-            inner: Arc::new(RwLock::new(AllowBlockListInner {
-                allow_list,
-                block_list,
+            inner: Arc::new(RwLock::new(WhiteBlackListInner {
+                white_list,
+                black_list,
             })),
-            allow_path: Cow::from(allow_path),
-            block_path: Cow::from(block_path),
+            white_path: Cow::from(white_path),
+            black_path: Cow::from(black_path),
         })
     }
 
-    /// Checks if the allow/block list is up to date with a read-lock
+    /// Checks if the white/black list is up to date with a read-lock
     /// Creates a new list, and replaces the old one in a write-lock
     pub(crate) fn update(&mut self) -> Result<(), String> {
         let read_lock = self.inner.read();
-        let (new_allow, new_block) =
-            AllowBlockListInner::load_allow_block_lists(&self.allow_path, &self.block_path)?;
-        let allow_delta = new_allow != read_lock.allow_list;
-        let block_delta = new_block != read_lock.block_list;
-        if allow_delta || block_delta {
+        let (new_white, new_black) =
+            WhiteBlackListInner::load_white_black_lists(&self.white_path, &self.black_path)?;
+        let white_delta = new_white != read_lock.white_list;
+        let black_delta = new_black != read_lock.black_list;
+        if white_delta || black_delta {
             // Ideally this scope would be atomic
             let mut mut_inner = {
                 drop(read_lock);
                 self.inner.write()
             };
 
-            if allow_delta {
-                mut_inner.allow_list = new_allow;
+            if white_delta {
+                mut_inner.white_list = new_white;
             }
-            if block_delta {
-                mut_inner.block_list = new_block;
+            if black_delta {
+                mut_inner.black_list = new_black;
             }
         }
         Ok(())
@@ -67,11 +67,11 @@ impl SharedAllowBlockList<'_> {
         let ip = normalize_ip(remote_addr.ip());
         // whether the peer IP address is blacklisted
         let read = self.inner.read();
-        if let Some(ip_list) = &read.block_list && ip_list.contains(&ip) {
+        if let Some(ip_list) = &read.black_list && ip_list.contains(&ip) {
             massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
             Err(format!("IP {} is blacklisted", &ip))
             // whether the peer IP address is not present in the whitelist
-        } else if let Some(ip_list) = &read.allow_list && !ip_list.contains(&ip){
+        } else if let Some(ip_list) = &read.white_list && !ip_list.contains(&ip){
             massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
             Err(format!("A whitelist exists and the IP {} is not whitelisted", &ip))
         } else {
@@ -80,16 +80,16 @@ impl SharedAllowBlockList<'_> {
     }
 }
 
-impl AllowBlockListInner {
+impl WhiteBlackListInner {
     #[allow(clippy::result_large_err)]
     #[allow(clippy::type_complexity)]
-    fn load_allow_block_lists(
-        allowlist_path: &Path,
-        blocklist_path: &Path,
+    fn load_white_black_lists(
+        whitelist_path: &Path,
+        blacklist_path: &Path,
     ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), String> {
-        let allow_list = Self::load_list(allowlist_path)?;
-        let block_list = Self::load_list(blocklist_path)?;
-        Ok((allow_list, block_list))
+        let white_list = Self::load_list(whitelist_path)?;
+        let black_list = Self::load_list(blacklist_path)?;
+        Ok((white_list, black_list))
     }
 
     fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, String> {
@@ -108,7 +108,7 @@ impl AllowBlockListInner {
 }
 
 #[derive(Default)]
-pub(crate) struct AllowBlockListInner {
-    allow_list: Option<HashSet<IpAddr>>,
-    block_list: Option<HashSet<IpAddr>>,
+pub(crate) struct WhiteBlackListInner {
+    white_list: Option<HashSet<IpAddr>>,
+    black_list: Option<HashSet<IpAddr>>,
 }
