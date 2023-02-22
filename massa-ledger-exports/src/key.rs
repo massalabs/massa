@@ -1,5 +1,5 @@
 use massa_models::{
-    address::{Address, AddressDeserializer},
+    address::{Address, AddressDeserializer, AddressSerializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer};
@@ -55,7 +55,7 @@ impl Key {
 
 pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
     let mut prefix = Vec::new();
-    prefix.extend(address.prefixed_bytes());
+    AddressSerializer::new().serialize(address, &mut prefix).unwrap();
     prefix.extend([DATASTORE_IDENT]);
     prefix
 }
@@ -63,6 +63,7 @@ pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
 /// Basic key serializer
 #[derive(Default, Clone)]
 pub struct KeySerializer {
+    address_serializer: AddressSerializer,
     vec_u8_serializer: VecU8Serializer,
 }
 
@@ -70,6 +71,7 @@ impl KeySerializer {
     /// Creates a new `KeySerializer`
     pub fn new() -> Self {
         Self {
+            address_serializer: AddressSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
         }
     }
@@ -90,7 +92,7 @@ impl Serializer<Key> for KeySerializer {
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Key, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        buffer.extend(&value.address.prefixed_bytes());
+        self.address_serializer.serialize(&value.address, buffer)?;
         buffer.extend(&[value.key_type.clone().to_u8()]);
 
         match value.key_type.clone() {
