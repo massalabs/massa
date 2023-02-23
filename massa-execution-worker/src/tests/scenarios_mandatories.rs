@@ -504,11 +504,13 @@ mod tests {
     #[test]
     #[serial]
     fn test_operation_execution_status() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
