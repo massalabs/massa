@@ -31,6 +31,7 @@ fn test_add_operation() {
         let op_gen = OpGenerator::default().expirery(2);
         storage.store_operations(create_some_operations(10, &op_gen));
         operation_pool.add_operations(storage);
+        std::thread::sleep(Duration::from_millis(100));
         assert_eq!(operation_pool.storage.get_op_refs().len(), 10);
     });
 }
@@ -46,6 +47,7 @@ fn test_add_irrelevant_operation() {
         storage.store_operations(create_some_operations(10, &op_gen));
         operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
         operation_pool.add_operations(storage);
+        std::thread::sleep(Duration::from_millis(100));
         assert_eq!(operation_pool.storage.get_op_refs().len(), 0);
     });
 }
@@ -70,6 +72,7 @@ fn test_pool() {
                 let mut storage = storage_base.clone_without_refs();
                 storage.store_operations(vec![op.clone()]);
                 pool.add_operations(storage);
+                std::thread::sleep(Duration::from_millis(100));
 
                 //TODO: compare
                 // assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
@@ -191,12 +194,16 @@ fn test_pool() {
                 let mut storage = storage_base.clone_without_refs();
                 storage.store_operations(vec![op.clone()]);
                 pool.add_operations(storage);
+                std::thread::sleep(Duration::from_millis(100));
                 //TODO: compare
                 //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
                 let op_thread = op
                     .content_creator_address
                     .get_thread(pool_config.thread_count);
-                let (ids, _) = pool.get_block_operations(&Slot::new(expire_period - 1, op_thread));
+                let (ids, _) = pool.get_block_operations(&Slot::new(
+                    expire_period - pool_config.operation_validity_periods - 1,
+                    op_thread,
+                ));
                 assert!(ids.is_empty());
             }
             pool_manager.stop();
