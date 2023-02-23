@@ -357,7 +357,7 @@ impl LedgerDB {
             Some(last_key) => {
                 if rest.is_empty() {
                     self.write_batch(batch);
-                    Ok(StreamingStep::Finished(Some(last_key.clone())))
+                    Ok(StreamingStep::Ongoing(Some(last_key.clone())))
                 } else {
                     Err(ModelsError::SerializeError(
                         "Error in deserialization".to_string(),
