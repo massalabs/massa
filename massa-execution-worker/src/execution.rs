@@ -410,7 +410,7 @@ impl ExecutionState {
         if let Some(vesting_range) = self.find_vesting_range(&buyer_addr, &current_slot) {
             let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
             // (candidate_rolls + amount to buy)
-            let max_rolls = rolls.1 + roll_count;
+            let max_rolls = rolls.1.saturating_add(*roll_count);
             if max_rolls > vesting_range.max_rolls {
                 return Err(ExecutionError::VestingError(format!(
                     "vesting_max_rolls={} with value max_rolls={} ",
