@@ -386,25 +386,6 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -416,11 +397,11 @@
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
-<span class="kw">use </span>massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
+<span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 <span class="kw">use </span>std::collections::VecDeque;
-<span class="kw">use </span>tracing::{debug, info};
+<span class="kw">use </span>tracing::info;
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 </span><span class="kw">pub struct </span>FinalState {
@@ -509,32 +490,18 @@
         <span class="comment">// 1. init hash concatenation with the ledger hash
         </span><span class="kw">let </span>ledger_hash = <span class="self">self</span>.ledger.get_ledger_hash();
         <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = ledger_hash.to_bytes().to_vec();
-        <span class="macro">debug!</span>(<span class="string">&quot;ledger hash at slot {}: {}&quot;</span>, slot, ledger_hash);
         <span class="comment">// 2. async_pool hash
         </span>hash_concat.extend(<span class="self">self</span>.async_pool.hash.to_bytes());
-        <span class="macro">debug!</span>(<span class="string">&quot;async_pool hash at slot {}: {}&quot;</span>, slot, <span class="self">self</span>.async_pool.hash);
         <span class="comment">// 3. pos deferred_credit hash
         </span>hash_concat.extend(<span class="self">self</span>.pos_state.deferred_credits.hash.to_bytes());
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;deferred_credit hash at slot {}: {}&quot;</span>,
-            slot, <span class="self">self</span>.pos_state.deferred_credits.hash
-        );
         <span class="comment">// 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         </span><span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
             <span class="kw">as </span>usize;
         <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
             hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;cycle ({}) hash at slot {}: {}&quot;</span>,
-                cycle_info.cycle, slot, cycle_info.cycle_global_hash
-            );
         }
         <span class="comment">// 5. executed operations hash
         </span>hash_concat.extend(<span class="self">self</span>.executed_ops.hash.to_bytes());
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;executed_ops hash at slot {}: {}&quot;</span>,
-            slot, <span class="self">self</span>.executed_ops.hash
-        );
         <span class="comment">// 6. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
         <span class="macro">info!</span>(
@@ -615,7 +582,7 @@
     </span><span class="kw">pub fn </span>get_state_changes_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: Slot,
-        ledger_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        ledger_step: StreamingStep&lt;LedgerKey&gt;,
         pool_step: StreamingStep&lt;AsyncMessageId&gt;,
         cycle_step: StreamingStep&lt;u64&gt;,
         credits_step: StreamingStep&lt;Slot&gt;,
@@ -649,18 +616,13 @@
             <span class="comment">// Get ledger change that concern address &lt;= ledger_step
             </span><span class="kw">match </span>ledger_step.clone() {
                 StreamingStep::Ongoing(key) =&gt; {
-                    <span class="kw">let </span>addr = get_address_from_key(<span class="kw-2">&amp;</span>key).ok_or_else(|| {
-                        FinalStateError::LedgerError(
-                            <span class="string">&quot;Invalid key in ledger streaming step&quot;</span>.to_string(),
-                        )
-                    })<span class="question-mark">?</span>;
                     <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
                         changes
                             .ledger_changes
                             .<span class="number">0
                             </span>.iter()
                             .filter_map(|(address, change)| {
-                                <span class="kw">if </span><span class="kw-2">*</span>address &lt;= addr {
+                                <span class="kw">if </span><span class="kw-2">*</span>address &lt;= key.address {
                                     <span class="prelude-val">Some</span>((<span class="kw-2">*</span>address, change.clone()))
                                 } <span class="kw">else </span>{
                                     <span class="prelude-val">None

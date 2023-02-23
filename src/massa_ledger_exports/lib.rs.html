@@ -47,8 +47,8 @@
 <span class="kw">pub use </span>controller::LedgerController;
 <span class="kw">pub use </span>error::LedgerError;
 <span class="kw">pub use </span>key::{
-    get_address_from_key, KeyDeserializer, KeySerializer, BALANCE_IDENT, BYTECODE_IDENT,
-    DATASTORE_IDENT,
+    datastore_prefix_from_address, Key, KeyDeserializer, KeySerializer, KeyType, BALANCE_IDENT,
+    BYTECODE_IDENT, DATASTORE_IDENT,
 };
 <span class="kw">pub use </span>ledger_changes::{
     DatastoreUpdateDeserializer, DatastoreUpdateSerializer, LedgerChanges,
