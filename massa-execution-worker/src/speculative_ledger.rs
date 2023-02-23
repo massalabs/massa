@@ -123,7 +123,7 @@ impl SpeculativeLedger {
     /// `addr`: the address to query
     ///
     /// # Returns
-    /// `Some(Vec<u8>)` if the address was found, otherwise None
+    /// `Some(Bytecode)` if the address was found, otherwise None
     pub fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
         // try to read from added changes > history > final_state
         self.added_changes.get_bytecode_or_else(addr, || {
