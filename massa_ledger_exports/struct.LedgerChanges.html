@@ -25,11 +25,11 @@ no need to dig further (for example in the <code>FinalLedger</code>).</p>
 <li>None if the value is absent</li>
 <li>f() if the value is unknown</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_bytecode_or_else" class="method"><a class="srclink rightside" href="../src/massa_ledger_exports/ledger_changes.rs.html#596-625">source</a><h4 class="code-header">pub fn <a href="#method.get_bytecode_or_else" class="fn">get_bytecode_or_else</a>&lt;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;&gt;(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_bytecode_or_else" class="method"><a class="srclink rightside" href="../src/massa_ledger_exports/ledger_changes.rs.html#596-625">source</a><h4 class="code-header">pub fn <a href="#method.get_bytecode_or_else" class="fn">get_bytecode_or_else</a>&lt;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Bytecode&gt;&gt;(
     &amp;self,
     addr: &amp;Address,
     f: F
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;</h4></section></summary><div class="docblock"><p>Tries to return the executable bytecode of an entry
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Bytecode&gt;</h4></section></summary><div class="docblock"><p>Tries to return the executable bytecode of an entry
 or gets it from a function if the entry’s status is unknown.</p>
 <p>This function is used as an optimization:
 if the value can be deduced unambiguously from the <code>LedgerChanges</code>,
@@ -72,7 +72,7 @@ If the address doesn’t exist, its ledger entry is created.</p>
 <li><code>addr</code>: target address</li>
 <li><code>balance</code>: balance to set for the provided address</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.set_bytecode" class="method"><a class="srclink rightside" href="../src/massa_ledger_exports/ledger_changes.rs.html#715-754">source</a><h4 class="code-header">pub fn <a href="#method.set_bytecode" class="fn">set_bytecode</a>(&amp;mut self, addr: Address, bytecode: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;)</h4></section></summary><div class="docblock"><p>Set the executable bytecode of an address.
+</div></details><details class="toggle method-toggle" open><summary><section id="method.set_bytecode" class="method"><a class="srclink rightside" href="../src/massa_ledger_exports/ledger_changes.rs.html#715-754">source</a><h4 class="code-header">pub fn <a href="#method.set_bytecode" class="fn">set_bytecode</a>(&amp;mut self, addr: Address, bytecode: Bytecode)</h4></section></summary><div class="docblock"><p>Set the executable bytecode of an address.
 If the address doesn’t exist, its ledger entry is created.</p>
 <h5 id="parameters"><a href="#parameters">Parameters</a></h5>
 <ul>
