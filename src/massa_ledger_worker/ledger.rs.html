@@ -323,7 +323,7 @@
             .map(|bytes| {
                 bytecode_deserializer
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>bytes)
-                    .expect(<span class="string">&quot;critical: invalid balance format&quot;</span>)
+                    .expect(<span class="string">&quot;critical: invalid bytecode format&quot;</span>)
                     .<span class="number">1
             </span>})
     }
