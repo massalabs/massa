@@ -31,7 +31,7 @@ fn test_add_operation() {
         let op_gen = OpGenerator::default().expirery(2);
         storage.store_operations(create_some_operations(10, &op_gen));
         operation_pool.add_operations(storage);
-        // Wait for pool to add the operations
+        // Allow some time for the pool to add the operations
         std::thread::sleep(Duration::from_millis(100));
         assert_eq!(operation_pool.storage.get_op_refs().len(), 10);
     });
