@@ -67,22 +67,31 @@ pub struct BootstrapManager {
     update_handle: std::thread::JoinHandle<Result<(), String>>,
     listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
-    stopper_tx: crossbeam::channel::Sender<()>,
+    listen_stopper_tx: crossbeam::channel::Sender<()>,
+    update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
 impl BootstrapManager {
     /// stop the bootstrap server
-    pub fn stop(self) -> Result<(), Box<BootstrapError>> {
+    pub async fn stop(self) -> Result<(), Box<BootstrapError>> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.stopper_tx.send(()).is_err() {
+        dbg!("stopping");
+        if dbg!(self.listen_stopper_tx.send(()).is_err()) {
             warn!("bootstrap server already dropped");
+        }
+        if dbg!(self.update_stopper_tx.send(()).is_err()) {
+            warn!("bootstrap ip-list-update already dropped");
         }
         // TODO: handle join errors.
         // TODO: examine dead-lock potential
 
         // when the runtime is dropped at the end of this stop, the listener and handler are auto-aborted
-        // let _ = self.listen_handle.join();
-        // let _ = self.update_handle.join();
+        let _ = dbg!(self.update_handle.join());
+        // let _ = dbg!(self.listen_handle.join());
+        // as self is dropped, that also drops the runtime.
+        // where we've done std::thread::spawn(move || {rt.block_on(...)})
+        // the `block_on`ed task will be dropped
+        // specifically the updater
         dbg!(self.main_handle.join().unwrap())
     }
 }
@@ -103,7 +112,8 @@ pub async fn start_bootstrap_server(
     };
 
     // TODO(low prio): See if a zero capacity channel model can work
-    let (stopper_tx, stopper_rx) = crossbeam::channel::bounded::<()>(1);
+    let (listen_stopper_tx, listen_stopper_rx) = crossbeam::channel::bounded::<()>(1);
+    let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
     let outer_server_runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
     let listener = establisher
@@ -132,6 +142,7 @@ pub async fn start_bootstrap_server(
             let res = update_rt_handle.block_on(BootstrapServer::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
+                update_stopper_rx,
             ));
             dbg!("update handle stopped");
             res
@@ -144,10 +155,11 @@ pub async fn start_bootstrap_server(
             let res =
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
             dbg!("listen handle stopped");
-            res
+            dbg!(res)
         })
         .unwrap();
 
+    dbg!("spawning main loop");
     let main_handle = std::thread::Builder::new()
         .name("bs-main-loop".to_string())
         .spawn(move || {
@@ -156,7 +168,7 @@ pub async fn start_bootstrap_server(
                 network_command_sender,
                 final_state,
                 listener_rx,
-                stopper_rx,
+                listen_stopper_rx,
                 white_black_list,
                 keypair,
                 version,
@@ -173,8 +185,8 @@ pub async fn start_bootstrap_server(
         update_handle,
         listen_handle,
         main_handle,
-        // Send on this channel to trigger the tokio::select! loop to break
-        stopper_tx,
+        listen_stopper_tx,
+        update_stopper_tx,
     }))
 }
 
@@ -183,7 +195,7 @@ struct BootstrapServer<'a> {
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     listener_rx: Receiver<BsConn>,
-    stopper_rx: Receiver<()>,
+    listen_stopper_rx: Receiver<()>,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -196,10 +208,20 @@ impl BootstrapServer<'_> {
     async fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
+        stopper: Receiver<()>,
     ) -> Result<(), String> {
-        let mut interval = tokio::time::interval(interval);
         loop {
-            interval.tick().await;
+            std::thread::sleep(interval);
+            dbg!("update tick");
+            match dbg!(stopper.try_recv()) {
+                Ok(()) => return Ok(()),
+                Err(e) => match e {
+                    crossbeam::channel::TryRecvError::Empty => {}
+                    crossbeam::channel::TryRecvError::Disconnected => {
+                        return Err("update stopper unexpected disconnect".to_string())
+                    }
+                },
+            }
             // TODO: loop interval here is tick + update time. Implement a state-based,
             // rather than time-based, trigger (such as delta-count);
             list.update()?;
@@ -217,8 +239,9 @@ impl BootstrapServer<'_> {
         listener_tx: Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {
-            let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
-            match listener_tx.send(msg) {
+            let msg = dbg!(listener.accept().await.map_err(BootstrapError::IoError))?;
+            dbg!("sending");
+            match dbg!(listener_tx.send(msg)) {
                 Ok(_) => continue,
                 Err(SendError((dplx, remote_addr))) => {
                     warn!(
@@ -236,7 +259,7 @@ impl BootstrapServer<'_> {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         let mut selector = Select::new();
-        selector.recv(&self.stopper_rx);
+        selector.recv(&self.listen_stopper_rx);
         selector.recv(&self.listener_rx);
         // TODO: Work out how to integration-test this
         loop {
@@ -366,6 +389,7 @@ impl BootstrapServer<'_> {
                 );
             }
         }
+        dbg!("out of main-loop");
         // TODO: when they are synchrenous, consider if we want to signal updater and listener
         //       here, or in the stop method.
         // TODO: do we drop(self.runtime) here?
@@ -400,14 +424,15 @@ impl BootstrapServer<'_> {
         // from `crossbeam::Select::read()` documentation:
         // "Note that this method might return with success spuriously, so it’s a good idea
         // to always double check if the operation is really ready."
-        if rdy == 0 && self.stopper_rx.try_recv().is_ok() {
+        if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
+            dbg!("breaking out");
             return Ok(None);
             // - 3. If that something is anything else:
         } else {
             massa_trace!("bootstrap.lib.run.select", {});
 
             // - 3.a. double check the stop-signal is absent
-            let stop = self.stopper_rx.try_recv();
+            let stop = self.listen_stopper_rx.try_recv();
             if unlikely(stop.is_ok()) {
                 massa_trace!("bootstrap.lib.run.select.manager", {});
                 return Ok(None);
