@@ -579,14 +579,14 @@ impl LedgerDB {
 
         // datastore
         let mut opt = ReadOptions::default();
-        let serialized_key = datastore_prefix_from_address(addr);
-        opt.set_iterate_upper_bound(end_prefix(&serialized_key).unwrap());
+        let key_prefix = datastore_prefix_from_address(addr);
+        opt.set_iterate_upper_bound(end_prefix(&key_prefix).unwrap());
         for (key, _) in self
             .db
             .iterator_cf_opt(
                 handle,
                 opt,
-                IteratorMode::From(&serialized_key, Direction::Forward),
+                IteratorMode::From(&key_prefix, Direction::Forward),
             )
             .flatten()
         {
@@ -648,17 +648,17 @@ impl LedgerDB {
         &self,
         addr: &Address,
     ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
-        let serialized_key = datastore_prefix_from_address(addr);
+        let key_prefix = datastore_prefix_from_address(addr);
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(end_prefix(&serialized_key).unwrap());
+        opt.set_iterate_upper_bound(end_prefix(&key_prefix).unwrap());
 
         self.db
             .iterator_cf_opt(
                 handle,
                 opt,
-                IteratorMode::From(&serialized_key, Direction::Forward),
+                IteratorMode::From(&key_prefix, Direction::Forward),
             )
             .flatten()
             .map(|(key, data)| {
