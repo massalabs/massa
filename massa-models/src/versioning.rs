@@ -13,6 +13,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
+use thiserror::Error;
 
 use crate::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_serialization::{
@@ -44,6 +45,20 @@ pub struct VersioningInfo {
     pub timeout: u64,
 }
 
+// TODO: make VersioningInfo fields pub(crate) and impl this
+/*
+impl VersioningInfo {
+    fn try_from(
+        name: String,
+        version: u32,
+        component: VersioningComponent,
+        start: u64,
+        timeout: u64,
+    ) -> Result<Self, VersioningInfoError> {
+    }
+}
+*/
+
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
     #[derive(Copy, Clone, Debug, PartialEq)]
@@ -64,6 +79,35 @@ machine!(
 impl Default for VersioningState {
     fn default() -> Self {
         Self::Defined(Defined {})
+    }
+}
+
+#[cfg(feature = "testing")]
+/// Error for VersioningState TryFrom &str
+#[derive(Error, Debug)]
+pub enum VersioningStateTryFromError {
+    #[error("Unknown variant, cannot build state with variant: {0}")]
+    UnknownVariant(String),
+}
+
+#[cfg(feature = "testing")]
+impl TryFrom<&str> for VersioningState {
+    type Error = VersioningStateTryFromError;
+
+    fn try_from(state: &str) -> Result<Self, VersioningStateTryFromError> {
+        match state {
+            "Defined" => Ok(VersioningState::Defined(Defined::new())),
+            "Started" => {
+                let amount = Amount::zero();
+                Ok(VersioningState::Started(Started::new(amount)))
+            }
+            "LockedIn" => Ok(VersioningState::LockedIn(LockedIn::new())),
+            "Active" => Ok(VersioningState::Active(Active::new())),
+            "Failed" => Ok(VersioningState::Failed(Failed::new())),
+            _ => Err(VersioningStateTryFromError::UnknownVariant(
+                state.to_string(),
+            )),
+        }
     }
 }
 
@@ -195,6 +239,14 @@ impl Failed {
 /// Database for all versioning info
 #[derive(Debug, Clone)]
 pub struct VersioningStore(pub Arc<RwLock<VersioningStoreRaw>>);
+
+impl Default for VersioningStore {
+    fn default() -> Self {
+        Self {
+            0: Arc::new(RwLock::new(Default::default())),
+        }
+    }
+}
 
 /// Store of all versioning info
 #[derive(Debug, Clone, PartialEq)]

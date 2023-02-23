@@ -79,6 +79,7 @@ use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
+
 mod settings;
 
 async fn launch(
@@ -155,6 +156,9 @@ async fn launch(
 
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone());
+
+    // Create versioning store
+    let versioning_store: VersioningStore = Default::default();
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -547,6 +551,7 @@ async fn launch(
         massa_bootstrap::Establisher::new(),
         private_key,
         *VERSION,
+        versioning_store.clone(),
     )
     .await
     .unwrap();
