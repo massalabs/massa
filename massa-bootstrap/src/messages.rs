@@ -690,7 +690,7 @@ impl BootstrapClientMessageDeserializer {
             ),
             ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
                 max_datastore_key_length,
-                true
+                true,
             )),
             pool_step_deserializer: StreamingStepDeserializer::new(
                 AsyncMessageIdDeserializer::new(thread_count),

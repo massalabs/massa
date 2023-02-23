@@ -33,14 +33,14 @@ pub struct KeyTypeSerializer {
     // This allows us to store the datastore key length at the beginning of the key or not.
     // The datastore key length is useful when transfering multiple keys, like in packets,
     // but isn't when storing a datastore key in the ledger.
-    datastore_key_length: bool
+    datastore_key_length: bool,
 }
 
 impl KeyTypeSerializer {
     pub fn new(datastore_key_length: bool) -> Self {
         Self {
             vec_u8_serializer: VecU8Serializer::new(),
-            datastore_key_length
+            datastore_key_length,
         }
     }
 }
@@ -70,7 +70,7 @@ pub struct KeyTypeDeserializer {
     // This allows us to store the datastore key length at the beginning of the key or not.
     // The datastore key length is useful when transfering multiple keys, like in packets,
     // but isn't when storing a datastore key in the ledger.
-    datastore_key_length: bool
+    datastore_key_length: bool,
 }
 
 impl KeyTypeDeserializer {
@@ -80,7 +80,7 @@ impl KeyTypeDeserializer {
                 Included(u64::MIN),
                 Included(max_datastore_key_length as u64),
             ),
-            datastore_key_length
+            datastore_key_length,
         }
     }
 }
@@ -187,7 +187,10 @@ impl KeyDeserializer {
     pub fn new(max_datastore_key_length: u8, datastore_key_length: bool) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            key_type_deserializer: KeyTypeDeserializer::new(max_datastore_key_length, datastore_key_length),
+            key_type_deserializer: KeyTypeDeserializer::new(
+                max_datastore_key_length,
+                datastore_key_length,
+            ),
         }
     }
 }
