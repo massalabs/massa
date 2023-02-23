@@ -14,9 +14,9 @@ pub const DATASTORE_IDENT: u8 = 2u8;
 #[derive(PartialEq, Eq, Clone, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
 enum KeyTypeId {
-    BALANCE = 0,
-    BYTECODE = 1,
-    DATASTORE = 2,
+    Balance = 0,
+    Bytecode = 1,
+    Datastore = 2,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -48,10 +48,10 @@ impl KeyTypeSerializer {
 impl Serializer<KeyType> for KeyTypeSerializer {
     fn serialize(&self, value: &KeyType, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
-            KeyType::BALANCE => buffer.extend(&[u8::from(KeyTypeId::BALANCE)]),
-            KeyType::BYTECODE => buffer.extend(&[u8::from(KeyTypeId::BYTECODE)]),
+            KeyType::BALANCE => buffer.extend(&[u8::from(KeyTypeId::Balance)]),
+            KeyType::BYTECODE => buffer.extend(&[u8::from(KeyTypeId::Bytecode)]),
             KeyType::DATASTORE(data) => {
-                buffer.extend(&[u8::from(KeyTypeId::DATASTORE)]);
+                buffer.extend(&[u8::from(KeyTypeId::Datastore)]);
                 if self.datastore_key_length {
                     self.vec_u8_serializer.serialize(data, buffer)?;
                 } else {
@@ -92,9 +92,9 @@ impl Deserializer<KeyType> for KeyTypeDeserializer {
     ) -> nom::IResult<&'a [u8], KeyType, E> {
         let (rest, key_type) = nom::number::complete::le_u8(input)?;
         match KeyTypeId::try_from(key_type) {
-            Ok(KeyTypeId::BALANCE) => Ok((rest, KeyType::BALANCE)),
-            Ok(KeyTypeId::BYTECODE) => Ok((rest, KeyType::BYTECODE)),
-            Ok(KeyTypeId::DATASTORE) => {
+            Ok(KeyTypeId::Balance) => Ok((rest, KeyType::BALANCE)),
+            Ok(KeyTypeId::Bytecode) => Ok((rest, KeyType::BYTECODE)),
+            Ok(KeyTypeId::Datastore) => {
                 if self.datastore_key_length {
                     let (rest, data) = self.vec_u8_deserializer.deserialize(rest)?;
                     Ok((rest, KeyType::DATASTORE(data)))
