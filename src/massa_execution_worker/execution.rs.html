@@ -1437,6 +1437,39 @@
 <a href="#1437" id="1437">1437</a>
 <a href="#1438" id="1438">1438</a>
 <a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1448,7 +1481,7 @@
 //! * the output of the execution is extracted from the context
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
-<span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
+<span class="kw">use </span><span class="kw">crate</span>::context::{ExecutionContext, ExecutionContextSnapshot};
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
 <span class="kw">use </span><span class="kw">crate</span>::module_cache::ModuleCache;
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
@@ -1475,7 +1508,7 @@
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, RuntimeModule};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
-<span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::{debug, info, warn};
 
@@ -1645,6 +1678,59 @@
         </span><span class="self">self</span>.active_history.write().<span class="number">0</span>.push_back(exec_out);
     }
 
+    <span class="doccomment">/// Helper function.
+    /// Within a locked execution context (lock is taken at the beginning of the function then released at the end):
+    /// - if not yet executed then transfer fee and add the operation to the context then return a context snapshot
+    ///
+    /// # Arguments
+    /// * `operation`: operation to be schedule
+    /// * `sender_addr`: sender address for the operation (for fee transfer)
+
+    </span><span class="kw">fn </span>schedule_operation_for_execution(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        operation: <span class="kw-2">&amp;</span>SecureShareOperation,
+        sender_addr: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionContextSnapshot, ExecutionError&gt; {
+        <span class="kw">let </span>operation_id = operation.id;
+
+        <span class="comment">// lock execution context
+        </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+        <span class="comment">// ignore the operation if it was already executed
+        </span><span class="kw">if </span>context.is_op_executed(<span class="kw-2">&amp;</span>operation_id) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(
+                <span class="string">&quot;operation was executed previously&quot;</span>.to_string(),
+            ));
+        }
+
+        <span class="comment">// debit the fee from the operation sender
+        // fail execution if there are not enough coins
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+            context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(<span class="macro">format!</span>(
+                <span class="string">&quot;could not spend fees: {}&quot;</span>,
+                err
+            )));
+        }
+
+        <span class="comment">// from here, fees transferred. Op will be executed just after in the context of a snapshot.
+
+        // save a snapshot of the context to revert any further changes on error
+        </span><span class="kw">let </span>context_snapshot = context.get_snapshot();
+
+        <span class="comment">// set the context max gas to match the one defined in the operation
+        </span>context.max_gas = operation.get_gas_usage();
+
+        <span class="comment">// set the creator address
+        </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
+
+        <span class="comment">// set the context origin operation ID
+        </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
+
+        <span class="prelude-val">Ok</span>(context_snapshot)
+    }
+
     <span class="doccomment">/// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
@@ -1695,51 +1781,7 @@
         <span class="comment">// Add fee from operation.
         </span><span class="kw">let </span>new_block_credits = block_credits.saturating_add(operation.content.fee);
 
-        <span class="kw">let </span>context_snapshot;
-        {
-            <span class="comment">// lock execution context
-            </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-
-            <span class="comment">// ignore the operation if it was already executed
-            </span><span class="kw">if </span>context.is_op_executed(<span class="kw-2">&amp;</span>operation_id) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(
-                    <span class="string">&quot;operation was executed previously&quot;</span>.to_string(),
-                ));
-            }
-
-            <span class="comment">// debit the fee from the operation sender
-            // fail execution if there are not enough coins
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
-            {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(<span class="macro">format!</span>(
-                    <span class="string">&quot;could not spend fees: {}&quot;</span>,
-                    err
-                )));
-            }
-
-            <span class="comment">// from here, the op is considered as executed (fees transferred)
-
-            // add operation to executed ops list
-            </span>context.insert_executed_op(
-                operation_id,
-                Slot::new(operation.content.expire_period, op_thread),
-            );
-
-            <span class="comment">// save a snapshot of the context to revert any further changes on error
-            </span>context_snapshot = context.get_snapshot();
-
-            <span class="comment">// set the context max gas to match the one defined in the operation
-            </span>context.max_gas = operation.get_gas_usage();
-
-            <span class="comment">// set the creator address
-            </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
-
-            <span class="comment">// set the context origin operation ID
-            </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
-
-            <span class="comment">// execution context lock dropped here because the op-specific execution functions below acquire it again
-        </span>}
+        <span class="kw">let </span>context_snapshot = <span class="self">self</span>.schedule_operation_for_execution(operation, sender_addr)<span class="question-mark">?</span>;
 
         <span class="comment">// update block gas
         </span><span class="kw-2">*</span>remaining_block_gas = new_remaining_block_gas;
@@ -1772,7 +1814,11 @@
 
             <span class="comment">// check execution results
             </span><span class="kw">match </span>execution_result {
-                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; context.insert_executed_op(
+                    operation_id,
+                    <span class="bool-val">true</span>,
+                    Slot::new(operation.content.expire_period, op_thread),
+                ),
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="comment">// an error occurred: emit error event and reset context to snapshot
                     </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
@@ -1781,6 +1827,13 @@
                     ));
                     <span class="macro">debug!</span>(<span class="string">&quot;{}&quot;</span>, <span class="kw-2">&amp;</span>err);
                     context.reset_to_snapshot(context_snapshot, err);
+
+                    <span class="comment">// Insert op AFTER the context has been restore (else it would be overwritten)
+                    </span>context.insert_executed_op(
+                        operation_id,
+                        <span class="bool-val">false</span>,
+                        Slot::new(operation.content.expire_period, op_thread),
+                    )
                 }
             }
         }
@@ -2234,7 +2287,6 @@
 
         <span class="comment">// Get asynchronous messages to execute
         </span><span class="kw">let </span>messages = execution_context.take_async_batch(<span class="self">self</span>.config.max_async_gas);
-        <span class="macro">debug!</span>(<span class="string">&quot;executing {} messages at slot {}&quot;</span>, messages.len(), slot);
 
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
@@ -2270,8 +2322,6 @@
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             };
-
-            <span class="macro">debug!</span>(<span class="string">&quot;executing {} operations at slot {}&quot;</span>, operations.len(), slot);
 
             <span class="comment">// gather all available endorsement creators and target blocks
             </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
@@ -2431,10 +2481,11 @@
         }
 
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to active state
         </span><span class="self">self</span>.apply_active_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished &amp; state applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution state applied&quot;</span>);
     }
 
     <span class="doccomment">/// Execute an SCE-final slot
@@ -2491,10 +2542,11 @@
         <span class="comment">// execute slot
         </span><span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution started&quot;</span>);
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished &amp; result applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution result applied&quot;</span>);
     }
 
     <span class="doccomment">/// Runs a read-only execution request.
@@ -2821,6 +2873,20 @@
     <span class="doccomment">/// Get future deferred credits of an address
     </span><span class="kw">pub fn </span>get_address_future_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; BTreeMap&lt;Slot, Amount&gt; {
         <span class="macro">context_guard!</span>(<span class="self">self</span>).get_address_future_deferred_credits(address, <span class="self">self</span>.config.thread_count)
+    }
+
+    <span class="doccomment">/// Get the execution statuses of both speculative and final executions
+    ///
+    /// # Return
+    ///
+    /// * A tuple of hashmaps with:
+    /// * first the statuses for speculative executions
+    /// * second the statuses for final executions
+    </span><span class="kw">pub fn </span>get_op_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (HashMap&lt;OperationId, bool&gt;, HashMap&lt;OperationId, bool&gt;) {
+        (
+            <span class="self">self</span>.active_history.read().get_op_exec_status(),
+            <span class="self">self</span>.final_state.read().executed_ops.op_exec_status.clone(),
+        )
     }
 
     <span class="doccomment">/// Initialize the hashmap of addresses from the vesting file
