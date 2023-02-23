@@ -61,6 +61,8 @@ fn test_simple_get_operations() {
             storage.store_operations(create_some_operations(10, &op_gen));
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
+            // Allow some time for the pool to add the operations
+            std::thread::sleep(Duration::from_millis(100));
 
             // Start mock execution thread.
             // Provides the data for `pool_controller.get_block_operations`
@@ -92,7 +94,7 @@ pub fn launch_basic_get_block_operation_execution_mock(
     creator_address: Address,
     balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
 ) {
-    let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(10));
+    let receive = |er: &Receiver<ControllerMsg>| er.recv_timeout(Duration::from_millis(100));
     std::thread::spawn(move || {
         match receive(&recvr) {
             Ok(ControllerMsg::UnexecutedOpsAmong { response_tx, .. }) => {
@@ -166,6 +168,8 @@ fn test_get_operations_overflow() {
             storage.store_operations(operations);
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
+            // Allow some time for the pool to add the operations
+            std::thread::sleep(Duration::from_millis(100));
 
             // start mock execution thread
             launch_basic_get_block_operation_execution_mock(
