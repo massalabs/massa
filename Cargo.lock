@@ -2962,7 +2962,6 @@ dependencies = [
 name = "massa_versioning_worker"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "massa_consensus_exports",
  "massa_logging",
  "massa_models",

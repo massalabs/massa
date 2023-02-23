@@ -19,7 +19,6 @@ massa_versioning_exports = { path = "../massa-versioning-exports" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 
 [dev-dependencies]
-chrono = "0.4"
 
 [features]
 

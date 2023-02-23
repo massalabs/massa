@@ -72,7 +72,7 @@ impl VersioningMiddleware {
             let ratio_counts = 100.0 * *self.counts.get(&vi.version).unwrap_or(&0) as f32
                 / self.nb_blocks_considered as f32;
 
-            let ratio_counts = Amount::from_raw(ratio_counts.round() as u64);
+            let ratio_counts = Amount::from_mantissa_scale(ratio_counts.round() as u64, 0);
 
             let advance_msg = Advance {
                 start_timestamp: vi.start,
@@ -132,8 +132,6 @@ mod test {
     use massa_models::versioning::VersioningComponent;
     use parking_lot::RwLock;
     use std::sync::Arc;
-
-    use chrono::{NaiveDate, NaiveDateTime};
     use core::time::Duration;
     use massa_models::versioning::VersioningState;
     use massa_models::versioning::VersioningStoreRaw;
@@ -143,16 +141,14 @@ mod test {
     fn get_default_version_info() -> VersioningInfo {
         // A default VersioningInfo used in many tests
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
-        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 12)
-            .unwrap()
-            .and_hms_opt(17, 33, 44)
-            .unwrap();
+        let now = MassaTime::now().unwrap();
+
         return VersioningInfo {
             name: "MIP-0002AAA".to_string(),
             version: 2,
             component: VersioningComponent::Address,
-            start: Default::default(),
-            timeout: timeout.timestamp() as u64,
+            start: now.checked_add(MassaTime::from(2000)).unwrap().to_millis(),
+            timeout: now.checked_add(MassaTime::from(4000)).unwrap().to_millis(),
         };
     }
     #[tokio::test]
@@ -197,7 +193,7 @@ mod test {
         assert_eq!(store.get_current_active_version(), 0);
         assert_eq!(store.get_current_version_to_announce(), 2);
 
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        tokio::time::sleep(Duration::from_secs(2)).await;
 
         vm.new_block(2);
         vm.new_block(2);
