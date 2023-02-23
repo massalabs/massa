@@ -103,7 +103,7 @@ impl LedgerEntryDeserializer {
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             ),
-            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
+            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length + 4),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_datastore_entry_count,
                 max_datastore_key_length,

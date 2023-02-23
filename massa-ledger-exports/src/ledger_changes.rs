@@ -250,7 +250,7 @@ impl LedgerEntryUpdateDeserializer {
                 Included(Amount::MAX),
             )),
             bytecode_deserializer: SetOrKeepDeserializer::new(BytecodeDeserializer::new(
-                max_datastore_value_length,
+                max_datastore_value_length + 4,
             )),
             datastore_deserializer: DatastoreUpdateDeserializer::new(
                 max_datastore_key_length,
