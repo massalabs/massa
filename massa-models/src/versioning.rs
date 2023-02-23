@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::mem;
 use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
@@ -13,6 +14,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
+#[cfg(feature = "testing")]
 use thiserror::Error;
 
 use crate::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -31,7 +33,7 @@ pub enum VersioningComponent {
 }
 
 /// Version info per component
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Hash)]
 pub struct VersioningInfo {
     /// brief description of the versioning
     pub name: String,
@@ -44,6 +46,30 @@ pub struct VersioningInfo {
     /// a timestamp at which the deployment is considered failed (timeout > start)
     pub timeout: u64,
 }
+
+impl Ord for VersioningInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.start, &self.timeout).cmp(&(other.start, &other.timeout))
+    }
+}
+
+impl PartialOrd for VersioningInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for VersioningInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.version == other.version
+            && self.component == other.component
+            && self.start == other.start
+            && self.timeout == other.timeout
+    }
+}
+
+impl Eq for VersioningInfo {}
 
 // TODO: make VersioningInfo fields pub(crate) and impl this
 /*
@@ -82,6 +108,30 @@ impl Default for VersioningState {
     }
 }
 
+impl VersioningState {
+    /// Check if the state is coherent with the Versioning info time range
+    fn is_coherent_with(&self, v_info: &VersioningInfo, now: u64) -> bool {
+        // All we need is trying to update the state and check if it has changed
+
+        let t = match self {
+            VersioningState::Started(Started { threshold }) => threshold.clone(),
+            _ => Amount::zero(),
+        };
+
+        let advance_msg = Advance {
+            start_timestamp: v_info.start,
+            timeout: v_info.timeout,
+            threshold: t,
+            now,
+        };
+
+        let new_state = self.clone();
+        let new_state = new_state.on_advance(advance_msg);
+        new_state == *self
+    }
+}
+
+/*
 #[cfg(feature = "testing")]
 /// Error for VersioningState TryFrom &str
 #[derive(Error, Debug)]
@@ -110,6 +160,24 @@ impl TryFrom<&str> for VersioningState {
         }
     }
 }
+*/
+
+#[cfg(feature = "testing")]
+impl From<&str> for VersioningState {
+    fn from(state: &str) -> Self {
+        match state {
+            "Defined" => VersioningState::Defined(Defined::new()),
+            "Started" => {
+                let amount = Amount::zero();
+                VersioningState::Started(Started::new(amount))
+            }
+            "LockedIn" => VersioningState::LockedIn(LockedIn::new()),
+            "Active" => VersioningState::Active(Active::new()),
+            "Failed" => VersioningState::Failed(Failed::new()),
+            _ => panic!("Unknown variant ofr VersioningState: {}", state),
+        }
+    }
+}
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
@@ -120,6 +188,19 @@ enum VersioningStateTypeId {
     LockedIn = 3,
     Active = 4,
     Failed = 5,
+}
+
+impl From<&VersioningState> for VersioningStateTypeId {
+    fn from(value: &VersioningState) -> Self {
+        match value {
+            VersioningState::Error => VersioningStateTypeId::Error,
+            VersioningState::Defined(_) => VersioningStateTypeId::Defined,
+            VersioningState::Started(_) => VersioningStateTypeId::Started,
+            VersioningState::LockedIn(_) => VersioningStateTypeId::LockedIn,
+            VersioningState::Active(_) => VersioningStateTypeId::Active,
+            VersioningState::Failed(_) => VersioningStateTypeId::Failed,
+        }
+    }
 }
 
 const THRESHOLD_TRANSITION_ACCEPTED: &str = "75.0";
@@ -252,7 +333,66 @@ impl Default for VersioningStore {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VersioningStoreRaw {
     // TODO: no need to name field?
-    pub data: HashMap<VersioningInfo, VersioningState>,
+    // pub data: HashMap<VersioningInfo, VersioningState>,
+    pub data: BTreeMap<VersioningInfo, VersioningState>,
+}
+
+impl VersioningStoreRaw {
+    /// Merge our store with another (usually after a bootstrap where we received another store)
+    fn merge_with(&mut self, store_raw: &VersioningStoreRaw, now: u64) {
+        for (v_info, v_state) in store_raw.data.iter() {
+            // Check if state is ok according to versioning info time range
+            if !v_state.is_coherent_with(v_info, now) {
+                continue;
+            };
+
+            if let Some(v_state_cur) = self.data.get_mut(v_info) {
+                // Versioning info is already in store
+                // Need to check state before merging
+                let v_state_id: u32 = VersioningStateTypeId::from(v_state).into();
+                let v_state_cur_ref: &VersioningState = v_state_cur;
+                let v_state_cur_id: u32 = VersioningStateTypeId::from(v_state_cur_ref).into();
+
+                // TODO: should update if started and threshold is >
+                match v_state_cur {
+                    VersioningState::Defined(_)
+                    | VersioningState::Started(_)
+                    | VersioningState::LockedIn(_) => {
+                        // Only accept 'higher' state (e.g. started if defined, lockedin if started...)
+                        if v_state_id > v_state_cur_id {
+                            *v_state_cur = (*v_state).clone();
+                        }
+                    }
+                    _ => {
+                        // Nothing to do for already Active / Failed / Error
+                    }
+                }
+            } else {
+                // Versioning info not in store - usually a new one
+
+                // Check if name & version are uniques
+                if !self
+                    .data
+                    .iter()
+                    .all(|(i, _)| i.version != v_info.version && i.name != v_info.name)
+                {
+                    continue;
+                }
+
+                // Should we also check for version >
+                // Check for time range
+                if let Some((last_vi, _)) = self.data.last_key_value() {
+                    // TODO: should we add a min duration from start + timeout
+                    if v_info.start > last_vi.timeout && v_info.timeout > v_info.start {
+                        // Time range is ok, let's add it
+                        self.data.insert(v_info.clone(), v_state.clone());
+                    }
+                } else {
+                    self.data.insert(v_info.clone(), v_state.clone());
+                }
+            }
+        }
+    }
 }
 
 impl Default for VersioningStoreRaw {
@@ -769,6 +909,83 @@ mod test {
     }
 
     #[test]
+    fn test_merge_with() {
+        let vi_1 = VersioningInfo {
+            name: "MIP-2".to_string(),
+            version: 2,
+            component: VersioningComponent::Address,
+            start: 0,
+            timeout: 5,
+        };
+        let vs_1: VersioningState = "Active".into();
+
+        let vi_2 = VersioningInfo {
+            name: "MIP-3".to_string(),
+            version: 3,
+            component: VersioningComponent::Address,
+            start: 17,
+            timeout: 27,
+        };
+        let vs_2: VersioningState = "Defined".into();
+
+        let mut vs_raw_1 = VersioningStoreRaw {
+            data: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]),
+        };
+
+        let vs_2_2: VersioningState = "LockedIn".into();
+        let vs_raw_2 = VersioningStoreRaw {
+            data: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())]),
+        };
+
+        let now = 7; // 7s after unix epoch - between vi_1.timeout && vi_2.start
+        vs_raw_1.merge_with(&vs_raw_2, now);
+
+        assert_eq!(vs_raw_1.data.get(&vi_1).unwrap(), &vs_1);
+        assert_eq!(vs_raw_1.data.get(&vi_2).unwrap(), &vs_2_2);
+    }
+
+    #[test]
+    fn test_merge_with_invalid() {
+        let vi_1 = VersioningInfo {
+            name: "MIP-2".to_string(),
+            version: 2,
+            component: VersioningComponent::Address,
+            start: 0,
+            timeout: 5,
+        };
+        let vs_1: VersioningState = "Active".into();
+
+        let vi_2 = VersioningInfo {
+            name: "MIP-3".to_string(),
+            version: 3,
+            component: VersioningComponent::Address,
+            start: 17,
+            timeout: 27,
+        };
+        let vs_2: VersioningState = "Defined".into();
+
+        let mut vs_raw_1 = VersioningStoreRaw {
+            data: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]),
+        };
+
+        let mut vi_2_2 = vi_2.clone();
+        vi_2_2.start = 5;
+        let vs_2_2: VersioningState = "Defined".into();
+        let vs_raw_2 = VersioningStoreRaw {
+            data: BTreeMap::from([
+                (vi_1.clone(), vs_1.clone()),
+                (vi_2_2.clone(), vs_2_2.clone()),
+            ]),
+        };
+
+        let now = 7; // 7s after unix epoch - between vi_1.timeout && vi_2.start
+        vs_raw_1.merge_with(&vs_raw_2, now);
+
+        assert_eq!(vs_raw_1.data.get(&vi_1).unwrap(), &vs_1);
+        assert_eq!(vs_raw_1.data.get(&vi_2).unwrap(), &vs_2);
+    }
+
+    #[test]
     fn test_versioning_info_ser_der() {
         let vi = get_default_version_info();
 
@@ -816,7 +1033,7 @@ mod test {
         let vi = get_default_version_info();
         let state = VersioningState::Started(Started::new(Amount::from_str("25.7").unwrap()));
         let vs = VersioningStoreRaw {
-            data: HashMap::from([(vi, state)]),
+            data: BTreeMap::from([(vi, state)]),
         };
 
         let mut buffer: Vec<u8> = Vec::new();

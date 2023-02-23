@@ -49,7 +49,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 use tokio::sync::mpsc;
@@ -95,7 +95,7 @@ async fn test_bootstrap_server() {
 
     let versioning_store = VersioningStore {
         0: Arc::new(RwLock::new(VersioningStoreRaw {
-            data: HashMap::from([(vi_1, vs_1), (vi_2, vs_2)]),
+            data: BTreeMap::from([(vi_1, vs_1), (vi_2, vs_2)]),
         })),
     };
 

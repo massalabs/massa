@@ -155,6 +155,7 @@ pub trait VersioningFactoryArgs: VersioningFactory {
 mod test {
     use super::*;
     use parking_lot::RwLock;
+    use std::collections::BTreeMap;
     use std::sync::Arc;
 
     use crate::versioning::{Active, Defined, VersioningInfo, VersioningStoreRaw};
@@ -352,7 +353,7 @@ mod test {
             timeout: Default::default(),
         };
 
-        let info = HashMap::from([
+        let info = BTreeMap::from([
             (vsi_sca1.clone(), VersioningState::Defined(Defined::new())),
             (vsi_blk1.clone(), VersioningState::Active(Active::new())),
         ]);
