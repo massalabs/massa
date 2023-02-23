@@ -64,8 +64,8 @@ use crate::{
 type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    update_handle: tokio::task::JoinHandle<Result<(), String>>,
-    listen_handle: tokio::task::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
+    update_handle: std::thread::JoinHandle<Result<(), String>>,
+    listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     stopper_tx: crossbeam::channel::Sender<()>,
 }
@@ -77,8 +77,12 @@ impl BootstrapManager {
         if self.stopper_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");
         }
-        self.listen_handle.abort();
-        self.update_handle.abort();
+        // TODO: handle join errors.
+        // TODO: examine dead-lock potential
+
+        // when the runtime is dropped at the end of this stop, the listener and handler are auto-aborted
+        // let _ = self.listen_handle.join();
+        // let _ = self.update_handle.join();
         dbg!(self.main_handle.join().unwrap())
     }
 }
@@ -119,17 +123,30 @@ pub async fn start_bootstrap_server(
     )
     .map_err(BootstrapError::GeneralError)?;
 
-    let update_handle = outer_server_runtime
-        .handle()
-        .clone()
-        .spawn(BootstrapServer::run_updater(
-            white_black_list.clone(),
-            config.cache_duration.into(),
-        ));
-    let listen_handle = outer_server_runtime
-        .handle()
-        .clone()
-        .spawn(BootstrapServer::run_listener(listener, listener_tx));
+    let update_rt_handle = outer_server_runtime.handle().clone();
+
+    let updater_lists = white_black_list.clone();
+    let update_handle = thread::Builder::new()
+        .name("wb_list_updater".to_string())
+        .spawn(move || {
+            let res = update_rt_handle.block_on(BootstrapServer::run_updater(
+                updater_lists,
+                config.cache_duration.into(),
+            ));
+            dbg!("update handle stopped");
+            res
+        })
+        .unwrap();
+    let listen_rt_handle = outer_server_runtime.handle().clone();
+    let listen_handle = thread::Builder::new()
+        .name("bs_listener".to_string())
+        .spawn(move || {
+            let res =
+                listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
+            dbg!("listen handle stopped");
+            res
+        })
+        .unwrap();
 
     let main_handle = std::thread::spawn(move || {
         BootstrapServer {
