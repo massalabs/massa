@@ -48,7 +48,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tokio::runtime::Runtime;
+use tokio::runtime::{Handle, Runtime};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -148,22 +148,25 @@ pub async fn start_bootstrap_server(
         })
         .unwrap();
 
-    let main_handle = std::thread::spawn(move || {
-        BootstrapServer {
-            consensus_controller,
-            network_command_sender,
-            final_state,
-            listener_rx,
-            stopper_rx,
-            white_black_list,
-            keypair,
-            version,
-            ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
-            bootstrap_config: config,
-            outer_server_runtime,
-        }
-        .run_loop(max_bootstraps)
-    });
+    let main_handle = std::thread::Builder::new()
+        .name("bs-main-loop".to_string())
+        .spawn(move || {
+            BootstrapServer {
+                consensus_controller,
+                network_command_sender,
+                final_state,
+                listener_rx,
+                stopper_rx,
+                white_black_list,
+                keypair,
+                version,
+                ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
+                bootstrap_config: config,
+                outer_server_runtime,
+            }
+            .run_loop(max_bootstraps)
+        })
+        .unwrap();
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
     Ok(Some(BootstrapManager {
@@ -334,6 +337,7 @@ impl BootstrapServer<'_> {
                 let config = self.bootstrap_config.clone();
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                let session_handle = self.outer_server_runtime.handle().clone();
                 let _ = thread::Builder::new()
                     .name(format!("bootstrap thread, peer: {}", remote_addr))
                     .spawn(move || {
@@ -346,6 +350,7 @@ impl BootstrapServer<'_> {
                             version,
                             consensus_command_sender,
                             network_command_sender,
+                            session_handle,
                         )
                     });
 
@@ -465,10 +470,10 @@ fn run_bootstrap_session(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
+    rt_handle: Handle,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
-    let session_context = Runtime::new().unwrap();
-    session_context.handle().block_on(async move {
+    rt_handle.block_on(async move {
         let res = tokio::time::timeout(
             config.bootstrap_timeout.into(),
             manage_bootstrap(
