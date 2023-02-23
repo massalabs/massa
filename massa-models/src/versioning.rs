@@ -33,15 +33,15 @@ pub enum VersioningComponent {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct VersioningInfo {
     /// brief description of the versioning
-    pub(crate) name: String,
+    pub name: String,
     /// version
-    pub(crate) version: u32,
+    pub version: u32,
     /// Component concerned by this versioning (e.g. a new Block version)
-    pub(crate) component: VersioningComponent,
+    pub component: VersioningComponent,
     /// a timestamp at which the version gains its meaning (e.g. accepted in block header)
-    pub(crate) start: u64,
+    pub start: u64,
     /// a timestamp at which the deployment is considered failed (timeout > start)
-    pub(crate) timeout: u64,
+    pub timeout: u64,
 }
 
 machine!(
@@ -84,13 +84,13 @@ const THRESHOLD_TRANSITION_ACCEPTED: &str = "75.0";
 #[derive(Clone, Debug, PartialEq)]
 pub struct Advance {
     /// from VersioningInfo.start
-    start_timestamp: u64,
+    pub start_timestamp: u64,
     /// from VersioningInfo.timeout
-    timeout: u64,
+    pub timeout: u64,
     /// % of past blocks with this version
-    threshold: Amount,
+    pub threshold: Amount,
     /// Current time (timestamp)
-    now: u64,
+    pub now: u64,
 }
 
 transitions!(VersioningState,
@@ -559,7 +559,6 @@ impl Deserializer<VersioningStoreRaw> for VersioningStoreRawDeserializer {
         .parse(buffer)
     }
 }
-    
 
 impl VersioningStore {
     pub fn new() -> Self {
@@ -572,8 +571,8 @@ impl VersioningStore {
     // Used to check if a received block header is valid or not
     // The given timestamp is the slot time of the block
     // It is valid if the version is the
-    pub fn get_active_version_at_timestamp(&self, timestamp: Instant) -> u32 {
-        let store = self.0.read().versioning_info.clone();
+    pub fn get_active_version_at_timestamp(&self, timestamp: u64) -> u32 {
+        let store = self.0.read().data.clone();
 
         // We filter the versions that were not active back in timestamp.
         let mut all_active_versions: Vec<_> = store
@@ -617,7 +616,14 @@ impl VersioningStore {
         // Check the filter and the sort here
         let mut filtered_versions: Vec<_> = store
             .iter()
-            .filter(|&(_k, v)| matches!(v, &VersioningState::Started(_) | &VersioningState::LockedIn(_) | &VersioningState::Active(_)))
+            .filter(|&(_k, v)| {
+                matches!(
+                    v,
+                    &VersioningState::Started(_)
+                        | &VersioningState::LockedIn(_)
+                        | &VersioningState::Active(_)
+                )
+            })
             .map(|(k, _v)| k)
             .collect();
         filtered_versions.sort_by_key(|&k| k.start);
@@ -633,8 +639,6 @@ mod test {
     use super::*;
     use chrono::{NaiveDate, NaiveDateTime};
     use massa_serialization::DeserializeError;
-
-    use std::time::Duration;
 
     fn get_default_version_info() -> VersioningInfo {
         // A default VersioningInfo used in many tests

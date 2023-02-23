@@ -873,14 +873,10 @@ impl ProtocolWorker {
             return Ok(None);
         };
 
-        let Ok(slot_instant) = slot_massatime.estimate_instant() else {
-            return Ok(None);
-        };
-
         if header.content.active_version
             != self
                 .versioning_store
-                .get_active_version_at_timestamp(slot_instant)
+                .get_active_version_at_timestamp(slot_massatime.to_millis())
         {
             massa_trace!(
                 "Received a block header with incompatible active version",
