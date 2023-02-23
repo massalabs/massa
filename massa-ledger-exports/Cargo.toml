@@ -16,6 +16,7 @@ nom = "7.1"
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
+num_enum = "0.5.10"
 
 [dev-dependencies]
 massa_signature = { path = "../massa-signature" }

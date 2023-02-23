@@ -262,6 +262,11 @@ impl ExecutionController for ExecutionControllerImpl {
     fn clone_box(&self) -> Box<dyn ExecutionController> {
         Box::new(self.clone())
     }
+
+    /// See trait definition
+    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
+        self.execution_state.read().get_op_exec_status()
+    }
 }
 
 /// Execution manager

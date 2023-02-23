@@ -9,7 +9,7 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
+use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
@@ -208,7 +208,7 @@ impl FinalState {
     pub fn get_state_changes_part(
         &self,
         slot: Slot,
-        ledger_step: StreamingStep<Vec<u8>>,
+        ledger_step: StreamingStep<LedgerKey>,
         pool_step: StreamingStep<AsyncMessageId>,
         cycle_step: StreamingStep<u64>,
         credits_step: StreamingStep<Slot>,
@@ -242,18 +242,13 @@ impl FinalState {
             // Get ledger change that concern address <= ledger_step
             match ledger_step.clone() {
                 StreamingStep::Ongoing(key) => {
-                    let addr = get_address_from_key(&key).ok_or_else(|| {
-                        FinalStateError::LedgerError(
-                            "Invalid key in ledger streaming step".to_string(),
-                        )
-                    })?;
                     let ledger_changes: LedgerChanges = LedgerChanges(
                         changes
                             .ledger_changes
                             .0
                             .iter()
                             .filter_map(|(address, change)| {
-                                if *address <= addr {
+                                if *address <= key.address {
                                     Some((*address, change.clone()))
                                 } else {
                                     None

@@ -474,9 +474,106 @@ mod tests {
             ..Default::default()
         });
 
+        println!("events: {:?}", events);
+
         // match the events
         assert!(events.len() == 1, "One event was expected");
         assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
+        // stop the execution controller
+        manager.stop();
+    }
+
+    /// # Context
+    ///
+    /// Mostly the same as send_and_receive_async_message
+    ///
+    /// Functional test that tests the execution status of an operation is correctly recorded
+    ///
+    /// 1. a block is created containing an `execute_sc` operation
+    /// 2. this operation executes the `send_message` of the smart contract
+    /// 3. `send_message` stores the `receive_message` of the smart contract on the block
+    /// 4. `receive_message` contains the message handler function
+    /// 5. `send_message` sends a message to the `receive_message` address
+    /// 6. we set the created block as finalized so the message is actually sent
+    /// 7. we execute the following slots for 300 milliseconds to reach the message execution period
+    /// 8. once the execution period is over we stop the execution controller
+    /// 9. we retrieve the status of the executed operation(s)
+    /// 10 we check that the monitored operation has been executed
+    /// 11 we check that the execution status is the one we expected
+    ///
+    #[test]
+    #[serial]
+    fn test_operation_execution_status() {
+        // setup the period duration and the maximum gas for asynchronous messages execution
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            max_async_gas: 100_000,
+            cursor_delay: 0.into(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+        // keypair associated to thread 0
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        // load bytecodes
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/send_message.wasm");
+        let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
+        let mut datastore = BTreeMap::new();
+        datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+        // create the block contaning the smart contract execution operation
+        let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+        let tested_op_id = operation.id.clone();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        // sleep for 150ms to reach the message execution period
+        std::thread::sleep(Duration::from_millis(150));
+
+        let ops = controller.get_op_exec_status();
+        dbg!(&ops);
+
+        // match the events
+        assert!(
+            ops.1.contains_key(&tested_op_id),
+            "Expected operation not found"
+        );
+        let status = ops.1.get(&tested_op_id).unwrap(); // we can unwrap, thanks to assert above
+        assert!(
+            status == &true,
+            "Operation execution status expected to be Some(true)"
+        );
+
+        println!(
+            "Operation {:?} execution status: {:?}",
+            &tested_op_id, &status
+        );
+
         // stop the execution controller
         manager.stop();
     }

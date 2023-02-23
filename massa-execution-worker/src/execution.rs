@@ -9,7 +9,7 @@
 //! * the output of the execution is extracted from the context
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
-use crate::context::ExecutionContext;
+use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
@@ -36,7 +36,7 @@ use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
@@ -206,6 +206,59 @@ impl ExecutionState {
         self.active_history.write().0.push_back(exec_out);
     }
 
+    /// Helper function.
+    /// Within a locked execution context (lock is taken at the beginning of the function then released at the end):
+    /// - if not yet executed then transfer fee and add the operation to the context then return a context snapshot
+    ///
+    /// # Arguments
+    /// * `operation`: operation to be schedule
+    /// * `sender_addr`: sender address for the operation (for fee transfer)
+
+    fn schedule_operation_for_execution(
+        &self,
+        operation: &SecureShareOperation,
+        sender_addr: Address,
+    ) -> Result<ExecutionContextSnapshot, ExecutionError> {
+        let operation_id = operation.id;
+
+        // lock execution context
+        let mut context = context_guard!(self);
+
+        // ignore the operation if it was already executed
+        if context.is_op_executed(&operation_id) {
+            return Err(ExecutionError::IncludeOperationError(
+                "operation was executed previously".to_string(),
+            ));
+        }
+
+        // debit the fee from the operation sender
+        // fail execution if there are not enough coins
+        if let Err(err) =
+            context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
+        {
+            return Err(ExecutionError::IncludeOperationError(format!(
+                "could not spend fees: {}",
+                err
+            )));
+        }
+
+        // from here, fees transferred. Op will be executed just after in the context of a snapshot.
+
+        // save a snapshot of the context to revert any further changes on error
+        let context_snapshot = context.get_snapshot();
+
+        // set the context max gas to match the one defined in the operation
+        context.max_gas = operation.get_gas_usage();
+
+        // set the creator address
+        context.creator_address = Some(operation.content_creator_address);
+
+        // set the context origin operation ID
+        context.origin_operation_id = Some(operation_id);
+
+        Ok(context_snapshot)
+    }
+
     /// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
@@ -256,51 +309,7 @@ impl ExecutionState {
         // Add fee from operation.
         let new_block_credits = block_credits.saturating_add(operation.content.fee);
 
-        let context_snapshot;
-        {
-            // lock execution context
-            let mut context = context_guard!(self);
-
-            // ignore the operation if it was already executed
-            if context.is_op_executed(&operation_id) {
-                return Err(ExecutionError::IncludeOperationError(
-                    "operation was executed previously".to_string(),
-                ));
-            }
-
-            // debit the fee from the operation sender
-            // fail execution if there are not enough coins
-            if let Err(err) =
-                context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
-            {
-                return Err(ExecutionError::IncludeOperationError(format!(
-                    "could not spend fees: {}",
-                    err
-                )));
-            }
-
-            // from here, the op is considered as executed (fees transferred)
-
-            // add operation to executed ops list
-            context.insert_executed_op(
-                operation_id,
-                Slot::new(operation.content.expire_period, op_thread),
-            );
-
-            // save a snapshot of the context to revert any further changes on error
-            context_snapshot = context.get_snapshot();
-
-            // set the context max gas to match the one defined in the operation
-            context.max_gas = operation.get_gas_usage();
-
-            // set the creator address
-            context.creator_address = Some(operation.content_creator_address);
-
-            // set the context origin operation ID
-            context.origin_operation_id = Some(operation_id);
-
-            // execution context lock dropped here because the op-specific execution functions below acquire it again
-        }
+        let context_snapshot = self.schedule_operation_for_execution(operation, sender_addr)?;
 
         // update block gas
         *remaining_block_gas = new_remaining_block_gas;
@@ -333,7 +342,11 @@ impl ExecutionState {
 
             // check execution results
             match execution_result {
-                Ok(_) => {}
+                Ok(_) => context.insert_executed_op(
+                    operation_id,
+                    true,
+                    Slot::new(operation.content.expire_period, op_thread),
+                ),
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
                     let err = ExecutionError::RuntimeError(format!(
@@ -342,6 +355,13 @@ impl ExecutionState {
                     ));
                     debug!("{}", &err);
                     context.reset_to_snapshot(context_snapshot, err);
+
+                    // Insert op AFTER the context has been restore (else it would be overwritten)
+                    context.insert_executed_op(
+                        operation_id,
+                        false,
+                        Slot::new(operation.content.expire_period, op_thread),
+                    )
                 }
             }
         }
@@ -1381,6 +1401,20 @@ impl ExecutionState {
     /// Get future deferred credits of an address
     pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    }
+
+    /// Get the execution statuses of both speculative and final executions
+    ///
+    /// # Return
+    ///
+    /// * A tuple of hashmaps with:
+    /// * first the statuses for speculative executions
+    /// * second the statuses for final executions
+    pub fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
+        (
+            self.active_history.read().get_op_exec_status(),
+            self.final_state.read().executed_ops.op_exec_status.clone(),
+        )
     }
 
     /// Initialize the hashmap of addresses from the vesting file
