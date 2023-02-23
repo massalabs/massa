@@ -61,6 +61,7 @@ fn test_simple_get_operations() {
             storage.store_operations(create_some_operations(10, &op_gen));
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
+            // Wait for pool to add the operations
             std::thread::sleep(Duration::from_millis(100));
 
             // Start mock execution thread.
@@ -167,6 +168,7 @@ fn test_get_operations_overflow() {
             storage.store_operations(operations);
             let unexecuted_ops = storage.get_op_refs().clone();
             pool_controller.add_operations(storage);
+            // Wait for pool to add the operations
             std::thread::sleep(Duration::from_millis(100));
 
             // start mock execution thread
