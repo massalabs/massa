@@ -114,7 +114,7 @@ impl LedgerController for FinalLedger {
             .map(|bytes| {
                 bytecode_deserializer
                     .deserialize::<DeserializeError>(&bytes)
-                    .expect("critical: invalid balance format")
+                    .expect("critical: invalid bytecode format")
                     .1
             })
     }
