@@ -69,25 +69,17 @@
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.get_op_exec_status" class="method"><a class="srclink rightside" href="../src/massa_execution_exports/controller_traits.rs.html#62">source</a><h4 class="code-header">fn <a href="#tymethod.get_op_exec_status" class="fn">get_op_exec_status</a>(
     &amp;self
 ) -&gt; (<a class="struct" href="https://doc.rust-lang.org/nightly/std/collections/hash/map/struct.HashMap.html" title="struct std::collections::hash::map::HashMap">HashMap</a>&lt;OperationId, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/std/collections/hash/map/struct.HashMap.html" title="struct std::collections::hash::map::HashMap">HashMap</a>&lt;OperationId, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>&gt;)</h4></section></summary><div class="docblock"><p>Get the execution status of operation that have been executed both speculatively or finaly</p>
-<h5 id="return-value-1"><a href="#return-value-1">Return value</a></h5>
-<ul>
-<li><code>(speculative_statuses, final_statuses)</code></li>
-<li>for each hashmap:</li>
-<li>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code>key: the operation id</code></pre></div>
-</li>
-<li>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code>value: <span class="bool-val">true</span>: operation executed successfully,</code></pre></div>
-</li>
-<li>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code>       <span class="bool-val">false</span>: operation failed</code></pre></div>
-</li>
-</ul>
+<p>Return value
+<code>(speculative_statuses, final_statuses)</code>
+for each hashmap:
+key: the operation id
+value: true: operation executed successfully,
+false: operation failed</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.get_final_and_active_data_entry" class="method"><a class="srclink rightside" href="../src/massa_execution_exports/controller_traits.rs.html#69-72">source</a><h4 class="code-header">fn <a href="#tymethod.get_final_and_active_data_entry" class="fn">get_final_and_active_data_entry</a>(
     &amp;self,
     input: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(Address, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;)&gt;
 ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;, <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;&gt;)&gt; <a href="#" class="tooltip" data-notable-ty="Vec&lt;(Option&lt;Vec&lt;u8&gt;&gt;, Option&lt;Vec&lt;u8&gt;&gt;)&gt;">ⓘ</a></h4></section></summary><div class="docblock"><p>Get a copy of a single datastore entry with its final and active values</p>
-<h5 id="return-value-2"><a href="#return-value-2">Return value</a></h5>
+<h5 id="return-value-1"><a href="#return-value-1">Return value</a></h5>
 <ul>
 <li><code>(final_data_entry, active_data_entry)</code></li>
 </ul>
