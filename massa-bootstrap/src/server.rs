@@ -4,6 +4,7 @@ use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 use massa_final_state::{FinalState, FinalStateError};
+use massa_ledger_exports::Key as LedgerKey;
 use massa_logging::massa_trace;
 use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -379,7 +380,7 @@ pub async fn stream_bootstrap_information(
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
-    mut last_ledger_step: StreamingStep<Vec<u8>>,
+    mut last_ledger_step: StreamingStep<LedgerKey>,
     mut last_pool_step: StreamingStep<AsyncMessageId>,
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,

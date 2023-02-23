@@ -5,7 +5,7 @@ use massa_models::{
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 
-use crate::{LedgerChanges, LedgerError};
+use crate::{Key, LedgerChanges, LedgerError};
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
@@ -56,13 +56,13 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Return: Tuple with data and last key
     fn get_ledger_part(
         &self,
-        last_key: StreamingStep<Vec<u8>>,
-    ) -> Result<(Vec<u8>, StreamingStep<Vec<u8>>), ModelsError>;
+        last_key: StreamingStep<Key>,
+    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError>;
 
     /// Set a part of the ledger
     /// Used for bootstrap
     /// Return: Last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Vec<u8>>, ModelsError>;
+    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Key>, ModelsError>;
 
     /// Reset the ledger
     ///

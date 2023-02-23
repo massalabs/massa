@@ -2654,6 +2654,7 @@ dependencies = [
  "massa_serialization 0.1.0",
  "massa_signature",
  "nom",
+ "num_enum",
  "serde",
  "serde_json",
  "tempfile",
