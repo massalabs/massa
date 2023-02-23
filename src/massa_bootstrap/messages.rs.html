@@ -835,7 +835,6 @@
 <a href="#835" id="835">835</a>
 <a href="#836" id="836">836</a>
 <a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -848,8 +847,9 @@
 };
 <span class="kw">use </span>massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 <span class="kw">use </span>massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
-<span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, KeyDeserializer, KeySerializer};
-<span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
+<span class="kw">use </span>massa_ledger_exports::{KeyDeserializer, KeySerializer};
+<span class="comment">// use massa_models::block::BlockDeserializerArgs;
+</span><span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::serialization::{
@@ -1351,7 +1351,6 @@
 
 <span class="doccomment">/// Messages used during bootstrap by client
 </span><span class="attr">#[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>BootstrapClientMessage {
     <span class="doccomment">/// Ask for bootstrap peers
     </span>AskBootstrapPeers,
@@ -1360,7 +1359,7 @@
         <span class="doccomment">/// Slot we are attached to for changes
         </span>last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
         <span class="doccomment">/// Last received ledger key
-        </span>last_ledger_step: StreamingStep&lt;LedgerKey&gt;,
+        </span>last_ledger_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
         <span class="doccomment">/// Last received async message id
         </span>last_pool_step: StreamingStep&lt;AsyncMessageId&gt;,
         <span class="doccomment">/// Last received Proof of Stake cycle
@@ -1394,7 +1393,7 @@
 </span><span class="kw">pub struct </span>BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
-    ledger_step_serializer: StreamingStepSerializer&lt;LedgerKey, KeySerializer&gt;,
+    ledger_step_serializer: StreamingStepSerializer&lt;Vec&lt;u8&gt;, KeySerializer&gt;,
     pool_step_serializer: StreamingStepSerializer&lt;AsyncMessageId, AsyncMessageIdSerializer&gt;,
     cycle_step_serializer: StreamingStepSerializer&lt;u64, U64VarIntSerializer&gt;,
     slot_step_serializer: StreamingStepSerializer&lt;Slot, SlotSerializer&gt;,
@@ -1410,7 +1409,7 @@
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new(<span class="bool-val">true</span>)),
+            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new()),
             pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
             cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
             slot_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
@@ -1502,7 +1501,7 @@
     id_deserializer: U32VarIntDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
-    ledger_step_deserializer: StreamingStepDeserializer&lt;LedgerKey, KeyDeserializer&gt;,
+    ledger_step_deserializer: StreamingStepDeserializer&lt;Vec&lt;u8&gt;, KeyDeserializer&gt;,
     pool_step_deserializer: StreamingStepDeserializer&lt;AsyncMessageId, AsyncMessageIdDeserializer&gt;,
     cycle_step_deserializer: StreamingStepDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     slot_step_deserializer: StreamingStepDeserializer&lt;Slot, SlotDeserializer&gt;,
@@ -1528,7 +1527,6 @@
             ),
             ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
                 max_datastore_key_length,
-                <span class="bool-val">true</span>,
             )),
             pool_step_deserializer: StreamingStepDeserializer::new(
                 AsyncMessageIdDeserializer::new(thread_count),

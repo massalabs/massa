@@ -400,6 +400,11 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -411,7 +416,7 @@
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
-<span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
+<span class="kw">use </span>massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 <span class="kw">use </span>std::collections::VecDeque;
@@ -610,7 +615,7 @@
     </span><span class="kw">pub fn </span>get_state_changes_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: Slot,
-        ledger_step: StreamingStep&lt;LedgerKey&gt;,
+        ledger_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
         pool_step: StreamingStep&lt;AsyncMessageId&gt;,
         cycle_step: StreamingStep&lt;u64&gt;,
         credits_step: StreamingStep&lt;Slot&gt;,
@@ -644,13 +649,18 @@
             <span class="comment">// Get ledger change that concern address &lt;= ledger_step
             </span><span class="kw">match </span>ledger_step.clone() {
                 StreamingStep::Ongoing(key) =&gt; {
+                    <span class="kw">let </span>addr = get_address_from_key(<span class="kw-2">&amp;</span>key).ok_or_else(|| {
+                        FinalStateError::LedgerError(
+                            <span class="string">&quot;Invalid key in ledger streaming step&quot;</span>.to_string(),
+                        )
+                    })<span class="question-mark">?</span>;
                     <span class="kw">let </span>ledger_changes: LedgerChanges = LedgerChanges(
                         changes
                             .ledger_changes
                             .<span class="number">0
                             </span>.iter()
                             .filter_map(|(address, change)| {
-                                <span class="kw">if </span><span class="kw-2">*</span>address &lt;= key.address {
+                                <span class="kw">if </span><span class="kw-2">*</span>address &lt;= addr {
                                     <span class="prelude-val">Some</span>((<span class="kw-2">*</span>address, change.clone()))
                                 } <span class="kw">else </span>{
                                     <span class="prelude-val">None
