@@ -616,7 +616,6 @@
 <a href="#616" id="616">616</a>
 <a href="#617" id="617">617</a>
 <a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -629,7 +628,6 @@
 <span class="kw">use </span>massa_execution_exports::StorageCostsConstants;
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
-<span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::collections::BTreeSet;
@@ -742,8 +740,8 @@
     /// `addr`: the address to query
     ///
     /// # Returns
-    /// `Some(Bytecode)` if the address was found, otherwise None
-    </span><span class="kw">pub fn </span>get_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Bytecode&gt; {
+    /// `Some(Vec&lt;u8&gt;)` if the address was found, otherwise None
+    </span><span class="kw">pub fn </span>get_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="comment">// try to read from added changes &gt; history &gt; final_state
         </span><span class="self">self</span>.added_changes.get_bytecode_or_else(addr, || {
             <span class="kw">match </span><span class="self">self</span>.active_history.read().fetch_bytecode(addr) {
@@ -880,7 +878,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         creator_address: Address,
         addr: Address,
-        bytecode: Bytecode,
+        bytecode: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check for address existence
         </span><span class="kw">if </span>!<span class="self">self</span>.entry_exists(<span class="kw-2">&amp;</span>creator_address) {
@@ -898,7 +896,7 @@
             )));
         }
 
-        <span class="kw">if </span>bytecode.<span class="number">0</span>.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
+        <span class="kw">if </span>bytecode.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                 <span class="string">&quot;could not create SC address {}: bytecode size exceeds maximum allowed size&quot;</span>,
                 addr
@@ -913,7 +911,7 @@
             </span>.checked_add(
                 <span class="self">self</span>.storage_costs_constants
                     .ledger_cost_per_byte
-                    .checked_mul_u64(bytecode.<span class="number">0</span>.len().try_into().map_err(|<span class="kw">_</span>| {
+                    .checked_mul_u64(bytecode.len().try_into().map_err(|<span class="kw">_</span>| {
                         ExecutionError::RuntimeError(
                             <span class="string">&quot;overflow while calculating bytecode ledger size costs&quot;</span>.to_string(),
                         )
@@ -945,7 +943,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         caller_addr: <span class="kw-2">&amp;</span>Address,
         addr: <span class="kw-2">&amp;</span>Address,
-        bytecode: Bytecode,
+        bytecode: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check for address existence
         </span><span class="kw">if </span>!<span class="self">self</span>.entry_exists(addr) {
@@ -955,15 +953,15 @@
             )));
         }
 
-        <span class="kw">if </span>bytecode.<span class="number">0</span>.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
+        <span class="kw">if </span>bytecode.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                 <span class="string">&quot;could not set bytecode for address {}: bytecode size exceeds maximum allowed size&quot;</span>,
                 addr
             )));
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(old_bytecode_size) = <span class="self">self</span>.get_bytecode(addr).map(|b| b.<span class="number">0</span>.len()) {
-            <span class="kw">let </span>diff_size_storage: i64 = (bytecode.<span class="number">0</span>.len() <span class="kw">as </span>i64) - (old_bytecode_size <span class="kw">as </span>i64);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(old_bytecode_size) = <span class="self">self</span>.get_bytecode(addr).map(|b| b.len()) {
+            <span class="kw">let </span>diff_size_storage: i64 = (bytecode.len() <span class="kw">as </span>i64) - (old_bytecode_size <span class="kw">as </span>i64);
             <span class="kw">let </span>storage_cost_bytecode = <span class="self">self
                 </span>.storage_costs_constants
                 .ledger_cost_per_byte
@@ -983,7 +981,7 @@
             <span class="kw">let </span>bytecode_storage_cost = <span class="self">self
                 </span>.storage_costs_constants
                 .ledger_cost_per_byte
-                .checked_mul_u64(bytecode.<span class="number">0</span>.len() <span class="kw">as </span>u64)
+                .checked_mul_u64(bytecode.len() <span class="kw">as </span>u64)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError(
                         <span class="string">&quot;overflow when calculating storage cost of bytecode&quot;</span>.to_string(),
