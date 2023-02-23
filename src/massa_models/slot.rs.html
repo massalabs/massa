@@ -545,10 +545,10 @@
     }
 
     <span class="doccomment">/// returns the maximal slot
-    </span><span class="kw">pub const fn </span>max(thread_count: u8) -&gt; Slot {
+    </span><span class="kw">pub const fn </span>max() -&gt; Slot {
         Slot {
             period: u64::MAX,
-            thread: thread_count,
+            thread: u8::MAX,
         }
     }
 
