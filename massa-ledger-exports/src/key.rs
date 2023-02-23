@@ -2,7 +2,9 @@ use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
 };
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::error::{ContextError, ParseError};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
@@ -10,6 +12,7 @@ use std::ops::Bound::Included;
 pub const BALANCE_IDENT: u8 = 0u8;
 pub const BYTECODE_IDENT: u8 = 1u8;
 pub const DATASTORE_IDENT: u8 = 2u8;
+pub const KEY_VERSION: u64 = 0;
 
 #[derive(PartialEq, Eq, Clone, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
@@ -139,6 +142,7 @@ pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
 pub struct KeySerializer {
     address_serializer: AddressSerializer,
     key_type_serializer: KeyTypeSerializer,
+    version_byte_serializer: U64VarIntSerializer,
 }
 
 impl KeySerializer {
@@ -147,6 +151,7 @@ impl KeySerializer {
         Self {
             address_serializer: AddressSerializer::new(),
             key_type_serializer: KeyTypeSerializer::new(with_datastore_key_length),
+            version_byte_serializer: U64VarIntSerializer::new(),
         }
     }
 }
@@ -166,6 +171,8 @@ impl Serializer<Key> for KeySerializer {
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Key, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.version_byte_serializer
+            .serialize(&KEY_VERSION, buffer)?;
         self.address_serializer.serialize(&value.address, buffer)?;
         self.key_type_serializer
             .serialize(&value.key_type, buffer)?;
@@ -179,6 +186,7 @@ impl Serializer<Key> for KeySerializer {
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
     key_type_deserializer: KeyTypeDeserializer,
+    version_byte_deserializer: U64VarIntDeserializer,
 }
 
 impl KeyDeserializer {
@@ -190,6 +198,7 @@ impl KeyDeserializer {
                 max_datastore_key_length,
                 with_datastore_key_length,
             ),
+            version_byte_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
     }
 }
@@ -225,7 +234,8 @@ impl Deserializer<Key> for KeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Key, E> {
-        let (rest, address) = self.address_deserializer.deserialize(buffer)?;
+        let (rest, _version) = self.version_byte_deserializer.deserialize(buffer)?;
+        let (rest, address) = self.address_deserializer.deserialize(rest)?;
         let (rest, key_type) = self.key_type_deserializer.deserialize(rest)?;
 
         Ok((rest, Key { address, key_type }))

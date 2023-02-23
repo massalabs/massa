@@ -20,6 +20,7 @@ use massa_execution_exports::{
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
+use massa_models::bytecode::Bytecode;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -288,13 +289,13 @@ impl ExecutionContext {
     /// * `max_gas`: maximal amount of asynchronous gas available
     ///
     /// # Returns
-    /// A vector of `(Option<Vec<u8>>, AsyncMessage)` pairs where:
-    /// * `Option<Vec<u8>>` is the bytecode to execute (or `None` if not found)
+    /// A vector of `(Option<Bytecode>, AsyncMessage)` pairs where:
+    /// * `Option<Bytecode>` is the bytecode to execute (or `None` if not found)
     /// * `AsyncMessage` is the asynchronous message to execute
     pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
-    ) -> Vec<(Option<Vec<u8>>, AsyncMessage)> {
+    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
         self.speculative_async_pool
             .take_batch_to_execute(self.slot, max_gas)
             .into_iter()
@@ -388,7 +389,7 @@ impl ExecutionContext {
     }
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
-    pub fn create_new_sc_address(&mut self, bytecode: Vec<u8>) -> Result<Address, ExecutionError> {
+    pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
         // TODO: collision problem:
         //  prefix addresses to know if they are SCs or normal,
         //  otherwise people can already create new accounts by sending coins to the right hash
@@ -442,7 +443,7 @@ impl ExecutionContext {
     }
 
     /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
-    pub fn get_bytecode(&self, address: &Address) -> Option<Vec<u8>> {
+    pub fn get_bytecode(&self, address: &Address) -> Option<Bytecode> {
         self.speculative_ledger.get_bytecode(address)
     }
 
@@ -745,7 +746,7 @@ impl ExecutionContext {
     pub fn set_bytecode(
         &mut self,
         address: &Address,
-        bytecode: Vec<u8>,
+        bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
         // check access right
         if !self.has_write_rights_on(address) {

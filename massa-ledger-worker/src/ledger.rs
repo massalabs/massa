@@ -10,6 +10,7 @@ use massa_ledger_exports::{
 use massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
+    bytecode::{Bytecode, BytecodeDeserializer},
     error::ModelsError,
     slot::Slot,
     streaming_step::StreamingStep,
@@ -106,9 +107,16 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
-    fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
+    fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
+        let bytecode_deserializer = BytecodeDeserializer::new(u64::MAX);
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Bytecode)
+            .map(|bytes| {
+                bytecode_deserializer
+                    .deserialize::<DeserializeError>(&bytes)
+                    .expect("critical: invalid balance format")
+                    .1
+            })
     }
 
     /// Checks if a ledger entry exists

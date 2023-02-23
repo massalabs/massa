@@ -10,6 +10,7 @@ use anyhow::{anyhow, bail, Result};
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
+use massa_models::bytecode::Bytecode;
 use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
@@ -164,7 +165,7 @@ impl Interface for InterfaceImpl {
         });
 
         // return the target bytecode
-        Ok(bytecode)
+        Ok(bytecode.0)
     }
 
     /// Called to finish the call process after a bytecode calls a function from another one.
@@ -225,7 +226,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the newly created address
     fn create_module(&self, bytecode: &[u8]) -> Result<String> {
-        match context_guard!(self).create_new_sc_address(bytecode.to_vec()) {
+        match context_guard!(self).create_new_sc_address(Bytecode(bytecode.to_vec())) {
             Ok(addr) => Ok(addr.to_string()),
             Err(err) => bail!("couldn't create new SC address: {}", err),
         }
@@ -423,7 +424,7 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
         match context.get_bytecode(&address) {
-            Some(bytecode) => Ok(bytecode),
+            Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
         }
     }
@@ -433,7 +434,7 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = Address::from_str(address)?;
         match context.get_bytecode(&address) {
-            Some(bytecode) => Ok(bytecode),
+            Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
         }
     }
@@ -745,7 +746,7 @@ impl Interface for InterfaceImpl {
     fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
         let mut execution_context = context_guard!(self);
         let address = execution_context.get_current_address()?;
-        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+        match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }
@@ -756,7 +757,7 @@ impl Interface for InterfaceImpl {
     fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
         let address = massa_models::address::Address::from_str(address)?;
         let mut execution_context = context_guard!(self);
-        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+        match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }

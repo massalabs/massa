@@ -1,6 +1,7 @@
 use massa_hash::Hash;
 use massa_models::{
-    address::Address, amount::Amount, error::ModelsError, slot::Slot, streaming_step::StreamingStep,
+    address::Address, amount::Amount, bytecode::Bytecode, error::ModelsError, slot::Slot,
+    streaming_step::StreamingStep,
 };
 use std::collections::BTreeSet;
 use std::fmt::Debug;
@@ -24,7 +25,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
-    fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>>;
+    fn get_bytecode(&self, addr: &Address) -> Option<Bytecode>;
 
     /// Checks if a ledger entry exists
     ///
