@@ -71,10 +71,10 @@ pub(crate) struct LedgerDB {
     db: DB,
     thread_count: u8,
     key_serializer: KeySerializer,
+    key_deserializer: KeyDeserializer,
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
     len_serializer: U64VarIntSerializer,
-    max_datastore_key_length: u8,
     ledger_part_size_message_bytes: u64,
     #[cfg(feature = "testing")]
     amount_deserializer: AmountDeserializer,
@@ -135,10 +135,10 @@ impl LedgerDB {
             db,
             thread_count,
             key_serializer: KeySerializer::new(),
+            key_deserializer: KeyDeserializer::new(max_datastore_key_length),
             amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             len_serializer: U64VarIntSerializer::new(),
-            max_datastore_key_length,
             ledger_part_size_message_bytes,
             #[cfg(feature = "testing")]
             amount_deserializer: AmountDeserializer::new(
@@ -245,9 +245,9 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        let serialized_key = datastore_prefix_from_address(addr);
+        let key_prefix = datastore_prefix_from_address(addr);
 
-        opt.set_iterate_range(serialized_key.clone()..end_prefix(&serialized_key).unwrap());
+        opt.set_iterate_range(key_prefix.clone()..end_prefix(&key_prefix).unwrap());
 
         let mut iter = self
             .db
@@ -280,7 +280,6 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let opt = ReadOptions::default();
         let ser = VecU8Serializer::new();
-        let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
         let mut ledger_part = Vec::new();
 
         // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
@@ -307,7 +306,7 @@ impl LedgerDB {
         // Iterates over the whole database
         for (key, entry) in db_iterator.flatten() {
             if (ledger_part.len() as u64) < (self.ledger_part_size_message_bytes) {
-                let (_, key) = key_deserializer.deserialize(&key)?;
+                let (_, key) = self.key_deserializer.deserialize(&key)?;
                 self.key_serializer.serialize(&key, &mut ledger_part)?;
                 ser.serialize(&entry.to_vec(), &mut ledger_part)?;
                 new_cursor = StreamingStep::Ongoing(key);
@@ -331,14 +330,13 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
-        let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
         let mut last_key: Rc<Option<Key>> = Rc::new(None);
         let mut batch = LedgerBatch::new(self.get_ledger_hash());
 
         // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
         let (rest, _) = many0(|input: &'a [u8]| {
             let (rest, (key, value)) = tuple((
-                |input| key_deserializer.deserialize(input),
+                |input| self.key_deserializer.deserialize(input),
                 |input| vec_u8_deserializer.deserialize(input),
             ))(input)?;
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
@@ -416,7 +414,7 @@ impl LedgerDB {
             .expect(KEY_LEN_SER_ERROR);
         let hash = Hash::compute_from(&[&len_bytes, &serialized_key, value].concat());
         batch.ledger_hash ^= hash;
-        batch.aeh_list.insert(serialized_key.to_vec(), hash);
+        batch.aeh_list.insert(serialized_key.clone(), hash);
         batch.write_batch.put_cf(handle, serialized_key, value);
     }
 
@@ -490,7 +488,7 @@ impl LedgerDB {
         }
         let hash = Hash::compute_from(&[&len_bytes, &serialized_key, value].concat());
         batch.ledger_hash ^= hash;
-        batch.aeh_list.insert(serialized_key.to_vec(), hash);
+        batch.aeh_list.insert(serialized_key.clone(), hash);
         batch.write_batch.put_cf(handle, serialized_key, value);
     }
 
@@ -576,7 +574,6 @@ impl LedgerDB {
         // datastore
         let mut opt = ReadOptions::default();
         let serialized_key = datastore_prefix_from_address(addr);
-        let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length);
         opt.set_iterate_upper_bound(end_prefix(&serialized_key).unwrap());
         for (key, _) in self
             .db
@@ -587,13 +584,14 @@ impl LedgerDB {
             )
             .flatten()
         {
-            let (_, deserlized_key) = key_deserializer
+            let (_, deserlized_key) = self.key_deserializer
                 .deserialize::<DeserializeError>(&key)
                 .expect(KEY_DESER_ERROR);
             self.delete_key(handle, batch, &deserlized_key);
         }
     }
 }
+
 // test helpers
 impl LedgerDB {
     /// Get every address and their corresponding balance.
