@@ -926,12 +926,6 @@
 <a href="#926" id="926">926</a>
 <a href="#927" id="927">927</a>
 <a href="#928" id="928">928</a>
-<a href="#929" id="929">929</a>
-<a href="#930" id="930">930</a>
-<a href="#931" id="931">931</a>
-<a href="#932" id="932">932</a>
-<a href="#933" id="933">933</a>
-<a href="#934" id="934">934</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1819,16 +1813,10 @@
     ///
     /// # Arguments
     /// * `op_id`: operation ID
-    /// * `op_exec_status` : the status of the execution of the operation (true: success, false: failed).
     /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
-    </span><span class="kw">pub fn </span>insert_executed_op(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        op_id: OperationId,
-        op_exec_status: bool,
-        op_valid_until_slot: Slot,
-    ) {
+    </span><span class="kw">pub fn </span>insert_executed_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op_id: OperationId, op_valid_until_slot: Slot) {
         <span class="self">self</span>.speculative_executed_ops
-            .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
+            .insert_executed_op(op_id, op_valid_until_slot)
     }
 
     <span class="doccomment">/// gets the cycle information for an address
