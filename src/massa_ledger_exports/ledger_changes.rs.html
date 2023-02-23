@@ -997,6 +997,7 @@
 };
 <span class="kw">use </span>massa_models::address::{Address, AddressDeserializer, AddressSerializer};
 <span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+<span class="kw">use </span>massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 <span class="kw">use </span>massa_serialization::{
@@ -1016,7 +1017,7 @@
     <span class="doccomment">/// change the balance
     </span><span class="kw">pub </span>balance: SetOrKeep&lt;Amount&gt;,
     <span class="doccomment">/// change the executable bytecode
-    </span><span class="kw">pub </span>bytecode: SetOrKeep&lt;Vec&lt;u8&gt;&gt;,
+    </span><span class="kw">pub </span>bytecode: SetOrKeep&lt;Bytecode&gt;,
     <span class="doccomment">/// change datastore entries
     </span><span class="kw">pub </span>datastore: BTreeMap&lt;Vec&lt;u8&gt;, SetOrDelete&lt;Vec&lt;u8&gt;&gt;&gt;,
 }
@@ -1158,7 +1159,7 @@
 <span class="doccomment">/// Serializer for `LedgerEntryUpdate`
 </span><span class="kw">pub struct </span>LedgerEntryUpdateSerializer {
     balance_serializer: SetOrKeepSerializer&lt;Amount, AmountSerializer&gt;,
-    bytecode_serializer: SetOrKeepSerializer&lt;Vec&lt;u8&gt;, VecU8Serializer&gt;,
+    bytecode_serializer: SetOrKeepSerializer&lt;Bytecode, BytecodeSerializer&gt;,
     datastore_serializer: DatastoreUpdateSerializer,
 }
 
@@ -1167,7 +1168,7 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
-            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new()),
+            bytecode_serializer: SetOrKeepSerializer::new(BytecodeSerializer::new()),
             datastore_serializer: DatastoreUpdateSerializer::new(),
         }
     }
@@ -1219,7 +1220,7 @@
 <span class="doccomment">/// Deserializer for `LedgerEntryUpdate`
 </span><span class="kw">pub struct </span>LedgerEntryUpdateDeserializer {
     amount_deserializer: SetOrKeepDeserializer&lt;Amount, AmountDeserializer&gt;,
-    bytecode_deserializer: SetOrKeepDeserializer&lt;Vec&lt;u8&gt;, VecU8Deserializer&gt;,
+    bytecode_deserializer: SetOrKeepDeserializer&lt;Bytecode, BytecodeDeserializer&gt;,
     datastore_deserializer: DatastoreUpdateDeserializer,
 }
 
@@ -1235,9 +1236,8 @@
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             )),
-            bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(
-                Included(u64::MIN),
-                Included(max_datastore_value_length),
+            bytecode_deserializer: SetOrKeepDeserializer::new(BytecodeDeserializer::new(
+                max_datastore_value_length,
             )),
             datastore_deserializer: DatastoreUpdateDeserializer::new(
                 max_datastore_key_length,
@@ -1580,11 +1580,11 @@
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    </span><span class="kw">pub fn </span>get_bytecode_or_else&lt;F: FnOnce() -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt;(
+    </span><span class="kw">pub fn </span>get_bytecode_or_else&lt;F: FnOnce() -&gt; <span class="prelude-ty">Option</span>&lt;Bytecode&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
         f: F,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Bytecode&gt; {
         <span class="comment">// Get the changes to the provided address
         </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.get(addr) {
             <span class="comment">// This entry is being replaced by a new one: get the bytecode from the new entry
@@ -1699,7 +1699,7 @@
     /// # Parameters
     /// * `addr`: target address
     /// * `bytecode`: executable bytecode to assign to that address
-    </span><span class="kw">pub fn </span>set_bytecode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: Address, bytecode: Vec&lt;u8&gt;) {
+    </span><span class="kw">pub fn </span>set_bytecode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: Address, bytecode: Bytecode) {
         <span class="comment">// Get the current changes being applied to the entry associated to that address
         </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.entry(addr) {
             <span class="comment">// There are changes currently being applied to the entry

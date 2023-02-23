@@ -1471,6 +1471,7 @@
 <a href="#1471" id="1471">1471</a>
 <a href="#1472" id="1472">1472</a>
 <a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1494,6 +1495,7 @@
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
+<span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
@@ -2130,7 +2132,7 @@
             }
 
             <span class="comment">// Load bytecode. Assume empty bytecode if not found.
-            </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default();
+            </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default().<span class="number">0</span>;
         }
 
         <span class="comment">// Execute bytecode
@@ -2166,11 +2168,11 @@
     </span><span class="kw">pub fn </span>execute_async_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message: AsyncMessage,
-        bytecode: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+        bytecode: <span class="prelude-ty">Option</span>&lt;Bytecode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// prepare execution context
         </span><span class="kw">let </span>context_snapshot;
-        <span class="kw">let </span>bytecode: Vec&lt;u8&gt; = {
+        <span class="kw">let </span>bytecode: Bytecode = {
             <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -2230,7 +2232,7 @@
         </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .write()
-            .get_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
+            .get_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, message.max_gas)<span class="question-mark">?</span>;
         <span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module.clone(),
@@ -2242,7 +2244,7 @@
             <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .save_module(<span class="kw-2">&amp;</span>bytecode, module, init_cost);
+                    .save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, module, init_cost);
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="prelude-val">Err</span>(err) =&gt; {
@@ -2288,7 +2290,6 @@
 
         <span class="comment">// Get asynchronous messages to execute
         </span><span class="kw">let </span>messages = execution_context.take_async_batch(<span class="self">self</span>.config.max_async_gas);
-        <span class="macro">debug!</span>(<span class="string">&quot;executing {} messages at slot {}&quot;</span>, messages.len(), slot);
 
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
@@ -2324,8 +2325,6 @@
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             };
-
-            <span class="macro">debug!</span>(<span class="string">&quot;executing {} operations at slot {}&quot;</span>, operations.len(), slot);
 
             <span class="comment">// gather all available endorsement creators and target blocks
             </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
@@ -2485,10 +2484,11 @@
         }
 
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to active state
         </span><span class="self">self</span>.apply_active_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished &amp; state applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution state applied&quot;</span>);
     }
 
     <span class="doccomment">/// Execute an SCE-final slot
@@ -2545,10 +2545,11 @@
         <span class="comment">// execute slot
         </span><span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution started&quot;</span>);
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished &amp; result applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution result applied&quot;</span>);
     }
 
     <span class="doccomment">/// Runs a read-only execution request.
@@ -2635,7 +2636,8 @@
                 <span class="comment">// get the bytecode, default to an empty vector
                 </span><span class="kw">let </span>bytecode = execution_context
                     .get_bytecode(<span class="kw-2">&amp;</span>target_addr)
-                    .unwrap_or_default();
+                    .unwrap_or_default()
+                    .<span class="number">0</span>;
 
                 <span class="comment">// set the execution context for execution
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
