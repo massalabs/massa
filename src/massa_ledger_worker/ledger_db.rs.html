@@ -807,19 +807,6 @@
 <a href="#807" id="807">807</a>
 <a href="#808" id="808">808</a>
 <a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -829,7 +816,6 @@
 <span class="kw">use </span>massa_models::{
     address::{Address, ADDRESS_SIZE_BYTES},
     amount::AmountSerializer,
-    bytecode::BytecodeSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
     slot::{Slot, SlotSerializer},
@@ -898,7 +884,6 @@
     key_deserializer: KeyDeserializer,
     key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
-    bytecode_serializer: BytecodeSerializer,
     slot_serializer: SlotSerializer,
     len_serializer: U64VarIntSerializer,
     ledger_part_size_message_bytes: u64,
@@ -965,7 +950,6 @@
             key_deserializer: KeyDeserializer::new(max_datastore_key_length, <span class="bool-val">true</span>),
             key_deserializer_db: KeyDeserializer::new(max_datastore_key_length, <span class="bool-val">false</span>),
             amount_serializer: AmountSerializer::new(),
-            bytecode_serializer: BytecodeSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             len_serializer: U64VarIntSerializer::new(),
             ledger_part_size_message_bytes,
@@ -1280,11 +1264,6 @@
             .serialize(<span class="kw-2">&amp;</span>ledger_entry.balance, <span class="kw-2">&amp;mut </span>bytes_balance)
             .unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>bytes_bytecode = Vec::new();
-        <span class="self">self</span>.bytecode_serializer
-            .serialize(<span class="kw-2">&amp;</span>ledger_entry.bytecode, <span class="kw-2">&amp;mut </span>bytes_bytecode)
-            .unwrap();
-
         <span class="comment">// balance
         </span><span class="self">self</span>.put_entry_value(
             handle,
@@ -1298,7 +1277,7 @@
             handle,
             batch,
             <span class="kw-2">&amp;</span>Key::new(addr, KeyType::BYTECODE),
-            <span class="kw-2">&amp;</span>bytes_bytecode,
+            <span class="kw-2">&amp;</span>ledger_entry.bytecode,
         );
 
         <span class="comment">// datastore
@@ -1372,13 +1351,8 @@
 
         <span class="comment">// bytecode
         </span><span class="kw">if let </span>SetOrKeep::Set(bytecode) = entry_update.bytecode {
-            <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
-            <span class="self">self</span>.bytecode_serializer
-                .serialize(<span class="kw-2">&amp;</span>bytecode, <span class="kw-2">&amp;mut </span>bytes)
-                .unwrap();
-
             <span class="kw">let </span>bytecode_key = Key::new(addr, KeyType::BYTECODE);
-            <span class="self">self</span>.update_key_value(handle, batch, <span class="kw-2">&amp;</span>bytecode_key, <span class="kw-2">&amp;</span>bytes);
+            <span class="self">self</span>.update_key_value(handle, batch, <span class="kw-2">&amp;</span>bytecode_key, <span class="kw-2">&amp;</span>bytecode);
         }
 
         <span class="comment">// datastore

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["BYTECODE_VERSION"],"struct":["Bytecode","BytecodeDeserializer","BytecodeSerializer"]};
