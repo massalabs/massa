@@ -6,6 +6,7 @@ use massa_models::amount::Amount;
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
 use num::rational::Ratio;
+use std::path::PathBuf;
 
 /// Storage cost constants
 #[derive(Debug, Clone, Copy)]
@@ -65,4 +66,6 @@ pub struct ExecutionConfig {
     pub max_read_only_gas: u64,
     /// Gas costs
     pub gas_costs: GasCosts,
+    /// path of the initial vesting file
+    pub initial_vesting_path: PathBuf,
 }

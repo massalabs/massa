@@ -23,8 +23,9 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::ExecutionStats;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -73,6 +74,8 @@ pub(crate) struct ExecutionState {
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
     module_cache: Arc<RwLock<ModuleCache>>,
+    // Map of vesting addresses
+    vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
 }
 
 impl ExecutionState {
@@ -92,6 +95,14 @@ impl ExecutionState {
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
 
+        // Initialize the map of vesting addresses from file
+        let vesting_registry = match ExecutionState::init_vesting_registry(&config) {
+            Ok(map) => Arc::new(map),
+            Err(e) => {
+                panic!("{}", e);
+            }
+        };
+
         // Initialize the SC module cache
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(
             config.gas_costs.clone(),
@@ -104,6 +115,7 @@ impl ExecutionState {
             final_state.clone(),
             active_history.clone(),
             module_cache.clone(),
+            vesting_registry.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -127,6 +139,7 @@ impl ExecutionState {
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             module_cache,
             config,
+            vesting_registry,
         }
     }
 
@@ -304,7 +317,7 @@ impl ExecutionState {
                 self.execute_callsc_op(&operation.content.op, sender_addr)
             }
             OperationType::RollBuy { .. } => {
-                self.execute_roll_buy_op(&operation.content.op, sender_addr)
+                self.execute_roll_buy_op(&operation.content.op, sender_addr, block_slot)
             }
             OperationType::RollSell { .. } => {
                 self.execute_roll_sell_op(&operation.content.op, sender_addr)
@@ -385,12 +398,26 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         buyer_addr: Address,
+        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
         let roll_count = match operation {
             OperationType::RollBuy { roll_count } => roll_count,
             _ => panic!("unexpected operation type"),
         };
+
+        // control vesting max_rolls for buyer address
+        if let Some(vesting_range) = self.find_vesting_range(&buyer_addr, &current_slot) {
+            let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
+            // (candidate_rolls + amount to buy)
+            let max_rolls = rolls.1 + roll_count;
+            if max_rolls > vesting_range.max_rolls {
+                return Err(ExecutionError::VestingError(format!(
+                    "vesting_max_rolls={} with value max_rolls={} ",
+                    vesting_range.max_rolls, max_rolls
+                )));
+            }
+        }
 
         // acquire write access to the context
         let mut context = context_guard!(self);
@@ -763,6 +790,7 @@ impl ExecutionState {
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
+            self.vesting_registry.clone(),
         );
 
         // Get asynchronous messages to execute
@@ -1074,6 +1102,7 @@ impl ExecutionState {
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
+            self.vesting_registry.clone(),
         );
 
         // run the interpreter according to the target type
@@ -1352,5 +1381,58 @@ impl ExecutionState {
     /// Get future deferred credits of an address
     pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    }
+
+    /// Initialize the hashmap of addresses from the vesting file
+    pub fn init_vesting_registry(
+        config: &ExecutionConfig,
+    ) -> Result<PreHashMap<Address, Vec<VestingRange>>, ExecutionError> {
+        let mut hashmap: PreHashMap<Address, Vec<VestingRange>> = serde_json::from_str(
+            &std::fs::read_to_string(&config.initial_vesting_path).map_err(|err| {
+                ExecutionError::InitVestingError(format!(
+                    "error loading initial vesting file  {}",
+                    err
+                ))
+            })?,
+        )
+        .map_err(|err| {
+            ExecutionError::InitVestingError(format!(
+                "error on deserialize initial vesting file  {}",
+                err
+            ))
+        })?;
+
+        for v in hashmap.values_mut() {
+            *v = v
+                .windows(2)
+                .map(|elements| {
+                    let (mut prev, next) = (elements[0], elements[1]);
+                    let end_slot =
+                        next.start_slot
+                            .get_prev_slot(config.thread_count)
+                            .map_err(|e| {
+                                ExecutionError::InitVestingError(format!(
+                                    "error on get prev slot for init vesting : {}",
+                                    e
+                                ))
+                            })?;
+                    prev.end_slot = end_slot;
+                    Ok(prev)
+                })
+                .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
+        }
+
+        Ok(hashmap)
+    }
+
+    /// find a vesting range in the registry, otherwise return None
+    fn find_vesting_range(&self, addr: &Address, current_slot: &Slot) -> Option<&VestingRange> {
+        let Some(vector) = self.vesting_registry.get(addr) else {
+            return None;
+        };
+
+        vector.iter().find(|vesting| {
+            vesting.start_slot <= *current_slot && vesting.end_slot >= *current_slot
+        })
     }
 }

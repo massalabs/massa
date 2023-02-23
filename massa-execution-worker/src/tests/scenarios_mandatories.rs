@@ -1,9 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #[cfg(test)]
 mod tests {
-
     use crate::start_execution_worker;
-    use crate::tests::mock::{create_block, get_random_address_full, get_sample_state};
+    use crate::tests::mock::{
+        create_block, get_initials_vesting, get_random_address_full, get_sample_state,
+    };
     use massa_execution_exports::{
         ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
         ReadOnlyExecutionTarget,
@@ -30,9 +31,14 @@ mod tests {
     #[test]
     #[serial]
     fn test_execution_shutdown() {
+        let vesting = get_initials_vesting(false);
+        let config = ExecutionConfig {
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
         let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
         let (mut manager, _controller) = start_execution_worker(
-            ExecutionConfig::default(),
+            config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
         );
@@ -42,9 +48,14 @@ mod tests {
     #[test]
     #[serial]
     fn test_sending_command() {
+        let vesting = get_initials_vesting(false);
+        let config = ExecutionConfig {
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
         let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
         let (mut manager, controller) = start_execution_worker(
-            ExecutionConfig::default(),
+            config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
         );
@@ -59,10 +70,12 @@ mod tests {
     #[test]
     #[serial]
     fn test_readonly_execution() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -143,10 +156,12 @@ mod tests {
     #[test]
     #[serial]
     fn test_nested_call_gas_usage() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -275,10 +290,12 @@ mod tests {
     #[test]
     #[serial]
     fn test_get_call_coins() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -398,11 +415,13 @@ mod tests {
     #[test]
     #[serial]
     fn send_and_receive_async_message() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -476,10 +495,12 @@ mod tests {
     #[test]
     #[serial]
     fn local_execution() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -581,10 +602,12 @@ mod tests {
     #[test]
     #[serial]
     fn sc_deployment() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -669,11 +692,13 @@ mod tests {
     #[test]
     #[serial]
     fn send_and_receive_async_message_with_trigger() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 1_000_000_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -812,10 +837,12 @@ mod tests {
     #[test]
     #[serial]
     pub fn send_and_receive_transaction() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -889,11 +916,176 @@ mod tests {
 
     #[test]
     #[serial]
-    pub fn roll_buy() {
+    fn vesting_transfer_coins() {
+        let vesting = get_initials_vesting(true);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+        // generate the sender_keypair and recipient_address
+        let sender_keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let sender_addr = Address::from_public_key(&sender_keypair.get_public_key());
+        let (recipient_address, _keypair) = get_random_address_full();
+        // create the operation
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::Transaction {
+                    recipient_address,
+                    amount: Amount::from_str("120000").unwrap(),
+                },
+            },
+            OperationSerializer::new(),
+            &sender_keypair,
+        )
+        .unwrap();
+        // create the block containing the transaction operation
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block so the transaction is processed
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(100));
+
+        // retrieve the event emitted by the execution error
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        assert!(events[0].data.contains("massa_execution_error"));
+        assert!(events[0]
+            .data
+            .contains("We reach the vesting constraint : vesting_min_balance=200000 with value min_balance=190000"));
+
+        // check recipient balance
+        assert!(sample_state
+            .read()
+            .ledger
+            .get_balance(&recipient_address)
+            .is_none());
+        // Check sender balance
+        assert_eq!(
+            sample_state
+                .read()
+                .ledger
+                .get_balance(&sender_addr)
+                .unwrap(),
+            Amount::from_str("300000").unwrap()
+        );
+
+        // stop the execution controller
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    fn vesting_max_rolls() {
+        // setup the period duration
+        let vesting = get_initials_vesting(true);
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+        // generate the keypair and its corresponding address
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let address = Address::from_public_key(&keypair.get_public_key());
+        // create the operation
+        // try to buy 60 rolls so (100+60) and the max rolls specified for this address in vesting is 150
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::RollBuy { roll_count: 60 },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+        // create the block containing the roll buy operation
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block so the purchase is processed
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(100));
+
+        // retrieve the event emitted by the execution error
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        assert!(events[0].data.contains("massa_execution_error"));
+        assert!(events[0].data.contains(
+            "We reach the vesting constraint : vesting_max_rolls=150 with value max_rolls=160"
+        ));
+
+        // check roll count of the buyer address and its balance, same as start because operation was rejected
+        let sample_read = sample_state.read();
+        assert_eq!(sample_read.pos_state.get_rolls_for(&address), 100);
+        assert_eq!(
+            sample_read.ledger.get_balance(&address).unwrap(),
+            Amount::from_str("300_000").unwrap()
+        );
+        // stop the execution controller
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    pub fn roll_buy() {
+        let vesting = get_initials_vesting(false);
+        // setup the period duration
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -939,7 +1131,7 @@ mod tests {
             Default::default(),
             block_storage.clone(),
         );
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_millis(100));
         // check roll count of the buyer address and its balance
         let sample_read = sample_state.read();
         assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);
@@ -954,6 +1146,7 @@ mod tests {
     #[test]
     #[serial]
     pub fn roll_sell() {
+        let vesting = get_initials_vesting(false);
         // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
         // Check for resulting roll count + resulting deferred credits
 
@@ -963,6 +1156,7 @@ mod tests {
             periods_per_cycle: 2,
             thread_count: 2,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..Default::default()
         };
         // turn off roll selling on missed block opportunities
@@ -1093,11 +1287,13 @@ mod tests {
     #[test]
     #[serial]
     fn sc_execution_error() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1158,11 +1354,13 @@ mod tests {
     #[test]
     #[serial]
     fn sc_datastore() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1220,11 +1418,13 @@ mod tests {
     #[test]
     #[serial]
     fn set_bytecode_error() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1282,11 +1482,13 @@ mod tests {
     #[test]
     #[serial]
     fn datastore_manipulations() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1380,11 +1582,13 @@ mod tests {
     #[test]
     #[serial]
     fn events_from_switching_blockclique() {
+        let vesting = get_initials_vesting(false);
         // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
         // as data. Then we check if we get an event as expected.
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         let storage: Storage = Storage::create_root();
@@ -1517,11 +1721,13 @@ mod tests {
     #[test]
     #[serial]
     fn sc_builtins() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
