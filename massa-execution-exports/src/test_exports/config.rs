@@ -6,6 +6,7 @@ use crate::{ExecutionConfig, StorageCostsConstants};
 use massa_models::config::*;
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
+use std::path::PathBuf;
 
 impl Default for ExecutionConfig {
     /// default configuration used for testing
@@ -56,6 +57,7 @@ impl Default for ExecutionConfig {
             )
             .unwrap(),
             max_module_cache_size: 1000,
+            initial_vesting_path: PathBuf::default(),
         }
     }
 }

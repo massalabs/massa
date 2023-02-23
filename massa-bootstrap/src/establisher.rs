@@ -14,13 +14,8 @@ pub mod types {
 #[cfg(not(test))]
 /// Connection types
 pub mod types {
-    use crate::tools::normalize_ip;
     use massa_time::MassaTime;
-    use std::{
-        collections::HashSet,
-        io,
-        net::{IpAddr, SocketAddr},
-    };
+    use std::{io, net::SocketAddr};
     use tokio::{
         net::{TcpListener, TcpStream},
         time::timeout,
@@ -40,23 +35,9 @@ pub mod types {
 
     impl DefaultListener {
         /// Accepts a new incoming connection from this listener.
-        pub async fn accept(
-            &mut self,
-            whitelist: &Option<HashSet<IpAddr>>,
-            blacklist: &Option<HashSet<IpAddr>>,
-        ) -> io::Result<(Duplex, SocketAddr)> {
+        pub async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
             // accept
             let (sock, mut remote_addr) = self.0.accept().await?;
-            let ip = normalize_ip(remote_addr.ip());
-            if let Some(blacklist) = blacklist && blacklist.contains(&ip) {
-                return Err(io::Error::new(io::ErrorKind::Other, "IP is blacklisted"));
-            }
-            if let Some(whitelist) = whitelist && !whitelist.contains(&ip) {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "A whitelist exists and the IP is not whitelisted",
-                ));
-            }
             // normalize address
             remote_addr.set_ip(remote_addr.ip().to_canonical());
             Ok((sock, remote_addr))
@@ -96,7 +77,17 @@ pub mod types {
         /// # Argument
         /// * `addr`: `SocketAddr` we want to bind to.
         pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
-            Ok(DefaultListener(TcpListener::bind(addr).await?))
+            // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
+            let socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, None)?;
+
+            socket.set_only_v6(false)?;
+            socket.set_nonblocking(true)?;
+            socket.bind(&addr.into())?;
+
+            // Number of connections to queue, set to the hardcoded value used by tokio
+            socket.listen(1024)?;
+
+            Ok(DefaultListener(TcpListener::from_std(socket.into())?))
         }
 
         /// Get the connector with associated timeout

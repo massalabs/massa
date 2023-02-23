@@ -80,6 +80,20 @@ impl FinalState {
         })
     }
 
+    /// Reset the final state to the initial state.
+    ///
+    /// USED ONLY FOR BOOTSTRAP
+    pub fn reset(&mut self) {
+        self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        self.ledger.reset();
+        self.async_pool.reset();
+        self.pos_state.reset();
+        self.executed_ops.reset();
+        self.changes_history.clear();
+        // reset the final state hash
+        self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
+    }
+
     /// Compute the current state hash.
     ///
     /// Used when finalizing a slot.

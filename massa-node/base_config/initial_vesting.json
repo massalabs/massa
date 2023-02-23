@@ -1,0 +1,64 @@
+{
+    "AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D": [
+        {
+            "slot": {
+                "period": 0,
+                "thread": 0
+            },
+            "min_balance": "100000",
+            "max_rolls": 45
+        },
+        {
+            "slot": {
+                "period": 27000,
+                "thread": 0
+            },
+            "min_balance": "50000",
+            "max_rolls": 50
+        },
+        {
+            "slot": {
+                "period": 54000,
+                "thread": 0
+            },
+            "min_balance": "0",
+            "max_rolls": 18446744073709551615
+        }
+    ],
+    "AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs": [
+        {
+            "slot": {
+                "period": 0,
+                "thread": 0
+            },
+            "min_balance": "100000",
+            "max_rolls": 10
+        },
+        {
+            "slot": {
+                "period": 27000,
+                "thread": 0
+            },
+            "min_balance": "0",
+            "max_rolls": 18446744073709551615
+        }
+    ],
+    "AU12spryWgt7VUoT9LRi8Roe5WVgUPLeaQ6GXMd9ABUQyfv62Ab18": [
+        {
+            "slot": {
+                "period": 0,
+                "thread": 0
+            },
+            "min_balance": "1000000000",
+            "max_rolls": 0
+        },
+        {
+            "slot": {
+                "period": 1000000,
+                "thread": 0
+            },
+            "min_balance": "1000000000",
+            "max_rolls": 0
+        }
+    ]
+}

@@ -65,6 +65,11 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Return: Last key inserted
     fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Key>, ModelsError>;
 
+    /// Reset the ledger
+    ///
+    /// USED FOR BOOTSTRAP ONLY
+    fn reset(&mut self);
+
     /// Get every address and their corresponding balance.
     ///
     /// IMPORTANT: This should only be used for debug and test purposes.
