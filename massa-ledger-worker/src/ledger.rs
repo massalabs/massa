@@ -109,7 +109,7 @@ impl LedgerController for FinalLedger {
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
     fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
-        let bytecode_deserializer = BytecodeDeserializer::new(MAX_DATASTORE_VALUE_LENGTH  + 4);
+        let bytecode_deserializer = BytecodeDeserializer::new(MAX_DATASTORE_VALUE_LENGTH + 4);
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Bytecode)
             .map(|bytes| {
