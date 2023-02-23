@@ -9,7 +9,7 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{Key, LedgerChanges, LedgerController};
+use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
@@ -194,7 +194,7 @@ impl FinalState {
     pub fn get_state_changes_part(
         &self,
         slot: Slot,
-        ledger_step: StreamingStep<Key>,
+        ledger_step: StreamingStep<LedgerKey>,
         pool_step: StreamingStep<AsyncMessageId>,
         cycle_step: StreamingStep<u64>,
         credits_step: StreamingStep<Slot>,
