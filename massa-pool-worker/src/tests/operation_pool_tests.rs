@@ -21,7 +21,7 @@ use crate::tests::tools::OpGenerator;
 
 use super::tools::{create_some_operations, operation_pool_test, pool_test};
 use massa_execution_exports::test_exports::MockExecutionControllerMessage;
-use massa_models::{amount::Amount, slot::Slot, operation::OperationId};
+use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use std::time::Duration;
 
@@ -134,20 +134,24 @@ fn test_pool() {
                     let target_slot = Slot::new(period, thread);
                     let (ids, storage) = pool.get_block_operations(&target_slot);
 
-                    assert_eq!(ids
-                        .iter()
-                        .map(|id| (
-                            *id,
-                            storage
-                                .read_operations()
-                                .get(id)
-                                .unwrap()
-                                .serialized_data
-                                .clone()
-                        )).collect::<Vec<(OperationId, Vec<u8>)>>(), thread_tx_lists[target_slot.thread as usize]
+                    assert_eq!(
+                        ids.iter()
+                            .map(|id| (
+                                *id,
+                                storage
+                                    .read_operations()
+                                    .get(id)
+                                    .unwrap()
+                                    .serialized_data
+                                    .clone()
+                            ))
+                            .collect::<Vec<(OperationId, Vec<u8>)>>(),
+                        thread_tx_lists[target_slot.thread as usize]
                             .iter()
                             .filter(|(_, r)| r.contains(&target_slot.period))
-                            .map(|(op, _)| (op.id, op.serialized_data.clone())).collect::<Vec<(OperationId, Vec<u8>)>>());
+                            .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                            .collect::<Vec<(OperationId, Vec<u8>)>>()
+                    );
                 }
             }
 
@@ -167,22 +171,25 @@ fn test_pool() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
                     let (ids, storage) = pool.get_block_operations(&target_slot);
-                    assert_eq!(ids
-                        .iter()
-                        .map(|id| (
-                            *id,
-                            storage
-                                .read_operations()
-                                .get(id)
-                                .unwrap()
-                                .serialized_data
-                                .clone()
-                        )).collect::<Vec<(OperationId, Vec<u8>)>>(), 
+                    assert_eq!(
+                        ids.iter()
+                            .map(|id| (
+                                *id,
+                                storage
+                                    .read_operations()
+                                    .get(id)
+                                    .unwrap()
+                                    .serialized_data
+                                    .clone()
+                            ))
+                            .collect::<Vec<(OperationId, Vec<u8>)>>(),
                         thread_tx_lists[target_slot.thread as usize]
                             .iter()
                             .filter(|(_, r)| r.contains(&target_slot.period))
                             .take(max_count)
-                            .map(|(op, _)| (op.id, op.serialized_data.clone())).collect::<Vec<(OperationId, Vec<u8>)>>());
+                            .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                            .collect::<Vec<(OperationId, Vec<u8>)>>()
+                    );
                 }
             }
 
