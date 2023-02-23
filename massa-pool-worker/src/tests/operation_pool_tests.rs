@@ -31,7 +31,7 @@ fn test_add_operation() {
         let op_gen = OpGenerator::default().expirery(2);
         storage.store_operations(create_some_operations(10, &op_gen));
         operation_pool.add_operations(storage);
-        // Wait for pool to add the operations
+        // Allow some time for the pool to add the operations
         std::thread::sleep(Duration::from_millis(100));
         assert_eq!(operation_pool.storage.get_op_refs().len(), 10);
     });
@@ -48,7 +48,7 @@ fn test_add_irrelevant_operation() {
         storage.store_operations(create_some_operations(10, &op_gen));
         operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
         operation_pool.add_operations(storage);
-        // Wait for pool to add the operations
+        // Allow some time for the pool to add the operations
         std::thread::sleep(Duration::from_millis(100));
         assert_eq!(operation_pool.storage.get_op_refs().len(), 0);
     });
@@ -95,7 +95,7 @@ fn test_pool() {
             }
 
             pool.add_operations(storage);
-            // Wait for pool to add the operations
+            // Allow some time for the pool to add the operations
             std::thread::sleep(Duration::from_millis(200));
 
             // sort from bigger fee to smaller and truncate
@@ -205,7 +205,7 @@ fn test_pool() {
                 let mut storage = storage_base.clone_without_refs();
                 storage.store_operations(vec![op.clone()]);
                 pool.add_operations(storage);
-                // Wait for pool to add the operations
+                // Allow some time for the pool to add the operations
                 std::thread::sleep(Duration::from_millis(100));
                 //TODO: compare
                 //assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
