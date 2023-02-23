@@ -572,7 +572,7 @@ impl BootstrapClientMessageSerializer {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new()),
+            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new(true)),
             pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
             cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
             slot_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
@@ -690,6 +690,7 @@ impl BootstrapClientMessageDeserializer {
             ),
             ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
                 max_datastore_key_length,
+                true
             )),
             pool_step_deserializer: StreamingStepDeserializer::new(
                 AsyncMessageIdDeserializer::new(thread_count),

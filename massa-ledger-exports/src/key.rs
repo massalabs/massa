@@ -29,12 +29,18 @@ pub enum KeyType {
 #[derive(Default, Clone)]
 pub struct KeyTypeSerializer {
     vec_u8_serializer: VecU8Serializer,
+    // Wether is deserialized with VecU8Deserializer or not.
+    // This allows us to store the datastore key length at the beginning of the key or not.
+    // The datastore key length is useful when transfering multiple keys, like in packets,
+    // but isn't when storing a datastore key in the ledger.
+    datastore_key_length: bool
 }
 
 impl KeyTypeSerializer {
-    pub fn new() -> Self {
+    pub fn new(datastore_key_length: bool) -> Self {
         Self {
             vec_u8_serializer: VecU8Serializer::new(),
+            datastore_key_length
         }
     }
 }
@@ -46,7 +52,11 @@ impl Serializer<KeyType> for KeyTypeSerializer {
             KeyType::BYTECODE => buffer.extend(&[u8::from(KeyTypeId::BYTECODE)]),
             KeyType::DATASTORE(data) => {
                 buffer.extend(&[u8::from(KeyTypeId::DATASTORE)]);
-                self.vec_u8_serializer.serialize(data, buffer)?;
+                if self.datastore_key_length {
+                    self.vec_u8_serializer.serialize(data, buffer)?;
+                } else {
+                    buffer.extend(data);
+                }
             }
         }
         Ok(())
@@ -56,15 +66,21 @@ impl Serializer<KeyType> for KeyTypeSerializer {
 #[derive(Clone)]
 pub struct KeyTypeDeserializer {
     vec_u8_deserializer: VecU8Deserializer,
+    // Wether is deserialized with VecU8Deserializer or not.
+    // This allows us to store the datastore key length at the beginning of the key or not.
+    // The datastore key length is useful when transfering multiple keys, like in packets,
+    // but isn't when storing a datastore key in the ledger.
+    datastore_key_length: bool
 }
 
 impl KeyTypeDeserializer {
-    pub fn new(max_datastore_key_length: u8) -> Self {
+    pub fn new(max_datastore_key_length: u8, datastore_key_length: bool) -> Self {
         Self {
             vec_u8_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
                 Included(max_datastore_key_length as u64),
             ),
+            datastore_key_length
         }
     }
 }
@@ -79,8 +95,12 @@ impl Deserializer<KeyType> for KeyTypeDeserializer {
             Ok(KeyTypeId::BALANCE) => Ok((rest, KeyType::BALANCE)),
             Ok(KeyTypeId::BYTECODE) => Ok((rest, KeyType::BYTECODE)),
             Ok(KeyTypeId::DATASTORE) => {
-                let (rest, data) = self.vec_u8_deserializer.deserialize(rest)?;
-                Ok((rest, KeyType::DATASTORE(data)))
+                if self.datastore_key_length {
+                    let (rest, data) = self.vec_u8_deserializer.deserialize(rest)?;
+                    Ok((rest, KeyType::DATASTORE(data)))
+                } else {
+                    Ok((&[], KeyType::DATASTORE(rest.to_vec())))
+                }
             }
             Err(_) => Err(nom::Err::Error(E::from_error_kind(
                 rest,
@@ -124,10 +144,10 @@ pub struct KeySerializer {
 
 impl KeySerializer {
     /// Creates a new `KeySerializer`
-    pub fn new() -> Self {
+    pub fn new(datastore_key_length: bool) -> Self {
         Self {
             address_serializer: AddressSerializer::new(),
-            key_type_serializer: KeyTypeSerializer::new(),
+            key_type_serializer: KeyTypeSerializer::new(datastore_key_length),
         }
     }
 }
@@ -164,10 +184,10 @@ pub struct KeyDeserializer {
 
 impl KeyDeserializer {
     /// Creates a new `KeyDeserializer`
-    pub fn new(max_datastore_key_length: u8) -> Self {
+    pub fn new(max_datastore_key_length: u8, datastore_key_length: bool) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            key_type_deserializer: KeyTypeDeserializer::new(max_datastore_key_length),
+            key_type_deserializer: KeyTypeDeserializer::new(max_datastore_key_length, datastore_key_length),
         }
     }
 }

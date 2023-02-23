@@ -71,7 +71,9 @@ pub(crate) struct LedgerDB {
     db: DB,
     thread_count: u8,
     key_serializer: KeySerializer,
+    key_serializer_db: KeySerializer,
     key_deserializer: KeyDeserializer,
+    key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
     len_serializer: U64VarIntSerializer,
@@ -134,8 +136,10 @@ impl LedgerDB {
         LedgerDB {
             db,
             thread_count,
-            key_serializer: KeySerializer::new(),
-            key_deserializer: KeyDeserializer::new(max_datastore_key_length),
+            key_serializer: KeySerializer::new(true),
+            key_serializer_db: KeySerializer::new(false),
+            key_deserializer: KeyDeserializer::new(max_datastore_key_length, true),
+            key_deserializer_db: KeyDeserializer::new(max_datastore_key_length, false),
             amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             len_serializer: U64VarIntSerializer::new(),
@@ -231,7 +235,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let key = ty.derive_key(addr);
         let mut serialized_key = Vec::new();
-        self.key_serializer
+        self.key_serializer_db
             .serialize(&key, &mut serialized_key)
             .expect(KEY_SER_ERROR);
         self.db.get_cf(handle, serialized_key).expect(CRUD_ERROR)
@@ -290,7 +294,7 @@ impl LedgerDB {
             ),
             StreamingStep::Ongoing(last_key) => {
                 let mut serialized_key = Vec::new();
-                self.key_serializer
+                self.key_serializer_db
                     .serialize(&last_key, &mut serialized_key)?;
                 let mut iter = self.db.iterator_cf_opt(
                     handle,
@@ -306,7 +310,9 @@ impl LedgerDB {
         // Iterates over the whole database
         for (key, entry) in db_iterator.flatten() {
             if (ledger_part.len() as u64) < (self.ledger_part_size_message_bytes) {
-                let (_, key) = self.key_deserializer.deserialize(&key)?;
+                // We deserialize and re-serialize the key to change the key format from the
+                // database one to a format we can use outside of the ledger.
+                let (_, key) = self.key_deserializer_db.deserialize(&key)?;
                 self.key_serializer.serialize(&key, &mut ledger_part)?;
                 ser.serialize(&entry.to_vec(), &mut ledger_part)?;
                 new_cursor = StreamingStep::Ongoing(key);
@@ -405,7 +411,7 @@ impl LedgerDB {
         value: &[u8],
     ) {
         let mut serialized_key = Vec::new();
-        self.key_serializer
+        self.key_serializer_db
             .serialize(key, &mut serialized_key)
             .expect(KEY_SER_ERROR);
         let mut len_bytes = Vec::new();
@@ -468,7 +474,7 @@ impl LedgerDB {
         value: &[u8],
     ) {
         let mut serialized_key = Vec::new();
-        self.key_serializer
+        self.key_serializer_db
             .serialize(key, &mut serialized_key)
             .expect(KEY_SER_ERROR);
 
@@ -538,7 +544,7 @@ impl LedgerDB {
     /// Internal function to delete a key and perform the ledger hash XOR
     fn delete_key(&self, handle: &ColumnFamily, batch: &mut LedgerBatch, key: &Key) {
         let mut serialized_key = Vec::new();
-        self.key_serializer
+        self.key_serializer_db
             .serialize(key, &mut serialized_key)
             .expect(KEY_SER_ERROR);
         if let Some(added_hash) = batch.aeh_list.get(&serialized_key) {
@@ -584,7 +590,8 @@ impl LedgerDB {
             )
             .flatten()
         {
-            let (_, deserlized_key) = self.key_deserializer
+            let (_, deserlized_key) = self
+                .key_deserializer_db
                 .deserialize::<DeserializeError>(&key)
                 .expect(KEY_DESER_ERROR);
             self.delete_key(handle, batch, &deserlized_key);
@@ -656,7 +663,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + 2).1.to_vec(), // +1 for the type byte, +1 for the length byte
+                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(), // +1 for the type byte, +1 for the length byte
                     data.to_vec(),
                 )
             })
