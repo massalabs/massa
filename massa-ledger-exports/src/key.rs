@@ -39,6 +39,8 @@ pub struct KeyTypeSerializer {
 }
 
 impl KeyTypeSerializer {
+    /// Creates a new KeyTypeSerializer.
+    /// `with_datastore_key_length` if true, the datastore key is serialized with its length.
     pub fn new(with_datastore_key_length: bool) -> Self {
         Self {
             vec_u8_serializer: VecU8Serializer::new(),
@@ -73,6 +75,9 @@ pub struct KeyTypeDeserializer {
 }
 
 impl KeyTypeDeserializer {
+    /// Creates a new KeyTypeDeserializer.
+    /// `max_datastore_key_length` is the maximum length of a datastore key.
+    /// `with_datastore_key_length` if true, the datastore key is deserialized with its length.
     pub fn new(max_datastore_key_length: u8, with_datastore_key_length: bool) -> Self {
         Self {
             vec_u8_deserializer: VecU8Deserializer::new(
@@ -143,6 +148,7 @@ pub struct KeySerializer {
 
 impl KeySerializer {
     /// Creates a new `KeySerializer`
+    /// `with_datastore_key_length` if true, the datastore key is serialized with its length.
     pub fn new(with_datastore_key_length: bool) -> Self {
         Self {
             address_serializer: AddressSerializer::new(),
@@ -163,7 +169,7 @@ impl Serializer<Key> for KeySerializer {
     /// let address = Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
     /// let mut key = Key::new(&address, KeyType::DATASTORE(store_key.into_bytes().to_vec()));
-    /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
+    /// KeySerializer::new(true).serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Key, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.address_serializer.serialize(&value.address, buffer)?;
@@ -183,6 +189,8 @@ pub struct KeyDeserializer {
 
 impl KeyDeserializer {
     /// Creates a new `KeyDeserializer`
+    /// `max_datastore_key_length` is the maximum length of a datastore key.
+    /// `with_datastore_key_length` if true, the datastore key is deserialized with its length.
     pub fn new(max_datastore_key_length: u8, with_datastore_key_length: bool) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
@@ -194,7 +202,6 @@ impl KeyDeserializer {
     }
 }
 
-// TODO: deserialize keys into a rust type
 impl Deserializer<Key> for KeyDeserializer {
     /// ## Example
     /// ```
@@ -209,15 +216,15 @@ impl Deserializer<Key> for KeyDeserializer {
     ///
     /// let mut key = Key::new(&address, KeyType::DATASTORE(store_key.into_bytes().to_vec()));
     /// let mut serialized = Vec::new();
-    /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// KeySerializer::new(true).serialize(&key, &mut serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(255, true).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     ///
     /// let mut key = Key::new(&address, KeyType::BALANCE);
     /// let mut serialized = Vec::new();
-    /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new(255).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// KeySerializer::new(true).serialize(&key, &mut serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(255, true).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     /// ```
