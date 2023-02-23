@@ -8,6 +8,8 @@ use std::{
 
 use massa_logging::massa_trace;
 use parking_lot::RwLock;
+use tracing::log::error;
+use crate::error::BootstrapError;
 
 use crate::tools::normalize_ip;
 
@@ -21,7 +23,7 @@ pub(crate) struct SharedWhiteBlackList<'a> {
 }
 
 impl SharedWhiteBlackList<'_> {
-    pub(crate) fn new(white_path: PathBuf, black_path: PathBuf) -> Result<Self, String> {
+    pub(crate) fn new(white_path: PathBuf, black_path: PathBuf) -> Result<Self, BootstrapError> {
         let (white_list, black_list) =
             WhiteBlackListInner::load_white_black_lists(&white_path, &black_path)?;
         Ok(Self {
@@ -36,7 +38,7 @@ impl SharedWhiteBlackList<'_> {
 
     /// Checks if the white/black list is up to date with a read-lock
     /// Creates a new list, and replaces the old one in a write-lock
-    pub(crate) fn update(&mut self) -> Result<(), String> {
+    pub(crate) fn update(&mut self) -> Result<(), BootstrapError> {
         let read_lock = self.inner.read();
         let (new_white, new_black) =
             WhiteBlackListInner::load_white_black_lists(&self.white_path, &self.black_path)?;
@@ -60,7 +62,7 @@ impl SharedWhiteBlackList<'_> {
     }
 
     #[cfg_attr(test, allow(unreachable_code, unused_variables))]
-    pub(crate) fn is_ip_allowed(&self, remote_addr: &SocketAddr) -> Result<(), String> {
+    pub(crate) fn is_ip_allowed(&self, remote_addr: &SocketAddr) -> Result<(), BootstrapError> {
         #[cfg(test)]
         return Ok(());
 
@@ -69,11 +71,11 @@ impl SharedWhiteBlackList<'_> {
         let read = self.inner.read();
         if let Some(ip_list) = &read.black_list && ip_list.contains(&ip) {
             massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
-            Err(format!("IP {} is blacklisted", &ip))
+            Err(BootstrapError::BlackListed(ip.to_string()))
             // whether the peer IP address is not present in the whitelist
-        } else if let Some(ip_list) = &read.white_list && !ip_list.contains(&ip){
+        } else if let Some(ip_list) = &read.white_list && !ip_list.contains(&ip) {
             massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
-            Err(format!("A whitelist exists and the IP {} is not whitelisted", &ip))
+            Err(BootstrapError::WhiteListed(ip.to_string()))
         } else {
             Ok(())
         }
@@ -86,24 +88,29 @@ impl WhiteBlackListInner {
     fn load_white_black_lists(
         whitelist_path: &Path,
         blacklist_path: &Path,
-    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), String> {
+    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
         let white_list = Self::load_list(whitelist_path)?;
         let black_list = Self::load_list(blacklist_path)?;
         Ok((white_list, black_list))
     }
 
-    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, String> {
-        let Ok(list) = std::fs::read_to_string(list_path) else {
-            return Ok(None);
-        };
-        let res = Some(
-            serde_json::from_str::<HashSet<IpAddr>>(list.as_str())
-                .map_err(|_| String::from("Failed to parse bootstrap whitelist"))?
-                .into_iter()
-                .map(normalize_ip)
-                .collect(),
-        );
-        Ok(res)
+    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
+        match std::fs::read_to_string(list_path) {
+            Err(e) => {
+                error!("error on load whitelist/blacklist file : {}", e);
+                Ok(None)
+            },
+            Ok(list) => {
+                let res = Some(
+                    serde_json::from_str::<HashSet<IpAddr>>(list.as_str())
+                        .map_err(|e| BootstrapError::InitListError(format!("Failed to parse bootstrap whitelist : {}", e.to_string())))?
+                        .into_iter()
+                        .map(normalize_ip)
+                        .collect(),
+                );
+                Ok(res)
+            }
+        }
     }
 }
 

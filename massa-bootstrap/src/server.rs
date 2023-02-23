@@ -64,7 +64,7 @@ use crate::{
 type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    update_handle: std::thread::JoinHandle<Result<(), String>>,
+    update_handle: std::thread::JoinHandle<Result<(), BootstrapError>>,
     _listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
@@ -138,8 +138,7 @@ pub async fn start_bootstrap_server(
     let white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
         config.bootstrap_blacklist_path.clone(),
-    )
-    .map_err(BootstrapError::GeneralError)?;
+    )?;
 
     let update_rt_handle = bs_server_runtime.handle().clone();
 
@@ -218,7 +217,7 @@ impl BootstrapServer<'_> {
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
         stopper: Receiver<()>,
-    ) -> Result<(), String> {
+    ) -> Result<(), BootstrapError> {
         loop {
             std::thread::sleep(interval);
             dbg!("update tick");
@@ -227,7 +226,7 @@ impl BootstrapServer<'_> {
                 Err(e) => match e {
                     crossbeam::channel::TryRecvError::Empty => {}
                     crossbeam::channel::TryRecvError::Disconnected => {
-                        return Err("update stopper unexpected disconnect".to_string())
+                        return Err(BootstrapError::GeneralError("update stopper unexpected disconnect".to_string()));
                     }
                 },
             }
@@ -295,7 +294,7 @@ impl BootstrapServer<'_> {
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
                 server.close_and_send_error(
                     self.bs_server_runtime.handle().clone(),
-                    error_msg,
+                    error_msg.to_string(),
                     remote_addr,
                     move || {},
                 );
