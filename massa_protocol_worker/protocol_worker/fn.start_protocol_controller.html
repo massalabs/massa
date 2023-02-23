@@ -2,7 +2,7 @@
     config: ProtocolConfig,
     receivers: ProtocolReceivers,
     senders: ProtocolSenders,
-    consensus_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="../../massa_consensus_exports/controller_trait/trait.ConsensusController.html" title="trait massa_consensus_exports::controller_trait::ConsensusController">ConsensusController</a>&gt;,
+    consensus_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn ConsensusController&gt;,
     pool_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn PoolController&gt;,
     storage: Storage
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;ProtocolManager, ProtocolError&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>start a new <code>ProtocolController</code> from a <code>ProtocolConfig</code></p>
