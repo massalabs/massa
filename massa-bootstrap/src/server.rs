@@ -292,7 +292,6 @@ impl BootstrapServer<'_> {
             );
 
             // check whether incoming peer IP is allowed.
-            // TODO: confirm error handled according to the previous `is_ip_allowed` fn
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
                 server.close_and_send_error(
                     self.bs_server_runtime.handle().clone(),
@@ -300,15 +299,9 @@ impl BootstrapServer<'_> {
                     remote_addr,
                     move || {},
                 );
-                // not exactly sure what to do here
-                // return Err(std::io::Error::new(
-                //     std::io::ErrorKind::PermissionDenied,
-                //     error_msg,
-                // ));
                 continue;
             };
 
-            // TODO: find a better way to track count
             // the `- 1` is to account for the top-level Arc that is created at the top
             // of this method. subsequent counts correspond to each `clone` that is passed
             // into a thread
@@ -339,6 +332,7 @@ impl BootstrapServer<'_> {
                     now,
                     per_ip_min_interval,
                 ) {
+                    // Client has been too greedy: send out the bad-news :(
                     let msg = format!(
                         "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
                         format_duration(msg),
@@ -356,7 +350,7 @@ impl BootstrapServer<'_> {
                         tracer,
                     );
                     continue;
-                };
+                }; // Clients Option<last-attempt> is good, and has been updated
 
                 // load cache if absent
                 // if bootstrap_data.is_none() {
@@ -408,12 +402,10 @@ impl BootstrapServer<'_> {
                 );
             }
         }
-        dbg!("out of main-loop");
-        // TODO: when they are synchrenous, consider if we want to signal updater and listener
-        //       here, or in the stop method.
-        // TODO: do we drop(self.runtime) here?
-        // drop(self);
-        // drop(bs_loop_rt);
+        // TODO: here, the runtime containing all the handling sessions gets dropped
+        //       which is acts like a hard-process-kill for each thread still running.
+        //       Future refinements will need to have a "stop while sessions still active"
+        //       story.
         Ok(())
     }
 
@@ -444,6 +436,7 @@ impl BootstrapServer<'_> {
             let stop = self.listen_stopper_rx.try_recv();
             if unlikely(stop.is_ok()) {
                 massa_trace!("bootstrap.lib.run.select.manager", {});
+                // 3.b. If present, fall-back to the stop behaviour
                 return Ok(None);
             } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
                 return Err("Unexpected stop-channel disconnection".to_string());
@@ -462,7 +455,8 @@ impl BootstrapServer<'_> {
         Ok(Some(msg))
     }
 
-    /// Helper method to check if this IP is being greedy, i.e. not enough elapsed time since last attempt
+    /// Checks latest attempt. If too recent, provides the bad news (as an error).
+    /// Updates the latest attempt to "now" if it's all good.
     ///
     /// # Error
     /// The elapsed time which is insufficient
@@ -476,6 +470,7 @@ impl BootstrapServer<'_> {
         ip_hist_map
             .entry(remote_addr.ip())
             .and_modify(|occ| {
+                // Well, let's only update the latest
                 if now.duration_since(*occ) <= per_ip_min_interval {
                     res = Err(occ.elapsed());
                 } else {
