@@ -48,7 +48,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tokio::runtime::{Handle, Runtime};
+use tokio::runtime::{self, Handle, Runtime};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -115,15 +115,23 @@ pub async fn start_bootstrap_server(
     let (listen_stopper_tx, listen_stopper_rx) = crossbeam::channel::bounded::<()>(1);
     let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
-    let bs_server_runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
+    let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
+        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
+    };
+    let Ok(bs_server_runtime) = runtime::Builder::new_multi_thread()
+        .enable_io()
+        .enable_time()
+        .thread_name("bootstrap-global-runtime-worker")
+        .thread_keep_alive(Duration::from_millis(u64::MAX))
+        .build() else {
+            return Err(Box::new(BootstrapError::GeneralError("Failed to creato bootstrap async runtime".to_string())));
+        };
+
     let listener = establisher
         .get_listener(listen_addr)
         .await
         .map_err(BootstrapError::IoError)?;
 
-    let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
-        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
-    };
     // This is the primary interface between the async-listener, and the (soon to be) sync worker
     let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps);
 
@@ -256,7 +264,16 @@ impl BootstrapServer<'_> {
     }
 
     fn run_loop(&mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
-        let bs_loop_rt = Runtime::new().unwrap();
+        let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
+            .max_blocking_threads(max_bootstraps * 2)
+            .enable_io()
+            .enable_time()
+            .thread_name("bootstrap-main-loop-worker")
+            .thread_keep_alive(Duration::from_millis(u64::MAX))
+            .build() else {
+                return Err(Box::new(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string())));
+            };
+
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
