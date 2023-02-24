@@ -265,7 +265,7 @@ impl BootstrapServer<'_> {
         }
     }
 
-    fn run_loop(&mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
+    fn run_loop(mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
         let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
             .max_blocking_threads(max_bootstraps * 2)
             .enable_io()
@@ -393,10 +393,10 @@ impl BootstrapServer<'_> {
                 );
             }
         }
-        // TODO: here, the runtime containing all the handling sessions gets dropped
-        //       which is acts like a hard-process-kill for each thread still running.
-        //       Future refinements will need to have a "stop while sessions still active"
-        //       story.
+
+        // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
+        self.bs_server_runtime
+            .shutdown_timeout(Duration::from_secs(20));
         Ok(())
     }
 
