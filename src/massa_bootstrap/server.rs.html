@@ -890,17 +890,6 @@
 <a href="#890" id="890">890</a>
 <a href="#891" id="891">891</a>
 <a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -953,7 +942,7 @@
     time::{Duration, Instant},
 };
 <span class="kw">use </span>tokio::runtime::{<span class="self">self</span>, Handle, Runtime};
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>tracing::{debug, error, info, warn};
 
 <span class="kw">use crate</span>::{
     error::BootstrapError,
@@ -986,17 +975,16 @@
         <span class="kw">if </span><span class="macro">dbg!</span>(<span class="self">self</span>.update_stopper_tx.send(()).is_err()) {
             <span class="macro">warn!</span>(<span class="string">&quot;bootstrap ip-list-update already dropped&quot;</span>);
         }
-        <span class="comment">// TODO: handle join errors.
+        <span class="comment">// TODO?: handle join errors.
         // TODO: examine dead-lock potential
 
-        // when the runtime is dropped at the end of this stop, the listener and handler are auto-aborted
-        </span><span class="kw">let _ </span>= <span class="macro">dbg!</span>(<span class="self">self</span>.update_handle.join());
-        <span class="comment">// let _ = dbg!(self.listen_handle.join());
-        // as self is dropped, that also drops the runtime.
-        // where we&#39;ve done std::thread::spawn(move || {rt.block_on(...)})
-        // the `block_on`ed task will be dropped
-        // specifically the updater
-        </span><span class="macro">dbg!</span>(<span class="self">self</span>.main_handle.join().unwrap())
+        // when the runtime is dropped at the end of this stop, the listener is auto-aborted
+
+        // unwrap() effectively passes up a panic from the thread being handled
+        </span><span class="self">self</span>.update_handle.join().unwrap()<span class="question-mark">?</span>;
+
+        <span class="comment">// unwrap() effectively passes up a panic from the thread being handled
+        </span><span class="self">self</span>.main_handle.join().unwrap()
     }
 }
 
@@ -1037,25 +1025,26 @@
         </span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
 
     <span class="comment">// This is the primary interface between the async-listener, and the (soon to be) sync worker
-    </span><span class="kw">let </span>(listener_tx, listener_rx) = crossbeam::channel::bounded::&lt;BsConn&gt;(max_bootstraps);
+    </span><span class="kw">let </span>(listener_tx, listener_rx) = crossbeam::channel::bounded::&lt;BsConn&gt;(max_bootstraps * <span class="number">2</span>);
 
     <span class="kw">let </span>white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
         config.bootstrap_blacklist_path.clone(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>update_rt_handle = bs_server_runtime.handle().clone();
-
     <span class="kw">let </span>updater_lists = white_black_list.clone();
     <span class="kw">let </span>update_handle = thread::Builder::new()
         .name(<span class="string">&quot;wb_list_updater&quot;</span>.to_string())
         .spawn(<span class="kw">move </span>|| {
-            <span class="kw">let </span>res = update_rt_handle.block_on(BootstrapServer::run_updater(
+            <span class="kw">let </span>res = BootstrapServer::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
-            ));
-            <span class="macro">dbg!</span>(<span class="string">&quot;update handle stopped&quot;</span>);
+            );
+            <span class="kw">match </span>res {
+                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">info!</span>(<span class="string">&quot;ip white/blacklist updater exited cleanly&quot;</span>),
+                <span class="prelude-val">Err</span>(<span class="kw-2">ref </span>er) =&gt; <span class="macro">error!</span>(<span class="string">&quot;updater exited with error: {}&quot;</span>, er),
+            };
             res
         })
         .unwrap();
@@ -1117,7 +1106,7 @@
 }
 
 <span class="kw">impl </span>BootstrapServer&lt;<span class="lifetime">&#39;_</span>&gt; {
-    <span class="kw">async fn </span>run_updater(
+    <span class="kw">fn </span>run_updater(
         <span class="kw-2">mut </span>list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;_</span>&gt;,
         interval: Duration,
         stopper: Receiver&lt;()&gt;,
@@ -1258,17 +1247,6 @@
                     <span class="kw">continue</span>;
                 }; <span class="comment">// Clients Option&lt;last-attempt&gt; is good, and has been updated
 
-                // load cache if absent
-                // if bootstrap_data.is_none() {
-                //     massa_trace!(&quot;bootstrap.lib.run.select.accept.cache_load.start&quot;, {});
-
-                //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
-                //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
-                //     // If the consensus state snapshot is older than the execution state snapshot,
-                //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
-                //     cache_timer.set(sleep(cache_timeout));
-                // }
                 </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.cache_available&quot;</span>, {});
 
                 <span class="comment">// launch bootstrap
