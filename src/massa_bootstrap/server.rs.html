@@ -888,14 +888,6 @@
 <a href="#888" id="888">888</a>
 <a href="#889" id="889">889</a>
 <a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -975,15 +967,13 @@
     <span class="doccomment">/// stop the bootstrap server
     </span><span class="kw">pub async fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.stop&quot;</span>, {});
-        <span class="macro">dbg!</span>(<span class="string">&quot;stopping&quot;</span>);
-        <span class="kw">if </span><span class="macro">dbg!</span>(<span class="self">self</span>.listen_stopper_tx.send(()).is_err()) {
+        <span class="kw">if </span><span class="self">self</span>.listen_stopper_tx.send(()).is_err() {
             <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
         }
-        <span class="kw">if </span><span class="macro">dbg!</span>(<span class="self">self</span>.update_stopper_tx.send(()).is_err()) {
+        <span class="kw">if </span><span class="self">self</span>.update_stopper_tx.send(()).is_err() {
             <span class="macro">warn!</span>(<span class="string">&quot;bootstrap ip-list-updater already dropped&quot;</span>);
         }
         <span class="comment">// TODO?: handle join errors.
-        // TODO: examine dead-lock potential
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
@@ -1017,7 +1007,7 @@
     <span class="kw">let </span><span class="prelude-val">Ok</span>(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() <span class="kw">else </span>{
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()).into());
     };
-    
+
     <span class="comment">// We use a runtime dedicated to the bootstrap part of the system
     // This should help keep it isolated from the rest of the overall binary
     </span><span class="kw">let </span><span class="prelude-val">Ok</span>(bs_server_runtime) = runtime::Builder::new_multi_thread()
@@ -1064,12 +1054,9 @@
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span>res =
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
-            <span class="macro">dbg!</span>(<span class="string">&quot;listen handle stopped&quot;</span>);
-            <span class="macro">dbg!</span>(res)
+            res
         })
         .unwrap();
-
-    <span class="macro">dbg!</span>(<span class="string">&quot;spawning main loop&quot;</span>);
 
     <span class="kw">let </span>main_handle = std::thread::Builder::new()
         .name(<span class="string">&quot;bs-main-loop&quot;</span>.to_string())
@@ -1123,8 +1110,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">loop </span>{
             std::thread::sleep(interval);
-            <span class="macro">dbg!</span>(<span class="string">&quot;update tick&quot;</span>);
-            <span class="kw">match </span><span class="macro">dbg!</span>(stopper.try_recv()) {
+            <span class="kw">match </span>stopper.try_recv() {
                 <span class="prelude-val">Ok</span>(()) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">match </span>e {
                     crossbeam::channel::TryRecvError::Empty =&gt; {}
@@ -1154,9 +1140,8 @@
         listener_tx: Sender&lt;BsConn&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">loop </span>{
-            <span class="kw">let </span>msg = <span class="macro">dbg!</span>(listener.accept().<span class="kw">await</span>.map_err(BootstrapError::IoError))<span class="question-mark">?</span>;
-            <span class="macro">dbg!</span>(<span class="string">&quot;sending&quot;</span>);
-            <span class="kw">match </span><span class="macro">dbg!</span>(listener_tx.send(msg)) {
+            <span class="kw">let </span>msg = listener.accept().<span class="kw">await</span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
+            <span class="kw">match </span>listener_tx.send(msg) {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
                 <span class="prelude-val">Err</span>(SendError((dplx, remote_addr))) =&gt; {
                     <span class="macro">warn!</span>(
@@ -1321,7 +1306,6 @@
         // &quot;Note that this method might return with success spuriously, so it’s a good idea
         // to always double check if the operation is really ready.&quot;
         </span><span class="kw">if </span>rdy == <span class="number">0 </span>&amp;&amp; <span class="self">self</span>.listen_stopper_rx.try_recv().is_ok() {
-            <span class="macro">dbg!</span>(<span class="string">&quot;breaking out&quot;</span>);
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             <span class="comment">// - 3. If that something is anything else:
         </span>} <span class="kw">else </span>{
