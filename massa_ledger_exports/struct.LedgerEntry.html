@@ -15,14 +15,14 @@
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_serialization::{Deserializer, Serializer, DeserializeError};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::str::FromStr;
-<span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_models::{amount::Amount, bytecode::Bytecode};
 <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
 
 <span class="kw">let </span>key = <span class="string">&quot;hello world&quot;</span>.as_bytes().to_vec();
 <span class="kw">let </span><span class="kw-2">mut </span>datastore = BTreeMap::new();
 datastore.insert(key, <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
 <span class="kw">let </span>balance = Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap();
-<span class="kw">let </span>bytecode = <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
+<span class="kw">let </span>bytecode = Bytecode(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
 <span class="kw">let </span>ledger_entry = LedgerEntry {
    balance,
    bytecode,
@@ -46,7 +46,7 @@ sufficient, and should not be overridden without very good reason.</div></detail
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::str::FromStr;
-<span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_models::{amount::Amount, bytecode::Bytecode};
 <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
 
 <span class="kw">let </span>key = <span class="string">&quot;hello world&quot;</span>.as_bytes().to_vec();

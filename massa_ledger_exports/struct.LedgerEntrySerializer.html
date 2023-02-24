@@ -8,7 +8,7 @@
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::str::FromStr;
-<span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_models::{amount::Amount, bytecode::Bytecode};
 <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
 
 <span class="kw">let </span>key = <span class="string">&quot;hello world&quot;</span>.as_bytes().to_vec();

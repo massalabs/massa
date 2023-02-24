@@ -248,6 +248,9 @@
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -385,6 +388,9 @@
 
 <span class="kw">pub fn </span>datastore_prefix_from_address(address: <span class="kw-2">&amp;</span>Address) -&gt; Vec&lt;u8&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>prefix = Vec::new();
+    U64VarIntSerializer::new()
+        .serialize(<span class="kw-2">&amp;</span>KEY_VERSION, <span class="kw-2">&amp;mut </span>prefix)
+        .unwrap();
     AddressSerializer::new()
         .serialize(address, <span class="kw-2">&amp;mut </span>prefix)
         .unwrap();
