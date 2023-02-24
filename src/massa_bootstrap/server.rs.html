@@ -889,6 +889,13 @@
 <a href="#889" id="889">889</a>
 <a href="#890" id="890">890</a>
 <a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -900,7 +907,7 @@
 //!
 //! # Updater
 //!
-//! Runs in the same runtime as the listener.
+//! Runs on a dedicated thread. Signal sent my manager stop method terminates the thread.
 //! Shares an Arc&lt;RwLock&gt;&gt; guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
@@ -957,7 +964,8 @@
 <span class="doccomment">/// handle on the bootstrap server
 </span><span class="kw">pub struct </span>BootstrapManager {
     update_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
-    _listen_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt;&gt;,
+    <span class="comment">// need to preserve the listener handle up to here to prevent it being destroyed
+    </span>_listen_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt;&gt;,
     main_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
     listen_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
     update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
@@ -972,7 +980,7 @@
             <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
         }
         <span class="kw">if </span><span class="macro">dbg!</span>(<span class="self">self</span>.update_stopper_tx.send(()).is_err()) {
-            <span class="macro">warn!</span>(<span class="string">&quot;bootstrap ip-list-update already dropped&quot;</span>);
+            <span class="macro">warn!</span>(<span class="string">&quot;bootstrap ip-list-updater already dropped&quot;</span>);
         }
         <span class="comment">// TODO?: handle join errors.
         // TODO: examine dead-lock potential
@@ -1009,7 +1017,10 @@
     <span class="kw">let </span><span class="prelude-val">Ok</span>(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() <span class="kw">else </span>{
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()).into());
     };
-    <span class="kw">let </span><span class="prelude-val">Ok</span>(bs_server_runtime) = runtime::Builder::new_multi_thread()
+    
+    <span class="comment">// We use a runtime dedicated to the bootstrap part of the system
+    // This should help keep it isolated from the rest of the overall binary
+    </span><span class="kw">let </span><span class="prelude-val">Ok</span>(bs_server_runtime) = runtime::Builder::new_multi_thread()
         .enable_io()
         .enable_time()
         .thread_name(<span class="string">&quot;bootstrap-global-runtime-worker&quot;</span>)
@@ -1023,7 +1034,7 @@
         .<span class="kw">await
         </span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
 
-    <span class="comment">// This is the primary interface between the async-listener, and the (soon to be) sync worker
+    <span class="comment">// This is the primary interface between the async-listener, and the &quot;sync&quot; worker
     </span><span class="kw">let </span>(listener_tx, listener_rx) = crossbeam::channel::bounded::&lt;BsConn&gt;(max_bootstraps * <span class="number">2</span>);
 
     <span class="kw">let </span>white_black_list = SharedWhiteBlackList::new(
@@ -1125,7 +1136,7 @@
                     }
                 },
             }
-            <span class="comment">// TODO: loop interval here is tick + update time. Implement a state-based,
+            <span class="comment">// TODO: loop interval here is sleep + update time. Implement a state-based,
             // rather than time-based, trigger (such as delta-count);
             </span>list.update()<span class="question-mark">?</span>;
         }
@@ -1137,6 +1148,7 @@
     /// Ok(Ok(())) listener closed without issue
     /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
     /// Err(..) Error accepting a connection
+    /// TODO: Integrate the listener into the bootstrap-main-loop
     </span><span class="kw">async fn </span>run_listener(
         <span class="kw-2">mut </span>listener: Listener,
         listener_tx: Sender&lt;BsConn&gt;,
@@ -1177,6 +1189,7 @@
         <span class="comment">// TODO: Work out how to integration-test this
         </span><span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
+            // if a stop-signal is received
             </span><span class="kw">let </span><span class="prelude-val">Some</span>((dplx, remote_addr)) = <span class="self">self</span>.receive_connection(<span class="kw-2">&amp;mut </span>selector).map_err(BootstrapError::GeneralError)<span class="question-mark">? </span><span class="kw">else </span>{<span class="kw">break</span>};
             <span class="comment">// claim a slot in the max_bootstrap_sessions
             </span><span class="kw">let </span>server = BootstrapServerBinder::new(
@@ -1367,8 +1380,9 @@
 
 <span class="doccomment">/// To be called from a `thread::spawn` invocation
 ///
-/// Runs the bootstrap management in a dedicated tokio runtime context. A failed bootstrap session
-/// will fail silently locally, but will send a message to the client with an error message.
+/// Runs the bootstrap management in a dedicated thread, handling the async by using
+/// a multi-thread-aware tokio runtime (the bs-main-loop runtime, to be exact). When this
+/// function blocks in the `block_on`, it should thread-block, and switch to another session
 ///
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
