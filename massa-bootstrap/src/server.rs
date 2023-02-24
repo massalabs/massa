@@ -9,7 +9,7 @@
 //!
 //! # Updater
 //!
-//! Runs in the same runtime as the listener.
+//! Runs on a dedicated thread. Signal sent my manager stop method terminates the thread.
 //! Shares an Arc<RwLock>> guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
@@ -65,6 +65,7 @@ type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     update_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    // need to preserve the listener handle up to here to prevent it being destroyed
     _listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
@@ -80,7 +81,7 @@ impl BootstrapManager {
             warn!("bootstrap server already dropped");
         }
         if dbg!(self.update_stopper_tx.send(()).is_err()) {
-            warn!("bootstrap ip-list-update already dropped");
+            warn!("bootstrap ip-list-updater already dropped");
         }
         // TODO?: handle join errors.
         // TODO: examine dead-lock potential
@@ -117,6 +118,9 @@ pub async fn start_bootstrap_server(
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
     };
+    
+    // We use a runtime dedicated to the bootstrap part of the system
+    // This should help keep it isolated from the rest of the overall binary
     let Ok(bs_server_runtime) = runtime::Builder::new_multi_thread()
         .enable_io()
         .enable_time()
@@ -131,7 +135,7 @@ pub async fn start_bootstrap_server(
         .await
         .map_err(BootstrapError::IoError)?;
 
-    // This is the primary interface between the async-listener, and the (soon to be) sync worker
+    // This is the primary interface between the async-listener, and the "sync" worker
     let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
 
     let white_black_list = SharedWhiteBlackList::new(
@@ -233,7 +237,7 @@ impl BootstrapServer<'_> {
                     }
                 },
             }
-            // TODO: loop interval here is tick + update time. Implement a state-based,
+            // TODO: loop interval here is sleep + update time. Implement a state-based,
             // rather than time-based, trigger (such as delta-count);
             list.update()?;
         }
@@ -245,6 +249,7 @@ impl BootstrapServer<'_> {
     /// Ok(Ok(())) listener closed without issue
     /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
     /// Err(..) Error accepting a connection
+    /// TODO: Integrate the listener into the bootstrap-main-loop
     async fn run_listener(
         mut listener: Listener,
         listener_tx: Sender<BsConn>,
@@ -285,6 +290,7 @@ impl BootstrapServer<'_> {
         // TODO: Work out how to integration-test this
         loop {
             // block until we have a connection to work with, or break out of main-loop
+            // if a stop-signal is received
             let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else {break};
             // claim a slot in the max_bootstrap_sessions
             let server = BootstrapServerBinder::new(
@@ -475,8 +481,9 @@ impl BootstrapServer<'_> {
 
 /// To be called from a `thread::spawn` invocation
 ///
-/// Runs the bootstrap management in a dedicated tokio runtime context. A failed bootstrap session
-/// will fail silently locally, but will send a message to the client with an error message.
+/// Runs the bootstrap management in a dedicated thread, handling the async by using
+/// a multi-thread-aware tokio runtime (the bs-main-loop runtime, to be exact). When this
+/// function blocks in the `block_on`, it should thread-block, and switch to another session
 ///
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
