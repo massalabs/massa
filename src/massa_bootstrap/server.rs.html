@@ -1158,7 +1158,7 @@
         }
     }
 
-    <span class="kw">fn </span>run_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_bootstraps: usize) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
+    <span class="kw">fn </span>run_loop(<span class="kw-2">mut </span><span class="self">self</span>, max_bootstraps: usize) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">let </span><span class="prelude-val">Ok</span>(bs_loop_rt) = runtime::Builder::new_multi_thread()
             .max_blocking_threads(max_bootstraps * <span class="number">2</span>)
             .enable_io()
@@ -1286,11 +1286,11 @@
                 );
             }
         }
-        <span class="comment">// TODO: here, the runtime containing all the handling sessions gets dropped
-        //       which is acts like a hard-process-kill for each thread still running.
-        //       Future refinements will need to have a &quot;stop while sessions still active&quot;
-        //       story.
-        </span><span class="prelude-val">Ok</span>(())
+
+        <span class="comment">// Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
+        </span><span class="self">self</span>.bs_server_runtime
+            .shutdown_timeout(Duration::from_secs(<span class="number">20</span>));
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// These are the steps to ensure that a connection is only processed if the server is active:
