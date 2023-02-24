@@ -49,7 +49,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::runtime::{self, Handle, Runtime};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     error::BootstrapError,
@@ -140,18 +140,19 @@ pub async fn start_bootstrap_server(
         config.bootstrap_blacklist_path.clone(),
     )?;
 
-    let update_rt_handle = bs_server_runtime.handle().clone();
-
     let updater_lists = white_black_list.clone();
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = update_rt_handle.block_on(BootstrapServer::run_updater(
+            let res = BootstrapServer::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
-            ));
-            dbg!("update handle stopped");
+            );
+            match res {
+                Ok(_) => info!("ip white/blacklist updater exited cleanly"),
+                Err(ref er) => error!("updater exited with error: {}", er),
+            };
             res
         })
         .unwrap();
@@ -213,7 +214,7 @@ struct BootstrapServer<'a> {
 }
 
 impl BootstrapServer<'_> {
-    async fn run_updater(
+    fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
         stopper: Receiver<()>,
