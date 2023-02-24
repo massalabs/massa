@@ -133,7 +133,7 @@ pub async fn start_bootstrap_server(
         .map_err(BootstrapError::IoError)?;
 
     // This is the primary interface between the async-listener, and the (soon to be) sync worker
-    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps);
+    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
 
     let white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
