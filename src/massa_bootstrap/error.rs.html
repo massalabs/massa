@@ -53,6 +53,12 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::messages::{BootstrapClientMessage, BootstrapServerMessage};
@@ -107,6 +113,12 @@
     </span>ReceivedError(String),
     <span class="doccomment">/// clock error: {0}
     </span>ClockError(String),
+    <span class="doccomment">/// fail to init the list from file : {0}
+    </span>InitListError(String),
+    <span class="doccomment">/// IP {0} is blacklisted
+    </span>BlackListed(String),
+    <span class="doccomment">/// IP {0} is not in the whitelist
+    </span>WhiteListed(String)
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (065852def 2023-02-13)" data-search-js="search-abe1d547ad11c273.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

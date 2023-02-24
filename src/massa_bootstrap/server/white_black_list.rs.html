@@ -112,6 +112,13 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     borrow::Cow,
     collections::HashSet,
@@ -122,6 +129,8 @@
 
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>tracing::log::error;
+<span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
 
 <span class="kw">use </span><span class="kw">crate</span>::tools::normalize_ip;
 
@@ -135,7 +144,7 @@
 }
 
 <span class="kw">impl </span>SharedWhiteBlackList&lt;<span class="lifetime">&#39;_</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(white_path: PathBuf, black_path: PathBuf) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, String&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(white_path: PathBuf, black_path: PathBuf) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BootstrapError&gt; {
         <span class="kw">let </span>(white_list, black_list) =
             WhiteBlackListInner::load_white_black_lists(<span class="kw-2">&amp;</span>white_path, <span class="kw-2">&amp;</span>black_path)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
@@ -150,7 +159,7 @@
 
     <span class="doccomment">/// Checks if the white/black list is up to date with a read-lock
     /// Creates a new list, and replaces the old one in a write-lock
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="kw">let </span>read_lock = <span class="self">self</span>.inner.read();
         <span class="kw">let </span>(new_white, new_black) =
             WhiteBlackListInner::load_white_black_lists(<span class="kw-2">&amp;</span><span class="self">self</span>.white_path, <span class="kw-2">&amp;</span><span class="self">self</span>.black_path)<span class="question-mark">?</span>;
@@ -174,7 +183,7 @@
     }
 
     <span class="attr">#[cfg_attr(test, allow(unreachable_code, unused_variables))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_ip_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, remote_addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_ip_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, remote_addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="attr">#[cfg(test)]
         </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
 
@@ -183,11 +192,11 @@
         </span><span class="kw">let </span>read = <span class="self">self</span>.inner.read();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>read.black_list &amp;&amp; ip_list.contains(<span class="kw-2">&amp;</span>ip) {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_blacklisted&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-            <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;IP {} is blacklisted&quot;</span>, <span class="kw-2">&amp;</span>ip))
+            <span class="prelude-val">Err</span>(BootstrapError::BlackListed(ip.to_string()))
             <span class="comment">// whether the peer IP address is not present in the whitelist
-        </span>} <span class="kw">else if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>read.white_list &amp;&amp; !ip_list.contains(<span class="kw-2">&amp;</span>ip){
+        </span>} <span class="kw">else if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>read.white_list &amp;&amp; !ip_list.contains(<span class="kw-2">&amp;</span>ip) {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_not_whitelisted&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: remote_addr});
-            <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;A whitelist exists and the IP {} is not whitelisted&quot;</span>, <span class="kw-2">&amp;</span>ip))
+            <span class="prelude-val">Err</span>(BootstrapError::WhiteListed(ip.to_string()))
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
@@ -200,24 +209,29 @@
     </span><span class="kw">fn </span>load_white_black_lists(
         whitelist_path: <span class="kw-2">&amp;</span>Path,
         blacklist_path: <span class="kw-2">&amp;</span>Path,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), String&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), BootstrapError&gt; {
         <span class="kw">let </span>white_list = <span class="self">Self</span>::load_list(whitelist_path)<span class="question-mark">?</span>;
         <span class="kw">let </span>black_list = <span class="self">Self</span>::load_list(blacklist_path)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((white_list, black_list))
     }
 
-    <span class="kw">fn </span>load_list(list_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, String&gt; {
-        <span class="kw">let </span><span class="prelude-val">Ok</span>(list) = std::fs::read_to_string(list_path) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-        };
-        <span class="kw">let </span>res = <span class="prelude-val">Some</span>(
-            serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(list.as_str())
-                .map_err(|<span class="kw">_</span>| String::from(<span class="string">&quot;Failed to parse bootstrap whitelist&quot;</span>))<span class="question-mark">?
-                </span>.into_iter()
-                .map(normalize_ip)
-                .collect(),
-        );
-        <span class="prelude-val">Ok</span>(res)
+    <span class="kw">fn </span>load_list(list_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, BootstrapError&gt; {
+        <span class="kw">match </span>std::fs::read_to_string(list_path) {
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;error on load whitelist/blacklist file : {}&quot;</span>, e);
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+            },
+            <span class="prelude-val">Ok</span>(list) =&gt; {
+                <span class="kw">let </span>res = <span class="prelude-val">Some</span>(
+                    serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(list.as_str())
+                        .map_err(|e| BootstrapError::InitListError(<span class="macro">format!</span>(<span class="string">&quot;Failed to parse bootstrap whitelist : {}&quot;</span>, e.to_string())))<span class="question-mark">?
+                        </span>.into_iter()
+                        .map(normalize_ip)
+                        .collect(),
+                );
+                <span class="prelude-val">Ok</span>(res)
+            }
+        }
     }
 }
 

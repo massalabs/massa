@@ -898,7 +898,6 @@
 <a href="#898" id="898">898</a>
 <a href="#899" id="899">899</a>
 <a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -966,7 +965,7 @@
 </span><span class="kw">type </span>BsConn = (Duplex, SocketAddr);
 <span class="doccomment">/// handle on the bootstrap server
 </span><span class="kw">pub struct </span>BootstrapManager {
-    update_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), String&gt;&gt;,
+    update_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
     _listen_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt;&gt;,
     main_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
     listen_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
@@ -1040,8 +1039,7 @@
     <span class="kw">let </span>white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
         config.bootstrap_blacklist_path.clone(),
-    )
-    .map_err(BootstrapError::GeneralError)<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>update_rt_handle = bs_server_runtime.handle().clone();
 
@@ -1120,7 +1118,7 @@
         <span class="kw-2">mut </span>list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;_</span>&gt;,
         interval: Duration,
         stopper: Receiver&lt;()&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="kw">loop </span>{
             std::thread::sleep(interval);
             <span class="macro">dbg!</span>(<span class="string">&quot;update tick&quot;</span>);
@@ -1129,7 +1127,7 @@
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">match </span>e {
                     crossbeam::channel::TryRecvError::Empty =&gt; {}
                     crossbeam::channel::TryRecvError::Disconnected =&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;update stopper unexpected disconnect&quot;</span>.to_string())
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;update stopper unexpected disconnect&quot;</span>.to_string()));
                     }
                 },
             }
@@ -1197,7 +1195,7 @@
             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.white_black_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
                 server.close_and_send_error(
                     <span class="self">self</span>.bs_server_runtime.handle().clone(),
-                    error_msg,
+                    error_msg.to_string(),
                     remote_addr,
                     <span class="kw">move </span>|| {},
                 );
