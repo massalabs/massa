@@ -135,6 +135,9 @@ impl Key {
 
 pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
     let mut prefix = Vec::new();
+    U64VarIntSerializer::new()
+        .serialize(&KEY_VERSION, &mut prefix)
+        .unwrap();
     AddressSerializer::new()
         .serialize(address, &mut prefix)
         .unwrap();

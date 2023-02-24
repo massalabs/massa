@@ -57,7 +57,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// use massa_serialization::Serializer;
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::amount::Amount;
+    /// use massa_models::{amount::Amount, bytecode::Bytecode};
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
@@ -119,14 +119,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::amount::Amount;
+    /// use massa_models::{amount::Amount, bytecode::Bytecode};
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
     /// let balance = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
     ///    bytecode,

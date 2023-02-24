@@ -693,7 +693,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(), // +1 for the type byte
+                    key.split_at(ADDRESS_SIZE_BYTES + 2).1.to_vec(), // +1 for the type byte and +1 for the key version byte (/!\ could be more than 1!)
                     data.to_vec(),
                 )
             })
