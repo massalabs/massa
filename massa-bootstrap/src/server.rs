@@ -491,10 +491,10 @@ fn run_bootstrap_session(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
-    bs_server_rt_handle: Handle,
+    bs_loop_rt_handle: Handle,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
-    bs_server_rt_handle.block_on(async move {
+    bs_loop_rt_handle.block_on(async move {
         let res = tokio::time::timeout(
             config.bootstrap_timeout.into(),
             manage_bootstrap(
