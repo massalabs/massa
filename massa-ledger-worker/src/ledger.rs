@@ -11,7 +11,6 @@ use massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
     bytecode::{Bytecode, BytecodeDeserializer},
-    config::constants::MAX_DATASTORE_VALUE_LENGTH,
     error::ModelsError,
     slot::Slot,
     streaming_step::StreamingStep,
@@ -109,7 +108,8 @@ impl LedgerController for FinalLedger {
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
     fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
-        let bytecode_deserializer = BytecodeDeserializer::new(MAX_DATASTORE_VALUE_LENGTH + 4);
+        let bytecode_deserializer =
+            BytecodeDeserializer::new(self.config.max_datastore_value_length + 4);
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Bytecode)
             .map(|bytes| {
