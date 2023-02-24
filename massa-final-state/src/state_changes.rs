@@ -170,7 +170,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// ## Example
     /// ```
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, prehash::PreHashMap slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, prehash::PreHashMap, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
