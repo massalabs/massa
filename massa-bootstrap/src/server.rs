@@ -82,7 +82,7 @@ impl BootstrapManager {
         if dbg!(self.update_stopper_tx.send(()).is_err()) {
             warn!("bootstrap ip-list-update already dropped");
         }
-        // TODO: handle join errors.
+        // TODO?: handle join errors.
         // TODO: examine dead-lock potential
 
         // when the runtime is dropped at the end of this stop, the listener and handler are auto-aborted
