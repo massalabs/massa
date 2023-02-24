@@ -21,6 +21,7 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::bytecode::Bytecode;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
@@ -658,7 +659,7 @@ impl ExecutionState {
             }
 
             // Load bytecode. Assume empty bytecode if not found.
-            bytecode = context.get_bytecode(&target_addr).unwrap_or_default();
+            bytecode = context.get_bytecode(&target_addr).unwrap_or_default().0;
         }
 
         // Execute bytecode
@@ -694,11 +695,11 @@ impl ExecutionState {
     pub fn execute_async_message(
         &self,
         message: AsyncMessage,
-        bytecode: Option<Vec<u8>>,
+        bytecode: Option<Bytecode>,
     ) -> Result<(), ExecutionError> {
         // prepare execution context
         let context_snapshot;
-        let bytecode: Vec<u8> = {
+        let bytecode: Bytecode = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -758,7 +759,7 @@ impl ExecutionState {
         let module = self
             .module_cache
             .write()
-            .get_module(&bytecode, message.max_gas)?;
+            .get_module(&bytecode.0, message.max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -770,7 +771,7 @@ impl ExecutionState {
             Ok(Response { init_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .save_module(&bytecode, module, init_cost);
+                    .save_module(&bytecode.0, module, init_cost);
                 Ok(())
             }
             Err(err) => {
@@ -1162,7 +1163,8 @@ impl ExecutionState {
                 // get the bytecode, default to an empty vector
                 let bytecode = execution_context
                     .get_bytecode(&target_addr)
-                    .unwrap_or_default();
+                    .unwrap_or_default()
+                    .0;
 
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;

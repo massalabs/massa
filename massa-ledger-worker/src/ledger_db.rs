@@ -5,8 +5,9 @@
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES},
+    address::Address,
     amount::AmountSerializer,
+    bytecode::BytecodeSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
     slot::{Slot, SlotSerializer},
@@ -75,6 +76,7 @@ pub(crate) struct LedgerDB {
     key_deserializer: KeyDeserializer,
     key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
+    bytecode_serializer: BytecodeSerializer,
     slot_serializer: SlotSerializer,
     len_serializer: U64VarIntSerializer,
     ledger_part_size_message_bytes: u64,
@@ -141,6 +143,7 @@ impl LedgerDB {
             key_deserializer: KeyDeserializer::new(max_datastore_key_length, true),
             key_deserializer_db: KeyDeserializer::new(max_datastore_key_length, false),
             amount_serializer: AmountSerializer::new(),
+            bytecode_serializer: BytecodeSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             len_serializer: U64VarIntSerializer::new(),
             ledger_part_size_message_bytes,
@@ -257,7 +260,18 @@ impl LedgerDB {
             .db
             .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
-            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
+            .map(|(key, _)| {
+                let (_rest, key) = self
+                    .key_deserializer_db
+                    .deserialize::<DeserializeError>(&key)
+                    .unwrap();
+                match key.key_type {
+                    KeyType::DATASTORE(datastore_vec) => datastore_vec,
+                    _ => {
+                        vec![]
+                    }
+                }
+            })
             .peekable();
 
         // Return None if empty
@@ -455,6 +469,11 @@ impl LedgerDB {
             .serialize(&ledger_entry.balance, &mut bytes_balance)
             .unwrap();
 
+        let mut bytes_bytecode = Vec::new();
+        self.bytecode_serializer
+            .serialize(&ledger_entry.bytecode, &mut bytes_bytecode)
+            .unwrap();
+
         // balance
         self.put_entry_value(
             handle,
@@ -468,7 +487,7 @@ impl LedgerDB {
             handle,
             batch,
             &Key::new(addr, KeyType::BYTECODE),
-            &ledger_entry.bytecode,
+            &bytes_bytecode,
         );
 
         // datastore
@@ -542,8 +561,13 @@ impl LedgerDB {
 
         // bytecode
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
+            let mut bytes = Vec::new();
+            self.bytecode_serializer
+                .serialize(&bytecode, &mut bytes)
+                .unwrap();
+
             let bytecode_key = Key::new(addr, KeyType::BYTECODE);
-            self.update_key_value(handle, batch, &bytecode_key, &bytecode);
+            self.update_key_value(handle, batch, &bytecode_key, &bytes);
         }
 
         // datastore
@@ -607,11 +631,11 @@ impl LedgerDB {
             )
             .flatten()
         {
-            let (_, deserlized_key) = self
+            let (_, deserialized_key) = self
                 .key_deserializer_db
                 .deserialize::<DeserializeError>(&key)
                 .expect(KEY_DESER_ERROR);
-            self.delete_key(handle, batch, &deserlized_key);
+            self.delete_key(handle, batch, &deserialized_key);
         }
     }
 }
@@ -679,10 +703,14 @@ impl LedgerDB {
             )
             .flatten()
             .map(|(key, data)| {
-                (
-                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(), // +1 for the type byte
-                    data.to_vec(),
-                )
+                let (_rest, key) = self
+                    .key_deserializer_db
+                    .deserialize::<DeserializeError>(&key)
+                    .unwrap();
+                match key.key_type {
+                    KeyType::DATASTORE(datastore_vec) => (datastore_vec, data.to_vec()),
+                    _ => (vec![], vec![]),
+                }
             })
             .collect()
     }
@@ -757,6 +785,7 @@ mod tests {
     fn test_ledger_db() {
         let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
         let (db, data) = init_test_ledger(addr);
+
         let ledger_hash = db.get_ledger_hash();
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));

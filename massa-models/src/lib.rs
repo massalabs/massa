@@ -21,6 +21,8 @@ pub mod block;
 pub mod block_header;
 /// block-related structure: block_id
 pub mod block_id;
+/// bytecode structures
+pub mod bytecode;
 /// clique
 pub mod clique;
 /// various structures

@@ -3,7 +3,8 @@ use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::{
-    address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
+    address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId,
+    prehash::PreHashMap, slot::Slot,
 };
 use std::collections::{HashMap, VecDeque};
 
@@ -79,16 +80,16 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active bytecode of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_bytecode(&self, addr: &Address) -> HistorySearchResult<Vec<u8>> {
+    pub fn fetch_bytecode(&self, addr: &Address) -> HistorySearchResult<Bytecode> {
         for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => {
-                    return HistorySearchResult::Present(v.bytecode.to_vec())
+                    return HistorySearchResult::Present(v.bytecode.clone())
                 }
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     bytecode: SetOrKeep::Set(v),
                     ..
-                })) => return HistorySearchResult::Present(v.to_vec()),
+                })) => return HistorySearchResult::Present(v.clone()),
                 Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
                 _ => (),
             }

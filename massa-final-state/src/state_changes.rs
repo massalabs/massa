@@ -61,7 +61,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -87,7 +87,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
@@ -170,7 +170,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// ## Example
     /// ```
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{address::Address, prehash::PreHashMap, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, prehash::PreHashMap, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -196,7 +196,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),

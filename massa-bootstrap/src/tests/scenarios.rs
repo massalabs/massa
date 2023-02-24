@@ -28,7 +28,8 @@ use massa_final_state::{
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_models::{
-    address::Address, node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version,
+    address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
+    streaming_step::StreamingStep, version::Version,
 };
 use massa_models::{
     config::{
@@ -78,6 +79,7 @@ async fn test_bootstrap_server() {
             disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_ledger_part_size: 100_000,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
