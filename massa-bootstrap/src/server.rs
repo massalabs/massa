@@ -83,7 +83,6 @@ impl BootstrapManager {
             warn!("bootstrap ip-list-updater already dropped");
         }
         // TODO?: handle join errors.
-        // TODO: examine dead-lock potential
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
