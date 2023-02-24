@@ -3,7 +3,7 @@ use futures::Future;
 use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
     block::SecureShareBlock, block_id::BlockId, node::NodeId, operation::SecureShareOperation,
-    prehash::PreHashSet,
+    prehash::PreHashSet, versioning::VersioningStore,
 };
 use massa_network_exports::BlockInfoReply;
 use massa_pool_exports::test_exports::{MockPoolController, PoolEventReceiver};
@@ -39,6 +39,8 @@ where
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
         MockConsensusController::new_with_receiver();
+    let versioning_store: VersioningStore = Default::default();
+
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel(protocol_config.controller_channel_size);
@@ -57,6 +59,7 @@ where
         consensus_controller,
         pool_controller,
         Storage::create_root(),
+        versioning_store.clone(),
     )
     .await
     .expect("could not start protocol controller");
@@ -109,6 +112,8 @@ where
     let (consensus_controller, mock_consensus_receiver) =
         MockConsensusController::new_with_receiver();
     let storage = Storage::create_root();
+    let versioning_store: VersioningStore = Default::default();
+
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel(protocol_config.controller_channel_size);
@@ -129,6 +134,7 @@ where
         consensus_controller,
         pool_controller,
         storage.clone(),
+        versioning_store.clone(),
     )
     .await
     .expect("could not start protocol controller");

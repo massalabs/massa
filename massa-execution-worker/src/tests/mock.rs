@@ -149,6 +149,8 @@ pub fn create_block(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
+            active_version: 0,
+            announced_version: 0,
             parents: vec![],
             operation_merkle_root,
             endorsements: vec![],

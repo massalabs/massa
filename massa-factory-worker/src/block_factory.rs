@@ -11,6 +11,7 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
+    versioning::VersioningStore,
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
@@ -28,6 +29,7 @@ pub(crate) struct BlockFactoryWorker {
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: mpsc::Receiver<()>,
+    versioning_store: VersioningStore,
 }
 
 impl BlockFactoryWorker {
@@ -38,6 +40,7 @@ impl BlockFactoryWorker {
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
         factory_receiver: mpsc::Receiver<()>,
+        versioning_store: VersioningStore,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("block-factory".into())
@@ -47,6 +50,7 @@ impl BlockFactoryWorker {
                     wallet,
                     channels,
                     factory_receiver,
+                    versioning_store,
                 };
                 this.run();
             })
@@ -198,10 +202,15 @@ impl BlockFactoryWorker {
                 .collect::<Vec<u8>>(),
         );
 
+        let active_version = self.versioning_store.get_current_active_version();
+        let announced_version = self.versioning_store.get_current_version_to_announce();
+
         // create header
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 slot,
+                active_version,
+                announced_version,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
                 endorsements,

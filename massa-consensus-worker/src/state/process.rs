@@ -667,6 +667,35 @@ impl ConsensusState {
         }
     }
 
+    /// Notify versioning about finalized blocks.
+    ///
+    /// # Arguments:
+    /// * `finalized_blocks`: Block that became final and need to be send to execution
+    fn notify_versioning(&mut self, finalized_blocks: HashMap<Slot, BlockId>) {
+        let mut finalized_blocks_vec: Vec<_> = finalized_blocks.iter().collect();
+        finalized_blocks_vec.sort_by_key(|(&slot, &_)| slot);
+
+        let mut announced_versions = Vec::new();
+        {
+            let read_blocks = self.storage.read_blocks();
+
+            for (_slot, id) in finalized_blocks_vec {
+                let block = read_blocks
+                    .get(id)
+                    .expect("missing block when removing unused final active blocks");
+
+                announced_versions.push(block.content.header.content.announced_version);
+            }
+        };
+
+        for announced_version in announced_versions {
+            let _ = self
+                .channels
+                .versioning_command_sender
+                .send_block_version(announced_version);
+        }
+    }
+
     /// Notify execution about blockclique changes and finalized blocks.
     ///
     /// # Arguments:
@@ -752,7 +781,7 @@ impl ConsensusState {
     /// 2. Notify of attack attempts
     /// 3. get new final blocks
     /// 4. get blockclique
-    /// 5. notify Execution
+    /// 5. notify Execution & versioning
     /// 6. Process new final blocks
     /// 7. Notify pool of new final ops
     /// 8. Notify PoS of final blocks
@@ -821,7 +850,10 @@ impl ConsensusState {
         };
 
         // notify execution
-        self.notify_execution(final_block_slots);
+        self.notify_execution(final_block_slots.clone());
+
+        // notify versioning
+        self.notify_versioning(final_block_slots);
 
         // notify protocol of block wishlist
         let new_wishlist = self.get_block_wishlist()?;

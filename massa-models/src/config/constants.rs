@@ -192,6 +192,13 @@ pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
 /// Pool controller channel size
 pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 
+/// Versioning controller channel size
+pub const VERSIONING_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// Nb blocks to consider for versioning stats
+pub const VERSIONING_NB_BLOCKS_CONSIDERED: usize = 1000;
+/// Proportion of blocks to switch to another version
+pub const VERSIONING_BLOCK_THRESHOLD_PROPORTION: f32 = 0.75;
+
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)
 //

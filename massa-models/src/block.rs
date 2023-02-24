@@ -458,6 +458,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 0),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![endo1, endo2],
@@ -533,6 +535,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(0, 1),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
@@ -612,6 +616,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(0, 1),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![Endorsement::new_verifiable(
@@ -669,6 +675,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(0, 1),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
@@ -716,6 +724,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
+                active_version: 0,
+                announced_version: 0,
                 parents: vec![],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
@@ -766,6 +776,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
@@ -838,6 +850,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 0),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements,
@@ -887,6 +901,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
@@ -951,6 +967,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 1),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements,
@@ -1020,6 +1038,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 0),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![endo1],
@@ -1101,6 +1121,8 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 slot: Slot::new(1, 0),
+                active_version: 0,
+                announced_version: 0,
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![endo1, endo2],

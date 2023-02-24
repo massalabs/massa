@@ -8,6 +8,7 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
+use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
 use massa_models::secure_share::Id;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -19,6 +20,7 @@ use massa_models::{
     operation::OperationPrefixId,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
+    versioning::VersioningStore,
 };
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
@@ -55,6 +57,7 @@ pub async fn start_protocol_controller(
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
+    versioning_store: VersioningStore,
 ) -> Result<ProtocolManager, ProtocolError> {
     debug!("starting protocol controller");
 
@@ -73,6 +76,7 @@ pub async fn start_protocol_controller(
             consensus_controller,
             pool_controller,
             storage,
+            versioning_store,
         )
         .run_loop()
         .await;
@@ -151,6 +155,7 @@ pub struct ProtocolWorker {
     pub(crate) storage: Storage,
     /// Operations to announce at the next interval.
     operations_to_announce: Vec<OperationId>,
+    versioning_store: VersioningStore,
 }
 
 /// channels used by the protocol worker
@@ -185,6 +190,7 @@ impl ProtocolWorker {
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
         storage: Storage,
+        versioning_store: VersioningStore,
     ) -> ProtocolWorker {
         ProtocolWorker {
             config,
@@ -207,6 +213,7 @@ impl ProtocolWorker {
             operations_to_announce: Vec::with_capacity(
                 config.operation_announcement_buffer_capacity,
             ),
+            versioning_store,
         }
     }
 
@@ -765,6 +772,7 @@ impl ProtocolWorker {
     /// - Can compute a `BlockId`.
     /// - Valid signature.
     /// - Absence of duplicate endorsements.
+    /// - Compatible active version
     ///
     /// Checks performed on endorsements:
     /// - Unique indices.
@@ -857,6 +865,28 @@ impl ProtocolWorker {
             }
         }
 
+        // check active version
+        let Ok(slot_massatime) = massa_models::timeslots::get_block_slot_timestamp(
+            THREAD_COUNT,
+            T0, *GENESIS_TIMESTAMP,
+            header.content.slot
+        ) else {
+            return Ok(None);
+        };
+
+        if header.content.active_version
+            != self
+                .versioning_store
+                .get_active_version_at_timestamp(slot_massatime.to_millis())
+        {
+            massa_trace!(
+                "Received a block header with incompatible active version",
+                { "header": header }
+            );
+            return Ok(None);
+        }
+
+        // Every checks passed
         self.checked_headers.insert(block_id, header.clone());
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {

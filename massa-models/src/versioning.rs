@@ -75,7 +75,7 @@ impl Eq for VersioningInfo {}
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
     enum VersioningState {
         /// Initial state
         Defined,
@@ -119,8 +119,6 @@ impl VersioningState {
     }
 }
 
-//#[cfg(feature = "testing")]
-#[cfg(test)]
 impl From<&str> for VersioningState {
     fn from(state: &str) -> Self {
         match state {
@@ -167,13 +165,13 @@ const THRESHOLD_TRANSITION_ACCEPTED: &str = "75.0";
 #[derive(Clone, Debug, PartialEq)]
 pub struct Advance {
     /// from VersioningInfo.start
-    start_timestamp: u64,
+    pub start_timestamp: u64,
     /// from VersioningInfo.timeout
-    timeout: u64,
+    pub timeout: u64,
     /// % of past blocks with this version
-    threshold: Amount,
+    pub threshold: Amount,
     /// Current time (timestamp)
-    now: u64,
+    pub now: u64,
 }
 
 transitions!(VersioningState,
@@ -283,6 +281,73 @@ impl Default for VersioningStore {
     fn default() -> Self {
         Self {
             0: Arc::new(RwLock::new(Default::default())),
+        }
+    }
+}
+
+impl VersioningStore {
+    // Used to check if a received block header is valid or not
+    // The given timestamp is the slot time of the block
+    // It is valid if the version is the
+    pub fn get_active_version_at_timestamp(&self, timestamp: u64) -> u32 {
+        let store = self.0.read().data.clone();
+
+        // We filter the versions that were not active back in timestamp.
+        let mut all_active_versions: Vec<_> = store
+            .iter()
+            .filter(|&(k, v)| {
+                v == &VersioningState::Active(Active::new()) && k.timeout <= timestamp
+            })
+            .map(|(k, _v)| k)
+            .collect();
+
+        // Check the sort here
+        // Currently, we consider that the most active is the last "timeout date", but there may be edge cases?
+        all_active_versions.sort_by_key(|&k| k.timeout);
+        match all_active_versions.len() {
+            0 => 0,
+            n => all_active_versions[n - 1].version,
+        }
+    }
+
+    pub fn get_current_active_version(&self) -> u32 {
+        let store = (*self.0.read()).data.clone();
+
+        let mut all_active_versions: Vec<_> = store
+            .iter()
+            .filter(|&(_k, v)| v == &VersioningState::Active(Active::new()))
+            .map(|(k, _v)| k)
+            .collect();
+
+        // Check the sort here
+        // Currently, we consider that the most active is the last "timeout date", but there may be edge cases?
+        all_active_versions.sort_by_key(|&k| k.timeout);
+        match all_active_versions.len() {
+            0 => 0,
+            n => all_active_versions[n - 1].version,
+        }
+    }
+
+    pub fn get_current_version_to_announce(&self) -> u32 {
+        let store = (*self.0.read()).data.clone();
+
+        // Check the filter and the sort here
+        let mut filtered_versions: Vec<_> = store
+            .iter()
+            .filter(|&(_k, v)| {
+                matches!(
+                    v,
+                    &VersioningState::Started(_)
+                        | &VersioningState::LockedIn(_)
+                        | &VersioningState::Active(_)
+                )
+            })
+            .map(|(k, _v)| k)
+            .collect();
+        filtered_versions.sort_by_key(|&k| k.start);
+        match filtered_versions.len() {
+            0 => 0,
+            _ => filtered_versions[0].version,
         }
     }
 }

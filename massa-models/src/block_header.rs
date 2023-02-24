@@ -28,6 +28,10 @@ use std::fmt::Formatter;
 pub struct BlockHeader {
     /// slot
     pub slot: Slot,
+    /// active version for BIP-34 impl
+    pub active_version: u32,
+    /// announced version for BIP-34 impl
+    pub announced_version: u32,
     /// parents
     pub parents: Vec<BlockId>,
     /// all operations hash
@@ -172,6 +176,10 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// ```
     fn serialize(&self, value: &BlockHeader, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.slot_serializer.serialize(&value.slot, buffer)?;
+
+        self.u32_serializer
+            .serialize(&value.announced_version, buffer)?;
+
         // parents (note: there should be none if slot period=0)
         if value.parents.is_empty() {
             buffer.push(0);
@@ -206,6 +214,8 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
     endorsement_serializer: EndorsementSerializer,
+    announced_version_deserializer: U32VarIntDeserializer,
+    active_version_deserializer: U32VarIntDeserializer,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     thread_count: u8,
@@ -224,6 +234,14 @@ impl BlockHeaderDeserializer {
             length_endorsements_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(endorsement_count),
+            ),
+            announced_version_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(u32::MAX),
+            ),
+            active_version_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(u32::MAX),
             ),
             hash_deserializer: HashDeserializer::new(),
             thread_count,
@@ -286,61 +304,71 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        let (rest, (slot, parents, operation_merkle_root)): (&[u8], (Slot, Vec<BlockId>, Hash)) =
-            context("Failed BlockHeader deserialization", |input| {
-                let (rest, (slot, parents)) = tuple((
-                    context("Failed slot deserialization", |input| {
-                        self.slot_deserializer.deserialize(input)
-                    }),
-                    context(
-                        "Failed parents deserialization",
-                        alt((
-                            preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
-                            preceded(
-                                tag(&[1]),
-                                count(
-                                    context("Failed block_id deserialization", |input| {
-                                        self.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                                    }),
-                                    self.thread_count as usize,
-                                ),
+        let (rest, (slot, active_version, announced_version, parents, operation_merkle_root)): (
+            &[u8],
+            (Slot, u32, u32, Vec<BlockId>, Hash),
+        ) = context("Failed BlockHeader deserialization", |input| {
+            let (rest, (slot, active_version, announced_version, parents)) = tuple((
+                context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed active_version deserialization", |input| {
+                    self.active_version_deserializer.deserialize(input)
+                }),
+                context("Failed announced_version deserialization", |input| {
+                    self.announced_version_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed parents deserialization",
+                    alt((
+                        preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
+                        preceded(
+                            tag(&[1]),
+                            count(
+                                context("Failed block_id deserialization", |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                                self.thread_count as usize,
                             ),
-                        )),
-                    ),
-                ))
-                .parse(input)?;
-
-                // validate the parent/slot invariats before moving on to other fields
-                if slot.period == 0 && !parents.is_empty() {
-                    return Err(nom::Err::Failure(ContextError::add_context(
-                        rest,
-                        "Genesis block cannot contain parents",
-                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                    )));
-                } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
-                    return Err(nom::Err::Failure(ContextError::add_context(
-                        rest,
-                        const_format::formatcp!(
-                            "Non-genesis block must have {} parents",
-                            THREAD_COUNT
                         ),
-                        ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-                    )));
-                }
+                    )),
+                ),
+            ))
+            .parse(input)?;
 
-                let (rest, merkle) = context("Failed operation_merkle_root", |input| {
-                    self.hash_deserializer.deserialize(input)
-                })
-                .parse(rest)?;
-                Ok((rest, (slot, parents, merkle)))
+            // validate the parent/slot invariats before moving on to other fields
+            if slot.period == 0 && !parents.is_empty() {
+                return Err(nom::Err::Failure(ContextError::add_context(
+                    rest,
+                    "Genesis block cannot contain parents",
+                    ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                )));
+            } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
+                return Err(nom::Err::Failure(ContextError::add_context(
+                    rest,
+                    const_format::formatcp!("Non-genesis block must have {} parents", THREAD_COUNT),
+                    ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+                )));
+            }
+
+            let (rest, merkle) = context("Failed operation_merkle_root", |input| {
+                self.hash_deserializer.deserialize(input)
             })
-            .parse(buffer)?;
+            .parse(rest)?;
+            Ok((
+                rest,
+                (slot, active_version, announced_version, parents, merkle),
+            ))
+        })
+        .parse(buffer)?;
 
         if parents.is_empty() {
             let res = BlockHeader {
                 slot,
+                active_version,
+                announced_version,
                 parents,
                 operation_merkle_root,
                 endorsements: Vec::new(),
@@ -402,6 +430,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
         let header = BlockHeader {
             slot,
+            active_version,
+            announced_version,
             parents,
             operation_merkle_root,
             endorsements,
