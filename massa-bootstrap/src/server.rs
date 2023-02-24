@@ -354,17 +354,6 @@ impl BootstrapServer<'_> {
                     continue;
                 }; // Clients Option<last-attempt> is good, and has been updated
 
-                // load cache if absent
-                // if bootstrap_data.is_none() {
-                //     massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
-
-                //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
-                //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
-                //     // If the consensus state snapshot is older than the execution state snapshot,
-                //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
-                //     cache_timer.set(sleep(cache_timeout));
-                // }
                 massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
 
                 // launch bootstrap
