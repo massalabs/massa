@@ -63,6 +63,7 @@ pub mod timeslots;
 /// versions
 pub mod version;
 /// versioning
+#[allow(missing_docs)] // due machine crate macro
 pub mod versioning;
 /// versioning factory
 pub mod versioning_factory;

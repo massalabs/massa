@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 /// Factory error
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum FactoryError {
     #[error("Unknown version, cannot build obj with version: {0}")]
@@ -14,7 +15,7 @@ pub enum FactoryError {
 }
 
 /// Factory value error
-// TODO: try with lifetime & &str args for BadType ?
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum FactoryValueError {
     #[error("Value is of type {0}, type {1} was expected")]
@@ -28,6 +29,7 @@ pub enum FactoryValueError {
 }
 
 /// A generic type used for factories to pass arguments
+#[allow(missing_docs)]
 #[derive(Clone)]
 pub enum FactoryValue {
     String(String),

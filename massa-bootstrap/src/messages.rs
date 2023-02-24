@@ -64,6 +64,7 @@ pub enum BootstrapServerMessage {
         /// Server peers
         peers: BootstrapPeers,
     },
+    /// Bootstrap versioning store
     BootstrapVersioningStore {
         /// Server versioning store
         store: VersioningStoreRaw,

@@ -24,6 +24,7 @@ use massa_serialization::{
 
 // TODO: add more items here
 /// Versioning component enum
+#[allow(missing_docs)]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum VersioningComponent {
@@ -75,6 +76,7 @@ impl Eq for VersioningInfo {}
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
+    #[allow(missing_docs)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     enum VersioningState {
         /// Initial state
@@ -286,9 +288,9 @@ impl Default for VersioningStore {
 }
 
 impl VersioningStore {
-    // Used to check if a received block header is valid or not
-    // The given timestamp is the slot time of the block
-    // It is valid if the version is the
+    /// Used to check if a received block header is valid or not
+    /// The given timestamp is the slot time of the block
+    /// It is valid if the version is the
     pub fn get_active_version_at_timestamp(&self, timestamp: u64) -> u32 {
         let store = self.0.read().data.clone();
 
@@ -310,6 +312,7 @@ impl VersioningStore {
         }
     }
 
+    ///
     pub fn get_current_active_version(&self) -> u32 {
         let store = (*self.0.read()).data.clone();
 
@@ -328,6 +331,7 @@ impl VersioningStore {
         }
     }
 
+    ///
     pub fn get_current_version_to_announce(&self) -> u32 {
         let store = (*self.0.read()).data.clone();
 
@@ -356,7 +360,7 @@ impl VersioningStore {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VersioningStoreRaw {
     // TODO: no need to name field?
-    // pub data: HashMap<VersioningInfo, VersioningState>,
+    ///
     pub data: BTreeMap<VersioningInfo, VersioningState>,
 }
 
