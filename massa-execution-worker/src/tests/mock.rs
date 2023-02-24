@@ -18,6 +18,7 @@ use massa_models::{
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::str::FromStr;
 use std::{
@@ -174,40 +175,25 @@ pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
 
     if with_value {
         let vesting1 = VestingRange {
-            start_slot: Slot {
-                period: 1,
-                thread: 0,
-            },
-            end_slot: Slot {
-                period: 0,
-                thread: 0,
-            },
+            start_slot: Slot::min(),
+            end_slot: Slot::min(),
+            timestamp: MassaTime::from(0),
             min_balance: Amount::from_str("200000").unwrap(),
             max_rolls: 150,
         };
 
         let vesting2 = VestingRange {
-            start_slot: Slot {
-                period: 40,
-                thread: 0,
-            },
-            end_slot: Slot {
-                period: 0,
-                thread: 0,
-            },
+            start_slot: Slot::min(),
+            end_slot: Slot::min(),
+            timestamp: MassaTime::from(1678457600000),
             min_balance: Amount::from_str("150000").unwrap(),
             max_rolls: 130,
         };
 
         let vesting3 = VestingRange {
-            start_slot: Slot {
-                period: 500,
-                thread: 0,
-            },
-            end_slot: Slot {
-                period: 0,
-                thread: 0,
-            },
+            start_slot: Slot::min(),
+            end_slot: Slot::min(),
+            timestamp: MassaTime::from(1679321600000),
             min_balance: Amount::from_str("80000").unwrap(),
             max_rolls: 80,
         };

@@ -35,6 +35,7 @@ use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
@@ -430,7 +431,7 @@ impl ExecutionState {
         if let Some(vesting_range) = self.find_vesting_range(&buyer_addr, &current_slot) {
             let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
             // (candidate_rolls + amount to buy)
-            let max_rolls = rolls.1 + roll_count;
+            let max_rolls = rolls.1.saturating_add(*roll_count);
             if max_rolls > vesting_range.max_rolls {
                 return Err(ExecutionError::VestingError(format!(
                     "vesting_max_rolls={} with value max_rolls={} ",
@@ -1436,24 +1437,48 @@ impl ExecutionState {
             ))
         })?;
 
+        let get_slot_at_timestamp = |config: &ExecutionConfig, timestamp: MassaTime| {
+            match massa_models::timeslots::get_latest_block_slot_at_timestamp(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                timestamp,
+            ) {
+                Ok(opts) => Ok(opts.unwrap()),
+                Err(_) => Err(ExecutionError::InitVestingError(format!(
+                    "can no get the slot at timestamp : {}",
+                    timestamp
+                ))),
+            }
+        };
+
         for v in hashmap.values_mut() {
-            *v = v
-                .windows(2)
-                .map(|elements| {
-                    let (mut prev, next) = (elements[0], elements[1]);
-                    let end_slot =
-                        next.start_slot
-                            .get_prev_slot(config.thread_count)
-                            .map_err(|e| {
-                                ExecutionError::InitVestingError(format!(
-                                    "error on get prev slot for init vesting : {}",
-                                    e
-                                ))
-                            })?;
-                    prev.end_slot = end_slot;
-                    Ok(prev)
-                })
-                .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
+            if v.len().eq(&1) {
+                return Err(ExecutionError::InitVestingError(
+                    "vesting file should has more one element".to_string(),
+                ));
+            } else {
+                *v = v
+                    .windows(2)
+                    .map(|elements| {
+                        let (mut prev, next) = (elements[0], elements[1]);
+
+                        // retrieve the start_slot
+                        if prev.timestamp.eq(&MassaTime::from(0)) {
+                            // first range with timestamp = 0
+                            prev.start_slot = Slot::min();
+                        } else {
+                            prev.start_slot = get_slot_at_timestamp(config, prev.timestamp)?;
+                        }
+
+                        // retrieve the end_slot
+                        let next_range_slot = get_slot_at_timestamp(config, next.timestamp)?;
+                        prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)?;
+
+                        Ok(prev)
+                    })
+                    .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
+            }
         }
 
         Ok(hashmap)
