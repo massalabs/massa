@@ -14,7 +14,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
-#[cfg(feature = "testing")]
+#[cfg(test)]
 use thiserror::Error;
 
 use crate::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -47,6 +47,8 @@ pub struct VersioningInfo {
     pub timeout: u64,
 }
 
+// Need Ord / PartialOrd so it is properly sorted in BTreeMap
+
 impl Ord for VersioningInfo {
     fn cmp(&self, other: &Self) -> Ordering {
         (self.start, &self.timeout).cmp(&(other.start, &other.timeout))
@@ -70,20 +72,6 @@ impl PartialEq for VersioningInfo {
 }
 
 impl Eq for VersioningInfo {}
-
-// TODO: make VersioningInfo fields pub(crate) and impl this
-/*
-impl VersioningInfo {
-    fn try_from(
-        name: String,
-        version: u32,
-        component: VersioningComponent,
-        start: u64,
-        timeout: u64,
-    ) -> Result<Self, VersioningInfoError> {
-    }
-}
-*/
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
@@ -131,38 +119,8 @@ impl VersioningState {
     }
 }
 
-/*
-#[cfg(feature = "testing")]
-/// Error for VersioningState TryFrom &str
-#[derive(Error, Debug)]
-pub enum VersioningStateTryFromError {
-    #[error("Unknown variant, cannot build state with variant: {0}")]
-    UnknownVariant(String),
-}
-
-#[cfg(feature = "testing")]
-impl TryFrom<&str> for VersioningState {
-    type Error = VersioningStateTryFromError;
-
-    fn try_from(state: &str) -> Result<Self, VersioningStateTryFromError> {
-        match state {
-            "Defined" => Ok(VersioningState::Defined(Defined::new())),
-            "Started" => {
-                let amount = Amount::zero();
-                Ok(VersioningState::Started(Started::new(amount)))
-            }
-            "LockedIn" => Ok(VersioningState::LockedIn(LockedIn::new())),
-            "Active" => Ok(VersioningState::Active(Active::new())),
-            "Failed" => Ok(VersioningState::Failed(Failed::new())),
-            _ => Err(VersioningStateTryFromError::UnknownVariant(
-                state.to_string(),
-            )),
-        }
-    }
-}
-*/
-
-#[cfg(feature = "testing")]
+//#[cfg(feature = "testing")]
+#[cfg(test)]
 impl From<&str> for VersioningState {
     fn from(state: &str) -> Self {
         match state {
@@ -969,6 +927,7 @@ mod test {
         };
 
         let mut vi_2_2 = vi_2.clone();
+        // Make versioning info invalid (because start == vi_1.timeout)
         vi_2_2.start = 5;
         let vs_2_2: VersioningState = "Defined".into();
         let vs_raw_2 = VersioningStoreRaw {
