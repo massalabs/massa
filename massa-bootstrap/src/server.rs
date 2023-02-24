@@ -65,7 +65,7 @@ type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     update_handle: std::thread::JoinHandle<Result<(), String>>,
-    listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
+    _listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
     update_stopper_tx: crossbeam::channel::Sender<()>,
@@ -183,7 +183,7 @@ pub async fn start_bootstrap_server(
     // TODO: make the tasks sync, so the runtime is redundant
     Ok(Some(BootstrapManager {
         update_handle,
-        listen_handle,
+        _listen_handle: listen_handle,
         main_handle,
         listen_stopper_tx,
         update_stopper_tx,
