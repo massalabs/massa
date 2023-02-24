@@ -5,7 +5,7 @@
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::{
-    address::{Address, ADDRESS_SIZE_BYTES},
+    address::Address,
     amount::AmountSerializer,
     bytecode::BytecodeSerializer,
     error::ModelsError,
@@ -260,7 +260,18 @@ impl LedgerDB {
             .db
             .iterator_cf_opt(handle, opt, IteratorMode::Start)
             .flatten()
-            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
+            .map(|(key, _)| {
+                let (_rest, key) = self
+                    .key_deserializer_db
+                    .deserialize::<DeserializeError>(&key)
+                    .unwrap();
+                match key.key_type {
+                    KeyType::DATASTORE(datastore_vec) => datastore_vec,
+                    _ => {
+                        vec![]
+                    }
+                }
+            })
             .peekable();
 
         // Return None if empty
@@ -620,11 +631,11 @@ impl LedgerDB {
             )
             .flatten()
         {
-            let (_, deserlized_key) = self
+            let (_, deserialized_key) = self
                 .key_deserializer_db
                 .deserialize::<DeserializeError>(&key)
                 .expect(KEY_DESER_ERROR);
-            self.delete_key(handle, batch, &deserlized_key);
+            self.delete_key(handle, batch, &deserialized_key);
         }
     }
 }
@@ -692,10 +703,14 @@ impl LedgerDB {
             )
             .flatten()
             .map(|(key, data)| {
-                (
-                    key.split_at(ADDRESS_SIZE_BYTES + 2).1.to_vec(), // +1 for the type byte and +1 for the key version byte (/!\ could be more than 1!)
-                    data.to_vec(),
-                )
+                let (_rest, key) = self
+                    .key_deserializer_db
+                    .deserialize::<DeserializeError>(&key)
+                    .unwrap();
+                match key.key_type {
+                    KeyType::DATASTORE(datastore_vec) => (datastore_vec, data.to_vec()),
+                    _ => (vec![], vec![]),
+                }
             })
             .collect()
     }
@@ -770,6 +785,7 @@ mod tests {
     fn test_ledger_db() {
         let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
         let (db, data) = init_test_ledger(addr);
+
         let ledger_hash = db.get_ledger_hash();
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
