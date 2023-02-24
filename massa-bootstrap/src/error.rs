@@ -57,5 +57,5 @@ pub enum BootstrapError {
     /// IP {0} is blacklisted
     BlackListed(String),
     /// IP {0} is not in the whitelist
-    WhiteListed(String)
+    WhiteListed(String),
 }
