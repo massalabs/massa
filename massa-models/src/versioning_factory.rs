@@ -1,4 +1,4 @@
-use crate::versioning::{Active, VersioningComponent, VersioningState, VersioningStore};
+use crate::versioning::{VersioningComponent, VersioningState, VersioningStore};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -116,8 +116,8 @@ pub trait VersioningFactory {
         let mut versions = self.get_versions();
         versions.sort();
         // println!("versions: {:?}", versions);
-        let res = versions.iter().next().or(Some(&0));
-        return *res.unwrap();
+        let res = versions.first().or(Some(&0));
+        *res.unwrap()
     }
     /// Get all active versions
     fn get_versions(&self) -> Vec<u32> {
@@ -125,14 +125,14 @@ pub trait VersioningFactory {
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
-        let state_active = VersioningState::Active(Active::new());
+        let state_active = VersioningState::active();
         let versions: Vec<u32> = vi_store
             .data
             .iter()
             .filter(|(k, v)| k.component == component && **v == state_active)
             .map(|(k, _v)| k.version)
             .collect();
-        return versions;
+        versions
     }
 }
 
@@ -141,7 +141,7 @@ pub trait VersioningFactoryArgs: VersioningFactory {
     /// Build Self::Item from list of arguments
     fn try_from_args(
         &self,
-        args: &Vec<FactoryValue>,
+        args: &[FactoryValue],
         strategy: Option<FactoryStrategy>,
     ) -> Result<Self::Output, Self::Error>;
 
@@ -174,10 +174,10 @@ mod test {
         }
     }
 
-    impl TryFrom<&Vec<FactoryValue>> for AddressV0 {
+    impl TryFrom<&[FactoryValue]> for AddressV0 {
         type Error = FactoryValueError;
 
-        fn try_from(_kwargs: &Vec<FactoryValue>) -> Result<Self, Self::Error> {
+        fn try_from(_kwargs: &[FactoryValue]) -> Result<Self, Self::Error> {
             todo!()
         }
     }
@@ -211,10 +211,10 @@ mod test {
         }
     }
 
-    impl TryFrom<&Vec<FactoryValue>> for AddressV1 {
+    impl TryFrom<&[FactoryValue]> for AddressV1 {
         type Error = FactoryValueError;
 
-        fn try_from(args: &Vec<FactoryValue>) -> Result<Self, Self::Error> {
+        fn try_from(args: &[FactoryValue]) -> Result<Self, Self::Error> {
             let mut args_iter = args.iter();
             let slot = args_iter
                 .next()
@@ -283,7 +283,7 @@ mod test {
     impl VersioningFactoryArgs for AddressFactory {
         fn try_from_args(
             &self,
-            args: &Vec<FactoryValue>,
+            args: &[FactoryValue],
             strategy: Option<FactoryStrategy>,
         ) -> Result<Self::Output, FactoryError> {
             let version = match strategy {
@@ -356,8 +356,8 @@ mod test {
         };
 
         let info = BTreeMap::from([
-            (vsi_sca1.clone(), VersioningState::Defined(Defined::new())),
-            (vsi_blk1.clone(), VersioningState::Active(Active::new())),
+            (vsi_sca1.clone(), VersioningState::defined()),
+            (vsi_blk1.clone(), VersioningState::active()),
         ]);
         let vs_raw = VersioningStoreRaw { data: info };
         let vs = VersioningStore {
@@ -387,7 +387,7 @@ mod test {
             .write()
             .data
             .entry(vsi_sca1)
-            .and_modify(|e| *e = VersioningState::Active(Active::new()));
+            .and_modify(|e| *e = VersioningState::active());
 
         // Still an error but this times it's because arguments are not ok
         let addr_c = fa.try_from_kwargs(&kwargs, Some(FactoryStrategy::Exact(1)));

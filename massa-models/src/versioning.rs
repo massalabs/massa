@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
@@ -14,8 +15,6 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
-#[cfg(test)]
-use thiserror::Error;
 
 use crate::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_serialization::{
@@ -34,7 +33,7 @@ pub enum VersioningComponent {
 }
 
 /// Version info per component
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug)]
 pub struct VersioningInfo {
     /// brief description of the versioning
     pub name: String,
@@ -74,6 +73,17 @@ impl PartialEq for VersioningInfo {
 
 impl Eq for VersioningInfo {}
 
+// Need to impl this manually otherwise clippy is angry :-P
+impl Hash for VersioningInfo {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.version.hash(state);
+        self.component.hash(state);
+        self.start.hash(state);
+        self.timeout.hash(state);
+    }
+}
+
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
     #[allow(missing_docs)]
@@ -104,7 +114,7 @@ impl VersioningState {
         // All we need is trying to update the state and check if it has changed
 
         let t = match self {
-            VersioningState::Started(Started { threshold }) => threshold.clone(),
+            VersioningState::Started(Started { threshold }) => *threshold,
             _ => Amount::zero(),
         };
 
@@ -115,25 +125,9 @@ impl VersioningState {
             now,
         };
 
-        let new_state = self.clone();
-        let new_state = new_state.on_advance(advance_msg);
+        // let new_state = *self;
+        let new_state = self.on_advance(advance_msg);
         new_state == *self
-    }
-}
-
-impl From<&str> for VersioningState {
-    fn from(state: &str) -> Self {
-        match state {
-            "Defined" => VersioningState::Defined(Defined::new()),
-            "Started" => {
-                let amount = Amount::zero();
-                VersioningState::Started(Started::new(amount))
-            }
-            "LockedIn" => VersioningState::LockedIn(LockedIn::new()),
-            "Active" => VersioningState::Active(Active::new()),
-            "Failed" => VersioningState::Failed(Failed::new()),
-            _ => panic!("Unknown variant ofr VersioningState: {}", state),
-        }
     }
 }
 
@@ -187,11 +181,6 @@ transitions!(VersioningState,
 );
 
 impl Defined {
-    ///
-    pub fn new() -> Self {
-        Self {}
-    }
-
     /// Update state from state Defined
     pub fn on_advance(self, input: Advance) -> VersioningState {
         match input.now {
@@ -205,11 +194,6 @@ impl Defined {
 }
 
 impl Started {
-    ///
-    pub fn new(threshold: Amount) -> Self {
-        Self { threshold }
-    }
-
     /// Update state from state Started
     pub fn on_advance(self, input: Advance) -> VersioningState {
         if input.now > input.timeout {
@@ -226,20 +210,7 @@ impl Started {
     }
 }
 
-impl Default for Started {
-    fn default() -> Self {
-        return Self {
-            threshold: Amount::zero(),
-        };
-    }
-}
-
 impl LockedIn {
-    ///
-    pub fn new() -> Self {
-        Self {}
-    }
-
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> VersioningState {
         if input.now > input.timeout {
@@ -251,10 +222,6 @@ impl LockedIn {
 }
 
 impl Active {
-    ///
-    pub fn new() -> Self {
-        Self {}
-    }
     /// Update state (will always stay in state Active)
     pub fn on_advance(self, _input: Advance) -> Active {
         Active {}
@@ -262,11 +229,6 @@ impl Active {
 }
 
 impl Failed {
-    ///
-    pub fn new() -> Self {
-        Self {}
-    }
-
     /// Update state (will always stay in state Failed)
     pub fn on_advance(self, _input: Advance) -> Failed {
         Failed {}
@@ -281,9 +243,7 @@ pub struct VersioningStore(pub Arc<RwLock<VersioningStoreRaw>>);
 
 impl Default for VersioningStore {
     fn default() -> Self {
-        Self {
-            0: Arc::new(RwLock::new(Default::default())),
-        }
+        Self(Arc::new(RwLock::new(Default::default())))
     }
 }
 
@@ -297,9 +257,7 @@ impl VersioningStore {
         // We filter the versions that were not active back in timestamp.
         let mut all_active_versions: Vec<_> = store
             .iter()
-            .filter(|&(k, v)| {
-                v == &VersioningState::Active(Active::new()) && k.timeout <= timestamp
-            })
+            .filter(|&(k, v)| v == &VersioningState::active() && k.timeout <= timestamp)
             .map(|(k, _v)| k)
             .collect();
 
@@ -314,11 +272,11 @@ impl VersioningStore {
 
     ///
     pub fn get_current_active_version(&self) -> u32 {
-        let store = (*self.0.read()).data.clone();
+        let store = self.0.read().data.clone();
 
         let mut all_active_versions: Vec<_> = store
             .iter()
-            .filter(|&(_k, v)| v == &VersioningState::Active(Active::new()))
+            .filter(|&(_k, v)| v == &VersioningState::active())
             .map(|(k, _v)| k)
             .collect();
 
@@ -333,7 +291,7 @@ impl VersioningStore {
 
     ///
     pub fn get_current_version_to_announce(&self) -> u32 {
-        let store = (*self.0.read()).data.clone();
+        let store = self.0.read().data.clone();
 
         // Check the filter and the sort here
         let mut filtered_versions: Vec<_> = store
@@ -357,7 +315,7 @@ impl VersioningStore {
 }
 
 /// Store of all versioning info
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct VersioningStoreRaw {
     // TODO: no need to name field?
     ///
@@ -387,7 +345,7 @@ impl VersioningStoreRaw {
                     | VersioningState::LockedIn(_) => {
                         // Only accept 'higher' state (e.g. started if defined, lockedin if started...)
                         if v_state_id > v_state_cur_id {
-                            *v_state_cur = (*v_state).clone();
+                            *v_state_cur = *v_state;
                         }
                     }
                     _ => {
@@ -412,20 +370,12 @@ impl VersioningStoreRaw {
                     // TODO: should we add a min duration from start + timeout
                     if v_info.start > last_vi.timeout && v_info.timeout > v_info.start {
                         // Time range is ok, let's add it
-                        self.data.insert(v_info.clone(), v_state.clone());
+                        self.data.insert(v_info.clone(), *v_state);
                     }
                 } else {
-                    self.data.insert(v_info.clone(), v_state.clone());
+                    self.data.insert(v_info.clone(), *v_state);
                 }
             }
-        }
-    }
-}
-
-impl Default for VersioningStoreRaw {
-    fn default() -> Self {
-        Self {
-            data: Default::default(),
         }
     }
 }
@@ -521,6 +471,13 @@ impl VersioningInfoDeserializer {
                 Included(Amount::MAX),
             ),
         }
+    }
+}
+
+// Make clippy happy again!
+impl Default for VersioningInfoDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -648,6 +605,12 @@ impl VersioningStateDeserializer {
     }
 }
 
+impl Default for VersioningStateDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<VersioningState> for VersioningStateDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -665,17 +628,17 @@ impl Deserializer<VersioningState> for VersioningStateDeserializer {
             ))
         })?;
         let (rem2, state): (&[u8], VersioningState) = match enum_value {
-            VersioningStateTypeId::Defined => (rem, VersioningState::Defined(Defined::new())),
+            VersioningStateTypeId::Defined => (rem, VersioningState::defined()),
             VersioningStateTypeId::Started => {
                 let (rem2, threshold) = context("Failed threshold value der", |input| {
                     self.amount_deserializer.deserialize(input)
                 })
                 .parse(rem)?;
-                (rem2, VersioningState::Started(Started::new(threshold)))
+                (rem2, VersioningState::started(threshold))
             }
-            VersioningStateTypeId::LockedIn => (rem, VersioningState::LockedIn(LockedIn::new())),
-            VersioningStateTypeId::Active => (rem, VersioningState::Active(Active::new())),
-            VersioningStateTypeId::Failed => (rem, VersioningState::Failed(Failed::new())),
+            VersioningStateTypeId::LockedIn => (rem, VersioningState::locked_in()),
+            VersioningStateTypeId::Active => (rem, VersioningState::active()),
+            VersioningStateTypeId::Failed => (rem, VersioningState::failed()),
             _ => (rem, VersioningState::Error),
         };
 
@@ -754,6 +717,12 @@ impl VersioningStoreRawDeserializer {
     }
 }
 
+impl Default for VersioningStoreRawDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<VersioningStoreRaw> for VersioningStoreRawDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -806,7 +775,7 @@ mod test {
         // Test Versioning state transition (from state: Defined)
         let vi = get_default_version_info();
         let mut state: VersioningState = Default::default();
-        assert_eq!(state, VersioningState::Defined(Defined::new()));
+        assert_eq!(state, VersioningState::defined());
 
         let now = vi.start;
         let mut advance_msg = Advance {
@@ -817,7 +786,7 @@ mod test {
         };
 
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, VersioningState::Defined(Defined::new()));
+        assert_eq!(state, VersioningState::defined());
 
         let now = vi.start + 5;
         advance_msg.now = now;
@@ -836,7 +805,7 @@ mod test {
     fn test_state_advance_from_started() {
         // Test Versioning state transition (from state: Started)
         let vi = get_default_version_info();
-        let mut state: VersioningState = VersioningState::Started(Default::default());
+        let mut state: VersioningState = VersioningState::started(Default::default());
 
         let now = vi.start;
         let threshold_too_low = Amount::from_str("74.9").unwrap();
@@ -849,20 +818,17 @@ mod test {
         };
 
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(
-            state,
-            VersioningState::Started(Started::new(threshold_too_low))
-        );
+        assert_eq!(state, VersioningState::started(threshold_too_low));
         advance_msg.threshold = threshold_ok;
         state = state.on_advance(advance_msg);
-        assert_eq!(state, VersioningState::LockedIn(LockedIn::new()));
+        assert_eq!(state, VersioningState::locked_in());
     }
 
     #[test]
     fn test_state_advance_from_lockedin() {
         // Test Versioning state transition (from state: LockedIn)
         let vi = get_default_version_info();
-        let mut state: VersioningState = VersioningState::LockedIn(LockedIn::new());
+        let mut state: VersioningState = VersioningState::locked_in();
 
         let now = vi.start;
         let mut advance_msg = Advance {
@@ -873,18 +839,18 @@ mod test {
         };
 
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, VersioningState::LockedIn(LockedIn::new()));
+        assert_eq!(state, VersioningState::locked_in());
 
         advance_msg.now = advance_msg.timeout + 1;
         state = state.on_advance(advance_msg);
-        assert_eq!(state, VersioningState::Active(Active::new()));
+        assert_eq!(state, VersioningState::active());
     }
 
     #[test]
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
         let vi = get_default_version_info();
-        let mut state = VersioningState::Active(Active {});
+        let mut state = VersioningState::active();
         let now = vi.start;
         let advance = Advance {
             start_timestamp: vi.start,
@@ -894,14 +860,14 @@ mod test {
         };
 
         state = state.on_advance(advance);
-        assert_eq!(state, VersioningState::Active(Active {}));
+        assert_eq!(state, VersioningState::active());
     }
 
     #[test]
     fn test_state_advance_from_failed() {
         // Test Versioning state transition (from state: Failed)
         let vi = get_default_version_info();
-        let mut state = VersioningState::Failed(Failed {});
+        let mut state = VersioningState::failed();
         let now = vi.start;
         let advance = Advance {
             start_timestamp: vi.start,
@@ -911,7 +877,7 @@ mod test {
         };
 
         state = state.on_advance(advance);
-        assert_eq!(state, VersioningState::Failed(Failed {}));
+        assert_eq!(state, VersioningState::failed());
     }
 
     #[test]
@@ -930,7 +896,7 @@ mod test {
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, VersioningState::Failed(Failed {}));
 
-        let mut state: VersioningState = VersioningState::Started(Default::default());
+        let mut state: VersioningState = VersioningState::started(Default::default());
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, VersioningState::Failed(Failed {}));
     }
@@ -944,7 +910,7 @@ mod test {
             start: 0,
             timeout: 5,
         };
-        let vs_1: VersioningState = "Active".into();
+        let vs_1 = VersioningState::active();
 
         let vi_2 = VersioningInfo {
             name: "MIP-3".to_string(),
@@ -953,13 +919,13 @@ mod test {
             start: 17,
             timeout: 27,
         };
-        let vs_2: VersioningState = "Defined".into();
+        let vs_2 = VersioningState::defined();
 
         let mut vs_raw_1 = VersioningStoreRaw {
             data: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]),
         };
 
-        let vs_2_2: VersioningState = "LockedIn".into();
+        let vs_2_2 = VersioningState::locked_in();
         let vs_raw_2 = VersioningStoreRaw {
             data: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())]),
         };
@@ -980,7 +946,7 @@ mod test {
             start: 0,
             timeout: 5,
         };
-        let vs_1: VersioningState = "Active".into();
+        let vs_1 = VersioningState::active();
 
         let vi_2 = VersioningInfo {
             name: "MIP-3".to_string(),
@@ -989,7 +955,7 @@ mod test {
             start: 17,
             timeout: 27,
         };
-        let vs_2: VersioningState = "Defined".into();
+        let vs_2 = VersioningState::defined();
 
         let mut vs_raw_1 = VersioningStoreRaw {
             data: BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]),
@@ -998,7 +964,7 @@ mod test {
         let mut vi_2_2 = vi_2.clone();
         // Make versioning info invalid (because start == vi_1.timeout)
         vi_2_2.start = 5;
-        let vs_2_2: VersioningState = "Defined".into();
+        let vs_2_2 = VersioningState::defined();
         let vs_raw_2 = VersioningStoreRaw {
             data: BTreeMap::from([
                 (vi_1.clone(), vs_1.clone()),
@@ -1030,7 +996,7 @@ mod test {
 
     #[test]
     fn test_versioning_state_ser_der() {
-        let vs = VersioningState::Defined(Defined::new());
+        let vs = VersioningState::defined();
 
         let mut buffer: Vec<u8> = Vec::new();
         let ser = VersioningStateSerializer::new();
@@ -1043,7 +1009,7 @@ mod test {
         assert!(rem.is_empty());
 
         let threshold = Amount::from_str("42.9876").unwrap();
-        let vs = VersioningState::Started(Started::new(threshold));
+        let vs = VersioningState::started(threshold);
 
         let mut buffer: Vec<u8> = Vec::new();
         let ser = VersioningStateSerializer::new();
@@ -1059,7 +1025,7 @@ mod test {
     #[test]
     fn test_versioning_store_ser_der() {
         let vi = get_default_version_info();
-        let state = VersioningState::Started(Started::new(Amount::from_str("25.7").unwrap()));
+        let state = VersioningState::started(Amount::from_str("25.7").unwrap());
         let vs = VersioningStoreRaw {
             data: BTreeMap::from([(vi, state)]),
         };

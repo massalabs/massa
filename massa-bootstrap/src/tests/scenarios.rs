@@ -83,7 +83,7 @@ async fn test_bootstrap_server() {
         start: 0,
         timeout: 0,
     };
-    let vs_1: VersioningState = "Active".into();
+    let vs_1 = VersioningState::active();
     let vi_2 = VersioningInfo {
         name: "MIP-0003".to_string(),
         version: 3,
@@ -91,7 +91,7 @@ async fn test_bootstrap_server() {
         start: 0,
         timeout: 0,
     };
-    let vs_2: VersioningState = "Defined".into();
+    let vs_2 = VersioningState::defined();
 
     let versioning_store = VersioningStore {
         0: Arc::new(RwLock::new(VersioningStoreRaw {
