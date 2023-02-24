@@ -1472,6 +1472,30 @@
 <a href="#1472" id="1472">1472</a>
 <a href="#1473" id="1473">1473</a>
 <a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1495,7 +1519,6 @@
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
-<span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
@@ -1510,6 +1533,7 @@
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, RuntimeModule};
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
@@ -1905,7 +1929,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_range) = <span class="self">self</span>.find_vesting_range(<span class="kw-2">&amp;</span>buyer_addr, <span class="kw-2">&amp;</span>current_slot) {
             <span class="kw">let </span>rolls = <span class="self">self</span>.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>buyer_addr);
             <span class="comment">// (candidate_rolls + amount to buy)
-            </span><span class="kw">let </span>max_rolls = rolls.<span class="number">1 </span>+ roll_count;
+            </span><span class="kw">let </span>max_rolls = rolls.<span class="number">1</span>.saturating_add(<span class="kw-2">*</span>roll_count);
             <span class="kw">if </span>max_rolls &gt; vesting_range.max_rolls {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(
                     <span class="string">&quot;vesting_max_rolls={} with value max_rolls={} &quot;</span>,
@@ -2132,7 +2156,7 @@
             }
 
             <span class="comment">// Load bytecode. Assume empty bytecode if not found.
-            </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default().<span class="number">0</span>;
+            </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default();
         }
 
         <span class="comment">// Execute bytecode
@@ -2168,11 +2192,11 @@
     </span><span class="kw">pub fn </span>execute_async_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message: AsyncMessage,
-        bytecode: <span class="prelude-ty">Option</span>&lt;Bytecode&gt;,
+        bytecode: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// prepare execution context
         </span><span class="kw">let </span>context_snapshot;
-        <span class="kw">let </span>bytecode: Bytecode = {
+        <span class="kw">let </span>bytecode: Vec&lt;u8&gt; = {
             <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -2232,7 +2256,7 @@
         </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .write()
-            .get_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, message.max_gas)<span class="question-mark">?</span>;
+            .get_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
         <span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module.clone(),
@@ -2244,7 +2268,7 @@
             <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, module, init_cost);
+                    .save_module(<span class="kw-2">&amp;</span>bytecode, module, init_cost);
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="prelude-val">Err</span>(err) =&gt; {
@@ -2290,6 +2314,7 @@
 
         <span class="comment">// Get asynchronous messages to execute
         </span><span class="kw">let </span>messages = execution_context.take_async_batch(<span class="self">self</span>.config.max_async_gas);
+        <span class="macro">debug!</span>(<span class="string">&quot;executing {} messages at slot {}&quot;</span>, messages.len(), slot);
 
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
@@ -2325,6 +2350,8 @@
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             };
+
+            <span class="macro">debug!</span>(<span class="string">&quot;executing {} operations at slot {}&quot;</span>, operations.len(), slot);
 
             <span class="comment">// gather all available endorsement creators and target blocks
             </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
@@ -2484,11 +2511,10 @@
         }
 
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to active state
         </span><span class="self">self</span>.apply_active_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution state applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_candidate_slot: execution finished &amp; state applied&quot;</span>);
     }
 
     <span class="doccomment">/// Execute an SCE-final slot
@@ -2545,11 +2571,10 @@
         <span class="comment">// execute slot
         </span><span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution started&quot;</span>);
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished&quot;</span>);
 
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
-        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution result applied&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution finished &amp; result applied&quot;</span>);
     }
 
     <span class="doccomment">/// Runs a read-only execution request.
@@ -2636,8 +2661,7 @@
                 <span class="comment">// get the bytecode, default to an empty vector
                 </span><span class="kw">let </span>bytecode = execution_context
                     .get_bytecode(<span class="kw-2">&amp;</span>target_addr)
-                    .unwrap_or_default()
-                    .<span class="number">0</span>;
+                    .unwrap_or_default();
 
                 <span class="comment">// set the execution context for execution
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
@@ -2912,24 +2936,48 @@
             ))
         })<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>get_slot_at_timestamp = |config: <span class="kw-2">&amp;</span>ExecutionConfig, timestamp: MassaTime| {
+            <span class="kw">match </span>massa_models::timeslots::get_latest_block_slot_at_timestamp(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                timestamp,
+            ) {
+                <span class="prelude-val">Ok</span>(opts) =&gt; <span class="prelude-val">Ok</span>(opts.unwrap()),
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(ExecutionError::InitVestingError(<span class="macro">format!</span>(
+                    <span class="string">&quot;can no get the slot at timestamp : {}&quot;</span>,
+                    timestamp
+                ))),
+            }
+        };
+
         <span class="kw">for </span>v <span class="kw">in </span>hashmap.values_mut() {
-            <span class="kw-2">*</span>v = v
-                .windows(<span class="number">2</span>)
-                .map(|elements| {
-                    <span class="kw">let </span>(<span class="kw-2">mut </span>prev, next) = (elements[<span class="number">0</span>], elements[<span class="number">1</span>]);
-                    <span class="kw">let </span>end_slot =
-                        next.start_slot
-                            .get_prev_slot(config.thread_count)
-                            .map_err(|e| {
-                                ExecutionError::InitVestingError(<span class="macro">format!</span>(
-                                    <span class="string">&quot;error on get prev slot for init vesting : {}&quot;</span>,
-                                    e
-                                ))
-                            })<span class="question-mark">?</span>;
-                    prev.end_slot = end_slot;
-                    <span class="prelude-val">Ok</span>(prev)
-                })
-                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;VestingRange&gt;, ExecutionError&gt;&gt;()<span class="question-mark">?</span>;
+            <span class="kw">if </span>v.len().eq(<span class="kw-2">&amp;</span><span class="number">1</span>) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::InitVestingError(
+                    <span class="string">&quot;vesting file should has more one element&quot;</span>.to_string(),
+                ));
+            } <span class="kw">else </span>{
+                <span class="kw-2">*</span>v = v
+                    .windows(<span class="number">2</span>)
+                    .map(|elements| {
+                        <span class="kw">let </span>(<span class="kw-2">mut </span>prev, next) = (elements[<span class="number">0</span>], elements[<span class="number">1</span>]);
+
+                        <span class="comment">// retrieve the start_slot
+                        </span><span class="kw">if </span>prev.timestamp.eq(<span class="kw-2">&amp;</span>MassaTime::from(<span class="number">0</span>)) {
+                            <span class="comment">// first range with timestamp = 0
+                            </span>prev.start_slot = Slot::min();
+                        } <span class="kw">else </span>{
+                            prev.start_slot = get_slot_at_timestamp(config, prev.timestamp)<span class="question-mark">?</span>;
+                        }
+
+                        <span class="comment">// retrieve the end_slot
+                        </span><span class="kw">let </span>next_range_slot = get_slot_at_timestamp(config, next.timestamp)<span class="question-mark">?</span>;
+                        prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)<span class="question-mark">?</span>;
+
+                        <span class="prelude-val">Ok</span>(prev)
+                    })
+                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;VestingRange&gt;, ExecutionError&gt;&gt;()<span class="question-mark">?</span>;
+            }
         }
 
         <span class="prelude-val">Ok</span>(hashmap)
