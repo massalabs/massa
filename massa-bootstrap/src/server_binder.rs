@@ -129,20 +129,23 @@ impl BootstrapServerBinder {
     ) where
         F: FnOnce() + Send + 'static,
     {
-        thread::spawn(move || {
-            let msg_cloned = msg.clone();
-            let err_send =
-                server_outer_rt_hnd.block_on(async move { self.send_error(msg_cloned).await });
-            match err_send {
-                Err(_) => error!(
-                    "bootstrap server timed out sending error '{}' to addr {}",
-                    msg, addr
-                ),
-                Ok(Err(e)) => error!("{}", e),
-                Ok(Ok(_)) => {}
-            }
-            close_fn();
-        });
+        thread::Builder::new()
+            .name("bootstrap-error-send".to_string())
+            .spawn(move || {
+                let msg_cloned = msg.clone();
+                let err_send =
+                    server_outer_rt_hnd.block_on(async move { self.send_error(msg_cloned).await });
+                match err_send {
+                    Err(_) => error!(
+                        "bootstrap server timed out sending error '{}' to addr {}",
+                        msg, addr
+                    ),
+                    Ok(Err(e)) => error!("{}", e),
+                    Ok(Ok(_)) => {}
+                }
+                close_fn();
+            })
+            .unwrap();
     }
     pub async fn send_error(
         &mut self,
