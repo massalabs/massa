@@ -115,7 +115,7 @@ pub async fn start_bootstrap_server(
     let (listen_stopper_tx, listen_stopper_rx) = crossbeam::channel::bounded::<()>(1);
     let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
-    let outer_server_runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
+    let bs_server_runtime = Runtime::new().expect("Failed to create a bootstrap runtime");
     let listener = establisher
         .get_listener(listen_addr)
         .await
@@ -133,7 +133,7 @@ pub async fn start_bootstrap_server(
     )
     .map_err(BootstrapError::GeneralError)?;
 
-    let update_rt_handle = outer_server_runtime.handle().clone();
+    let update_rt_handle = bs_server_runtime.handle().clone();
 
     let updater_lists = white_black_list.clone();
     let update_handle = thread::Builder::new()
@@ -148,7 +148,7 @@ pub async fn start_bootstrap_server(
             res
         })
         .unwrap();
-    let listen_rt_handle = outer_server_runtime.handle().clone();
+    let listen_rt_handle = bs_server_runtime.handle().clone();
     let listen_handle = thread::Builder::new()
         .name("bs_listener".to_string())
         .spawn(move || {
@@ -160,6 +160,7 @@ pub async fn start_bootstrap_server(
         .unwrap();
 
     dbg!("spawning main loop");
+
     let main_handle = std::thread::Builder::new()
         .name("bs-main-loop".to_string())
         .spawn(move || {
@@ -174,7 +175,7 @@ pub async fn start_bootstrap_server(
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
-                outer_server_runtime,
+                bs_server_runtime,
             }
             .run_loop(max_bootstraps)
         })
@@ -201,7 +202,7 @@ struct BootstrapServer<'a> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
-    outer_server_runtime: Runtime,
+    bs_server_runtime: Runtime,
 }
 
 impl BootstrapServer<'_> {
@@ -255,6 +256,7 @@ impl BootstrapServer<'_> {
     }
 
     fn run_loop(&mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
+        let bs_loop_rt = Runtime::new().unwrap();
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
@@ -276,7 +278,7 @@ impl BootstrapServer<'_> {
             // TODO: confirm error handled according to the previous `is_ip_allowed` fn
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
                 server.close_and_send_error(
-                    self.outer_server_runtime.handle().clone(),
+                    self.bs_server_runtime.handle().clone(),
                     error_msg,
                     remote_addr,
                     move || {},
@@ -331,7 +333,7 @@ impl BootstrapServer<'_> {
                         })
                     };
                     server.close_and_send_error(
-                        self.outer_server_runtime.handle().clone(),
+                        self.bs_server_runtime.handle().clone(),
                         msg,
                         remote_addr,
                         tracer,
@@ -360,7 +362,7 @@ impl BootstrapServer<'_> {
                 let config = self.bootstrap_config.clone();
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
-                let session_handle = self.outer_server_runtime.handle().clone();
+                let session_handle = bs_loop_rt.handle().clone();
                 let _ = thread::Builder::new()
                     .name(format!("bootstrap thread, peer: {}", remote_addr))
                     .spawn(move || {
@@ -382,7 +384,7 @@ impl BootstrapServer<'_> {
                 });
             } else {
                 server.close_and_send_error(
-                    self.outer_server_runtime.handle().clone(),
+                    self.bs_server_runtime.handle().clone(),
                     "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
                     remote_addr,
                     move || debug!("did not bootstrap {}: no available slots", remote_addr)
@@ -393,6 +395,8 @@ impl BootstrapServer<'_> {
         // TODO: when they are synchrenous, consider if we want to signal updater and listener
         //       here, or in the stop method.
         // TODO: do we drop(self.runtime) here?
+        // drop(self);
+        // drop(bs_loop_rt);
         Ok(())
     }
 
@@ -495,10 +499,10 @@ fn run_bootstrap_session(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
-    rt_handle: Handle,
+    bs_server_rt_handle: Handle,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
-    rt_handle.block_on(async move {
+    bs_server_rt_handle.block_on(async move {
         let res = tokio::time::timeout(
             config.bootstrap_timeout.into(),
             manage_bootstrap(
