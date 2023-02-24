@@ -64,7 +64,7 @@ use crate::{
 type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    update_handle: std::thread::JoinHandle<Result<(), BootstrapError>>,
+    update_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     _listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
@@ -217,7 +217,7 @@ impl BootstrapServer<'_> {
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
         stopper: Receiver<()>,
-    ) -> Result<(), BootstrapError> {
+    ) -> Result<(), Box<BootstrapError>> {
         loop {
             std::thread::sleep(interval);
             dbg!("update tick");
@@ -226,7 +226,10 @@ impl BootstrapServer<'_> {
                 Err(e) => match e {
                     crossbeam::channel::TryRecvError::Empty => {}
                     crossbeam::channel::TryRecvError::Disconnected => {
-                        return Err(BootstrapError::GeneralError("update stopper unexpected disconnect".to_string()));
+                        return Err(BootstrapError::GeneralError(
+                            "update stopper unexpected disconnect".to_string(),
+                        )
+                        .into());
                     }
                 },
             }

@@ -6,10 +6,10 @@ use std::{
     sync::Arc,
 };
 
+use crate::error::BootstrapError;
 use massa_logging::massa_trace;
 use parking_lot::RwLock;
 use tracing::log::error;
-use crate::error::BootstrapError;
 
 use crate::tools::normalize_ip;
 
@@ -23,7 +23,10 @@ pub(crate) struct SharedWhiteBlackList<'a> {
 }
 
 impl SharedWhiteBlackList<'_> {
-    pub(crate) fn new(white_path: PathBuf, black_path: PathBuf) -> Result<Self, BootstrapError> {
+    pub(crate) fn new(
+        white_path: PathBuf,
+        black_path: PathBuf,
+    ) -> Result<Self, Box<BootstrapError>> {
         let (white_list, black_list) =
             WhiteBlackListInner::load_white_black_lists(&white_path, &black_path)?;
         Ok(Self {
@@ -38,7 +41,7 @@ impl SharedWhiteBlackList<'_> {
 
     /// Checks if the white/black list is up to date with a read-lock
     /// Creates a new list, and replaces the old one in a write-lock
-    pub(crate) fn update(&mut self) -> Result<(), BootstrapError> {
+    pub(crate) fn update(&mut self) -> Result<(), Box<BootstrapError>> {
         let read_lock = self.inner.read();
         let (new_white, new_black) =
             WhiteBlackListInner::load_white_black_lists(&self.white_path, &self.black_path)?;
@@ -62,7 +65,10 @@ impl SharedWhiteBlackList<'_> {
     }
 
     #[cfg_attr(test, allow(unreachable_code, unused_variables))]
-    pub(crate) fn is_ip_allowed(&self, remote_addr: &SocketAddr) -> Result<(), BootstrapError> {
+    pub(crate) fn is_ip_allowed(
+        &self,
+        remote_addr: &SocketAddr,
+    ) -> Result<(), Box<BootstrapError>> {
         #[cfg(test)]
         return Ok(());
 
@@ -71,11 +77,11 @@ impl SharedWhiteBlackList<'_> {
         let read = self.inner.read();
         if let Some(ip_list) = &read.black_list && ip_list.contains(&ip) {
             massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
-            Err(BootstrapError::BlackListed(ip.to_string()))
+            Err(Box::new(BootstrapError::BlackListed(ip.to_string())))
             // whether the peer IP address is not present in the whitelist
         } else if let Some(ip_list) = &read.white_list && !ip_list.contains(&ip) {
             massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
-            Err(BootstrapError::WhiteListed(ip.to_string()))
+            Err(Box::new(BootstrapError::WhiteListed(ip.to_string())))
         } else {
             Ok(())
         }
@@ -88,22 +94,27 @@ impl WhiteBlackListInner {
     fn load_white_black_lists(
         whitelist_path: &Path,
         blacklist_path: &Path,
-    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
+    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), Box<BootstrapError>> {
         let white_list = Self::load_list(whitelist_path)?;
         let black_list = Self::load_list(blacklist_path)?;
         Ok((white_list, black_list))
     }
 
-    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
+    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, Box<BootstrapError>> {
         match std::fs::read_to_string(list_path) {
             Err(e) => {
                 error!("error on load whitelist/blacklist file : {}", e);
                 Ok(None)
-            },
+            }
             Ok(list) => {
                 let res = Some(
                     serde_json::from_str::<HashSet<IpAddr>>(list.as_str())
-                        .map_err(|e| BootstrapError::InitListError(format!("Failed to parse bootstrap whitelist : {}", e.to_string())))?
+                        .map_err(|e| {
+                            BootstrapError::InitListError(format!(
+                                "Failed to parse bootstrap whitelist : {}",
+                                e
+                            ))
+                        })?
                         .into_iter()
                         .map(normalize_ip)
                         .collect(),
