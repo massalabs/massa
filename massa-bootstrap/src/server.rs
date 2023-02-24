@@ -76,11 +76,10 @@ impl BootstrapManager {
     /// stop the bootstrap server
     pub async fn stop(self) -> Result<(), Box<BootstrapError>> {
         massa_trace!("bootstrap.lib.stop", {});
-        dbg!("stopping");
-        if dbg!(self.listen_stopper_tx.send(()).is_err()) {
+        if self.listen_stopper_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");
         }
-        if dbg!(self.update_stopper_tx.send(()).is_err()) {
+        if self.update_stopper_tx.send(()).is_err() {
             warn!("bootstrap ip-list-updater already dropped");
         }
         // TODO?: handle join errors.
@@ -118,7 +117,7 @@ pub async fn start_bootstrap_server(
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
     };
-    
+
     // We use a runtime dedicated to the bootstrap part of the system
     // This should help keep it isolated from the rest of the overall binary
     let Ok(bs_server_runtime) = runtime::Builder::new_multi_thread()
@@ -165,12 +164,9 @@ pub async fn start_bootstrap_server(
         .spawn(move || {
             let res =
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
-            dbg!("listen handle stopped");
-            dbg!(res)
+            res
         })
         .unwrap();
-
-    dbg!("spawning main loop");
 
     let main_handle = std::thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -224,8 +220,7 @@ impl BootstrapServer<'_> {
     ) -> Result<(), Box<BootstrapError>> {
         loop {
             std::thread::sleep(interval);
-            dbg!("update tick");
-            match dbg!(stopper.try_recv()) {
+            match stopper.try_recv() {
                 Ok(()) => return Ok(()),
                 Err(e) => match e {
                     crossbeam::channel::TryRecvError::Empty => {}
@@ -255,9 +250,8 @@ impl BootstrapServer<'_> {
         listener_tx: Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {
-            let msg = dbg!(listener.accept().await.map_err(BootstrapError::IoError))?;
-            dbg!("sending");
-            match dbg!(listener_tx.send(msg)) {
+            let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
+            match listener_tx.send(msg) {
                 Ok(_) => continue,
                 Err(SendError((dplx, remote_addr))) => {
                     warn!(
@@ -422,7 +416,6 @@ impl BootstrapServer<'_> {
         // "Note that this method might return with success spuriously, so it’s a good idea
         // to always double check if the operation is really ready."
         if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
-            dbg!("breaking out");
             return Ok(None);
             // - 3. If that something is anything else:
         } else {
