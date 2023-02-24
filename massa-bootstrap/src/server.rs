@@ -85,14 +85,13 @@ impl BootstrapManager {
         // TODO?: handle join errors.
         // TODO: examine dead-lock potential
 
-        // when the runtime is dropped at the end of this stop, the listener and handler are auto-aborted
-        let _ = dbg!(self.update_handle.join());
-        // let _ = dbg!(self.listen_handle.join());
-        // as self is dropped, that also drops the runtime.
-        // where we've done std::thread::spawn(move || {rt.block_on(...)})
-        // the `block_on`ed task will be dropped
-        // specifically the updater
-        dbg!(self.main_handle.join().unwrap())
+        // when the runtime is dropped at the end of this stop, the listener is auto-aborted
+
+        // unwrap() effectively passes up a panic from the thread being handled
+        self.update_handle.join().unwrap()?;
+
+        // unwrap() effectively passes up a panic from the thread being handled
+        self.main_handle.join().unwrap()
     }
 }
 
