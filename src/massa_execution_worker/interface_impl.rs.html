@@ -785,12 +785,6 @@
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
 <a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -803,7 +797,6 @@
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 <span class="kw">use </span>massa_execution_exports::ExecutionConfig;
 <span class="kw">use </span>massa_execution_exports::ExecutionStackElement;
-<span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
@@ -972,7 +965,7 @@
         });
 
         <span class="comment">// return the target bytecode
-        </span><span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>)
+        </span><span class="prelude-val">Ok</span>(bytecode)
     }
 
     <span class="doccomment">/// Called to finish the call process after a bytecode calls a function from another one.
@@ -1033,7 +1026,7 @@
     /// # Returns
     /// The string representation of the newly created address
     </span><span class="kw">fn </span>create_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
-        <span class="kw">match </span><span class="macro">context_guard!</span>(<span class="self">self</span>).create_new_sc_address(Bytecode(bytecode.to_vec())) {
+        <span class="kw">match </span><span class="macro">context_guard!</span>(<span class="self">self</span>).create_new_sc_address(bytecode.to_vec()) {
             <span class="prelude-val">Ok</span>(addr) =&gt; <span class="prelude-val">Ok</span>(addr.to_string()),
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t create new SC address: {}&quot;</span>, err),
         }
@@ -1231,7 +1224,7 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
-            <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
+            <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found&quot;</span>),
         }
     }
@@ -1241,7 +1234,7 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
-            <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
+            <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found&quot;</span>),
         }
     }
@@ -1259,7 +1252,6 @@
             .as_ref()
             .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>keys: Vec&lt;Vec&lt;u8&gt;&gt; = datastore.keys().cloned().collect();
-        <span class="macro">debug!</span>(<span class="string">&quot;[abi get_op_keys] keys {:?}&quot;</span>, keys);
         <span class="prelude-val">Ok</span>(keys)
     }
 
@@ -1272,7 +1264,6 @@
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
     </span><span class="kw">fn </span>has_op_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;[abi has_op_key] checking key {:?}&quot;</span>, key);
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
@@ -1280,7 +1271,6 @@
             .as_ref()
             .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>has_key = datastore.contains_key(key);
-        <span class="macro">debug!</span>(<span class="string">&quot;[abi has_op_key] has key {}&quot;</span>, has_key);
         <span class="prelude-val">Ok</span>(has_key)
     }
 
@@ -1293,7 +1283,6 @@
     /// # Returns
     /// The operation datastore value matching the provided key, if found, otherwise an error.
     </span><span class="kw">fn </span>get_op_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;[abi get_op_data] data for {:?}&quot;</span>, key);
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
@@ -1304,7 +1293,6 @@
             .get(key)
             .cloned()
             .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;Unknown key: {:?}&quot;</span>, key));
-        <span class="macro">debug!</span>(<span class="string">&quot;[abi get_op_data] has key {:?}&quot;</span>, data);
         data
     }
 
@@ -1553,7 +1541,7 @@
     </span><span class="kw">fn </span>raw_set_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = execution_context.get_current_address()<span class="question-mark">?</span>;
-        <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, Bytecode(bytecode.to_vec())) {
+        <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, bytecode.to_vec()) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t set address {} bytecode: {}&quot;</span>, address, err),
         }
@@ -1564,7 +1552,7 @@
     </span><span class="kw">fn </span>raw_set_bytecode_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>address = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, Bytecode(bytecode.to_vec())) {
+        <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, bytecode.to_vec()) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t set address {} bytecode: {}&quot;</span>, address, err),
         }
