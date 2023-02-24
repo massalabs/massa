@@ -395,8 +395,7 @@ impl BootstrapServer<'_> {
         }
 
         // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
-        self.bs_server_runtime
-            .shutdown_timeout(Duration::from_secs(20));
+        bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
         Ok(())
     }
 
