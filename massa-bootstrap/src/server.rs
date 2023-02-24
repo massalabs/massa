@@ -400,20 +400,8 @@ impl BootstrapServer<'_> {
         Ok(())
     }
 
-    /// this is a bit complicated, but the simple is bad:
-    /// ```rust-ignore
-    /// if self.stopper_rx.try_recv().is_ok() {
-    ///     break;
-    /// }
-    /// // if the server is stopped while blocked here, this risks never unblocking
-    /// // OR: would serve as an OBO error; Server doesn't actually stop working until after
-    /// // it's done processing one more connection _after_ it's been stopped.
-    /// // Any bug fix at that point would be a downstream hack to an upstream
-    /// // bug.
-    /// let Ok(msg) = self.listener_rx.recv() else {continue};
-    /// ```
+    /// These are the steps to ensure that a connection is only processed if the server is active:
     ///
-    /// The solution here is to:
     /// - 1. Block until _something_ is ready
     /// - 2. If that something is a stop-signal, stop
     /// - 3. If that something is anything else:
@@ -456,6 +444,7 @@ impl BootstrapServer<'_> {
         };
         Ok(Some(msg))
     }
+
     /// Helper method to check if this IP is being greedy, i.e. not enough elapsed time since last attempt
     ///
     /// # Error
