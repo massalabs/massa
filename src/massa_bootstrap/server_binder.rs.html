@@ -257,6 +257,8 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -404,7 +406,9 @@
                 }
                 close_fn();
             })
-            .unwrap();
+            <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
+            // it&#39;s an error at the OS level.
+            </span>.unwrap();
     }
     <span class="kw">pub async fn </span>send_error(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,

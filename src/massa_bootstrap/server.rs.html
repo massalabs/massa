@@ -888,6 +888,12 @@
 <a href="#888" id="888">888</a>
 <a href="#889" id="889">889</a>
 <a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1047,7 +1053,9 @@
             };
             res
         })
-        .unwrap();
+        <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
+        // it&#39;s an error at the OS level.
+        </span>.unwrap();
     <span class="kw">let </span>listen_rt_handle = bs_server_runtime.handle().clone();
     <span class="kw">let </span>listen_handle = thread::Builder::new()
         .name(<span class="string">&quot;bs_listener&quot;</span>.to_string())
@@ -1056,7 +1064,9 @@
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
             res
         })
-        .unwrap();
+        <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
+        // it&#39;s an error at the OS level.
+        </span>.unwrap();
 
     <span class="kw">let </span>main_handle = std::thread::Builder::new()
         .name(<span class="string">&quot;bs-main-loop&quot;</span>.to_string())
@@ -1076,7 +1086,9 @@
             }
             .run_loop(max_bootstraps)
         })
-        .unwrap();
+        <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
+        // it&#39;s an error at the OS level.
+        </span>.unwrap();
     <span class="comment">// Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
     </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(BootstrapManager {
