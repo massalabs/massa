@@ -145,6 +145,8 @@ impl BootstrapServerBinder {
                 }
                 close_fn();
             })
+            // the non-builder spawn doesn't return a Result, and documentation states that
+            // it's an error at the OS level.
             .unwrap();
     }
     pub async fn send_error(

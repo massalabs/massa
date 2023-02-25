@@ -156,6 +156,8 @@ pub async fn start_bootstrap_server(
             };
             res
         })
+        // the non-builder spawn doesn't return a Result, and documentation states that
+        // it's an error at the OS level.
         .unwrap();
     let listen_rt_handle = bs_server_runtime.handle().clone();
     let listen_handle = thread::Builder::new()
@@ -165,6 +167,8 @@ pub async fn start_bootstrap_server(
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
             res
         })
+        // the non-builder spawn doesn't return a Result, and documentation states that
+        // it's an error at the OS level.
         .unwrap();
 
     let main_handle = std::thread::Builder::new()
@@ -185,6 +189,8 @@ pub async fn start_bootstrap_server(
             }
             .run_loop(max_bootstraps)
         })
+        // the non-builder spawn doesn't return a Result, and documentation states that
+        // it's an error at the OS level.
         .unwrap();
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
