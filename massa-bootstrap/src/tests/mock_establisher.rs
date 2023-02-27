@@ -13,7 +13,7 @@ pub type Duplex = DuplexStream;
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
-        mpsc::channel::<(SocketAddr, oneshot::Sender<Duplex>)>(CHANNEL_SIZE);
+        crossbeam::channel::bounded::<(SocketAddr, oneshot::Sender<Duplex>)>(CHANNEL_SIZE);
 
     let (connection_connector_tx, connection_connector_rx) =
         mpsc::channel::<(Duplex, SocketAddr, oneshot::Sender<bool>)>(CHANNEL_SIZE);
@@ -32,12 +32,12 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, // (controller, mock)
+    connection_listener_rx: crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, // (controller, mock)
 }
 
 impl MockListener {
     pub async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
-        let (addr, sender) = self.connection_listener_rx.recv().await.ok_or_else(|| {
+        let (addr, sender) = self.connection_listener_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener accept channel from Establisher closed".to_string(),
@@ -100,12 +100,13 @@ impl MockConnector {
 
 #[derive(Debug)]
 pub struct MockEstablisher {
-    connection_listener_rx: Option<mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>>,
+    connection_listener_rx:
+        Option<crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>>,
     connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
 }
 
 impl MockEstablisher {
-    pub async fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
+    pub fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self
                 .connection_listener_rx
@@ -128,7 +129,8 @@ impl MockEstablisher {
 }
 
 pub struct MockEstablisherInterface {
-    connection_listener_tx: Option<mpsc::Sender<(SocketAddr, oneshot::Sender<Duplex>)>>,
+    connection_listener_tx:
+        Option<crossbeam::channel::Sender<(SocketAddr, oneshot::Sender<Duplex>)>>,
     connection_connector_rx: mpsc::Receiver<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
 }
 
@@ -141,7 +143,7 @@ impl MockEstablisherInterface {
             )
         })?;
         let (response_tx, response_rx) = oneshot::channel::<Duplex>();
-        sender.send((*addr, response_tx)).await.map_err(|_err| {
+        sender.send((*addr, response_tx)).map_err(|_err| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "mock connect_to_controller_listener channel to listener closed".to_string(),
