@@ -32,13 +32,17 @@ impl ModuleCache {
         }
     }
 
-    /// Save a module in the global cache system
-    pub fn save_module_from_bytecode(
+    /// Save a new or an already existing module in the cache
+    pub fn save_module(
         &mut self,
         bytecode: &[u8],
         limit: u64,
+        wipe_previous: bool,
     ) -> Result<(), ExecutionError> {
         let hash = Hash::compute_from(bytecode);
+        if wipe_previous {
+            self.hd_cache.remove(hash);
+        }
         if let Some((hd_module, hd_init_cost)) = self.hd_cache.get_and_increment(hash) {
             self.lru_cache.insert(hash, hd_module, Some(hd_init_cost));
         } else {
@@ -61,13 +65,18 @@ impl ModuleCache {
 
     /// Set the initialization cost of a cached module
     pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
-        // NOTE: make sure input should be bytecode
         let hash = Hash::compute_from(bytecode);
         self.hd_cache.set_init_cost(hash, init_cost);
         self.lru_cache.set_init_cost(hash, init_cost);
     }
 
-    /// Load a module from the global cache system
+    /// Remove a cached module
+    pub fn remove_module(&mut self, bytecode: &[u8]) {
+        let hash = Hash::compute_from(bytecode);
+        self.hd_cache.remove(hash);
+    }
+
+    /// Load a cached module for execution
     pub fn load_module(
         &mut self,
         bytecode: &[u8],
