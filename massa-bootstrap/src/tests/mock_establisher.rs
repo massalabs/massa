@@ -115,10 +115,7 @@ impl MockEstablisher {
         })
     }
 
-    pub async fn get_connector(
-        &mut self,
-        timeout_duration: MassaTime,
-    ) -> std::io::Result<MockConnector> {
+    pub fn get_connector(&mut self, timeout_duration: MassaTime) -> std::io::Result<MockConnector> {
         // create connector stream
 
         Ok(MockConnector {
