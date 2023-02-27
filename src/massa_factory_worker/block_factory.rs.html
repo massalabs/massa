@@ -501,10 +501,10 @@
         );
 
         <span class="comment">// send full block to consensus
-        // self.channels
-        //     .consensus
-        //     .register_block(block_id, slot, block_storage, true);
-    </span>}
+        </span><span class="self">self</span>.channels
+            .consensus
+            .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
+    }
 
     <span class="doccomment">/// main run loop of the block creator thread
     </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
