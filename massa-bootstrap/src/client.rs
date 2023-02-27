@@ -377,10 +377,8 @@ async fn connect_to_server(
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     // connect
-    let mut connector = establisher
-        .get_connector(bootstrap_config.connect_timeout)
-        .await?; // cancellable
-    let socket = connector.connect(*addr).await?; // cancellable
+    let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
+    let socket = connector.connect(*addr).await?;
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,

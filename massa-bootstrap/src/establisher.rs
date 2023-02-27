@@ -94,7 +94,7 @@ pub mod types {
         ///
         /// # Argument
         /// * `timeout_duration`: timeout duration in milliseconds
-        pub async fn get_connector(
+        pub fn get_connector(
             &mut self,
             timeout_duration: MassaTime,
         ) -> io::Result<DefaultConnector> {
