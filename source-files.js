@@ -2,7 +2,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_api":["",[],["api.rs","api_trait.rs","lib.rs","private.rs","public.rs"]],\
 "massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]],\
 "massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","message.rs","pool.rs"]],\
-"massa_bootstrap":["",[],["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server.rs","server_binder.rs","settings.rs","tools.rs"]],\
+"massa_bootstrap":["",[["server",[],["white_black_list.rs"]]],["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server.rs","server_binder.rs","settings.rs","tools.rs"]],\
 "massa_cipher":["",[],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]],\
 "massa_client":["",[],["cmds.rs","main.rs","repl.rs","settings.rs"]],\
 "massa_consensus_exports":["",[],["block_graph_export.rs","block_status.rs","bootstrapable_graph.rs","channels.rs","controller_trait.rs","error.rs","events.rs","export_active_block.rs","lib.rs","settings.rs"]],\
@@ -13,7 +13,6 @@ var sourcesIndex = JSON.parse('{\
 "massa_factory_exports":["",[],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]],\
 "massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
 "massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]],\
-"massa_grpc":["",[["generated",[],["grpc.massa.protobuf.rs"]]],["api.rs","config.rs","error.rs","lib.rs"]],\
 "massa_hash":["",[],["error.rs","hash.rs","lib.rs","settings.rs"]],\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","types.rs"]],\
 "massa_ledger_worker":["",[],["ledger.rs","ledger_db.rs","lib.rs"]],\
