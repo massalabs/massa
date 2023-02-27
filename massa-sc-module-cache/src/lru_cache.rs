@@ -15,7 +15,7 @@ pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
 /// * value.0: corresponding compiled module
 /// * value.1: instance initialization cost
 pub(crate) struct LRUCache {
-    cache: PreHashLruMap<Hash, (RuntimeModule, u64)>,
+    cache: PreHashLruMap<Hash, (RuntimeModule, Option<u64>)>,
 }
 
 impl LRUCache {
@@ -34,20 +34,32 @@ impl LRUCache {
         hash: Hash,
         limit: u64,
     ) -> Result<Option<(RuntimeModule, u64)>, ExecutionError> {
-        if let Some((cached_module, init_cost)) = self.cache.get(&hash) {
+        if let Some((cached_module, Some(init_cost))) = self.cache.get(&hash) {
             if limit < *init_cost {
                 return Err(ExecutionError::RuntimeError(
                     "given gas cannot cover the initialization costs".to_string(),
                 ));
             }
-            Ok(Some((cached_module.clone(), init_cost)))
+            Ok(Some((cached_module.clone(), *init_cost)))
         } else {
             Ok(None)
         }
     }
 
     /// Save a module in the LRU cache
-    pub fn insert(&mut self, hash: Hash, module: RuntimeModule, init_cost: u64) {
-        self.cache.insert(hash, (module, init_cost));
+    pub fn insert(&mut self, hash: Hash, module: RuntimeModule, opt_init_cost: Option<u64>) {
+        self.cache.insert(hash, (module, opt_init_cost));
+    }
+
+    /// Set the initialization cost of a LRU cached module
+    pub fn set_init_cost(&mut self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
+        if let Some((_, opt_init_cost)) = self.cache.get(&hash) {
+            *opt_init_cost = Some(init_cost);
+            Ok(())
+        } else {
+            Err(ExecutionError::RuntimeError(
+                "tried to set the init cost of a nonexistent module".to_string(),
+            ))
+        }
     }
 }

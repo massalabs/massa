@@ -33,13 +33,17 @@ impl ModuleCache {
     }
 
     /// Save a module in the global cache system
-    pub fn save_module_from_bytecode(&self, bytecode: &[u8]) {
+    pub fn save_module_from_bytecode(
+        &mut self,
+        bytecode: &[u8],
+        limit: u64,
+    ) -> Result<(), ExecutionError> {
         let hash = Hash::compute_from(bytecode);
-        if let Some((hd_module, hd_init_cost)) = self.hd_cache.get_and_incr(hash) {
-            self.lru_cache.insert(hash, hd_module, hd_init_cost);
+        if let Some((hd_module, hd_init_cost)) = self.hd_cache.get_and_increment(hash) {
+            self.lru_cache.insert(hash, hd_module, Some(hd_init_cost));
         } else {
             if let Some((lru_module, lru_init_cost)) = self.lru_cache.get(hash, limit)? {
-                self.hd_cache.insert(hash, lru_module, lru_init_cost);
+                self.hd_cache.insert(hash, lru_module, Some(lru_init_cost));
             } else {
                 let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone())
                     .map_err(|err| {
@@ -48,11 +52,19 @@ impl ModuleCache {
                             err
                         ))
                     })?;
-                // NOTE: issue in the flow here
-                self.hd_cache.insert(hash, new_module.clone(), 42);
-                self.lru_cache.insert(hash, module, 42);
+                self.hd_cache.insert(hash, new_module.clone(), None);
+                self.lru_cache.insert(hash, new_module, None);
             }
         }
+        Ok(())
+    }
+
+    /// Set the initialization cost of a cached module
+    pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
+        // NOTE: make sure input should be bytecode
+        let hash = Hash::compute_from(bytecode);
+        self.hd_cache.set_init_cost(hash, init_cost);
+        self.lru_cache.set_init_cost(hash, init_cost);
     }
 
     /// Load a module from the global cache system
@@ -63,14 +75,15 @@ impl ModuleCache {
     ) -> Result<RuntimeModule, ExecutionError> {
         let hash = Hash::compute_from(bytecode);
         if let Some((hd_module, hd_init_cost)) = self.hd_cache.get(hash) {
-            if let Some(lru_module) = self.lru_cache.get(hash, limit)? {
+            if let Some((lru_module, _)) = self.lru_cache.get(hash, limit)? {
                 Ok(lru_module.clone())
             } else {
-                self.lru_cache.insert(hash, hd_module.clone(), hd_init_cost);
+                self.lru_cache
+                    .insert(hash, hd_module.clone(), Some(hd_init_cost));
                 Ok(hd_module)
             }
         } else {
-            if let Some(lru_module) = self.lru_cache.get(hash, limit)? {
+            if let Some((lru_module, _)) = self.lru_cache.get(hash, limit)? {
                 Ok(lru_module.clone())
             } else {
                 let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone())
@@ -81,6 +94,7 @@ impl ModuleCache {
                         ))
                     })?;
                 // NOTE: might need to add an arbitrary execution identifier here
+                // NOTE: make this change in runtime
                 Ok(new_module)
             }
         }
@@ -93,7 +107,8 @@ impl ModuleCache {
         module: RuntimeModule,
         init_cost: u64,
     ) {
+        // NOTE: check if this still has use
         let hash = Hash::compute_from(bytecode);
-        self.lru_cache.insert(hash, module, init_cost);
+        self.lru_cache.insert(hash, module, Some(init_cost));
     }
 }
