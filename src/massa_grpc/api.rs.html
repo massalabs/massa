@@ -301,8 +301,6 @@
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! gRPC API for a massa-node
 </span><span class="kw">use </span>std::{error::Error, io::ErrorKind, pin::Pin};
@@ -316,11 +314,10 @@
 };
 <span class="kw">use </span>massa_pool_exports::PoolChannels;
 <span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc, grpc_server::GrpcServer, FILE_DESCRIPTOR_SET};
-<span class="kw">use </span>massa_serialization::Deserializer;
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 
 <span class="kw">use </span>futures_util::{FutureExt, StreamExt};
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
-<span class="kw">use </span>massa_serialization::DeserializeError;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>tokio::sync::oneshot;
 <span class="kw">use </span>tonic::codegen::{futures_core, CompressionEncoding};
@@ -475,8 +472,7 @@
         <span class="kw">let </span>storage = <span class="self">self</span>.storage.clone_without_refs();
 
         <span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
-        <span class="comment">//TODO Add to configuration
-        </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(<span class="number">128</span>);
+        <span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(<span class="number">128</span>);
 
         tokio::spawn(<span class="kw">async move </span>{
             <span class="kw">while let </span><span class="prelude-val">Some</span>(result) = in_stream.next().<span class="kw">await </span>{
