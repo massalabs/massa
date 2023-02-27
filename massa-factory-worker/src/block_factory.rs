@@ -3,7 +3,6 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    address::Address,
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
@@ -17,7 +16,6 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{
-    str::FromStr,
     sync::{mpsc, Arc},
     thread,
     time::Instant,
