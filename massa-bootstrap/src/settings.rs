@@ -31,7 +31,7 @@ pub struct BootstrapConfig {
     /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
     pub bootstrap_blacklist_path: PathBuf,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
-    pub bind: Option<SocketAddr>,
+    pub listen_addr: Option<SocketAddr>,
     /// connection timeout
     pub connect_timeout: MassaTime,
     /// Time allocated to managing the bootstrapping process,
@@ -121,6 +121,20 @@ pub struct BootstrapConfig {
     pub consensus_bootstrap_part_size: u64,
     /// max number of consensus block ids when sending a bootstrap cursor from the client
     pub max_consensus_block_ids: u64,
+}
+
+/// Bootstrap server binding
+#[allow(missing_docs)]
+#[derive(Debug, Deserialize, Clone, SubStruct)]
+#[parent(type = "BootstrapConfig")]
+pub struct BootstrapSrvBindCfg {
+    pub max_bytes_read_write: f64,
+    pub max_bootstrap_message_size: u32,
+    pub thread_count: u8,
+    pub max_datastore_key_length: u8,
+    pub randomness_size_bytes: usize,
+    pub consensus_bootstrap_part_size: u64,
+    pub write_error_timeout: MassaTime,
 }
 
 /// Bootstrap client config
