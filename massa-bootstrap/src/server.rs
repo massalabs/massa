@@ -133,7 +133,6 @@ pub async fn start_bootstrap_server(
 
     let listener = establisher
         .get_listener(listen_addr)
-        .await
         .map_err(BootstrapError::IoError)?;
 
     // This is the primary interface between the async-listener, and the "sync" worker
