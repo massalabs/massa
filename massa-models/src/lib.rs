@@ -63,6 +63,10 @@ pub mod streaming_step;
 pub mod timeslots;
 /// versions
 pub mod version;
+/// versioning base
+pub mod versioning;
+/// versioning factory
+pub mod versioning_factory;
 /// vesting range
 pub mod vesting_range;
 
