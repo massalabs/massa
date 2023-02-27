@@ -22,9 +22,9 @@ pub mod types {
     };
     /// duplex connection
     pub type Duplex = TcpStream;
-    /// listener
+    /// listener, used by server
     pub type Listener = DefaultListener;
-    /// connector
+    /// connector, used by client
     pub type Connector = DefaultConnector;
     /// connection establisher
     pub type Establisher = DefaultEstablisher;
