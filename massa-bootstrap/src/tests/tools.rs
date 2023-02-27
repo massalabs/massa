@@ -64,7 +64,7 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
-pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
+pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 0));
 
 /// generates a small random number of bytes
 fn get_some_random_bytes() -> Vec<u8> {
@@ -301,7 +301,10 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         write_timeout: 1000.into(),
         read_error_timeout: 200.into(),
         write_error_timeout: 200.into(),
-        bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
+        bootstrap_list: vec![(
+            SocketAddr::new(BASE_BOOTSTRAP_IP, 8069),
+            bootstrap_public_key,
+        )],
         bootstrap_whitelist_path: PathBuf::from(
             "../massa-node/base_config/bootstrap_whitelist.json",
         ),
