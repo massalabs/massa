@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/messages.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>messages.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ed67f58bef457aa5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-a19f8302ea709214.css"><link rel="stylesheet" disabled href="../../static.files/dark-f1e56666dd272622.css"><link rel="stylesheet" disabled href="../../static.files/ayu-7291d283d92e041c.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-4a084badb5778746.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/messages.rs`."><title>messages.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -836,18 +836,10 @@
 <a href="#836" id="836">836</a>
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_async_pool::{
+</span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
+<span class="kw">use </span>massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncPoolDeserializer, AsyncPoolSerializer,
 };
@@ -856,7 +848,7 @@
 };
 <span class="kw">use </span>massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 <span class="kw">use </span>massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
-<span class="kw">use </span>massa_ledger_exports::{KeyDeserializer, KeySerializer};
+<span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, KeyDeserializer, KeySerializer};
 <span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
@@ -1124,28 +1116,7 @@
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
     <span class="doccomment">/// Creates a new `BootstrapServerMessageDeserializer`
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_advertise_length: u32,
-        max_bootstrap_blocks: u32,
-        max_operations_per_block: u32,
-        max_bootstrap_final_state_parts_size: u64,
-        max_async_pool_changes: u64,
-        max_async_pool_length: u64,
-        max_async_message_data: u64,
-        max_ledger_changes_count: u64,
-        max_datastore_key_length: u8,
-        max_datastore_value_length: u64,
-        max_datastore_entry_count: u64,
-        max_bootstrap_error_length: u64,
-        max_changes_slot_count: u64,
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-        max_credits_length: u64,
-        max_executed_ops_length: u64,
-        max_ops_changes_length: u64,
-    ) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(args: BootstrapServerMessageDeserializerArgs) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             message_id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -1153,65 +1124,63 @@
                 Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
+            peers_deserializer: BootstrapPeersDeserializer::new(args.max_advertise_length),
             state_changes_deserializer: StateChangesDeserializer::new(
-                thread_count,
-                max_async_pool_changes,
-                max_async_message_data,
-                max_ledger_changes_count,
-                max_datastore_key_length,
-                max_datastore_value_length,
-                max_datastore_entry_count,
-                max_rolls_length,
-                max_production_stats_length,
-                max_credits_length,
-                max_ops_changes_length,
+                args.thread_count,
+                args.max_async_pool_changes,
+                args.max_async_message_data,
+                args.max_ledger_changes_count,
+                args.max_datastore_key_length,
+                args.max_datastore_value_length,
+                args.max_datastore_entry_count,
+                args.max_rolls_length,
+                args.max_production_stats_length,
+                args.max_credits_length,
+                args.max_ops_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(max_changes_slot_count),
+                Included(args.max_changes_slot_count),
             ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_bootstrap_blocks,
-                max_operations_per_block,
+                (<span class="kw-2">&amp;</span>args).into(),
+                args.max_bootstrap_blocks_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
                 BlockIdDeserializer::new(),
                 Included(<span class="number">0</span>),
-                Included(max_bootstrap_blocks <span class="kw">as </span>u64),
+                Included(args.max_bootstrap_blocks_length <span class="kw">as </span>u64),
             ),
             ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(<span class="number">0</span>),
-                Included(max_bootstrap_final_state_parts_size),
+                Included(args.max_bootstrap_final_state_parts_size),
             ),
             length_bootstrap_error: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(max_bootstrap_error_length),
+                Included(args.max_bootstrap_error_length),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
+                (Included(<span class="number">0</span>), Excluded(args.thread_count)),
             ),
             async_pool_deserializer: AsyncPoolDeserializer::new(
-                thread_count,
-                max_async_pool_length,
-                max_async_message_data,
-                max_datastore_key_length <span class="kw">as </span>u32,
+                args.thread_count,
+                args.max_async_pool_length,
+                args.max_async_message_data,
+                args.max_datastore_key_length <span class="kw">as </span>u32,
             ),
             opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
-                max_rolls_length,
-                max_production_stats_length,
+                args.max_rolls_length,
+                args.max_production_stats_length,
             )),
             pos_credits_deserializer: DeferredCreditsDeserializer::new(
-                thread_count,
-                max_credits_length,
+                args.thread_count,
+                args.max_credits_length,
             ),
             exec_ops_deserializer: ExecutedOpsDeserializer::new(
-                thread_count,
-                max_executed_ops_length,
-                max_operations_per_block <span class="kw">as </span>u64,
+                args.thread_count,
+                args.max_executed_ops_length,
+                args.max_operations_per_block <span class="kw">as </span>u64,
             ),
         }
     }
@@ -1221,13 +1190,24 @@
     <span class="doccomment">/// ## Example
     /// ```rust
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer, BootstrapServerMessageDeserializer};
+    /// use massa_bootstrap::BootstrapServerMessageDeserializerArgs;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;
     /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(32, 16, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 255, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000);
+    /// let args = BootstrapServerMessageDeserializerArgs {
+    ///     thread_count: 32, endorsement_count: 16,
+    ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
+    ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
+    ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,
+    ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
+    ///     max_datastore_value_length: 1000,
+    ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
+    ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
+    ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000};
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
@@ -1242,7 +1222,7 @@
     ///    } =&gt; {
     ///     assert_eq!(server_time, MassaTime::from(0));
     ///     assert_eq!(version, Version::from_str(&quot;TEST.1.10&quot;).unwrap());
-    ///   },
+    ///   }
     ///   _ =&gt; panic!(&quot;Unexpected message&quot;),
     /// }
     /// assert_eq!(rest.len(), 0);
@@ -1371,6 +1351,7 @@
 
 <span class="doccomment">/// Messages used during bootstrap by client
 </span><span class="attr">#[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>BootstrapClientMessage {
     <span class="doccomment">/// Ask for bootstrap peers
     </span>AskBootstrapPeers,
@@ -1379,7 +1360,7 @@
         <span class="doccomment">/// Slot we are attached to for changes
         </span>last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
         <span class="doccomment">/// Last received ledger key
-        </span>last_ledger_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        </span>last_ledger_step: StreamingStep&lt;LedgerKey&gt;,
         <span class="doccomment">/// Last received async message id
         </span>last_pool_step: StreamingStep&lt;AsyncMessageId&gt;,
         <span class="doccomment">/// Last received Proof of Stake cycle
@@ -1413,7 +1394,7 @@
 </span><span class="kw">pub struct </span>BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
-    ledger_step_serializer: StreamingStepSerializer&lt;Vec&lt;u8&gt;, KeySerializer&gt;,
+    ledger_step_serializer: StreamingStepSerializer&lt;LedgerKey, KeySerializer&gt;,
     pool_step_serializer: StreamingStepSerializer&lt;AsyncMessageId, AsyncMessageIdSerializer&gt;,
     cycle_step_serializer: StreamingStepSerializer&lt;u64, U64VarIntSerializer&gt;,
     slot_step_serializer: StreamingStepSerializer&lt;Slot, SlotSerializer&gt;,
@@ -1429,7 +1410,7 @@
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new()),
+            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new(<span class="bool-val">true</span>)),
             pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
             cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
             slot_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
@@ -1521,7 +1502,7 @@
     id_deserializer: U32VarIntDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
-    ledger_step_deserializer: StreamingStepDeserializer&lt;Vec&lt;u8&gt;, KeyDeserializer&gt;,
+    ledger_step_deserializer: StreamingStepDeserializer&lt;LedgerKey, KeyDeserializer&gt;,
     pool_step_deserializer: StreamingStepDeserializer&lt;AsyncMessageId, AsyncMessageIdDeserializer&gt;,
     cycle_step_deserializer: StreamingStepDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     slot_step_deserializer: StreamingStepDeserializer&lt;Slot, SlotDeserializer&gt;,
@@ -1536,7 +1517,7 @@
     </span><span class="kw">pub fn </span>new(
         thread_count: u8,
         max_datastore_key_length: u8,
-        consensus_bootstrap_part_size: u64,
+        max_consensus_block_ids: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
@@ -1547,6 +1528,7 @@
             ),
             ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
                 max_datastore_key_length,
+                <span class="bool-val">true</span>,
             )),
             pool_step_deserializer: StreamingStepDeserializer::new(
                 AsyncMessageIdDeserializer::new(thread_count),
@@ -1563,7 +1545,7 @@
                 PreHashSetDeserializer::new(
                     BlockIdDeserializer::new(),
                     Included(<span class="number">0</span>),
-                    Included(consensus_bootstrap_part_size),
+                    Included(max_consensus_block_ids),
                 ),
             ),
         }
@@ -1693,4 +1675,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (065852def 2023-02-13)" data-search-js="search-abe1d547ad11c273.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

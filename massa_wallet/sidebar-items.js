@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["WalletError","wallet error"]],"struct":[["Wallet","Contains the keypairs created in the wallet."]]};
+window.SIDEBAR_ITEMS = {"enum":["WalletError"],"struct":["Wallet"]};

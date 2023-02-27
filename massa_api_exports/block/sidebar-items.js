@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["BlockInfo","refactor to delete"],["BlockInfoContent","Block content"],["BlockSummary","A block resume (without the block itself)"]]};
+window.SIDEBAR_ITEMS = {"struct":["BlockInfo","BlockInfoContent","BlockSummary"]};

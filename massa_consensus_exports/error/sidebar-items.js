@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ConsensusError","Consensus error"],["InternalError","Internal error"],["LedgerError","Ledger error"]]};
+window.SIDEBAR_ITEMS = {"enum":["ConsensusError","InternalError","LedgerError"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["OperationInfo","Operation and contextual info about it"],["OperationInput","operation input"]]};
+window.SIDEBAR_ITEMS = {"struct":["OperationInfo","OperationInput"]};

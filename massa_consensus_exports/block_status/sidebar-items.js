@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["BlockStatus","Enum used in `BlockGraph`’s state machine"],["DiscardReason","Something can be discarded"],["ExportBlockStatus","Block status in the graph that can be exported."],["HeaderOrBlock",""],["Status","Status"]],"struct":[["ExportCompiledBlock","The block version that can be exported. Note that the detailed list of operation is not exported"]]};
+window.SIDEBAR_ITEMS = {"enum":["BlockStatus","DiscardReason","ExportBlockStatus","HeaderOrBlock","Status"],"struct":["ExportCompiledBlock"]};

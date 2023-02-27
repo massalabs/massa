@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["PoolChannels","channels used by the pool worker"],["PoolConfig","Pool configuration"]],"trait":[["PoolController","Trait defining a pool controller"],["PoolManager","Pool manager trait"]]};
+window.SIDEBAR_ITEMS = {"struct":["PoolChannels","PoolConfig"],"trait":["PoolController","PoolManager"]};

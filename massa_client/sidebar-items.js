@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["ask_password","Ask for the wallet password If the wallet does not exist, it will require password confirmation"],["main",""],["run",""]],"macro":[["try",""]],"mod":[["cmds",""],["repl",""],["settings","Build here the default client settings from the configuration file toml"]],"opaque":[["",""]],"static":[["ATOMIC_ID",""]],"struct":[["Args",""],["JsonError",""]]};
+window.SIDEBAR_ITEMS = {"fn":["ask_password","main","run"],"mod":["cmds","repl","settings"],"opaque":[""],"static":["ATOMIC_ID"],"struct":["Args","JsonError"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ConsensusEvent","Events that are emitted by consensus."]]};
+window.SIDEBAR_ITEMS = {"enum":["ConsensusEvent"]};
