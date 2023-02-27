@@ -28,8 +28,7 @@ impl SharedWhiteBlackList<'_> {
         white_path: PathBuf,
         black_path: PathBuf,
     ) -> Result<Self, Box<BootstrapError>> {
-        let (white_list, black_list) =
-            WhiteBlackListInner::init_list(&white_path, &black_path)?;
+        let (white_list, black_list) = WhiteBlackListInner::init_list(&white_path, &black_path)?;
         Ok(Self {
             inner: Arc::new(RwLock::new(WhiteBlackListInner {
                 white_list,
@@ -98,22 +97,35 @@ impl WhiteBlackListInner {
         whitelist_path: &Path,
         blacklist_path: &Path,
     ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), Box<BootstrapError>> {
-        Ok((Self::load_list(whitelist_path, false)?, Self::load_list(blacklist_path, false)?))
+        Ok((
+            Self::load_list(whitelist_path, false)?,
+            Self::load_list(blacklist_path, false)?,
+        ))
     }
-
 
     #[allow(clippy::type_complexity)]
-    fn init_list(whitelist_path: &Path,
-                              blacklist_path: &Path, ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), Box<BootstrapError>> {
-        Ok((Self::load_list(whitelist_path, true)?, Self::load_list(blacklist_path, true)?))
+    fn init_list(
+        whitelist_path: &Path,
+        blacklist_path: &Path,
+    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), Box<BootstrapError>> {
+        Ok((
+            Self::load_list(whitelist_path, true)?,
+            Self::load_list(blacklist_path, true)?,
+        ))
     }
 
-
-    fn load_list(list_path: &Path, is_init: bool) -> Result<Option<HashSet<IpAddr>>, Box<BootstrapError>> {
+    fn load_list(
+        list_path: &Path,
+        is_init: bool,
+    ) -> Result<Option<HashSet<IpAddr>>, Box<BootstrapError>> {
         match std::fs::read_to_string(list_path) {
             Err(e) => {
                 if is_init {
-                    warn!("error on load whitelist/blacklist file : {} | {}", list_path.to_str().unwrap_or(" "), e);
+                    warn!(
+                        "error on load whitelist/blacklist file : {} | {}",
+                        list_path.to_str().unwrap_or(" "),
+                        e
+                    );
                 }
                 Ok(None)
             }
