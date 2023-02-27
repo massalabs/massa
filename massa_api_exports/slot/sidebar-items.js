@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SlotAmount"]};
+window.SIDEBAR_ITEMS = {"struct":[["SlotAmount","slot / amount pair"]]};

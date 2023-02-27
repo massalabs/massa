@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SecureShare","SecureShareDeserializer","SecureShareSerializer"],"trait":["Id","SecureShareContent"]};
+window.SIDEBAR_ITEMS = {"struct":[["SecureShare","Packages type T such that it can be securely sent and received in a trust-free network"],["SecureShareDeserializer","Deserializer for SecureShare structure"],["SecureShareSerializer","Serializer for `SecureShare` structure"]],"trait":[["Id","Used by signed structure"],["SecureShareContent","Trait that define a structure that can be signed for secure sharing."]]};

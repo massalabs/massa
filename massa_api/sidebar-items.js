@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["API","ApiV2","Private","Public","StopHandle"],"trait":["ApiServer","MassaRpcServer","RpcServer"]};
+window.SIDEBAR_ITEMS = {"struct":[["API","The API wrapper"],["ApiV2","API v2 content"],["Private","Private API content"],["Public","Public API component"],["StopHandle","Used to be able to stop the API"]],"trait":[["ApiServer","Used to manage the API"],["MassaRpcServer","Server trait implementation for the `MassaRpc` RPC API."],["RpcServer","Used to manage the API"]]};

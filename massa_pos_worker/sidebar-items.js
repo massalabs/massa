@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_selector_worker"]};
+window.SIDEBAR_ITEMS = {"fn":[["start_selector_worker","Start thread selector Launches a selector worker thread and returns a pair to interact with it."]]};

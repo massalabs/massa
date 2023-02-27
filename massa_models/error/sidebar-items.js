@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ModelsError"],"type":["ModelsResult"]};
+window.SIDEBAR_ITEMS = {"enum":[["ModelsError","models error"]],"type":[["ModelsResult","models error"]]};

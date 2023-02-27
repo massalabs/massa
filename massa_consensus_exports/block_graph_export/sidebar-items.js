@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BlockGraphExport"]};
+window.SIDEBAR_ITEMS = {"struct":[["BlockGraphExport","Bootstrap compatible version of the block graph"]]};

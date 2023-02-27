@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CipherError"],"fn":["decrypt","encrypt"]};
+window.SIDEBAR_ITEMS = {"enum":[["CipherError","Cipher error"]],"fn":[["decrypt","Decryption function using AES-GCM cipher."],["encrypt","Encryption function using AES-GCM cipher."]]};

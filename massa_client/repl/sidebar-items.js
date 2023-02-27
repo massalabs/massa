@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["group_parameters","run"],"macro":["massa_fancy_ascii_art_logo"],"opaque":[""],"struct":["MassaCompleter","MyHelper"],"trait":["Output"]};
+window.SIDEBAR_ITEMS = {"fn":[["group_parameters",""],["run",""]],"macro":[["massa_fancy_ascii_art_logo",""]],"opaque":[["",""]],"struct":[["MassaCompleter",""],["MyHelper",""]],"trait":[["Output",""]]};

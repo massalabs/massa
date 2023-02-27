@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["ADDRESS_SIZE_BYTES"],"enum":["Address"],"struct":["AddressDeserializer","AddressSerializer","ExecutionAddressCycleInfo","SCAddress","UserAddress"]};
+window.SIDEBAR_ITEMS = {"constant":[["ADDRESS_SIZE_BYTES","Size of a serialized address, in bytes"]],"struct":[["Address","Derived from a public key"],["AddressDeserializer","Deserializer for `Address`"],["AddressSerializer","Serializer for `Address`"],["ExecutionAddressCycleInfo","Info for a given address on a given cycle"]]};

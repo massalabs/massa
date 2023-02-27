@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["AddressInfo","CompactAddressInfo"]};
+window.SIDEBAR_ITEMS = {"struct":[["AddressInfo","All you ever dream to know about an address"],["CompactAddressInfo","Less information about an address"]]};

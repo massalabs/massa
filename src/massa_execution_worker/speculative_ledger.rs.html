@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/speculative_ledger.rs`."><title>speculative_ledger.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/speculative_ledger.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>speculative_ledger.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ed67f58bef457aa5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-a19f8302ea709214.css"><link rel="stylesheet" disabled href="../../static.files/dark-f1e56666dd272622.css"><link rel="stylesheet" disabled href="../../static.files/ayu-7291d283d92e041c.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-4a084badb5778746.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -608,15 +608,6 @@
 <a href="#608" id="608">608</a>
 <a href="#609" id="609">609</a>
 <a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a>
-<a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
-<a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -629,7 +620,6 @@
 <span class="kw">use </span>massa_execution_exports::StorageCostsConstants;
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
-<span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::collections::BTreeSet;
@@ -651,17 +641,9 @@
     </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
 
     <span class="doccomment">/// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
-    </span><span class="attr">#[cfg(all(
-        not(feature = <span class="string">&quot;gas_calibration&quot;</span>),
-        not(feature = <span class="string">&quot;benchmarking&quot;</span>),
-        not(feature = <span class="string">&quot;testing&quot;</span>)
-    ))]
+    </span><span class="attr">#[cfg(all(not(feature = <span class="string">&quot;gas_calibration&quot;</span>), not(feature = <span class="string">&quot;benchmarking&quot;</span>)))]
     </span>added_changes: LedgerChanges,
-    <span class="attr">#[cfg(any(
-        feature = <span class="string">&quot;gas_calibration&quot;</span>,
-        feature = <span class="string">&quot;benchmarking&quot;</span>,
-        feature = <span class="string">&quot;testing&quot;
-    </span>))]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;gas_calibration&quot;</span>, feature = <span class="string">&quot;benchmarking&quot;</span>))]
     </span><span class="kw">pub </span>added_changes: LedgerChanges,
 
     <span class="doccomment">/// max datastore key length
@@ -742,8 +724,8 @@
     /// `addr`: the address to query
     ///
     /// # Returns
-    /// `Some(Bytecode)` if the address was found, otherwise None
-    </span><span class="kw">pub fn </span>get_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Bytecode&gt; {
+    /// `Some(Vec&lt;u8&gt;)` if the address was found, otherwise None
+    </span><span class="kw">pub fn </span>get_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="comment">// try to read from added changes &gt; history &gt; final_state
         </span><span class="self">self</span>.added_changes.get_bytecode_or_else(addr, || {
             <span class="kw">match </span><span class="self">self</span>.active_history.read().fetch_bytecode(addr) {
@@ -880,7 +862,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         creator_address: Address,
         addr: Address,
-        bytecode: Bytecode,
+        bytecode: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check for address existence
         </span><span class="kw">if </span>!<span class="self">self</span>.entry_exists(<span class="kw-2">&amp;</span>creator_address) {
@@ -898,7 +880,7 @@
             )));
         }
 
-        <span class="kw">if </span>bytecode.<span class="number">0</span>.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
+        <span class="kw">if </span>bytecode.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                 <span class="string">&quot;could not create SC address {}: bytecode size exceeds maximum allowed size&quot;</span>,
                 addr
@@ -913,7 +895,7 @@
             </span>.checked_add(
                 <span class="self">self</span>.storage_costs_constants
                     .ledger_cost_per_byte
-                    .checked_mul_u64(bytecode.<span class="number">0</span>.len().try_into().map_err(|<span class="kw">_</span>| {
+                    .checked_mul_u64(bytecode.len().try_into().map_err(|<span class="kw">_</span>| {
                         ExecutionError::RuntimeError(
                             <span class="string">&quot;overflow while calculating bytecode ledger size costs&quot;</span>.to_string(),
                         )
@@ -945,7 +927,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         caller_addr: <span class="kw-2">&amp;</span>Address,
         addr: <span class="kw-2">&amp;</span>Address,
-        bytecode: Bytecode,
+        bytecode: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check for address existence
         </span><span class="kw">if </span>!<span class="self">self</span>.entry_exists(addr) {
@@ -955,15 +937,15 @@
             )));
         }
 
-        <span class="kw">if </span>bytecode.<span class="number">0</span>.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
+        <span class="kw">if </span>bytecode.len() &gt; <span class="self">self</span>.max_bytecode_size <span class="kw">as </span>usize {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                 <span class="string">&quot;could not set bytecode for address {}: bytecode size exceeds maximum allowed size&quot;</span>,
                 addr
             )));
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(old_bytecode_size) = <span class="self">self</span>.get_bytecode(addr).map(|b| b.<span class="number">0</span>.len()) {
-            <span class="kw">let </span>diff_size_storage: i64 = (bytecode.<span class="number">0</span>.len() <span class="kw">as </span>i64) - (old_bytecode_size <span class="kw">as </span>i64);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(old_bytecode_size) = <span class="self">self</span>.get_bytecode(addr).map(|b| b.len()) {
+            <span class="kw">let </span>diff_size_storage: i64 = (bytecode.len() <span class="kw">as </span>i64) - (old_bytecode_size <span class="kw">as </span>i64);
             <span class="kw">let </span>storage_cost_bytecode = <span class="self">self
                 </span>.storage_costs_constants
                 .ledger_cost_per_byte
@@ -983,7 +965,7 @@
             <span class="kw">let </span>bytecode_storage_cost = <span class="self">self
                 </span>.storage_costs_constants
                 .ledger_cost_per_byte
-                .checked_mul_u64(bytecode.<span class="number">0</span>.len() <span class="kw">as </span>u64)
+                .checked_mul_u64(bytecode.len() <span class="kw">as </span>u64)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError(
                         <span class="string">&quot;overflow when calculating storage cost of bytecode&quot;</span>.to_string(),
@@ -1237,4 +1219,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (065852def 2023-02-13)" data-search-js="search-abe1d547ad11c273.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (af3e06f1b 2022-12-23)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>

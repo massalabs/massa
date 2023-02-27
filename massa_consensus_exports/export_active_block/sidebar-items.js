@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ExportActiveBlock","ExportActiveBlockDeserializer","ExportActiveBlockSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":[["ExportActiveBlock","Exportable version of `ActiveBlock` Fields that can be easily recomputed were left out"],["ExportActiveBlockDeserializer","Basic deserializer of `ExportActiveBlock`"],["ExportActiveBlockSerializer","Basic serializer of `ExportActiveBlock`"]]};
