@@ -234,7 +234,7 @@ impl BootstrapServer<'_> {
                 recv(stopper) -> res => {
                     match res {
                         Ok(()) => return Ok(()),
-                        Err(e) => return Err(Box::new(BootstrapError::GeneralError(format!("update stopper error : {}", e.to_string())))),
+                        Err(e) => return Err(Box::new(BootstrapError::GeneralError(format!("update stopper error : {}", e)))),
                     }
                 },
                 recv(ticker) -> _ => {list.update()?;},
