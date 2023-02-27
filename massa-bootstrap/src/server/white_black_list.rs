@@ -9,7 +9,8 @@ use std::{
 use crate::error::BootstrapError;
 use massa_logging::massa_trace;
 use parking_lot::RwLock;
-use tracing::log::error;
+use tracing::info;
+use tracing::log::warn;
 
 use crate::tools::normalize_ip;
 
@@ -28,7 +29,7 @@ impl SharedWhiteBlackList<'_> {
         black_path: PathBuf,
     ) -> Result<Self, Box<BootstrapError>> {
         let (white_list, black_list) =
-            WhiteBlackListInner::load_white_black_lists(&white_path, &black_path)?;
+            WhiteBlackListInner::init_list(&white_path, &black_path)?;
         Ok(Self {
             inner: Arc::new(RwLock::new(WhiteBlackListInner {
                 white_list,
@@ -44,7 +45,7 @@ impl SharedWhiteBlackList<'_> {
     pub(crate) fn update(&mut self) -> Result<(), Box<BootstrapError>> {
         let read_lock = self.inner.read();
         let (new_white, new_black) =
-            WhiteBlackListInner::load_white_black_lists(&self.white_path, &self.black_path)?;
+            WhiteBlackListInner::update_list(&self.white_path, &self.black_path)?;
         let white_delta = new_white != read_lock.white_list;
         let black_delta = new_black != read_lock.black_list;
         if white_delta || black_delta {
@@ -55,9 +56,11 @@ impl SharedWhiteBlackList<'_> {
             };
 
             if white_delta {
+                info!("whitelist has updated !");
                 mut_inner.white_list = new_white;
             }
             if black_delta {
+                info!("blacklist has updated !");
                 mut_inner.black_list = new_black;
             }
         }
@@ -91,19 +94,27 @@ impl SharedWhiteBlackList<'_> {
 impl WhiteBlackListInner {
     #[allow(clippy::result_large_err)]
     #[allow(clippy::type_complexity)]
-    fn load_white_black_lists(
+    fn update_list(
         whitelist_path: &Path,
         blacklist_path: &Path,
     ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), Box<BootstrapError>> {
-        let white_list = Self::load_list(whitelist_path)?;
-        let black_list = Self::load_list(blacklist_path)?;
-        Ok((white_list, black_list))
+        Ok((Self::load_list(whitelist_path, false)?, Self::load_list(blacklist_path, false)?))
     }
 
-    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, Box<BootstrapError>> {
+
+    #[allow(clippy::type_complexity)]
+    fn init_list(whitelist_path: &Path,
+                              blacklist_path: &Path, ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), Box<BootstrapError>> {
+        Ok((Self::load_list(whitelist_path, true)?, Self::load_list(blacklist_path, true)?))
+    }
+
+
+    fn load_list(list_path: &Path, is_init: bool) -> Result<Option<HashSet<IpAddr>>, Box<BootstrapError>> {
         match std::fs::read_to_string(list_path) {
             Err(e) => {
-                error!("error on load whitelist/blacklist file : {}", e);
+                if is_init {
+                    warn!("error on load whitelist/blacklist file : {} | {}", list_path.to_str().unwrap_or(" "), e);
+                }
                 Ok(None)
             }
             Ok(list) => {
