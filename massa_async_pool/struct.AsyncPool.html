@@ -16,7 +16,7 @@ This function is used when applying pre-compiled <code>AsyncPoolChanges</code> t
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.settle_slot" class="method"><a class="srclink rightside" href="../src/massa_async_pool/pool.rs.html#111-149">source</a><h4 class="code-header">pub fn <a href="#method.settle_slot" class="fn">settle_slot</a>(
     &amp;mut self,
-    slot: &amp;Slot,
+    slot: &amp;<a class="struct" href="../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     new_messages: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="struct.AsyncMessage.html" title="struct massa_async_pool::AsyncMessage">AsyncMessage</a>)&gt;,
     ledger_changes: &amp;LedgerChanges
 ) -&gt; (<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="struct.AsyncMessage.html" title="struct massa_async_pool::AsyncMessage">AsyncMessage</a>)&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="struct.AsyncMessage.html" title="struct massa_async_pool::AsyncMessage">AsyncMessage</a>)&gt;)</h4></section></summary><div class="docblock"><p>Settles a slot, adding new messages to the pool and returning expired and excess ones.
@@ -37,7 +37,7 @@ The list of message that their trigger has been triggered.</li>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.take_batch_to_execute" class="method"><a class="srclink rightside" href="../src/massa_async_pool/pool.rs.html#161-183">source</a><h4 class="code-header">pub fn <a href="#method.take_batch_to_execute" class="fn">take_batch_to_execute</a>(
     &amp;mut self,
-    slot: Slot,
+    slot: <a class="struct" href="../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     available_gas: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>
 ) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="struct.AsyncMessage.html" title="struct massa_async_pool::AsyncMessage">AsyncMessage</a>)&gt;</h4></section></summary><div class="docblock"><p>Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.
 The returned messages are removed from the pool.
@@ -51,8 +51,8 @@ This method is used at the beginning of a slot execution to list asynchronous me
 <p>A vector of messages, sorted from the most priority to the least priority</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.get_pool_part" class="method"><a class="srclink rightside" href="../src/massa_async_pool/pool.rs.html#193-220">source</a><h4 class="code-header">pub fn <a href="#method.get_pool_part" class="fn">get_pool_part</a>(
     &amp;self,
-    cursor: StreamingStep&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>&gt;
-) -&gt; (<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/map/struct.BTreeMap.html" title="struct alloc::collections::btree::map::BTreeMap">BTreeMap</a>&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="struct.AsyncMessage.html" title="struct massa_async_pool::AsyncMessage">AsyncMessage</a>&gt;, StreamingStep&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>&gt;)</h4></section></summary><div class="docblock"><p>Get a part of the async pool.
+    cursor: <a class="enum" href="../massa_models/streaming_step/enum.StreamingStep.html" title="enum massa_models::streaming_step::StreamingStep">StreamingStep</a>&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>&gt;
+) -&gt; (<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/map/struct.BTreeMap.html" title="struct alloc::collections::btree::map::BTreeMap">BTreeMap</a>&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="struct.AsyncMessage.html" title="struct massa_async_pool::AsyncMessage">AsyncMessage</a>&gt;, <a class="enum" href="../massa_models/streaming_step/enum.StreamingStep.html" title="enum massa_models::streaming_step::StreamingStep">StreamingStep</a>&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>&gt;)</h4></section></summary><div class="docblock"><p>Get a part of the async pool.
 Used for bootstrap.</p>
 <h5 id="arguments-3"><a href="#arguments-3">Arguments</a></h5>
 <ul>
@@ -63,7 +63,7 @@ Used for bootstrap.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.set_pool_part" class="method"><a class="srclink rightside" href="../src/massa_async_pool/pool.rs.html#230-244">source</a><h4 class="code-header">pub fn <a href="#method.set_pool_part" class="fn">set_pool_part</a>(
     &amp;mut self,
     part: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/map/struct.BTreeMap.html" title="struct alloc::collections::btree::map::BTreeMap">BTreeMap</a>&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="struct.AsyncMessage.html" title="struct massa_async_pool::AsyncMessage">AsyncMessage</a>&gt;
-) -&gt; StreamingStep&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>&gt;</h4></section></summary><div class="docblock"><p>Set a part of the async pool.
+) -&gt; <a class="enum" href="../massa_models/streaming_step/enum.StreamingStep.html" title="enum massa_models::streaming_step::StreamingStep">StreamingStep</a>&lt;<a class="type" href="type.AsyncMessageId.html" title="type massa_async_pool::AsyncMessageId">AsyncMessageId</a>&gt;</h4></section></summary><div class="docblock"><p>Set a part of the async pool.
 Used for bootstrap.</p>
 <h5 id="arguments-4"><a href="#arguments-4">Arguments</a></h5>
 <ul>
