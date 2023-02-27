@@ -141,6 +141,18 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     borrow::Cow,
     collections::HashSet,
@@ -171,8 +183,7 @@
         white_path: PathBuf,
         black_path: PathBuf,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Box&lt;BootstrapError&gt;&gt; {
-        <span class="kw">let </span>(white_list, black_list) =
-            WhiteBlackListInner::init_list(<span class="kw-2">&amp;</span>white_path, <span class="kw-2">&amp;</span>black_path)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(white_list, black_list) = WhiteBlackListInner::init_list(<span class="kw-2">&amp;</span>white_path, <span class="kw-2">&amp;</span>black_path)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             inner: Arc::new(RwLock::new(WhiteBlackListInner {
                 white_list,
@@ -241,22 +252,35 @@
         whitelist_path: <span class="kw-2">&amp;</span>Path,
         blacklist_path: <span class="kw-2">&amp;</span>Path,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), Box&lt;BootstrapError&gt;&gt; {
-        <span class="prelude-val">Ok</span>((<span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>, <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>))
+        <span class="prelude-val">Ok</span>((
+            <span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>,
+            <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>,
+        ))
     }
-
 
     <span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="kw">fn </span>init_list(whitelist_path: <span class="kw-2">&amp;</span>Path,
-                              blacklist_path: <span class="kw-2">&amp;</span>Path, ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), Box&lt;BootstrapError&gt;&gt; {
-        <span class="prelude-val">Ok</span>((<span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>, <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>))
+    </span><span class="kw">fn </span>init_list(
+        whitelist_path: <span class="kw-2">&amp;</span>Path,
+        blacklist_path: <span class="kw-2">&amp;</span>Path,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), Box&lt;BootstrapError&gt;&gt; {
+        <span class="prelude-val">Ok</span>((
+            <span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>,
+            <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>,
+        ))
     }
 
-
-    <span class="kw">fn </span>load_list(list_path: <span class="kw-2">&amp;</span>Path, is_init: bool) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, Box&lt;BootstrapError&gt;&gt; {
+    <span class="kw">fn </span>load_list(
+        list_path: <span class="kw-2">&amp;</span>Path,
+        is_init: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">match </span>std::fs::read_to_string(list_path) {
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="kw">if </span>is_init {
-                    <span class="macro">warn!</span>(<span class="string">&quot;error on load whitelist/blacklist file : {} | {}&quot;</span>, list_path.to_str().unwrap_or(<span class="string">&quot; &quot;</span>), e);
+                    <span class="macro">warn!</span>(
+                        <span class="string">&quot;error on load whitelist/blacklist file : {} | {}&quot;</span>,
+                        list_path.to_str().unwrap_or(<span class="string">&quot; &quot;</span>),
+                        e
+                    );
                 }
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
