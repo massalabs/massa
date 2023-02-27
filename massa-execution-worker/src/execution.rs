@@ -817,6 +817,7 @@ impl ExecutionState {
 
         // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(self.config.max_async_gas);
+        debug!("executing {} messages at slot {}", messages.len(), slot);
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
@@ -852,6 +853,8 @@ impl ExecutionState {
                     })
                     .collect::<Vec<_>>()
             };
+
+            debug!("executing {} operations at slot {}", operations.len(), slot);
 
             // gather all available endorsement creators and target blocks
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
@@ -1011,11 +1014,10 @@ impl ExecutionState {
         }
 
         let exec_out = self.execute_slot(slot, exec_target, selector);
-        debug!("execute_candidate_slot: execution finished");
 
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);
-        debug!("execute_candidate_slot: execution state applied");
+        debug!("execute_candidate_slot: execution finished & state applied");
     }
 
     /// Execute an SCE-final slot
@@ -1072,11 +1074,10 @@ impl ExecutionState {
         // execute slot
         debug!("execute_final_slot: execution started");
         let exec_out = self.execute_slot(slot, exec_target, selector);
-        debug!("execute_final_slot: execution finished");
 
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
-        debug!("execute_final_slot: execution result applied");
+        debug!("execute_final_slot: execution finished & result applied");
     }
 
     /// Runs a read-only execution request.

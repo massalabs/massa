@@ -3,6 +3,7 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
+    address::Address,
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
@@ -16,11 +17,12 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{
+    str::FromStr,
     sync::{mpsc, Arc},
     thread,
     time::Instant,
 };
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
@@ -132,11 +134,17 @@ impl BlockFactoryWorker {
             }
         };
 
+        debug!(
+            "block factory selected block producer address for slot {}: {}",
+            slot, block_producer_addr
+        );
+
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();
-        let block_producer_keypair = if let Some(kp) =
-            block_producer_keypair_ref.find_associated_keypair(&block_producer_addr)
-        {
+        let block_producer_keypair = if let Some(kp) = block_producer_keypair_ref
+            .find_associated_keypair(
+                &Address::from_str("A12irbDfYNwyZRbnpBrfCBPCxrktp8f8riK2sQddWbzQ3g43G7bb").unwrap(),
+            ) {
             // the selected block producer is managed locally => continue to attempt block production
             kp
         } else {
@@ -232,9 +240,9 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
-        self.channels
-            .consensus
-            .register_block(block_id, slot, block_storage, true);
+        // self.channels
+        //     .consensus
+        //     .register_block(block_id, slot, block_storage, true);
     }
 
     /// main run loop of the block creator thread
