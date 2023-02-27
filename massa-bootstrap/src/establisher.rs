@@ -76,7 +76,7 @@ pub mod types {
         ///
         /// # Argument
         /// * `addr`: `SocketAddr` we want to bind to.
-        pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
+        pub fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
             // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
             // This is needed to get the same behavior on all OS
             // However, if IPv6 is disabled system-wide, you may need to bind to an IPv4 address instead.
