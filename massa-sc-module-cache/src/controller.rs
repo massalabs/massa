@@ -28,7 +28,7 @@ impl ModuleCache {
         Self {
             gas_costs,
             lru_cache: LRUCache::new(lru_cache_size),
-            hd_cache: HDCache::new(),
+            hd_cache: HDCache::new("hd_cache_path".into()),
         }
     }
 
