@@ -517,6 +517,8 @@
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -896,9 +898,11 @@
     pub_key: <span class="kw-2">&amp;</span>PublicKey,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, BootstrapError&gt; {
     <span class="comment">// connect
-    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher.get_connector(bootstrap_config.connect_timeout)<span class="question-mark">?</span>;
-    <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
+    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher
+        .get_connector(bootstrap_config.connect_timeout)
+        .<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable
+    </span><span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable
+    </span><span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
         socket,
         <span class="kw-2">*</span>pub_key,
         bootstrap_config.into(),

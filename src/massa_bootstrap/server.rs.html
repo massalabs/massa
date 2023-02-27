@@ -892,7 +892,6 @@
 <a href="#892" id="892">892</a>
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -920,9 +919,11 @@
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 </span><span class="kw">mod </span>white_black_list;
+
 <span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>crossbeam::channel::{Receiver, Select, SendError, Sender};
+<span class="kw">use </span>crossbeam::channel::{tick, Receiver, Select, SendError, Sender};
+<span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -958,14 +959,15 @@
 <span class="doccomment">/// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
 </span><span class="kw">type </span>BsConn = (Duplex, SocketAddr);
+
 <span class="doccomment">/// handle on the bootstrap server
 </span><span class="kw">pub struct </span>BootstrapManager {
-    update_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
+    update_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
     <span class="comment">// need to preserve the listener handle up to here to prevent it being destroyed
-    </span>_listen_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt;&gt;,
-    main_handle: std::thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
-    listen_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
-    update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
+    </span>_listen_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt;&gt;,
+    main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt;&gt;,
+    listen_stopper_tx: Sender&lt;()&gt;,
+    update_stopper_tx: Sender&lt;()&gt;,
 }
 
 <span class="kw">impl </span>BootstrapManager {
@@ -1021,12 +1023,13 @@
         .thread_name(<span class="string">&quot;bootstrap-global-runtime-worker&quot;</span>)
         .thread_keep_alive(Duration::from_millis(u64::MAX))
         .build() <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(BootstrapError::GeneralError(<span class="string">&quot;Failed to creato bootstrap async runtime&quot;</span>.to_string())));
-        };
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(BootstrapError::GeneralError(<span class="string">&quot;Failed to creato bootstrap async runtime&quot;</span>.to_string())));
+    };
 
     <span class="kw">let </span>listener = establisher
         .get_listener(listen_addr)
-        .map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
+        .<span class="kw">await
+        </span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
 
     <span class="comment">// This is the primary interface between the async-listener, and the &quot;sync&quot; worker
     </span><span class="kw">let </span>(listener_tx, listener_rx) = crossbeam::channel::bounded::&lt;BsConn&gt;(max_bootstraps * <span class="number">2</span>);
@@ -1066,7 +1069,7 @@
         // it&#39;s an error at the OS level.
         </span>.unwrap();
 
-    <span class="kw">let </span>main_handle = std::thread::Builder::new()
+    <span class="kw">let </span>main_handle = thread::Builder::new()
         .name(<span class="string">&quot;bs-main-loop&quot;</span>.to_string())
         .spawn(<span class="kw">move </span>|| {
             BootstrapServer {
@@ -1118,23 +1121,18 @@
         interval: Duration,
         stopper: Receiver&lt;()&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;BootstrapError&gt;&gt; {
+        <span class="kw">let </span>ticker = tick(interval);
+
         <span class="kw">loop </span>{
-            std::thread::sleep(interval);
-            <span class="kw">match </span>stopper.try_recv() {
-                <span class="prelude-val">Ok</span>(()) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
-                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">match </span>e {
-                    crossbeam::channel::TryRecvError::Empty =&gt; {}
-                    crossbeam::channel::TryRecvError::Disconnected =&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                            <span class="string">&quot;update stopper unexpected disconnect&quot;</span>.to_string(),
-                        )
-                        .into());
+            <span class="macro">select! </span>{
+                recv(stopper) -&gt; res =&gt; {
+                    <span class="kw">match </span>res {
+                        <span class="prelude-val">Ok</span>(()) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;update stopper error : {}&quot;</span>, e.to_string())))),
                     }
                 },
+                recv(ticker) -&gt; <span class="kw">_ </span>=&gt; {list.update()<span class="question-mark">?</span>;},
             }
-            <span class="comment">// TODO: loop interval here is sleep + update time. Implement a state-based,
-            // rather than time-based, trigger (such as delta-count);
-            </span>list.update()<span class="question-mark">?</span>;
         }
     }
 
@@ -1172,8 +1170,8 @@
             .thread_name(<span class="string">&quot;bootstrap-main-loop-worker&quot;</span>)
             .thread_keep_alive(Duration::from_millis(u64::MAX))
             .build() <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(BootstrapError::GeneralError(<span class="string">&quot;Failed to create bootstrap main-loop runtime&quot;</span>.to_string())));
-            };
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(BootstrapError::GeneralError(<span class="string">&quot;Failed to create bootstrap main-loop runtime&quot;</span>.to_string())));
+        };
 
         <span class="comment">// Use the strong-count of this variable to track the session count
         </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
@@ -1185,7 +1183,7 @@
         </span><span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
             // if a stop-signal is received
-            </span><span class="kw">let </span><span class="prelude-val">Some</span>((dplx, remote_addr)) = <span class="self">self</span>.receive_connection(<span class="kw-2">&amp;mut </span>selector).map_err(BootstrapError::GeneralError)<span class="question-mark">? </span><span class="kw">else </span>{<span class="kw">break</span>};
+            </span><span class="kw">let </span><span class="prelude-val">Some</span>((dplx, remote_addr)) = <span class="self">self</span>.receive_connection(<span class="kw-2">&amp;mut </span>selector).map_err(BootstrapError::GeneralError)<span class="question-mark">? </span><span class="kw">else </span>{ <span class="kw">break</span>; };
             <span class="comment">// claim a slot in the max_bootstrap_sessions
             </span><span class="kw">let </span>server = BootstrapServerBinder::new(
                 dplx,
@@ -1289,7 +1287,7 @@
                     <span class="self">self</span>.bs_server_runtime.handle().clone(),
                     <span class="string">&quot;Bootstrap failed because the bootstrap server currently has no slots available.&quot;</span>.to_string(),
                     remote_addr,
-                    <span class="kw">move </span>|| <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr)
+                    <span class="kw">move </span>|| <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr),
                 );
             }
         }
@@ -1337,7 +1335,7 @@
             <span class="prelude-val">Err</span>(try_rcv_err) =&gt; <span class="kw">match </span>try_rcv_err {
                 crossbeam::channel::TryRecvError::Empty =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
                 crossbeam::channel::TryRecvError::Disconnected =&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;listener recv channel disconnected unexpectedly&quot;</span>.to_string())
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;listener recv channel disconnected unexpectedly&quot;</span>.to_string());
                 }
             },
         };
@@ -1657,7 +1655,7 @@
     network_command_sender: NetworkCommandSender,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.manage_bootstrap&quot;</span>, {});
-    <span class="kw">let </span>read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
+    <span class="kw">let </span>read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
     <span class="kw">match </span>tokio::time::timeout(
         bootstrap_config.read_timeout.into(),
@@ -1670,7 +1668,7 @@
                 std::io::ErrorKind::TimedOut,
                 <span class="string">&quot;bootstrap handshake send timed out&quot;</span>,
             )
-            .into())
+            .into());
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; (),
@@ -1680,12 +1678,12 @@
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; (),
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(BootstrapClientMessage::BootstrapError { error })) =&gt; {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(error))
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(error));
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(msg)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedClientMessage(msg)),
     };
 
-    <span class="kw">let </span>write_timeout: std::time::Duration = bootstrap_config.write_timeout.into();
+    <span class="kw">let </span>write_timeout: Duration = bootstrap_config.write_timeout.into();
 
     <span class="comment">// Sync clocks.
     </span><span class="kw">let </span>server_time = MassaTime::now()<span class="question-mark">?</span>;
