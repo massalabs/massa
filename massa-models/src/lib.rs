@@ -21,6 +21,8 @@ pub mod block;
 pub mod block_header;
 /// block-related structure: block_id
 pub mod block_id;
+/// bytecode structures
+pub mod bytecode;
 /// clique
 pub mod clique;
 /// various structures
@@ -61,6 +63,8 @@ pub mod streaming_step;
 pub mod timeslots;
 /// versions
 pub mod version;
+/// vesting range
+pub mod vesting_range;
 
 /// Test utils
 #[cfg(feature = "testing")]

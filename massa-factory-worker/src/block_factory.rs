@@ -20,7 +20,7 @@ use std::{
     thread,
     time::Instant,
 };
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
@@ -131,6 +131,11 @@ impl BlockFactoryWorker {
                 return;
             }
         };
+
+        debug!(
+            "block factory selected block producer address for slot {}: {}",
+            slot, block_producer_addr
+        );
 
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();

@@ -19,6 +19,9 @@ use massa_execution_exports::{
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
+use massa_models::bytecode::Bytecode;
+use massa_models::prehash::PreHashMap;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -138,6 +141,9 @@ pub struct ExecutionContext {
 
     // cache of compiled runtime modules
     pub module_cache: Arc<RwLock<ModuleCache>>,
+
+    // Map of vesting addresses
+    pub vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
 }
 
 impl ExecutionContext {
@@ -156,6 +162,7 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
+        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -189,6 +196,7 @@ impl ExecutionContext {
             origin_operation_id: Default::default(),
             module_cache,
             config,
+            vesting_registry,
         }
     }
 
@@ -254,6 +262,7 @@ impl ExecutionContext {
     ///
     /// # returns
     /// A `ExecutionContext` instance ready for a read-only execution
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn readonly(
         config: ExecutionConfig,
         slot: Slot,
@@ -261,8 +270,8 @@ impl ExecutionContext {
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
-
         module_cache: Arc<RwLock<ModuleCache>>,
+        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -286,7 +295,13 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history, module_cache)
+            ..ExecutionContext::new(
+                config,
+                final_state,
+                active_history,
+                module_cache,
+                vesting_registry,
+            )
         }
     }
 
@@ -296,13 +311,13 @@ impl ExecutionContext {
     /// * `max_gas`: maximal amount of asynchronous gas available
     ///
     /// # Returns
-    /// A vector of `(Option<Vec<u8>>, AsyncMessage)` pairs where:
-    /// * `Option<Vec<u8>>` is the bytecode to execute (or `None` if not found)
+    /// A vector of `(Option<Bytecode>, AsyncMessage)` pairs where:
+    /// * `Option<Bytecode>` is the bytecode to execute (or `None` if not found)
     /// * `AsyncMessage` is the asynchronous message to execute
     pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
-    ) -> Vec<(Option<Vec<u8>>, AsyncMessage)> {
+    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
         self.speculative_async_pool
             .take_batch_to_execute(self.slot, max_gas)
             .into_iter()
@@ -327,6 +342,7 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
+        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -348,7 +364,13 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history, module_cache)
+            ..ExecutionContext::new(
+                config,
+                final_state,
+                active_history,
+                module_cache,
+                vesting_registry,
+            )
         }
     }
 
@@ -396,7 +418,7 @@ impl ExecutionContext {
     }
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
-    pub fn create_new_sc_address(&mut self, bytecode: Vec<u8>) -> Result<Address, ExecutionError> {
+    pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
         // TODO: collision problem:
         //  prefix addresses to know if they are SCs or normal,
         //  otherwise people can already create new accounts by sending coins to the right hash
@@ -439,7 +461,7 @@ impl ExecutionContext {
             None => {
                 return Err(ExecutionError::RuntimeError(
                     "owned addresses not found in context stack".into(),
-                ))
+                ));
             }
         };
 
@@ -450,7 +472,7 @@ impl ExecutionContext {
     }
 
     /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
-    pub fn get_bytecode(&self, address: &Address) -> Option<Vec<u8>> {
+    pub fn get_bytecode(&self, address: &Address) -> Option<Bytecode> {
         self.speculative_ledger.get_bytecode(address)
     }
 
@@ -575,6 +597,7 @@ impl ExecutionContext {
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
+    /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
     pub fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
@@ -582,17 +605,59 @@ impl ExecutionContext {
         amount: Amount,
         check_rights: bool,
     ) -> Result<(), ExecutionError> {
-        // check access rights
-        if check_rights {
-            if let Some(from_addr) = &from_addr {
-                if !self.has_write_rights_on(from_addr) {
-                    return Err(ExecutionError::RuntimeError(format!(
-                        "spending from address {} is not allowed in this context",
-                        from_addr
+        if let Some(from_addr) = &from_addr {
+            // check access rights
+            if check_rights && !self.has_write_rights_on(from_addr) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "spending from address {} is not allowed in this context",
+                    from_addr
+                )));
+            }
+
+            // control vesting min_balance for sender address
+            if let Some(vesting_range) = self.find_vesting_range(from_addr, &self.slot) {
+                let new_balance = self
+                    .get_balance(from_addr)
+                    .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
+                    .checked_sub(amount)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                            .get_balance(from_addr).unwrap_or_default()))
+                    })?;
+
+                let vec = self.get_address_cycle_infos(from_addr, self.config.periods_per_cycle);
+                let Some(exec_info) = vec.last() else {
+                    return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", from_addr)));
+                };
+
+                let rolls_value = exec_info
+                    .active_rolls
+                    .map(|rolls| self.config.roll_price.saturating_mul_u64(rolls))
+                    .unwrap_or(Amount::zero());
+
+                let deferred_map = self
+                    .speculative_roll_state
+                    .get_address_deferred_credits(from_addr, self.slot);
+                let deferred_credits = if deferred_map.is_empty() {
+                    Amount::zero()
+                } else {
+                    Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
+                };
+
+                // min_balance = (rolls * roll_price) + balance + deferred_credits
+                let min_balance = new_balance
+                    .saturating_add(rolls_value)
+                    .saturating_add(deferred_credits);
+
+                if min_balance < vesting_range.min_balance {
+                    return Err(ExecutionError::VestingError(format!(
+                        "vesting_min_balance={} with value min_balance={} ",
+                        vesting_range.min_balance, min_balance
                     )));
                 }
             }
         }
+
         // do the transfer
         self.speculative_ledger
             .transfer_coins(from_addr, to_addr, amount)
@@ -607,7 +672,7 @@ impl ExecutionContext {
     }
 
     /// Cancels an asynchronous message, reimbursing `msg.coins` to the sender
-    ///
+    ///x
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
@@ -753,7 +818,7 @@ impl ExecutionContext {
     pub fn set_bytecode(
         &mut self,
         address: &Address,
-        bytecode: Vec<u8>,
+        bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
         // check access right
         if !self.has_write_rights_on(address) {
@@ -768,7 +833,7 @@ impl ExecutionContext {
         if let Some(creator_address) = self.creator_address && &creator_address == address {
             return Err(ExecutionError::RuntimeError(format!("
                 can't set the bytecode of address {} because this is not a smart contract address",
-                address)))
+                                                            address)));
         }
 
         // set data entry
@@ -821,10 +886,16 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `op_id`: operation ID
+    /// * `op_exec_status` : the status of the execution of the operation (true: success, false: failed).
     /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
-    pub fn insert_executed_op(&mut self, op_id: OperationId, op_valid_until_slot: Slot) {
+    pub fn insert_executed_op(
+        &mut self,
+        op_id: OperationId,
+        op_exec_status: bool,
+        op_valid_until_slot: Slot,
+    ) {
         self.speculative_executed_ops
-            .insert_executed_op(op_id, op_valid_until_slot)
+            .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
     }
 
     /// gets the cycle information for an address
@@ -849,5 +920,16 @@ impl ExecutionContext {
             .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
         self.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
+    }
+
+    /// find a vesting range in the registry, otherwise return None
+    pub fn find_vesting_range(&self, addr: &Address, current_slot: &Slot) -> Option<&VestingRange> {
+        let Some(vector) = self.vesting_registry.get(addr) else {
+            return None;
+        };
+
+        vector.iter().find(|vesting| {
+            vesting.start_slot <= *current_slot && vesting.end_slot >= *current_slot
+        })
     }
 }

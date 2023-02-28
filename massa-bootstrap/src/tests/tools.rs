@@ -18,6 +18,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::block::BlockDeserializerArgs;
+use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
@@ -77,7 +78,8 @@ fn get_some_random_bytes() -> Vec<u8> {
 fn get_random_ledger_entry() -> LedgerEntry {
     let mut rng = rand::thread_rng();
     let balance = Amount::from_raw(rng.gen::<u64>());
-    let bytecode: Vec<u8> = get_some_random_bytes();
+    let bytecode_bytes: Vec<u8> = get_some_random_bytes();
+    let bytecode = Bytecode(bytecode_bytes);
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
         let key = get_some_random_bytes();
@@ -98,7 +100,7 @@ pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
             get_random_address(),
             SetUpdateOrDelete::Set(LedgerEntry {
                 balance: Amount::from_raw(r_limit),
-                bytecode: Vec::default(),
+                bytecode: Bytecode::default(),
                 datastore: BTreeMap::default(),
             }),
         );
@@ -209,15 +211,18 @@ pub fn get_random_executed_ops(
     executed_ops
 }
 
-pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, Slot> {
+pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, (bool, Slot)> {
     let mut ops_changes = PreHashMap::default();
     for i in 0..r_limit {
         ops_changes.insert(
             OperationId::new(Hash::compute_from(&get_some_random_bytes())),
-            Slot {
-                period: i + 10,
-                thread: 0,
-            },
+            (
+                true,
+                Slot {
+                    period: i + 10,
+                    thread: 0,
+                },
+            ),
         );
     }
     ops_changes
@@ -286,7 +291,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
 
 pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
-        bind: Some("0.0.0.0:31244".parse().unwrap()),
+        listen_addr: Some("0.0.0.0:31244".parse().unwrap()),
         bootstrap_protocol: IpType::Both,
         bootstrap_timeout: 120000.into(),
         connect_timeout: 200.into(),

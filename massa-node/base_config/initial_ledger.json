@@ -43,5 +43,10 @@
         "balance": "1000000000",
         "datastore": {},
         "bytecode": []
+    },
+    "AU12spryWgt7VUoT9LRi8Roe5WVgUPLeaQ6GXMd9ABUQyfv62Ab18": {
+        "balance": "1000000000",
+        "datastore": {},
+        "bytecode": []
     }
 }

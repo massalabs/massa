@@ -222,4 +222,8 @@ impl ExecutionController for MockExecutionController {
     fn clone_box(&self) -> Box<dyn ExecutionController> {
         Box::new(self.clone())
     }
+
+    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
+        (HashMap::new(), HashMap::new())
+    }
 }

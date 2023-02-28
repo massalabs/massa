@@ -1,9 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #[cfg(test)]
 mod tests {
-
     use crate::start_execution_worker;
-    use crate::tests::mock::{create_block, get_random_address_full, get_sample_state};
+    use crate::tests::mock::{
+        create_block, get_initials_vesting, get_random_address_full, get_sample_state,
+    };
     use massa_execution_exports::{
         ExecutionConfig, ExecutionController, ExecutionError, ReadOnlyExecutionRequest,
         ReadOnlyExecutionTarget,
@@ -30,9 +31,14 @@ mod tests {
     #[test]
     #[serial]
     fn test_execution_shutdown() {
+        let vesting = get_initials_vesting(false);
+        let config = ExecutionConfig {
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
         let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
         let (mut manager, _controller) = start_execution_worker(
-            ExecutionConfig::default(),
+            config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
         );
@@ -42,9 +48,14 @@ mod tests {
     #[test]
     #[serial]
     fn test_sending_command() {
+        let vesting = get_initials_vesting(false);
+        let config = ExecutionConfig {
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
         let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
         let (mut manager, controller) = start_execution_worker(
-            ExecutionConfig::default(),
+            config,
             sample_state.clone(),
             sample_state.read().pos_state.selector.clone(),
         );
@@ -59,10 +70,12 @@ mod tests {
     #[test]
     #[serial]
     fn test_readonly_execution() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -143,10 +156,12 @@ mod tests {
     #[test]
     #[serial]
     fn test_nested_call_gas_usage() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -230,6 +245,7 @@ mod tests {
             &keypair,
             10000000,
             Amount::from_str("0").unwrap(),
+            Amount::from_str("0").unwrap(),
             Address::from_str(&address).unwrap(),
             String::from("test"),
             address.as_bytes().to_vec(),
@@ -267,6 +283,118 @@ mod tests {
         manager.stop();
     }
 
+    /// Test the ABI get call coins
+    ///
+    /// Deploy an SC with a method `test` that generate an event saying how many coins he received
+    /// Calling the SC in a second time
+    #[test]
+    #[serial]
+    fn test_get_call_coins() {
+        let vesting = get_initials_vesting(false);
+        // setup the period duration
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // get random keypair
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        // load bytecodes
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/get_call_coins_main.wasm");
+        let datastore_bytecode = include_bytes!("./wasm/get_call_coins_test.wasm").to_vec();
+        let mut datastore = BTreeMap::new();
+        datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+        // create the block containing the smart contract execution operation
+        let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks.clone(),
+            Default::default(),
+            block_storage.clone(),
+        );
+
+        std::thread::sleep(Duration::from_millis(100));
+
+        // assert_eq!(balance, balance_expected);
+        // retrieve events emitted by smart contracts
+        let events = controller.get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(0, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+        // match the events
+        assert!(!events.is_empty(), "One event was expected");
+        let address = events[0].clone().data;
+        // Call the function test of the smart contract
+        let coins_sent = Amount::from_str("10").unwrap();
+        let operation = create_call_sc_operation(
+            &keypair,
+            10000000,
+            Amount::from_str("0").unwrap(),
+            coins_sent,
+            Address::from_str(&address).unwrap(),
+            String::from("test"),
+            address.as_bytes().to_vec(),
+        )
+        .unwrap();
+        // Init new storage for this block
+        let mut storage = Storage::create_root();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(2, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(100));
+        // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
+        let events = controller.get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(2, 0)),
+            ..Default::default()
+        });
+        println!("events {:#?}", events);
+        assert!(events[0].data.contains(&format!(
+            "tokens sent to the SC during the call : {}",
+            coins_sent.to_raw()
+        )));
+
+        // stop the execution controller
+        manager.stop();
+    }
+
     /// # Context
     ///
     /// Functional test for asynchronous messages sending and handling
@@ -287,11 +415,13 @@ mod tests {
     #[test]
     #[serial]
     fn send_and_receive_async_message() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -353,6 +483,103 @@ mod tests {
         manager.stop();
     }
 
+    /// # Context
+    ///
+    /// Mostly the same as send_and_receive_async_message
+    ///
+    /// Functional test that tests the execution status of an operation is correctly recorded
+    ///
+    /// 1. a block is created containing an `execute_sc` operation
+    /// 2. this operation executes the `send_message` of the smart contract
+    /// 3. `send_message` stores the `receive_message` of the smart contract on the block
+    /// 4. `receive_message` contains the message handler function
+    /// 5. `send_message` sends a message to the `receive_message` address
+    /// 6. we set the created block as finalized so the message is actually sent
+    /// 7. we execute the following slots for 300 milliseconds to reach the message execution period
+    /// 8. once the execution period is over we stop the execution controller
+    /// 9. we retrieve the status of the executed operation(s)
+    /// 10 we check that the monitored operation has been executed
+    /// 11 we check that the execution status is the one we expected
+    ///
+    #[test]
+    #[serial]
+    fn test_operation_execution_status() {
+        let vesting = get_initials_vesting(false);
+        // setup the period duration and the maximum gas for asynchronous messages execution
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            max_async_gas: 100_000,
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+        // keypair associated to thread 0
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        // load bytecodes
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/send_message.wasm");
+        let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
+        let mut datastore = BTreeMap::new();
+        datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+        // create the block contaning the smart contract execution operation
+        let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+        let tested_op_id = operation.id.clone();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        // sleep for 150ms to reach the message execution period
+        std::thread::sleep(Duration::from_millis(150));
+
+        let ops = controller.get_op_exec_status();
+        dbg!(&ops);
+
+        // match the events
+        assert!(
+            ops.1.contains_key(&tested_op_id),
+            "Expected operation not found"
+        );
+        let status = ops.1.get(&tested_op_id).unwrap(); // we can unwrap, thanks to assert above
+        assert!(
+            status == &true,
+            "Operation execution status expected to be Some(true)"
+        );
+
+        println!(
+            "Operation {:?} execution status: {:?}",
+            &tested_op_id, &status
+        );
+
+        // stop the execution controller
+        manager.stop();
+    }
+
     /// Context
     ///
     /// Functional test for local smart-contract execution
@@ -367,10 +594,12 @@ mod tests {
     #[test]
     #[serial]
     fn local_execution() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -472,10 +701,12 @@ mod tests {
     #[test]
     #[serial]
     fn sc_deployment() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -560,11 +791,13 @@ mod tests {
     #[test]
     #[serial]
     fn send_and_receive_async_message_with_trigger() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 1_000_000_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -703,10 +936,12 @@ mod tests {
     #[test]
     #[serial]
     pub fn send_and_receive_transaction() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -780,11 +1015,176 @@ mod tests {
 
     #[test]
     #[serial]
-    pub fn roll_buy() {
+    fn vesting_transfer_coins() {
+        let vesting = get_initials_vesting(true);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+        // generate the sender_keypair and recipient_address
+        let sender_keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let sender_addr = Address::from_public_key(&sender_keypair.get_public_key());
+        let (recipient_address, _keypair) = get_random_address_full();
+        // create the operation
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::Transaction {
+                    recipient_address,
+                    amount: Amount::from_str("120000").unwrap(),
+                },
+            },
+            OperationSerializer::new(),
+            &sender_keypair,
+        )
+        .unwrap();
+        // create the block containing the transaction operation
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block so the transaction is processed
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(100));
+
+        // retrieve the event emitted by the execution error
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        assert!(events[0].data.contains("massa_execution_error"));
+        assert!(events[0]
+            .data
+            .contains("We reach the vesting constraint : vesting_min_balance=200000 with value min_balance=190000"));
+
+        // check recipient balance
+        assert!(sample_state
+            .read()
+            .ledger
+            .get_balance(&recipient_address)
+            .is_none());
+        // Check sender balance
+        assert_eq!(
+            sample_state
+                .read()
+                .ledger
+                .get_balance(&sender_addr)
+                .unwrap(),
+            Amount::from_str("300000").unwrap()
+        );
+
+        // stop the execution controller
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    fn vesting_max_rolls() {
+        // setup the period duration
+        let vesting = get_initials_vesting(true);
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+        // generate the keypair and its corresponding address
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let address = Address::from_public_key(&keypair.get_public_key());
+        // create the operation
+        // try to buy 60 rolls so (100+60) and the max rolls specified for this address in vesting is 150
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::RollBuy { roll_count: 60 },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+        // create the block containing the roll buy operation
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block so the purchase is processed
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        block_storage.insert(block.id, storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_storage.clone(),
+        );
+        std::thread::sleep(Duration::from_millis(100));
+
+        // retrieve the event emitted by the execution error
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        assert!(events[0].data.contains("massa_execution_error"));
+        assert!(events[0].data.contains(
+            "We reach the vesting constraint : vesting_max_rolls=150 with value max_rolls=160"
+        ));
+
+        // check roll count of the buyer address and its balance, same as start because operation was rejected
+        let sample_read = sample_state.read();
+        assert_eq!(sample_read.pos_state.get_rolls_for(&address), 100);
+        assert_eq!(
+            sample_read.ledger.get_balance(&address).unwrap(),
+            Amount::from_str("300_000").unwrap()
+        );
+        // stop the execution controller
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    pub fn roll_buy() {
+        let vesting = get_initials_vesting(false);
+        // setup the period duration
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -830,7 +1230,7 @@ mod tests {
             Default::default(),
             block_storage.clone(),
         );
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_millis(100));
         // check roll count of the buyer address and its balance
         let sample_read = sample_state.read();
         assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);
@@ -845,6 +1245,7 @@ mod tests {
     #[test]
     #[serial]
     pub fn roll_sell() {
+        let vesting = get_initials_vesting(false);
         // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
         // Check for resulting roll count + resulting deferred credits
 
@@ -854,6 +1255,7 @@ mod tests {
             periods_per_cycle: 2,
             thread_count: 2,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..Default::default()
         };
         // turn off roll selling on missed block opportunities
@@ -984,11 +1386,13 @@ mod tests {
     #[test]
     #[serial]
     fn sc_execution_error() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1049,11 +1453,13 @@ mod tests {
     #[test]
     #[serial]
     fn sc_datastore() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1111,11 +1517,13 @@ mod tests {
     #[test]
     #[serial]
     fn set_bytecode_error() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1173,11 +1581,13 @@ mod tests {
     #[test]
     #[serial]
     fn datastore_manipulations() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state
@@ -1271,11 +1681,13 @@ mod tests {
     #[test]
     #[serial]
     fn events_from_switching_blockclique() {
+        let vesting = get_initials_vesting(false);
         // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
         // as data. Then we check if we get an event as expected.
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         let storage: Storage = Storage::create_root();
@@ -1381,6 +1793,7 @@ mod tests {
         sender_keypair: &KeyPair,
         max_gas: u64,
         fee: Amount,
+        coins: Amount,
         target_addr: Address,
         target_func: String,
         param: Vec<u8>,
@@ -1388,7 +1801,7 @@ mod tests {
         let op = OperationType::CallSC {
             max_gas,
             target_addr,
-            coins: Amount::from_str("0").unwrap(),
+            coins,
             target_func,
             param,
         };
@@ -1407,11 +1820,13 @@ mod tests {
     #[test]
     #[serial]
     fn sc_builtins() {
+        let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
             t0: 100.into(),
             max_async_gas: 100_000,
             cursor_delay: 0.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
         // get a sample final state

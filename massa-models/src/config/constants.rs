@@ -92,7 +92,7 @@ pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 10000;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
 /// Maximum capacity of the asynchronous messages pool

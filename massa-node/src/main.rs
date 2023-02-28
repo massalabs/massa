@@ -72,6 +72,7 @@ use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
+
 mod settings;
 
 async fn launch(
@@ -109,6 +110,7 @@ async fn launch(
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -178,7 +180,7 @@ async fn launch(
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
         bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
         bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
-        bind: SETTINGS.bootstrap.bind,
+        listen_addr: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         bootstrap_timeout: SETTINGS.bootstrap.bootstrap_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -337,6 +339,7 @@ async fn launch(
         max_module_cache_size: SETTINGS.execution.max_module_cache_size,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+        initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
         gas_costs: GasCosts::new(
             SETTINGS.execution.abi_gas_costs_file.clone(),
             SETTINGS.execution.wasm_gas_costs_file.clone(),
@@ -357,6 +360,7 @@ async fn launch(
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,

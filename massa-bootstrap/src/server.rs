@@ -1,9 +1,38 @@
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
+//! start the bootstrapping system using [`start_bootstrap_server`]
+//! Once your node will be ready, you may want other to bootstrap from you.
+//!
+//! # Listener
+//!
+//! Runs in the server-dedication tokio async runtime
+//! Accepts bootstrap connections in an async-loop
+//! Upon connection, pushes the accepted connection onto a channel for the worker loop to consume
+//!
+//! # Updater
+//!
+//! Runs on a dedicated thread. Signal sent my manager stop method terminates the thread.
+//! Shares an Arc<RwLock>> guarded list of white and blacklists with the main worker.
+//! Periodically does a read-only check to see if list needs updating.
+//! Creates an updated list then swaps it out with write-locked list
+//! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
+//! under the hood, making write contention virtually non-existant.
+//!
+//! # Worker loop
+//!
+//! 1. Checks if the stopper has been invoked.
+//! 2. Checks if the client is permited under the white/black list rules
+//! 3. Checks if there are not too many active sessions already
+//! 4. Checks if the client has attempted too recently
+//! 5. All checks have passed: spawn a thread on which to run the bootstrap session
+//!    This thread creates a new tokio runtime, and runs it with `block_on`
+mod white_black_list;
+use white_black_list::*;
+
+use crossbeam::channel::{Receiver, Select, SendError, Sender};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 use massa_final_state::{FinalState, FinalStateError};
+use massa_ledger_exports::Key as LedgerKey;
 use massa_logging::massa_trace;
 use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
@@ -14,363 +43,510 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
-    collections::{hash_map, HashMap, HashSet},
-    io,
+    collections::HashMap,
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
     sync::Arc,
+    thread,
     time::{Duration, Instant},
 };
-use tokio::{sync::mpsc, task::JoinHandle};
-use tracing::{debug, info, warn};
+use tokio::runtime::{self, Handle, Runtime};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    tools::normalize_ip,
+    types::{Duplex, Listener},
     BootstrapConfig, Establisher,
 };
 
+/// Abstraction layer over data produced by the listener, and transported
+/// over to the worker via a channel
+type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    join_handle: JoinHandle<Result<(), BootstrapError>>,
-    manager_tx: mpsc::Sender<()>,
+    update_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    // need to preserve the listener handle up to here to prevent it being destroyed
+    _listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
+    main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    listen_stopper_tx: crossbeam::channel::Sender<()>,
+    update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
 impl BootstrapManager {
     /// stop the bootstrap server
-    pub async fn stop(self) -> Result<(), BootstrapError> {
+    pub async fn stop(self) -> Result<(), Box<BootstrapError>> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.manager_tx.send(()).await.is_err() {
+        if self.listen_stopper_tx.send(()).is_err() {
             warn!("bootstrap server already dropped");
         }
-        let _ = self.join_handle.await?;
-        Ok(())
+        if self.update_stopper_tx.send(()).is_err() {
+            warn!("bootstrap ip-list-updater already dropped");
+        }
+        // TODO?: handle join errors.
+
+        // when the runtime is dropped at the end of this stop, the listener is auto-aborted
+
+        // unwrap() effectively passes up a panic from the thread being handled
+        self.update_handle.join().unwrap()?;
+
+        // unwrap() effectively passes up a panic from the thread being handled
+        self.main_handle.join().unwrap()
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-/// TODO merging the command senders into one channel structure may allow removing that allow
-///
-/// start a bootstrap server.
-/// Once your node will be ready, you may want other to bootstrap from you.
+/// See module level documentation for details
 pub async fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    bootstrap_config: BootstrapConfig,
-    establisher: Establisher,
+    config: BootstrapConfig,
+    mut establisher: Establisher,
     keypair: KeyPair,
     version: Version,
-) -> Result<Option<BootstrapManager>, BootstrapError> {
+) -> Result<Option<BootstrapManager>, Box<BootstrapError>> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
-    if let Some(bind) = bootstrap_config.bind {
-        let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
+    let Some(listen_addr) = config.listen_addr else {
+        return Ok(None);
+    };
 
-        let join_handle = tokio::spawn(async move {
+    // TODO(low prio): See if a zero capacity channel model can work
+    let (listen_stopper_tx, listen_stopper_rx) = crossbeam::channel::bounded::<()>(1);
+    let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
+
+    let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
+        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
+    };
+
+    // We use a runtime dedicated to the bootstrap part of the system
+    // This should help keep it isolated from the rest of the overall binary
+    let Ok(bs_server_runtime) = runtime::Builder::new_multi_thread()
+        .enable_io()
+        .enable_time()
+        .thread_name("bootstrap-global-runtime-worker")
+        .thread_keep_alive(Duration::from_millis(u64::MAX))
+        .build() else {
+            return Err(Box::new(BootstrapError::GeneralError("Failed to creato bootstrap async runtime".to_string())));
+        };
+
+    let listener = establisher
+        .get_listener(listen_addr)
+        .await
+        .map_err(BootstrapError::IoError)?;
+
+    // This is the primary interface between the async-listener, and the "sync" worker
+    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
+
+    let white_black_list = SharedWhiteBlackList::new(
+        config.bootstrap_whitelist_path.clone(),
+        config.bootstrap_blacklist_path.clone(),
+    )?;
+
+    let updater_lists = white_black_list.clone();
+    let update_handle = thread::Builder::new()
+        .name("wb_list_updater".to_string())
+        .spawn(move || {
+            let res = BootstrapServer::run_updater(
+                updater_lists,
+                config.cache_duration.into(),
+                update_stopper_rx,
+            );
+            match res {
+                Ok(_) => info!("ip white/blacklist updater exited cleanly"),
+                Err(ref er) => error!("updater exited with error: {}", er),
+            };
+            res
+        })
+        // the non-builder spawn doesn't return a Result, and documentation states that
+        // it's an error at the OS level.
+        .unwrap();
+    let listen_rt_handle = bs_server_runtime.handle().clone();
+    let listen_handle = thread::Builder::new()
+        .name("bs_listener".to_string())
+        .spawn(move || {
+            let res =
+                listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
+            res
+        })
+        // the non-builder spawn doesn't return a Result, and documentation states that
+        // it's an error at the OS level.
+        .unwrap();
+
+    let main_handle = std::thread::Builder::new()
+        .name("bs-main-loop".to_string())
+        .spawn(move || {
             BootstrapServer {
                 consensus_controller,
                 network_command_sender,
                 final_state,
-                establisher,
-                manager_rx,
-                bind,
+                listener_rx,
+                listen_stopper_rx,
+                white_black_list,
                 keypair,
                 version,
-                ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
-                bootstrap_config,
+                ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
+                bootstrap_config: config,
+                bs_server_runtime,
             }
-            .run()
-            .await
-        });
-        Ok(Some(BootstrapManager {
-            join_handle,
-            manager_tx,
-        }))
-    } else {
-        Ok(None)
-    }
+            .run_loop(max_bootstraps)
+        })
+        // the non-builder spawn doesn't return a Result, and documentation states that
+        // it's an error at the OS level.
+        .unwrap();
+    // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
+    // TODO: make the tasks sync, so the runtime is redundant
+    Ok(Some(BootstrapManager {
+        update_handle,
+        _listen_handle: listen_handle,
+        main_handle,
+        listen_stopper_tx,
+        update_stopper_tx,
+    }))
 }
 
-struct BootstrapServer {
+struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    establisher: Establisher,
-    manager_rx: mpsc::Receiver<()>,
-    bind: SocketAddr,
+    listener_rx: Receiver<BsConn>,
+    listen_stopper_rx: Receiver<()>,
+    white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    bs_server_runtime: Runtime,
 }
 
-#[allow(clippy::result_large_err)]
-#[allow(clippy::type_complexity)]
-fn reload_whitelist_blacklist(
-    whitelist_path: &PathBuf,
-    blacklist_path: &PathBuf,
-) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
-    let whitelist = if let Ok(whitelist) = std::fs::read_to_string(whitelist_path) {
-        Some(
-            serde_json::from_str::<HashSet<IpAddr>>(whitelist.as_str())
-                .map_err(|_| {
-                    BootstrapError::GeneralError(String::from(
-                        "Failed to parse bootstrap whitelist",
-                    ))
-                })?
-                .into_iter()
-                .map(normalize_ip)
-                .collect(),
-        )
-    } else {
-        None
-    };
-
-    let blacklist = if let Ok(blacklist) = std::fs::read_to_string(blacklist_path) {
-        Some(
-            serde_json::from_str::<HashSet<IpAddr>>(blacklist.as_str())
-                .map_err(|_| {
-                    BootstrapError::GeneralError(String::from(
-                        "Failed to parse bootstrap blacklist",
-                    ))
-                })?
-                .into_iter()
-                .map(normalize_ip)
-                .collect(),
-        )
-    } else {
-        None
-    };
-    Ok((whitelist, blacklist))
-}
-
-impl BootstrapServer {
-    pub async fn run(mut self) -> Result<(), BootstrapError> {
-        debug!("starting bootstrap server");
-        massa_trace!("bootstrap.lib.run", {});
-        let mut listener = self.establisher.get_listener(self.bind).await?;
-        let mut bootstrap_sessions = FuturesUnordered::new();
-        let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
-        let (mut whitelist, mut blacklist) = reload_whitelist_blacklist(
-            &self.bootstrap_config.bootstrap_whitelist_path,
-            &self.bootstrap_config.bootstrap_blacklist_path,
-        )?;
-        let mut cache_interval = tokio::time::interval(cache_timeout);
-        let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        /*
-            select! without the "biased" modifier will randomly select the 1st branch to check,
-            then will check the next ones in the order they are written.
-            We choose this order:
-                * manager commands to avoid waiting too long to stop in case of contention
-                * cache timeout to avoid skipping timeouts cleanup tasks (they are relatively rare)
-                * bootstrap sessions (rare)
-                * listener: most frequent => last
-        */
+impl BootstrapServer<'_> {
+    fn run_updater(
+        mut list: SharedWhiteBlackList<'_>,
+        interval: Duration,
+        stopper: Receiver<()>,
+    ) -> Result<(), Box<BootstrapError>> {
         loop {
-            massa_trace!("bootstrap.lib.run.select", {});
-            tokio::select! {
-                // managed commands
-                _ = self.manager_rx.recv() => {
-                    massa_trace!("bootstrap.lib.run.select.manager", {});
-                    break
+            std::thread::sleep(interval);
+            match stopper.try_recv() {
+                Ok(()) => return Ok(()),
+                Err(e) => match e {
+                    crossbeam::channel::TryRecvError::Empty => {}
+                    crossbeam::channel::TryRecvError::Disconnected => {
+                        return Err(BootstrapError::GeneralError(
+                            "update stopper unexpected disconnect".to_string(),
+                        )
+                        .into());
+                    }
                 },
+            }
+            // TODO: loop interval here is sleep + update time. Implement a state-based,
+            // rather than time-based, trigger (such as delta-count);
+            list.update()?;
+        }
+    }
 
-                // Whitelist cache timeout
-                _ = cache_interval.tick() => {
-                    (whitelist, blacklist) = reload_whitelist_blacklist(&self.bootstrap_config.bootstrap_whitelist_path, &self.bootstrap_config.bootstrap_blacklist_path)?;
+    /// Listens on a channel for incoming connections, and loads them onto a crossbeam channel
+    /// for the main-loop to process.
+    ///
+    /// Ok(Ok(())) listener closed without issue
+    /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
+    /// Err(..) Error accepting a connection
+    /// TODO: Integrate the listener into the bootstrap-main-loop
+    async fn run_listener(
+        mut listener: Listener,
+        listener_tx: Sender<BsConn>,
+    ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
+        loop {
+            let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
+            match listener_tx.send(msg) {
+                Ok(_) => continue,
+                Err(SendError((dplx, remote_addr))) => {
+                    warn!(
+                        "listener channel disconnected after accepting connection from {}",
+                        remote_addr
+                    );
+                    return Ok(Err((dplx, remote_addr)));
                 }
+            };
+        }
+    }
 
-                // bootstrap session finished
-                Some(_) = bootstrap_sessions.next() => {
-                    massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
-                }
+    fn run_loop(mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
+        let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
+            .max_blocking_threads(max_bootstraps * 2)
+            .enable_io()
+            .enable_time()
+            .thread_name("bootstrap-main-loop-worker")
+            .thread_keep_alive(Duration::from_millis(u64::MAX))
+            .build() else {
+                return Err(Box::new(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string())));
+            };
 
-                // listener
-                res_connection = listener.accept() => {
-                    let (mut server, remote_addr) = if let Ok((dplx, remote_addr)) = res_connection {
-                        let server = BootstrapServerBinder::new(
-                            dplx,
-                            self.keypair.clone(),
-                            self.bootstrap_config.max_bytes_read_write,
-                            self.bootstrap_config.max_bootstrap_message_size,
-                            self.bootstrap_config.thread_count,
-                            self.bootstrap_config.max_datastore_key_length,
-                            self.bootstrap_config.randomness_size_bytes,
-                            self.bootstrap_config.max_consensus_block_ids);
+        // Use the strong-count of this variable to track the session count
+        let bootstrap_sessions_counter: Arc<()> = Arc::new(());
+        let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
+        let mut selector = Select::new();
+        selector.recv(&self.listen_stopper_rx);
+        selector.recv(&self.listener_rx);
+        // TODO: Work out how to integration-test this
+        loop {
+            // block until we have a connection to work with, or break out of main-loop
+            // if a stop-signal is received
+            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else {break};
+            // claim a slot in the max_bootstrap_sessions
+            let server = BootstrapServerBinder::new(
+                dplx,
+                self.keypair.clone(),
+                (&self.bootstrap_config).into(),
+            );
 
-                        // check whether incoming peer IP is allowed or return an error which is ignored
-                        let Ok((server, remote_addr)) = self.is_ip_allowed(remote_addr, server, &whitelist, &blacklist).await else {
-                            continue;
-                        };
-                        (server, remote_addr)
-                    } else {
-                        continue
-                    };
+            // check whether incoming peer IP is allowed.
+            if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
+                server.close_and_send_error(
+                    self.bs_server_runtime.handle().clone(),
+                    error_msg.to_string(),
+                    remote_addr,
+                    move || {},
+                );
+                continue;
+            };
 
-                    if bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
-                        massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
-                        let now = Instant::now();
+            // the `- 1` is to account for the top-level Arc that is created at the top
+            // of this method. subsequent counts correspond to each `clone` that is passed
+            // into a thread
+            // TODO: If we don't find a way to handle the counting automagically, make
+            //       a dedicated wrapper-type with doc-comments, manual drop impl that
+            //       integrates logging, etc...
+            if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
+                massa_trace!("bootstrap.lib.run.select.accept", {
+                    "remote_addr": remote_addr
+                });
+                let now = Instant::now();
 
-                        // clear IP history if necessary
-                        if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                            self.ip_hist_map.retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
-                            if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                                // too many IPs are spamming us: clear cache
-                                warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
-                                self.ip_hist_map.clear();
-                            }
-                        }
-
-                        // check IP's bootstrap attempt history
-                        match self.ip_hist_map.entry(remote_addr.ip()) {
-                            hash_map::Entry::Occupied(mut occ) => {
-                                if now.duration_since(*occ.get()) <= per_ip_min_interval {
-                                    let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
-                                        error:
-                                        format!("Your last bootstrap on this server was {} ago and you have to wait {} before retrying.", format_duration(occ.get().elapsed()), format_duration(per_ip_min_interval.saturating_sub(occ.get().elapsed())))
-                                    })).await {
-                                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error too early retry bootstrap send timed out").into()),
-                                        Ok(Err(e)) => Err(e),
-                                        Ok(Ok(_)) => Ok(()),
-                                    };
-                                    // in list, non-expired => refuse
-                                    massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
-                                    continue;
-                                } else {
-                                    // in list, expired
-                                    occ.insert(now);
-                                }
-                            },
-                            hash_map::Entry::Vacant(vac) => {
-                                vac.insert(now);
-                            }
-                        }
-
-                        // load cache if absent
-                        // if bootstrap_data.is_none() {
-                        //     massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
-
-                        //     // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
-                        //     // This is done to ensure that the execution bootstrap state is older than the consensus state.
-                        //     // If the consensus state snapshot is older than the execution state snapshot,
-                        //     //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                        //     bootstrap_data = Some((data_graph, data_peers, self.final_state.clone()));
-                        //     cache_timer.set(sleep(cache_timeout));
-                        // }
-                        massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
-
-                        // launch bootstrap
-
-                        let version = self.version;
-                        let data_execution = self.final_state.clone();
-                        let consensus_command_sender = self.consensus_controller.clone();
-                        let network_command_sender = self.network_command_sender.clone();
-                        let config = self.bootstrap_config.clone();
-
-                        bootstrap_sessions.push(async move {
-                            debug!("awaiting on bootstrap of peer {}", remote_addr);
-                            match tokio::time::timeout(config.bootstrap_timeout.into(), manage_bootstrap(&config, &mut server, data_execution, version, consensus_command_sender, network_command_sender)).await {
-                                Ok(mgmt) => match mgmt {
-                                    Ok(_) => {
-                                        info!("bootstrapped peer {}", remote_addr)
-                                    },
-                                    Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
-                                    Err(err) => {
-                                        debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
-                                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                        let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
-                                    },
-                                }
-                                Err(_timeout) => {
-                                    debug!("bootstrap timeout for peer {}", remote_addr);
-                                    // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: format!("Bootstrap process timedout ({})", format_duration(config.bootstrap_timeout.to_duration())) })).await;
-                                }
-                            }
-
-                        });
-                        massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
-                    } else {
-                        let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
-                            error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
-                        })).await {
-                            Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
-                            Ok(Err(e)) => Err(e),
-                            Ok(Ok(_)) => Ok(()),
-                        };
-                        debug!("did not bootstrap {}: no available slots", remote_addr);
+                // clear IP history if necessary
+                if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
+                    self.ip_hist_map
+                        .retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
+                    if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
+                        // too many IPs are spamming us: clear cache
+                        warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
+                        self.ip_hist_map.clear();
                     }
                 }
+
+                // check IP's bootstrap attempt history
+                if let Err(msg) = BootstrapServer::greedy_client_check(
+                    &mut self.ip_hist_map,
+                    remote_addr,
+                    now,
+                    per_ip_min_interval,
+                ) {
+                    // Client has been too greedy: send out the bad-news :(
+                    let msg = format!(
+                        "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
+                        format_duration(msg),
+                        format_duration(per_ip_min_interval.saturating_sub(msg))
+                    );
+                    let tracer = move || {
+                        massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
+                            "remote_addr": remote_addr
+                        })
+                    };
+                    server.close_and_send_error(
+                        self.bs_server_runtime.handle().clone(),
+                        msg,
+                        remote_addr,
+                        tracer,
+                    );
+                    continue;
+                }; // Clients Option<last-attempt> is good, and has been updated
+
+                massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+
+                // launch bootstrap
+                let version = self.version;
+                let data_execution = self.final_state.clone();
+                let consensus_command_sender = self.consensus_controller.clone();
+                let network_command_sender = self.network_command_sender.clone();
+                let config = self.bootstrap_config.clone();
+
+                let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                let session_handle = bs_loop_rt.handle().clone();
+                let _ = thread::Builder::new()
+                    .name(format!("bootstrap thread, peer: {}", remote_addr))
+                    .spawn(move || {
+                        run_bootstrap_session(
+                            server,
+                            bootstrap_count_token,
+                            config,
+                            remote_addr,
+                            data_execution,
+                            version,
+                            consensus_command_sender,
+                            network_command_sender,
+                            session_handle,
+                        )
+                    });
+
+                massa_trace!("bootstrap.session.started", {
+                    "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
+                });
+            } else {
+                server.close_and_send_error(
+                    self.bs_server_runtime.handle().clone(),
+                    "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
+                    remote_addr,
+                    move || debug!("did not bootstrap {}: no available slots", remote_addr)
+                );
             }
         }
-        // wait for bootstrap sessions to finish
-        while bootstrap_sessions.next().await.is_some() {}
 
+        // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
+        bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
         Ok(())
     }
 
-    #[cfg(test)]
-    // TODO we didn't test whether the peer IP address is banned
-    async fn is_ip_allowed(
-        &self,
-        remote_addr: SocketAddr,
-        server: BootstrapServerBinder,
-        _whitelist: &Option<HashSet<IpAddr>>,
-        _blacklist: &Option<HashSet<IpAddr>>,
-    ) -> io::Result<(BootstrapServerBinder, SocketAddr)> {
-        Ok((server, remote_addr))
-    }
+    /// These are the steps to ensure that a connection is only processed if the server is active:
+    ///
+    /// - 1. Block until _something_ is ready
+    /// - 2. If that something is a stop-signal, stop
+    /// - 3. If that something is anything else:
+    /// - 3.a. double check the stop-signal is absent
+    /// - 3.b. If present, fall-back to the stop behaviour
+    /// - 3.c. If absent, all's clear to rock-n-roll.
+    fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn>, String> {
+        // 1. Block until _something_ is ready
+        let rdy = selector.ready();
 
-    #[cfg(not(test))]
-    // whether the peer IP address is banned
-    async fn is_ip_allowed(
-        &self,
-        remote_addr: SocketAddr,
-        mut server: BootstrapServerBinder,
-        whitelist: &Option<HashSet<IpAddr>>,
-        blacklist: &Option<HashSet<IpAddr>>,
-    ) -> io::Result<(BootstrapServerBinder, SocketAddr)> {
-        let ip = normalize_ip(remote_addr.ip());
-        // whether the peer IP address is blacklisted
-        let not_allowed_msg = if let Some(ip_list) = &blacklist && ip_list.contains(&ip) {
-            massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
-            Some(format!("IP {} is blacklisted", &ip))
-        // whether the peer IP address is not present in the whitelist
-        } else if let Some(ip_list) = &whitelist && !ip_list.contains(&ip){
-            massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
-            Some(format!("A whitelist exists and the IP {} is not whitelisted", &ip))
+        // 2. If that something is a stop-signal, stop
+        // from `crossbeam::Select::read()` documentation:
+        // "Note that this method might return with success spuriously, so it’s a good idea
+        // to always double check if the operation is really ready."
+        if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
+            return Ok(None);
+            // - 3. If that something is anything else:
         } else {
-            None
-        };
+            massa_trace!("bootstrap.lib.run.select", {});
 
-        // whether the peer IP address is not allowed, send back an error message
-        if let Some(error_msg) = not_allowed_msg {
-            let _ = match tokio::time::timeout(
-                self.bootstrap_config.write_error_timeout.into(),
-                server.send(BootstrapServerMessage::BootstrapError {
-                    error: error_msg.clone(),
-                }),
-            )
-            .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    format!("{}  timed out", &error_msg),
-                )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
+            // - 3.a. double check the stop-signal is absent
+            let stop = self.listen_stopper_rx.try_recv();
+            if unlikely(stop.is_ok()) {
+                massa_trace!("bootstrap.lib.run.select.manager", {});
+                // 3.b. If present, fall-back to the stop behaviour
+                return Ok(None);
+            } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
+                return Err("Unexpected stop-channel disconnection".to_string());
             };
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                error_msg,
-            ));
         }
-
-        Ok((server, remote_addr))
+        // - 3.c. If absent, all's clear to rock-n-roll.
+        let msg = match self.listener_rx.try_recv() {
+            Ok(msg) => msg,
+            Err(try_rcv_err) => match try_rcv_err {
+                crossbeam::channel::TryRecvError::Empty => return Ok(None),
+                crossbeam::channel::TryRecvError::Disconnected => {
+                    return Err("listener recv channel disconnected unexpectedly".to_string())
+                }
+            },
+        };
+        Ok(Some(msg))
     }
+
+    /// Checks latest attempt. If too recent, provides the bad news (as an error).
+    /// Updates the latest attempt to "now" if it's all good.
+    ///
+    /// # Error
+    /// The elapsed time which is insufficient
+    fn greedy_client_check(
+        ip_hist_map: &mut HashMap<IpAddr, Instant>,
+        remote_addr: SocketAddr,
+        now: Instant,
+        per_ip_min_interval: Duration,
+    ) -> Result<(), Duration> {
+        let mut res = Ok(());
+        ip_hist_map
+            .entry(remote_addr.ip())
+            .and_modify(|occ| {
+                // Well, let's only update the latest
+                if now.duration_since(*occ) <= per_ip_min_interval {
+                    res = Err(occ.elapsed());
+                } else {
+                    // in list, expired
+                    *occ = now;
+                }
+            })
+            .or_insert(now);
+        res
+    }
+}
+
+/// To be called from a `thread::spawn` invocation
+///
+/// Runs the bootstrap management in a dedicated thread, handling the async by using
+/// a multi-thread-aware tokio runtime (the bs-main-loop runtime, to be exact). When this
+/// function blocks in the `block_on`, it should thread-block, and switch to another session
+///
+/// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
+/// sessions.
+#[allow(clippy::too_many_arguments)]
+fn run_bootstrap_session(
+    mut server: BootstrapServerBinder,
+    arc_counter: Arc<()>,
+    config: BootstrapConfig,
+    remote_addr: SocketAddr,
+    data_execution: Arc<RwLock<FinalState>>,
+    version: Version,
+    consensus_command_sender: Box<dyn ConsensusController>,
+    network_command_sender: NetworkCommandSender,
+    bs_loop_rt_handle: Handle,
+) {
+    debug!("running bootstrap for peer {}", remote_addr);
+    bs_loop_rt_handle.block_on(async move {
+        let res = tokio::time::timeout(
+            config.bootstrap_timeout.into(),
+            manage_bootstrap(
+                &config,
+                &mut server,
+                data_execution,
+                version,
+                consensus_command_sender,
+                network_command_sender,
+            ),
+        )
+        .await;
+        // This drop allows the server to accept new connections before having to complete the error notifications
+        // account for this session being finished, as well as the root-instance
+        massa_trace!("bootstrap.session.finished", {
+            "sessions_remaining": Arc::strong_count(&arc_counter) - 2
+        });
+        drop(arc_counter);
+        match res {
+            Ok(mgmt) => match mgmt {
+                Ok(_) => {
+                    info!("bootstrapped peer {}", remote_addr);
+                }
+                Err(BootstrapError::ReceivedError(error)) => debug!(
+                    "bootstrap serving error received from peer {}: {}",
+                    remote_addr, error
+                ),
+                Err(err) => {
+                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                    // We allow unused result because we don't care if an error is thrown when
+                    // sending the error message to the server we will close the socket anyway.
+                    let _ = server.send_error(err.to_string()).await;
+                }
+            },
+            Err(_timeout) => {
+                debug!("bootstrap timeout for peer {}", remote_addr);
+                // We allow unused result because we don't care if an error is thrown when
+                // sending the error message to the server we will close the socket anyway.
+                let _ = server
+                    .send_error(format!(
+                        "Bootstrap process timedout ({})",
+                        format_duration(config.bootstrap_timeout.to_duration())
+                    ))
+                    .await;
+            }
+        }
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -379,7 +555,7 @@ pub async fn stream_bootstrap_information(
     final_state: Arc<RwLock<FinalState>>,
     consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
-    mut last_ledger_step: StreamingStep<Vec<u8>>,
+    mut last_ledger_step: StreamingStep<LedgerKey>,
     mut last_pool_step: StreamingStep<AsyncMessageId>,
     mut last_cycle_step: StreamingStep<u64>,
     mut last_credits_step: StreamingStep<Slot>,
@@ -467,11 +643,9 @@ pub async fn stream_bootstrap_information(
         }
 
         if slot_too_old {
-            match tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::SlotTooOld),
-            )
-            .await
+            match server
+                .send_msg(write_timeout, BootstrapServerMessage::SlotTooOld)
+                .await
             {
                 Err(_) => Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
@@ -534,11 +708,9 @@ pub async fn stream_bootstrap_information(
             && final_state_changes_step.finished()
             && last_consensus_step.finished()
         {
-            match tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::BootstrapFinished),
-            )
-            .await
+            match server
+                .send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)
+                .await
             {
                 Err(_) => Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
@@ -552,21 +724,22 @@ pub async fn stream_bootstrap_information(
         }
 
         // At this point we know that consensus, final state or both are not finished
-        match tokio::time::timeout(
-            write_timeout,
-            server.send(BootstrapServerMessage::BootstrapPart {
-                slot: current_slot,
-                ledger_part,
-                async_pool_part,
-                pos_cycle_part,
-                pos_credits_part,
-                exec_ops_part,
-                final_state_changes,
-                consensus_part,
-                consensus_outdated_ids,
-            }),
-        )
-        .await
+        match server
+            .send_msg(
+                write_timeout,
+                BootstrapServerMessage::BootstrapPart {
+                    slot: current_slot,
+                    ledger_part,
+                    async_pool_part,
+                    pos_cycle_part,
+                    pos_credits_part,
+                    exec_ops_part,
+                    final_state_changes,
+                    consensus_part,
+                    consensus_outdated_ids,
+                },
+            )
+            .await
         {
             Err(_) => Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -580,7 +753,6 @@ pub async fn stream_bootstrap_information(
     Ok(())
 }
 
-#[allow(clippy::manual_async_fn)]
 #[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
@@ -624,14 +796,15 @@ async fn manage_bootstrap(
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match tokio::time::timeout(
-        write_timeout,
-        server.send(BootstrapServerMessage::BootstrapTime {
-            server_time,
-            version,
-        }),
-    )
-    .await
+    match server
+        .send_msg(
+            write_timeout,
+            BootstrapServerMessage::BootstrapTime {
+                server_time,
+                version,
+            },
+        )
+        .await
     {
         Err(_) => Err(std::io::Error::new(
             std::io::ErrorKind::TimedOut,
@@ -648,13 +821,14 @@ async fn manage_bootstrap(
             Ok(Err(e)) => break Err(e),
             Ok(Ok(msg)) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
-                    match tokio::time::timeout(
-                        write_timeout,
-                        server.send(BootstrapServerMessage::BootstrapPeers {
-                            peers: network_command_sender.get_bootstrap_peers().await?,
-                        }),
-                    )
-                    .await
+                    match server
+                        .send_msg(
+                            write_timeout,
+                            BootstrapServerMessage::BootstrapPeers {
+                                peers: network_command_sender.get_bootstrap_peers().await?,
+                            },
+                        )
+                        .await
                     {
                         Err(_) => Err(std::io::Error::new(
                             std::io::ErrorKind::TimedOut,
@@ -696,4 +870,27 @@ async fn manage_bootstrap(
             },
         };
     }
+}
+
+// Stable means of providing compiler optimisation hints
+// Also provides a self-documenting tool to communicate likely/unlikely code-paths
+// https://users.rust-lang.org/t/compiler-hint-for-unlikely-likely-for-if-branches/62102/4
+#[inline]
+#[cold]
+fn cold() {}
+
+#[inline]
+fn _likely(b: bool) -> bool {
+    if !b {
+        cold()
+    }
+    b
+}
+
+#[inline]
+fn unlikely(b: bool) -> bool {
+    if b {
+        cold()
+    }
+    b
 }

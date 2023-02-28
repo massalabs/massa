@@ -39,6 +39,7 @@ impl ModuleCache {
         limit: u64,
         wipe_previous: bool,
     ) -> Result<(), ExecutionError> {
+        // NOTE: using ExecutionError for now but will create a CacheError type
         let hash = Hash::compute_from(bytecode);
         if wipe_previous {
             self.hd_cache.remove(hash);
@@ -67,7 +68,7 @@ impl ModuleCache {
     /// Set the initialization cost of a cached module
     pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
         let hash = Hash::compute_from(bytecode);
-        // NOTE: handle init erros
+        // NOTE: handle init errors
         self.hd_cache.set_init_cost(hash, init_cost).unwrap();
         self.lru_cache.set_init_cost(hash, init_cost).unwrap();
     }

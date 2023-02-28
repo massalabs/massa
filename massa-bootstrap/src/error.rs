@@ -52,4 +52,10 @@ pub enum BootstrapError {
     ReceivedError(String),
     /// clock error: {0}
     ClockError(String),
+    /// fail to init the list from file : {0}
+    InitListError(String),
+    /// IP {0} is blacklisted
+    BlackListed(String),
+    /// IP {0} is not in the whitelist
+    WhiteListed(String),
 }

@@ -11,6 +11,7 @@ use massa_models::{
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use std::collections::BTreeSet;
+use tracing::debug;
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
@@ -73,7 +74,10 @@ impl OperationPool {
     pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final slot counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
-
+        debug!(
+            "notified of new final consensus periods: {:?}",
+            self.last_cs_final_periods
+        );
         // prune old ops
         let mut removed_ops: PreHashSet<_> = Default::default();
         while let Some((expire_slot, op_id)) = self.ops_per_expiration.first().copied() {
@@ -194,11 +198,17 @@ impl OperationPool {
         let mut remaining_space = self.config.max_block_size as usize;
         // init remaining gas
         let mut remaining_gas = self.config.max_block_gas;
+        // init remaining number of operations
+        let mut remaining_ops = self.config.max_operations_per_block;
         // cache of balances
         let mut balance_cache: PreHashMap<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+            // if we have reached the maximum number of operations, stop
+            if remaining_ops == 0 {
+                break;
+            }
             let op_info = self
                 .operations
                 .get(&cursor.get_id())
@@ -261,6 +271,9 @@ impl OperationPool {
 
             // update remaining block gas
             remaining_gas -= op_info.max_gas;
+
+            // update remaining number of operations
+            remaining_ops -= 1;
 
             // update balance cache
             *creator_balance = creator_balance.saturating_sub(op_info.max_spending);

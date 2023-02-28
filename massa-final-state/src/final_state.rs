@@ -9,11 +9,11 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{get_address_from_key, LedgerChanges, LedgerController};
+use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
-use tracing::{debug, info};
+use tracing::info;
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
@@ -102,32 +102,18 @@ impl FinalState {
         // 1. init hash concatenation with the ledger hash
         let ledger_hash = self.ledger.get_ledger_hash();
         let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
-        debug!("ledger hash at slot {}: {}", slot, ledger_hash);
         // 2. async_pool hash
         hash_concat.extend(self.async_pool.hash.to_bytes());
-        debug!("async_pool hash at slot {}: {}", slot, self.async_pool.hash);
         // 3. pos deferred_credit hash
         hash_concat.extend(self.pos_state.deferred_credits.hash.to_bytes());
-        debug!(
-            "deferred_credit hash at slot {}: {}",
-            slot, self.pos_state.deferred_credits.hash
-        );
         // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
         let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
             as usize;
         for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
             hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
-            debug!(
-                "cycle ({}) hash at slot {}: {}",
-                cycle_info.cycle, slot, cycle_info.cycle_global_hash
-            );
         }
         // 5. executed operations hash
         hash_concat.extend(self.executed_ops.hash.to_bytes());
-        debug!(
-            "executed_ops hash at slot {}: {}",
-            slot, self.executed_ops.hash
-        );
         // 6. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
         info!(
@@ -208,7 +194,7 @@ impl FinalState {
     pub fn get_state_changes_part(
         &self,
         slot: Slot,
-        ledger_step: StreamingStep<Vec<u8>>,
+        ledger_step: StreamingStep<LedgerKey>,
         pool_step: StreamingStep<AsyncMessageId>,
         cycle_step: StreamingStep<u64>,
         credits_step: StreamingStep<Slot>,
@@ -242,18 +228,13 @@ impl FinalState {
             // Get ledger change that concern address <= ledger_step
             match ledger_step.clone() {
                 StreamingStep::Ongoing(key) => {
-                    let addr = get_address_from_key(&key).ok_or_else(|| {
-                        FinalStateError::LedgerError(
-                            "Invalid key in ledger streaming step".to_string(),
-                        )
-                    })?;
                     let ledger_changes: LedgerChanges = LedgerChanges(
                         changes
                             .ledger_changes
                             .0
                             .iter()
                             .filter_map(|(address, change)| {
-                                if *address <= addr {
+                                if *address <= key.address {
                                     Some((*address, change.clone()))
                                 } else {
                                     None

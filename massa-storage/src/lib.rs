@@ -97,7 +97,7 @@ impl Storage {
     /// Creates a new `Storage` instance. Must be called only one time in the execution:
     /// - In the main for the node
     /// - At the top of the test in tests
-    /// All others instances of Storage mush cloned from this one suing `clone()` or `clone_without_refs()`.
+    /// All others instances of Storage must be cloned from this one using `clone()` or `clone_without_refs()`.
     pub fn create_root() -> Storage {
         Storage {
             blocks: Default::default(),
