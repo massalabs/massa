@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["http_rule"],"struct":["CustomHttpPattern","Http","HttpRule"]};

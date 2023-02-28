@@ -132,9 +132,9 @@
     };
     <span class="doccomment">/// duplex connection
     </span><span class="kw">pub type </span>Duplex = TcpStream;
-    <span class="doccomment">/// listener
+    <span class="doccomment">/// listener, used by server
     </span><span class="kw">pub type </span>Listener = DefaultListener;
-    <span class="doccomment">/// connector
+    <span class="doccomment">/// connector, used by client
     </span><span class="kw">pub type </span>Connector = DefaultConnector;
     <span class="doccomment">/// connection establisher
     </span><span class="kw">pub type </span>Establisher = DefaultEstablisher;
@@ -186,7 +186,7 @@
         ///
         /// # Argument
         /// * `addr`: `SocketAddr` we want to bind to.
-        </span><span class="kw">pub async fn </span>get_listener(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;DefaultListener&gt; {
+        </span><span class="kw">pub fn </span>get_listener(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;DefaultListener&gt; {
             <span class="comment">// Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
             </span><span class="kw">let </span>socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
@@ -204,7 +204,7 @@
         ///
         /// # Argument
         /// * `timeout_duration`: timeout duration in milliseconds
-        </span><span class="kw">pub async fn </span>get_connector(
+        </span><span class="kw">pub fn </span>get_connector(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             timeout_duration: MassaTime,
         ) -&gt; io::Result&lt;DefaultConnector&gt; {
