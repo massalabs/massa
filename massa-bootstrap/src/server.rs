@@ -529,7 +529,7 @@ fn run_bootstrap_session(
                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
                     // We allow unused result because we don't care if an error is thrown when
                     // sending the error message to the server we will close the socket anyway.
-                    let _ = server.send_error(err.to_string()).await;
+                    let _ = server.blocking_send_error(err.to_string()).await;
                 }
             },
             Err(_timeout) => {
@@ -537,7 +537,7 @@ fn run_bootstrap_session(
                 // We allow unused result because we don't care if an error is thrown when
                 // sending the error message to the server we will close the socket anyway.
                 let _ = server
-                    .send_error(format!(
+                    .blocking_send_error(format!(
                         "Bootstrap process timedout ({})",
                         format_duration(config.bootstrap_timeout.to_duration())
                     ))
@@ -765,7 +765,7 @@ async fn manage_bootstrap(
 
     match tokio::time::timeout(
         bootstrap_config.read_timeout.into(),
-        server.handshake(version),
+        server.blocking_handshake(version),
     )
     .await
     {
@@ -780,7 +780,7 @@ async fn manage_bootstrap(
         Ok(Ok(_)) => (),
     };
 
-    match tokio::time::timeout(read_error_timeout, server.next()).await {
+    match tokio::time::timeout(read_error_timeout, server.blocking_next()).await {
         Err(_) => (),
         Ok(Err(e)) => return Err(e),
         Ok(Ok(BootstrapClientMessage::BootstrapError { error })) => {
@@ -814,7 +814,9 @@ async fn manage_bootstrap(
     }?;
 
     loop {
-        match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.next()).await {
+        match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.blocking_next())
+            .await
+        {
             Err(_) => break Ok(()),
             Ok(Err(e)) => break Err(e),
             Ok(Ok(msg)) => match msg {

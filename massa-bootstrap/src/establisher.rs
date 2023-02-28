@@ -19,7 +19,6 @@ pub mod types {
         io,
         net::{SocketAddr, TcpListener, TcpStream},
     };
-    use tokio::time::timeout;
     /// duplex connection
     pub type Duplex = TcpStream;
     /// listener, used by server

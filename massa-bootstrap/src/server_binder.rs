@@ -18,7 +18,7 @@ use std::convert::TryInto;
 use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::runtime::Handle;
 use tokio::time::error::Elapsed;
 use tracing::error;
@@ -80,14 +80,18 @@ impl BootstrapServerBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
-    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    pub fn blocking_handshake(
+        &mut self,
+        version: Version,
+        timeout: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
         // read version and random bytes, send signature
         let msg_hash = {
             let mut version_bytes = Vec::new();
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.duplex.read_exact(&mut msg_bytes).await?;
+            self.read_exact(&mut msg_bytes, timeout)?;
             let (_, received_version) = self
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
@@ -103,13 +107,46 @@ impl BootstrapServerBinder {
 
         Ok(())
     }
+    fn read_exact(
+        &self,
+        buf: &mut [u8],
+        time_limit: Option<Duration>,
+    ) -> Result<Duration, (usize, std::io::Error)> {
+        let start = Instant::now();
+        let time_limit = if time_limit.is_none() {
+            self.duplex
+                .set_read_timeout(Some(Duration::from_secs(9999999)));
+            return self
+                .duplex
+                .read_exact(buf)
+                .map_err(|er| (buf.len(), er))
+                .map(|_| Instant::now().duration_since(start));
+        } else {
+            time_limit.unwrap()
+        };
+
+        let mut acc = 0;
+        let mut remain = time_limit;
+        let mut clock = Duration::from_secs(0);
+        while acc < buf.len() {
+            if clock > time_limit {
+                return Err((acc, std::io::ErrorKind::TimedOut.into()));
+            }
+            self.duplex
+                .set_read_timeout(Some(time_limit - clock))
+                .expect("internal error");
+            self.duplex.read(&mut buf[acc..]).map_err(|er| (acc, er))?;
+            clock = Instant::now().duration_since(start);
+        }
+        Ok(Instant::now().duration_since(start))
+    }
 
     pub async fn send_msg(
         &mut self,
         timeout: Duration,
         msg: BootstrapServerMessage,
-    ) -> Result<Result<(), BootstrapError>, Elapsed> {
-        tokio::time::timeout(timeout, self.send(msg)).await
+    ) -> Result<Duration, BootstrapError> {
+        self.blocking_send(msg, Some(timeout))
     }
 
     /// 1. Spawns a thread
@@ -132,8 +169,8 @@ impl BootstrapServerBinder {
             .name("bootstrap-error-send".to_string())
             .spawn(move || {
                 let msg_cloned = msg.clone();
-                let err_send =
-                    server_outer_rt_hnd.block_on(async move { self.send_error(msg_cloned).await });
+                let err_send = server_outer_rt_hnd
+                    .block_on(async move { self.blocking_send_error(msg_cloned).await });
                 match err_send {
                     Err(_) => error!(
                         "bootstrap server timed out sending error '{}' to addr {}",
@@ -148,19 +185,20 @@ impl BootstrapServerBinder {
             // it's an error at the OS level.
             .unwrap();
     }
-    pub async fn send_error(
-        &mut self,
-        error: String,
-    ) -> Result<Result<(), BootstrapError>, Elapsed> {
-        tokio::time::timeout(
-            self.write_error_timeout.into(),
-            self.send(BootstrapServerMessage::BootstrapError { error }),
+    pub async fn blocking_send_error(&mut self, error: String) -> Result<Duration, BootstrapError> {
+        self.blocking_send(
+            BootstrapServerMessage::BootstrapError { error },
+            Some(self.write_error_timeout.into()),
         )
-        .await
     }
 
     /// Writes the next message. NOT cancel-safe
-    pub async fn send(&mut self, msg: BootstrapServerMessage) -> Result<(), BootstrapError> {
+    pub fn blocking_send(
+        &mut self,
+        msg: BootstrapServerMessage,
+        timeout: Option<Duration>,
+    ) -> Result<Duration, BootstrapError> {
+        let start = Instant::now();
         // serialize message
         let mut msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(&msg, &mut msg_bytes)?;
@@ -183,32 +221,33 @@ impl BootstrapServerBinder {
             }
         };
 
+        if let Some(timeout) = timeout {}
         // send signature
-        self.duplex.write_all(&sig.to_bytes()).await?;
+        self.duplex.write_all(&sig.to_bytes())?;
 
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes).await?;
+            self.duplex.write_all(&msg_len_bytes)?;
         }
 
         // send message
-        self.duplex.write_all(&msg_bytes).await?;
+        self.duplex.write_all(&msg_bytes)?;
 
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
-        Ok(())
+        Ok(Instant::now().duration_since(start))
     }
 
     #[allow(dead_code)]
-    /// Read a message sent from the client (not signed). NOT cancel-safe
-    pub async fn next(&mut self) -> Result<BootstrapClientMessage, BootstrapError> {
+    /// Read a message sent from the client (not signed).
+    pub async fn blocking_next(&mut self) -> Result<BootstrapClientMessage, BootstrapError> {
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
                 let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-                self.duplex.read_exact(&mut hash_bytes).await?;
+                self.duplex.read_exact(&mut hash_bytes)?;
                 Some(Hash::from_bytes(&hash_bytes))
             } else {
                 None
@@ -218,13 +257,13 @@ impl BootstrapServerBinder {
         // read message length
         let msg_len = {
             let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..]).await?;
+            self.duplex.read_exact(&mut msg_len_bytes[..])?;
             u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
         // read message
         let mut msg_bytes = vec![0u8; msg_len as usize];
-        self.duplex.read_exact(&mut msg_bytes).await?;
+        self.duplex.read_exact(&mut msg_bytes)?;
 
         // check previous hash
         if received_prev_hash != self.prev_message {
