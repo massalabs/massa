@@ -20,8 +20,6 @@ use std::net::SocketAddr;
 use std::thread;
 use std::time::{Duration, Instant};
 use tokio::runtime::Handle;
-use tokio::time::error::Elapsed;
-use tracing::error;
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
@@ -91,7 +89,7 @@ impl BootstrapServerBinder {
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.read_exact(&mut msg_bytes, timeout)?;
+            self.read_exact(&mut msg_bytes, timeout).map_err(|e| e.1)?;
             let (_, received_version) = self
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
@@ -108,7 +106,7 @@ impl BootstrapServerBinder {
         Ok(())
     }
     fn read_exact(
-        &self,
+        &mut self,
         buf: &mut [u8],
         time_limit: Option<Duration>,
     ) -> Result<Duration, (usize, std::io::Error)> {
@@ -141,12 +139,12 @@ impl BootstrapServerBinder {
         Ok(Instant::now().duration_since(start))
     }
 
-    pub async fn send_msg(
+    pub fn send_msg(
         &mut self,
-        timeout: Duration,
         msg: BootstrapServerMessage,
+        timeout: Option<Duration>,
     ) -> Result<Duration, BootstrapError> {
-        self.blocking_send(msg, Some(timeout))
+        self.blocking_send(msg, timeout)
     }
 
     /// 1. Spawns a thread
@@ -167,25 +165,16 @@ impl BootstrapServerBinder {
     {
         thread::Builder::new()
             .name("bootstrap-error-send".to_string())
-            .spawn(move || {
-                let msg_cloned = msg.clone();
-                let err_send = server_outer_rt_hnd
-                    .block_on(async move { self.blocking_send_error(msg_cloned).await });
-                match err_send {
-                    Err(_) => error!(
-                        "bootstrap server timed out sending error '{}' to addr {}",
-                        msg, addr
-                    ),
-                    Ok(Err(e)) => error!("{}", e),
-                    Ok(Ok(_)) => {}
-                }
+            .spawn(move || -> Result<(), BootstrapError> {
+                let _elapsed = self.blocking_send_error(msg)?;
                 close_fn();
+                Ok(())
             })
             // the non-builder spawn doesn't return a Result, and documentation states that
             // it's an error at the OS level.
             .unwrap();
     }
-    pub async fn blocking_send_error(&mut self, error: String) -> Result<Duration, BootstrapError> {
+    pub fn blocking_send_error(&mut self, error: String) -> Result<Duration, BootstrapError> {
         self.blocking_send(
             BootstrapServerMessage::BootstrapError { error },
             Some(self.write_error_timeout.into()),
@@ -242,7 +231,11 @@ impl BootstrapServerBinder {
 
     #[allow(dead_code)]
     /// Read a message sent from the client (not signed).
-    pub async fn blocking_next(&mut self) -> Result<BootstrapClientMessage, BootstrapError> {
+    pub fn blocking_next(
+        &mut self,
+        timeout: Option<Duration>,
+    ) -> Result<(BootstrapClientMessage, Duration), BootstrapError> {
+        let start = Instant::now();
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
@@ -294,6 +287,6 @@ impl BootstrapServerBinder {
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
-        Ok(msg)
+        Ok((msg, Instant::now().duration_since(start)))
     }
 }

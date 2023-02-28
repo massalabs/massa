@@ -497,54 +497,50 @@ fn run_bootstrap_session(
     bs_loop_rt_handle: Handle,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
-    bs_loop_rt_handle.block_on(async move {
-        let res = tokio::time::timeout(
-            config.bootstrap_timeout.into(),
-            manage_bootstrap(
-                &config,
-                &mut server,
-                data_execution,
-                version,
-                consensus_command_sender,
-                network_command_sender,
-            ),
-        )
-        .await;
-        // This drop allows the server to accept new connections before having to complete the error notifications
-        // account for this session being finished, as well as the root-instance
-        massa_trace!("bootstrap.session.finished", {
-            "sessions_remaining": Arc::strong_count(&arc_counter) - 2
-        });
-        drop(arc_counter);
-        match res {
-            Ok(mgmt) => match mgmt {
-                Ok(_) => {
-                    info!("bootstrapped peer {}", remote_addr);
-                }
-                Err(BootstrapError::ReceivedError(error)) => debug!(
-                    "bootstrap serving error received from peer {}: {}",
-                    remote_addr, error
-                ),
-                Err(err) => {
-                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
-                    // We allow unused result because we don't care if an error is thrown when
-                    // sending the error message to the server we will close the socket anyway.
-                    let _ = server.blocking_send_error(err.to_string()).await;
-                }
-            },
-            Err(_timeout) => {
-                debug!("bootstrap timeout for peer {}", remote_addr);
-                // We allow unused result because we don't care if an error is thrown when
-                // sending the error message to the server we will close the socket anyway.
-                let _ = server
-                    .blocking_send_error(format!(
-                        "Bootstrap process timedout ({})",
-                        format_duration(config.bootstrap_timeout.to_duration())
-                    ))
-                    .await;
-            }
-        }
+    let res = manage_bootstrap(
+        &config,
+        &mut server,
+        data_execution,
+        version,
+        consensus_command_sender,
+        network_command_sender,
+        config.bootstrap_timeout.into(),
+    );
+    // This drop allows the server to accept new connections before having to complete the error notifications
+    // account for this session being finished, as well as the root-instance
+    massa_trace!("bootstrap.session.finished", {
+        "sessions_remaining": Arc::strong_count(&arc_counter) - 2
     });
+    drop(arc_counter);
+    todo!("handle bootstrap mgmt result");
+    // match res {
+    //     Ok(mgmt) => match mgmt {
+    //         Ok(_) => {
+    //             info!("bootstrapped peer {}", remote_addr);
+    //         }
+    //         Err(BootstrapError::ReceivedError(error)) => debug!(
+    //             "bootstrap serving error received from peer {}: {}",
+    //             remote_addr, error
+    //         ),
+    //         Err(err) => {
+    //             debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+    //             // We allow unused result because we don't care if an error is thrown when
+    //             // sending the error message to the server we will close the socket anyway.
+    //             let _ = server.blocking_send_error(err.to_string());
+    //         }
+    //     },
+    //     Err(_timeout) => {
+    //         debug!("bootstrap timeout for peer {}", remote_addr);
+    //         // We allow unused result because we don't care if an error is thrown when
+    //         // sending the error message to the server we will close the socket anyway.
+    //         let _ = server
+    //             .blocking_send_error(format!(
+    //                 "Bootstrap process timedout ({})",
+    //                 format_duration(config.bootstrap_timeout.to_duration())
+    //             ))
+    //             .await;
+    //     }
+    // }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -641,18 +637,8 @@ pub async fn stream_bootstrap_information(
         }
 
         if slot_too_old {
-            match server
-                .send_msg(write_timeout, BootstrapServerMessage::SlotTooOld)
-                .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "SlotTooOld message send timed out",
-                )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
-            }?;
+            let _send_time =
+                server.send_msg(BootstrapServerMessage::SlotTooOld, Some(write_timeout))?;
             return Ok(());
         }
 
@@ -706,170 +692,137 @@ pub async fn stream_bootstrap_information(
             && final_state_changes_step.finished()
             && last_consensus_step.finished()
         {
-            match server
-                .send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)
-                .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
-                )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
-            }?;
+            let _send_time = server.send_msg(
+                BootstrapServerMessage::BootstrapFinished,
+                Some(write_timeout),
+            )?;
             break;
         }
 
         // At this point we know that consensus, final state or both are not finished
-        match server
-            .send_msg(
-                write_timeout,
-                BootstrapServerMessage::BootstrapPart {
-                    slot: current_slot,
-                    ledger_part,
-                    async_pool_part,
-                    pos_cycle_part,
-                    pos_credits_part,
-                    exec_ops_part,
-                    final_state_changes,
-                    consensus_part,
-                    consensus_outdated_ids,
-                },
-            )
-            .await
-        {
-            Err(_) => Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap ask ledger part send timed out",
-            )
-            .into()),
-            Ok(Err(e)) => Err(e),
-            Ok(Ok(_)) => Ok(()),
-        }?;
+        let _send_time = server.send_msg(
+            BootstrapServerMessage::BootstrapPart {
+                slot: current_slot,
+                ledger_part,
+                async_pool_part,
+                pos_cycle_part,
+                pos_credits_part,
+                exec_ops_part,
+                final_state_changes,
+                consensus_part,
+                consensus_outdated_ids,
+            },
+            Some(write_timeout),
+        )?;
     }
     Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn manage_bootstrap(
+fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
+    time_budget: Duration,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    match tokio::time::timeout(
-        bootstrap_config.read_timeout.into(),
-        server.blocking_handshake(version),
-    )
-    .await
-    {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap handshake send timed out",
-            )
-            .into());
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => (),
-    };
-
-    match tokio::time::timeout(read_error_timeout, server.blocking_next()).await {
-        Err(_) => (),
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapClientMessage::BootstrapError { error })) => {
-            return Err(BootstrapError::GeneralError(error));
-        }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
-    };
+    let handshake_time =
+        server.blocking_handshake(version, Some(bootstrap_config.read_timeout.into()))?;
+    let fetc9h = server.blocking_next(Some(read_error_timeout));
+    todo!("handle the fetch here");
+    //     Err(_) => (),
+    //     Ok(Err(e)) => return Err(e),
+    //     Ok(Ok(BootstrapClientMessage::BootstrapError { error })) => {
+    //         return Err(BootstrapError::GeneralError(error));
+    //     }
+    //     Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
+    // };
 
     let write_timeout: Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match server
-        .send_msg(
-            write_timeout,
-            BootstrapServerMessage::BootstrapTime {
-                server_time,
-                version,
-            },
-        )
-        .await
-    {
-        Err(_) => Err(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            "bootstrap clock send timed out",
-        )
-        .into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
-    }?;
+    let fetch_time = server.send_msg(
+        BootstrapServerMessage::BootstrapTime {
+            server_time,
+            version,
+        },
+        Some(write_timeout),
+    )?;
+    // {
+    //     Err(_) => Err(std::io::Error::new(
+    //         std::io::ErrorKind::TimedOut,
+    //         "bootstrap clock send timed out",
+    //     )
+    //     .into()),
+    //     Ok(Err(e)) => Err(e),
+    //     Ok(Ok(_)) => Ok(()),
+    // }?;
 
     loop {
-        match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.blocking_next())
-            .await
-        {
-            Err(_) => break Ok(()),
-            Ok(Err(e)) => break Err(e),
-            Ok(Ok(msg)) => match msg {
-                BootstrapClientMessage::AskBootstrapPeers => {
-                    match server
-                        .send_msg(
-                            write_timeout,
-                            BootstrapServerMessage::BootstrapPeers {
-                                peers: network_command_sender.get_bootstrap_peers().await?,
-                            },
-                        )
-                        .await
-                    {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap peers send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
-                    }?;
-                }
-                BootstrapClientMessage::AskBootstrapPart {
-                    last_slot,
-                    last_ledger_step,
-                    last_pool_step,
-                    last_cycle_step,
-                    last_credits_step,
-                    last_ops_step,
-                    last_consensus_step,
-                } => {
-                    stream_bootstrap_information(
-                        server,
-                        final_state.clone(),
-                        consensus_controller.clone(),
-                        last_slot,
-                        last_ledger_step,
-                        last_pool_step,
-                        last_cycle_step,
-                        last_credits_step,
-                        last_ops_step,
-                        last_consensus_step,
-                        write_timeout,
-                    )
-                    .await?;
-                }
-                BootstrapClientMessage::BootstrapSuccess => break Ok(()),
-                BootstrapClientMessage::BootstrapError { error } => {
-                    break Err(BootstrapError::ReceivedError(error));
-                }
-            },
-        };
+        let next = server.blocking_next(Some(bootstrap_config.read_timeout.into()));
+        todo!("handle next");
+        // {
+        //     Err(_) => break Ok(()),
+        //     Ok(Err(e)) => break Err(e),
+        //     Ok(Ok(msg)) => match msg {
+        //         BootstrapClientMessage::AskBootstrapPeers => {
+        //             match server
+        //                 .send_msg(
+        //                     write_timeout,
+        //                     BootstrapServerMessage::BootstrapPeers {
+        //                         peers: network_command_sender.get_bootstrap_peers().await?,
+        //                     },
+        //                 )
+        //                 .await
+        //             {
+        //                 Err(_) => Err(std::io::Error::new(
+        //                     std::io::ErrorKind::TimedOut,
+        //                     "bootstrap peers send timed out",
+        //                 )
+        //                 .into()),
+        //                 Ok(Err(e)) => Err(e),
+        //                 Ok(Ok(_)) => Ok(()),
+        //             }?;
+        //         }
+        //         BootstrapClientMessage::AskBootstrapPart {
+        //             last_slot,
+        //             last_ledger_step,
+        //             last_pool_step,
+        //             last_cycle_step,
+        //             last_credits_step,
+        //             last_ops_step,
+        //             last_consensus_step,
+        //         } => {
+        //             stream_bootstrap_information(
+        //                 server,
+        //                 final_state.clone(),
+        //                 consensus_controller.clone(),
+        //                 last_slot,
+        //                 last_ledger_step,
+        //                 last_pool_step,
+        //                 last_cycle_step,
+        //                 last_credits_step,
+        //                 last_ops_step,
+        //                 last_consensus_step,
+        //                 write_timeout,
+        //             )
+        //             .await?;
+        //         }
+        //         BootstrapClientMessage::BootstrapSuccess => break Ok(()),
+        //         BootstrapClientMessage::BootstrapError { error } => {
+        //             break Err(BootstrapError::ReceivedError(error));
+        //         }
+        //     },
+        // };
     }
+    todo!()
 }
 
 // Stable means of providing compiler optimisation hints

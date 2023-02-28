@@ -34,18 +34,7 @@ async fn stream_final_state_and_consensus(
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
         client.blocking_send(next_bootstrap_message, Some(cfg.write_timeout.into()))?;
         loop {
-            let msg =
-                match tokio::time::timeout(cfg.read_timeout.into(), client.blocking_next()).await {
-                    Err(_) => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "final state bootstrap read timed out",
-                        )
-                        .into());
-                    }
-                    Ok(Err(e)) => return Err(e),
-                    Ok(Ok(msg)) => msg,
-                };
+            let (msg, duration) = client.blocking_next()?;
             match msg {
                 BootstrapServerMessage::BootstrapPart {
                     slot,
@@ -192,35 +181,26 @@ async fn bootstrap_from_server(
 
     // read error (if sent by the server)
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match tokio::time::timeout(cfg.read_error_timeout.into(), client.blocking_next()).await {
-        Err(_) => {
-            massa_trace!(
-                "bootstrap.lib.bootstrap_from_server: No error sent at connection",
-                {}
-            );
+    let next_tollerance = cfg.read_error_timeout.to_duration();
+    let (server_msg, fetch_time) = client.blocking_next()?;
+    if fetch_time < next_tollerance {
+        match server_msg {
+            BootstrapServerMessage::BootstrapError { error: err } => {
+                return Err(BootstrapError::ReceivedError(err))
+            }
+            msg => return Err(BootstrapError::UnexpectedServerMessage(msg)),
         }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapServerMessage::BootstrapError { error: err })) => {
-            return Err(BootstrapError::ReceivedError(err))
-        }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
-    };
+    }
+    massa_trace!(
+        "bootstrap.lib.bootstrap_from_server: No error sent at connection",
+        {}
+    );
 
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
 
-    match client.blocking_handshake(our_version, Some(cfg.write_timeout.into())) {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap handshake timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => {}
-    }
+    let handshake_time = client.blocking_handshake(our_version, Some(cfg.write_timeout.into()))?;
 
     // compute ping
     let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
@@ -232,33 +212,26 @@ async fn bootstrap_from_server(
 
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let server_time =
-        match tokio::time::timeout(cfg.read_timeout.into(), client.blocking_next()).await {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap clock sync read timed out",
-                )
-                .into())
+    let fetch_tolerance = cfg.read_timeout.to_duration();
+    let (server_time, fetch_time) = client.blocking_next()?;
+    let server_time = match server_time {
+        BootstrapServerMessage::BootstrapTime {
+            server_time,
+            version,
+        } => {
+            if !our_version.is_compatible(&version) {
+                return Err(BootstrapError::IncompatibleVersionError(format!(
+                    "remote is running incompatible version: {} (local node version: {})",
+                    version, our_version
+                )));
             }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(BootstrapServerMessage::BootstrapTime {
-                server_time,
-                version,
-            })) => {
-                if !our_version.is_compatible(&version) {
-                    return Err(BootstrapError::IncompatibleVersionError(format!(
-                        "remote is running incompatible version: {} (local node version: {})",
-                        version, our_version
-                    )));
-                }
-                server_time
-            }
-            Ok(Ok(BootstrapServerMessage::BootstrapError { error })) => {
-                return Err(BootstrapError::ReceivedError(error))
-            }
-            Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
-        };
+            server_time
+        }
+        BootstrapServerMessage::BootstrapError { error } => {
+            return Err(BootstrapError::ReceivedError(error))
+        }
+        msg => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+    };
 
     // get the time of reception
     let recv_time = MassaTime::now()?;
@@ -320,20 +293,7 @@ async fn bootstrap_from_server(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                match tokio::time::timeout(
-                    write_timeout,
-                    client.blocking_send(next_bootstrap_message),
-                )
-                .await
-                {
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "send bootstrap success timed out",
-                    )
-                    .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
-                }?;
+                client.blocking_send(next_bootstrap_message, Some(write_timeout))?;
                 break;
             }
             BootstrapClientMessage::BootstrapError { error: _ } => {
@@ -352,16 +312,9 @@ async fn send_client_message(
     read_timeout: Duration,
     error: &str,
 ) -> Result<BootstrapServerMessage, BootstrapError> {
-    match tokio::time::timeout(write_timeout, client.blocking_send(message_to_send)).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
-    }?;
-    match tokio::time::timeout(read_timeout, client.blocking_next()).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(msg)) => Ok(msg),
-    }
+    client.blocking_send(message_to_send, Some(write_timeout))?;
+    let (msg, _read_time) = client.blocking_next()?;
+    Ok(msg)
 }
 
 async fn blocking_connect_to_server(
@@ -494,7 +447,7 @@ pub async fn get_state(
                         Err(e) => {
                             warn!("Error while bootstrapping: {}", e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.blocking_send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
+                            let _send_time = client.blocking_send(&BootstrapClientMessage::BootstrapError { error: e.to_string() }, Some(bootstrap_config.write_error_timeout.into()))?;
                         }
                         Ok(()) => {
                             return Ok(global_bootstrap_state)

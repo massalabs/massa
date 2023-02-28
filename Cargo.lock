@@ -175,18 +175,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-speed-limit"
-version = "0.4.0"
-source = "git+https://github.com/adrien-zinger/async-speed-limit?rev=36d79e0#36d79e063144cf0cdfc258c9e127c84f10a53b57"
-dependencies = [
- "futures-core",
- "futures-io",
- "futures-timer",
- "pin-project-lite",
- "tokio",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2441,7 +2429,6 @@ dependencies = [
 name = "massa_bootstrap"
 version = "0.1.0"
 dependencies = [
- "async-speed-limit",
  "bitvec",
  "crossbeam",
  "displaydoc",

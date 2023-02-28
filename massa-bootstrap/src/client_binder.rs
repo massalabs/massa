@@ -79,7 +79,8 @@ impl BootstrapClientBinder {
     }
 
     /// Reads the next message. NOT cancel-safe
-    pub async fn blocking_next(&mut self) -> Result<BootstrapServerMessage, BootstrapError> {
+    pub fn blocking_next(&mut self) -> Result<(BootstrapServerMessage, Duration), BootstrapError> {
+        let start = Instant::now();
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
@@ -121,11 +122,11 @@ impl BootstrapClientBinder {
                 msg
             }
         };
-        Ok(message)
+        Ok((message, Instant::now().duration_since(start)))
     }
     /// The std-lib write_all only
     fn write_all(
-        &self,
+        &mut self,
         data: &[u8],
         time_limit: Option<Duration>,
     ) -> Result<Duration, (usize, std::io::Error)> {
