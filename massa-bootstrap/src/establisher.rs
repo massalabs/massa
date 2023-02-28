@@ -53,12 +53,8 @@ pub mod types {
         ///
         /// # Argument
         /// * `addr`: `SocketAddr` we are trying to connect to.
-        pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
-            match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
-                Ok(Ok(sock)) => Ok(sock),
-                Ok(Err(e)) => Err(e),
-                Err(e) => Err(io::Error::new(io::ErrorKind::TimedOut, e)),
-            }
+        pub fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
+            TcpStream::connect_timeout(&addr, self.0.to_duration())
         }
     }
 

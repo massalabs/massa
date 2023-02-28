@@ -5,7 +5,8 @@ use massa_time::MassaTime;
 use socket2 as _;
 use std::io;
 use std::net::SocketAddr;
-use tokio::sync::{mpsc, oneshot};
+use std::time::Instant;
+use tokio::sync::mpsc;
 use tokio::time::timeout;
 
 pub type Duplex = std::net::TcpStream;
@@ -60,48 +61,49 @@ impl MockListener {
 
 #[derive(Debug)]
 pub struct MockConnector {
-    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_tx:
+        crossbeam::channel::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
     timeout_duration: MassaTime,
 }
 
 impl MockConnector {
-    pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
-        let duplex_mock = std::net::TcpListener::bind(addr).await.unwrap();
-        let duplex_controller = Duplex::connect(addr).await.unwrap();
-        let duplex_mock = duplex_mock.accept().await.unwrap();
+    pub fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
+        let duplex_mock = std::net::TcpListener::bind(addr).unwrap();
+        let duplex_controller = Duplex::connect(addr).unwrap();
+        let duplex_mock = duplex_mock.accept().unwrap();
 
-        // // task the controller connection if exist.
-        // let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
+        // task the controller connection if exist.
+
         // to see if the connection is accepted
         let (accept_tx, accept_rx) = oneshot::channel::<bool>();
 
+        // manage time-limits
+        let start = Instant::now();
+        let time_limit = self.timeout_duration.to_duration();
+
         // send new connection to mock
-        timeout(self.timeout_duration.to_duration(), async move {
-            self.connection_connector_tx
-                .send((duplex_mock.0, addr, accept_tx))
-                .await
-                .map_err(|_err| {
-                    io::Error::new(
-                        io::ErrorKind::Other,
-                        "MockConnector connect channel to Establisher closed".to_string(),
-                    )
-                })?;
-            if accept_rx.await.expect("mock accept_tx disappeared") {
-                Ok(duplex_controller)
-            } else {
-                Err(io::Error::new(
-                    io::ErrorKind::ConnectionRefused,
-                    "mock refused the connection".to_string(),
-                ))
-            }
-        })
-        .await
-        .map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::TimedOut,
-                "MockConnector connection attempt timed out".to_string(),
-            )
-        })?
+        self.connection_connector_tx
+            .send_timeout((duplex_mock.0, addr, accept_tx), time_limit)
+            .map_err(|_err| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    "MockConnector connect channel to Establisher closed".to_string(),
+                )
+            })?;
+        let interval = Instant::now().duration_since(start);
+        if interval > time_limit {
+            return Err(std::io::ErrorKind::TimedOut.into());
+        }
+
+        match accept_rx.recv_timeout(time_limit - interval) {
+            Ok(_) => Ok(duplex_controller),
+            Err(e) => match e {
+                oneshot::RecvTimeoutError::Timeout => Err(io::ErrorKind::TimedOut.into()),
+                oneshot::RecvTimeoutError::Disconnected => {
+                    Err(io::ErrorKind::ConnectionAborted.into())
+                }
+            },
+        }
     }
 }
 
@@ -109,7 +111,8 @@ impl MockConnector {
 pub struct MockEstablisher {
     connection_listener_rx:
         Option<crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>>,
-    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_tx:
+        crossbeam::channel::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
 }
 
 impl MockEstablisher {
@@ -135,7 +138,8 @@ impl MockEstablisher {
 pub struct MockEstablisherInterface {
     connection_listener_tx:
         Option<crossbeam::channel::Sender<(SocketAddr, oneshot::Sender<Duplex>)>>,
-    connection_connector_rx: mpsc::Receiver<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_rx:
+        crossbeam::channel::Receiver<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
 }
 
 impl MockEstablisherInterface {
