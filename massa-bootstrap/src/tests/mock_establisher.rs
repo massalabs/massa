@@ -36,18 +36,16 @@ pub struct MockListener {
 }
 
 impl MockListener {
-    pub fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
+    pub fn blocking_accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
         let (_addr, sender) = self.connection_listener_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener accept channel from Establisher closed".to_string(),
             )
         })?;
-        let duplex_controller = std::net::TcpListener::bind("localhost:0").await.unwrap();
-        let duplex_mock = Duplex::connect(duplex_controller.local_addr().unwrap())
-            .await
-            .unwrap();
-        let duplex_controller = duplex_controller.accept().await.unwrap();
+        let duplex_controller = std::net::TcpListener::bind("localhost:0").unwrap();
+        let duplex_mock = Duplex::connect(duplex_controller.local_addr().unwrap()).unwrap();
+        let duplex_controller = duplex_controller.accept().unwrap();
 
         sender.send(duplex_mock).map_err(|_| {
             io::Error::new(

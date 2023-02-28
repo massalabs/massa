@@ -35,9 +35,9 @@ pub mod types {
 
     impl DefaultListener {
         /// Accepts a new incoming connection from this listener.
-        pub fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
+        pub fn blocking_accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
             // accept
-            let (sock, mut remote_addr) = self.0.accept().await?;
+            let (sock, mut remote_addr) = self.0.accept()?;
             // normalize address
             remote_addr.set_ip(remote_addr.ip().to_canonical());
             Ok((sock, remote_addr))
