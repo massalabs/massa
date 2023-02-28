@@ -25,9 +25,10 @@
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod white_black_list;
+
 use white_black_list::*;
 
-use crossbeam::channel::{Receiver, Select, SendError, Sender};
+use crossbeam::channel::{tick, Select, SendError};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -63,12 +64,13 @@ use crate::{
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
 type BsConn = (Duplex, SocketAddr);
+
 /// handle on the bootstrap server
 pub struct BootstrapManager {
-    update_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    update_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     // need to preserve the listener handle up to here to prevent it being destroyed
-    _listen_handle: std::thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
-    main_handle: std::thread::JoinHandle<Result<(), Box<BootstrapError>>>,
+    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
+    main_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
@@ -126,8 +128,8 @@ pub async fn start_bootstrap_server(
         .thread_name("bootstrap-global-runtime-worker")
         .thread_keep_alive(Duration::from_millis(u64::MAX))
         .build() else {
-            return Err(Box::new(BootstrapError::GeneralError("Failed to creato bootstrap async runtime".to_string())));
-        };
+        return Err(Box::new(BootstrapError::GeneralError("Failed to creato bootstrap async runtime".to_string())));
+    };
 
     let listener = establisher
         .get_listener(listen_addr)
@@ -172,7 +174,7 @@ pub async fn start_bootstrap_server(
         // it's an error at the OS level.
         .unwrap();
 
-    let main_handle = std::thread::Builder::new()
+    let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
         .spawn(move || {
             BootstrapServer {
@@ -208,8 +210,8 @@ struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    listener_rx: Receiver<BsConn>,
-    listen_stopper_rx: Receiver<()>,
+    listener_rx: crossbeam::channel::Receiver<BsConn>,
+    listen_stopper_rx: crossbeam::channel::Receiver<()>,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -222,25 +224,20 @@ impl BootstrapServer<'_> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
-        stopper: Receiver<()>,
+        stopper: crossbeam::channel::Receiver<()>,
     ) -> Result<(), Box<BootstrapError>> {
+        let ticker = tick(interval);
+
         loop {
-            std::thread::sleep(interval);
-            match stopper.try_recv() {
-                Ok(()) => return Ok(()),
-                Err(e) => match e {
-                    crossbeam::channel::TryRecvError::Empty => {}
-                    crossbeam::channel::TryRecvError::Disconnected => {
-                        return Err(BootstrapError::GeneralError(
-                            "update stopper unexpected disconnect".to_string(),
-                        )
-                        .into());
+            crossbeam::select! {
+                recv(stopper) -> res => {
+                    match res {
+                        Ok(()) => return Ok(()),
+                        Err(e) => return Err(Box::new(BootstrapError::GeneralError(format!("update stopper error : {}", e)))),
                     }
                 },
+                recv(ticker) -> _ => {list.update()?;},
             }
-            // TODO: loop interval here is sleep + update time. Implement a state-based,
-            // rather than time-based, trigger (such as delta-count);
-            list.update()?;
         }
     }
 
@@ -253,7 +250,7 @@ impl BootstrapServer<'_> {
     /// TODO: Integrate the listener into the bootstrap-main-loop
     async fn run_listener(
         mut listener: Listener,
-        listener_tx: Sender<BsConn>,
+        listener_tx: crossbeam::channel::Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {
             let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
@@ -278,8 +275,8 @@ impl BootstrapServer<'_> {
             .thread_name("bootstrap-main-loop-worker")
             .thread_keep_alive(Duration::from_millis(u64::MAX))
             .build() else {
-                return Err(Box::new(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string())));
-            };
+            return Err(Box::new(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string())));
+        };
 
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
@@ -291,7 +288,7 @@ impl BootstrapServer<'_> {
         loop {
             // block until we have a connection to work with, or break out of main-loop
             // if a stop-signal is received
-            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else {break};
+            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else { break; };
             // claim a slot in the max_bootstrap_sessions
             let server = BootstrapServerBinder::new(
                 dplx,
@@ -395,7 +392,7 @@ impl BootstrapServer<'_> {
                     self.bs_server_runtime.handle().clone(),
                     "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
                     remote_addr,
-                    move || debug!("did not bootstrap {}: no available slots", remote_addr)
+                    move || debug!("did not bootstrap {}: no available slots", remote_addr),
                 );
             }
         }
@@ -443,7 +440,7 @@ impl BootstrapServer<'_> {
             Err(try_rcv_err) => match try_rcv_err {
                 crossbeam::channel::TryRecvError::Empty => return Ok(None),
                 crossbeam::channel::TryRecvError::Disconnected => {
-                    return Err("listener recv channel disconnected unexpectedly".to_string())
+                    return Err("listener recv channel disconnected unexpectedly".to_string());
                 }
             },
         };
@@ -763,7 +760,7 @@ async fn manage_bootstrap(
     network_command_sender: NetworkCommandSender,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
-    let read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
+    let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
     match tokio::time::timeout(
         bootstrap_config.read_timeout.into(),
@@ -776,7 +773,7 @@ async fn manage_bootstrap(
                 std::io::ErrorKind::TimedOut,
                 "bootstrap handshake send timed out",
             )
-            .into())
+            .into());
         }
         Ok(Err(e)) => return Err(e),
         Ok(Ok(_)) => (),
@@ -786,12 +783,12 @@ async fn manage_bootstrap(
         Err(_) => (),
         Ok(Err(e)) => return Err(e),
         Ok(Ok(BootstrapClientMessage::BootstrapError { error })) => {
-            return Err(BootstrapError::GeneralError(error))
+            return Err(BootstrapError::GeneralError(error));
         }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
     };
 
-    let write_timeout: std::time::Duration = bootstrap_config.write_timeout.into();
+    let write_timeout: Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
     let server_time = MassaTime::now()?;
