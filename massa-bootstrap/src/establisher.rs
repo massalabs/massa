@@ -15,11 +15,11 @@ pub mod types {
 /// Connection types
 pub mod types {
     use massa_time::MassaTime;
-    use std::{io, net::SocketAddr};
-    use tokio::{
-        net::{TcpListener, TcpStream},
-        time::timeout,
+    use std::{
+        io,
+        net::{SocketAddr, TcpListener, TcpStream},
     };
+    use tokio::time::timeout;
     /// duplex connection
     pub type Duplex = TcpStream;
     /// listener, used by server
@@ -35,7 +35,7 @@ pub mod types {
 
     impl DefaultListener {
         /// Accepts a new incoming connection from this listener.
-        pub async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
+        pub fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
             // accept
             let (sock, mut remote_addr) = self.0.accept().await?;
             // normalize address
@@ -87,7 +87,7 @@ pub mod types {
             // Number of connections to queue, set to the hardcoded value used by tokio
             socket.listen(1024)?;
 
-            Ok(DefaultListener(TcpListener::from_std(socket.into())?))
+            Ok(DefaultListener(socket.into()))
         }
 
         /// Get the connector with associated timeout

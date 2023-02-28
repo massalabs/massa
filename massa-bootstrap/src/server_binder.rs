@@ -7,8 +7,6 @@ use crate::messages::{
     BootstrapServerMessageSerializer,
 };
 use crate::settings::BootstrapSrvBindCfg;
-use async_speed_limit::clock::StandardClock;
-use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
@@ -17,10 +15,10 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::convert::TryInto;
+use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::runtime::Handle;
 use tokio::time::error::Elapsed;
 use tracing::error;
@@ -34,7 +32,8 @@ pub struct BootstrapServerBinder {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    duplex: Resource<Duplex, StandardClock>,
+    // TODO: limit me
+    duplex: Duplex,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -65,7 +64,7 @@ impl BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
-            duplex: <Limiter>::new(limit).limit(duplex),
+            duplex,
             prev_message: None,
             thread_count,
             max_datastore_key_length,

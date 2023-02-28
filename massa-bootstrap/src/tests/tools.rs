@@ -474,9 +474,11 @@ pub fn get_peers() -> BootstrapPeers {
     ])
 }
 
-pub async fn bridge_mock_streams(mut side1: Duplex, mut side2: Duplex) {
+pub async fn bridge_mock_streams(side1: Duplex, side2: Duplex) {
     let mut buf1 = vec![0u8; 1024];
     let mut buf2 = vec![0u8; 1024];
+    let mut side1 = tokio::net::TcpStream::from_std(side1).unwrap();
+    let mut side2 = tokio::net::TcpStream::from_std(side2).unwrap();
     loop {
         tokio::select! {
             res1 = side1.read(&mut buf1) => match res1 {
