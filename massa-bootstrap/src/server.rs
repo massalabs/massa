@@ -28,8 +28,7 @@ mod white_black_list;
 
 use white_black_list::*;
 
-use crossbeam::channel::{tick, Receiver, Select, SendError, Sender};
-use crossbeam::select;
+use crossbeam::channel::{tick, Select, SendError};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -72,8 +71,8 @@ pub struct BootstrapManager {
     // need to preserve the listener handle up to here to prevent it being destroyed
     _listen_handle: thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
-    listen_stopper_tx: Sender<()>,
-    update_stopper_tx: Sender<()>,
+    listen_stopper_tx: crossbeam::channel::Sender<()>,
+    update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
 impl BootstrapManager {
@@ -211,8 +210,8 @@ struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    listener_rx: Receiver<BsConn>,
-    listen_stopper_rx: Receiver<()>,
+    listener_rx: crossbeam::channel::Receiver<BsConn>,
+    listen_stopper_rx: crossbeam::channel::Receiver<()>,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -225,12 +224,12 @@ impl BootstrapServer<'_> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
-        stopper: Receiver<()>,
+        stopper: crossbeam::channel::Receiver<()>,
     ) -> Result<(), Box<BootstrapError>> {
         let ticker = tick(interval);
 
         loop {
-            select! {
+            crossbeam::select! {
                 recv(stopper) -> res => {
                     match res {
                         Ok(()) => return Ok(()),
@@ -251,7 +250,7 @@ impl BootstrapServer<'_> {
     /// TODO: Integrate the listener into the bootstrap-main-loop
     async fn run_listener(
         mut listener: Listener,
-        listener_tx: Sender<BsConn>,
+        listener_tx: crossbeam::channel::Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {
             let msg = listener.accept().await.map_err(BootstrapError::IoError)?;
