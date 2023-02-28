@@ -8,4 +8,4 @@ schnellru = "0.2.0"
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "testnet_20" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup" }

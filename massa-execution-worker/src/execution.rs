@@ -514,13 +514,13 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
+        let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone(), false)
             .map_err(|err| {
-                ExecutionError::RuntimeError(format!(
-                    "compilation error in execute_executesc_op: {}",
-                    err
-                ))
-            })?;
+            ExecutionError::RuntimeError(format!(
+                "compilation error in execute_executesc_op: {}",
+                err
+            ))
+        })?;
         match massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
@@ -1083,14 +1083,18 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
-                let module =
-                    RuntimeModule::new(&bytecode, req.max_gas, self.config.gas_costs.clone())
-                        .map_err(|err| {
-                            ExecutionError::RuntimeError(format!(
-                                "compilation error in execute_readonly_request: {}",
-                                err
-                            ))
-                        })?;
+                let module = RuntimeModule::new(
+                    &bytecode,
+                    req.max_gas,
+                    self.config.gas_costs.clone(),
+                    false,
+                )
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(format!(
+                        "compilation error in execute_readonly_request: {}",
+                        err
+                    ))
+                })?;
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,

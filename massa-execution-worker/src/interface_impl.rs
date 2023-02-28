@@ -515,9 +515,9 @@ impl Interface for InterfaceImpl {
     /// * data: data bytes to hash
     ///
     /// # Returns
-    /// The string representation of the resulting hash
-    fn hash(&self, data: &[u8]) -> Result<String> {
-        Ok(massa_hash::Hash::compute_from(data).to_bs58_check())
+    /// The hash in bytes format
+    fn hash(&self, data: &[u8]) -> Result<[u8; 32]> {
+        Ok(massa_hash::Hash::compute_from(data).into_bytes())
     }
 
     /// Converts a public key to an address

@@ -49,7 +49,8 @@ impl ModuleCache {
             if let Some((lru_module, lru_init_cost)) = self.lru_cache.get(hash, limit)? {
                 self.hd_cache.insert(hash, lru_module, Some(lru_init_cost));
             } else {
-                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone())
+                // CL compiler because this will be stored in HD
+                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), true)
                     .map_err(|err| {
                         ExecutionError::RuntimeError(format!(
                             "compilation of missing cache module failed: {}",
@@ -66,8 +67,9 @@ impl ModuleCache {
     /// Set the initialization cost of a cached module
     pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
         let hash = Hash::compute_from(bytecode);
-        self.hd_cache.set_init_cost(hash, init_cost);
-        self.lru_cache.set_init_cost(hash, init_cost);
+        // NOTE: handle init erros
+        self.hd_cache.set_init_cost(hash, init_cost).unwrap();
+        self.lru_cache.set_init_cost(hash, init_cost).unwrap();
     }
 
     /// Remove a cached module
@@ -95,15 +97,14 @@ impl ModuleCache {
             if let Some((lru_module, _)) = self.lru_cache.get(hash, limit)? {
                 Ok(lru_module.clone())
             } else {
-                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone())
+                // SP compiler because this is arbitrary bytecode
+                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), false)
                     .map_err(|err| {
                         ExecutionError::RuntimeError(format!(
                             "compilation of missing cache module failed: {}",
                             err
                         ))
                     })?;
-                // NOTE: might need to add an arbitrary execution identifier here
-                // NOTE: make this change in runtime
                 Ok(new_module)
             }
         }
