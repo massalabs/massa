@@ -28,7 +28,10 @@ mod white_black_list;
 
 use white_black_list::*;
 
-use crossbeam::channel::{tick, Select, SendError};
+use crossbeam::{
+    channel::{tick, Receiver, Select, SendError},
+    utils::Backoff,
+};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -45,7 +48,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, SocketAddr, TcpListener},
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -68,8 +71,6 @@ type BsConn = (Duplex, SocketAddr);
 /// handle on the bootstrap server
 pub struct BootstrapManager {
     update_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
-    // need to preserve the listener handle up to here to prevent it being destroyed
-    _listen_handle: thread::JoinHandle<Result<Result<(), BsConn>, Box<BootstrapError>>>,
     main_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,
     update_stopper_tx: crossbeam::channel::Sender<()>,
@@ -162,16 +163,6 @@ pub async fn start_bootstrap_server(
         // it's an error at the OS level.
         .unwrap();
     let listen_rt_handle = bs_server_runtime.handle().clone();
-    let listen_handle = thread::Builder::new()
-        .name("bs_listener".to_string())
-        .spawn(move || {
-            let res =
-                listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
-            res
-        })
-        // the non-builder spawn doesn't return a Result, and documentation states that
-        // it's an error at the OS level.
-        .unwrap();
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -187,6 +178,7 @@ pub async fn start_bootstrap_server(
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
+                listener,
                 bs_server_runtime,
             }
             .run_loop(max_bootstraps)
@@ -198,7 +190,6 @@ pub async fn start_bootstrap_server(
     // TODO: make the tasks sync, so the runtime is redundant
     Ok(Some(BootstrapManager {
         update_handle,
-        _listen_handle: listen_handle,
         main_handle,
         listen_stopper_tx,
         update_stopper_tx,
@@ -216,6 +207,7 @@ struct BootstrapServer<'a> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    listener: Listener,
     bs_server_runtime: Runtime,
 }
 
@@ -240,33 +232,33 @@ impl BootstrapServer<'_> {
         }
     }
 
-    /// Listens on a channel for incoming connections, and loads them onto a crossbeam channel
-    /// for the main-loop to process.
-    ///
-    /// Ok(Ok(())) listener closed without issue
-    /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
-    /// Err(..) Error accepting a connection
-    /// TODO: Integrate the listener into the bootstrap-main-loop
-    async fn run_listener(
-        mut listener: Listener,
-        listener_tx: crossbeam::channel::Sender<BsConn>,
-    ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
-        loop {
-            let msg = listener
-                .blocking_accept()
-                .map_err(BootstrapError::IoError)?;
-            match listener_tx.send(msg) {
-                Ok(_) => continue,
-                Err(SendError((dplx, remote_addr))) => {
-                    warn!(
-                        "listener channel disconnected after accepting connection from {}",
-                        remote_addr
-                    );
-                    return Ok(Err((dplx, remote_addr)));
-                }
-            };
-        }
-    }
+    // /// Listens on a channel for incoming connections, and loads them onto a crossbeam channel
+    // /// for the main-loop to process.
+    // ///
+    // /// Ok(Ok(())) listener closed without issue
+    // /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
+    // /// Err(..) Error accepting a connection
+    // /// TODO: Integrate the listener into the bootstrap-main-loop
+    // async fn run_listener(
+    //     mut listener: Listener,
+    //     listener_tx: crossbeam::channel::Sender<BsConn>,
+    // ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
+    //     loop {
+    //         let msg = listener
+    //             .blocking_accept()
+    //             .map_err(BootstrapError::IoError)?;
+    //         match listener_tx.send(msg) {
+    //             Ok(_) => continue,
+    //             Err(SendError((dplx, remote_addr))) => {
+    //                 warn!(
+    //                     "listener channel disconnected after accepting connection from {}",
+    //                     remote_addr
+    //                 );
+    //                 return Ok(Err((dplx, remote_addr)));
+    //             }
+    //         };
+    //     }
+    // }
 
     fn run_loop(mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
         let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
@@ -282,14 +274,12 @@ impl BootstrapServer<'_> {
         // Use the strong-count of this variable to track the session count
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
-        let mut selector = Select::new();
-        selector.recv(&self.listen_stopper_rx);
-        selector.recv(&self.listener_rx);
         // TODO: Work out how to integration-test this
         loop {
-            // block until we have a connection to work with, or break out of main-loop
-            // if a stop-signal is received
-            let Some((dplx, remote_addr)) = self.receive_connection(&mut selector).map_err(BootstrapError::GeneralError)? else { break; };
+            let (dplx, remote_addr) = match self.stop_or_accept() {
+                Err(()) => return Ok(()),
+                Ok(conn) => conn,
+            };
             // claim a slot in the max_bootstrap_sessions
             let server = BootstrapServerBinder::new(
                 dplx,
@@ -401,6 +391,35 @@ impl BootstrapServer<'_> {
         // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
         bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
         Ok(())
+    }
+    fn stop_or_accept(&mut self) -> Result<(Duplex, SocketAddr), ()> {
+        loop {
+            let backoff = Backoff::new();
+            'backoff: loop {
+                if self.listen_stopper_rx.try_recv().is_ok() {
+                    dbg!("returning because stopped");
+                    return Err(());
+                }
+
+                let try_accept = self.listener.0.accept();
+                match try_accept {
+                    Ok(good_conn) => {
+                        return Ok(good_conn);
+                    }
+                    Err(e) => {
+                        if e.kind() == std::io::ErrorKind::WouldBlock {
+                            if backoff.is_completed() {
+                                break 'backoff;
+                            } else {
+                                backoff.snooze();
+                            }
+                        } else {
+                            panic!("try_accept got a bad error");
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// These are the steps to ensure that a connection is only processed if the server is active:
