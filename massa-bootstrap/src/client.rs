@@ -32,9 +32,13 @@ async fn stream_final_state_and_consensus(
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
-        client.blocking_send(next_bootstrap_message, Some(cfg.write_timeout.into()))?;
+        let _ask_ledger_elapsed = client
+            .blocking_send(next_bootstrap_message, Some(cfg.write_timeout.into()))
+            .map_err(|e| e.update_io_msg_payload("bootstrap ask ledger part send timed out"))?;
         loop {
-            let (msg, duration) = client.blocking_next()?;
+            let (msg, _next_elapsed) = client
+                .blocking_next()
+                .map_err(|e| e.update_io_msg_payload("final state bootstrap read timed out"))?;
             match msg {
                 BootstrapServerMessage::BootstrapPart {
                     slot,
