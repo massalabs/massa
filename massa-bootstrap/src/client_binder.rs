@@ -79,7 +79,14 @@ impl BootstrapClientBinder {
     }
 
     /// Reads the next message. NOT cancel-safe
-    pub fn blocking_next(&mut self) -> Result<(BootstrapServerMessage, Duration), BootstrapError> {
+    /// TODO: Before, this was called with a tokio timeout from fn bootstrap_from_server. It would
+    ///       inteprprate it timing-out as "the server isn't trying to send us errors"
+    ///       Ideally, would implement this behavior without relying on timing out
+    ///       from an async context
+    pub fn blocking_next(
+        &mut self,
+        timeout: Option<Duration>,
+    ) -> Result<(BootstrapServerMessage, Duration), BootstrapError> {
         let start = Instant::now();
         // read signature
         let sig = {

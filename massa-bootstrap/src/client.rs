@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashSet, io::ErrorKind, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
@@ -36,9 +36,10 @@ async fn stream_final_state_and_consensus(
             .blocking_send(next_bootstrap_message, Some(cfg.write_timeout.into()))
             .map_err(|e| e.update_io_msg_payload("bootstrap ask ledger part send timed out"))?;
         loop {
-            let (msg, _next_elapsed) = client
-                .blocking_next()
-                .map_err(|e| e.update_io_msg_payload("final state bootstrap read timed out"))?;
+            let (msg, _next_elapsed) =
+                client
+                    .blocking_next(Some(cfg.read_timeout.to_duration()))
+                    .map_err(|e| e.update_io_msg_payload("final state bootstrap read timed out"))?;
             match msg {
                 BootstrapServerMessage::BootstrapPart {
                     slot,
@@ -186,19 +187,26 @@ async fn bootstrap_from_server(
     // read error (if sent by the server)
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let next_tollerance = cfg.read_error_timeout.to_duration();
-    let (server_msg, fetch_time) = client.blocking_next()?;
-    if fetch_time < next_tollerance {
-        match server_msg {
-            BootstrapServerMessage::BootstrapError { error: err } => {
-                return Err(BootstrapError::ReceivedError(err))
+    let res = client.blocking_next(Some(next_tollerance));
+    match res {
+        Err(BootstrapError::IoError(e)) => {
+            if e.kind() == ErrorKind::TimedOut {
+                massa_trace!(
+                    "bootstrap.lib.bootstrap_from_server: No error sent at connection",
+                    {}
+                );
+            } else {
+                return Err(res.unwrap_err());
             }
-            msg => return Err(BootstrapError::UnexpectedServerMessage(msg)),
         }
+        Err(e) => {
+            res?;
+        }
+        Ok((BootstrapServerMessage::BootstrapError { error }, _)) => {
+            return Err(BootstrapError::ReceivedError(error));
+        }
+        Ok((msg, _)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     }
-    massa_trace!(
-        "bootstrap.lib.bootstrap_from_server: No error sent at connection",
-        {}
-    );
 
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
