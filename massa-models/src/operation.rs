@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::address::AddressSerializer;
 use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
 use crate::secure_share::{
@@ -518,6 +519,7 @@ pub struct OperationTypeSerializer {
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
+    address_serializer: AddressSerializer,
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
     datastore_serializer: DatastoreSerializer,
 }
@@ -530,6 +532,7 @@ impl OperationTypeSerializer {
             u64_serializer: U64VarIntSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
             datastore_serializer: DatastoreSerializer::new(),
         }
@@ -568,7 +571,8 @@ impl Serializer<OperationType> for OperationTypeSerializer {
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(OperationTypeId::Transaction), buffer)?;
-                buffer.extend(recipient_address.to_bytes());
+                self.address_serializer
+                    .serialize(recipient_address, buffer)?;
                 self.amount_serializer.serialize(amount, buffer)?;
             }
             OperationType::RollBuy { roll_count } => {
@@ -603,7 +607,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                     .serialize(&u32::from(OperationTypeId::CallSC), buffer)?;
                 self.u64_serializer.serialize(max_gas, buffer)?;
                 self.amount_serializer.serialize(coins, buffer)?;
-                buffer.extend(target_addr.to_bytes());
+                self.address_serializer.serialize(target_addr, buffer)?;
                 self.function_name_serializer
                     .serialize(target_func, buffer)?;
                 self.vec_u8_serializer.serialize(param, buffer)?;
@@ -613,7 +617,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     }
 }
 
-/// Serializer for `OperationType`
+/// Deserializer for `OperationType`
 pub struct OperationTypeDeserializer {
     id_deserializer: U32VarIntDeserializer,
     rolls_number_deserializer: U64VarIntDeserializer,

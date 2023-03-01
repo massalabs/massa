@@ -1,0 +1,58 @@
+{
+    "AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D": [
+        {
+            "timestamp": 0,
+            "min_balance": "100000",
+            "max_rolls": 40
+        },
+        {
+            "timestamp": 1678025600000,
+            "min_balance": "100000",
+            "max_rolls": 45
+        },
+        {
+            "timestamp": 1678457600000,
+            "min_balance": "50000",
+            "max_rolls": 50
+        },
+        {
+            "timestamp": 1679321600000,
+            "min_balance": "0",
+            "max_rolls": 18446744073709551615
+        }
+    ],
+    "AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs": [
+        {
+            "timestamp": 0,
+            "min_balance": "100000",
+            "max_rolls": 5
+        },
+        {
+            "timestamp": 1678457600000,
+            "min_balance": "100000",
+            "max_rolls": 10
+        },
+        {
+            "timestamp": 1679321600000,
+            "min_balance": "0",
+            "max_rolls": 18446744073709551615
+        }
+    ],
+    "AU12spryWgt7VUoT9LRi8Roe5WVgUPLeaQ6GXMd9ABUQyfv62Ab18": [
+        {
+            "timestamp": 0,
+            "min_balance": "1000000000",
+            "max_rolls": 0
+        },
+        {
+            "timestamp": 1679321600000,
+            "min_balance": "1000000000",
+            "max_rolls": 0
+        },
+        {
+            "timestamp": 1692537200000,
+            "min_balance": "1000000000",
+            "max_rolls": 0
+        }
+    ]
+}

@@ -100,8 +100,17 @@ mod worker;
 
 pub use worker::start_execution_worker;
 
-#[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 pub use interface_impl::InterfaceImpl;
 
-#[cfg(any(test, feature = "gas_calibration", feature = "benchmarking"))]
+#[cfg(any(
+    test,
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 mod tests;

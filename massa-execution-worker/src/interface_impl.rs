@@ -10,6 +10,7 @@ use anyhow::{anyhow, bail, Result};
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
+use massa_models::bytecode::Bytecode;
 use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
@@ -18,12 +19,17 @@ use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
 
-#[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 use massa_models::datastore::Datastore;
 
 /// helper for locking the context mutex
@@ -52,7 +58,11 @@ impl InterfaceImpl {
         InterfaceImpl { config, context }
     }
 
-    #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+    #[cfg(any(
+        feature = "gas_calibration",
+        feature = "benchmarking",
+        feature = "testing"
+    ))]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(
         sender_addr: Address,
@@ -64,13 +74,18 @@ impl InterfaceImpl {
         use parking_lot::RwLock;
 
         let config = ExecutionConfig::default();
-        let (final_state, _tempfile, _tempdir) = crate::tests::get_sample_state().unwrap();
+        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
+        let vesting_registry = Arc::new(
+            crate::execution::ExecutionState::init_vesting_registry(&config).unwrap_or_default(),
+        );
+
         let mut execution_context = ExecutionContext::new(
             config.clone(),
             final_state,
             Default::default(),
             module_cache,
+            vesting_registry,
         );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,
@@ -125,7 +140,7 @@ impl Interface for InterfaceImpl {
     /// The target bytecode or an error
     fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
         // get target address
-        let to_address = massa_models::address::Address::from_str(address)?;
+        let to_address = Address::from_str(address)?;
 
         // write-lock context
         let mut context = context_guard!(self);
@@ -143,7 +158,7 @@ impl Interface for InterfaceImpl {
         };
 
         // transfer coins from caller to target address
-        let coins = massa_models::amount::Amount::from_raw(raw_coins);
+        let coins = Amount::from_raw(raw_coins);
         if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, true)
         {
             bail!(
@@ -164,7 +179,7 @@ impl Interface for InterfaceImpl {
         });
 
         // return the target bytecode
-        Ok(bytecode)
+        Ok(bytecode.0)
     }
 
     /// Called to finish the call process after a bytecode calls a function from another one.
@@ -225,7 +240,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the newly created address
     fn create_module(&self, bytecode: &[u8]) -> Result<String> {
-        match context_guard!(self).create_new_sc_address(bytecode.to_vec()) {
+        match context_guard!(self).create_new_sc_address(Bytecode(bytecode.to_vec())) {
             Ok(addr) => Ok(addr.to_string()),
             Err(err) => bail!("couldn't create new SC address: {}", err),
         }
@@ -423,7 +438,7 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
         match context.get_bytecode(&address) {
-            Some(bytecode) => Ok(bytecode),
+            Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
         }
     }
@@ -433,7 +448,7 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = Address::from_str(address)?;
         match context.get_bytecode(&address) {
-            Some(bytecode) => Ok(bytecode),
+            Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
         }
     }
@@ -451,7 +466,6 @@ impl Interface for InterfaceImpl {
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
         let keys: Vec<Vec<u8>> = datastore.keys().cloned().collect();
-        debug!("[abi get_op_keys] keys {:?}", keys);
         Ok(keys)
     }
 
@@ -464,7 +478,6 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
     fn has_op_key(&self, key: &[u8]) -> Result<bool> {
-        debug!("[abi has_op_key] checking key {:?}", key);
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
@@ -472,7 +485,6 @@ impl Interface for InterfaceImpl {
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
         let has_key = datastore.contains_key(key);
-        debug!("[abi has_op_key] has key {}", has_key);
         Ok(has_key)
     }
 
@@ -485,7 +497,6 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The operation datastore value matching the provided key, if found, otherwise an error.
     fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
-        debug!("[abi get_op_data] data for {:?}", key);
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
@@ -496,7 +507,6 @@ impl Interface for InterfaceImpl {
             .get(key)
             .cloned()
             .ok_or_else(|| anyhow!("Unknown key: {:?}", key));
-        debug!("[abi get_op_data] has key {:?}", data);
         data
     }
 
@@ -506,9 +516,9 @@ impl Interface for InterfaceImpl {
     /// * data: data bytes to hash
     ///
     /// # Returns
-    /// The string representation of the resulting hash
-    fn hash(&self, data: &[u8]) -> Result<String> {
-        Ok(massa_hash::Hash::compute_from(data).to_bs58_check())
+    /// The hash in bytes format
+    fn hash(&self, data: &[u8]) -> Result<[u8; 32]> {
+        Ok(massa_hash::Hash::compute_from(data).into_bytes())
     }
 
     /// Converts a public key to an address
@@ -552,8 +562,8 @@ impl Interface for InterfaceImpl {
     /// * `to_address`: string representation of the address to which the coins are sent
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
-        let to_address = massa_models::address::Address::from_str(to_address)?;
-        let amount = massa_models::amount::Amount::from_raw(raw_amount);
+        let to_address = Address::from_str(to_address)?;
+        let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
         context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
@@ -572,9 +582,9 @@ impl Interface for InterfaceImpl {
         to_address: &str,
         raw_amount: u64,
     ) -> Result<()> {
-        let from_address = massa_models::address::Address::from_str(from_address)?;
-        let to_address = massa_models::address::Address::from_str(to_address)?;
-        let amount = massa_models::amount::Amount::from_raw(raw_amount);
+        let from_address = Address::from_str(from_address)?;
+        let to_address = Address::from_str(to_address)?;
+        let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
@@ -745,7 +755,7 @@ impl Interface for InterfaceImpl {
     fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
         let mut execution_context = context_guard!(self);
         let address = execution_context.get_current_address()?;
-        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+        match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }
@@ -756,9 +766,23 @@ impl Interface for InterfaceImpl {
     fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
         let address = massa_models::address::Address::from_str(address)?;
         let mut execution_context = context_guard!(self);
-        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+        match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }
+    }
+
+    /// Hashes givens byte array with sha256
+    ///
+    /// # Arguments
+    /// * bytes: byte array to hash
+    ///
+    /// # Returns
+    /// The vector of bytes representation of the resulting hash
+    fn hash_sha256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        let hash = hasher.finalize().into();
+        Ok(hash)
     }
 }

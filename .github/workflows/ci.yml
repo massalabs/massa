@@ -27,7 +27,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -38,7 +38,7 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-  
+
   check:
     if: github.ref != 'refs/heads/staging'
     needs: sanity
@@ -51,7 +51,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-27
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
@@ -72,7 +72,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-27
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -103,7 +103,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-27
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
@@ -117,6 +117,10 @@ jobs:
         with:
           command: nextest
           args: run --features testing --retries 10
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features testing --doc
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
@@ -128,14 +132,14 @@ jobs:
   gas-costs-check:
     if: github.ref != 'refs/heads/staging' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    steps: 
+    steps:
       - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -151,15 +155,15 @@ jobs:
       # Replace the branch in the dependencies in gas-calibration project by the current branch
       # Special case for massa-sc-runtime: we use the branch referenced in the Cargo.toml of massa-execution-worker.
       - name: "Use the current branch as dependency for gas-calibration"
-        run: > 
-          cd gas-calibration && 
-          sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml && 
+        run: >
+          cd gas-calibration &&
+          sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml &&
           sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep 'massalabs/massa-sc-runtime' | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml
       #- name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
       #  run: >
-      #    cd gas-calibration && 
+      #    cd gas-calibration &&
       #    cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
-      
+
 
   doc:
     runs-on: ubuntu-latest
@@ -170,7 +174,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-12-24
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2

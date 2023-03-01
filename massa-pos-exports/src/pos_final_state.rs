@@ -64,6 +64,14 @@ impl PoSFinalState {
         })
     }
 
+    /// Reset the state of the PoS final state
+    ///
+    /// USED ONLY FOR BOOTSTRAP
+    pub fn reset(&mut self) {
+        self.cycle_history.clear();
+        self.deferred_credits = DeferredCredits::default();
+    }
+
     /// Create the initial cycle based off the initial rolls.
     ///
     /// This should be called only if bootstrap did not happen.

@@ -27,7 +27,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
-serial_test = "0.10"
+serial_test = "1.0"
 tempfile = "3.3"
 massa_models = { path = "../massa-models", features = ["testing"] }
 massa_network_exports = { path = "../massa-network-exports", features = [

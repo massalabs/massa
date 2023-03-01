@@ -103,7 +103,6 @@ pub mod event_impl {
         from: NodeId,
         list: &[IpAddr],
     ) -> Result<(), NetworkError> {
-        debug!("node_id={} sent us a peer list ({} ips)", from, list.len());
         massa_trace!("peer_list_received", {
             "node_id": from,
             "ips": list
@@ -167,7 +166,6 @@ pub mod event_impl {
         worker: &mut NetworkWorker,
         from: NodeId,
     ) -> Result<(), NetworkError> {
-        debug!("node_id={} asked us for peer list", from);
         massa_trace!("node_asked_peer_list", { "node_id": from });
         let peer_list = worker.peer_info_db.get_advertisable_peer_ips();
         if let Some((_, node_command_tx)) = worker.active_nodes.get(&from) {

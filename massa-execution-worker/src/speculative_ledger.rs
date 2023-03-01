@@ -10,6 +10,7 @@ use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
+use massa_models::bytecode::Bytecode;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
@@ -31,9 +32,17 @@ pub(crate) struct SpeculativeLedger {
     active_history: Arc<RwLock<ActiveHistory>>,
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
-    #[cfg(all(not(feature = "gas_calibration"), not(feature = "benchmarking")))]
+    #[cfg(all(
+        not(feature = "gas_calibration"),
+        not(feature = "benchmarking"),
+        not(feature = "testing")
+    ))]
     added_changes: LedgerChanges,
-    #[cfg(any(feature = "gas_calibration", feature = "benchmarking"))]
+    #[cfg(any(
+        feature = "gas_calibration",
+        feature = "benchmarking",
+        feature = "testing"
+    ))]
     pub added_changes: LedgerChanges,
 
     /// max datastore key length
@@ -114,8 +123,8 @@ impl SpeculativeLedger {
     /// `addr`: the address to query
     ///
     /// # Returns
-    /// `Some(Vec<u8>)` if the address was found, otherwise None
-    pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
+    /// `Some(Bytecode)` if the address was found, otherwise None
+    pub fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
         // try to read from added changes > history > final_state
         self.added_changes.get_bytecode_or_else(addr, || {
             match self.active_history.read().fetch_bytecode(addr) {
@@ -252,7 +261,7 @@ impl SpeculativeLedger {
         &mut self,
         creator_address: Address,
         addr: Address,
-        bytecode: Vec<u8>,
+        bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(&creator_address) {
@@ -270,7 +279,7 @@ impl SpeculativeLedger {
             )));
         }
 
-        if bytecode.len() > self.max_bytecode_size as usize {
+        if bytecode.0.len() > self.max_bytecode_size as usize {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not create SC address {}: bytecode size exceeds maximum allowed size",
                 addr
@@ -285,7 +294,7 @@ impl SpeculativeLedger {
             .checked_add(
                 self.storage_costs_constants
                     .ledger_cost_per_byte
-                    .checked_mul_u64(bytecode.len().try_into().map_err(|_| {
+                    .checked_mul_u64(bytecode.0.len().try_into().map_err(|_| {
                         ExecutionError::RuntimeError(
                             "overflow while calculating bytecode ledger size costs".to_string(),
                         )
@@ -317,7 +326,7 @@ impl SpeculativeLedger {
         &mut self,
         caller_addr: &Address,
         addr: &Address,
-        bytecode: Vec<u8>,
+        bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(addr) {
@@ -327,15 +336,15 @@ impl SpeculativeLedger {
             )));
         }
 
-        if bytecode.len() > self.max_bytecode_size as usize {
+        if bytecode.0.len() > self.max_bytecode_size as usize {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not set bytecode for address {}: bytecode size exceeds maximum allowed size",
                 addr
             )));
         }
 
-        if let Some(old_bytecode_size) = self.get_bytecode(addr).map(|b| b.len()) {
-            let diff_size_storage: i64 = (bytecode.len() as i64) - (old_bytecode_size as i64);
+        if let Some(old_bytecode_size) = self.get_bytecode(addr).map(|b| b.0.len()) {
+            let diff_size_storage: i64 = (bytecode.0.len() as i64) - (old_bytecode_size as i64);
             let storage_cost_bytecode = self
                 .storage_costs_constants
                 .ledger_cost_per_byte
@@ -355,7 +364,7 @@ impl SpeculativeLedger {
             let bytecode_storage_cost = self
                 .storage_costs_constants
                 .ledger_cost_per_byte
-                .checked_mul_u64(bytecode.len() as u64)
+                .checked_mul_u64(bytecode.0.len() as u64)
                 .ok_or_else(|| {
                     ExecutionError::RuntimeError(
                         "overflow when calculating storage cost of bytecode".to_string(),

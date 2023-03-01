@@ -122,14 +122,14 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "(add, remove or allow-all) [IpAddr]", pwd_not_needed = "true"),
-        message = "Manage boostrap whitelist IP address(es). No args returns the whitelist blacklist"
+        message = "Manage bootstrap whitelist IP address(es). No args returns the bootstrap whitelist"
     )]
     node_bootstrap_whitelist,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "(add or remove) [IpAddr]", pwd_not_needed = "true"),
-        message = "Manage boostrap blacklist IP address(es). No args returns the boostrap blacklist"
+        message = "Manage bootstrap blacklist IP address(es). No args returns the bootstrap blacklist"
     )]
     node_bootstrap_blacklist,
 
@@ -1113,7 +1113,7 @@ impl Command {
                 }
             }
             Command::read_only_execute_smart_contract => {
-                if parameters.len() != 2 && parameters.len() <= 4 {
+                if parameters.len() < 2 || parameters.len() > 4 {
                     bail!("wrong number of parameters");
                 }
 
@@ -1146,7 +1146,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() != 4 && parameters.len() <= 6 {
+                if parameters.len() < 4 || parameters.len() > 6 {
                     bail!("wrong number of parameters");
                 }
 

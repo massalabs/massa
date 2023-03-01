@@ -206,6 +206,16 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
+///
+pub struct BlockDeserializerArgs {
+    ///
+    pub thread_count: u8,
+    ///
+    pub max_operations_per_block: u32,
+    ///
+    pub endorsement_count: u32,
+}
+
 /// Deserializer for `Block`
 pub struct BlockDeserializer {
     header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
@@ -214,13 +224,14 @@ pub struct BlockDeserializer {
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -> Self {
+    // pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -> Self {
+    pub fn new(args: BlockDeserializerArgs) -> Self {
         BlockDeserializer {
             header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
-                thread_count,
-                endorsement_count,
+                args.thread_count,
+                args.endorsement_count,
             )),
-            op_ids_deserializer: OperationIdsDeserializer::new(max_operations_per_block),
+            op_ids_deserializer: OperationIdsDeserializer::new(args.max_operations_per_block),
         }
     }
 }
@@ -228,7 +239,7 @@ impl BlockDeserializer {
 impl Deserializer<Block> for BlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
+    /// use massa_models::{block::{Block, BlockSerializer, BlockDeserializer, BlockDeserializerArgs}, config::THREAD_COUNT, slot::Slot, endorsement::{Endorsement, EndorsementSerializer}, secure_share::SecureShareContent, prehash::PreHashSet};
     /// use massa_models::block_id::BlockId;
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
@@ -281,7 +292,8 @@ impl Deserializer<Block> for BlockDeserializer {
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
-    /// let (rest, res_block) = BlockDeserializer::new(THREAD_COUNT, 100, 9).deserialize::<DeserializeError>(&mut buffer).unwrap();
+    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9};
+    /// let (rest, res_block) = BlockDeserializer::new(args).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());
     /// // check equality
@@ -470,11 +482,15 @@ mod test {
             .unwrap();
 
         // deserialize
-        let (rest, res_block): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block)
-        .unwrap();
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let (rest, res_block): (&[u8], SecureShareBlock) =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
 
         assert!(rest.is_empty());
         // check equality
@@ -541,11 +557,15 @@ mod test {
             .unwrap();
 
         // deserialize
-        let (rest, res_block): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block)
-        .unwrap();
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let (rest, res_block): (&[u8], SecureShareBlock) =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
 
         res_block.content.header.assert_invariants().unwrap();
 
@@ -621,10 +641,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -669,10 +693,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -712,10 +740,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -758,10 +790,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -826,11 +862,15 @@ mod test {
             .unwrap();
 
         // deserialize
-        let (_, res): (&[u8], SecureShareBlock) = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block)
-        .unwrap();
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let (_, res): (&[u8], SecureShareBlock) =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
 
         res.content.header.assert_invariants().unwrap();
     }
@@ -871,10 +911,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -931,10 +975,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: see issue #3400
@@ -996,10 +1044,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
         assert!(res.is_err());
@@ -1073,10 +1125,14 @@ mod test {
             .unwrap();
 
         // deserialize
-        let res: Result<(&[u8], SecureShareBlock), _> = SecureShareDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block);
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args))
+                .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure

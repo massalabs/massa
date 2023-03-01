@@ -45,14 +45,14 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1676034000000.into()  // Thursday, February 10, 2023 01:00:00 PM UTC
+        1677675600000.into()  // Wednesday, March 1, 2023 01:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1677596400000.into())  // Tuesday, February 28, 2023 15:00:00 PM UTC
+        Some(1680292800000.into())  // Friday, March 31, 2023 08:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -62,9 +62,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.0.0"
+            "SAND.20.0"
         } else {
-            "TEST.19.3"
+            "TEST.20.0"
         }
         .parse()
         .unwrap()
@@ -92,7 +92,7 @@ pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 10000;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
 /// Maximum capacity of the asynchronous messages pool
@@ -117,6 +117,8 @@ pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
 pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
 /// Maximum number of consensus blocks in a bootstrap batch
 pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
+/// Maximum number of consensus block ids when sending a bootstrap cursor from the client
+pub const MAX_CONSENSUS_BLOCKS_IDS: u64 = 300;
 /// Maximum size of proof-of-stake rolls
 pub const MAX_ROLLS_COUNT_LENGTH: u64 = 10_000;
 /// Maximum size of proof-of-stake production stats

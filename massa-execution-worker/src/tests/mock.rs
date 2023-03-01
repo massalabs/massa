@@ -3,6 +3,8 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
+use massa_models::prehash::PreHashMap;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -16,6 +18,7 @@ use massa_models::{
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::str::FromStr;
 use std::{
@@ -162,4 +165,57 @@ pub fn create_block(
         BlockSerializer::new(),
         &creator_keypair,
     )?)
+}
+
+/// get the mocked file for initial vesting
+#[allow(dead_code)]
+pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
+    let file = NamedTempFile::new().unwrap();
+    let mut map = PreHashMap::default();
+
+    if with_value {
+        let vesting1 = VestingRange {
+            start_slot: Slot::min(),
+            end_slot: Slot::min(),
+            timestamp: MassaTime::from(0),
+            min_balance: Amount::from_str("200000").unwrap(),
+            max_rolls: 150,
+        };
+
+        let vesting2 = VestingRange {
+            start_slot: Slot::min(),
+            end_slot: Slot::min(),
+            timestamp: MassaTime::from(1678457600000),
+            min_balance: Amount::from_str("150000").unwrap(),
+            max_rolls: 130,
+        };
+
+        let vesting3 = VestingRange {
+            start_slot: Slot::min(),
+            end_slot: Slot::min(),
+            timestamp: MassaTime::from(1679321600000),
+            min_balance: Amount::from_str("80000").unwrap(),
+            max_rolls: 80,
+        };
+
+        let vec1 = vec![vesting1, vesting2, vesting3];
+
+        let keypair_0 =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
+
+        map.insert(addr_0, vec1);
+    }
+
+    // write file
+    serde_json::to_writer_pretty::<&File, PreHashMap<Address, Vec<VestingRange>>>(
+        file.as_file(),
+        &map,
+    )
+    .expect("unable to write initial vesting file");
+    file.as_file()
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("could not seek file");
+
+    file
 }

@@ -145,10 +145,23 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
 /// There is a defined number of slots for each category.
 /// Order matters: less prioritized peer type first
 #[derive(
-    Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Display,
+    Enum,
+    Default,
 )]
 pub enum PeerType {
     /// Just a peer
+    #[default]
     Standard,
     /// Connection from these nodes are always accepted
     WhiteListed,
@@ -166,12 +179,6 @@ mod test {
         use crate::peers::PeerType;
         assert!(PeerType::Bootstrap > PeerType::WhiteListed);
         assert!(PeerType::WhiteListed > PeerType::Standard);
-    }
-}
-
-impl Default for PeerType {
-    fn default() -> Self {
-        PeerType::Standard
     }
 }
 

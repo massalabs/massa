@@ -495,41 +495,41 @@ impl MassaRpcServer for API<Public> {
                 .collect()
         };
 
-        // keep only the ops found in storage
+        // keep only the ops id (found in storage)
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
 
-        // ask pool whether it carries the operations
-        let in_pool = self.0.pool_command_sender.contains_operations(&ops);
-
         let api_cfg = self.0.api_settings.clone();
-        let consensus_controller = self.0.consensus_controller.clone();
         if ops.len() as u64 > api_cfg.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
 
-        // check finality by cross-referencing Consensus and looking for final blocks that contain the op
-        let is_final: Vec<bool> = {
-            let involved_blocks: Vec<BlockId> = storage_info
-                .iter()
-                .flat_map(|(_op, bs)| bs.iter())
-                .unique()
-                .cloned()
-                .collect();
+        // ask pool whether it carries the operations
+        let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-            let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+        let (speculative_op_exec_statuses, final_op_exec_statuses) =
+            self.0.execution_controller.get_op_exec_status();
 
-            let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
-                .into_iter()
-                .zip(involved_block_statuses.into_iter())
-                .collect();
-            storage_info
-                .iter()
-                .map(|(_op, bs)| {
-                    bs.iter()
-                        .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
-                })
-                .collect()
-        };
+        // compute operation finality and operation execution status from *_op_exec_statuses
+        let (is_operation_final, statuses): (Vec<Option<bool>>, Vec<Option<bool>>) = ops
+            .iter()
+            .map(|op| {
+                match (
+                    final_op_exec_statuses.get(op),
+                    speculative_op_exec_statuses.get(op),
+                ) {
+                    // op status found in the final hashmap, so the op is "final"(first value of the tuple: Some(true))
+                    // and we keep its status (copied as the second value of the tuple)
+                    (Some(val), _) => (Some(true), Some(*val)),
+                    // op status NOT found in the final hashmap but in the speculative one, so the op is "not final"(first value of the tuple: Some(false))
+                    // and we keep its status (copied as the second value of the tuple)
+                    (None, Some(val)) => (Some(false), Some(*val)),
+                    // op status not defined in any hashmap, finality and status are unknow hence (None, None)
+                    (None, None) => (None, None),
+                }
+            })
+            .collect::<Vec<(Option<bool>, Option<bool>)>>()
+            .into_iter()
+            .unzip();
 
         // gather all values into a vector of OperationInfo instances
         let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());
@@ -537,18 +537,22 @@ impl MassaRpcServer for API<Public> {
             ops.into_iter(),
             storage_info.into_iter(),
             in_pool.into_iter(),
-            is_final.into_iter()
+            is_operation_final.into_iter(),
+            statuses.into_iter(),
         );
-        for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
+        for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in
+            zipped_iterator
+        {
             res.push(OperationInfo {
                 id,
                 in_pool,
-                is_final,
+                is_operation_final,
                 thread: operation
                     .content_creator_address
                     .get_thread(api_cfg.thread_count),
                 operation,
                 in_blocks: in_blocks.into_iter().collect(),
+                op_exec_status,
             });
         }
 

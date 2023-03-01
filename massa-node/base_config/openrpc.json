@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.19.3",
+        "version": "TEST.20.0",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -1047,6 +1047,61 @@
                     "description": "Experimental APIs. They might disappear, and they will change"
                 }
             ],
+            "params": [
+                {
+                    "schema": {
+                        "$ref": "#/components/schemas/ApiRequest"
+                    },
+                    "name": "ApiRequest",
+                    "description": "Optional api request"
+                }
+            ],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/PagedVecStaker"
+                },
+                "name": "PagedVecStaker"
+            },
+            "name": "get_largest_stakers",
+            "summary": "Get largest stakers",
+            "description": "Returns the active stakers and their active roll counts for the current cycle sorted by largest roll counts."
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
+            "params": [],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/BlockParent"
+                    }
+                },
+                "name": "NextBlockBestParents"
+            },
+            "name": "get_next_block_best_parents",
+            "summary": "Get next block best parents",
+            "description": "Returns the ids of best parents for the next block to be produced along with their period"
+        },
+        {
+            "tags": [
+                {
+                    "name": "api",
+                    "description": "Massa api V2"
+                },
+                {
+                    "name": "experimental",
+                    "description": "Experimental APIs. They might disappear, and they will change"
+                }
+            ],
             "params": [],
             "result": {
                 "schema": {
@@ -1442,6 +1497,16 @@
                 },
                 "additionalProperties": false
             },
+            "ApiRequest": {
+                "description": "ApiRequest for apiV2",
+                "type": "object",
+                "properties": {
+                    "page_request": {
+                        "$ref": "#/components/schemas/PageRequest",
+                        "description": "Optional page request"
+                    }
+                }
+            },
             "Balance": {
                 "title": "Balance",
                 "required": [
@@ -1536,6 +1601,26 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "BlockParent": {
+                "title": "BlockParent",
+                "description": "A tuple which contains (BlockId, period)",
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "BlockId": {
+                            "$ref": "#/components/schemas/BlockId"
+                        },
+                        "period": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "example": {
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1": "Number",
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2": "Number"
+                }
             },
             "CallSC": {
                 "title": "CallSC",
@@ -2550,12 +2635,27 @@
                     "offset"
                 ],
                 "properties": {
-                   "limit": {
-                       "type": "number"
-                   },
-                   "offset": {
-                       "type": "number"
-                   }
+                    "limit": {
+                        "type": "number"
+                    },
+                    "offset": {
+                        "type": "number"
+                    }
+                }
+            },
+            "PagedVecStaker": {
+                "description": "PagedVec of stakers for apiV2",
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Staker"
+                        }
+                    },
+                    "total_count": {
+                        "type": "number"
+                    }
                 }
             },
             "PoolStats": {
@@ -3143,6 +3243,14 @@
                 "description": "A OperationType object",
                 "schema": {
                     "$ref": "#/components/schemas/OperationType"
+                }
+            },
+            "PagedVecStaker": {
+                "name": "PagedVecStaker",
+                "summary": "PagedVecStaker",
+                "description": "A PagedVecStaker object",
+                "schema": {
+                    "$ref": "#/components/schemas/PagedVecStaker"
                 }
             },
             "PageRequest": {

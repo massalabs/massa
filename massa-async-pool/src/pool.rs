@@ -51,6 +51,14 @@ impl AsyncPool {
         }
     }
 
+    /// Resets the pool to its initial state
+    ///
+    /// USED ONLY FOR BOOTSTRAP
+    pub fn reset(&mut self) {
+        self.messages.clear();
+        self.hash = Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES);
+    }
+
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
     /// This function is used when applying pre-compiled `AsyncPoolChanges` to an `AsyncPool`.
     ///
@@ -343,7 +351,11 @@ impl Deserializer<BTreeMap<AsyncMessageId, AsyncMessage>> for AsyncPoolDeseriali
 #[test]
 fn test_take_batch() {
     use massa_hash::Hash;
-    use massa_models::{address::Address, amount::Amount, slot::Slot};
+    use massa_models::{
+        address::{Address, UserAddress},
+        amount::Amount,
+        slot::Slot,
+    };
     use std::str::FromStr;
 
     let config = AsyncPoolConfig {
@@ -353,7 +365,7 @@ fn test_take_batch() {
         bootstrap_part_size: 100,
     };
     let mut pool = AsyncPool::new(config);
-    let address = Address(Hash::compute_from(b"abc"));
+    let address = Address::User(UserAddress(Hash::compute_from(b"abc")));
     for i in 1..10 {
         let message = AsyncMessage::new_with_hash(
             Slot::new(0, 0),

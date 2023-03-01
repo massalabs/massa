@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::settings::BootstrapServerMessageDeserializerArgs;
 use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncPoolDeserializer, AsyncPoolSerializer,
@@ -9,7 +10,7 @@ use massa_consensus_exports::bootstrapable_graph::{
 };
 use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
-use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_ledger_exports::{Key as LedgerKey, KeyDeserializer, KeySerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
@@ -277,28 +278,7 @@ pub struct BootstrapServerMessageDeserializer {
 impl BootstrapServerMessageDeserializer {
     /// Creates a new `BootstrapServerMessageDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_advertise_length: u32,
-        max_bootstrap_blocks: u32,
-        max_operations_per_block: u32,
-        max_bootstrap_final_state_parts_size: u64,
-        max_async_pool_changes: u64,
-        max_async_pool_length: u64,
-        max_async_message_data: u64,
-        max_ledger_changes_count: u64,
-        max_datastore_key_length: u8,
-        max_datastore_value_length: u64,
-        max_datastore_entry_count: u64,
-        max_bootstrap_error_length: u64,
-        max_changes_slot_count: u64,
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-        max_credits_length: u64,
-        max_executed_ops_length: u64,
-        max_ops_changes_length: u64,
-    ) -> Self {
+    pub fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -306,65 +286,63 @@ impl BootstrapServerMessageDeserializer {
                 Included(MassaTime::from_millis(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
+            peers_deserializer: BootstrapPeersDeserializer::new(args.max_advertise_length),
             state_changes_deserializer: StateChangesDeserializer::new(
-                thread_count,
-                max_async_pool_changes,
-                max_async_message_data,
-                max_ledger_changes_count,
-                max_datastore_key_length,
-                max_datastore_value_length,
-                max_datastore_entry_count,
-                max_rolls_length,
-                max_production_stats_length,
-                max_credits_length,
-                max_ops_changes_length,
+                args.thread_count,
+                args.max_async_pool_changes,
+                args.max_async_message_data,
+                args.max_ledger_changes_count,
+                args.max_datastore_key_length,
+                args.max_datastore_value_length,
+                args.max_datastore_entry_count,
+                args.max_rolls_length,
+                args.max_production_stats_length,
+                args.max_credits_length,
+                args.max_ops_changes_length,
             ),
             length_state_changes: U64VarIntDeserializer::new(
                 Included(0),
-                Included(max_changes_slot_count),
+                Included(args.max_changes_slot_count),
             ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_bootstrap_blocks,
-                max_operations_per_block,
+                (&args).into(),
+                args.max_bootstrap_blocks_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
                 BlockIdDeserializer::new(),
                 Included(0),
-                Included(max_bootstrap_blocks as u64),
+                Included(args.max_bootstrap_blocks_length as u64),
             ),
             ledger_bytes_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(max_bootstrap_final_state_parts_size),
+                Included(args.max_bootstrap_final_state_parts_size),
             ),
             length_bootstrap_error: U64VarIntDeserializer::new(
                 Included(0),
-                Included(max_bootstrap_error_length),
+                Included(args.max_bootstrap_error_length),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(args.thread_count)),
             ),
             async_pool_deserializer: AsyncPoolDeserializer::new(
-                thread_count,
-                max_async_pool_length,
-                max_async_message_data,
-                max_datastore_key_length as u32,
+                args.thread_count,
+                args.max_async_pool_length,
+                args.max_async_message_data,
+                args.max_datastore_key_length as u32,
             ),
             opt_pos_cycle_deserializer: OptionDeserializer::new(CycleInfoDeserializer::new(
-                max_rolls_length,
-                max_production_stats_length,
+                args.max_rolls_length,
+                args.max_production_stats_length,
             )),
             pos_credits_deserializer: DeferredCreditsDeserializer::new(
-                thread_count,
-                max_credits_length,
+                args.thread_count,
+                args.max_credits_length,
             ),
             exec_ops_deserializer: ExecutedOpsDeserializer::new(
-                thread_count,
-                max_executed_ops_length,
-                max_operations_per_block as u64,
+                args.thread_count,
+                args.max_executed_ops_length,
+                args.max_operations_per_block as u64,
             ),
         }
     }
@@ -374,13 +352,24 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// ## Example
     /// ```rust
     /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer, BootstrapServerMessageDeserializer};
+    /// use massa_bootstrap::BootstrapServerMessageDeserializerArgs;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_time::MassaTime;
     /// use massa_models::version::Version;
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(32, 16, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 255, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000);
+    /// let args = BootstrapServerMessageDeserializerArgs {
+    ///     thread_count: 32, endorsement_count: 16,
+    ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
+    ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
+    ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,
+    ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
+    ///     max_datastore_value_length: 1000,
+    ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
+    ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
+    ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000};
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
@@ -395,7 +384,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///    } => {
     ///     assert_eq!(server_time, MassaTime::from(0));
     ///     assert_eq!(version, Version::from_str("TEST.1.10").unwrap());
-    ///   },
+    ///   }
     ///   _ => panic!("Unexpected message"),
     /// }
     /// assert_eq!(rest.len(), 0);
@@ -524,6 +513,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
 
 /// Messages used during bootstrap by client
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum BootstrapClientMessage {
     /// Ask for bootstrap peers
     AskBootstrapPeers,
@@ -532,7 +522,7 @@ pub enum BootstrapClientMessage {
         /// Slot we are attached to for changes
         last_slot: Option<Slot>,
         /// Last received ledger key
-        last_ledger_step: StreamingStep<Vec<u8>>,
+        last_ledger_step: StreamingStep<LedgerKey>,
         /// Last received async message id
         last_pool_step: StreamingStep<AsyncMessageId>,
         /// Last received Proof of Stake cycle
@@ -566,7 +556,7 @@ enum MessageClientTypeId {
 pub struct BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
-    ledger_step_serializer: StreamingStepSerializer<Vec<u8>, KeySerializer>,
+    ledger_step_serializer: StreamingStepSerializer<LedgerKey, KeySerializer>,
     pool_step_serializer: StreamingStepSerializer<AsyncMessageId, AsyncMessageIdSerializer>,
     cycle_step_serializer: StreamingStepSerializer<u64, U64VarIntSerializer>,
     slot_step_serializer: StreamingStepSerializer<Slot, SlotSerializer>,
@@ -582,7 +572,7 @@ impl BootstrapClientMessageSerializer {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new()),
+            ledger_step_serializer: StreamingStepSerializer::new(KeySerializer::new(true)),
             pool_step_serializer: StreamingStepSerializer::new(AsyncMessageIdSerializer::new()),
             cycle_step_serializer: StreamingStepSerializer::new(U64VarIntSerializer::new()),
             slot_step_serializer: StreamingStepSerializer::new(SlotSerializer::new()),
@@ -674,7 +664,7 @@ pub struct BootstrapClientMessageDeserializer {
     id_deserializer: U32VarIntDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
-    ledger_step_deserializer: StreamingStepDeserializer<Vec<u8>, KeyDeserializer>,
+    ledger_step_deserializer: StreamingStepDeserializer<LedgerKey, KeyDeserializer>,
     pool_step_deserializer: StreamingStepDeserializer<AsyncMessageId, AsyncMessageIdDeserializer>,
     cycle_step_deserializer: StreamingStepDeserializer<u64, U64VarIntDeserializer>,
     slot_step_deserializer: StreamingStepDeserializer<Slot, SlotDeserializer>,
@@ -689,7 +679,7 @@ impl BootstrapClientMessageDeserializer {
     pub fn new(
         thread_count: u8,
         max_datastore_key_length: u8,
-        consensus_bootstrap_part_size: u64,
+        max_consensus_block_ids: u64,
     ) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -700,6 +690,7 @@ impl BootstrapClientMessageDeserializer {
             ),
             ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
                 max_datastore_key_length,
+                true,
             )),
             pool_step_deserializer: StreamingStepDeserializer::new(
                 AsyncMessageIdDeserializer::new(thread_count),
@@ -716,7 +707,7 @@ impl BootstrapClientMessageDeserializer {
                 PreHashSetDeserializer::new(
                     BlockIdDeserializer::new(),
                     Included(0),
-                    Included(consensus_bootstrap_part_size),
+                    Included(max_consensus_block_ids),
                 ),
             ),
         }

@@ -78,8 +78,8 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     String::from("test"),
     ///     10000000,
     ///     Amount::from_str("1").unwrap(),
@@ -166,8 +166,8 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     ///     String::from("test"),
     ///     10000000,
     ///     Amount::from_str("1").unwrap(),
@@ -176,11 +176,11 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     Some(AsyncMessageTrigger {
-    ///        address: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
     ///     })
     /// );
-    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message), Change::Delete(message.compute_id())]);
+    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
     /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);

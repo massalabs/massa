@@ -16,6 +16,7 @@ tracing = "0.1"
 serde_json = "1.0"
 num = { version = "0.4", features = ["serde"] }
 schnellru = "0.2.0"
+sha2 = "0.10.6"
 # use with gas_calibration feature
 tempfile = { version = "3.3", optional = true }
 # custom modules
@@ -37,6 +38,7 @@ massa_final_state = { path = "../massa-final-state" }
 [dev-dependencies]
 massa_pos_worker = { path = "../massa-pos-worker" }
 serial_test = "0.10"
+hex-literal = "0.3.4"
 tempfile = "3.2"
 massa_ledger_worker = { path = "../massa-ledger-worker" }
 # custom modules with testing enabled
@@ -64,6 +66,10 @@ testing = [
     "massa_ledger_exports/testing",
     "massa_pos_exports/testing",
     "massa_final_state/testing",
+    "massa-sc-runtime/testing",
+    "tempfile",
+    "massa_pos_worker",
+    "massa_ledger_worker",
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks
