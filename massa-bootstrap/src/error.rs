@@ -1,7 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::io::{self, ErrorKind};
-
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;

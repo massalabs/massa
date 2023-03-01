@@ -1,17 +1,17 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+// // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-#[cfg(test)]
-pub mod types {
-    pub type Duplex = crate::tests::mock_establisher::Duplex;
+// #[cfg(test)]
+// pub mod types {
+//     pub type Duplex = crate::tests::mock_establisher::Duplex;
 
-    pub type Listener = crate::tests::mock_establisher::MockListener;
+//     pub type Listener = crate::tests::mock_establisher::MockListener;
 
-    pub type Connector = crate::tests::mock_establisher::MockConnector;
+//     pub type Connector = crate::tests::mock_establisher::MockConnector;
 
-    pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
-}
+//     pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
+// }
 
-#[cfg(not(test))]
+// #[cfg(not(test))]
 /// Connection types
 pub mod types {
     use massa_time::MassaTime;
@@ -30,7 +30,7 @@ pub mod types {
 
     /// The listener we are using
     #[derive(Debug)]
-    pub struct DefaultListener(TcpListener);
+    pub struct DefaultListener(pub TcpListener);
 
     impl DefaultListener {
         /// Accepts a new incoming connection from this listener.
@@ -81,8 +81,10 @@ pub mod types {
 
             // Number of connections to queue, set to the hardcoded value used by tokio
             socket.listen(1024)?;
+            let listener: TcpListener = socket.into();
+            listener.set_nonblocking(true)?;
 
-            Ok(DefaultListener(socket.into()))
+            Ok(DefaultListener(listener))
         }
 
         /// Get the connector with associated timeout

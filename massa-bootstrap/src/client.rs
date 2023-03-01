@@ -11,7 +11,6 @@ use rand::{
     prelude::{SliceRandom, StdRng},
     SeedableRng,
 };
-use tokio::time::sleep;
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -25,7 +24,7 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state_and_consensus(
+fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -199,8 +198,8 @@ fn bootstrap_from_server(
                 return Err(res.unwrap_err());
             }
         }
-        Err(ref e) => {
-            res?;
+        Err(e) => {
+            return Err(e);
         }
         Ok((BootstrapServerMessage::BootstrapError { error }, _)) => {
             return Err(BootstrapError::ReceivedError(error.to_string()));
@@ -212,7 +211,7 @@ fn bootstrap_from_server(
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
 
-    let handshake_time = client
+    let _handshake_time = client
         .blocking_handshake(our_version, Some(cfg.write_timeout.into()))
         .map_err(|e| e.update_io_msg_payload("bootstrap handshake timed out"))?;
 
@@ -227,7 +226,7 @@ fn bootstrap_from_server(
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let fetch_tolerance = cfg.read_timeout.to_duration();
-    let (server_time, fetch_time) = client
+    let (server_time, _fetch_time) = client
         .blocking_next(Some(fetch_tolerance))
         .map_err(|e| e.update_io_msg_payload("bootstrap clock sync read timed out"))?;
     let server_time = match server_time {
@@ -286,8 +285,7 @@ fn bootstrap_from_server(
                     client,
                     next_bootstrap_message,
                     global_bootstrap_state,
-                )
-                .await?;
+                )?;
             }
             BootstrapClientMessage::AskBootstrapPeers => {
                 let peers = match send_client_message(
@@ -296,9 +294,7 @@ fn bootstrap_from_server(
                     write_timeout,
                     cfg.read_timeout.into(),
                     "ask bootstrap peers timed out",
-                )
-                .await?
-                {
+                )? {
                     BootstrapServerMessage::BootstrapPeers { peers } => peers,
                     BootstrapServerMessage::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
@@ -323,11 +319,11 @@ fn bootstrap_from_server(
     Ok(())
 }
 
-async fn send_client_message(
+fn send_client_message(
     message_to_send: &BootstrapClientMessage,
     client: &mut BootstrapClientBinder,
     write_timeout: Duration,
-    read_timeout: Duration,
+    _read_timeout: Duration,
     error: &str,
 ) -> Result<BootstrapServerMessage, BootstrapError> {
     client

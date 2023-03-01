@@ -19,7 +19,6 @@ use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::thread;
 use std::time::{Duration, Instant};
-use tokio::runtime::Handle;
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
@@ -113,7 +112,9 @@ impl BootstrapServerBinder {
         let start = Instant::now();
         let time_limit = if time_limit.is_none() {
             self.duplex
-                .set_read_timeout(Some(Duration::from_secs(9999999)));
+                .set_read_timeout(Some(Duration::from_secs(9999999)))
+                // Err only if Some(zero-duration) is used
+                .unwrap();
             return self
                 .duplex
                 .read_exact(buf)
@@ -154,13 +155,8 @@ impl BootstrapServerBinder {
     /// 5. runs the passed in closure (typically a custom logging msg)
     ///
     /// consumes the binding in the process
-    pub(crate) fn close_and_send_error<F>(
-        mut self,
-        server_outer_rt_hnd: Handle,
-        msg: String,
-        addr: SocketAddr,
-        close_fn: F,
-    ) where
+    pub(crate) fn close_and_send_error<F>(mut self, msg: String, addr: SocketAddr, close_fn: F)
+    where
         F: FnOnce() + Send + 'static,
     {
         thread::Builder::new()
@@ -210,7 +206,7 @@ impl BootstrapServerBinder {
             }
         };
 
-        if let Some(timeout) = timeout {}
+        // if let Some(timeout) = timeout {}
         // send signature
         self.duplex.write_all(&sig.to_bytes())?;
 

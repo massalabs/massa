@@ -15,8 +15,6 @@ use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::io::{Read, Write};
 use std::time::{Duration, Instant};
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
@@ -85,7 +83,7 @@ impl BootstrapClientBinder {
     ///       from an async context
     pub fn blocking_next(
         &mut self,
-        timeout: Option<Duration>,
+        _timeout: Option<Duration>,
     ) -> Result<(BootstrapServerMessage, Duration), BootstrapError> {
         let start = Instant::now();
         // read signature
@@ -140,7 +138,9 @@ impl BootstrapClientBinder {
         let start = Instant::now();
         let time_limit = if time_limit.is_none() {
             self.duplex
-                .set_write_timeout(Some(Duration::from_secs(9999999)));
+                .set_write_timeout(Some(Duration::from_secs(9999999)))
+                // Err only if Some(zero-duration) is used
+                .unwrap();
             return self
                 .duplex
                 .write_all(data)
@@ -159,7 +159,7 @@ impl BootstrapClientBinder {
             self.duplex
                 .set_write_timeout(Some(time_limit - clock))
                 .expect("internal error");
-            self.duplex.write(&data[acc..]).map_err(|er| (acc, er))?;
+            acc += self.duplex.write(&data[acc..]).map_err(|er| (acc, er))?;
             clock = Instant::now().duration_since(start);
         }
         Ok(Instant::now().duration_since(start))

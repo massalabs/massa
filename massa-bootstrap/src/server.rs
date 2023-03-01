@@ -28,10 +28,7 @@ mod white_black_list;
 
 use white_black_list::*;
 
-use crossbeam::{
-    channel::{tick, Receiver, Select, SendError},
-    utils::Backoff,
-};
+use crossbeam::{channel::tick, utils::Backoff};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -48,17 +45,17 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr, TcpListener},
+    net::{IpAddr, SocketAddr},
     sync::Arc,
     thread,
     time::{Duration, Instant},
 };
-use tokio::runtime::{self, Handle, Runtime};
+use tokio::runtime::{self, Runtime};
 use tracing::{debug, error, info, warn};
 
 use crate::{
     error::BootstrapError,
-    messages::{BootstrapClientMessage, BootstrapServerMessage},
+    messages::BootstrapServerMessage,
     server_binder::BootstrapServerBinder,
     types::{Duplex, Listener},
     BootstrapConfig, Establisher,
@@ -136,9 +133,6 @@ pub async fn start_bootstrap_server(
         .get_listener(listen_addr)
         .map_err(BootstrapError::IoError)?;
 
-    // This is the primary interface between the async-listener, and the "sync" worker
-    let (listener_tx, listener_rx) = crossbeam::channel::bounded::<BsConn>(max_bootstraps * 2);
-
     let white_black_list = SharedWhiteBlackList::new(
         config.bootstrap_whitelist_path.clone(),
         config.bootstrap_blacklist_path.clone(),
@@ -162,7 +156,6 @@ pub async fn start_bootstrap_server(
         // the non-builder spawn doesn't return a Result, and documentation states that
         // it's an error at the OS level.
         .unwrap();
-    let listen_rt_handle = bs_server_runtime.handle().clone();
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -171,7 +164,6 @@ pub async fn start_bootstrap_server(
                 consensus_controller,
                 network_command_sender,
                 final_state,
-                listener_rx,
                 listen_stopper_rx,
                 white_black_list,
                 keypair,
@@ -200,7 +192,6 @@ struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    listener_rx: crossbeam::channel::Receiver<BsConn>,
     listen_stopper_rx: crossbeam::channel::Receiver<()>,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
@@ -208,7 +199,7 @@ struct BootstrapServer<'a> {
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
     listener: Listener,
-    bs_server_runtime: Runtime,
+    _bs_server_runtime: Runtime,
 }
 
 impl BootstrapServer<'_> {
@@ -277,7 +268,7 @@ impl BootstrapServer<'_> {
         // TODO: Work out how to integration-test this
         loop {
             let (dplx, remote_addr) = match self.stop_or_accept() {
-                Err(()) => return Ok(()),
+                Err(_) => break,
                 Ok(conn) => conn,
             };
             // claim a slot in the max_bootstrap_sessions
@@ -289,12 +280,7 @@ impl BootstrapServer<'_> {
 
             // check whether incoming peer IP is allowed.
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                server.close_and_send_error(
-                    self.bs_server_runtime.handle().clone(),
-                    error_msg.to_string(),
-                    remote_addr,
-                    move || {},
-                );
+                server.close_and_send_error(error_msg.to_string(), remote_addr, move || {});
                 continue;
             };
 
@@ -339,12 +325,7 @@ impl BootstrapServer<'_> {
                             "remote_addr": remote_addr
                         })
                     };
-                    server.close_and_send_error(
-                        self.bs_server_runtime.handle().clone(),
-                        msg,
-                        remote_addr,
-                        tracer,
-                    );
+                    server.close_and_send_error(msg, remote_addr, tracer);
                     continue;
                 }; // Clients Option<last-attempt> is good, and has been updated
 
@@ -358,7 +339,6 @@ impl BootstrapServer<'_> {
                 let config = self.bootstrap_config.clone();
 
                 let bootstrap_count_token = bootstrap_sessions_counter.clone();
-                let session_handle = bs_loop_rt.handle().clone();
                 let _ = thread::Builder::new()
                     .name(format!("bootstrap thread, peer: {}", remote_addr))
                     .spawn(move || {
@@ -371,7 +351,6 @@ impl BootstrapServer<'_> {
                             version,
                             consensus_command_sender,
                             network_command_sender,
-                            session_handle,
                         )
                     });
 
@@ -380,7 +359,6 @@ impl BootstrapServer<'_> {
                 });
             } else {
                 server.close_and_send_error(
-                    self.bs_server_runtime.handle().clone(),
                     "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
                     remote_addr,
                     move || debug!("did not bootstrap {}: no available slots", remote_addr),
@@ -392,7 +370,7 @@ impl BootstrapServer<'_> {
         bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
         Ok(())
     }
-    fn stop_or_accept(&mut self) -> Result<(Duplex, SocketAddr), ()> {
+    fn stop_or_accept(&mut self) -> Result<BsConn, ()> {
         loop {
             let backoff = Backoff::new();
             'backoff: loop {
@@ -422,50 +400,50 @@ impl BootstrapServer<'_> {
         }
     }
 
-    /// These are the steps to ensure that a connection is only processed if the server is active:
-    ///
-    /// - 1. Block until _something_ is ready
-    /// - 2. If that something is a stop-signal, stop
-    /// - 3. If that something is anything else:
-    /// - 3.a. double check the stop-signal is absent
-    /// - 3.b. If present, fall-back to the stop behaviour
-    /// - 3.c. If absent, all's clear to rock-n-roll.
-    fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn>, String> {
-        // 1. Block until _something_ is ready
-        let rdy = selector.ready();
+    // /// These are the steps to ensure that a connection is only processed if the server is active:
+    // ///
+    // /// - 1. Block until _something_ is ready
+    // /// - 2. If that something is a stop-signal, stop
+    // /// - 3. If that something is anything else:
+    // /// - 3.a. double check the stop-signal is absent
+    // /// - 3.b. If present, fall-back to the stop behaviour
+    // /// - 3.c. If absent, all's clear to rock-n-roll.
+    // fn receive_connection(&self, selector: &mut Select) -> Result<Option<BsConn>, String> {
+    //     // 1. Block until _something_ is ready
+    //     let rdy = selector.ready();
 
-        // 2. If that something is a stop-signal, stop
-        // from `crossbeam::Select::read()` documentation:
-        // "Note that this method might return with success spuriously, so it’s a good idea
-        // to always double check if the operation is really ready."
-        if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
-            return Ok(None);
-            // - 3. If that something is anything else:
-        } else {
-            massa_trace!("bootstrap.lib.run.select", {});
+    //     // 2. If that something is a stop-signal, stop
+    //     // from `crossbeam::Select::read()` documentation:
+    //     // "Note that this method might return with success spuriously, so it’s a good idea
+    //     // to always double check if the operation is really ready."
+    //     if rdy == 0 && self.listen_stopper_rx.try_recv().is_ok() {
+    //         return Ok(None);
+    //         // - 3. If that something is anything else:
+    //     } else {
+    //         massa_trace!("bootstrap.lib.run.select", {});
 
-            // - 3.a. double check the stop-signal is absent
-            let stop = self.listen_stopper_rx.try_recv();
-            if unlikely(stop.is_ok()) {
-                massa_trace!("bootstrap.lib.run.select.manager", {});
-                // 3.b. If present, fall-back to the stop behaviour
-                return Ok(None);
-            } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
-                return Err("Unexpected stop-channel disconnection".to_string());
-            };
-        }
-        // - 3.c. If absent, all's clear to rock-n-roll.
-        let msg = match self.listener_rx.try_recv() {
-            Ok(msg) => msg,
-            Err(try_rcv_err) => match try_rcv_err {
-                crossbeam::channel::TryRecvError::Empty => return Ok(None),
-                crossbeam::channel::TryRecvError::Disconnected => {
-                    return Err("listener recv channel disconnected unexpectedly".to_string());
-                }
-            },
-        };
-        Ok(Some(msg))
-    }
+    //         // - 3.a. double check the stop-signal is absent
+    //         let stop = self.listen_stopper_rx.try_recv();
+    //         if unlikely(stop.is_ok()) {
+    //             massa_trace!("bootstrap.lib.run.select.manager", {});
+    //             // 3.b. If present, fall-back to the stop behaviour
+    //             return Ok(None);
+    //         } else if unlikely(stop == Err(crossbeam::channel::TryRecvError::Disconnected)) {
+    //             return Err("Unexpected stop-channel disconnection".to_string());
+    //         };
+    //     }
+    //     // - 3.c. If absent, all's clear to rock-n-roll.
+    //     let msg = match self.listener_rx.try_recv() {
+    //         Ok(msg) => msg,
+    //         Err(try_rcv_err) => match try_rcv_err {
+    //             crossbeam::channel::TryRecvError::Empty => return Ok(None),
+    //             crossbeam::channel::TryRecvError::Disconnected => {
+    //                 return Err("listener recv channel disconnected unexpectedly".to_string());
+    //             }
+    //         },
+    //     };
+    //     Ok(Some(msg))
+    // }
 
     /// Checks latest attempt. If too recent, provides the bad news (as an error).
     /// Updates the latest attempt to "now" if it's all good.
@@ -513,7 +491,6 @@ fn run_bootstrap_session(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
-    bs_loop_rt_handle: Handle,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
     let res = manage_bootstrap(
@@ -752,7 +729,7 @@ fn manage_bootstrap(
 
     let handshake_time =
         server.blocking_handshake(version, Some(bootstrap_config.read_timeout.into()))?;
-    let fetc9h = server.blocking_next(Some(read_error_timeout));
+    let fetch = server.blocking_next(Some(read_error_timeout));
     todo!("handle the fetch here");
     //     Err(_) => (),
     //     Ok(Err(e)) => return Err(e),
@@ -762,7 +739,7 @@ fn manage_bootstrap(
     //     Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
     // };
 
-    let write_timeout: Duration = bootstrap_config.write_timeout.into();
+    // let write_timeout: Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
     let server_time = MassaTime::now()?;
