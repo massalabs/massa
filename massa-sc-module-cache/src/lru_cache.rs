@@ -4,6 +4,8 @@ use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::RuntimeModule;
 use schnellru::{ByLength, LruMap};
 
+use crate::types::ModuleInfo;
+
 /// `LruMap` specialization for `PreHashed` keys
 pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
 
@@ -29,26 +31,22 @@ impl LRUCache {
     /// If the module is contained in the cache:
     /// * retrieve a copy of it
     /// * move it up in the LRU cache
-    pub fn get(
-        &mut self,
-        hash: Hash,
-        limit: u64,
-    ) -> Result<Option<(RuntimeModule, u64)>, ExecutionError> {
-        if let Some((cached_module, Some(init_cost))) = self.cache.get(&hash) {
-            if limit < *init_cost {
+    pub fn get(&mut self, hash: Hash, limit: u64) -> Result<Option<ModuleInfo>, ExecutionError> {
+        if let Some((cached_module, opt_init_cost)) = self.cache.get(&hash) {
+            if let Some(init_cost) = opt_init_cost && limit < *init_cost {
                 return Err(ExecutionError::RuntimeError(
                     "given gas cannot cover the initialization costs".to_string(),
                 ));
             }
-            Ok(Some((cached_module.clone(), *init_cost)))
+            Ok(Some((cached_module.clone(), *opt_init_cost)))
         } else {
             Ok(None)
         }
     }
 
     /// Save a module in the LRU cache
-    pub fn insert(&mut self, hash: Hash, module: RuntimeModule, opt_init_cost: Option<u64>) {
-        self.cache.insert(hash, (module, opt_init_cost));
+    pub fn insert(&mut self, hash: Hash, module_info: (RuntimeModule, Option<u64>)) {
+        self.cache.insert(hash, module_info);
     }
 
     /// Set the initialization cost of a LRU cached module
