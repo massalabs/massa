@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::io::{self, ErrorKind};
+
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
@@ -58,4 +60,14 @@ pub enum BootstrapError {
     BlackListed(String),
     /// IP {0} is not in the whitelist
     WhiteListed(String),
+}
+
+impl BootstrapError {
+    /// Updates the err-msg payload of
+    pub fn update_io_msg_payload(self, new_msg: &str) -> Self {
+        if let Self::IoError(e) = &self {
+            return Self::IoError(std::io::Error::new(e.kind(), new_msg));
+        }
+        self
+    }
 }
