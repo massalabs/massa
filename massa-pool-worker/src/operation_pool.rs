@@ -186,6 +186,10 @@ impl OperationPool {
     }
 
     /// get operations for block creation
+    ///
+    /// Searches the available operations, and selects the sub-set of operations that:
+    /// - fit inside the block
+    /// - is the most profitable for block producer
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
@@ -194,11 +198,17 @@ impl OperationPool {
         let mut remaining_space = self.config.max_block_size as usize;
         // init remaining gas
         let mut remaining_gas = self.config.max_block_gas;
+        // init remaining number of operations
+        let mut remaining_ops = self.config.max_operations_per_block;
         // cache of balances
         let mut balance_cache: PreHashMap<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+            // if we have reached the maximum number of operations, stop
+            if remaining_ops == 0 {
+                break;
+            }
             let op_info = self
                 .operations
                 .get(&cursor.get_id())
@@ -261,6 +271,9 @@ impl OperationPool {
 
             // update remaining block gas
             remaining_gas -= op_info.max_gas;
+
+            // update remaining number of operations
+            remaining_ops -= 1;
 
             // update balance cache
             *creator_balance = creator_balance.saturating_sub(op_info.max_spending);

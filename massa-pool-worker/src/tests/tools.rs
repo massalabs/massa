@@ -15,43 +15,74 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolController, PoolManager};
-use massa_signature::{KeyPair, PublicKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
-use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 use tokio::sync::broadcast;
 
-/// Tooling to create a transaction with an expire periods
-/// TODO move tooling in a dedicated module
-pub fn create_operation_with_expire_period(
-    keypair: &KeyPair,
-    expire_period: u64,
-) -> SecureShareOperation {
-    let recv_keypair = KeyPair::generate();
+#[derive(Default)]
+pub(crate) struct OpGenerator {
+    creator: Option<KeyPair>,
+    receiver: Option<KeyPair>,
+    fee: Option<Amount>,
+    amount: Option<Amount>,
+    expirery: Option<u64>,
+}
 
-    let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
-        amount: Amount::default(),
-    };
-    let content = Operation {
-        fee: Amount::default(),
-        op,
-        expire_period,
-    };
-    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
+impl OpGenerator {
+    pub(crate) fn expirery(mut self, expirery: u64) -> Self {
+        self.expirery = Some(expirery);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn amount(mut self, amount: Amount) -> Self {
+        self.amount = Some(amount);
+        self
+    }
+
+    pub(crate) fn fee(mut self, fee: Amount) -> Self {
+        self.fee = Some(fee);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn receiver(mut self, receiver: KeyPair) -> Self {
+        self.receiver = Some(receiver);
+        self
+    }
+
+    pub(crate) fn creator(mut self, creator: KeyPair) -> Self {
+        self.creator = Some(creator);
+        self
+    }
+
+    pub(crate) fn generate(&self) -> SecureShareOperation {
+        let creator = self.creator.clone().unwrap_or_else(KeyPair::generate);
+        let receiver = self.receiver.clone().unwrap_or_else(KeyPair::generate);
+        let fee = self.fee.unwrap_or_default();
+        let amount = self.amount.unwrap_or_default();
+        let expirery = self.expirery.unwrap_or_default();
+
+        let op = OperationType::Transaction {
+            recipient_address: Address::from_public_key(&receiver.get_public_key()),
+            amount,
+        };
+        let content = Operation {
+            fee,
+            op,
+            expire_period: expirery,
+        };
+        Operation::new_verifiable(content, OperationSerializer::new(), &creator).unwrap()
+    }
 }
 
 /// Return `n` signed operations
-pub fn create_some_operations(
-    n: usize,
-    keypair: &KeyPair,
-    expire_period: u64,
-) -> Vec<SecureShareOperation> {
-    (0..n)
-        .map(|_| create_operation_with_expire_period(keypair, expire_period))
-        .collect()
+pub(crate) fn create_some_operations(n: usize, op_gen: &OpGenerator) -> Vec<SecureShareOperation> {
+    (0..n).map(|_| op_gen.generate()).collect()
 }
 
+/// Creates module mocks, providing the environment needed to run the provided closure
 pub fn pool_test<F>(cfg: PoolConfig, test: F)
 where
     F: FnOnce(
@@ -92,21 +123,6 @@ where
     )
 }
 
-pub fn _get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
-    let sender_keypair = KeyPair::generate();
-
-    let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&KeyPair::generate().get_public_key()),
-        amount: Amount::default(),
-    };
-    let content = Operation {
-        fee: Amount::from_str(&fee.to_string()).unwrap(),
-        op,
-        expire_period,
-    };
-    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
-}
-
 /// Creates an endorsement for use in pool tests.
 pub fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
     let sender_keypair = KeyPair::generate();
@@ -117,22 +133,4 @@ pub fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
         endorsed_block: BlockId(Hash::compute_from("blabla".as_bytes())),
     };
     Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
-}
-
-pub fn _get_transaction_with_addresses(
-    expire_period: u64,
-    fee: u64,
-    sender_keypair: &KeyPair,
-    recv_pub: PublicKey,
-) -> SecureShareOperation {
-    let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_pub),
-        amount: Amount::default(),
-    };
-    let content = Operation {
-        fee: Amount::from_str(&fee.to_string()).unwrap(),
-        op,
-        expire_period,
-    };
-    Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap()
 }

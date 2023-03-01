@@ -5,11 +5,12 @@
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use massa_hash::Hash;
 use massa_ledger_exports::{
-    LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
+    Key, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
 use massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
+    bytecode::{Bytecode, BytecodeDeserializer},
     error::ModelsError,
     slot::Slot,
     streaming_step::StreamingStep,
@@ -106,9 +107,17 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
-    fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
+    fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
+        let bytecode_deserializer =
+            BytecodeDeserializer::new(self.config.max_datastore_value_length);
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Bytecode)
+            .map(|bytes| {
+                bytecode_deserializer
+                    .deserialize::<DeserializeError>(&bytes)
+                    .expect("critical: invalid bytecode format")
+                    .1
+            })
     }
 
     /// Checks if a ledger entry exists
@@ -155,8 +164,8 @@ impl LedgerController for FinalLedger {
     /// A tuple containing the data and the last returned key
     fn get_ledger_part(
         &self,
-        last_key: StreamingStep<Vec<u8>>,
-    ) -> Result<(Vec<u8>, StreamingStep<Vec<u8>>), ModelsError> {
+        last_key: StreamingStep<Key>,
+    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError> {
         self.sorted_ledger.get_ledger_part(last_key)
     }
 
@@ -166,8 +175,15 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// The last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Vec<u8>>, ModelsError> {
+    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Key>, ModelsError> {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
+    }
+
+    /// Reset the disk ledger.
+    ///
+    /// USED FOR BOOTSTRAP ONLY
+    fn reset(&mut self) {
+        self.sorted_ledger.reset();
     }
 
     /// Get every address and their corresponding balance.

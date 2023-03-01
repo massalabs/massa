@@ -1,9 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_models::block::BlockDeserializerArgs;
 use massa_models::node::NodeId;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::{net::SocketAddr, path::PathBuf};
+
+use substruct::SubStruct;
 
 /// Bootstrap IP protocol version setting.
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -28,7 +31,7 @@ pub struct BootstrapConfig {
     /// Path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
     pub bootstrap_blacklist_path: PathBuf,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
-    pub bind: Option<SocketAddr>,
+    pub listen_addr: Option<SocketAddr>,
     /// connection timeout
     pub connect_timeout: MassaTime,
     /// Time allocated to managing the bootstrapping process,
@@ -116,4 +119,88 @@ pub struct BootstrapConfig {
     pub max_ops_changes_length: u64,
     /// consensus bootstrap part size
     pub consensus_bootstrap_part_size: u64,
+    /// max number of consensus block ids when sending a bootstrap cursor from the client
+    pub max_consensus_block_ids: u64,
+}
+
+/// Bootstrap server binding
+#[allow(missing_docs)]
+#[derive(Debug, Deserialize, Clone, SubStruct)]
+#[parent(type = "BootstrapConfig")]
+pub struct BootstrapSrvBindCfg {
+    pub max_bytes_read_write: f64,
+    pub max_bootstrap_message_size: u32,
+    pub thread_count: u8,
+    pub max_datastore_key_length: u8,
+    pub randomness_size_bytes: usize,
+    pub consensus_bootstrap_part_size: u64,
+    pub write_error_timeout: MassaTime,
+}
+
+/// Bootstrap client config
+#[allow(missing_docs)]
+#[derive(Debug, Deserialize, Clone, SubStruct)]
+#[parent(type = "BootstrapConfig")]
+pub struct BootstrapClientConfig {
+    pub max_bytes_read_write: f64,
+    pub max_bootstrap_message_size: u32,
+    pub endorsement_count: u32,
+    pub max_advertise_length: u32,
+    pub max_bootstrap_blocks_length: u32,
+    pub max_operations_per_block: u32,
+    pub thread_count: u8,
+    pub randomness_size_bytes: usize,
+    pub max_bootstrap_error_length: u64,
+    pub max_bootstrap_final_state_parts_size: u64,
+    pub max_datastore_entry_count: u64,
+    pub max_datastore_key_length: u8,
+    pub max_datastore_value_length: u64,
+    pub max_async_pool_changes: u64,
+    pub max_async_pool_length: u64,
+    pub max_async_message_data: u64,
+    pub max_ledger_changes_count: u64,
+    pub max_changes_slot_count: u64,
+    pub max_rolls_length: u64,
+    pub max_production_stats_length: u64,
+    pub max_credits_length: u64,
+    pub max_executed_ops_length: u64,
+    pub max_ops_changes_length: u64,
+}
+
+/// Bootstrap Message der args
+#[allow(missing_docs)]
+#[derive(SubStruct)]
+#[parent(type = "BootstrapClientConfig")]
+pub struct BootstrapServerMessageDeserializerArgs {
+    pub thread_count: u8,
+    pub endorsement_count: u32,
+    pub max_advertise_length: u32,
+    pub max_bootstrap_blocks_length: u32,
+    pub max_operations_per_block: u32,
+    pub max_bootstrap_final_state_parts_size: u64,
+    pub max_async_pool_changes: u64,
+    pub max_async_pool_length: u64,
+    pub max_async_message_data: u64,
+    pub max_ledger_changes_count: u64,
+    pub max_datastore_key_length: u8,
+    pub max_datastore_value_length: u64,
+    pub max_datastore_entry_count: u64,
+    pub max_bootstrap_error_length: u64,
+    pub max_changes_slot_count: u64,
+    pub max_rolls_length: u64,
+    pub max_production_stats_length: u64,
+    pub max_credits_length: u64,
+    pub max_executed_ops_length: u64,
+    pub max_ops_changes_length: u64,
+}
+
+// TODO: add a proc macro for this case
+impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
+    fn from(value: &BootstrapServerMessageDeserializerArgs) -> Self {
+        Self {
+            thread_count: value.thread_count,
+            max_operations_per_block: value.max_operations_per_block,
+            endorsement_count: value.endorsement_count,
+        }
+    }
 }

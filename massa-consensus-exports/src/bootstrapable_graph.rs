@@ -1,6 +1,7 @@
 use crate::export_active_block::{
     ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
 };
+use massa_models::block::BlockDeserializerArgs;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -80,22 +81,13 @@ pub struct BootstrapableGraphDeserializer {
 impl BootstrapableGraphDeserializer {
     /// Creates a `BootstrapableGraphDeserializer`
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_bootstrap_blocks: u32,
-        max_operations_per_block: u32,
-    ) -> Self {
+    pub fn new(block_der_args: BlockDeserializerArgs, max_bootstrap_blocks: u32) -> Self {
         Self {
             block_count_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_bootstrap_blocks),
             ),
-            export_active_block_deserializer: ExportActiveBlockDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_operations_per_block,
-            ),
+            export_active_block_deserializer: ExportActiveBlockDeserializer::new(block_der_args),
         }
     }
 }
@@ -107,12 +99,15 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use massa_models::{prehash::PreHashMap, block_id::BlockId, config::THREAD_COUNT};
+    /// use massa_models::block::BlockDeserializerArgs;
     /// let mut bootstrapable_graph = BootstrapableGraph {
     ///   final_blocks: Vec::new(),
     /// };
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
-    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(32, 16, 10, 10).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let args = BlockDeserializerArgs {
+    /// thread_count: 32,max_operations_per_block: 16,endorsement_count: 10,};
+    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(args, 10).deserialize::<DeserializeError>(&buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph_deserialized, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);

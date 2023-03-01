@@ -167,6 +167,8 @@ async fn stream_final_state_and_consensus(
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                     };
+                    let mut write_final_state = global_bootstrap_state.final_state.write();
+                    write_final_state.reset();
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 BootstrapServerMessage::BootstrapError { error } => {
@@ -382,29 +384,7 @@ async fn connect_to_server(
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,
-        bootstrap_config.max_bytes_read_write,
-        bootstrap_config.max_bootstrap_message_size,
-        bootstrap_config.endorsement_count,
-        bootstrap_config.max_advertise_length,
-        bootstrap_config.max_bootstrap_blocks_length,
-        bootstrap_config.max_operations_per_block,
-        bootstrap_config.thread_count,
-        bootstrap_config.randomness_size_bytes,
-        bootstrap_config.max_bootstrap_error_length,
-        bootstrap_config.max_bootstrap_final_state_parts_size,
-        bootstrap_config.max_datastore_entry_count,
-        bootstrap_config.max_datastore_key_length,
-        bootstrap_config.max_datastore_value_length,
-        bootstrap_config.max_async_pool_changes,
-        bootstrap_config.max_async_pool_length,
-        bootstrap_config.max_async_message_data,
-        bootstrap_config.max_ledger_changes_count,
-        bootstrap_config.max_changes_slot_count,
-        bootstrap_config.max_rolls_length,
-        bootstrap_config.max_production_stats_length,
-        bootstrap_config.max_credits_length,
-        bootstrap_config.max_executed_ops_length,
-        bootstrap_config.max_ops_changes_length,
+        bootstrap_config.into(),
     ))
 }
 

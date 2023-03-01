@@ -199,10 +199,10 @@ impl Slot {
     }
 
     /// returns the maximal slot
-    pub const fn max() -> Slot {
+    pub const fn max(thread_count: u8) -> Slot {
         Slot {
             period: u64::MAX,
-            thread: u8::MAX,
+            thread: thread_count,
         }
     }
 

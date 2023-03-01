@@ -12,4 +12,4 @@ tracing = "0.1"
 
 [dev-dependencies]
 pretty_assertions = "1.2"
-serial_test = "0.10"
+serial_test = "1.0"

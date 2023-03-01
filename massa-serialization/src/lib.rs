@@ -335,3 +335,52 @@ where
         .parse(buffer)
     }
 }
+
+/// Serializer for bool
+#[derive(Debug, Default)]
+pub struct BoolSerializer {}
+
+impl BoolSerializer {
+    /// ctor
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Serializer<bool> for BoolSerializer {
+    fn serialize(&self, value: &bool, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.push(*value as u8);
+        Ok(())
+    }
+}
+
+/// Deserializer for bool
+#[derive(Debug, Default)]
+pub struct BoolDeserializer {}
+
+impl BoolDeserializer {
+    /// ctor
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Deserializer<bool> for BoolDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], bool, E> {
+        context("Failed bool deserialization", |input: &'a [u8]| {
+            Ok((&buffer[1..], {
+                match buffer.first() {
+                    Some(1) => Ok(true),
+                    Some(0) => Ok(false),
+                    _ => Err(nom::Err::Error(ParseError::from_error_kind(
+                        input,
+                        nom::error::ErrorKind::Fail,
+                    ))),
+                }
+            }?))
+        })(buffer)
+    }
+}

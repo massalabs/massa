@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    address::{Address, AddressDeserializer},
+    address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     error::ModelsError,
     error::ModelsResult as Result,
@@ -322,6 +322,7 @@ pub struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
 /// Basic serializer for `LedgerChanges`
 pub struct LedgerChangesSerializer {
     length_serializer: U64VarIntSerializer,
+    address_serializer: AddressSerializer,
     ledger_change_serializer: LedgerChangeSerializer,
 }
 
@@ -330,6 +331,7 @@ impl LedgerChangesSerializer {
     pub fn new() -> Self {
         Self {
             length_serializer: U64VarIntSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             ledger_change_serializer: LedgerChangeSerializer::new(),
         }
     }
@@ -346,7 +348,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
         self.length_serializer
             .serialize(&(value.0.len() as u64), buffer)?;
         for (address, change) in value.0.iter() {
-            buffer.extend(address.to_bytes());
+            self.address_serializer.serialize(address, buffer)?;
             self.ledger_change_serializer.serialize(change, buffer)?;
         }
         Ok(())
@@ -383,14 +385,14 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// # let ledger_changes = LedgerChanges(vec![
     /// #   (
-    /// #       Address::from_str("A12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap(),
+    /// #       Address::from_str("AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap(),
     /// #       LedgerChange {
     /// #           balance_delta: Amount::from_str("1149").unwrap(),
     /// #           balance_increment: true
     /// #       },
     /// #   ),
     /// #   (
-    /// #       Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    /// #       Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     /// #       LedgerChange {
     /// #           balance_delta: Amount::from_str("1020").unwrap(),
     /// #           balance_increment: true

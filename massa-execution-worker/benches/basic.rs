@@ -15,7 +15,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     fn prepare_bench_function() -> (InterfaceImpl, Vec<Vec<u8>>, GasCosts) {
         let interface = InterfaceImpl::new_default(
             black_box(
-                Address::from_str("A12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
+                Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
             ),
             black_box(None),
         );

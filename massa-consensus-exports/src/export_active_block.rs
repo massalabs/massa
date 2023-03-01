@@ -2,7 +2,7 @@ use crate::error::ConsensusError;
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    block::{Block, BlockDeserializer, SecureShareBlock},
+    block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
     block_id::BlockId,
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
@@ -138,13 +138,13 @@ pub struct ExportActiveBlockDeserializer {
 
 impl ExportActiveBlockDeserializer {
     /// Create a new `ExportActiveBlockDeserializer`
+    // TODO: check if we can remove this?
     #[allow(clippy::too_many_arguments)]
-    pub fn new(thread_count: u8, endorsement_count: u32, max_operations_per_block: u32) -> Self {
+    pub fn new(block_der_args: BlockDeserializerArgs) -> Self {
+        let thread_count = block_der_args.thread_count;
         ExportActiveBlockDeserializer {
             sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
-                thread_count,
-                max_operations_per_block,
-                endorsement_count,
+                block_der_args,
             )),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -162,6 +162,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
+    /// use massa_models::block::BlockDeserializerArgs;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -219,7 +220,9 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 16, 1000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let args = BlockDeserializerArgs {
+    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000};
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(rest.len(), 0);

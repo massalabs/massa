@@ -13,6 +13,8 @@ use jsonrpsee::rpc_params;
 use jsonrpsee::types::error::CallError;
 use jsonrpsee::types::ErrorObject;
 use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
+use massa_api_exports::page::PagedVecV2;
+use massa_api_exports::ApiRequest;
 use massa_api_exports::{
     address::AddressInfo,
     block::{BlockInfo, BlockSummary},
@@ -428,6 +430,35 @@ impl RpcClientV2 {
     ////////////////
     //
     // Experimental APIs. They might disappear, and they will change //
+
+    /// Get the active stakers and their active roll counts for the current cycle sorted by largest roll counts.
+    pub async fn get_largest_stakers(
+        &self,
+        request: Option<ApiRequest>,
+    ) -> RpcResult<PagedVecV2<(BlockId, u64)>> {
+        if let Some(client) = self.http_client.as_ref() {
+            client
+                .request("get_largest_stakers", rpc_params![request])
+                .await
+        } else {
+            Err(JsonRpseeError::Custom(
+                "error, no Http client instance found".to_owned(),
+            ))
+        }
+    }
+
+    /// Get the ids of best parents for the next block to be produced along with their period
+    pub async fn get_next_block_best_parents(&self) -> RpcResult<Vec<(BlockId, u64)>> {
+        if let Some(client) = self.http_client.as_ref() {
+            client
+                .request("get_next_block_best_parents", rpc_params![])
+                .await
+        } else {
+            Err(JsonRpseeError::Custom(
+                "error, no Http client instance found".to_owned(),
+            ))
+        }
+    }
 
     /// Get Massa node version
     pub async fn get_version(&self) -> RpcResult<Version> {

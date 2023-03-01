@@ -242,7 +242,7 @@ fn test_cycle_info_hash_computation() {
         BitVec::default(),
         PreHashMap::default(),
     );
-    let addr = Address::from_bytes(&[0u8; 32]);
+    let addr = Address::from_prefixed_bytes(&[0; 33].as_slice()).unwrap();
 
     // add changes
     let mut roll_changes = PreHashMap::default();
@@ -328,6 +328,7 @@ pub struct CycleInfoSerializer {
     u64_ser: U64VarIntSerializer,
     bitvec_ser: BitVecSerializer,
     production_stats_ser: ProductionStatsSerializer,
+    address_ser: AddressSerializer,
     opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
 }
 
@@ -344,6 +345,7 @@ impl CycleInfoSerializer {
             u64_ser: U64VarIntSerializer::new(),
             bitvec_ser: BitVecSerializer::new(),
             production_stats_ser: ProductionStatsSerializer::new(),
+            address_ser: AddressSerializer::new(),
             opt_hash_ser: OptionSerializer::new(HashSerializer::new()),
         }
     }
@@ -361,7 +363,7 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
         self.u64_ser
             .serialize(&(value.roll_counts.len() as u64), buffer)?;
         for (addr, count) in &value.roll_counts {
-            buffer.extend(addr.to_bytes());
+            self.address_ser.serialize(addr, buffer)?;
             self.u64_ser.serialize(count, buffer)?;
         }
 
@@ -483,6 +485,7 @@ impl ProductionStats {
 /// Serializer for `ProductionStats`
 pub struct ProductionStatsSerializer {
     u64_ser: U64VarIntSerializer,
+    address_ser: AddressSerializer,
 }
 
 impl Default for ProductionStatsSerializer {
@@ -496,6 +499,7 @@ impl ProductionStatsSerializer {
     pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
+            address_ser: AddressSerializer::new(),
         }
     }
 }
@@ -515,7 +519,7 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
             },
         ) in value.iter()
         {
-            buffer.extend(addr.to_bytes());
+            self.address_ser.serialize(addr, buffer)?;
             self.u64_ser.serialize(block_success_count, buffer)?;
             self.u64_ser.serialize(block_failure_count, buffer)?;
         }

@@ -17,16 +17,19 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::block::BlockDeserializerArgs;
+use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_CONSENSUS_BLOCKS_IDS,
+    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::{
@@ -75,7 +78,8 @@ fn get_some_random_bytes() -> Vec<u8> {
 fn get_random_ledger_entry() -> LedgerEntry {
     let mut rng = rand::thread_rng();
     let balance = Amount::from_raw(rng.gen::<u64>());
-    let bytecode: Vec<u8> = get_some_random_bytes();
+    let bytecode_bytes: Vec<u8> = get_some_random_bytes();
+    let bytecode = Bytecode(bytecode_bytes);
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
         let key = get_some_random_bytes();
@@ -96,7 +100,7 @@ pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
             get_random_address(),
             SetUpdateOrDelete::Set(LedgerEntry {
                 balance: Amount::from_raw(r_limit),
-                bytecode: Vec::default(),
+                bytecode: Bytecode::default(),
                 datastore: BTreeMap::default(),
             }),
         );
@@ -207,15 +211,18 @@ pub fn get_random_executed_ops(
     executed_ops
 }
 
-pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, Slot> {
+pub fn get_random_executed_ops_changes(r_limit: u64) -> PreHashMap<OperationId, (bool, Slot)> {
     let mut ops_changes = PreHashMap::default();
     for i in 0..r_limit {
         ops_changes.insert(
             OperationId::new(Hash::compute_from(&get_some_random_bytes())),
-            Slot {
-                period: i + 10,
-                thread: 0,
-            },
+            (
+                true,
+                Slot {
+                    period: i + 10,
+                    thread: 0,
+                },
+            ),
         );
     }
     ops_changes
@@ -238,7 +245,14 @@ pub fn get_random_final_state_bootstrap(
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
     // insert the last possible address to prevent the last cursor to move when testing the changes
-    sorted_ledger.insert(Address::from_bytes(&[255; 32]), get_random_ledger_entry());
+    // The magic number at idx 0 is to account for address variant leader. At time of writing,
+    // the highest value for encoding this variant in serialized form is `1`.
+    let mut bytes = [255; 33];
+    bytes[0] = 1;
+    sorted_ledger.insert(
+        Address::from_prefixed_bytes(&bytes).unwrap(),
+        get_random_ledger_entry(),
+    );
 
     let slot = Slot::new(0, 0);
     let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);
@@ -277,7 +291,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
 
 pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
-        bind: Some("0.0.0.0:31244".parse().unwrap()),
+        listen_addr: Some("0.0.0.0:31244".parse().unwrap()),
         bootstrap_protocol: IpType::Both,
         bootstrap_timeout: 120000.into(),
         connect_timeout: 200.into(),
@@ -329,6 +343,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+        max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
     }
 }
 
@@ -428,12 +443,13 @@ pub fn get_boot_state() -> BootstrapableGraph {
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
-        THREAD_COUNT,
-        ENDORSEMENT_COUNT,
-        MAX_BOOTSTRAP_BLOCKS,
-        MAX_OPERATIONS_PER_BLOCK,
-    );
+    let args = BlockDeserializerArgs {
+        thread_count: THREAD_COUNT,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        endorsement_count: ENDORSEMENT_COUNT,
+    };
+    let bootstrapable_graph_deserializer =
+        BootstrapableGraphDeserializer::new(args, MAX_BOOTSTRAP_BLOCKS);
 
     let mut bootstrapable_graph_serialized = Vec::new();
     bootstrapable_graph_serializer

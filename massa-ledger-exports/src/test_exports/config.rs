@@ -2,7 +2,10 @@
 /// This file defines testing tools related to the configuration
 use massa_models::{
     address::Address,
-    config::{LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
+    config::{
+        LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+        THREAD_COUNT,
+    },
 };
 use std::collections::HashMap;
 use std::io::Seek;
@@ -21,6 +24,7 @@ impl Default for LedgerConfig {
             thread_count: THREAD_COUNT,
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         }
     }
 }
@@ -43,6 +47,7 @@ impl LedgerConfig {
                 max_key_length: MAX_DATASTORE_KEY_LENGTH,
                 max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
                 thread_count: THREAD_COUNT,
+                max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
             },
             initial_ledger,
             disk_ledger,

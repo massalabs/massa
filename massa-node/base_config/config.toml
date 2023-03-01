@@ -18,7 +18,7 @@
     # path to the openrpc specification file used in `rpc.discover` method
     openrpc_spec_path = "base_config/openrpc.json"
     # maximum size in bytes of a request
-    max_request_body_size = 52428800 
+    max_request_body_size = 52428800
     # maximum size in bytes of a response
     max_response_body_size = 52428800
     # maximum number of incoming connections allowed
@@ -56,6 +56,8 @@
     wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
     # max number of compiled modules in the cache
     max_module_cache_size = 1000
+    # path to the initial vesting file
+    initial_vesting_path = "base_config/initial_vesting.json"
 
 [ledger]
     # path to the initial ledger

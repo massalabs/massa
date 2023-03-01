@@ -237,9 +237,9 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
-        // self.channels
-        //     .consensus
-        //     .register_block(block_id, slot, block_storage, true);
+        self.channels
+            .consensus
+            .register_block(block_id, slot, block_storage, true);
     }
 
     /// main run loop of the block creator thread

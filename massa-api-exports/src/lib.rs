@@ -7,6 +7,7 @@
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
 
+use crate::page::PageRequest;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +47,26 @@ fn display_if_true(value: bool, text: &str) -> String {
     }
 }
 
+/// Help to format Optional bool
+fn display_option_bool(
+    value: Option<bool>,
+    text_true: &str,
+    text_false: &str,
+    text_none: &str,
+) -> String {
+    match value {
+        Some(true) => {
+            format!("[{}]", text_true)
+        }
+        Some(false) => {
+            format!("[{}]", text_false)
+        }
+        None => {
+            format!("[{}]", text_none)
+        }
+    }
+}
+
 /// Just a wrapper with a optional beginning and end
 #[derive(Debug, Deserialize, Clone, Copy, Serialize)]
 pub struct TimeInterval {
@@ -71,7 +92,7 @@ pub enum ScrudOperation {
     Delete,
 }
 
-/// Bootsrap lists types
+/// Bootstrap lists types
 #[derive(strum::Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum ListType {
@@ -79,4 +100,11 @@ pub enum ListType {
     Blacklist,
     /// contains allowed entry
     Whitelist,
+}
+
+/// Wrap request params into struct for ApiV2 method
+#[derive(Deserialize, Serialize)]
+pub struct ApiRequest {
+    /// pagination
+    pub page_request: Option<PageRequest>,
 }

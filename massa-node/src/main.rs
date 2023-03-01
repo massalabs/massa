@@ -34,16 +34,17 @@ use massa_models::config::constants::{
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
-    MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, NETWORK_CONTROLLER_CHANNEL_SIZE,
-    NETWORK_EVENT_CHANNEL_SIZE, NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE,
-    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE,
-    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
-    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
+    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+    MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, NETWORK_CONTROLLER_CHANNEL_SIZE, NETWORK_EVENT_CHANNEL_SIZE,
+    NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
+    PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
+    T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -71,9 +72,11 @@ use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
+
 mod settings;
 
 async fn launch(
+    _args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
@@ -107,6 +110,7 @@ async fn launch(
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -176,7 +180,7 @@ async fn launch(
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
         bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
         bootstrap_blacklist_path: SETTINGS.bootstrap.bootstrap_blacklist_path.clone(),
-        bind: SETTINGS.bootstrap.bind,
+        listen_addr: SETTINGS.bootstrap.bind,
         connect_timeout: SETTINGS.bootstrap.connect_timeout,
         bootstrap_timeout: SETTINGS.bootstrap.bootstrap_timeout,
         read_timeout: SETTINGS.bootstrap.read_timeout,
@@ -220,6 +224,7 @@ async fn launch(
         max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
         max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+        max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
     };
 
     // bootstrap
@@ -334,6 +339,7 @@ async fn launch(
         max_module_cache_size: SETTINGS.execution.max_module_cache_size,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+        initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
         gas_costs: GasCosts::new(
             SETTINGS.execution.abi_gas_costs_file.clone(),
             SETTINGS.execution.wasm_gas_costs_file.clone(),
@@ -354,6 +360,7 @@ async fn launch(
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
@@ -541,7 +548,9 @@ async fn launch(
 
     // spawn Massa API
     let api = API::<ApiV2>::new(
+        consensus_controller.clone(),
         consensus_channels,
+        execution_controller.clone(),
         pool_channels,
         api_config.clone(),
         *VERSION,
@@ -591,25 +600,25 @@ async fn launch(
         // only for #[cfg]
         use parking_lot::deadlock;
         use std::thread;
-        use std::time::Duration;
-        // Create a background thread which checks for deadlocks every 10s
+
+        let interval = Duration::from_secs(_args.dl_interval);
+        warn!("deadlocks detector will run every {:?}", interval);
+
+        // Create a background thread which checks for deadlocks at the defined interval
         let thread_builder = thread::Builder::new().name("deadlock-detection".into());
         thread_builder
             .spawn(move || loop {
-                thread::sleep(Duration::from_secs(10));
+                thread::sleep(interval);
                 let deadlocks = deadlock::check_deadlock();
-                println!("deadlocks check");
-
                 if deadlocks.is_empty() {
                     continue;
                 }
-
-                println!("{} deadlocks detected", deadlocks.len());
+                warn!("{} deadlocks detected", deadlocks.len());
                 for (i, threads) in deadlocks.iter().enumerate() {
-                    println!("Deadlock #{}", i);
+                    warn!("Deadlock #{}", i);
                     for t in threads {
-                        println!("Thread Id {:#?}", t.thread_id());
-                        println!("{:#?}", t.backtrace());
+                        warn!("Thread Id {:#?}", t.thread_id());
+                        warn!("{:#?}", t.backtrace());
                     }
                 }
             })
@@ -715,6 +724,17 @@ struct Args {
     /// Wallet password
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
+
+    #[cfg(feature = "deadlock_detection")]
+    /// Deadlocks detector
+    #[structopt(
+        name = "deadlocks interval",
+        about = "Define the interval of launching a deadlocks checking.",
+        short = "i",
+        long = "dli",
+        default_value = "10"
+    )]
+    dl_interval: u64,
 }
 
 /// Load wallet, asking for passwords if necessary
@@ -787,7 +807,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-    let node_wallet = load_wallet(args.password, &SETTINGS.factory.staking_wallet_path)?;
+    let node_wallet = load_wallet(args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
 
     loop {
         let (
@@ -804,7 +824,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
-        ) = launch(node_wallet.clone()).await;
+        ) = launch(&args, node_wallet.clone()).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);

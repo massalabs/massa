@@ -6,6 +6,7 @@ use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
 };
+use crate::settings::BootstrapSrvBindCfg;
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
@@ -14,13 +15,20 @@ use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use std::convert::TryInto;
+use std::net::SocketAddr;
+use std::thread;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::runtime::Handle;
+use tokio::time::error::Elapsed;
+use tracing::error;
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
-    consensus_bootstrap_part_size: u64,
+    max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
@@ -30,6 +38,7 @@ pub struct BootstrapServerBinder {
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
+    write_error_timeout: MassaTime,
 }
 
 impl BootstrapServerBinder {
@@ -40,20 +49,20 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        duplex: Duplex,
-        local_keypair: KeyPair,
-        limit: f64,
-        max_bootstrap_message_size: u32,
-        thread_count: u8,
-        max_datastore_key_length: u8,
-        randomness_size_bytes: usize,
-        consensus_bootstrap_part_size: u64,
-    ) -> Self {
+    pub fn new(duplex: Duplex, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+        let BootstrapSrvBindCfg {
+            max_bytes_read_write: limit,
+            max_bootstrap_message_size,
+            thread_count,
+            max_datastore_key_length,
+            randomness_size_bytes,
+            consensus_bootstrap_part_size,
+            write_error_timeout,
+        } = cfg;
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
-            consensus_bootstrap_part_size,
+            max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
             duplex: <Limiter>::new(limit).limit(duplex),
@@ -63,6 +72,7 @@ impl BootstrapServerBinder {
             randomness_size_bytes,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
+            write_error_timeout,
         }
     }
 }
@@ -93,6 +103,61 @@ impl BootstrapServerBinder {
         self.prev_message = Some(msg_hash);
 
         Ok(())
+    }
+
+    pub async fn send_msg(
+        &mut self,
+        timeout: Duration,
+        msg: BootstrapServerMessage,
+    ) -> Result<Result<(), BootstrapError>, Elapsed> {
+        tokio::time::timeout(timeout, self.send(msg)).await
+    }
+
+    /// 1. Spawns a thread
+    /// 2. blocks on the passed in runtime
+    /// 3. uses passed in handle to send a message to the client
+    /// 4. logs an error if the send times out
+    /// 5. runs the passed in closure (typically a custom logging msg)
+    ///
+    /// consumes the binding in the process
+    pub(crate) fn close_and_send_error<F>(
+        mut self,
+        server_outer_rt_hnd: Handle,
+        msg: String,
+        addr: SocketAddr,
+        close_fn: F,
+    ) where
+        F: FnOnce() + Send + 'static,
+    {
+        thread::Builder::new()
+            .name("bootstrap-error-send".to_string())
+            .spawn(move || {
+                let msg_cloned = msg.clone();
+                let err_send =
+                    server_outer_rt_hnd.block_on(async move { self.send_error(msg_cloned).await });
+                match err_send {
+                    Err(_) => error!(
+                        "bootstrap server timed out sending error '{}' to addr {}",
+                        msg, addr
+                    ),
+                    Ok(Err(e)) => error!("{}", e),
+                    Ok(Ok(_)) => {}
+                }
+                close_fn();
+            })
+            // the non-builder spawn doesn't return a Result, and documentation states that
+            // it's an error at the OS level.
+            .unwrap();
+    }
+    pub async fn send_error(
+        &mut self,
+        error: String,
+    ) -> Result<Result<(), BootstrapError>, Elapsed> {
+        tokio::time::timeout(
+            self.write_error_timeout.into(),
+            self.send(BootstrapServerMessage::BootstrapError { error }),
+        )
+        .await
     }
 
     /// Writes the next message. NOT cancel-safe
@@ -186,7 +251,7 @@ impl BootstrapServerBinder {
         let (_, msg) = BootstrapClientMessageDeserializer::new(
             self.thread_count,
             self.max_datastore_key_length,
-            self.consensus_bootstrap_part_size,
+            self.max_consensus_block_ids,
         )
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
