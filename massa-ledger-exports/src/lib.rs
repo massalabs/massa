@@ -10,7 +10,13 @@ mod error;
 mod key;
 mod ledger_changes;
 mod ledger_entry;
+mod snapshot;
 mod types;
+
+pub use snapshot::extract_snapshot;
+
+#[cfg(feature = "create_snapshot")]
+pub use snapshot::create_snapshot;
 
 pub use config::LedgerConfig;
 pub use controller::LedgerController;

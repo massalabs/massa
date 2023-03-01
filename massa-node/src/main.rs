@@ -21,6 +21,7 @@ use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
+use massa_ledger_exports::extract_snapshot;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -98,6 +99,37 @@ async fn launch(
         if MassaTime::now().expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
+    }
+
+    if let Some(snapshot_folder_path) = _args.from_snapshot.clone() {
+        // Start from snapshot:
+        // Extract ledger from archive
+
+        // From extracted folder (that contains a ledger folder at its root)
+        //fs_extra = "1.3.0"
+
+        /*let mut options = CopyOptions::new().overwrite();
+        let snapshot_ledger = std::path::Path::new(&snapshot_folder_path).join("ledger");
+
+        fs_extra::dir::copy(snapshot_ledger, SETTINGS.ledger.disk_ledger_path.clone(), &options)?;
+        */
+        // From archive
+        //zip = "0.6.4"
+
+        extract_snapshot(
+            snapshot_folder_path.clone(),
+            SETTINGS.ledger.disk_ledger_path.clone(),
+            Some(String::from("ledger")),
+        );
+
+        // Extract final state
+        extract_snapshot(
+            snapshot_folder_path,
+            SETTINGS.ledger.disk_ledger_path.clone(),
+            Some(String::from("final_state")),
+        );
+    } else {
+        // Start from scratch
     }
 
     // Storage shared by multiple components.
@@ -724,6 +756,10 @@ struct Args {
     /// Wallet password
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
+
+    /// Snapshot file
+    #[structopt(long = "from-snapshot")]
+    from_snapshot: Option<String>,
 
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector
