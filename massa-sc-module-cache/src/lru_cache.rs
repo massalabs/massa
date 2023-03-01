@@ -17,7 +17,7 @@ pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
 /// * value.0: corresponding compiled module
 /// * value.1: instance initialization cost
 pub(crate) struct LRUCache {
-    cache: PreHashLruMap<Hash, (RuntimeModule, Option<u64>)>,
+    cache: PreHashLruMap<Hash, ModuleInfo>,
 }
 
 impl LRUCache {
@@ -45,7 +45,7 @@ impl LRUCache {
     }
 
     /// Save a module in the LRU cache
-    pub fn insert(&mut self, hash: Hash, module_info: (RuntimeModule, Option<u64>)) {
+    pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) {
         self.cache.insert(hash, module_info);
     }
 
