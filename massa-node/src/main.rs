@@ -228,19 +228,27 @@ async fn launch(
     };
 
     // bootstrap
-    let bootstrap_state = tokio::select! {
-        _ = &mut stop_signal => {
-            info!("interrupt signal received in bootstrap loop");
-            process::exit(0);
-        },
-        res = get_state(
+    let (state_tx, state_rx) =
+        crossbeam_channel::bounded::<Result<GlobalBootstrapState, BootstrapError>>(1);
+    crossbeam_channel::bounded::<Result<GlobalBootstrapState, BootstrapError>>(1);
+    std::thread::spawn(move || {
+        get_state(
             &bootstrap_config,
             final_state.clone(),
             massa_bootstrap::types::Establisher::default(),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
-        ) => match res {
+        )
+    });
+    // bootstrap
+    let bootstrap_state = crossbeam_channel::select! {
+        //TODO: intercept a ctrl-c
+        // _ = &mut stop_signal => {
+        //     info!("interrupt signal received in bootstrap loop");
+        //     process::exit(0);
+        // },
+        recv(state_rx) -> res => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
         }

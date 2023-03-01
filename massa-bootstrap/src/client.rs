@@ -174,8 +174,8 @@ async fn stream_final_state_and_consensus(
 }
 
 /// Gets the state from a bootstrap server (internal private function)
-/// needs to be CANCELLABLE
-async fn bootstrap_from_server(
+/// TODO: setup cancellations
+fn bootstrap_from_server(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -189,7 +189,7 @@ async fn bootstrap_from_server(
     let next_tollerance = cfg.read_error_timeout.to_duration();
     let res = client.blocking_next(Some(next_tollerance));
     match res {
-        Err(BootstrapError::IoError(e)) => {
+        Err(BootstrapError::IoError(ref e)) => {
             if e.kind() == ErrorKind::TimedOut {
                 massa_trace!(
                     "bootstrap.lib.bootstrap_from_server: No error sent at connection",
@@ -199,11 +199,11 @@ async fn bootstrap_from_server(
                 return Err(res.unwrap_err());
             }
         }
-        Err(e) => {
+        Err(ref e) => {
             res?;
         }
         Ok((BootstrapServerMessage::BootstrapError { error }, _)) => {
-            return Err(BootstrapError::ReceivedError(error));
+            return Err(BootstrapError::ReceivedError(error.to_string()));
         }
         Ok((msg, _)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     }
@@ -212,7 +212,9 @@ async fn bootstrap_from_server(
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
 
-    let handshake_time = client.blocking_handshake(our_version, Some(cfg.write_timeout.into()))?;
+    let handshake_time = client
+        .blocking_handshake(our_version, Some(cfg.write_timeout.into()))
+        .map_err(|e| e.update_io_msg_payload("bootstrap handshake timed out"))?;
 
     // compute ping
     let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
@@ -225,7 +227,9 @@ async fn bootstrap_from_server(
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let fetch_tolerance = cfg.read_timeout.to_duration();
-    let (server_time, fetch_time) = client.blocking_next()?;
+    let (server_time, fetch_time) = client
+        .blocking_next(Some(fetch_tolerance))
+        .map_err(|e| e.update_io_msg_payload("bootstrap clock sync read timed out"))?;
     let server_time = match server_time {
         BootstrapServerMessage::BootstrapTime {
             server_time,
@@ -305,7 +309,9 @@ async fn bootstrap_from_server(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                client.blocking_send(next_bootstrap_message, Some(write_timeout))?;
+                client
+                    .blocking_send(next_bootstrap_message, Some(write_timeout))
+                    .map_err(|e| e.update_io_msg_payload("send bootstrap success timed out"))?;
                 break;
             }
             BootstrapClientMessage::BootstrapError { error: _ } => {
@@ -324,12 +330,16 @@ async fn send_client_message(
     read_timeout: Duration,
     error: &str,
 ) -> Result<BootstrapServerMessage, BootstrapError> {
-    client.blocking_send(message_to_send, Some(write_timeout))?;
-    let (msg, _read_time) = client.blocking_next()?;
+    client
+        .blocking_send(message_to_send, Some(write_timeout))
+        .map_err(|e| e.update_io_msg_payload(error))?;
+    let (msg, _read_time) = client
+        .blocking_next(Some(write_timeout))
+        .map_err(|e| e.update_io_msg_payload(error))?;
     Ok(msg)
 }
 
-async fn blocking_connect_to_server(
+fn blocking_connect_to_server(
     establisher: &mut Establisher,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
@@ -373,7 +383,7 @@ fn filter_bootstrap_list(
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
-pub async fn get_state(
+pub fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut establisher: Establisher,
@@ -448,22 +458,30 @@ pub async fn get_state(
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
-            )
-            .await
-            {
+            ) {
                 Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
-                    .await  // cancellable
-                    {
-                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
+                    // TODO: setup cancellations?
+                    match bootstrap_from_server(
+                        bootstrap_config,
+                        &mut client,
+                        &mut next_bootstrap_message,
+                        &mut global_bootstrap_state,
+                        version,
+                    ) {
+                        Err(BootstrapError::ReceivedError(error)) => {
+                            warn!("Error received from bootstrap server: {}", error)
+                        }
                         Err(e) => {
                             warn!("Error while bootstrapping: {}", e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _send_time = client.blocking_send(&BootstrapClientMessage::BootstrapError { error: e.to_string() }, Some(bootstrap_config.write_error_timeout.into()))?;
+                            let _send_time = client.blocking_send(
+                                &BootstrapClientMessage::BootstrapError {
+                                    error: e.to_string(),
+                                },
+                                Some(bootstrap_config.write_error_timeout.into()),
+                            )?;
                         }
-                        Ok(()) => {
-                            return Ok(global_bootstrap_state)
-                        }
+                        Ok(()) => return Ok(global_bootstrap_state),
                     }
                 }
                 Err(e) => {
@@ -472,7 +490,7 @@ pub async fn get_state(
             };
 
             info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
-            sleep(bootstrap_config.retry_delay.into()).await;
+            std::thread::sleep(bootstrap_config.retry_delay.into());
         }
     }
 }
