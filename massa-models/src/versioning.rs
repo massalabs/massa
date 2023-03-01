@@ -11,11 +11,8 @@ use parking_lot::RwLock;
 use thiserror::Error;
 
 use crate::amount::Amount;
+use crate::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_time::MassaTime;
-
-// const
-// TODO: to constants.rs
-const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: &str = "75.0";
 
 // TODO: add more items here
 /// Versioning component enum
@@ -206,8 +203,7 @@ impl Started {
             return VersioningState::failed();
         }
 
-        // Safe to unwrap as we assume the constant is well defined & ok for Amount::from_str
-        if input.threshold >= Amount::from_str(VERSIONING_THRESHOLD_TRANSITION_ACCEPTED).unwrap() {
+        if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
             VersioningState::locked_in()
         } else {
             VersioningState::started(input.threshold)
@@ -242,8 +238,8 @@ impl Failed {
 
 /// Wrapper of VersioningState (in order to keep state history)
 #[derive(Debug, Clone, PartialEq)]
-struct VersioningStateHistory {
-    state: VersioningState,
+pub struct VersioningStateHistory {
+    pub(crate) state: VersioningState,
     history: BTreeMap<Advance, VersioningStateTypeId>,
 }
 
@@ -372,8 +368,7 @@ impl VersioningStateHistory {
             }
             (Some((adv, st_id)), None) => {
                 // After the last state in history -> need to advance the state and return
-                let threshold_for_transition =
-                    Amount::from_str(VERSIONING_THRESHOLD_TRANSITION_ACCEPTED).unwrap();
+                let threshold_for_transition = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
                 // Note: Please update this if VersioningState transitions change as it might not hold true
                 if *st_id == VersioningStateTypeId::Started
                     && adv.threshold < threshold_for_transition
@@ -464,7 +459,7 @@ impl VersioningStore {
 
 /// Store of all versioning info
 #[derive(Debug, Clone, Default)]
-pub struct VersioningStoreRaw(BTreeMap<VersioningInfo, VersioningStateHistory>);
+pub struct VersioningStoreRaw(pub(crate) BTreeMap<VersioningInfo, VersioningStateHistory>);
 
 impl VersioningStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
@@ -551,7 +546,8 @@ impl VersioningStoreRaw {
 mod test {
     use super::*;
     use chrono::{Days, NaiveDate, NaiveDateTime};
-    use massa_serialization::DeserializeError;
+    // use massa_serialization::DeserializeError;
+    use crate::test_exports::versioning_helpers::advance_state_until;
 
     // Only for unit tests
     impl PartialEq<VersioningState> for VersioningStateHistory {
@@ -585,59 +581,6 @@ mod test {
                 timeout: MassaTime::from(timeout.timestamp() as u64),
             },
         );
-    }
-
-    fn advance_state_until(
-        at_state: VersioningState,
-        versioning_info: &VersioningInfo,
-    ) -> VersioningStateHistory {
-        // A helper function to advance a state
-        // Assume enough time between versioning info start & timeout
-        // TODO: allow to give a threshold as arg?
-
-        let start = versioning_info.start;
-        let timeout = versioning_info.timeout;
-
-        if matches!(at_state, VersioningState::Error) {
-            todo!()
-        }
-
-        let mut state = VersioningStateHistory::new(start.saturating_sub(MassaTime::from(1)));
-
-        if matches!(at_state, VersioningState::Defined(_)) {
-            return state;
-        }
-
-        let mut advance_msg = Advance {
-            start_timestamp: start,
-            timeout,
-            threshold: Default::default(),
-            now: start.saturating_add(MassaTime::from(1)),
-        };
-        state.on_advance(&advance_msg);
-
-        if matches!(at_state, VersioningState::Started(_)) {
-            return state;
-        }
-
-        if matches!(at_state, VersioningState::Failed(_)) {
-            advance_msg.now = timeout.saturating_add(MassaTime::from(1));
-            state.on_advance(&advance_msg);
-            return state;
-        }
-
-        advance_msg.now = start.saturating_add(MassaTime::from(2));
-        advance_msg.threshold = Amount::from_str(VERSIONING_THRESHOLD_TRANSITION_ACCEPTED).unwrap();
-        state.on_advance(&advance_msg);
-
-        if matches!(at_state, VersioningState::LockedIn(_)) {
-            return state;
-        }
-
-        advance_msg.now = timeout.saturating_add(MassaTime::from(1));
-        state.on_advance(&advance_msg);
-        // Active
-        return state;
     }
 
     #[test]
@@ -836,7 +779,7 @@ mod test {
         assert_eq!(state_id, VersioningStateTypeId::Failed);
 
         // Move from Started to LockedIn
-        let threshold = Amount::from_str(VERSIONING_THRESHOLD_TRANSITION_ACCEPTED).unwrap();
+        let threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
         advance_msg.threshold = threshold.saturating_add(Amount::from_str("1.0").unwrap());
         advance_msg.now = now.saturating_add(MassaTime::from(1));
         state.on_advance(&advance_msg);
@@ -964,7 +907,7 @@ mod test {
         vsh.on_advance(&Advance {
             start_timestamp: vi_1.start,
             timeout: vi_1.timeout,
-            threshold: Amount::from_str(VERSIONING_THRESHOLD_TRANSITION_ACCEPTED).unwrap(),
+            threshold: VERSIONING_THRESHOLD_TRANSITION_ACCEPTED,
             now,
         });
 
