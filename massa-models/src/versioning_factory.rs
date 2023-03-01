@@ -68,8 +68,6 @@ mod test {
     // use std::collections::BTreeMap;
     // use std::sync::Arc;
 
-    use crate::versioning::VersioningInfo;
-
     // Define a struct Address with 2 versions AddressV0 & AddressV1
     #[derive(Debug)]
     struct AddressV0 {

@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str::FromStr;
@@ -191,7 +191,6 @@ transitions!(VersioningState,
 impl Defined {
     /// Update state from state Defined
     pub fn on_advance(self, input: Advance) -> VersioningState {
-        println!("[From defined], advance now: {}", input.now);
         match input.now {
             n if n > input.timeout => VersioningState::failed(),
             n if n > input.start_timestamp => VersioningState::started(Amount::zero()),
@@ -203,10 +202,6 @@ impl Defined {
 impl Started {
     /// Update state from state Started
     pub fn on_advance(self, input: Advance) -> VersioningState {
-        /* println!(
-            "[From started], advance now: {} - threshold: {:?}",
-            input.now, input.threshold
-        ); */
         if input.now > input.timeout {
             return VersioningState::failed();
         }
@@ -280,7 +275,6 @@ impl VersioningStateHistory {
         if is_forward {
             // machines crate (for state machine) does not support passing ref :-/
             let state = self.state.on_advance(input.clone());
-            println!("From state: {:?} to {:?}", self.state, state);
             // Update history as well
             if state != self.state {
                 let state_id = VersioningStateTypeId::from(&state);
@@ -308,40 +302,24 @@ impl VersioningStateHistory {
             return false;
         }
 
-        // Build a new VersionStateHistory from initial state, replay the whole history
-        // but with given versioning info) then compare
-        println!(
-            "Start replay'ing history, history len: {:?}",
-            self.history.len()
-        );
+        // Build a new VersionStateHistory from initial state, replaying the whole history
+        // but with given versioning info then compare
         let mut vsh = VersioningStateHistory::new(initial_ts.now);
-        let mut threshold = Amount::zero();
         let mut advance_msg = Advance {
             start_timestamp: versioning_info.start,
             timeout: versioning_info.timeout,
-            threshold,
+            threshold: Amount::zero(),
             now: initial_ts.now,
         };
 
-        for (adv, state) in self.history.iter().skip(1) {
-            println!("[Replay] adv: {:?} - state: {:?}", adv, state);
-            /*
-            threshold = match state {
-                VersioningState::Started(Started { threshold }) => threshold.clone(),
-                _ => Amount::zero(),
-            };
-            */
+        for (adv, _state) in self.history.iter().skip(1) {
             advance_msg.now = adv.now;
             advance_msg.threshold = adv.threshold;
-            println!("[Replay] advance with msg: {:?}", advance_msg);
             vsh.on_advance(&advance_msg);
         }
 
-        println!("built vsh: {:?}", vsh);
-        println!("self: {:?}", self);
         // XXX: is there always full eq? Can we have slight variation here?
-        let mut res = vsh == *self;
-        res
+        vsh == *self
     }
 
     /// Query state at given timestamp
@@ -375,6 +353,7 @@ impl VersioningStateHistory {
         }
 
         if !is_after_last {
+            // We are in between two states in history, find bounds
             for (adv, state_id) in self.history.iter() {
                 if adv.now <= ts {
                     lower_bound = Some((adv, state_id));
@@ -386,22 +365,13 @@ impl VersioningStateHistory {
             }
         }
 
-        println!("Lower bound: {lower_bound:?}");
-        println!("Higher bound: {higher_bound:?}");
-
         match (lower_bound, higher_bound) {
             (Some((_adv_1, st_id_1)), Some((_adv_2, _st_id_2))) => {
-                println!("Between 2 states in history");
                 // Between 2 states (e.g. between Defined && Started) -> return Defined
                 Ok(st_id_1.clone())
             }
             (Some((adv, st_id)), None) => {
                 // After the last state in history -> need to advance the state and return
-                println!(
-                    "After last state in history, start: {:?}, now: {:?}",
-                    start, ts
-                );
-
                 let threshold_for_transition =
                     Amount::from_str(VERSIONING_THRESHOLD_TRANSITION_ACCEPTED).unwrap();
                 // Note: Please update this if VersioningState transitions change as it might not hold true
@@ -497,72 +467,80 @@ impl VersioningStore {
 pub struct VersioningStoreRaw(BTreeMap<VersioningInfo, VersioningStateHistory>);
 
 impl VersioningStoreRaw {
-    /// Merge our store with another (usually after a bootstrap where we received another store)
-    /// 'at' is the time at which 'store_raw' has been received / retrieved (e.g. bootstrap)
-    fn merge_with(&mut self, store_raw: &VersioningStoreRaw, at: MassaTime) {
+    /// Update our store with another (usually after a bootstrap where we received another store)
+    /// Return true if update is successful, false if something is wrong on given store raw
+    fn update_with(&mut self, store_raw: &VersioningStoreRaw) -> bool {
         // iter over items in given store:
-        // -> 2 cases: VersioningInfo is already in self store ->
-        //             VersioningInfo is not in self.store -> add it (check uniqueness / time ranges)
-
-        // TODO: build list of what to add / update then do it
+        // -> 2 cases: VersioningInfo is already in self store -> add to 'to_update' list
+        //             VersioningInfo is not in self.store -> add to 'to_add' list
+        //
+        let mut names: BTreeSet<String> = self.0.iter().map(|i| i.0.name.clone()).collect();
+        let mut to_update: BTreeMap<VersioningInfo, VersioningStateHistory> = Default::default();
+        let mut to_add: BTreeMap<VersioningInfo, VersioningStateHistory> = Default::default();
+        let mut should_merge = true;
 
         for (v_info, v_state) in store_raw.0.iter() {
-            // Check if state is ok according to versioning info time range
             if !v_state.is_coherent_with(v_info) {
-                // TODO: should we stop the process as soon as we find one incoherent ?
-                println!("Not coherent...");
-                continue;
-            };
+                // As soon as we found one non coherent state we abort the merge
+                should_merge = false;
+                break;
+            }
 
-            if let Some(v_state_cur) = self.0.get_mut(v_info) {
-                // Versioning info is already in store
-                // Need to check state before merging
+            if let Some(v_state_orig) = self.0.get(v_info) {
+                // Versioning info (from right) is already in self (left)
+                // Need to check if we add this to 'to_update' list
                 let v_state_id: u32 = VersioningStateTypeId::from(&v_state.state).into();
-                let v_state_cur_ref: &VersioningStateHistory = v_state_cur;
-                let v_state_cur_id: u32 =
-                    VersioningStateTypeId::from(&v_state_cur_ref.state).into();
+                let v_state_orig_id: u32 = VersioningStateTypeId::from(&v_state_orig.state).into();
 
-                // TODO: should update if started and threshold is >
-                match v_state_cur.state {
+                if matches!(
+                    v_state_orig.state,
                     VersioningState::Defined(_)
-                    | VersioningState::Started(_)
-                    | VersioningState::LockedIn(_) => {
-                        // Only accept 'higher' state (e.g. started if defined, lockedin if started...)
-                        if v_state_id > v_state_cur_id {
-                            *v_state_cur = v_state.clone();
-                        }
-                    }
-                    _ => {
-                        // Nothing to do for already Active / Failed / Error
-                        // FIXME: reject Error?
+                        | VersioningState::Started(_)
+                        | VersioningState::LockedIn(_)
+                ) {
+                    // Only accept 'higher' state
+                    // (e.g. 'started' if 'defined', 'locked in' if 'started'...)
+                    if v_state_id > v_state_orig_id {
+                        to_update.insert(v_info.clone(), v_state.clone());
+                    } else {
+                        // Trying to downgrade state' (e.g. trying to go from 'active' -> 'defined')
+                        should_merge = false;
+                        break;
                     }
                 }
             } else {
-                // Versioning info not in store - usually a new one
+                // Versioning info (from right) is not in self.0 (left)
+                // Need to check if we add this to 'to_add' list
 
-                // TODO / Optim: build a range of version & a set of names and use this
-                // Check if name & version are uniques
-                if !self
-                    .0
-                    .iter()
-                    .all(|(i, _)| i.version != v_info.version && i.name != v_info.name)
-                {
-                    continue;
-                }
+                let last_v_info_ = to_add
+                    .last_key_value()
+                    .map(|i| i.0)
+                    .or(self.0.last_key_value().map(|i| i.0));
 
-                // Should we also check for version >
-                // Check for time range
-                if let Some((last_vi, _)) = self.0.last_key_value() {
-                    // TODO: should we add a min duration from start + timeout
-                    // TODO: add a const for the min timeout allowed
-                    if v_info.start > last_vi.timeout && v_info.timeout > v_info.start {
-                        // Time range is ok, let's add it
-                        self.0.insert(v_info.clone(), v_state.clone());
+                if let Some(last_v_info) = last_v_info_ {
+                    if v_info.start > last_v_info.timeout
+                        && v_info.timeout > v_info.start
+                        && v_info.version > last_v_info.version
+                        && !names.contains(&v_info.name)
+                    {
+                        // Time range is ok / version is ok / name is unique, let's add it
+                        to_add.insert(v_info.clone(), v_state.clone());
+                        names.insert(v_info.name.clone());
                     }
                 } else {
-                    self.0.insert(v_info.clone(), v_state.clone());
+                    // to_add is empty && self.0 is empty
+                    to_add.insert(v_info.clone(), v_state.clone());
+                    names.insert(v_info.name.clone());
                 }
             }
+        }
+
+        if should_merge {
+            self.0.append(&mut to_update);
+            self.0.append(&mut to_add);
+            true
+        } else {
+            false
         }
     }
 }
@@ -572,7 +550,6 @@ impl VersioningStoreRaw {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::version::Version;
     use chrono::{Days, NaiveDate, NaiveDateTime};
     use massa_serialization::DeserializeError;
 
@@ -883,7 +860,7 @@ mod test {
     fn test_versioning_store_announce_current() {
         // Test VersioningInfo::get_version_to_announce() & ::get_version_current()
 
-        let (start, timeout, vi) = get_a_version_info();
+        let (_start, timeout, vi) = get_a_version_info();
 
         let mut vi_2 = vi.clone();
         vi_2.version += 1;
@@ -980,20 +957,16 @@ mod test {
         // Not coherent anymore (after timeout) -> should be in state Failed
         // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from(6)), false);
         // Now with another versioning info
-        println!("vsh history: {:?}", vsh.history);
-        println!("===");
         assert_eq!(vsh.is_coherent_with(&vi_2), false);
 
         // Advance to LockedIn
         let now = MassaTime::from(4);
-        println!("Advancing with threshold...");
         vsh.on_advance(&Advance {
             start_timestamp: vi_1.start,
             timeout: vi_1.timeout,
             threshold: Amount::from_str(VERSIONING_THRESHOLD_TRANSITION_ACCEPTED).unwrap(),
             now,
         });
-        println!("After advancing...");
 
         // At state LockedIn at time now -> true
         assert_eq!(vsh.state, VersioningState::locked_in());
@@ -1038,9 +1011,7 @@ mod test {
             (vi_2.clone(), vs_2_2.clone()),
         ]));
 
-        // TODO: test with now=7 for merge_with(..)
-        let now = MassaTime::from(20); // 20s after unix epoch - between vi_1.timeout && vi_2.start
-        vs_raw_1.merge_with(&vs_raw_2, now);
+        vs_raw_1.update_with(&vs_raw_2);
 
         // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "LockedIn"
         assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().state, vs_1.state);
@@ -1081,8 +1052,7 @@ mod test {
             (vi_2_2.clone(), vs_2_2.clone()),
         ]));
 
-        let now = MassaTime::from(7); // 7s after unix epoch - between vi_1.timeout && vi_2.start
-        vs_raw_1.merge_with(&vs_raw_2, now);
+        vs_raw_1.update_with(&vs_raw_2);
 
         assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().state, vs_1.state);
         assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().state, vs_2.state);
