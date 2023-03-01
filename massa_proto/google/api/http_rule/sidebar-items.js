@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Pattern"]};
+window.SIDEBAR_ITEMS = {"enum":["Pattern"],"struct":["HttpRuleComment"]};

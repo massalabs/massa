@@ -365,6 +365,14 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
 </pre><pre class="rust"><code><span class="doccomment">/// Defines the HTTP configuration for an API service. It contains a list of
 /// \[HttpRule][google.api.HttpRule\], each specifying the mapping of an RPC method
 /// to one or more HTTP REST API methods.
@@ -654,6 +662,10 @@
 /// If an API needs to use a JSON array for request or response body, it can map
 /// the request or response body to a repeated field. However, some gRPC
 /// Transcoding implementations may not support this feature.
+</span><span class="attr">#[cfg(not(doctest))]
+#[allow(dead_code)]
+</span><span class="kw">pub struct </span>HttpRuleComment {}
+<span class="doccomment">/// HACK: see docs in [`HttpRuleComment`] ignored in doctest pass
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 </span><span class="kw">pub struct </span>HttpRule {
@@ -694,6 +706,10 @@
     <span class="doccomment">/// Determines the URL pattern is matched by this rules. This pattern can be
     /// used with any of the {get|put|post|delete|patch} methods. A custom method
     /// can be defined using the &#39;custom&#39; field.
+    </span><span class="attr">#[cfg(not(doctest))]
+    #[allow(dead_code)]
+    </span><span class="kw">pub struct </span>HttpRuleComment {}
+    <span class="doccomment">/// HACK: see docs in [`HttpRuleComment`] ignored in doctest pass
     </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     </span><span class="kw">pub enum </span>Pattern {
