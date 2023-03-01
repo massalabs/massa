@@ -44,7 +44,7 @@ impl ModuleCache {
         if wipe_previous {
             self.hd_cache.remove(hash);
         }
-        if let Some((hd_module, hd_init_cost)) = self.hd_cache.get_and_increment(hash) {
+        if let Some((hd_module, hd_init_cost)) = self.hd_cache.get_and_increment(hash, limit, self.gas_costs.clone()) {
             self.lru_cache.insert(hash, hd_module, Some(hd_init_cost));
         } else {
             if let Some((lru_module, lru_init_cost)) = self.lru_cache.get(hash, limit)? {
@@ -86,7 +86,7 @@ impl ModuleCache {
         limit: u64,
     ) -> Result<RuntimeModule, ExecutionError> {
         let hash = Hash::compute_from(bytecode);
-        if let Some((hd_module, hd_init_cost)) = self.hd_cache.get(hash) {
+        if let Some((hd_module, hd_init_cost)) = self.hd_cache.get(hash, limit, self.gas_costs.clone()) {
             if let Some((lru_module, _)) = self.lru_cache.get(hash, limit)? {
                 Ok(lru_module.clone())
             } else {
