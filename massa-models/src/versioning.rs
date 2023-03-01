@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use machine::{machine, transitions};
@@ -248,8 +247,12 @@ impl VersioningStateHistory {
     pub fn new(defined: MassaTime) -> Self {
         let state: VersioningState = Default::default();
         let state_id = VersioningStateTypeId::from(&state);
-        let mut advance = Advance::default();
-        advance.now = defined;
+        // let mut advance = Advance::default();
+        // advance.now = defined;
+        let advance = Advance {
+            now: defined,
+            ..Default::default()
+        };
         let history = BTreeMap::from([(advance, state_id)]);
         Self {
             state: Default::default(),
@@ -374,7 +377,7 @@ impl VersioningStateHistory {
                     && adv.threshold < threshold_for_transition
                     && ts < adv.timeout
                 {
-                    return Err(StateAtError::Unpredictable);
+                    Err(StateAtError::Unpredictable)
                 } else {
                     let msg = Advance {
                         start_timestamp: start,
