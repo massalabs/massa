@@ -111,10 +111,10 @@ impl BootstrapServerBinder {
     ) -> Result<Duration, (usize, std::io::Error)> {
         let start = Instant::now();
         let time_limit = if time_limit.is_none() {
-            self.duplex
-                .set_read_timeout(Some(Duration::from_secs(9999999)))
-                // Err only if Some(zero-duration) is used
-                .unwrap();
+            // self.duplex
+            //     .set_read_timeout(Some(Duration::from_secs(9999999)))
+            //     // Err only if Some(zero-duration) is used
+            //     .unwrap();
             return self
                 .duplex
                 .read_exact(buf)
@@ -131,9 +131,9 @@ impl BootstrapServerBinder {
             if clock > time_limit {
                 return Err((acc, std::io::ErrorKind::TimedOut.into()));
             }
-            self.duplex
-                .set_read_timeout(Some(time_limit - clock))
-                .expect("internal error");
+            // self.duplex
+            //     .set_read_timeout(Some(time_limit - clock))
+            //     .expect("internal error");
             self.duplex.read(&mut buf[acc..]).map_err(|er| (acc, er))?;
             clock = Instant::now().duration_since(start);
         }

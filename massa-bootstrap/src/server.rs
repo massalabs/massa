@@ -26,9 +26,13 @@
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod white_black_list;
 
+use mio::{event::Event, Events, Interest, Poll, Token, Waker};
 use white_black_list::*;
 
-use crossbeam::{channel::tick, utils::Backoff};
+use crossbeam::{
+    channel::{tick, Receiver, Select, Sender},
+    utils::Backoff,
+};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
@@ -45,9 +49,10 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr},
+    io,
+    net::{IpAddr, SocketAddr, TcpListener},
     sync::Arc,
-    thread,
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 use tokio::runtime::{self, Runtime};
@@ -69,7 +74,7 @@ type BsConn = (Duplex, SocketAddr);
 pub struct BootstrapManager {
     update_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     main_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
-    listen_stopper_tx: crossbeam::channel::Sender<()>,
+    stopper: Waker,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
@@ -77,9 +82,9 @@ impl BootstrapManager {
     /// stop the bootstrap server
     pub async fn stop(self) -> Result<(), Box<BootstrapError>> {
         massa_trace!("bootstrap.lib.stop", {});
-        if self.listen_stopper_tx.send(()).is_err() {
-            warn!("bootstrap server already dropped");
-        }
+        // the mio_poll will select on the stop event.
+        self.stopper.wake();
+
         if self.update_stopper_tx.send(()).is_err() {
             warn!("bootstrap ip-list-updater already dropped");
         }
@@ -93,6 +98,28 @@ impl BootstrapManager {
         // unwrap() effectively passes up a panic from the thread being handled
         self.main_handle.join().unwrap()
     }
+}
+
+fn listen_thread(
+    mut listener: Listener,
+    // must be an empty-bound. Needs to block-on-send untill it's been consumed
+    // before accepting the next one.
+    conn_tx: Sender<BsConn>,
+) -> JoinHandle<Result<(), Box<BootstrapError>>> {
+    std::thread::spawn(move || loop {
+        let conn = listener
+            .blocking_accept()
+            .map_err(BootstrapError::IoError)?;
+        // this should block untill the server receives.
+        // The first one should be instant.
+        // subsequent ones assume that
+        if let Err(e) = conn_tx.send(conn) {
+            return Err(Box::new(BootstrapError::GeneralError(format!(
+                "update stopper error : {}",
+                e
+            ))));
+        }
+    })
 }
 
 /// See module level documentation for details
@@ -129,7 +156,7 @@ pub async fn start_bootstrap_server(
         return Err(Box::new(BootstrapError::GeneralError("Failed to creato bootstrap async runtime".to_string())));
     };
 
-    let listener = establisher
+    let mut listener = establisher
         .get_listener(listen_addr)
         .map_err(BootstrapError::IoError)?;
 
@@ -157,6 +184,14 @@ pub async fn start_bootstrap_server(
         // it's an error at the OS level.
         .unwrap();
 
+    let poll = Poll::new().unwrap();
+    poll.registry()
+        .register(&mut listener.0, LISTENER_ACCEPT, Interest::READABLE)
+        .map_err(|e| Box::new(BootstrapError::IoError(e)))?;
+
+    let stopper =
+        Waker::new(poll.registry(), STOP).map_err(|e| Box::new(BootstrapError::IoError(e)))?;
+
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
         .spawn(move || {
@@ -164,14 +199,14 @@ pub async fn start_bootstrap_server(
                 consensus_controller,
                 network_command_sender,
                 final_state,
+                event_poller: poll,
+                listener,
                 listen_stopper_rx,
                 white_black_list,
                 keypair,
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
-                listener,
-                bs_server_runtime,
             }
             .run_loop(max_bootstraps)
         })
@@ -183,7 +218,7 @@ pub async fn start_bootstrap_server(
     Ok(Some(BootstrapManager {
         update_handle,
         main_handle,
-        listen_stopper_tx,
+        stopper,
         update_stopper_tx,
     }))
 }
@@ -192,14 +227,22 @@ struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
+    event_poller: Poll,
+    listener: Listener,
     listen_stopper_rx: crossbeam::channel::Receiver<()>,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
-    listener: Listener,
-    _bs_server_runtime: Runtime,
+}
+
+const LISTENER_ACCEPT: Token = Token(0);
+const STOP: Token = Token(1);
+
+enum TriggeredEvent {
+    Accepted(BsConn),
+    Stopped,
 }
 
 impl BootstrapServer<'_> {
@@ -222,55 +265,81 @@ impl BootstrapServer<'_> {
             }
         }
     }
+    fn mio_poll(&mut self, events: &mut Events) -> io::Result<TriggeredEvent> {
+        loop {
+            self.event_poller.poll(events, None).unwrap();
 
-    // /// Listens on a channel for incoming connections, and loads them onto a crossbeam channel
-    // /// for the main-loop to process.
-    // ///
-    // /// Ok(Ok(())) listener closed without issue
-    // /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
-    // /// Err(..) Error accepting a connection
-    // /// TODO: Integrate the listener into the bootstrap-main-loop
-    // async fn run_listener(
-    //     mut listener: Listener,
-    //     listener_tx: crossbeam::channel::Sender<BsConn>,
-    // ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
-    //     loop {
-    //         let msg = listener
-    //             .blocking_accept()
-    //             .map_err(BootstrapError::IoError)?;
-    //         match listener_tx.send(msg) {
-    //             Ok(_) => continue,
-    //             Err(SendError((dplx, remote_addr))) => {
-    //                 warn!(
-    //                     "listener channel disconnected after accepting connection from {}",
-    //                     remote_addr
-    //                 );
-    //                 return Ok(Err((dplx, remote_addr)));
-    //             }
-    //         };
-    //     }
-    // }
+            for event in events.iter() {
+                match event.token() {
+                    LISTENER_ACCEPT => loop {
+                        // for now, we assume that there is no stop...
+                        let acc = self.listener.0.accept();
+
+                        match acc {
+                            Ok(conn) => return Ok(TriggeredEvent::Accepted(conn)),
+                            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                                // If we get a `WouldBlock` error we know our
+                                // listener has no more incoming connections queued,
+                                // so we can return to polling and wait for some
+                                // more.
+                                break;
+                            }
+                            Err(e) => {
+                                // If it was any other kind of error, something went
+                                // wrong and we terminate with an error.
+                                return Err(e);
+                            }
+                        };
+
+                        // println!("Accepted connection from: {}", remote_addr);
+
+                        // let token = next(&mut unique_token);
+                        // poll.registry()
+                        //     .register(
+                        //         &mut dplx,
+                        //         token,
+                        //         Interest::READABLE.add(Interest::WRITABLE),
+                        //     )
+                        //     .unwrap();
+                    },
+                    STOP => {
+                        return Ok(TriggeredEvent::Stopped);
+                    }
+                    _token => {
+                        unimplemented!("we are assuming only accept and stop events");
+                    }
+                }
+            }
+        }
+    }
 
     fn run_loop(mut self, max_bootstraps: usize) -> Result<(), Box<BootstrapError>> {
-        let Ok(bs_loop_rt) = runtime::Builder::new_multi_thread()
-            .max_blocking_threads(max_bootstraps * 2)
-            .enable_io()
-            .enable_time()
-            .thread_name("bootstrap-main-loop-worker")
-            .thread_keep_alive(Duration::from_millis(u64::MAX))
-            .build() else {
-            return Err(Box::new(BootstrapError::GeneralError("Failed to create bootstrap main-loop runtime".to_string())));
-        };
-
+        let mut events = Events::with_capacity(128);
         // Use the strong-count of this variable to track the session count
-        let bootstrap_sessions_counter: Arc<()> = Arc::new(());
+        let bootstrap_sessions_counter = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
+
         // TODO: Work out how to integration-test this
+        let space_waiter = Backoff::new();
         loop {
-            let (dplx, remote_addr) = match self.stop_or_accept() {
-                Err(_) => break,
-                Ok(conn) => conn,
-            };
+            // A nice way to yield-block
+            loop {
+                if Arc::strong_count(&bootstrap_sessions_counter) - 1 >= max_bootstraps {
+                    if space_waiter.is_completed() {
+                        // TODO: park this thread and extend the arc-drop to wake it up
+                        space_waiter.snooze();
+                    } else {
+                        space_waiter.snooze();
+                    }
+                } else {
+                    break;
+                }
+            }
+            space_waiter.reset();
+            let TriggeredEvent::Accepted((dplx, remote_addr)) =  self.mio_poll(&mut events)
+                .map_err(|e| Box::new(BootstrapError::IoError(e)))? else {
+                    break;
+                };
             // claim a slot in the max_bootstrap_sessions
             let server = BootstrapServerBinder::new(
                 dplx,
@@ -366,38 +435,7 @@ impl BootstrapServer<'_> {
             }
         }
 
-        // Give any remaining processes 20 seconds to clean up, otherwise force them to shutdown
-        bs_loop_rt.shutdown_timeout(Duration::from_secs(20));
         Ok(())
-    }
-    fn stop_or_accept(&mut self) -> Result<BsConn, ()> {
-        loop {
-            let backoff = Backoff::new();
-            'backoff: loop {
-                if self.listen_stopper_rx.try_recv().is_ok() {
-                    dbg!("returning because stopped");
-                    return Err(());
-                }
-
-                let try_accept = self.listener.0.accept();
-                match try_accept {
-                    Ok(good_conn) => {
-                        return Ok(good_conn);
-                    }
-                    Err(e) => {
-                        if e.kind() == std::io::ErrorKind::WouldBlock {
-                            if backoff.is_completed() {
-                                break 'backoff;
-                            } else {
-                                backoff.snooze();
-                            }
-                        } else {
-                            panic!("try_accept got a bad error");
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // /// These are the steps to ensure that a connection is only processed if the server is active:
@@ -739,7 +777,7 @@ fn manage_bootstrap(
     //     Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
     // };
 
-    // let write_timeout: Duration = bootstrap_config.write_timeout.into();
+    let write_timeout: Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
     let server_time = MassaTime::now()?;

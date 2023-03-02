@@ -137,10 +137,10 @@ impl BootstrapClientBinder {
     ) -> Result<Duration, (usize, std::io::Error)> {
         let start = Instant::now();
         let time_limit = if time_limit.is_none() {
-            self.duplex
-                .set_write_timeout(Some(Duration::from_secs(9999999)))
-                // Err only if Some(zero-duration) is used
-                .unwrap();
+            // self.duplex
+            //     .set_write_timeout(Some(Duration::from_secs(9999999)))
+            //     // Err only if Some(zero-duration) is used
+            //     .unwrap();
             return self
                 .duplex
                 .write_all(data)
@@ -156,9 +156,9 @@ impl BootstrapClientBinder {
             if clock > time_limit {
                 return Err((acc, std::io::ErrorKind::TimedOut.into()));
             }
-            self.duplex
-                .set_write_timeout(Some(time_limit - clock))
-                .expect("internal error");
+            // self.duplex
+            //     .set_write_timeout(Some(time_limit - clock))
+            //     .expect("internal error");
             acc += self.duplex.write(&data[acc..]).map_err(|er| (acc, er))?;
             clock = Instant::now().duration_since(start);
         }

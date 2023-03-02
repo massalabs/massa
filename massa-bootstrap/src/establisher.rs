@@ -15,10 +15,8 @@
 /// Connection types
 pub mod types {
     use massa_time::MassaTime;
-    use std::{
-        io,
-        net::{SocketAddr, TcpListener, TcpStream},
-    };
+    use mio::net::{TcpListener, TcpStream};
+    use std::{io, net::SocketAddr};
     /// duplex connection
     pub type Duplex = TcpStream;
     /// listener, used by server
@@ -53,7 +51,8 @@ pub mod types {
         /// # Argument
         /// * `addr`: `SocketAddr` we are trying to connect to.
         pub fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
-            TcpStream::connect_timeout(&addr, self.0.to_duration())
+            todo!()
+            // TcpStream::connect_timeout(&addr, self.0.to_duration())
         }
     }
 
@@ -81,10 +80,11 @@ pub mod types {
 
             // Number of connections to queue, set to the hardcoded value used by tokio
             socket.listen(1024)?;
-            let listener: TcpListener = socket.into();
-            listener.set_nonblocking(true)?;
+            todo!();
+            // let listener: TcpListener = socket.into();
+            // listener.set_nonblocking(true)?;
 
-            Ok(DefaultListener(listener))
+            // Ok(DefaultListener(listener))
         }
 
         /// Get the connector with associated timeout
