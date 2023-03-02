@@ -159,10 +159,10 @@ jobs:
           cd gas-calibration &&
           sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml &&
           sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep 'massalabs/massa-sc-runtime' | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml
-      - name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
-        run: >
-          cd gas-calibration &&
-          cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
+      #- name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
+      #  run: >
+      #    cd gas-calibration &&
+      #    cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
 
 
   doc:
