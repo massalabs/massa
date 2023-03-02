@@ -1,3 +1,4 @@
+use crate::types::ModuleInfo;
 use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
@@ -8,7 +9,6 @@ use massa_serialization::{
 use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, DB};
 use std::ops::Bound::Included;
 use std::path::PathBuf;
-use crate::types::ModuleInfo;
 
 const MODULE_CF: &str = "module";
 const GAS_COSTS_CF: &str = "gas_cost";
@@ -20,12 +20,12 @@ const MOD_SER_ERR: &str = "module serialization error";
 const KEY_NOT_FOUND: &str = "Key not found";
 const REF_COUNT_NOT_FOUND: &str = "ref count in HD cache can't be None";
 
-
 pub(crate) struct HDCache {
     db: DB,
     u64_serializer: U64VarIntSerializer,
     u64_deserializer: U64VarIntDeserializer,
     option_serializer: OptionSerializer<u64, U64VarIntSerializer>,
+    option_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
 }
 
 impl HDCache {
@@ -51,6 +51,10 @@ impl HDCache {
             u64_serializer: U64VarIntSerializer::new(),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             option_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
+            option_deserializer: OptionDeserializer::new(U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
         }
     }
 
@@ -169,33 +173,26 @@ impl HDCache {
 
     /// Retrieve a module
     pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
-        let module = self
+        let Some(module) = self
             .db
             .get_cf(self.module_cf(), hash.to_bytes())
             .ok()
-            .flatten();
+            .flatten() else{return None;};
 
-        let cost = self
+        let Some(cost) = self
             .db
             .get_cf(self.gas_costs_cf(), hash.to_bytes())
             .ok()
-            .flatten();
+            .flatten() else {return None;};
 
-        let cost = match cost {
-            Some(value) => self
-                .u64_deserializer
-                .deserialize::<DeserializeError>(&value)
-                .ok()
-                .and_then(|(_, cost)| Some(cost)),
-            None => None,
-        };
+        let cost = self
+            .option_deserializer
+            .deserialize::<DeserializeError>(&cost)
+            .ok()
+            .and_then(|(_, cost)| cost);
 
-        if let Some(module) = module {
-            let module = RuntimeModule::deserialize(&module, limit, gas_costs).ok()?;
-            Some((module, cost))
-        } else {
-            None
-        }
+        let module = RuntimeModule::deserialize(&module, limit, gas_costs).ok()?;
+        Some((module, cost))
     }
 
     /// Remove a module
