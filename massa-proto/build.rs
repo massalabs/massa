@@ -2,6 +2,7 @@ use glob::glob;
 use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    //TODO add download external protos files instead of doing it manually
     let protos = find_protos("proto/massa");
 
     tonic_build::configure()

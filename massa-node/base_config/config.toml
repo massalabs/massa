@@ -39,22 +39,24 @@
     enable_ws = false
 
 [grpc]
-    # whether to enable gRPC.
+    # whether to enable gRPC
     enabled = true
-    # whether to add HTTP 1 layer.
+    # whether to add HTTP 1 layer
     accept_http1 = true
-    # whether to enable gRPC reflection(introspection).
+    # whether to enable gRPC reflection(introspection)
     enable_reflection = true
     # bind for the Massa gRPC API
     bind = "0.0.0.0:33037"
-    # which compression encodings does the server accept for requests.
+    # which compression encodings does the server accept for requests
     accept_compressed = "Gzip"
-    # which compression encodings might the server use for responses.
+    # which compression encodings might the server use for responses
     send_compressed = "Gzip"
-    # limits the maximum size of a decoded message. Defaults to 4MB.
+    # limits the maximum size of a decoded message. Defaults to 4MB
     max_decoding_message_size = 4194304
-    # limits the maximum size of an encoded message. Defaults to 4MB.
+    # limits the maximum size of an encoded message. Defaults to 4MB
     max_encoding_message_size = 4194304
+    # limits the maximum size of streaming channel
+    max_channel_size = 128
 
 [execution]
     # max number of generated events kept in RAM
