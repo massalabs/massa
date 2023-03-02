@@ -6,7 +6,6 @@ use crate::config::GrpcConfig;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_models::{
     block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
-    config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
     error::ModelsError,
     secure_share::SecureShareDeserializer,
 };
@@ -169,22 +168,19 @@ impl grpc::grpc_server::Grpc for MassaService {
         let consensus_controller = self.consensus_controller.clone();
         let mut protocol_sender = self.protocol_command_sender.clone();
         let storage = self.storage.clone_without_refs();
-
+        let config = self.grpc_config.clone();
+        let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
         let mut in_stream = request.into_inner();
-        //TODO add the configuration in API
-        let (tx, rx) = tokio::sync::mpsc::channel(128);
 
-        //TODO add futures cancellation
         tokio::spawn(async move {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(req_content) => {
                         if let Some(proto_block) = req_content.block {
-                            //TODO add the configuration in API
                             let args = BlockDeserializerArgs {
-                                thread_count: THREAD_COUNT,
-                                max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-                                endorsement_count: ENDORSEMENT_COUNT,
+                                thread_count: config.thread_count,
+                                max_operations_per_block: config.max_operations_per_block,
+                                endorsement_count: config.endorsement_count,
                             };
                             let _res: Result<(), DeserializeError> =
                                 match SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -305,14 +301,16 @@ impl grpc::grpc_server::Grpc for MassaService {
                     Err(err) => {
                         if let Some(io_err) = match_for_io_error(&err) {
                             if io_err.kind() == ErrorKind::BrokenPipe {
-                                warn!("\tclient disconnected: broken pipe");
+                                warn!("client disconnected, broken pipe: {}", io_err);
                                 break;
                             }
                         }
-                        //TODO add better error handling
                         match tx.send(Err(err)).await {
                             Ok(_) => (),
-                            Err(_err) => break,
+                            Err(e) => {
+                                error!("failed to send back sendblocks error response: {}", e);
+                                break;
+                            }
                         }
                     }
                 }

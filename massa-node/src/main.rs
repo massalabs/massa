@@ -581,6 +581,16 @@ async fn launch(
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
             max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
             max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+            max_parameter_size: MAX_PARAMETERS_SIZE,
+            max_channel_size: SETTINGS.grpc.max_channel_size,
         };
 
         let grpc_api = MassaService {
