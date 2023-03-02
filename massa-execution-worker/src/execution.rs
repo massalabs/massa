@@ -664,7 +664,7 @@ impl ExecutionState {
 
         // Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
+        let (module, opt_init_cost) = self.module_cache.write().load_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -756,7 +756,7 @@ impl ExecutionState {
 
         // Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self
+        let (module, opt_init_cost) = self
             .module_cache
             .write()
             .load_module(&bytecode.0, message.max_gas)?;
@@ -1178,7 +1178,7 @@ impl ExecutionState {
 
                 // Execute bytecode
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                let module = self
+                let (module, opt_init_cost) = self
                     .module_cache
                     .write()
                     .load_module(&bytecode, req.max_gas)?;

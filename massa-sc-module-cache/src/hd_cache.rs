@@ -19,6 +19,8 @@ const MOD_SER_ERR: &str = "module serialization error";
 const KEY_NOT_FOUND: &str = "Key not found";
 const REF_COUNT_NOT_FOUND: &str = "ref count in HD cache can't be None";
 
+use crate::types::ModuleInfo;
+
 pub(crate) struct HDCache {
     db: DB,
     u64_serializer: U64VarIntSerializer,
@@ -53,20 +55,16 @@ impl HDCache {
     }
 
     /// Insert a new module in the cache
-    pub fn insert(
-        &self,
-        hash: Hash,
-        module: RuntimeModule,
-        opt_init_cost: Option<u64>,
-    ) -> Result<(), ExecutionError> {
-        let key = hash.to_bytes();
+    pub fn insert(&self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
+        let (module, init_cost) = module_info;
+
         let module = module
             .serialize()
             .map_err(|_| ExecutionError::RuntimeError(MOD_SER_ERR.into()))?;
 
         let mut gas_cost = vec![];
         self.option_serializer
-            .serialize(&opt_init_cost, &mut gas_cost)
+            .serialize(&init_cost, &mut gas_cost)
             .expect(GAS_COSTS_SER_ERR);
 
         let mut ref_count = vec![];
@@ -75,15 +73,15 @@ impl HDCache {
             .expect(GAS_COSTS_SER_ERR);
 
         self.db
-            .put_cf(self.module_cf(), key, &module)
+            .put_cf(self.module_cf(), hash.to_bytes(), &module)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         self.db
-            .put_cf(self.gas_costs_cf(), key, &gas_cost)
+            .put_cf(self.gas_costs_cf(), hash.to_bytes(), &gas_cost)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         self.db
-            .put_cf(self.ref_count_cf(), key, &ref_count)
+            .put_cf(self.ref_count_cf(), hash.to_bytes(), &ref_count)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         Ok(())
@@ -133,7 +131,7 @@ impl HDCache {
         hash: Hash,
         limit: u64,
         gas_costs: GasCosts,
-    ) -> Option<(RuntimeModule, u64)> {
+    ) -> Option<ModuleInfo> {
         match self.get(hash, limit, gas_costs) {
             Some(value) => {
                 let ref_count = self.get_ref_count(hash)? + 1u64;
@@ -170,7 +168,7 @@ impl HDCache {
     }
 
     /// Retrieve a module
-    pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<(RuntimeModule, u64)> {
+    pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
         let module = self
             .db
             .get_cf(self.module_cf(), hash.to_bytes())
@@ -183,17 +181,21 @@ impl HDCache {
             .ok()
             .flatten();
 
-        match (module, cost) {
-            (Some(module), Some(cost)) => {
-                dbg!();
-                let module = RuntimeModule::deserialize(&module, limit, gas_costs).ok()?;
-                let (_, cost) = self
-                    .u64_deserializer
-                    .deserialize::<DeserializeError>(&cost)
-                    .ok()?;
-                Some((module, cost))
-            }
-            _ => None,
+        let cost = match cost {
+            Some(value) => self
+                .u64_deserializer
+                .deserialize::<DeserializeError>(&value)
+                .ok()
+                .map(|(_, cost)| Some(cost))
+                .flatten(),
+            None => None,
+        };
+
+        if let Some(module) = module {
+            let module = RuntimeModule::deserialize(&module, limit, gas_costs).ok()?;
+            Some((module, cost))
+        } else {
+            None
         }
     }
 
@@ -272,7 +274,7 @@ mod tests {
         let init_cost = 100;
 
         cache
-            .insert(hash, module.clone(), Some(init_cost))
+            .insert(hash, (module.clone(), Some(init_cost)))
             .expect("insert should succeed");
 
         let ref_count = cache.get_ref_count(hash).unwrap();
@@ -297,7 +299,7 @@ mod tests {
         let gas_costs = GasCosts::default();
 
         cache
-            .insert(hash, module.clone(), Some(init_cost))
+            .insert(hash, (module.clone(), Some(init_cost)))
             .expect("insert should succeed");
 
         let (cached_module, cached_init_cost) = cache
@@ -308,7 +310,7 @@ mod tests {
             cached_module.serialize().unwrap(),
             module.serialize().unwrap()
         );
-        assert_eq!(cached_init_cost, init_cost);
+        assert_eq!(cached_init_cost.unwrap(), init_cost);
     }
 
     #[test]
@@ -320,7 +322,7 @@ mod tests {
         let gas_costs = GasCosts::default();
 
         cache
-            .insert(hash, make_default_runtime_module(), Some(init_cost))
+            .insert(hash, (make_default_runtime_module(), Some(init_cost)))
             .expect("insert should succeed");
 
         cache
@@ -328,7 +330,7 @@ mod tests {
             .expect("set init cost should succeed");
 
         let (_, cached_init_cost) = cache.get(hash, limit, gas_costs).unwrap();
-        assert_eq!(cached_init_cost, init_cost);
+        assert_eq!(cached_init_cost.unwrap(), init_cost);
     }
 
     #[test]
@@ -339,7 +341,7 @@ mod tests {
         let init_cost = 100;
         let limit = 1;
 
-        if let Err(_) = cache.insert(hash, module.clone(), Some(init_cost)) {
+        if let Err(_) = cache.insert(hash, (module.clone(), Some(init_cost))) {
             assert!(false);
         };
 
@@ -350,10 +352,10 @@ mod tests {
             cached_module.serialize().unwrap(),
             module.serialize().unwrap()
         );
-        assert_eq!(cached_init_cost, init_cost);
+        assert_eq!(cached_init_cost.unwrap(), init_cost);
 
         let (_, cached_init_cost) = cache.get(hash, limit, GasCosts::default()).unwrap();
-        assert_eq!(cached_init_cost, init_cost + 1);
+        assert_eq!(cached_init_cost.unwrap(), init_cost + 1);
     }
 
     #[test]
@@ -364,7 +366,7 @@ mod tests {
         let init_cost = 100;
         let limit = 1;
 
-        if let Err(_) = cache.insert(hash, module.clone(), Some(init_cost)) {
+        if let Err(_) = cache.insert(hash, (module.clone(), Some(init_cost))) {
             assert!(false);
         };
 
