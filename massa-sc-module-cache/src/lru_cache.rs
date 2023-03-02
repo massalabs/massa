@@ -1,7 +1,6 @@
 use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
-use massa_sc_runtime::RuntimeModule;
 use schnellru::{ByLength, LruMap};
 
 use crate::types::ModuleInfo;

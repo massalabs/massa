@@ -1,6 +1,5 @@
 use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
-use massa_sc_runtime::RuntimeModule;
 
 use crate::types::ModuleInfo;
 

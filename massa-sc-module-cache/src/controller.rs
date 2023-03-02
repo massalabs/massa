@@ -4,7 +4,7 @@ use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use schnellru::{ByLength, LruMap};
 
-use crate::{hd_cache::HDCache, lru_cache::LRUCache, types::ModuleInfo};
+use crate::{hd_cache::HDCache, lru_cache::LRUCache};
 
 /// `LruMap` specialization for `PreHashed` keys
 pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
@@ -73,6 +73,13 @@ impl ModuleCache {
         Ok(())
     }
 
+    /// Remove a cached module
+    pub fn remove_module(&mut self, bytecode: &[u8]) {
+        let hash = Hash::compute_from(bytecode);
+        self.hd_cache.remove(hash);
+    }
+
+    /// Update a cached module (remove and save)
     pub fn update_module(
         &mut self,
         new: &[u8],
@@ -82,12 +89,6 @@ impl ModuleCache {
         self.remove_module(previous);
         self.save_module(new, new_limit)?;
         Ok(())
-    }
-
-    /// Remove a cached module
-    pub fn remove_module(&mut self, bytecode: &[u8]) {
-        let hash = Hash::compute_from(bytecode);
-        self.hd_cache.remove(hash);
     }
 
     /// Load a cached module for execution
