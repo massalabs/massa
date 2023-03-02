@@ -97,12 +97,11 @@ impl HDCache {
     ///        i.e. insert has been called before with the same hash and it has not been removed
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
-        let gas_costs_cf = self.db.cf_handle(GAS_COSTS_CF).expect(CF_ERROR);
-
-        let key = hash.to_bytes();
-
         self.db
-            .get_cf(gas_costs_cf, key)
+            .get_cf(
+                self.db.cf_handle(GAS_COSTS_CF).expect(CF_ERROR),
+                hash.to_bytes(),
+            )
             .map_err(|_| ExecutionError::RuntimeError(KEY_NOT_FOUND.to_string()))?;
 
         // serialize cost
@@ -113,7 +112,11 @@ impl HDCache {
 
         // update db
         self.db
-            .put_cf(gas_costs_cf, key, &gas_cost)
+            .put_cf(
+                self.db.cf_handle(GAS_COSTS_CF).expect(CF_ERROR),
+                hash.to_bytes(),
+                &gas_cost,
+            )
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         Ok(())
@@ -168,15 +171,21 @@ impl HDCache {
 
     /// Retrieve a module
     pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<(RuntimeModule, u64)> {
-        let gas_costs_cf = self.gas_costs_cf();
+        let module = self
+            .db
+            .get_cf(self.module_cf(), hash.to_bytes())
+            .ok()
+            .flatten();
 
-        let key = hash.to_bytes();
-
-        let module = self.db.get_cf(self.module_cf(), key).ok().flatten();
-        let cost = self.db.get_cf(gas_costs_cf, key).ok().flatten();
+        let cost = self
+            .db
+            .get_cf(self.gas_costs_cf(), hash.to_bytes())
+            .ok()
+            .flatten();
 
         match (module, cost) {
             (Some(module), Some(cost)) => {
+                dbg!();
                 let module = RuntimeModule::deserialize(&module, limit, gas_costs).ok()?;
                 let (_, cost) = self
                     .u64_deserializer
@@ -189,12 +198,27 @@ impl HDCache {
     }
 
     /// Remove a module
+    ///
+    /// On call
+    /// 1. decrease internal ref_count
+    /// 2  if ref_count reaches 0 then remove data associated to the given hash
     pub fn remove(&self, hash: Hash) -> Result<(), ExecutionError> {
-        // decrease ref count here
-        // only remove if refcount <= 0
-        self.db
-            .delete(hash.to_bytes())
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))
+        let ref_count = self
+            .get_ref_count(hash)
+            .ok_or(ExecutionError::RuntimeError(REF_COUNT_NOT_FOUND.into()))?;
+
+        if ref_count > 1 {
+            return self.set_ref_count(hash, ref_count - 1);
+        }
+
+        // remove all
+        for cf in [self.module_cf(), self.gas_costs_cf(), self.ref_count_cf()] {
+            self.db
+                .delete_cf(cf, hash.to_bytes())
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+        }
+
+        Ok(())
     }
 
     fn module_cf(&self) -> &ColumnFamily {
@@ -254,7 +278,9 @@ mod tests {
         let ref_count = cache.get_ref_count(hash).unwrap();
         assert_eq!(ref_count, 1u64);
 
-        cache.set_ref_count(hash, 2u64).expect("set_ref_count should succeed");
+        cache
+            .set_ref_count(hash, 2u64)
+            .expect("set_ref_count should succeed");
         let ref_count = cache.get_ref_count(hash).unwrap();
         assert_eq!(ref_count, 2u64);
     }
@@ -274,7 +300,10 @@ mod tests {
             .insert(hash, module.clone(), Some(init_cost))
             .expect("insert should succeed");
 
-        let (cached_module, cached_init_cost) = cache.get(hash, limit, gas_costs).unwrap();
+        let (cached_module, cached_init_cost) = cache
+            .get(hash, limit, gas_costs)
+            .expect("get should succeed in test");
+
         assert_eq!(
             cached_module.serialize().unwrap(),
             module.serialize().unwrap()
@@ -289,6 +318,10 @@ mod tests {
         let init_cost = 100;
         let limit = 1;
         let gas_costs = GasCosts::default();
+
+        cache
+            .insert(hash, make_default_runtime_module(), Some(init_cost))
+            .expect("insert should succeed");
 
         cache
             .set_init_cost(hash, init_cost)
@@ -337,7 +370,7 @@ mod tests {
 
         assert!(cache.get(hash, limit, GasCosts::default()).is_some());
 
-        cache.remove(hash);
+        cache.remove(hash).expect("remove should succeed");
         assert!(cache.get(hash, limit, GasCosts::default()).is_none());
     }
 
