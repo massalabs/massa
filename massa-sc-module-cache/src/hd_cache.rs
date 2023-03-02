@@ -6,7 +6,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, OptionDeserializer, OptionSerializer, Serializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
-use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, DB};
+use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, WriteBatch, WriteOptions, DB};
 use std::ops::Bound::Included;
 use std::path::PathBuf;
 
@@ -76,19 +76,22 @@ impl HDCache {
             .serialize(&1u64, &mut ref_count)
             .expect(GAS_COSTS_SER_ERR);
 
-        self.db
-            .put_cf(self.module_cf(), hash.to_bytes(), module)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+        let mut batch = WriteBatch::default();
+
+        for (cf, data) in [
+            (self.module_cf(), module),
+            (self.gas_costs_cf(), gas_cost),
+            (self.ref_count_cf(), ref_count),
+        ] {
+            batch.put_cf(cf, hash.to_bytes(), data);
+        }
+
+        let mut write_options = WriteOptions::default();
+        write_options.set_sync(true);
 
         self.db
-            .put_cf(self.gas_costs_cf(), hash.to_bytes(), &gas_cost)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
-
-        self.db
-            .put_cf(self.ref_count_cf(), hash.to_bytes(), &ref_count)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
-
-        Ok(())
+            .write_opt(batch, &write_options)
+            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))
     }
 
     /// Sets the initialization cost of a given module separately
@@ -99,6 +102,7 @@ impl HDCache {
     ///        i.e. insert has been called before with the same hash and it has not been removed
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
+        // check that hash exists in the db
         self.db
             .get_cf(
                 self.db.cf_handle(GAS_COSTS_CF).expect(CF_ERROR),
@@ -114,11 +118,7 @@ impl HDCache {
 
         // update db
         self.db
-            .put_cf(
-                self.db.cf_handle(GAS_COSTS_CF).expect(CF_ERROR),
-                hash.to_bytes(),
-                &gas_cost,
-            )
+            .put_cf(self.gas_costs_cf(), hash.to_bytes(), &gas_cost)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         Ok(())
@@ -138,7 +138,7 @@ impl HDCache {
     ) -> Option<ModuleInfo> {
         match self.get(hash, limit, gas_costs) {
             Some(value) => {
-                let ref_count = self.get_ref_count(hash)? + 1u64;
+                let ref_count = self.get_ref_count(hash).ok()? + 1u64;
                 self.set_ref_count(hash, ref_count).ok()?;
 
                 Some(value)
@@ -152,23 +152,24 @@ impl HDCache {
         self.u64_serializer
             .serialize(&ref_count, &mut buffer)
             .expect(GAS_COSTS_SER_ERR);
+
         self.db
             .put_cf(self.ref_count_cf(), hash.to_bytes(), &buffer)
             .map_err(|err| ExecutionError::RuntimeError(err.into_string()))
     }
 
-    fn get_ref_count(&self, hash: Hash) -> Option<u64> {
+    fn get_ref_count(&self, hash: Hash) -> Result<u64, ExecutionError> {
         let ref_count = self
             .db
             .get_cf(self.ref_count_cf(), hash.to_bytes())
             .ok()
             .flatten()
             .expect(REF_COUNT_NOT_FOUND);
-        let (_, ref_count) = self
-            .u64_deserializer
+
+        self.u64_deserializer
             .deserialize::<DeserializeError>(&ref_count)
-            .ok()?;
-        Some(ref_count)
+            .map(|(_, ref_count)| ref_count)
+            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))
     }
 
     /// Retrieve a module
@@ -192,6 +193,7 @@ impl HDCache {
             .and_then(|(_, cost)| cost);
 
         let module = RuntimeModule::deserialize(&module, limit, gas_costs).ok()?;
+
         Some((module, cost))
     }
 
@@ -201,22 +203,26 @@ impl HDCache {
     /// 1. decrease internal ref_count
     /// 2  if ref_count reaches 0 then remove data associated to the given hash
     pub fn remove(&self, hash: Hash) -> Result<(), ExecutionError> {
-        let ref_count = self
-            .get_ref_count(hash)
-            .ok_or(ExecutionError::RuntimeError(REF_COUNT_NOT_FOUND.into()))?;
+        let ref_count = self.get_ref_count(hash)?;
 
         if ref_count > 1 {
             return self.set_ref_count(hash, ref_count - 1);
         }
 
-        // remove all
+        // remove all atomically
+
+        let mut batch = WriteBatch::default();
+
         for cf in [self.module_cf(), self.gas_costs_cf(), self.ref_count_cf()] {
-            self.db
-                .delete_cf(cf, hash.to_bytes())
-                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+            batch.delete_cf(cf, hash.to_bytes());
         }
 
-        Ok(())
+        let mut write_options = WriteOptions::default();
+        write_options.set_sync(true);
+
+        self.db
+            .write_opt(batch, &write_options)
+            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))
     }
 
     fn module_cf(&self) -> &ColumnFamily {
@@ -341,17 +347,23 @@ mod tests {
             assert!(false);
         };
 
-        let (cached_module, cached_init_cost) = cache
+        let cache_ref_count = cache.get_ref_count(hash).unwrap();
+        assert_eq!(cache_ref_count, 1);
+
+        let (cached_module, cache_init_cost) = cache
             .get_and_increment(hash, limit, GasCosts::default())
             .unwrap();
         assert_eq!(
             cached_module.serialize().unwrap(),
             module.serialize().unwrap()
         );
-        assert_eq!(cached_init_cost.unwrap(), init_cost);
+        assert_eq!(cache_init_cost.unwrap(), init_cost);
 
         let (_, cached_init_cost) = cache.get(hash, limit, GasCosts::default()).unwrap();
-        assert_eq!(cached_init_cost.unwrap(), init_cost + 1);
+        assert_eq!(cached_init_cost.unwrap(), init_cost);
+
+        let cache_ref_count = cache.get_ref_count(hash).unwrap();
+        assert_eq!(cache_ref_count, 2);
     }
 
     #[test]
@@ -362,9 +374,9 @@ mod tests {
         let init_cost = 100;
         let limit = 1;
 
-        if let Err(_) = cache.insert(hash, (module.clone(), Some(init_cost))) {
-            assert!(false);
-        };
+        cache
+            .insert(hash, (module.clone(), Some(init_cost)))
+            .expect("insert should have succeeded");
 
         assert!(cache.get(hash, limit, GasCosts::default()).is_some());
 
@@ -372,7 +384,30 @@ mod tests {
         assert!(cache.get(hash, limit, GasCosts::default()).is_none());
     }
 
-    // #[bench]
-    // fn bench_insert() {
-    // }
+    #[test]
+    fn test_remove_after_get_inc() {
+        let cache = setup();
+        let hash = Hash::compute_from(b"test_hash");
+        let module = make_default_runtime_module();
+        let init_cost = 100;
+        let limit = 1;
+
+        if let Err(_) = cache.insert(hash, (module.clone(), Some(init_cost))) {
+            assert!(false);
+        };
+
+        assert_eq!(cache.get_ref_count(hash).unwrap(), 1);
+
+        let (_, _) = cache
+            .get_and_increment(hash, limit, GasCosts::default())
+            .unwrap();
+        assert_eq!(cache.get_ref_count(hash).unwrap(), 2);
+
+        cache.remove(hash).expect("remove should succeed");
+        assert!(cache.get(hash, limit, GasCosts::default()).is_some());
+        assert_eq!(cache.get_ref_count(hash).unwrap(), 1);
+
+        cache.remove(hash).expect("remove should succeed");
+        assert!(cache.get(hash, limit, GasCosts::default()).is_none());
+    }
 }
