@@ -10,8 +10,7 @@ massa_execution_exports = { path = "../massa-execution-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
-# massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup", features = ["testing"]}
-massa-sc-runtime = { path = "../../massa-sc-runtime", features = ["testing"]}
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup", features = ["testing"]}
 
 [features]
 testing = []
