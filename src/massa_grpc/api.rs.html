@@ -382,8 +382,6 @@
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! gRPC API for a massa-node
 </span><span class="kw">use </span>std::{error::Error, io::ErrorKind, pin::Pin};
@@ -392,7 +390,6 @@
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
 <span class="kw">use </span>massa_models::{
     block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
-    config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
     error::ModelsError,
     secure_share::SecureShareDeserializer,
 };
@@ -555,22 +552,19 @@
         <span class="kw">let </span>consensus_controller = <span class="self">self</span>.consensus_controller.clone();
         <span class="kw">let </span><span class="kw-2">mut </span>protocol_sender = <span class="self">self</span>.protocol_command_sender.clone();
         <span class="kw">let </span>storage = <span class="self">self</span>.storage.clone_without_refs();
-
+        <span class="kw">let </span>config = <span class="self">self</span>.grpc_config.clone();
+        <span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
         <span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
-        <span class="comment">//TODO add the configuration in API
-        </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(<span class="number">128</span>);
 
-        <span class="comment">//TODO add futures cancellation
-        </span>tokio::spawn(<span class="kw">async move </span>{
+        tokio::spawn(<span class="kw">async move </span>{
             <span class="kw">while let </span><span class="prelude-val">Some</span>(result) = in_stream.next().<span class="kw">await </span>{
                 <span class="kw">match </span>result {
                     <span class="prelude-val">Ok</span>(req_content) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(proto_block) = req_content.block {
-                            <span class="comment">//TODO add the configuration in API
-                            </span><span class="kw">let </span>args = BlockDeserializerArgs {
-                                thread_count: THREAD_COUNT,
-                                max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-                                endorsement_count: ENDORSEMENT_COUNT,
+                            <span class="kw">let </span>args = BlockDeserializerArgs {
+                                thread_count: config.thread_count,
+                                max_operations_per_block: config.max_operations_per_block,
+                                endorsement_count: config.endorsement_count,
                             };
                             <span class="kw">let </span>_res: <span class="prelude-ty">Result</span>&lt;(), DeserializeError&gt; =
                                 <span class="kw">match </span>SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -691,14 +685,16 @@
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
                             <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
-                                <span class="macro">warn!</span>(<span class="string">&quot;\tclient disconnected: broken pipe&quot;</span>);
+                                <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
                                 <span class="kw">break</span>;
                             }
                         }
-                        <span class="comment">//TODO add better error handling
-                        </span><span class="kw">match </span>tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
+                        <span class="kw">match </span>tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; (),
-                            <span class="prelude-val">Err</span>(_err) =&gt; <span class="kw">break</span>,
+                            <span class="prelude-val">Err</span>(e) =&gt; {
+                                <span class="macro">error!</span>(<span class="string">&quot;failed to send back sendblocks error response: {}&quot;</span>, e);
+                                <span class="kw">break</span>;
+                            }
                         }
                     }
                 }

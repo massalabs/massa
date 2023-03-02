@@ -256,6 +256,8 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -487,26 +489,28 @@
     </span><span class="kw">pub </span>max_endorsements_propagation_time: MassaTime,
 }
 
-<span class="doccomment">/// gRPC settings.
+<span class="doccomment">/// gRPC settings
 /// the gRPC settings
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>GrpcSettings {
-    <span class="doccomment">/// whether to enable gRPC.
+    <span class="doccomment">/// whether to enable gRPC
     </span><span class="kw">pub </span>enabled: bool,
-    <span class="doccomment">/// whether to accept HTTP/1.1 requests.
+    <span class="doccomment">/// whether to accept HTTP/1.1 requests
     </span><span class="kw">pub </span>accept_http1: bool,
-    <span class="doccomment">/// whether to enable gRPC reflection(introspection).
+    <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
-    <span class="doccomment">/// which compression encodings does the server accept for requests.
+    <span class="doccomment">/// which compression encodings does the server accept for requests
     </span><span class="kw">pub </span>accept_compressed: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="doccomment">/// which compression encodings might the server use for responses.
+    <span class="doccomment">/// which compression encodings might the server use for responses
     </span><span class="kw">pub </span>send_compressed: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="doccomment">/// limits the maximum size of a decoded message. Defaults to 4MB.
+    <span class="doccomment">/// limits the maximum size of a decoded message. Defaults to 4MB
     </span><span class="kw">pub </span>max_decoding_message_size: usize,
-    <span class="doccomment">/// limits the maximum size of an encoded message. Defaults to 4MB.
+    <span class="doccomment">/// limits the maximum size of an encoded message. Defaults to 4MB
     </span><span class="kw">pub </span>max_encoding_message_size: usize,
+    <span class="doccomment">/// limits the maximum size of streaming channel
+    </span><span class="kw">pub </span>max_channel_size: usize,
 }
 
 <span class="attr">#[cfg(test)]

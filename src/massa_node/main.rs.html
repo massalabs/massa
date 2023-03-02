@@ -947,6 +947,16 @@
 <a href="#947" id="947">947</a>
 <a href="#948" id="948">948</a>
 <a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1527,6 +1537,16 @@
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
             max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
             max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+            max_parameter_size: MAX_PARAMETERS_SIZE,
+            max_channel_size: SETTINGS.grpc.max_channel_size,
         };
 
         <span class="kw">let </span>grpc_api = MassaService {
