@@ -664,7 +664,7 @@ impl ExecutionState {
 
         // Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let (module, opt_init_cost) = self.module_cache.write().load_module(&bytecode, max_gas)?;
+        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -674,9 +674,11 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                self.module_cache
-                    .write()
-                    .save_module_after_execution(&bytecode, module, init_cost);
+                self.module_cache.write().set_init_cost(
+                    &bytecode,
+                    init_cost,
+                    module.cache_compatible(),
+                )?;
                 Ok(())
             }
             Err(err) => Err(ExecutionError::RuntimeError(format!(
@@ -699,7 +701,7 @@ impl ExecutionState {
     ) -> Result<(), ExecutionError> {
         // prepare execution context
         let context_snapshot;
-        let bytecode: Bytecode = {
+        let bytecode = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -751,15 +753,15 @@ impl ExecutionState {
                 return Err(err);
             }
 
-            bytecode
+            bytecode.0
         };
 
         // Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let (module, opt_init_cost) = self
+        let module = self
             .module_cache
             .write()
-            .load_module(&bytecode.0, message.max_gas)?;
+            .load_module(&bytecode, message.max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -769,11 +771,11 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                self.module_cache.write().save_module_after_execution(
-                    &bytecode.0,
-                    module,
+                self.module_cache.write().set_init_cost(
+                    &bytecode,
                     init_cost,
-                );
+                    module.cache_compatible(),
+                )?;
                 Ok(())
             }
             Err(err) => {
@@ -1178,7 +1180,7 @@ impl ExecutionState {
 
                 // Execute bytecode
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                let (module, opt_init_cost) = self
+                let module = self
                     .module_cache
                     .write()
                     .load_module(&bytecode, req.max_gas)?;
@@ -1196,11 +1198,11 @@ impl ExecutionState {
                         err,
                     ))
                 })?;
-                self.module_cache.write().save_module_after_execution(
+                self.module_cache.write().set_init_cost(
                     &bytecode,
-                    module,
                     response.init_cost,
-                );
+                    module.cache_compatible(),
+                )?;
                 response
             }
         };

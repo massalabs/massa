@@ -200,7 +200,7 @@ impl Interface for InterfaceImpl {
     /// A `massa-sc-runtime` compiled module
     fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<RuntimeModule> {
         let context = context_guard!(self);
-        let (module, _) = context.module_cache.write().load_module(bytecode, limit)?;
+        let module = context.module_cache.write().load_module(bytecode, limit)?;
         Ok(module)
     }
 

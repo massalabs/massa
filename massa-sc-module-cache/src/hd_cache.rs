@@ -8,6 +8,7 @@ use massa_serialization::{
 use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, DB};
 use std::ops::Bound::Included;
 use std::path::PathBuf;
+use crate::types::ModuleInfo;
 
 const MODULE_CF: &str = "module";
 const GAS_COSTS_CF: &str = "gas_cost";
@@ -19,7 +20,6 @@ const MOD_SER_ERR: &str = "module serialization error";
 const KEY_NOT_FOUND: &str = "Key not found";
 const REF_COUNT_NOT_FOUND: &str = "ref count in HD cache can't be None";
 
-use crate::types::ModuleInfo;
 
 pub(crate) struct HDCache {
     db: DB,
@@ -73,7 +73,7 @@ impl HDCache {
             .expect(GAS_COSTS_SER_ERR);
 
         self.db
-            .put_cf(self.module_cf(), hash.to_bytes(), &module)
+            .put_cf(self.module_cf(), hash.to_bytes(), module)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         self.db
@@ -186,8 +186,7 @@ impl HDCache {
                 .u64_deserializer
                 .deserialize::<DeserializeError>(&value)
                 .ok()
-                .map(|(_, cost)| Some(cost))
-                .flatten(),
+                .and_then(|(_, cost)| Some(cost)),
             None => None,
         };
 
