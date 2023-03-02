@@ -33,17 +33,9 @@ impl ModuleCache {
     }
 
     /// Save a new or an already existing module in the cache
-    pub fn save_module(
-        &mut self,
-        bytecode: &[u8],
-        limit: u64,
-        wipe_previous: bool,
-    ) -> Result<(), ExecutionError> {
-        // NOTE: using ExecutionError for now but will create a CacheError type
+    pub fn save_module(&mut self, bytecode: &[u8], limit: u64) -> Result<(), ExecutionError> {
+        // TODO: using ExecutionError for now but create a CacheError type
         let hash = Hash::compute_from(bytecode);
-        if wipe_previous {
-            self.hd_cache.remove(hash);
-        }
         if let Some(hd_module_info) = self.hd_cache.get_and_increment(hash) {
             self.lru_cache.insert(hash, hd_module_info);
         } else {
@@ -81,6 +73,17 @@ impl ModuleCache {
         Ok(())
     }
 
+    pub fn update_module(
+        &mut self,
+        new: &[u8],
+        new_limit: u64,
+        previous: &[u8],
+    ) -> Result<(), ExecutionError> {
+        self.remove_module(previous);
+        self.save_module(new, new_limit)?;
+        Ok(())
+    }
+
     /// Remove a cached module
     pub fn remove_module(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
@@ -92,18 +95,19 @@ impl ModuleCache {
         &mut self,
         bytecode: &[u8],
         limit: u64,
-    ) -> Result<ModuleInfo, ExecutionError> {
+    ) -> Result<RuntimeModule, ExecutionError> {
         let hash = Hash::compute_from(bytecode);
+        // IMPORTANT TODO: make a gas check in the HD cache as well
         if let Some(hd_module_info) = self.hd_cache.get(hash) {
-            if let Some(lru_module_info) = self.lru_cache.get(hash, limit)? {
-                Ok(lru_module_info)
+            if let Some((lru_module, _)) = self.lru_cache.get(hash, limit)? {
+                Ok(lru_module)
             } else {
                 self.lru_cache.insert(hash, hd_module_info.clone());
-                Ok(hd_module_info)
+                Ok(hd_module_info.0)
             }
         } else {
-            if let Some(lru_module_info) = self.lru_cache.get(hash, limit)? {
-                Ok(lru_module_info)
+            if let Some((lru_module, _)) = self.lru_cache.get(hash, limit)? {
+                Ok(lru_module)
             } else {
                 // SP compiler because this is arbitrary bytecode
                 let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), false)
@@ -113,17 +117,8 @@ impl ModuleCache {
                             err
                         ))
                     })?;
-                Ok((new_module, None))
+                Ok(new_module)
             }
         }
-    }
-
-    /// Save a module in the LRU cache after a successful arbitrary execution
-    pub fn save_module_after_execution(
-        &mut self,
-        bytecode: &[u8],
-        module: RuntimeModule,
-        init_cost: u64,
-    ) {
     }
 }
