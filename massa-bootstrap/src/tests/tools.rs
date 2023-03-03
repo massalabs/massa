@@ -274,19 +274,9 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
 }
 
-pub fn get_random_public_key() -> PublicKey {
-    let priv_key = KeyPair::generate();
-    priv_key.get_public_key()
-}
-
 pub fn get_random_address() -> Address {
     let priv_key = KeyPair::generate();
     Address::from_public_key(&priv_key.get_public_key())
-}
-
-pub fn get_dummy_signature(s: &str) -> Signature {
-    let priv_key = KeyPair::generate();
-    priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {

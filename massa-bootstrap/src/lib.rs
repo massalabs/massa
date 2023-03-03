@@ -39,7 +39,7 @@ pub use settings::IpType;
 pub use settings::{BootstrapConfig, BootstrapServerMessageDeserializerArgs};
 
 #[cfg(test)]
-pub mod tests;
+pub(crate) mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
 pub struct GlobalBootstrapState {
