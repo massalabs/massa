@@ -10,15 +10,18 @@ pub type Duplex = tokio::net::TcpStream;
 pub type DuplexListener = tokio::net::TcpListener;
 
 #[async_trait]
+/// Specifies a common interface that can be used by standard, or mockers
 pub trait BSListener {
     async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)>;
 }
 
 #[async_trait]
+/// Specifies a common interface that can be used by standard, or mockers
 pub trait BSConnector {
     async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex>;
 }
 
+/// Specifies a common interface that can be used by standard, or mockers
 pub trait BSEstablisher {
     // TODO: this is needed for thread spawning. Once the listener is on-thread, the static
     // lifetime can be thrown away.

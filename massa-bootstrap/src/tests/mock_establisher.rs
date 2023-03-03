@@ -73,9 +73,7 @@ impl BSConnector for MockConnector {
         let duplex_controller = Duplex::connect(addr).await.unwrap();
         let duplex_mock = duplex_mock.accept().await.unwrap();
 
-        // // task the controller connection if exist.
-        // let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
-        // to see if the connection is accepted
+        // Used to see if the connection is accepted
         let (accept_tx, accept_rx) = oneshot::channel::<bool>();
 
         // send new connection to mock
