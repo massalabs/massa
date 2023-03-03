@@ -3,7 +3,6 @@ syntax = "proto3";
 package massa.api.v1;
 
 import "common.proto";
-import "endorsement.proto";
 
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
@@ -76,7 +75,7 @@ message SendEndorsementsRequest {
   // string field
   string id = 1;
   // object field
-  Endorsement endorsement = 2;
+  repeated SecureSharePayload endorsements = 2;
 }
 
 // SendEndorsementsResponse holds response from SendEndorsements
@@ -93,7 +92,7 @@ message SendEndorsementsResponse {
 // Holds Endorsement response
 message EndorsementResult {
   // string field
-  string id = 1;
+  repeated string ids = 1;
 }
 
 // SendOperationsRequest holds parameters to SendOperations
