@@ -1,3 +1,3 @@
 (function() {var implementors = {
-"massa_grpc":[["impl <a class=\"trait\" href=\"massa_proto/massa/api/v1/grpc_server/trait.Grpc.html\" title=\"trait massa_proto::massa::api::v1::grpc_server::Grpc\">Grpc</a> for <a class=\"struct\" href=\"massa_grpc/api/struct.MassaService.html\" title=\"struct massa_grpc::api::MassaService\">MassaService</a>"]]
+"massa_grpc":[["impl Grpc for <a class=\"struct\" href=\"massa_grpc/api/struct.MassaService.html\" title=\"struct massa_grpc::api::MassaService\">MassaService</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

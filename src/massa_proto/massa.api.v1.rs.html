@@ -1102,97 +1102,6 @@
     </span><span class="attr">#[prost(bytes = <span class="string">&quot;vec&quot;</span>, tag = <span class="string">&quot;3&quot;</span>)]
     </span><span class="kw">pub </span>serialized_content: ::prost::alloc::vec::Vec&lt;u8&gt;,
 }
-<span class="doccomment">/// message struct
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>Slot {
-    <span class="doccomment">/// fixed64 field
-    </span><span class="attr">#[prost(uint64, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>period: u64,
-    <span class="doccomment">/// float field
-    </span><span class="attr">#[prost(float, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>thread: f32,
-}
-<span class="doccomment">/// region Endorsement
-/// message struct
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>EndorsementInfo {
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
-    <span class="doccomment">/// bool field
-    </span><span class="attr">#[prost(bool, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>in_pool: bool,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, repeated, tag = <span class="string">&quot;3&quot;</span>)]
-    </span><span class="kw">pub </span>in_blocks: ::prost::alloc::vec::Vec&lt;::prost::alloc::string::String&gt;,
-    <span class="doccomment">/// bool field
-    </span><span class="attr">#[prost(bool, tag = <span class="string">&quot;4&quot;</span>)]
-    </span><span class="kw">pub </span>is_final: bool,
-    <span class="doccomment">/// object field
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;5&quot;</span>)]
-    </span><span class="kw">pub </span>endorsement: ::core::option::Option&lt;Endorsement&gt;,
-}
-<span class="doccomment">/// message struct
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>Endorsement {
-    <span class="doccomment">/// object field
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>slot: ::core::option::Option&lt;Slot&gt;,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(uint32, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>index: u32,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;3&quot;</span>)]
-    </span><span class="kw">pub </span>endorsed_block: ::prost::alloc::string::String,
-}
-<span class="doccomment">/// message struct
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>EndorsementContent {
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>sender_public_key: ::prost::alloc::string::String,
-    <span class="doccomment">/// object field
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>slot: ::core::option::Option&lt;Slot&gt;,
-    <span class="doccomment">/// float field
-    </span><span class="attr">#[prost(uint32, tag = <span class="string">&quot;3&quot;</span>)]
-    </span><span class="kw">pub </span>index: u32,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;4&quot;</span>)]
-    </span><span class="kw">pub </span>endorsed_block: ::prost::alloc::string::String,
-}
-<span class="doccomment">/// message struct
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>EndorsementId {
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>value: ::prost::alloc::string::String,
-}
-<span class="doccomment">/// message struct
-</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-</span><span class="kw">pub struct </span>SecureShareEndorsement {
-    <span class="doccomment">/// object field
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>content: ::core::option::Option&lt;Endorsement&gt;,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>signature: ::prost::alloc::string::String,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;3&quot;</span>)]
-    </span><span class="kw">pub </span>content_creator_pub_key: ::prost::alloc::string::String,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;4&quot;</span>)]
-    </span><span class="kw">pub </span>content_creator_address: ::prost::alloc::string::String,
-    <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;5&quot;</span>)]
-    </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
-}
 <span class="doccomment">/// GetVersionRequest holds request from GetVersion
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1265,8 +1174,8 @@
     </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
     <span class="doccomment">/// object field
-    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>endorsement: ::core::option::Option&lt;Endorsement&gt;,
+    </span><span class="attr">#[prost(message, repeated, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>endorsements: ::prost::alloc::vec::Vec&lt;SecureSharePayload&gt;,
 }
 <span class="doccomment">/// SendEndorsementsResponse holds response from SendEndorsements
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
@@ -1296,8 +1205,8 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 </span><span class="kw">pub struct </span>EndorsementResult {
     <span class="doccomment">/// string field
-    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
+    </span><span class="attr">#[prost(string, repeated, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>ids: ::prost::alloc::vec::Vec&lt;::prost::alloc::string::String&gt;,
 }
 <span class="doccomment">/// SendOperationsRequest holds parameters to SendOperations
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
@@ -1882,6 +1791,97 @@
     <span class="kw">impl</span>&lt;T: Grpc&gt; tonic::server::NamedService <span class="kw">for </span>GrpcServer&lt;T&gt; {
         <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;massa.api.v1.Grpc&quot;</span>;
     }
+}
+<span class="doccomment">/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>Slot {
+    <span class="doccomment">/// fixed64 field
+    </span><span class="attr">#[prost(uint64, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>period: u64,
+    <span class="doccomment">/// float field
+    </span><span class="attr">#[prost(float, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>thread: f32,
+}
+<span class="doccomment">/// region Endorsement
+/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>EndorsementInfo {
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
+    <span class="doccomment">/// bool field
+    </span><span class="attr">#[prost(bool, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>in_pool: bool,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, repeated, tag = <span class="string">&quot;3&quot;</span>)]
+    </span><span class="kw">pub </span>in_blocks: ::prost::alloc::vec::Vec&lt;::prost::alloc::string::String&gt;,
+    <span class="doccomment">/// bool field
+    </span><span class="attr">#[prost(bool, tag = <span class="string">&quot;4&quot;</span>)]
+    </span><span class="kw">pub </span>is_final: bool,
+    <span class="doccomment">/// object field
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;5&quot;</span>)]
+    </span><span class="kw">pub </span>endorsement: ::core::option::Option&lt;Endorsement&gt;,
+}
+<span class="doccomment">/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>Endorsement {
+    <span class="doccomment">/// object field
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>slot: ::core::option::Option&lt;Slot&gt;,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(uint32, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>index: u32,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;3&quot;</span>)]
+    </span><span class="kw">pub </span>endorsed_block: ::prost::alloc::string::String,
+}
+<span class="doccomment">/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>EndorsementContent {
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>sender_public_key: ::prost::alloc::string::String,
+    <span class="doccomment">/// object field
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>slot: ::core::option::Option&lt;Slot&gt;,
+    <span class="doccomment">/// float field
+    </span><span class="attr">#[prost(uint32, tag = <span class="string">&quot;3&quot;</span>)]
+    </span><span class="kw">pub </span>index: u32,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;4&quot;</span>)]
+    </span><span class="kw">pub </span>endorsed_block: ::prost::alloc::string::String,
+}
+<span class="doccomment">/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>EndorsementId {
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>value: ::prost::alloc::string::String,
+}
+<span class="doccomment">/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>SecureShareEndorsement {
+    <span class="doccomment">/// object field
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>content: ::core::option::Option&lt;Endorsement&gt;,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>signature: ::prost::alloc::string::String,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;3&quot;</span>)]
+    </span><span class="kw">pub </span>content_creator_pub_key: ::prost::alloc::string::String,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;4&quot;</span>)]
+    </span><span class="kw">pub </span>content_creator_address: ::prost::alloc::string::String,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;5&quot;</span>)]
+    </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
 }
 <span class="doccomment">/// region Operation
 /// message struct
