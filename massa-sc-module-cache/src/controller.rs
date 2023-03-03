@@ -28,7 +28,7 @@ impl ModuleCache {
         Self {
             gas_costs,
             lru_cache: LRUCache::new(lru_cache_size),
-            hd_cache: HDCache::new(),
+            hd_cache: HDCache::new("hd_cache_path".into()),
         }
     }
 
@@ -36,11 +36,14 @@ impl ModuleCache {
     pub fn save_module(&mut self, bytecode: &[u8], limit: u64) -> Result<(), ExecutionError> {
         // TODO: using ExecutionError for now but create a CacheError type
         let hash = Hash::compute_from(bytecode);
-        if let Some(hd_module_info) = self.hd_cache.get_and_increment(hash) {
+        if let Some(hd_module_info) =
+            self.hd_cache
+                .get_and_increment(hash, limit, self.gas_costs.clone())
+        {
             self.lru_cache.insert(hash, hd_module_info);
         } else {
             if let Some(lru_module_info) = self.lru_cache.get(hash, limit)? {
-                self.hd_cache.insert(hash, lru_module_info);
+                self.hd_cache.insert(hash, lru_module_info)?;
             } else {
                 // CL compiler because this will be stored in HD
                 let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), true)
@@ -51,7 +54,7 @@ impl ModuleCache {
                         ))
                     })?;
                 let new_module_info = (new_module, None);
-                self.hd_cache.insert(hash, new_module_info.clone());
+                self.hd_cache.insert(hash, new_module_info.clone())?;
                 self.lru_cache.insert(hash, new_module_info);
             }
         }
@@ -99,7 +102,7 @@ impl ModuleCache {
     ) -> Result<RuntimeModule, ExecutionError> {
         let hash = Hash::compute_from(bytecode);
         // IMPORTANT TODO: make a gas check in the HD cache as well
-        if let Some(hd_module_info) = self.hd_cache.get(hash) {
+        if let Some(hd_module_info) = self.hd_cache.get(hash, limit, self.gas_costs.clone()) {
             if let Some((lru_module, _)) = self.lru_cache.get(hash, limit)? {
                 Ok(lru_module)
             } else {
