@@ -50,7 +50,7 @@ use massa_models::{
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{KeyPair, PublicKey, Signature};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
