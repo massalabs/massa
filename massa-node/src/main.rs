@@ -236,7 +236,7 @@ async fn launch(
         res = get_state(
             &bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::types::Establisher::default(),
+            massa_bootstrap::DefaultEstablisher::default(),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
@@ -508,7 +508,7 @@ async fn launch(
         network_command_sender.clone(),
         final_state.clone(),
         bootstrap_config,
-        massa_bootstrap::Establisher::new(),
+        massa_bootstrap::DefaultEstablisher::new(),
         private_key,
         *VERSION,
     )

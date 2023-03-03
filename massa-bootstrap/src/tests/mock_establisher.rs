@@ -9,7 +9,7 @@ use std::net::SocketAddr;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
-use crate::establisher::{BSListener, Duplex, DuplexListener};
+use crate::establisher::{BSConnector, BSEstablisher, BSListener, Duplex, DuplexListener};
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
@@ -67,8 +67,9 @@ pub struct MockConnector {
     timeout_duration: MassaTime,
 }
 
-impl MockConnector {
-    pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
+#[async_trait]
+impl BSConnector for MockConnector {
+    async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
         let duplex_mock = DuplexListener::bind(addr).await.unwrap();
         let duplex_controller = Duplex::connect(addr).await.unwrap();
         let duplex_mock = duplex_mock.accept().await.unwrap();
@@ -115,8 +116,11 @@ pub struct MockEstablisher {
     connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
 }
 
-impl MockEstablisher {
-    pub fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
+impl BSEstablisher for MockEstablisher {
+    type Listener = MockListener;
+    type Connector = MockConnector;
+
+    fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self
                 .connection_listener_rx
@@ -125,7 +129,7 @@ impl MockEstablisher {
         })
     }
 
-    pub fn get_connector(&mut self, timeout_duration: MassaTime) -> std::io::Result<MockConnector> {
+    fn get_connector(&mut self, timeout_duration: MassaTime) -> std::io::Result<MockConnector> {
         // create connector stream
 
         Ok(MockConnector {
