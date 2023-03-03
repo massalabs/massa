@@ -28,7 +28,7 @@ pub enum MipComponent {
 pub struct MipInfo {
     /// MIP name or descriptive name
     pub name: String,
-    /// Network (or global) version
+    /// Network (or global) version (to be included in block header)
     pub version: u32,
     /// Component concerned by this versioning (e.g. a new Block version)
     pub component: MipComponent,
@@ -36,7 +36,7 @@ pub struct MipInfo {
     pub component_version: u32,
     /// a timestamp at which the version gains its meaning (e.g. accepted in block header)
     pub start: MassaTime,
-    /// a timestamp at which the deployment is considered failed (timeout > start)
+    /// a timestamp at which the deployment is considered active or failed (timeout > start)
     pub timeout: MassaTime,
 }
 
@@ -84,7 +84,7 @@ machine!(
     enum MipState {
         /// Initial state
         Defined,
-        /// Past start
+        /// Past start, can only go to LockedIn after the threshold is above a given value
         Started { threshold: Amount },
         /// Wait for some time before going to active (to let user the time to upgrade)
         LockedIn,
@@ -264,7 +264,7 @@ impl MipStateHistory {
     /// Advance state
     pub fn on_advance(&mut self, input: &Advance) {
         let now = input.now;
-        // Check that input.now is not after last item in history
+        // Check that input.now is after last item in history
         // We don't want to go backward
         let is_forward = self
             .history
@@ -318,7 +318,6 @@ impl MipStateHistory {
             vsh.on_advance(&advance_msg);
         }
 
-        // XXX: is there always full eq? Can we have slight variation here?
         vsh == *self
     }
 
@@ -418,16 +417,8 @@ pub enum StateAtError {
 #[derive(Debug, Clone)]
 pub struct MipStore(pub Arc<RwLock<MipStoreRaw>>);
 
-/*
-impl Default for MipStore {
-    fn default() -> Self {
-        Self(Arc::new(RwLock::new(Default::default())))
-    }
-}
-*/
-
 impl MipStore {
-    // TODO: merge get_version_current / get_version_to_announce so we don't iter twice?
+    // Optim: merge get_version_current / get_version_to_announce so we don't iter twice?
     //       & rename to get_network_versions(...) -> (u32, u32)
     //       Move all others funcs from Factory and named them like:
     //       get_component_version_XXX (best, all, ...)
