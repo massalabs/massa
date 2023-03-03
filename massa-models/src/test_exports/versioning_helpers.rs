@@ -1,15 +1,12 @@
 use std::str::FromStr;
 
 use crate::amount::Amount;
-use crate::versioning::{Advance, VersioningInfo, VersioningState, VersioningStateHistory};
+use crate::versioning::{Advance, MipInfo, MipState, MipStateHistory};
 
 use crate::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_time::MassaTime;
 
-pub fn advance_state_until(
-    at_state: VersioningState,
-    versioning_info: &VersioningInfo,
-) -> VersioningStateHistory {
+pub fn advance_state_until(at_state: MipState, versioning_info: &MipInfo) -> MipStateHistory {
     // A helper function to advance a state
     // Assume enough time between versioning info start & timeout
     // TODO: allow to give a threshold as arg?
@@ -17,13 +14,13 @@ pub fn advance_state_until(
     let start = versioning_info.start;
     let timeout = versioning_info.timeout;
 
-    if matches!(at_state, VersioningState::Error) {
+    if matches!(at_state, MipState::Error) {
         todo!()
     }
 
-    let mut state = VersioningStateHistory::new(start.saturating_sub(MassaTime::from(1)));
+    let mut state = MipStateHistory::new(start.saturating_sub(MassaTime::from(1)));
 
-    if matches!(at_state, VersioningState::Defined(_)) {
+    if matches!(at_state, MipState::Defined(_)) {
         return state;
     }
 
@@ -35,11 +32,11 @@ pub fn advance_state_until(
     };
     state.on_advance(&advance_msg);
 
-    if matches!(at_state, VersioningState::Started(_)) {
+    if matches!(at_state, MipState::Started(_)) {
         return state;
     }
 
-    if matches!(at_state, VersioningState::Failed(_)) {
+    if matches!(at_state, MipState::Failed(_)) {
         advance_msg.now = timeout.saturating_add(MassaTime::from(1));
         state.on_advance(&advance_msg);
         return state;
@@ -49,7 +46,7 @@ pub fn advance_state_until(
     advance_msg.threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
     state.on_advance(&advance_msg);
 
-    if matches!(at_state, VersioningState::LockedIn(_)) {
+    if matches!(at_state, MipState::LockedIn(_)) {
         return state;
     }
 

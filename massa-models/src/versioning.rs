@@ -18,21 +18,23 @@ use massa_time::MassaTime;
 #[allow(missing_docs)]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
-pub enum VersioningComponent {
+pub enum MipComponent {
     Address,
     Block,
     VM,
 }
 
-/// Version info per component
+/// MIP info (name,  version,
 #[derive(Clone, Debug)]
-pub struct VersioningInfo {
-    /// brief description of the versioning
+pub struct MipInfo {
+    /// MIP name or descriptive name
     pub name: String,
-    /// version
+    /// Network (or global) version
     pub version: u32,
     /// Component concerned by this versioning (e.g. a new Block version)
-    pub component: VersioningComponent,
+    pub component: MipComponent,
+    /// Component version
+    pub component_version: u32,
     /// a timestamp at which the version gains its meaning (e.g. accepted in block header)
     pub start: MassaTime,
     /// a timestamp at which the deployment is considered failed (timeout > start)
@@ -41,19 +43,19 @@ pub struct VersioningInfo {
 
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
 
-impl Ord for VersioningInfo {
+impl Ord for MipInfo {
     fn cmp(&self, other: &Self) -> Ordering {
         (self.start, &self.timeout).cmp(&(other.start, &other.timeout))
     }
 }
 
-impl PartialOrd for VersioningInfo {
+impl PartialOrd for MipInfo {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl PartialEq for VersioningInfo {
+impl PartialEq for MipInfo {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.version == other.version
@@ -63,10 +65,10 @@ impl PartialEq for VersioningInfo {
     }
 }
 
-impl Eq for VersioningInfo {}
+impl Eq for MipInfo {}
 
 // Need to impl this manually otherwise clippy is angry :-P
-impl Hash for VersioningInfo {
+impl Hash for MipInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         self.version.hash(state);
@@ -80,7 +82,7 @@ machine!(
     /// State machine for a Versioning component that tracks the deployment state
     #[allow(missing_docs)]
     #[derive(Clone, Copy, Debug, PartialEq)]
-    enum VersioningState {
+    enum MipState {
         /// Initial state
         Defined,
         /// Past start
@@ -94,7 +96,7 @@ machine!(
     }
 );
 
-impl Default for VersioningState {
+impl Default for MipState {
     fn default() -> Self {
         Self::Defined(Defined {})
     }
@@ -103,7 +105,7 @@ impl Default for VersioningState {
 #[allow(missing_docs)]
 #[derive(IntoPrimitive, Debug, Clone, Eq, PartialEq, TryFromPrimitive, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum VersioningStateTypeId {
+pub enum MipStateTypeId {
     Error = 0,
     Defined = 1,
     Started = 2,
@@ -112,20 +114,20 @@ pub enum VersioningStateTypeId {
     Failed = 5,
 }
 
-impl From<&VersioningState> for VersioningStateTypeId {
-    fn from(value: &VersioningState) -> Self {
+impl From<&MipState> for MipStateTypeId {
+    fn from(value: &MipState) -> Self {
         match value {
-            VersioningState::Error => VersioningStateTypeId::Error,
-            VersioningState::Defined(_) => VersioningStateTypeId::Defined,
-            VersioningState::Started(_) => VersioningStateTypeId::Started,
-            VersioningState::LockedIn(_) => VersioningStateTypeId::LockedIn,
-            VersioningState::Active(_) => VersioningStateTypeId::Active,
-            VersioningState::Failed(_) => VersioningStateTypeId::Failed,
+            MipState::Error => MipStateTypeId::Error,
+            MipState::Defined(_) => MipStateTypeId::Defined,
+            MipState::Started(_) => MipStateTypeId::Started,
+            MipState::LockedIn(_) => MipStateTypeId::LockedIn,
+            MipState::Active(_) => MipStateTypeId::Active,
+            MipState::Failed(_) => MipStateTypeId::Failed,
         }
     }
 }
 
-/// A message to update the `VersioningState`
+/// A message to update the `MipState`
 #[derive(Clone, Debug)]
 pub struct Advance {
     /// from VersioningInfo.start
@@ -174,7 +176,7 @@ impl PartialEq for Advance {
 
 impl Eq for Advance {}
 
-transitions!(VersioningState,
+transitions!(MipState,
     [
         (Defined, Advance) => [Defined, Started, Failed],
         (Started, Advance) => [Started, LockedIn, Failed],
@@ -186,37 +188,37 @@ transitions!(VersioningState,
 
 impl Defined {
     /// Update state from state Defined
-    pub fn on_advance(self, input: Advance) -> VersioningState {
+    pub fn on_advance(self, input: Advance) -> MipState {
         match input.now {
-            n if n > input.timeout => VersioningState::failed(),
-            n if n > input.start_timestamp => VersioningState::started(Amount::zero()),
-            _ => VersioningState::Defined(Defined {}),
+            n if n > input.timeout => MipState::failed(),
+            n if n > input.start_timestamp => MipState::started(Amount::zero()),
+            _ => MipState::Defined(Defined {}),
         }
     }
 }
 
 impl Started {
     /// Update state from state Started
-    pub fn on_advance(self, input: Advance) -> VersioningState {
+    pub fn on_advance(self, input: Advance) -> MipState {
         if input.now > input.timeout {
-            return VersioningState::failed();
+            return MipState::failed();
         }
 
         if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
-            VersioningState::locked_in()
+            MipState::locked_in()
         } else {
-            VersioningState::started(input.threshold)
+            MipState::started(input.threshold)
         }
     }
 }
 
 impl LockedIn {
     /// Update state from state LockedIn ...
-    pub fn on_advance(self, input: Advance) -> VersioningState {
+    pub fn on_advance(self, input: Advance) -> MipState {
         if input.now > input.timeout {
-            VersioningState::active()
+            MipState::active()
         } else {
-            VersioningState::locked_in()
+            MipState::locked_in()
         }
     }
 }
@@ -235,18 +237,18 @@ impl Failed {
     }
 }
 
-/// Wrapper of VersioningState (in order to keep state history)
+/// Wrapper of MipState (in order to keep state history)
 #[derive(Debug, Clone, PartialEq)]
-pub struct VersioningStateHistory {
-    pub(crate) state: VersioningState,
-    history: BTreeMap<Advance, VersioningStateTypeId>,
+pub struct MipStateHistory {
+    pub(crate) state: MipState,
+    history: BTreeMap<Advance, MipStateTypeId>,
 }
 
-impl VersioningStateHistory {
+impl MipStateHistory {
     /// Create
     pub fn new(defined: MassaTime) -> Self {
-        let state: VersioningState = Default::default();
-        let state_id = VersioningStateTypeId::from(&state);
+        let state: MipState = Default::default();
+        let state_id = MipStateTypeId::from(&state);
         // let mut advance = Advance::default();
         // advance.now = defined;
         let advance = Advance {
@@ -276,7 +278,7 @@ impl VersioningStateHistory {
             let state = self.state.on_advance(input.clone());
             // Update history as well
             if state != self.state {
-                let state_id = VersioningStateTypeId::from(&state);
+                let state_id = MipStateTypeId::from(&state);
                 self.history.insert(input.clone(), state_id);
                 self.state = state;
             }
@@ -287,23 +289,23 @@ impl VersioningStateHistory {
     /// it is coherent
     ///   if state can be at this position (e.g. can it be at state "Started" according to given time range)
     ///   if history is coherent with current state
-    /// Return false for state == VersioningState::Error
-    pub fn is_coherent_with(&self, versioning_info: &VersioningInfo) -> bool {
+    /// Return false for state == MipState::Error
+    pub fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
         // Always return false for state Error or if history is empty
-        if matches!(&self.state, &VersioningState::Error) || self.history.is_empty() {
+        if matches!(&self.state, &MipState::Error) || self.history.is_empty() {
             return false;
         }
 
         // safe to unwrap (already tested if empty or not)
         let (initial_ts, initial_state_id) = self.history.first_key_value().unwrap();
-        if *initial_state_id != VersioningStateTypeId::Defined {
+        if *initial_state_id != MipStateTypeId::Defined {
             // self.history does not start with Defined -> (always) false
             return false;
         }
 
         // Build a new VersionStateHistory from initial state, replaying the whole history
         // but with given versioning info then compare
-        let mut vsh = VersioningStateHistory::new(initial_ts.now);
+        let mut vsh = MipStateHistory::new(initial_ts.now);
         let mut advance_msg = Advance {
             start_timestamp: versioning_info.start,
             timeout: versioning_info.timeout,
@@ -327,7 +329,7 @@ impl VersioningStateHistory {
         ts: MassaTime,
         start: MassaTime,
         timeout: MassaTime,
-    ) -> Result<VersioningStateTypeId, StateAtError> {
+    ) -> Result<MipStateTypeId, StateAtError> {
         if self.history.is_empty() {
             return Err(StateAtError::EmptyHistory);
         }
@@ -372,8 +374,8 @@ impl VersioningStateHistory {
             (Some((adv, st_id)), None) => {
                 // After the last state in history -> need to advance the state and return
                 let threshold_for_transition = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
-                // Note: Please update this if VersioningState transitions change as it might not hold true
-                if *st_id == VersioningStateTypeId::Started
+                // Note: Please update this if MipState transitions change as it might not hold true
+                if *st_id == MipStateTypeId::Started
                     && adv.threshold < threshold_for_transition
                     && ts < adv.timeout
                 {
@@ -387,7 +389,7 @@ impl VersioningStateHistory {
                     };
                     // Return the resulting state after advance
                     let state = self.state.on_advance(msg);
-                    Ok(VersioningStateTypeId::from(&state))
+                    Ok(MipStateTypeId::from(&state))
                 }
             }
             _ => {
@@ -399,12 +401,12 @@ impl VersioningStateHistory {
     }
 }
 
-/// Error returned by VersioningStateHistory::state_at
+/// Error returned by MipStateHistory::state_at
 #[allow(missing_docs)]
 #[derive(Error, Debug, PartialEq)]
 pub enum StateAtError {
     #[error("Initial state ({0:?}) only defined after timestamp: {1}")]
-    BeforeInitialState(VersioningStateTypeId, MassaTime),
+    BeforeInitialState(MipStateTypeId, MassaTime),
     #[error("Empty history, should never happen")]
     EmptyHistory,
     #[error("Cannot predict in the future (~ threshold not reach yet)")]
@@ -413,17 +415,24 @@ pub enum StateAtError {
 
 // Store
 
-/// Database for all versioning info
+/// Database for all MIP info
 #[derive(Debug, Clone)]
-pub struct VersioningStore(pub Arc<RwLock<VersioningStoreRaw>>);
+pub struct MipStore(pub Arc<RwLock<MipStoreRaw>>);
 
-impl Default for VersioningStore {
+/*
+impl Default for MipStore {
     fn default() -> Self {
         Self(Arc::new(RwLock::new(Default::default())))
     }
 }
+*/
 
-impl VersioningStore {
+impl MipStore {
+    // TODO: merge get_version_current / get_version_to_announce so we don't iter twice?
+    //       & rename to get_network_versions(...) -> (u32, u32)
+    //       Move all others funcs from Factory and named them like:
+    //       get_component_version_XXX (best, all, ...)
+
     /// Retrieve the current "global" version to set in block header
     pub fn get_version_current(&self) -> u32 {
         let lock = self.0.read();
@@ -433,7 +442,7 @@ impl VersioningStore {
             .0
             .iter()
             .rev()
-            .find_map(|(k, v)| (v.state == VersioningState::active()).then_some(k.version))
+            .find_map(|(k, v)| (v.state == MipState::active()).then_some(k.version))
             .unwrap_or(0)
     }
 
@@ -450,31 +459,40 @@ impl VersioningStore {
             .iter()
             .rev()
             .find_map(|(k, v)| {
-                matches!(
-                    &v.state,
-                    &VersioningState::Started(_) | &VersioningState::LockedIn(_)
-                )
-                .then_some(k.version)
+                matches!(&v.state, &MipState::Started(_) | &MipState::LockedIn(_))
+                    .then_some(k.version)
             })
             .unwrap_or(0)
     }
 }
 
+impl<const N: usize> TryFrom<[(MipInfo, MipStateHistory); N]> for MipStore {
+    type Error = ();
+
+    fn try_from(value: [(MipInfo, MipStateHistory); N]) -> Result<Self, Self::Error> {
+        MipStoreRaw::try_from(value)
+            .and_then(|store_raw| Ok(Self(Arc::new(RwLock::new(store_raw)))))
+    }
+}
+
 /// Store of all versioning info
 #[derive(Debug, Clone, Default)]
-pub struct VersioningStoreRaw(pub(crate) BTreeMap<VersioningInfo, VersioningStateHistory>);
+pub struct MipStoreRaw(pub(crate) BTreeMap<MipInfo, MipStateHistory>);
 
-impl VersioningStoreRaw {
+impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
     /// Return true if update is successful, false if something is wrong on given store raw
-    fn update_with(&mut self, store_raw: &VersioningStoreRaw) -> bool {
+    fn update_with(&mut self, store_raw: &MipStoreRaw) -> bool {
         // iter over items in given store:
         // -> 2 cases: VersioningInfo is already in self store -> add to 'to_update' list
         //             VersioningInfo is not in self.store -> add to 'to_add' list
         //
+
+        // TODO: Check component_version always increase...
+
         let mut names: BTreeSet<String> = self.0.iter().map(|i| i.0.name.clone()).collect();
-        let mut to_update: BTreeMap<VersioningInfo, VersioningStateHistory> = Default::default();
-        let mut to_add: BTreeMap<VersioningInfo, VersioningStateHistory> = Default::default();
+        let mut to_update: BTreeMap<MipInfo, MipStateHistory> = Default::default();
+        let mut to_add: BTreeMap<MipInfo, MipStateHistory> = Default::default();
         let mut should_merge = true;
 
         for (v_info, v_state) in store_raw.0.iter() {
@@ -487,14 +505,12 @@ impl VersioningStoreRaw {
             if let Some(v_state_orig) = self.0.get(v_info) {
                 // Versioning info (from right) is already in self (left)
                 // Need to check if we add this to 'to_update' list
-                let v_state_id: u32 = VersioningStateTypeId::from(&v_state.state).into();
-                let v_state_orig_id: u32 = VersioningStateTypeId::from(&v_state_orig.state).into();
+                let v_state_id: u32 = MipStateTypeId::from(&v_state.state).into();
+                let v_state_orig_id: u32 = MipStateTypeId::from(&v_state_orig.state).into();
 
                 if matches!(
                     v_state_orig.state,
-                    VersioningState::Defined(_)
-                        | VersioningState::Started(_)
-                        | VersioningState::LockedIn(_)
+                    MipState::Defined(_) | MipState::Started(_) | MipState::LockedIn(_)
                 ) {
                     // Only accept 'higher' state
                     // (e.g. 'started' if 'defined', 'locked in' if 'started'...)
@@ -543,23 +559,47 @@ impl VersioningStoreRaw {
     }
 }
 
+impl<const N: usize> TryFrom<[(MipInfo, MipStateHistory); N]> for MipStoreRaw {
+    type Error = ();
+
+    fn try_from(value: [(MipInfo, MipStateHistory); N]) -> Result<Self, Self::Error> {
+        let mut store_: BTreeMap<MipInfo, MipStateHistory> = Default::default();
+        let mut has_error = false;
+        for (m_info, m_state) in value {
+            if m_state.is_coherent_with(&m_info) {
+                store_.insert(m_info, m_state);
+            } else {
+                has_error = true;
+                break;
+            }
+        }
+
+        return if has_error { Err(()) } else { Ok(Self(store_)) };
+    }
+}
+
 // End Store
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use std::str::FromStr;
+
     use chrono::{Days, NaiveDate, NaiveDateTime};
-    // use massa_serialization::DeserializeError;
+
     use crate::test_exports::versioning_helpers::advance_state_until;
 
+    // use massa_serialization::DeserializeError;
+
     // Only for unit tests
-    impl PartialEq<VersioningState> for VersioningStateHistory {
-        fn eq(&self, other: &VersioningState) -> bool {
+    impl PartialEq<MipState> for MipStateHistory {
+        fn eq(&self, other: &MipState) -> bool {
             self.state == *other
         }
     }
 
-    fn get_a_version_info() -> (NaiveDateTime, NaiveDateTime, VersioningInfo) {
+    fn get_a_version_info() -> (NaiveDateTime, NaiveDateTime, MipInfo) {
         // A helper function to provide a  default VersioningInfo
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
 
@@ -576,10 +616,11 @@ mod test {
         return (
             start,
             timeout,
-            VersioningInfo {
+            MipInfo {
                 name: "MIP-0002".to_string(),
                 version: 2,
-                component: VersioningComponent::Address,
+                component: MipComponent::Address,
+                component_version: 1,
                 start: MassaTime::from(start.timestamp() as u64),
                 timeout: MassaTime::from(timeout.timestamp() as u64),
             },
@@ -590,8 +631,8 @@ mod test {
     fn test_state_advance_from_defined() {
         // Test Versioning state transition (from state: Defined)
         let (_, _, vi) = get_a_version_info();
-        let mut state: VersioningState = Default::default();
-        assert_eq!(state, VersioningState::defined());
+        let mut state: MipState = Default::default();
+        assert_eq!(state, MipState::defined());
 
         let now = vi.start;
         let mut advance_msg = Advance {
@@ -602,7 +643,7 @@ mod test {
         };
 
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, VersioningState::defined());
+        assert_eq!(state, MipState::defined());
 
         let now = vi.start.saturating_add(MassaTime::from(5));
         advance_msg.now = now;
@@ -611,7 +652,7 @@ mod test {
         // println!("state: {:?}", state);
         assert_eq!(
             state,
-            VersioningState::Started(Started {
+            MipState::Started(Started {
                 threshold: Amount::zero()
             })
         );
@@ -621,7 +662,7 @@ mod test {
     fn test_state_advance_from_started() {
         // Test Versioning state transition (from state: Started)
         let (_, _, vi) = get_a_version_info();
-        let mut state: VersioningState = VersioningState::started(Default::default());
+        let mut state: MipState = MipState::started(Default::default());
 
         let now = vi.start;
         let threshold_too_low = Amount::from_str("74.9").unwrap();
@@ -634,17 +675,17 @@ mod test {
         };
 
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, VersioningState::started(threshold_too_low));
+        assert_eq!(state, MipState::started(threshold_too_low));
         advance_msg.threshold = threshold_ok;
         state = state.on_advance(advance_msg);
-        assert_eq!(state, VersioningState::locked_in());
+        assert_eq!(state, MipState::locked_in());
     }
 
     #[test]
     fn test_state_advance_from_locked_in() {
         // Test Versioning state transition (from state: LockedIn)
         let (_, _, vi) = get_a_version_info();
-        let mut state: VersioningState = VersioningState::locked_in();
+        let mut state: MipState = MipState::locked_in();
 
         let now = vi.start;
         let mut advance_msg = Advance {
@@ -655,18 +696,18 @@ mod test {
         };
 
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, VersioningState::locked_in());
+        assert_eq!(state, MipState::locked_in());
 
         advance_msg.now = advance_msg.timeout.saturating_add(MassaTime::from(1));
         state = state.on_advance(advance_msg);
-        assert_eq!(state, VersioningState::active());
+        assert_eq!(state, MipState::active());
     }
 
     #[test]
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
         let (_, _, vi) = get_a_version_info();
-        let mut state = VersioningState::active();
+        let mut state = MipState::active();
         let now = vi.start;
         let advance = Advance {
             start_timestamp: vi.start,
@@ -676,14 +717,14 @@ mod test {
         };
 
         state = state.on_advance(advance);
-        assert_eq!(state, VersioningState::active());
+        assert_eq!(state, MipState::active());
     }
 
     #[test]
     fn test_state_advance_from_failed() {
         // Test Versioning state transition (from state: Failed)
         let (_, _, vi) = get_a_version_info();
-        let mut state = VersioningState::failed();
+        let mut state = MipState::failed();
         let now = vi.start;
         let advance = Advance {
             start_timestamp: vi.start,
@@ -693,7 +734,7 @@ mod test {
         };
 
         state = state.on_advance(advance);
-        assert_eq!(state, VersioningState::failed());
+        assert_eq!(state, MipState::failed());
     }
 
     #[test]
@@ -708,24 +749,24 @@ mod test {
             now,
         };
 
-        let mut state: VersioningState = Default::default();
+        let mut state: MipState = Default::default();
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, VersioningState::Failed(Failed {}));
+        assert_eq!(state, MipState::Failed(Failed {}));
 
-        let mut state: VersioningState = VersioningState::started(Default::default());
+        let mut state: MipState = MipState::started(Default::default());
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, VersioningState::Failed(Failed {}));
+        assert_eq!(state, MipState::Failed(Failed {}));
     }
 
     #[test]
     fn test_state_with_history() {
-        // Test VersioningStateHistory::state_at() function
+        // Test MipStateHistory::state_at() function
 
         let (start, _, vi) = get_a_version_info();
         let now_0 = MassaTime::from(start.timestamp() as u64);
-        let mut state = VersioningStateHistory::new(now_0);
+        let mut state = MipStateHistory::new(now_0);
 
-        assert_eq!(state, VersioningState::defined());
+        assert_eq!(state, MipState::defined());
 
         let now = vi.start.saturating_add(MassaTime::from(15));
         let mut advance_msg = Advance {
@@ -737,17 +778,17 @@ mod test {
 
         // Move from Defined -> Started
         state.on_advance(&advance_msg);
-        assert_eq!(state, VersioningState::started(Amount::zero()));
+        assert_eq!(state, MipState::started(Amount::zero()));
 
         // Check history
         assert_eq!(state.history.len(), 2);
         assert!(matches!(
             state.history.first_key_value(),
-            Some((&Advance { .. }, &VersioningStateTypeId::Defined))
+            Some((&Advance { .. }, &MipStateTypeId::Defined))
         ));
         assert!(matches!(
             state.history.last_key_value(),
-            Some((&Advance { .. }, &VersioningStateTypeId::Started))
+            Some((&Advance { .. }, &MipStateTypeId::Started))
         ));
 
         // Query with timestamp
@@ -764,10 +805,10 @@ mod test {
         ));
         // After Defined timestamp
         let state_id = state.state_at(vi.start, vi.start, vi.timeout).unwrap();
-        assert_eq!(state_id, VersioningStateTypeId::Defined);
+        assert_eq!(state_id, MipStateTypeId::Defined);
         // At Started timestamp
         let state_id = state.state_at(now, vi.start, vi.timeout).unwrap();
-        assert_eq!(state_id, VersioningStateTypeId::Started);
+        assert_eq!(state_id, MipStateTypeId::Started);
 
         // After Started timestamp but before timeout timestamp
         let after_started_ts = now.saturating_add(MassaTime::from(15));
@@ -779,14 +820,14 @@ mod test {
         let state_id = state
             .state_at(after_timeout_ts, vi.start, vi.timeout)
             .unwrap();
-        assert_eq!(state_id, VersioningStateTypeId::Failed);
+        assert_eq!(state_id, MipStateTypeId::Failed);
 
         // Move from Started to LockedIn
         let threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
         advance_msg.threshold = threshold.saturating_add(Amount::from_str("1.0").unwrap());
         advance_msg.now = now.saturating_add(MassaTime::from(1));
         state.on_advance(&advance_msg);
-        assert_eq!(state, VersioningState::locked_in());
+        assert_eq!(state, MipState::locked_in());
 
         // Query with timestamp
         // After LockedIn timestamp and before timeout timestamp
@@ -794,12 +835,12 @@ mod test {
         let state_id = state
             .state_at(after_locked_in_ts, vi.start, vi.timeout)
             .unwrap();
-        assert_eq!(state_id, VersioningStateTypeId::LockedIn);
+        assert_eq!(state_id, MipStateTypeId::LockedIn);
         // After LockedIn timestamp and after timeout timestamp
         let state_id = state
             .state_at(after_timeout_ts, vi.start, vi.timeout)
             .unwrap();
-        assert_eq!(state_id, VersioningStateTypeId::Active);
+        assert_eq!(state_id, MipStateTypeId::Active);
     }
 
     #[test]
@@ -816,69 +857,72 @@ mod test {
             MassaTime::from(timeout.checked_add_days(Days::new(5)).unwrap().timestamp() as u64);
 
         // Can only build such object in test - history is empty :-/
-        let vs_1 = VersioningStateHistory {
-            state: VersioningState::active(),
+        let vs_1 = MipStateHistory {
+            state: MipState::active(),
             history: Default::default(),
         };
-        let vs_2 = VersioningStateHistory {
-            state: VersioningState::started(Amount::zero()),
+        let vs_2 = MipStateHistory {
+            state: MipState::started(Amount::zero()),
             history: Default::default(),
         };
 
         // TODO: Have VersioningStore::from ?
-        let vs_raw = VersioningStoreRaw(BTreeMap::from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]));
-        let vs = VersioningStore(Arc::new(RwLock::new(vs_raw)));
+        let vs_raw = MipStoreRaw(BTreeMap::from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]));
+        // let vs_raw = MipStoreRaw::try_from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]).unwrap();
+        let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
         assert_eq!(vs.get_version_current(), vi.version);
         assert_eq!(vs.get_version_to_announce(), vi_2.version);
 
         // Test also an empty versioning store
-        let vs_raw = VersioningStoreRaw(Default::default());
-        let vs = VersioningStore(Arc::new(RwLock::new(vs_raw)));
+        let vs_raw = MipStoreRaw(Default::default());
+        let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
         assert_eq!(vs.get_version_current(), 0);
         assert_eq!(vs.get_version_to_announce(), 0);
     }
 
     #[test]
     fn test_is_coherent_with() {
-        // Test VersioningStateHistory::is_coherent_with
+        // Test MipStateHistory::is_coherent_with
 
         // Given the following versioning info, we expect state
         // Defined @ time <= 2
         // Started @ time > 2 && <= 5
         // LockedIn @ time > time(Started) && <= 5
         // Active @time > 5
-        let vi_1 = VersioningInfo {
+        let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 1,
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
         };
         // Another versioning info (from an attacker) for testing
-        let vi_2 = VersioningInfo {
+        let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 1,
             start: MassaTime::from(7),
             timeout: MassaTime::from(10),
         };
 
-        let vsh = VersioningStateHistory {
-            state: VersioningState::Error,
+        let vsh = MipStateHistory {
+            state: MipState::Error,
             history: Default::default(),
         };
         // At state Error -> (always) false
         assert_eq!(vsh.is_coherent_with(&vi_1), false);
 
-        let vsh = VersioningStateHistory {
-            state: VersioningState::defined(),
+        let vsh = MipStateHistory {
+            state: MipState::defined(),
             history: Default::default(),
         };
         // At state Defined but no history -> false
         assert_eq!(vsh.is_coherent_with(&vi_1), false);
 
-        let mut vsh = VersioningStateHistory::new(MassaTime::from(1));
+        let mut vsh = MipStateHistory::new(MassaTime::from(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
@@ -894,7 +938,7 @@ mod test {
         });
 
         // At state Started at time now -> true
-        assert_eq!(vsh.state, VersioningState::started(Amount::zero()));
+        assert_eq!(vsh.state, MipState::started(Amount::zero()));
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
 
         // Still coherent here (not after timeout)
@@ -915,7 +959,7 @@ mod test {
         });
 
         // At state LockedIn at time now -> true
-        assert_eq!(vsh.state, VersioningState::locked_in());
+        assert_eq!(vsh.state, MipState::locked_in());
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
 
@@ -925,37 +969,38 @@ mod test {
 
     #[test]
     fn test_merge_with() {
-        let vi_1 = VersioningInfo {
+        let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 1,
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
         };
 
-        let vs_1 = advance_state_until(VersioningState::active(), &vi_1);
-        assert_eq!(vs_1, VersioningState::active());
+        let vs_1 = advance_state_until(MipState::active(), &vi_1);
+        assert_eq!(vs_1, MipState::active());
 
-        let vi_2 = VersioningInfo {
+        let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 2,
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
         };
-        let vs_2 = advance_state_until(VersioningState::defined(), &vi_2);
-        let mut vs_raw_1 = VersioningStoreRaw(BTreeMap::from([
+        let vs_2 = advance_state_until(MipState::defined(), &vi_2);
+        let mut vs_raw_1 = MipStoreRaw(BTreeMap::from([
             (vi_1.clone(), vs_1.clone()),
             (vi_2.clone(), vs_2.clone()),
         ]));
 
-        let vs_2_2 = advance_state_until(VersioningState::locked_in(), &vi_2);
-        assert_eq!(vs_2_2, VersioningState::locked_in());
+        let vs_2_2 = advance_state_until(MipState::locked_in(), &vi_2);
+        assert_eq!(vs_2_2, MipState::locked_in());
 
-        let vs_raw_2 = VersioningStoreRaw(BTreeMap::from([
-            (vi_1.clone(), vs_1.clone()),
-            (vi_2.clone(), vs_2_2.clone()),
-        ]));
+        let vs_raw_2 =
+            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
+                .unwrap();
 
         vs_raw_1.update_with(&vs_raw_2);
 
@@ -966,37 +1011,43 @@ mod test {
 
     #[test]
     fn test_merge_with_invalid() {
-        let vi_1 = VersioningInfo {
+        let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 1,
             start: MassaTime::from(0),
             timeout: MassaTime::from(5),
         };
-        let vs_1 = advance_state_until(VersioningState::active(), &vi_1);
+        let vs_1 = advance_state_until(MipState::active(), &vi_1);
 
-        let vi_2 = VersioningInfo {
+        let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 2,
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
         };
-        let vs_2 = advance_state_until(VersioningState::defined(), &vi_2);
+        let vs_2 = advance_state_until(MipState::defined(), &vi_2);
 
-        let mut vs_raw_1 = VersioningStoreRaw(BTreeMap::from([
-            (vi_1.clone(), vs_1.clone()),
-            (vi_2.clone(), vs_2.clone()),
-        ]));
+        let mut vs_raw_1 =
+            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
+                .unwrap();
 
         let mut vi_2_2 = vi_2.clone();
         // Make versioning info invalid (because start == vi_1.timeout)
         vi_2_2.start = MassaTime::from(5);
-        let vs_2_2 = advance_state_until(VersioningState::defined(), &vi_2_2);
-        let vs_raw_2 = VersioningStoreRaw(BTreeMap::from([
+        let vs_2_2 = advance_state_until(MipState::defined(), &vi_2_2);
+        let vs_raw_2 = MipStoreRaw(BTreeMap::from([
             (vi_1.clone(), vs_1.clone()),
             (vi_2_2.clone(), vs_2_2.clone()),
         ]));
+
+        // FIXME: this should fail
+        let vs_raw_2_ =
+            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
+                .unwrap();
 
         vs_raw_1.update_with(&vs_raw_2);
 

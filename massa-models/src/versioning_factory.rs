@@ -3,9 +3,7 @@ use std::collections::BTreeMap;
 use std::iter;
 use thiserror::Error;
 
-use crate::versioning::{
-    VersioningComponent, VersioningState, VersioningStateTypeId, VersioningStore,
-};
+use crate::versioning::{MipComponent, MipState, MipStateTypeId, MipStore};
 
 /// Factory error
 #[allow(missing_docs)]
@@ -50,25 +48,26 @@ pub trait VersioningFactory {
     /// Arguments struct in order to create Self::Output
     type Arguments;
 
-    /// Return the VersioningComponent associated with return type (Output)
-    /// e.g. if type Output = Address, should return VersioningComponent::Address
-    fn get_component() -> VersioningComponent;
-    /// Access to the VersioningStore
-    fn get_versioning_store(&self) -> VersioningStore;
+    /// Return the MipComponent associated with return type (Output)
+    /// e.g. if type Output = Address, should return MipComponent::Address
+    fn get_component() -> MipComponent;
+    /// Access to the MipStore
+    fn get_versioning_store(&self) -> MipStore;
 
     /// Get best version (aka last active for factory component)
     fn get_best_version(&self) -> u32 {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = VersioningState::active();
+        let state_active = MipState::active();
 
         vi_store
             .0
             .iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                (vi.component == component && vsh.state == state_active).then_some(vi.version)
+                (vi.component == component && vsh.state == state_active)
+                    .then_some(vi.component_version)
             })
             .unwrap_or(0)
     }
@@ -78,7 +77,7 @@ pub trait VersioningFactory {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = VersioningState::active();
+        let state_active = MipState::active();
 
         // Iter backward, filter component + state active,
         let version = vi_store
@@ -89,7 +88,7 @@ pub trait VersioningFactory {
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
                 match res {
-                    Ok(VersioningStateTypeId::Active) => Some(vi.version),
+                    Ok(MipStateTypeId::Active) => Some(vi.component_version),
                     _ => None,
                 }
             })
@@ -98,31 +97,31 @@ pub trait VersioningFactory {
         Ok(version)
     }
 
-    /// Get all versions in 'Active state' for the associated VersioningComponent
+    /// Get all versions in 'Active state' for the associated MipComponent
     fn get_versions(&self) -> Vec<u32> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
-        let state_active = VersioningState::active();
+        let state_active = MipState::active();
         let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
-            (vi.component == component && vsh.state == state_active).then_some(vi.version)
+            (vi.component == component && vsh.state == state_active).then_some(vi.component_version)
         });
         let versions: Vec<u32> = iter::once(0).chain(versions_iter).collect();
         versions
     }
 
-    /// Get all versions for the associated VersioningComponent
-    fn get_all_versions(&self) -> BTreeMap<u32, VersioningStateTypeId> {
+    /// Get all versions for the associated MipComponent
+    fn get_all_versions(&self) -> BTreeMap<u32, MipStateTypeId> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
         let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
             (vi.component == component)
-                .then_some((vi.version, VersioningStateTypeId::from(&vsh.state)))
+                .then_some((vi.component_version, MipStateTypeId::from(&vsh.state)))
         });
-        iter::once((0, VersioningStateTypeId::Active))
+        iter::once((0, MipStateTypeId::Active))
             .chain(versions_iter)
             .collect()
     }
@@ -145,7 +144,7 @@ mod test {
     use parking_lot::RwLock;
 
     use crate::test_exports::versioning_helpers::advance_state_until;
-    use crate::versioning::{VersioningInfo, VersioningStateHistory, VersioningStoreRaw};
+    use crate::versioning::{MipInfo, MipStateHistory, MipStoreRaw};
     use massa_time::MassaTime;
 
     // Define a struct Address with 2 versions AddressV0 & AddressV1
@@ -197,7 +196,7 @@ mod test {
 
     #[derive(Debug)]
     struct AddressFactory {
-        versioning_store: VersioningStore,
+        versioning_store: MipStore,
     }
 
     impl VersioningFactory for AddressFactory {
@@ -205,11 +204,11 @@ mod test {
         type Error = FactoryError;
         type Arguments = AddressArgs;
 
-        fn get_component() -> VersioningComponent {
-            VersioningComponent::Address
+        fn get_component() -> MipComponent {
+            MipComponent::Address
         }
 
-        fn get_versioning_store(&self) -> VersioningStore {
+        fn get_versioning_store(&self) -> MipStore {
             self.versioning_store.clone()
         }
 
@@ -222,8 +221,8 @@ mod test {
                 Some(FactoryStrategy::Exact(v)) => {
                     // This is not optimal - can use get_versions and return a less descriptive error
                     match self.get_all_versions().get(&v) {
-                        Some(s) if *s == VersioningStateTypeId::Active => Ok(v),
-                        Some(s) if *s != VersioningStateTypeId::Active => {
+                        Some(s) if *s == MipStateTypeId::Active => Ok(v),
+                        Some(s) if *s != MipStateTypeId::Active => {
                             Err(FactoryError::OnStateNotReady(v))
                         }
                         _ => Err(FactoryError::UnknownVersion(v)),
@@ -256,30 +255,27 @@ mod test {
 
     #[test]
     fn test_address_factory_args() {
-        let vi_1 = VersioningInfo {
+        let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 1,
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
         };
-        let vs_1 = VersioningStateHistory::new(MassaTime::from(10));
+        let vs_1 = MipStateHistory::new(MassaTime::from(10));
 
-        let vi_2 = VersioningInfo {
+        let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 2,
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
         };
-        let vs_2 = VersioningStateHistory::new(MassaTime::from(18));
+        let vs_2 = MipStateHistory::new(MassaTime::from(18));
 
-        let info = BTreeMap::from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())]);
-        let vs_raw = VersioningStoreRaw(info);
-        let vs = VersioningStore {
-            0: Arc::new(RwLock::new(vs_raw)),
-        };
-
+        let vs = MipStore::try_from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())]).unwrap();
         let fa = AddressFactory {
             versioning_store: vs.clone(),
         };
@@ -308,7 +304,7 @@ mod test {
         assert!(matches!(addr_, Err(FactoryError::OnStateNotReady(2))));
 
         // Advance state 1 to Active
-        let vs_1_new = advance_state_until(VersioningState::active(), &vi_1);
+        let vs_1_new = advance_state_until(MipState::active(), &vi_1);
         // Create a new factory
         let info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
         // Update versioning store
@@ -337,29 +333,28 @@ mod test {
     fn test_factory_strategy_at() {
         // Test factory & FactoryStrategy::At(...)
 
-        let vi_1 = VersioningInfo {
+        let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 1,
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
         };
-        let vs_1 = advance_state_until(VersioningState::active(), &vi_1);
+        let vs_1 = advance_state_until(MipState::active(), &vi_1);
 
-        let vi_2 = VersioningInfo {
+        let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            component: VersioningComponent::Address,
+            component: MipComponent::Address,
+            component_version: 2,
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
         };
-        let vs_2 = VersioningStateHistory::new(MassaTime::from(18));
+        let vs_2 = MipStateHistory::new(MassaTime::from(18));
 
-        let info = BTreeMap::from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())]);
-        let vs_raw = VersioningStoreRaw(info);
-        let vs = VersioningStore {
-            0: Arc::new(RwLock::new(vs_raw)),
-        };
+        let vs = MipStore::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
+            .unwrap();
 
         let fa = AddressFactory {
             versioning_store: vs.clone(),
@@ -393,7 +388,7 @@ mod test {
         assert!(matches!(addr_st_4, Ok(Address::V1(_)))); // for now, vs_2 is not active yet
 
         // Advance state 2 to Active
-        let vs_2_new = advance_state_until(VersioningState::active(), &vi_2);
+        let vs_2_new = advance_state_until(MipState::active(), &vi_2);
         let info = BTreeMap::from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2_new)]);
         // Update versioning store
         vs.0.write().0 = info;
