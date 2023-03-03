@@ -112,7 +112,7 @@ impl ConsensusState {
                         block_id
                     )));
                 };
-                self.check_block_header(block_id, header, current_slot)?;
+                self.check_block_header_and_store(block_id, header, current_slot)?;
                 return Ok(BTreeSet::new());
             }
 
@@ -141,7 +141,13 @@ impl ConsensusState {
                     .cloned()
                     .expect("incoming block not found in storage");
 
-                match self.check_block(block_id, slot, storage, stored_block, current_slot)? {
+                match self.check_block_and_store(
+                    block_id,
+                    slot,
+                    storage,
+                    stored_block,
+                    current_slot,
+                )? {
                     Some(block_infos) => block_infos,
                     None => return Ok(BTreeSet::default()),
                 }

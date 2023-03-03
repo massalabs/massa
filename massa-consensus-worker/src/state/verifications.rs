@@ -45,7 +45,11 @@ pub enum EndorsementsCheckOutcome {
 }
 
 impl ConsensusState {
-    pub(crate) fn check_block(
+    /// Check if the header of the block is valid and if it could be processed
+    ///
+    /// # Returns:
+    /// An option that contains data if the block can be processed and added to the graph, in any other case `None`
+    pub(crate) fn check_block_and_store(
         &mut self,
         block_id: BlockId,
         slot: Slot,
@@ -75,7 +79,7 @@ impl ConsensusState {
                 }));
             }
             HeaderCheckOutcome::WaitForDependencies(dependencies) => {
-                self.wait_for_dependencies(
+                self.store_wait_for_dependencies(
                     block_id,
                     HeaderOrBlock::Block {
                         id: block_id,
@@ -86,7 +90,7 @@ impl ConsensusState {
                 )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
-                self.wait_for_slot_block_header(
+                self.store_wait_for_slot(
                     block_id,
                     HeaderOrBlock::Block {
                         id: block_id,
@@ -96,13 +100,14 @@ impl ConsensusState {
                 );
             }
             HeaderCheckOutcome::Discard(reason) => {
-                self.discard_block_header(reason, block_id, stored_block.content.header);
+                self.store_discard_block_header(reason, block_id, stored_block.content.header);
             }
         }
         Ok(None)
     }
 
-    pub(crate) fn check_block_header(
+    /// Check if the header is valid and if it could be processed when we will receive the full block
+    pub(crate) fn check_block_header_and_store(
         &mut self,
         block_id: BlockId,
         header: SecuredHeader,
@@ -135,19 +140,29 @@ impl ConsensusState {
             HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
                 // set as waiting dependencies
                 dependencies.insert(block_id); // add self as unsatisfied
-                self.wait_for_dependencies(block_id, HeaderOrBlock::Header(header), dependencies)?;
+                self.store_wait_for_dependencies(
+                    block_id,
+                    HeaderOrBlock::Header(header),
+                    dependencies,
+                )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
-                self.wait_for_slot_block_header(block_id, HeaderOrBlock::Header(header));
+                self.store_wait_for_slot(block_id, HeaderOrBlock::Header(header));
             }
             HeaderCheckOutcome::Discard(reason) => {
-                self.discard_block_header(reason, block_id, header);
+                self.store_discard_block_header(reason, block_id, header);
             }
         };
         Ok(())
     }
 
-    fn wait_for_dependencies(
+    /// Store in our indexes that a block or a header is waiting for his dependencies
+    ///
+    /// # Arguments:
+    /// `block_id`: ID of the block
+    /// `header_or_block`: block or header to save
+    /// `dependencies`: dependencies waiting for this block (if it's an header it should contains himself)
+    fn store_wait_for_dependencies(
         &mut self,
         block_id: BlockId,
         header_or_block: HeaderOrBlock,
@@ -171,7 +186,12 @@ impl ConsensusState {
         Ok(())
     }
 
-    fn wait_for_slot_block_header(&mut self, block_id: BlockId, header_or_block: HeaderOrBlock) {
+    /// Store in our indexes that we are waiting for the slot of this block or block header
+    ///
+    /// # Arguments:
+    /// `block_id`: ID of the block
+    /// `header_or_block`: block or header to save
+    fn store_wait_for_slot(&mut self, block_id: BlockId, header_or_block: HeaderOrBlock) {
         // make it wait for slot
         self.block_statuses
             .insert(block_id, BlockStatus::WaitingForSlot(header_or_block));
@@ -183,7 +203,13 @@ impl ConsensusState {
         );
     }
 
-    fn discard_block_header(
+    /// Store in our indexes that we discarded this block or block header
+    ///
+    /// # Arguments:
+    /// `reason`: Read of the discard
+    /// `block_id`: ID of the block
+    /// `header`: header to save
+    fn store_discard_block_header(
         &mut self,
         reason: DiscardReason,
         block_id: BlockId,
