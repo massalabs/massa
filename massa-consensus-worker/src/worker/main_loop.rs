@@ -50,12 +50,12 @@ impl ConsensusWorker {
         }
     }
 
-    /// Wait and interrupt or wait until an instant or a stop signal
+    /// Wait and interrupt if we receive a command, a stop signal or we reach the `instant`
     ///
-    /// # Return value
-    /// Returns the error of the process of the command if any.
-    /// Returns true if we reached the instant.
-    /// Returns false if we were interrupted by a command.
+    /// # Return:
+    /// WaitingStatus::Interrupted => if a command has been executed
+    /// WaitingStatus::Ended => if we reached the `instant`
+    /// WaitingStatus::Disconnected => if we received a stop signal
     fn wait_slot_or_command(&mut self, deadline: Instant) -> WaitingStatus {
         match self.command_receiver.recv_deadline(deadline) {
             // message received => manage it
@@ -116,8 +116,10 @@ impl ConsensusWorker {
         let mut last_prune = Instant::now();
         loop {
             match self.wait_slot_or_command(self.next_instant) {
+                // When we reached the instant of the next slot
                 WaitingStatus::Ended => {
                     if let Some(end) = self.config.end_timestamp {
+                        // The testnet has ended. Will be removed for mainnet.
                         if self.next_instant > end.estimate_instant().unwrap() {
                             info!("This episode has come to an end, please get the latest testnet node version to continue");
                             let _ = self
@@ -140,6 +142,7 @@ impl ConsensusWorker {
                     if previous_cycle < Some(observed_cycle) {
                         info!("Started cycle {}", observed_cycle);
                     }
+                    // Execute all operations and checks that should performed each slot
                     {
                         let mut write_shared_state = self.shared_state.write();
                         if let Err(err) = write_shared_state.slot_tick(self.next_slot) {

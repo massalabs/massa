@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! # General description
+//! # General module description
 //!
 //! The consensus worker launches a persistent thread that will run in the background.
 //! This thread has a `run` function that triggers the consensus algorithm each slot. It can be interrupted by commands

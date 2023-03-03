@@ -173,6 +173,8 @@ impl ConsensusWorker {
             next_instant,
         };
 
+        // If the node starts after the genesis timestamp then he has to initialize his graph
+        // with already produced blocks received from the bootstrap.
         if let Some(BootstrapableGraph { final_blocks }) = init_graph {
             // load final blocks
             let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks
@@ -190,7 +192,7 @@ impl ConsensusWorker {
                     }
                 }
             }
-
+            // Initialize the shared state between the worker and the interface used by the other modules.
             {
                 let mut write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.genesis_hashes = genesis_block_ids;
@@ -215,6 +217,7 @@ impl ConsensusWorker {
 
             res_consensus.claim_parent_refs()?;
         } else {
+            // Initialize the shared state between the worker and the interface used by the other modules.
             {
                 let mut write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.active_index = genesis_block_ids.iter().copied().collect();
