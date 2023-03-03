@@ -21,97 +21,6 @@ pub struct SecureSharePayload {
     #[prost(bytes = "vec", tag = "3")]
     pub serialized_content: ::prost::alloc::vec::Vec<u8>,
 }
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Slot {
-    /// fixed64 field
-    #[prost(uint64, tag = "1")]
-    pub period: u64,
-    /// float field
-    #[prost(float, tag = "2")]
-    pub thread: f32,
-}
-/// region Endorsement
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EndorsementInfo {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// bool field
-    #[prost(bool, tag = "2")]
-    pub in_pool: bool,
-    /// string field
-    #[prost(string, repeated, tag = "3")]
-    pub in_blocks: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// bool field
-    #[prost(bool, tag = "4")]
-    pub is_final: bool,
-    /// object field
-    #[prost(message, optional, tag = "5")]
-    pub endorsement: ::core::option::Option<Endorsement>,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Endorsement {
-    /// object field
-    #[prost(message, optional, tag = "1")]
-    pub slot: ::core::option::Option<Slot>,
-    /// string field
-    #[prost(uint32, tag = "2")]
-    pub index: u32,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub endorsed_block: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EndorsementContent {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub sender_public_key: ::prost::alloc::string::String,
-    /// object field
-    #[prost(message, optional, tag = "2")]
-    pub slot: ::core::option::Option<Slot>,
-    /// float field
-    #[prost(uint32, tag = "3")]
-    pub index: u32,
-    /// string field
-    #[prost(string, tag = "4")]
-    pub endorsed_block: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EndorsementId {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub value: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SecureShareEndorsement {
-    /// object field
-    #[prost(message, optional, tag = "1")]
-    pub content: ::core::option::Option<Endorsement>,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub content_creator_pub_key: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "4")]
-    pub content_creator_address: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "5")]
-    pub id: ::prost::alloc::string::String,
-}
 /// GetVersionRequest holds request from GetVersion
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -184,8 +93,8 @@ pub struct SendEndorsementsRequest {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// object field
-    #[prost(message, optional, tag = "2")]
-    pub endorsement: ::core::option::Option<Endorsement>,
+    #[prost(message, repeated, tag = "2")]
+    pub endorsements: ::prost::alloc::vec::Vec<SecureSharePayload>,
 }
 /// SendEndorsementsResponse holds response from SendEndorsements
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -215,8 +124,8 @@ pub mod send_endorsements_response {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EndorsementResult {
     /// string field
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// SendOperationsRequest holds parameters to SendOperations
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -801,6 +710,97 @@ pub mod grpc_server {
     impl<T: Grpc> tonic::server::NamedService for GrpcServer<T> {
         const NAME: &'static str = "massa.api.v1.Grpc";
     }
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Slot {
+    /// fixed64 field
+    #[prost(uint64, tag = "1")]
+    pub period: u64,
+    /// float field
+    #[prost(float, tag = "2")]
+    pub thread: f32,
+}
+/// region Endorsement
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EndorsementInfo {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// bool field
+    #[prost(bool, tag = "2")]
+    pub in_pool: bool,
+    /// string field
+    #[prost(string, repeated, tag = "3")]
+    pub in_blocks: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// bool field
+    #[prost(bool, tag = "4")]
+    pub is_final: bool,
+    /// object field
+    #[prost(message, optional, tag = "5")]
+    pub endorsement: ::core::option::Option<Endorsement>,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Endorsement {
+    /// object field
+    #[prost(message, optional, tag = "1")]
+    pub slot: ::core::option::Option<Slot>,
+    /// string field
+    #[prost(uint32, tag = "2")]
+    pub index: u32,
+    /// string field
+    #[prost(string, tag = "3")]
+    pub endorsed_block: ::prost::alloc::string::String,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EndorsementContent {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub sender_public_key: ::prost::alloc::string::String,
+    /// object field
+    #[prost(message, optional, tag = "2")]
+    pub slot: ::core::option::Option<Slot>,
+    /// float field
+    #[prost(uint32, tag = "3")]
+    pub index: u32,
+    /// string field
+    #[prost(string, tag = "4")]
+    pub endorsed_block: ::prost::alloc::string::String,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EndorsementId {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub value: ::prost::alloc::string::String,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SecureShareEndorsement {
+    /// object field
+    #[prost(message, optional, tag = "1")]
+    pub content: ::core::option::Option<Endorsement>,
+    /// string field
+    #[prost(string, tag = "2")]
+    pub signature: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "3")]
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "4")]
+    pub content_creator_address: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "5")]
+    pub id: ::prost::alloc::string::String,
 }
 /// region Operation
 /// message struct
