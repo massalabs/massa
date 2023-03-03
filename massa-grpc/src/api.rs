@@ -1,15 +1,16 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! gRPC API for a massa-node
-use std::{error::Error, io::ErrorKind, pin::Pin};
+use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin};
 
 use crate::config::GrpcConfig;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_models::{
     block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
     error::ModelsError,
+    operation::{OperationDeserializer, SecureShareOperation},
     secure_share::SecureShareDeserializer,
 };
-use massa_pool_exports::PoolChannels;
+use massa_pool_exports::{PoolChannels, PoolController};
 use massa_proto::massa::api::v1::{self as grpc, grpc_server::GrpcServer, FILE_DESCRIPTOR_SET};
 use massa_serialization::{DeserializeError, Deserializer};
 
@@ -29,6 +30,8 @@ pub struct MassaService {
     pub consensus_channels: ConsensusChannels,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
+    /// link to the pool component
+    pub pool_command_sender: Box<dyn PoolController>,
     /// link(channels) to the protocol component
     pub protocol_command_sender: ProtocolCommandSender,
     /// link to the storage component
@@ -270,7 +273,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                 req_content.id.clone(),
                                                 tx.clone(),
                                                 tonic::Code::InvalidArgument,
-                                                "incomplete deserialization".to_owned(),
+                                                "there is data left after operation deserialization".to_owned(),
                                             )
                                             .await;
                                         }
@@ -349,9 +352,167 @@ impl grpc::grpc_server::Grpc for MassaService {
 
     async fn send_operations(
         &self,
-        _request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
     ) -> Result<tonic::Response<Self::SendOperationsStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented("not implemented"))
+        let mut cmd_sender = self.pool_command_sender.clone();
+        let mut protocol_sender = self.protocol_command_sender.clone();
+        let config = self.grpc_config.clone();
+        let storage = self.storage.clone_without_refs();
+
+        let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
+        let mut in_stream = request.into_inner();
+
+        tokio::spawn(async move {
+            while let Some(result) = in_stream.next().await {
+                match result {
+                    Ok(req_content) => {
+                        if req_content.operations.is_empty() {
+                            let _res = sendoperations_notify_error(
+                                req_content.id.clone(),
+                                tx.clone(),
+                                tonic::Code::InvalidArgument,
+                                "the request payload is empty".to_owned(),
+                            )
+                            .await;
+                        } else {
+                            let proto_operations = req_content.operations;
+                            if proto_operations.len() as u32 > config.max_operations_per_message {
+                                let _res = sendoperations_notify_error(
+                                    req_content.id.clone(),
+                                    tx.clone(),
+                                    tonic::Code::InvalidArgument,
+                                    "too many operations".to_owned(),
+                                )
+                                .await;
+                            } else {
+                                let operation_deserializer =
+                                    SecureShareDeserializer::new(OperationDeserializer::new(
+                                        config.max_datastore_value_length,
+                                        config.max_function_name_length,
+                                        config.max_parameter_size,
+                                        config.max_op_datastore_entry_count,
+                                        config.max_op_datastore_key_length,
+                                        config.max_op_datastore_value_length,
+                                    ));
+                                let verified_ops_res: Result<HashMap<String, SecureShareOperation>, ModelsError> = proto_operations
+                                .into_iter()
+                                .map(|proto_operation| {
+                                    let mut op_serialized = Vec::new();
+                                    op_serialized.extend(proto_operation.signature.as_bytes());
+                                    op_serialized.extend(proto_operation.creator_public_key.as_bytes());
+                                    op_serialized.extend(proto_operation.serialized_content);
+                                    let verified_op = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
+                                        Ok(tuple) => {
+                                            let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
+                                                if rest.is_empty() {
+                                                if let Ok(_verify_signature) = res_operation.verify_signature() {
+                                                        Ok((res_operation.id.to_string(), res_operation))
+                                                    } else {
+                                                        Err(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
+                                                            format!("wrong signature: {}", res_operation.signature).to_owned())
+                                                        ))
+                                                    }
+                                                } else {
+                                                    Err(ModelsError::DeserializeError(
+                                                        "there is data left after operation deserialization".to_owned()
+                                                    ))
+                                                }
+                                            },
+                                        Err(e) => {
+                                            Err(ModelsError::DeserializeError(format!("failed to deserialize operation: {}", e).to_owned()
+                                            ))
+                                        }
+                                        };
+                                        verified_op
+                                })
+                                .collect();
+
+                                match verified_ops_res {
+                                    Ok(verified_ops) => {
+                                        let mut operation_storage = storage.clone_without_refs();
+                                        operation_storage.store_operations(
+                                            verified_ops.values().cloned().collect(),
+                                        );
+                                        cmd_sender.add_operations(operation_storage.clone());
+
+                                        let _res = match protocol_sender
+                                            .propagate_operations(operation_storage)
+                                        {
+                                            Ok(()) => (),
+                                            Err(e) => {
+                                                let error =
+                                                    format!("failed to propagate operations: {}", e);
+                                                let _res = sendoperations_notify_error(
+                                                    req_content.id.clone(),
+                                                    tx.clone(),
+                                                    tonic::Code::Internal,
+                                                    error.to_owned(),
+                                                )
+                                                .await;
+                                            }
+                                        };
+
+                                        let result = grpc::OperationResult {
+                                            ids: verified_ops.keys().cloned().collect(),
+                                        };
+                                        let _res = match tx
+                                            .send(Ok(grpc::SendOperationsResponse {
+                                                id: req_content.id.clone(),
+                                                message: Some(
+                                                    grpc::send_operations_response::Message::Result(
+                                                        result,
+                                                    ),
+                                                ),
+                                            }))
+                                            .await
+                                        {
+                                            Ok(()) => (),
+                                            Err(e) => {
+                                                error!(
+                                                    "failed to send back operations response: {}",
+                                                    e
+                                                )
+                                            }
+                                        };
+                                    }
+                                    Err(e) => {
+                                        let error = format!("invalid operations:{}", e);
+                                        let _res = sendoperations_notify_error(
+                                            req_content.id.clone(),
+                                            tx.clone(),
+                                            tonic::Code::InvalidArgument,
+                                            error.to_owned(),
+                                        )
+                                        .await;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        if let Some(io_err) = match_for_io_error(&err) {
+                            if io_err.kind() == ErrorKind::BrokenPipe {
+                                warn!("client disconnected, broken pipe: {}", io_err);
+                                break;
+                            }
+                        }
+                        match tx.send(Err(err)).await {
+                            Ok(_) => (),
+                            Err(e) => {
+                                error!("failed to send back sendblocks error response: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+        Ok(tonic::Response::new(
+            Box::pin(out_stream) as Self::SendOperationsStream
+        ))
     }
 }
 
@@ -378,6 +539,34 @@ async fn sendblocks_notify_error(
         Ok(()) => Ok(()),
         Err(e) => {
             error!("failed to send back sendblocks error response: {}", e);
+            Ok(())
+        }
+    }
+}
+
+async fn sendoperations_notify_error(
+    id: String,
+    sender: tokio::sync::mpsc::Sender<Result<grpc::SendOperationsResponse, tonic::Status>>,
+    code: tonic::Code,
+    error: String,
+) -> Result<(), Box<dyn Error>> {
+    error!("{}", error);
+    match sender
+        .send(Ok(grpc::SendOperationsResponse {
+            id,
+            message: Some(grpc::send_operations_response::Message::Error(
+                massa_proto::google::rpc::Status {
+                    code: code.into(),
+                    message: error,
+                    details: Vec::new(),
+                },
+            )),
+        }))
+        .await
+    {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            error!("failed to send back sendoperations error response: {}", e);
             Ok(())
         }
     }

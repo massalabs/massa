@@ -48,7 +48,7 @@ use massa_models::config::constants::{
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
     T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
+use massa_models::config::{CONSENSUS_BOOTSTRAP_PART_SIZE, MAX_OPERATIONS_PER_MESSAGE};
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -584,12 +584,14 @@ async fn launch(
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
+            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
             max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
             max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
             max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
             max_parameter_size: MAX_PARAMETERS_SIZE,
+            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
             max_channel_size: SETTINGS.grpc.max_channel_size,
         };
 
@@ -597,6 +599,7 @@ async fn launch(
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             pool_channels,
+            pool_command_sender: pool_controller.clone(),
             protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
