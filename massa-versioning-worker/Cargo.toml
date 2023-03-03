@@ -1,0 +1,21 @@
+[package]
+name = "massa_versioning_worker"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[dependencies]
+machine = "0.3"
+parking_lot = "0.12"
+thiserror = "1.0"
+num_enum = "0.5"
+
+# custom module
+massa_time = { path = "../massa-time" }
+massa_models = { path = "../massa-models" }
+
+[dev-dependencies]
+chrono = "0.4"
+
+[features]
+testing = []

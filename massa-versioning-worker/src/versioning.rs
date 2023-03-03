@@ -9,8 +9,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
 
-use crate::amount::Amount;
-use crate::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
+use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_time::MassaTime;
 
 // TODO: add more items here
@@ -586,9 +585,10 @@ mod test {
 
     use std::str::FromStr;
 
+    use crate::test_helpers::versioning_helpers::advance_state_until;
     use chrono::{Days, NaiveDate, NaiveDateTime};
 
-    use crate::test_exports::versioning_helpers::advance_state_until;
+    // use crate::test_helpers::versioning_helpers::advance_state_until;
 
     // use massa_serialization::DeserializeError;
 
@@ -1045,7 +1045,7 @@ mod test {
         ]));
 
         // FIXME: this should fail
-        let vs_raw_2_ =
+        let _vs_raw_2_ =
             MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
                 .unwrap();
 

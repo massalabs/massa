@@ -139,12 +139,10 @@ mod test {
     use super::*;
 
     use std::collections::BTreeMap;
-    use std::sync::Arc;
 
-    use parking_lot::RwLock;
+    use crate::test_helpers::versioning_helpers::advance_state_until;
+    use crate::versioning::{MipInfo, MipStateHistory};
 
-    use crate::test_exports::versioning_helpers::advance_state_until;
-    use crate::versioning::{MipInfo, MipStateHistory, MipStoreRaw};
     use massa_time::MassaTime;
 
     // Define a struct Address with 2 versions AddressV0 & AddressV1

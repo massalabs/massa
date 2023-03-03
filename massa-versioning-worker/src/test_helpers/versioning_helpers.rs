@@ -1,9 +1,6 @@
-use std::str::FromStr;
-
-use crate::amount::Amount;
 use crate::versioning::{Advance, MipInfo, MipState, MipStateHistory};
 
-use crate::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
+use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_time::MassaTime;
 
 pub fn advance_state_until(at_state: MipState, versioning_info: &MipInfo) -> MipStateHistory {
