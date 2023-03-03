@@ -11,6 +11,7 @@ use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_wallet::WalletError;
 
+//TODO handle custom error
 /// Errors of the gRPC component.
 #[non_exhaustive]
 #[derive(Display, thiserror::Error, Debug)]

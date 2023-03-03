@@ -21,167 +21,6 @@ pub struct SecureSharePayload {
     #[prost(bytes = "vec", tag = "3")]
     pub serialized_content: ::prost::alloc::vec::Vec<u8>,
 }
-/// region Operation
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OperationInfo {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, repeated, tag = "2")]
-    pub in_blocks: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// bool field
-    #[prost(bool, tag = "3")]
-    pub in_pool: bool,
-    /// bool field
-    #[prost(bool, tag = "4")]
-    pub is_final: bool,
-    /// object field
-    #[prost(message, optional, tag = "5")]
-    pub operation: ::core::option::Option<SecureShareOperation>,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Roll {
-    /// int64 field
-    #[prost(int64, tag = "1")]
-    pub roll_count: i64,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OperationId {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub value: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OperationType {
-    /// object field
-    #[prost(message, optional, tag = "1")]
-    pub transaction: ::core::option::Option<Transaction>,
-    /// object field
-    #[prost(message, optional, tag = "2")]
-    pub execut_sc: ::core::option::Option<ExecuteSc>,
-    /// object field
-    #[prost(message, optional, tag = "3")]
-    pub call_sc: ::core::option::Option<CallSc>,
-    /// object field
-    #[prost(message, optional, tag = "4")]
-    pub roll_buy: ::core::option::Option<RollBuy>,
-    /// object field
-    #[prost(message, optional, tag = "5")]
-    pub roll_sell: ::core::option::Option<RollSell>,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Transaction {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub amount: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub recipient_address: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CallSc {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub target_addr: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub target_func: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub param: ::prost::alloc::string::String,
-    /// float field
-    #[prost(float, tag = "4")]
-    pub max_gas: f32,
-    /// float field
-    #[prost(float, tag = "5")]
-    pub sequential_coins: f32,
-    /// float field
-    #[prost(float, tag = "6")]
-    pub parallel_coins: f32,
-    /// float field
-    #[prost(float, tag = "7")]
-    pub gas_price: f32,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExecuteSc {
-    /// float field
-    #[prost(float, repeated, tag = "1")]
-    pub data: ::prost::alloc::vec::Vec<f32>,
-    /// float field
-    #[prost(float, tag = "2")]
-    pub max_gas: f32,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub coins: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "4")]
-    pub gas_price: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RollBuy {
-    /// float field
-    #[prost(float, tag = "1")]
-    pub roll_count: f32,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RollSell {
-    /// float field
-    #[prost(float, tag = "1")]
-    pub roll_count: f32,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OperationInput {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub content_creator_pub_key: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, repeated, tag = "3")]
-    pub serialized_content: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SecureShareOperation {
-    /// object field
-    #[prost(message, optional, tag = "1")]
-    pub content: ::core::option::Option<OperationType>,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub content_creator_pub_key: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "4")]
-    pub content_creator_address: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "5")]
-    pub id: ::prost::alloc::string::String,
-}
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -387,8 +226,8 @@ pub struct SendOperationsRequest {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// object field
-    #[prost(message, optional, tag = "2")]
-    pub operation: ::core::option::Option<OperationInput>,
+    #[prost(message, repeated, tag = "2")]
+    pub operations: ::prost::alloc::vec::Vec<SecureSharePayload>,
 }
 /// SendOperationsResponse holds response from SendOperations
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -418,8 +257,8 @@ pub mod send_operations_response {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OperationResult {
     /// string field
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Generated client implementations.
 pub mod grpc_client {
@@ -962,6 +801,167 @@ pub mod grpc_server {
     impl<T: Grpc> tonic::server::NamedService for GrpcServer<T> {
         const NAME: &'static str = "massa.api.v1.Grpc";
     }
+}
+/// region Operation
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OperationInfo {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, repeated, tag = "2")]
+    pub in_blocks: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// bool field
+    #[prost(bool, tag = "3")]
+    pub in_pool: bool,
+    /// bool field
+    #[prost(bool, tag = "4")]
+    pub is_final: bool,
+    /// object field
+    #[prost(message, optional, tag = "5")]
+    pub operation: ::core::option::Option<SecureShareOperation>,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Roll {
+    /// int64 field
+    #[prost(int64, tag = "1")]
+    pub roll_count: i64,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OperationId {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub value: ::prost::alloc::string::String,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OperationType {
+    /// object field
+    #[prost(message, optional, tag = "1")]
+    pub transaction: ::core::option::Option<Transaction>,
+    /// object field
+    #[prost(message, optional, tag = "2")]
+    pub execut_sc: ::core::option::Option<ExecuteSc>,
+    /// object field
+    #[prost(message, optional, tag = "3")]
+    pub call_sc: ::core::option::Option<CallSc>,
+    /// object field
+    #[prost(message, optional, tag = "4")]
+    pub roll_buy: ::core::option::Option<RollBuy>,
+    /// object field
+    #[prost(message, optional, tag = "5")]
+    pub roll_sell: ::core::option::Option<RollSell>,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Transaction {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub amount: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "2")]
+    pub recipient_address: ::prost::alloc::string::String,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CallSc {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub target_addr: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "2")]
+    pub target_func: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "3")]
+    pub param: ::prost::alloc::string::String,
+    /// float field
+    #[prost(float, tag = "4")]
+    pub max_gas: f32,
+    /// float field
+    #[prost(float, tag = "5")]
+    pub sequential_coins: f32,
+    /// float field
+    #[prost(float, tag = "6")]
+    pub parallel_coins: f32,
+    /// float field
+    #[prost(float, tag = "7")]
+    pub gas_price: f32,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExecuteSc {
+    /// float field
+    #[prost(float, repeated, tag = "1")]
+    pub data: ::prost::alloc::vec::Vec<f32>,
+    /// float field
+    #[prost(float, tag = "2")]
+    pub max_gas: f32,
+    /// string field
+    #[prost(string, tag = "3")]
+    pub coins: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "4")]
+    pub gas_price: ::prost::alloc::string::String,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RollBuy {
+    /// float field
+    #[prost(float, tag = "1")]
+    pub roll_count: f32,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RollSell {
+    /// float field
+    #[prost(float, tag = "1")]
+    pub roll_count: f32,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OperationInput {
+    /// string field
+    #[prost(string, tag = "1")]
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "2")]
+    pub signature: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, repeated, tag = "3")]
+    pub serialized_content: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SecureShareOperation {
+    /// object field
+    #[prost(message, optional, tag = "1")]
+    pub content: ::core::option::Option<OperationType>,
+    /// string field
+    #[prost(string, tag = "2")]
+    pub signature: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "3")]
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "4")]
+    pub content_creator_address: ::prost::alloc::string::String,
+    /// string field
+    #[prost(string, tag = "5")]
+    pub id: ::prost::alloc::string::String,
 }
 /// region Block
 /// message struct

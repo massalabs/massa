@@ -29,6 +29,8 @@ pub struct GrpcConfig {
     pub max_operations_per_block: u32,
     /// endorsement count
     pub endorsement_count: u32,
+    /// max endorsements per message
+    pub max_endorsements_per_message: u32,
     /// max datastore value length
     pub max_datastore_value_length: u64,
     /// max op datastore entry
@@ -41,6 +43,8 @@ pub struct GrpcConfig {
     pub max_function_name_length: u16,
     /// max parameter size
     pub max_parameter_size: u32,
+    /// max operations per message in the network to avoid sending to big data packet
+    pub max_operations_per_message: u32,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
 }
