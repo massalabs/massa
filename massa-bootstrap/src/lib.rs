@@ -13,7 +13,6 @@
 #![feature(ip)]
 #![feature(let_chains)]
 
-pub use establisher::types::Establisher;
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
 use massa_network_exports::BootstrapPeers;
@@ -30,7 +29,7 @@ mod server_binder;
 mod settings;
 mod tools;
 pub use client::get_state;
-pub use establisher::types;
+pub use establisher::DefaultEstablisher;
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,

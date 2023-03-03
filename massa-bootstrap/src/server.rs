@@ -55,10 +55,10 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     error::BootstrapError,
-    establisher::{BSListener, Duplex},
+    establisher::{BSEstablisher, BSListener, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    BootstrapConfig, Establisher,
+    BootstrapConfig,
 };
 
 /// Abstraction layer over data produced by the listener, and transported
@@ -103,7 +103,7 @@ pub async fn start_bootstrap_server(
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
-    mut establisher: Establisher,
+    mut establisher: impl BSEstablisher,
     keypair: KeyPair,
     version: Version,
 ) -> Result<Option<BootstrapManager>, Box<BootstrapError>> {
