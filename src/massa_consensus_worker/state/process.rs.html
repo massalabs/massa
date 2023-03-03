@@ -692,6 +692,12 @@
 <a href="#692" id="692">692</a>
 <a href="#693" id="693">693</a>
 <a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -806,7 +812,7 @@
                         block_id
                     )));
                 };
-                <span class="self">self</span>.check_block_header(block_id, header, current_slot)<span class="question-mark">?</span>;
+                <span class="self">self</span>.check_block_header_and_store(block_id, header, current_slot)<span class="question-mark">?</span>;
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
             }
 
@@ -835,7 +841,13 @@
                     .cloned()
                     .expect(<span class="string">&quot;incoming block not found in storage&quot;</span>);
 
-                <span class="kw">match </span><span class="self">self</span>.check_block(block_id, slot, storage, stored_block, current_slot)<span class="question-mark">? </span>{
+                <span class="kw">match </span><span class="self">self</span>.check_block_and_store(
+                    block_id,
+                    slot,
+                    storage,
+                    stored_block,
+                    current_slot,
+                )<span class="question-mark">? </span>{
                     <span class="prelude-val">Some</span>(block_infos) =&gt; block_infos,
                     <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::default()),
                 }

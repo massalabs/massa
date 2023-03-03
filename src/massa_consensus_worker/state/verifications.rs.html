@@ -580,6 +580,32 @@
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{process::BlockInfos, ConsensusState};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -627,7 +653,11 @@
 }
 
 <span class="kw">impl </span>ConsensusState {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_block(
+    <span class="doccomment">/// Check if the header of the block is valid and if it could be processed
+    ///
+    /// # Returns:
+    /// An option that contains data if the block can be processed and added to the graph, in any other case `None`
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_block_and_store(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_id: BlockId,
         slot: Slot,
@@ -657,7 +687,7 @@
                 }));
             }
             HeaderCheckOutcome::WaitForDependencies(dependencies) =&gt; {
-                <span class="self">self</span>.wait_for_dependencies(
+                <span class="self">self</span>.store_wait_for_dependencies(
                     block_id,
                     HeaderOrBlock::Block {
                         id: block_id,
@@ -668,7 +698,7 @@
                 )<span class="question-mark">?</span>;
             }
             HeaderCheckOutcome::WaitForSlot =&gt; {
-                <span class="self">self</span>.wait_for_slot_block_header(
+                <span class="self">self</span>.store_wait_for_slot(
                     block_id,
                     HeaderOrBlock::Block {
                         id: block_id,
@@ -678,13 +708,14 @@
                 );
             }
             HeaderCheckOutcome::Discard(reason) =&gt; {
-                <span class="self">self</span>.discard_block_header(reason, block_id, stored_block.content.header);
+                <span class="self">self</span>.store_discard_block_header(reason, block_id, stored_block.content.header);
             }
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_block_header(
+    <span class="doccomment">/// Check if the header is valid and if it could be processed when we will receive the full block
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_block_header_and_store(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_id: BlockId,
         header: SecuredHeader,
@@ -717,19 +748,29 @@
             HeaderCheckOutcome::WaitForDependencies(<span class="kw-2">mut </span>dependencies) =&gt; {
                 <span class="comment">// set as waiting dependencies
                 </span>dependencies.insert(block_id); <span class="comment">// add self as unsatisfied
-                </span><span class="self">self</span>.wait_for_dependencies(block_id, HeaderOrBlock::Header(header), dependencies)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.store_wait_for_dependencies(
+                    block_id,
+                    HeaderOrBlock::Header(header),
+                    dependencies,
+                )<span class="question-mark">?</span>;
             }
             HeaderCheckOutcome::WaitForSlot =&gt; {
-                <span class="self">self</span>.wait_for_slot_block_header(block_id, HeaderOrBlock::Header(header));
+                <span class="self">self</span>.store_wait_for_slot(block_id, HeaderOrBlock::Header(header));
             }
             HeaderCheckOutcome::Discard(reason) =&gt; {
-                <span class="self">self</span>.discard_block_header(reason, block_id, header);
+                <span class="self">self</span>.store_discard_block_header(reason, block_id, header);
             }
         };
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>wait_for_dependencies(
+    <span class="doccomment">/// Store in our indexes that a block or a header is waiting for his dependencies
+    ///
+    /// # Arguments:
+    /// `block_id`: ID of the block
+    /// `header_or_block`: block or header to save
+    /// `dependencies`: dependencies waiting for this block (if it&#39;s an header it should contains himself)
+    </span><span class="kw">fn </span>store_wait_for_dependencies(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_id: BlockId,
         header_or_block: HeaderOrBlock,
@@ -753,7 +794,12 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>wait_for_slot_block_header(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: BlockId, header_or_block: HeaderOrBlock) {
+    <span class="doccomment">/// Store in our indexes that we are waiting for the slot of this block or block header
+    ///
+    /// # Arguments:
+    /// `block_id`: ID of the block
+    /// `header_or_block`: block or header to save
+    </span><span class="kw">fn </span>store_wait_for_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: BlockId, header_or_block: HeaderOrBlock) {
         <span class="comment">// make it wait for slot
         </span><span class="self">self</span>.block_statuses
             .insert(block_id, BlockStatus::WaitingForSlot(header_or_block));
@@ -765,7 +811,13 @@
         );
     }
 
-    <span class="kw">fn </span>discard_block_header(
+    <span class="doccomment">/// Store in our indexes that we discarded this block or block header
+    ///
+    /// # Arguments:
+    /// `reason`: Read of the discard
+    /// `block_id`: ID of the block
+    /// `header`: header to save
+    </span><span class="kw">fn </span>store_discard_block_header(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         reason: DiscardReason,
         block_id: BlockId,
