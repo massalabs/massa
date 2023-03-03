@@ -22,9 +22,17 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::log::{debug, info};
 
-use crate::state::verifications::HeaderCheckOutcome;
-
 use super::ConsensusState;
+
+pub(crate) struct BlockInfos {
+    pub creator: PublicKey,
+    pub slot: Slot,
+    pub parents_hash_period: Vec<(BlockId, u64)>,
+    pub incompatibilities: PreHashSet<BlockId>,
+    pub inherited_incompatibilities_count: usize,
+    pub storage: Storage,
+    pub fitness: u64,
+}
 
 impl ConsensusState {
     /// Acknowledge a set of items recursively and process them
@@ -42,6 +50,9 @@ impl ConsensusState {
     ) -> Result<(), ConsensusError> {
         // order processing by (slot, hash)
         while let Some((_slot, hash)) = to_ack.pop_first() {
+            // When a slot and a block id is processed through the `process` function it's possible that it find others blocks
+            // that should be processed as well. In this case the `process` function will return them and they will be added to
+            // `to_ack` vector to be processed in the future.
             to_ack.extend(self.process(hash, current_slot)?)
         }
         Ok(())
@@ -65,15 +76,7 @@ impl ConsensusState {
 
         massa_trace!("consensus.block_graph.process", { "block_id": block_id });
         // control all the waiting states and try to get a valid block
-        let (
-            valid_block_creator,
-            valid_block_slot,
-            valid_block_parents_hash_period,
-            valid_block_incomp,
-            valid_block_inherited_incomp_count,
-            valid_block_storage,
-            valid_block_fitness,
-        ) = match self.block_statuses.get(&block_id) {
+        let valid_block_infos = match self.block_statuses.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
             // discarded: do nothing
@@ -109,95 +112,8 @@ impl ConsensusState {
                         block_id
                     )));
                 };
-                match self.check_header(&block_id, &header, current_slot, self)? {
-                    HeaderCheckOutcome::Proceed { .. } => {
-                        // set as waiting dependencies
-                        let mut dependencies = PreHashSet::<BlockId>::default();
-                        dependencies.insert(block_id); // add self as unsatisfied
-                        self.block_statuses.insert(
-                            block_id,
-                            BlockStatus::WaitingForDependencies {
-                                header_or_block: HeaderOrBlock::Header(header),
-                                unsatisfied_dependencies: dependencies,
-                                sequence_number: {
-                                    self.sequence_counter += 1;
-                                    self.sequence_counter
-                                },
-                            },
-                        );
-                        self.waiting_for_dependencies_index.insert(block_id);
-                        self.promote_dep_tree(block_id)?;
-
-                        massa_trace!(
-                            "consensus.block_graph.process.incoming_header.waiting_for_self",
-                            { "block_id": block_id }
-                        );
-                        return Ok(BTreeSet::new());
-                    }
-                    HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
-                        // set as waiting dependencies
-                        dependencies.insert(block_id); // add self as unsatisfied
-                        massa_trace!("consensus.block_graph.process.incoming_header.waiting_for_dependencies", {"block_id": block_id, "dependencies": dependencies});
-
-                        self.block_statuses.insert(
-                            block_id,
-                            BlockStatus::WaitingForDependencies {
-                                header_or_block: HeaderOrBlock::Header(header),
-                                unsatisfied_dependencies: dependencies,
-                                sequence_number: {
-                                    self.sequence_counter += 1;
-                                    self.sequence_counter
-                                },
-                            },
-                        );
-                        self.waiting_for_dependencies_index.insert(block_id);
-                        self.promote_dep_tree(block_id)?;
-
-                        return Ok(BTreeSet::new());
-                    }
-                    HeaderCheckOutcome::WaitForSlot => {
-                        // make it wait for slot
-                        self.block_statuses.insert(
-                            block_id,
-                            BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
-                        );
-                        self.waiting_for_slot_index.insert(block_id);
-
-                        massa_trace!(
-                            "consensus.block_graph.process.incoming_header.waiting_for_slot",
-                            { "block_id": block_id }
-                        );
-                        return Ok(BTreeSet::new());
-                    }
-                    HeaderCheckOutcome::Discard(reason) => {
-                        self.maybe_note_attack_attempt(&reason, &block_id);
-                        massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
-                        // count stales
-                        if reason == DiscardReason::Stale {
-                            self.new_stale_blocks.insert(
-                                block_id,
-                                (header.content_creator_address, header.content.slot),
-                            );
-                        }
-                        // discard
-                        self.block_statuses.insert(
-                            block_id,
-                            BlockStatus::Discarded {
-                                slot: header.content.slot,
-                                creator: header.content_creator_address,
-                                parents: header.content.parents,
-                                reason,
-                                sequence_number: {
-                                    self.sequence_counter += 1;
-                                    self.sequence_counter
-                                },
-                            },
-                        );
-                        self.discarded_index.insert(block_id);
-
-                        return Ok(BTreeSet::new());
-                    }
-                }
+                self.check_block_header(block_id, header, current_slot)?;
+                return Ok(BTreeSet::new());
             }
 
             // incoming block
@@ -225,106 +141,9 @@ impl ConsensusState {
                     .cloned()
                     .expect("incoming block not found in storage");
 
-                match self.check_header(
-                    &block_id,
-                    &stored_block.content.header,
-                    current_slot,
-                    self,
-                )? {
-                    HeaderCheckOutcome::Proceed {
-                        parents_hash_period,
-                        incompatibilities,
-                        inherited_incompatibilities_count,
-                        fitness,
-                    } => {
-                        // block is valid: remove it from Incoming and return it
-                        massa_trace!("consensus.block_graph.process.incoming_block.valid", {
-                            "block_id": block_id
-                        });
-                        (
-                            stored_block.content.header.content_creator_pub_key,
-                            slot,
-                            parents_hash_period,
-                            incompatibilities,
-                            inherited_incompatibilities_count,
-                            storage,
-                            fitness,
-                        )
-                    }
-                    HeaderCheckOutcome::WaitForDependencies(dependencies) => {
-                        // set as waiting dependencies
-                        self.block_statuses.insert(
-                            block_id,
-                            BlockStatus::WaitingForDependencies {
-                                header_or_block: HeaderOrBlock::Block {
-                                    id: block_id,
-                                    slot,
-                                    storage,
-                                },
-                                unsatisfied_dependencies: dependencies,
-                                sequence_number: {
-                                    self.sequence_counter += 1;
-                                    self.sequence_counter
-                                },
-                            },
-                        );
-                        self.waiting_for_dependencies_index.insert(block_id);
-                        self.promote_dep_tree(block_id)?;
-                        massa_trace!(
-                            "consensus.block_graph.process.incoming_block.waiting_for_dependencies",
-                            { "block_id": block_id }
-                        );
-                        return Ok(BTreeSet::new());
-                    }
-                    HeaderCheckOutcome::WaitForSlot => {
-                        // set as waiting for slot
-                        self.block_statuses.insert(
-                            block_id,
-                            BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
-                                id: block_id,
-                                slot,
-                                storage,
-                            }),
-                        );
-                        self.waiting_for_slot_index.insert(block_id);
-
-                        massa_trace!(
-                            "consensus.block_graph.process.incoming_block.waiting_for_slot",
-                            { "block_id": block_id }
-                        );
-                        return Ok(BTreeSet::new());
-                    }
-                    HeaderCheckOutcome::Discard(reason) => {
-                        self.maybe_note_attack_attempt(&reason, &block_id);
-                        massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
-                        // count stales
-                        if reason == DiscardReason::Stale {
-                            self.new_stale_blocks.insert(
-                                block_id,
-                                (
-                                    stored_block.content.header.content_creator_address,
-                                    stored_block.content.header.content.slot,
-                                ),
-                            );
-                        }
-                        // add to discard
-                        self.block_statuses.insert(
-                            block_id,
-                            BlockStatus::Discarded {
-                                slot: stored_block.content.header.content.slot,
-                                creator: stored_block.content_creator_address,
-                                parents: stored_block.content.header.content.parents.clone(),
-                                reason,
-                                sequence_number: {
-                                    self.sequence_counter += 1;
-                                    self.sequence_counter
-                                },
-                            },
-                        );
-                        self.discarded_index.insert(block_id);
-
-                        return Ok(BTreeSet::new());
-                    }
+                match self.check_block(block_id, slot, storage, stored_block, current_slot)? {
+                    Some(block_infos) => block_infos,
+                    None => return Ok(BTreeSet::default()),
                 }
             }
 
@@ -395,13 +214,13 @@ impl ConsensusState {
         // add block to graph
         self.add_block_to_graph(
             block_id,
-            valid_block_parents_hash_period,
-            valid_block_creator,
-            valid_block_slot,
-            valid_block_incomp,
-            valid_block_inherited_incomp_count,
-            valid_block_fitness,
-            valid_block_storage,
+            valid_block_infos.parents_hash_period,
+            valid_block_infos.creator,
+            valid_block_infos.slot,
+            valid_block_infos.incompatibilities,
+            valid_block_infos.inherited_incompatibilities_count,
+            valid_block_infos.fitness,
+            valid_block_infos.storage,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck

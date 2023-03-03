@@ -8,7 +8,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
-/// interface that communicates with the graph worker thread
+/// Interface that communicates with the graph worker thread
 pub trait ConsensusController: Send + Sync {
     /// Get an export of a part of the graph
     ///
@@ -27,7 +27,7 @@ pub trait ConsensusController: Send + Sync {
     /// Get statuses of a list of blocks
     ///
     /// # Arguments
-    /// * `block_ids`: the list of block ids to get the status of
+    /// * `ids`: the list of block ids to get the status of
     ///
     /// # Returns
     /// The statuses of the blocks sorted by the order of the input list
@@ -39,12 +39,17 @@ pub trait ConsensusController: Send + Sync {
     /// The list of cliques
     fn get_cliques(&self) -> Vec<Clique>;
 
-    /// Get a graph to bootstrap from
+    /// Get a part of the graph to send to a node so that he can setup his graph.
+    /// Used for bootstrap.
     ///
-    /// # Returns
-    /// * a part of the graph
-    /// * outdated block ids
-    /// * the updated streaming step
+    /// # Arguments:
+    /// * `cursor`: streaming cursor containing the current state of bootstrap and what blocks have been to the client already
+    /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info corresponds
+    ///
+    /// # Returns:
+    /// * A portion of the graph
+    /// * The list of outdated block ids
+    /// * The streaming step value after the current iteration
     #[allow(clippy::type_complexity)]
     fn get_bootstrap_part(
         &self,
