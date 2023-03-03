@@ -164,6 +164,8 @@ pub async fn start_bootstrap_server(
     let listen_rt_handle = bs_server_runtime.handle().clone();
     let listen_handle = thread::Builder::new()
         .name("bs_listener".to_string())
+        // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
+        // GAT lifetime is likely to remedy this, however.
         .spawn(move || {
             let res =
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
