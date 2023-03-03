@@ -55,9 +55,9 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     error::BootstrapError,
+    establisher::{BSListener, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    types::{Duplex, Listener},
     BootstrapConfig, Establisher,
 };
 
@@ -248,7 +248,7 @@ impl BootstrapServer<'_> {
     /// Err(..) Error accepting a connection
     /// TODO: Integrate the listener into the bootstrap-main-loop
     async fn run_listener(
-        mut listener: Listener,
+        mut listener: impl BSListener,
         listener_tx: crossbeam::channel::Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {

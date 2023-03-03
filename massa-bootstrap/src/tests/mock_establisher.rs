@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use async_trait::async_trait;
 use massa_models::config::CHANNEL_SIZE;
 use massa_time::MassaTime;
 use socket2 as _;
@@ -8,7 +9,7 @@ use std::net::SocketAddr;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
-use crate::establisher::{Duplex, DuplexListener};
+use crate::establisher::{BSListener, Duplex, DuplexListener};
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
@@ -34,8 +35,9 @@ pub struct MockListener {
     connection_listener_rx: crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, // (controller, mock)
 }
 
-impl MockListener {
-    pub async fn accept(&mut self) -> std::io::Result<(tokio::net::TcpStream, SocketAddr)> {
+#[async_trait]
+impl BSListener for MockListener {
+    async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
         let (_addr, sender) = self.connection_listener_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,

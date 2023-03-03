@@ -1,18 +1,25 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+use async_trait::async_trait;
 use std::{io, net::SocketAddr};
 
 #[cfg(test)]
+use crate::tests::mock_establisher::{MockConnector, MockEstablisher};
+#[cfg(test)]
 pub mod types {
-    pub type Listener = crate::tests::mock_establisher::MockListener;
 
-    pub type Connector = crate::tests::mock_establisher::MockConnector;
+    pub type Connector = super::MockConnector;
 
-    pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
+    pub type Establisher = super::MockEstablisher;
+}
 /// duplex connection
 pub type Duplex = tokio::net::TcpStream;
+
 /// duplex connection
 pub type DuplexListener = tokio::net::TcpListener;
 
+#[async_trait]
+pub trait BSListener {
+    async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)>;
 }
 
 #[cfg(not(test))]
@@ -20,7 +27,7 @@ pub type DuplexListener = tokio::net::TcpListener;
 pub mod types {
     use massa_time::MassaTime;
 
-    use super::{io, Duplex, DuplexListener, SocketAddr};
+    use super::{async_trait, io, Duplex, DuplexListener, SocketAddr};
 
     /// connector, used by client
     pub type Connector = DefaultConnector;
@@ -31,9 +38,10 @@ pub mod types {
     #[derive(Debug)]
     pub struct DefaultListener(DuplexListener);
 
-    impl DefaultListener {
+    #[async_trait]
+    impl super::BSListener for DefaultListener {
         /// Accepts a new incoming connection from this listener.
-        pub async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
+        async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
             // accept
             let (sock, mut remote_addr) = self.0.accept().await?;
             // normalize address
