@@ -1,29 +1,27 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+use std::{io, net::SocketAddr};
 
 #[cfg(test)]
 pub mod types {
-    pub type Duplex = crate::tests::mock_establisher::Duplex;
-
     pub type Listener = crate::tests::mock_establisher::MockListener;
 
     pub type Connector = crate::tests::mock_establisher::MockConnector;
 
     pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
+/// duplex connection
+pub type Duplex = tokio::net::TcpStream;
+/// duplex connection
+pub type DuplexListener = tokio::net::TcpListener;
+
 }
 
 #[cfg(not(test))]
 /// Connection types
 pub mod types {
     use massa_time::MassaTime;
-    use std::{io, net::SocketAddr};
-    use tokio::{
-        net::{TcpListener, TcpStream},
-        time::timeout,
-    };
-    /// duplex connection
-    pub type Duplex = TcpStream;
-    /// listener, used by server
-    pub type Listener = DefaultListener;
+
+    use super::{io, Duplex, DuplexListener, SocketAddr};
+
     /// connector, used by client
     pub type Connector = DefaultConnector;
     /// connection establisher
@@ -31,7 +29,7 @@ pub mod types {
 
     /// The listener we are using
     #[derive(Debug)]
-    pub struct DefaultListener(TcpListener);
+    pub struct DefaultListener(DuplexListener);
 
     impl DefaultListener {
         /// Accepts a new incoming connection from this listener.
@@ -54,7 +52,7 @@ pub mod types {
         /// # Argument
         /// * `addr`: `SocketAddr` we are trying to connect to.
         pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
-            match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
+            match tokio::time::timeout(self.0.to_duration(), Duplex::connect(addr)).await {
                 Ok(Ok(sock)) => Ok(sock),
                 Ok(Err(e)) => Err(e),
                 Err(e) => Err(io::Error::new(io::ErrorKind::TimedOut, e)),
@@ -87,7 +85,7 @@ pub mod types {
             // Number of connections to queue, set to the hardcoded value used by tokio
             socket.listen(1024)?;
 
-            Ok(DefaultListener(TcpListener::from_std(socket.into())?))
+            Ok(DefaultListener(DuplexListener::from_std(socket.into())?))
         }
 
         /// Get the connector with associated timeout

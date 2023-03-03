@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
-pub type Duplex = tokio::net::TcpStream;
+use crate::establisher::{Duplex, DuplexListener};
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
@@ -31,8 +31,7 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx:
-        crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<tokio::net::TcpStream>)>, // (controller, mock)
+    connection_listener_rx: crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, // (controller, mock)
 }
 
 impl MockListener {
@@ -43,8 +42,8 @@ impl MockListener {
                 "MockListener accept channel from Establisher closed".to_string(),
             )
         })?;
-        let duplex_controller = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
-        let duplex_mock = tokio::net::TcpStream::connect(duplex_controller.local_addr().unwrap())
+        let duplex_controller = DuplexListener::bind("localhost:0").await.unwrap();
+        let duplex_mock = Duplex::connect(duplex_controller.local_addr().unwrap())
             .await
             .unwrap();
         let duplex_controller = duplex_controller.accept().await.unwrap();
@@ -62,15 +61,14 @@ impl MockListener {
 
 #[derive(Debug)]
 pub struct MockConnector {
-    connection_connector_tx:
-        mpsc::Sender<(tokio::net::TcpStream, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
     timeout_duration: MassaTime,
 }
 
 impl MockConnector {
-    pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<tokio::net::TcpStream> {
-        let duplex_mock = tokio::net::TcpListener::bind(addr).await.unwrap();
-        let duplex_controller = tokio::net::TcpStream::connect(addr).await.unwrap();
+    pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
+        let duplex_mock = DuplexListener::bind(addr).await.unwrap();
+        let duplex_controller = Duplex::connect(addr).await.unwrap();
         let duplex_mock = duplex_mock.accept().await.unwrap();
 
         // // task the controller connection if exist.

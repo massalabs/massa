@@ -1,6 +1,6 @@
+use crate::establisher::Duplex;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
-use crate::types::Duplex;
 use crate::BootstrapConfig;
 use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,

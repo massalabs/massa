@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::mock_establisher::Duplex;
+use crate::establisher::Duplex;
 use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
