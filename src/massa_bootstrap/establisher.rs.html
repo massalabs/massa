@@ -110,6 +110,9 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -122,16 +125,19 @@
 </span><span class="kw">pub type </span>DuplexListener = tokio::net::TcpListener;
 
 <span class="attr">#[async_trait]
+</span><span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
 </span><span class="kw">pub trait </span>BSListener {
     <span class="kw">async fn </span>accept(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;(Duplex, SocketAddr)&gt;;
 }
 
 <span class="attr">#[async_trait]
+</span><span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
 </span><span class="kw">pub trait </span>BSConnector {
     <span class="kw">async fn </span>connect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;Duplex&gt;;
 }
 
-<span class="kw">pub trait </span>BSEstablisher {
+<span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
+</span><span class="kw">pub trait </span>BSEstablisher {
     <span class="comment">// TODO: this is needed for thread spawning. Once the listener is on-thread, the static
     // lifetime can be thrown away.
     // TODO: use super-advanced lifetime/GAT/other shenanigans to
