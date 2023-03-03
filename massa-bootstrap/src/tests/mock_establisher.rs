@@ -1,5 +1,4 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
 use async_trait::async_trait;
 use massa_models::config::CHANNEL_SIZE;
 use massa_time::MassaTime;
