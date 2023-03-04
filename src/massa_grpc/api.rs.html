@@ -759,13 +759,61 @@
 <a href="#759" id="759">759</a>
 <a href="#760" id="760">760</a>
 <a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! gRPC API for a massa-node
-</span><span class="kw">use </span>std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin};
+</span><span class="kw">use </span>std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
 
 <span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
+<span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::{
+    address::Address,
     block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
     endorsement::{EndorsementDeserializer, SecureShareEndorsement},
     error::ModelsError,
@@ -790,6 +838,8 @@
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     <span class="doccomment">/// link(channels) to the consensus component
     </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
+    <span class="doccomment">/// link to the execution component
+    </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     <span class="doccomment">/// link(channels) to the pool component
     </span><span class="kw">pub </span>pool_channels: PoolChannels,
     <span class="doccomment">/// link to the pool component
@@ -908,6 +958,46 @@
 
 <span class="attr">#[tonic::async_trait]
 </span><span class="kw">impl </span>grpc::grpc_server::Grpc <span class="kw">for </span>MassaService {
+    <span class="kw">async fn </span>get_datastore_entries(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        request: tonic::Request&lt;grpc::GetDatastoreEntriesRequest&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;grpc::GetDatastoreEntriesResponse&gt;, tonic::Status&gt; {
+        <span class="kw">let </span>execution_controller = <span class="self">self</span>.execution_controller.clone();
+        <span class="kw">let </span>inner_req = request.into_inner();
+        <span class="kw">let </span>id = inner_req.id.clone();
+
+        <span class="kw">let </span>filters = inner_req
+            .entries
+            .into_iter()
+            .map(|filter| {
+                Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
+            })
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;();
+
+        <span class="kw">match </span>filters {
+            <span class="prelude-val">Ok</span>(filters) =&gt; {
+                <span class="kw">let </span>entries = execution_controller
+                    .get_final_and_active_data_entry(filters)
+                    .into_iter()
+                    .map(|output| grpc::BytesMapFieldEntry {
+                        <span class="comment">//TODO this behaviour should be confirmed
+                        </span>key: output.<span class="number">0</span>.unwrap_or_default(),
+                        value: output.<span class="number">1</span>.unwrap_or_default(),
+                    })
+                    .collect();
+
+                <span class="prelude-val">Ok</span>(tonic::Response::new(grpc::GetDatastoreEntriesResponse {
+                    id,
+                    entries,
+                }))
+            }
+
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(tonic::Status::invalid_argument(e.to_string()));
+            }
+        }
+    }
+
     <span class="kw">async fn </span>get_version(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         request: tonic::Request&lt;grpc::GetVersionRequest&gt;,
@@ -1153,7 +1243,7 @@
                                                         <span class="prelude-val">Ok</span>((res_endorsement.id.to_string(), res_endorsement))
                                                     } <span class="kw">else </span>{
                                                         <span class="prelude-val">Err</span>(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, res_endorsement.signature).to_owned())
+                                                            <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, res_endorsement.signature))
                                                         ))
                                                     }
                                                 } <span class="kw">else </span>{
@@ -1163,7 +1253,7 @@
                                                 }
                                             },
                                         <span class="prelude-val">Err</span>(e) =&gt; {
-                                            <span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize endorsement: {}&quot;</span>, e).to_owned()
+                                            <span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize endorsement: {}&quot;</span>, e)
                                             ))
                                         }
                                         };
@@ -1245,7 +1335,10 @@
                         <span class="kw">match </span>tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; (),
                             <span class="prelude-val">Err</span>(e) =&gt; {
-                                <span class="macro">error!</span>(<span class="string">&quot;failed to send back send_endorsements error response: {}&quot;</span>, e);
+                                <span class="macro">error!</span>(
+                                    <span class="string">&quot;failed to send back send_endorsements error response: {}&quot;</span>,
+                                    e
+                                );
                                 <span class="kw">break</span>;
                             }
                         }
@@ -1328,7 +1421,7 @@
                                                         <span class="prelude-val">Ok</span>((res_operation.id.to_string(), res_operation))
                                                     } <span class="kw">else </span>{
                                                         <span class="prelude-val">Err</span>(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, res_operation.signature).to_owned())
+                                                            <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, res_operation.signature))
                                                         ))
                                                     }
                                                 } <span class="kw">else </span>{
@@ -1338,8 +1431,7 @@
                                                 }
                                             },
                                         <span class="prelude-val">Err</span>(e) =&gt; {
-                                            <span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize operation: {}&quot;</span>, e).to_owned()
-                                            ))
+                                            <span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize operation: {}&quot;</span>, e)))
                                         }
                                         };
                                         verified_op
