@@ -598,6 +598,7 @@ async fn launch(
         let grpc_api = MassaService {
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
+            execution_controller: execution_controller.clone(),
             pool_channels,
             pool_command_sender: pool_controller.clone(),
             protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),

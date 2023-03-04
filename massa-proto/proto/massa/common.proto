@@ -17,6 +17,14 @@ option php_namespace = "Massa\\Api\\V1";
       string version = 1;
     }
 
+    // BytesMapFieldEntry
+    message BytesMapFieldEntry {
+      // bytes key
+      bytes key = 1;
+      // bytes key
+      bytes value = 2;
+    }
+
     // message struct
     message SecureSharePayload {
       /// The public key of the content creator 

@@ -7,6 +7,17 @@ pub struct Version {
     #[prost(string, tag = "1")]
     pub version: ::prost::alloc::string::String,
 }
+/// BytesMapFieldEntry
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BytesMapFieldEntry {
+    /// bytes key
+    #[prost(bytes = "vec", tag = "1")]
+    pub key: ::prost::alloc::vec::Vec<u8>,
+    /// bytes key
+    #[prost(bytes = "vec", tag = "2")]
+    pub value: ::prost::alloc::vec::Vec<u8>,
+}
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -20,6 +31,38 @@ pub struct SecureSharePayload {
     /// / The serialized version of the content
     #[prost(bytes = "vec", tag = "3")]
     pub serialized_content: ::prost::alloc::vec::Vec<u8>,
+}
+/// GetDatastoreEntriesRequest holds request from GetDatastoreEntries
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatastoreEntriesRequest {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// string value
+    #[prost(message, repeated, tag = "2")]
+    pub entries: ::prost::alloc::vec::Vec<DatastoreEntryFilter>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatastoreEntryFilter {
+    /// / associated address of the entry
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+    /// datastore key
+    #[prost(bytes = "vec", tag = "2")]
+    pub key: ::prost::alloc::vec::Vec<u8>,
+}
+/// GetDatastoreEntriesResponse holds response from GetDatastoreEntries
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatastoreEntriesResponse {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// object value
+    #[prost(message, repeated, tag = "2")]
+    pub entries: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
 }
 /// GetVersionRequest holds request from GetVersion
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -251,6 +294,29 @@ pub mod grpc_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// GetDatastoreEntries
+        pub async fn get_datastore_entries(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetDatastoreEntriesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetDatastoreEntriesResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/GetDatastoreEntries",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// GetVersion
         pub async fn get_version(
             &mut self,
@@ -356,6 +422,14 @@ pub mod grpc_server {
     /// Generated trait containing gRPC methods that should be implemented for use with GrpcServer.
     #[async_trait]
     pub trait Grpc: Send + Sync + 'static {
+        /// GetDatastoreEntries
+        async fn get_datastore_entries(
+            &self,
+            request: tonic::Request<super::GetDatastoreEntriesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetDatastoreEntriesResponse>,
+            tonic::Status,
+        >;
         /// GetVersion
         async fn get_version(
             &self,
@@ -483,6 +557,52 @@ pub mod grpc_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
+                "/massa.api.v1.Grpc/GetDatastoreEntries" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetDatastoreEntriesSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::UnaryService<super::GetDatastoreEntriesRequest>
+                    for GetDatastoreEntriesSvc<T> {
+                        type Response = super::GetDatastoreEntriesResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetDatastoreEntriesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_datastore_entries(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetDatastoreEntriesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/massa.api.v1.Grpc/GetVersion" => {
                     #[allow(non_camel_case_types)]
                     struct GetVersionSvc<T: Grpc>(pub Arc<T>);
