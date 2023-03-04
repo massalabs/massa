@@ -1,10 +1,12 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! gRPC API for a massa-node
-use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin};
+use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
 
 use crate::config::GrpcConfig;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_execution_exports::ExecutionController;
 use massa_models::{
+    address::Address,
     block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
     endorsement::{EndorsementDeserializer, SecureShareEndorsement},
     error::ModelsError,
@@ -29,6 +31,8 @@ pub struct MassaService {
     pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
     pub consensus_channels: ConsensusChannels,
+    /// link to the execution component
+    pub execution_controller: Box<dyn ExecutionController>,
     /// link(channels) to the pool component
     pub pool_channels: PoolChannels,
     /// link to the pool component
@@ -147,6 +151,46 @@ fn match_for_io_error(err_status: &tonic::Status) -> Option<&std::io::Error> {
 
 #[tonic::async_trait]
 impl grpc::grpc_server::Grpc for MassaService {
+    async fn get_datastore_entries(
+        &self,
+        request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
+    ) -> Result<tonic::Response<grpc::GetDatastoreEntriesResponse>, tonic::Status> {
+        let execution_controller = self.execution_controller.clone();
+        let inner_req = request.into_inner();
+        let id = inner_req.id.clone();
+
+        let filters = inner_req
+            .entries
+            .into_iter()
+            .map(|filter| {
+                Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
+            })
+            .collect::<Result<Vec<_>, _>>();
+
+        match filters {
+            Ok(filters) => {
+                let entries = execution_controller
+                    .get_final_and_active_data_entry(filters)
+                    .into_iter()
+                    .map(|output| grpc::BytesMapFieldEntry {
+                        //TODO this behaviour should be confirmed
+                        key: output.0.unwrap_or_default(),
+                        value: output.1.unwrap_or_default(),
+                    })
+                    .collect();
+
+                Ok(tonic::Response::new(grpc::GetDatastoreEntriesResponse {
+                    id,
+                    entries,
+                }))
+            }
+
+            Err(e) => {
+                return Err(tonic::Status::invalid_argument(e.to_string()));
+            }
+        }
+    }
+
     async fn get_version(
         &self,
         request: tonic::Request<grpc::GetVersionRequest>,
@@ -392,7 +436,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                         Ok((res_endorsement.id.to_string(), res_endorsement))
                                                     } else {
                                                         Err(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            format!("wrong signature: {}", res_endorsement.signature).to_owned())
+                                                            format!("wrong signature: {}", res_endorsement.signature))
                                                         ))
                                                     }
                                                 } else {
@@ -402,7 +446,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                 }
                                             },
                                         Err(e) => {
-                                            Err(ModelsError::DeserializeError(format!("failed to deserialize endorsement: {}", e).to_owned()
+                                            Err(ModelsError::DeserializeError(format!("failed to deserialize endorsement: {}", e)
                                             ))
                                         }
                                         };
@@ -484,7 +528,10 @@ impl grpc::grpc_server::Grpc for MassaService {
                         match tx.send(Err(err)).await {
                             Ok(_) => (),
                             Err(e) => {
-                                error!("failed to send back send_endorsements error response: {}", e);
+                                error!(
+                                    "failed to send back send_endorsements error response: {}",
+                                    e
+                                );
                                 break;
                             }
                         }
@@ -567,7 +614,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                         Ok((res_operation.id.to_string(), res_operation))
                                                     } else {
                                                         Err(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            format!("wrong signature: {}", res_operation.signature).to_owned())
+                                                            format!("wrong signature: {}", res_operation.signature))
                                                         ))
                                                     }
                                                 } else {
@@ -577,8 +624,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                 }
                                             },
                                         Err(e) => {
-                                            Err(ModelsError::DeserializeError(format!("failed to deserialize operation: {}", e).to_owned()
-                                            ))
+                                            Err(ModelsError::DeserializeError(format!("failed to deserialize operation: {}", e)))
                                         }
                                         };
                                         verified_op

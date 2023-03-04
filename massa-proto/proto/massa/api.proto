@@ -17,16 +17,49 @@ option php_namespace = "Massa\\Api\\V1";
 
 // Massa gRPC service
 service Grpc {
+  // GetDatastoreEntries
+  rpc GetDatastoreEntries ( GetDatastoreEntriesRequest ) returns ( GetDatastoreEntriesResponse ) {
+      option (google.api.http) = { 
+          post: "/v1/get_datastore_entries"
+          body: "*"
+        };
+  }
+
   // GetVersion
   rpc GetVersion ( GetVersionRequest ) returns ( GetVersionResponse ) {
     option (google.api.http) = { get: "/v1/version" };
   }
   // SendBlocks
   rpc SendBlocks ( stream SendBlocksRequest ) returns ( stream SendBlocksResponse ) {}
+
   // SendEndorsements
   rpc SendEndorsements ( stream SendEndorsementsRequest ) returns ( stream SendEndorsementsResponse ) {}
+
   // SendOperations
   rpc SendOperations ( stream SendOperationsRequest ) returns ( stream SendOperationsResponse ) {}
+}
+
+// GetDatastoreEntriesRequest holds request from GetDatastoreEntries
+message GetDatastoreEntriesRequest {
+  // string value
+  string id = 1;
+  // string value
+  repeated DatastoreEntryFilter entries = 2;
+}
+
+message DatastoreEntryFilter {
+  /// associated address of the entry
+  string address = 1;
+  // datastore key
+  bytes key = 2;
+}
+
+// GetDatastoreEntriesResponse holds response from GetDatastoreEntries
+message GetDatastoreEntriesResponse {
+  // string value
+  string id = 1;
+  // object value
+  repeated BytesMapFieldEntry entries = 2;
 }
 
 // GetVersionRequest holds request from GetVersion
