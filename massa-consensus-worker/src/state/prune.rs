@@ -148,7 +148,9 @@ impl ConsensusState {
             .iter()
             .filter_map(|block_id| {
                 if let Some(BlockStatus::Discarded {
-                    sequence_number, slot, ..
+                    sequence_number,
+                    slot,
+                    ..
                 }) = self.block_statuses.get(block_id)
                 {
                     return Some((*sequence_number, *slot, *block_id));
