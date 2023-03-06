@@ -258,6 +258,8 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -511,6 +513,8 @@
     </span><span class="kw">pub </span>max_encoding_message_size: usize,
     <span class="doccomment">/// limits the maximum size of streaming channel
     </span><span class="kw">pub </span>max_channel_size: usize,
+    <span class="doccomment">/// when looking for next draw we want to look at max `draw_lookahead_period_count`
+    </span><span class="kw">pub </span>draw_lookahead_period_count: u64,
 }
 
 <span class="attr">#[cfg(test)]
