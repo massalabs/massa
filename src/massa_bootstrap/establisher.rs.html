@@ -108,13 +108,6 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#[cfg(test)]
@@ -195,16 +188,9 @@
         /// * `addr`: `SocketAddr` we want to bind to.
         </span><span class="kw">pub async fn </span>get_listener(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: SocketAddr) -&gt; io::Result&lt;DefaultListener&gt; {
             <span class="comment">// Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
-            </span><span class="kw">let </span>domain = <span class="kw">match </span>addr.is_ipv4() {
-                <span class="bool-val">true </span>=&gt; socket2::Domain::IPV4,
-                <span class="kw">_ </span>=&gt; socket2::Domain::IPV6,
-            };
+            </span><span class="kw">let </span>socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>socket = socket2::Socket::new(domain, socket2::Type::STREAM, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-
-            <span class="kw">if </span>addr.is_ipv6() {
-                socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
-            }
+            socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
             socket.set_nonblocking(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
             socket.bind(<span class="kw-2">&amp;</span>addr.into())<span class="question-mark">?</span>;
 
