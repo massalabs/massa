@@ -82,7 +82,7 @@ pub mod types {
                 true => socket2::Domain::IPV4,
                 _ => socket2::Domain::IPV6,
             };
-            
+
             let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
 
             if addr.is_ipv6() {
