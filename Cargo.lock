@@ -2343,35 +2343,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa-sc-runtime"
-version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_21#e6a0455f8e924003b384e2ca01fa7d75c16d6148"
-dependencies = [
- "anyhow",
- "as-ffi-bindings",
- "base64 0.13.1",
- "chrono",
- "displaydoc",
- "function_name",
- "loupe",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "more-asserts 0.3.1",
- "parking_lot",
- "rand 0.8.5",
- "regex",
- "serde",
- "serde_json",
- "serial_test 0.8.0",
- "sha2 0.10.6",
- "thiserror",
- "tracing",
- "wasmer",
- "wasmer-compiler-singlepass",
- "wasmer-middlewares",
- "wasmer-types",
-]
-
-[[package]]
 name = "massa_api"
 version = "0.1.0"
 dependencies = [
@@ -2565,7 +2536,7 @@ name = "massa_execution_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime?branch=testnet_21)",
+ "massa-sc-runtime",
  "massa_final_state",
  "massa_hash 0.1.0",
  "massa_ledger_exports",
@@ -2584,7 +2555,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "hex-literal",
- "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime?branch=abi_get_matching_key_for)",
+ "massa-sc-runtime",
  "massa_async_pool",
  "massa_executed_ops",
  "massa_execution_exports",

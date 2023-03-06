@@ -255,7 +255,7 @@ impl Interface for InterfaceImpl {
         let addr = context.get_current_address()?;
         match (context.get_keys(&addr), prefix_opt) {
             (Some(value), None) => Ok(value),
-            (Some(value), Some(prefix)) => {
+            (Some(mut value), Some(prefix)) => {
                 value.retain(|key| {
                     prefix.iter().enumerate().all(|(n, b)| match key.get(n) {
                         None => false,
@@ -277,7 +277,7 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         match (context.get_keys(&addr), prefix_opt) {
             (Some(value), None) => Ok(value),
-            (Some(value), Some(prefix)) => {
+            (Some(mut value), Some(prefix)) => {
                 value.retain(|key| {
                     prefix.iter().enumerate().all(|(n, b)| match key.get(n) {
                         None => false,
