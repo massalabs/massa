@@ -1441,18 +1441,18 @@ impl ExecutionState {
         })?;
 
         let get_slot_at_timestamp = |config: &ExecutionConfig, timestamp: MassaTime| {
-            match massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            massa_models::timeslots::get_latest_block_slot_at_timestamp(
                 config.thread_count,
                 config.t0,
                 config.genesis_timestamp,
                 timestamp,
-            ) {
-                Ok(opts) => Ok(opts.unwrap()),
-                Err(_) => Err(ExecutionError::InitVestingError(format!(
-                    "can no get the slot at timestamp : {}",
-                    timestamp
-                ))),
-            }
+            )
+            .map_err(|e| {
+                ExecutionError::InitVestingError(format!(
+                    "can no get the slot at timestamp {} : {}",
+                    timestamp, e
+                ))
+            })
         };
 
         for v in hashmap.values_mut() {
@@ -1470,15 +1470,24 @@ impl ExecutionState {
                         if prev.timestamp.eq(&MassaTime::from(0)) {
                             // first range with timestamp = 0
                             prev.start_slot = Slot::min();
-                        } else {
-                            prev.start_slot = get_slot_at_timestamp(config, prev.timestamp)?;
+                        } else if let Some(slot) = get_slot_at_timestamp(config, prev.timestamp)? {
+                            prev.start_slot = slot;
                         }
 
                         // retrieve the end_slot
-                        let next_range_slot = get_slot_at_timestamp(config, next.timestamp)?;
-                        prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)?;
+                        if let Some(next_range_slot) =
+                            get_slot_at_timestamp(config, next.timestamp)?
+                        {
+                            prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)?;
+                        }
 
                         Ok(prev)
+                    })
+                    // we don't need range with StartSlot(0,0) && EndSlot(0,0)
+                    // this can happen when the timestamp is passed
+                    .filter(|a| {
+                        !(a.as_ref().unwrap().end_slot == Slot::min()
+                            && a.as_ref().unwrap().start_slot == Slot::min())
                     })
                     .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
             }
