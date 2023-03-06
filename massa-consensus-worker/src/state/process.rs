@@ -20,7 +20,7 @@ use massa_models::{
 use massa_signature::PublicKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::log::{debug, info};
+use tracing::log::{debug, info, warn};
 
 use super::ConsensusState;
 
@@ -116,6 +116,10 @@ impl ConsensusState {
                 let entry = self.blocks_per_slot.entry(header.content.slot).or_default();
                 if !entry.contains(&header.id) {
                     if entry.len() > 1 && !self.wishlist.contains_key(&block_id) {
+                        warn!(
+                            "received more than 2 blocks for slot {}",
+                            header.content.slot
+                        );
                         return Ok(BTreeSet::new());
                     } else {
                         entry.insert(block_id);
@@ -156,6 +160,10 @@ impl ConsensusState {
                     .or_default();
                 if !entry.contains(&stored_block.id) {
                     if entry.len() > 1 && !self.wishlist.contains_key(&block_id) {
+                        warn!(
+                            "received more than 2 blocks for slot {}",
+                            stored_block.content.header.content.slot
+                        );
                         return Ok(BTreeSet::default());
                     } else {
                         entry.insert(block_id);
