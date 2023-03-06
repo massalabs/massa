@@ -333,7 +333,8 @@ impl ConsensusState {
     }
 
     fn prune_nonfinal_blocks_per_slot(&mut self) {
-        self.nonfinal_active_blocks_per_slot.retain(|s, _| s.period > self.latest_final_blocks_periods[s.thread as usize].1);
+        self.nonfinal_active_blocks_per_slot
+            .retain(|s, _| s.period > self.latest_final_blocks_periods[s.thread as usize].1);
     }
 
     pub fn prune(&mut self) -> Result<(), ConsensusError> {
