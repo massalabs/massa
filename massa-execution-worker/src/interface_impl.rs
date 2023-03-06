@@ -257,16 +257,13 @@ impl Interface for InterfaceImpl {
             (Some(value), None) => Ok(value),
             (Some(value), Some(prefix)) => {
                 value.retain(|key| {
-                    prefix
-                        .iter()
-                        .enumerate()
-                        .all(|(n, b)| match key.get(n) {
-                            None => false,
-                            Some(v) => *v == *b,
-                        })
+                    prefix.iter().enumerate().all(|(n, b)| match key.get(n) {
+                        None => false,
+                        Some(v) => *v == *b,
+                    })
                 });
                 Ok(value)
-            },
+            }
             _ => bail!("data entry not found"),
         }
     }
@@ -282,16 +279,13 @@ impl Interface for InterfaceImpl {
             (Some(value), None) => Ok(value),
             (Some(value), Some(prefix)) => {
                 value.retain(|key| {
-                    prefix
-                        .iter()
-                        .enumerate()
-                        .all(|(n, b)| match key.get(n) {
-                            None => false,
-                            Some(v) => *v == *b,
-                        })
+                    prefix.iter().enumerate().all(|(n, b)| match key.get(n) {
+                        None => false,
+                        Some(v) => *v == *b,
+                    })
                 });
                 Ok(value)
-            },
+            }
             _ => bail!("data entry not found"),
         }
     }
