@@ -333,18 +333,7 @@ impl ConsensusState {
     }
 
     fn prune_nonfinal_blocks_per_slot(&mut self) {
-        let keys = self
-            .nonfinal_active_blocks_per_slot
-            .keys()
-            .cloned()
-            .collect::<Vec<_>>();
-        for (thread, (_, period)) in self.latest_final_blocks_periods.iter().enumerate() {
-            for key in &keys {
-                if key.thread == thread as u8 && key.period <= *period {
-                    self.nonfinal_active_blocks_per_slot.remove(&key);
-                }
-            }
-        }
+        self.nonfinal_active_blocks_per_slot.retain(|s, _| s.period > self.latest_final_blocks_periods[s.thread as usize].1);
     }
 
     pub fn prune(&mut self) -> Result<(), ConsensusError> {
