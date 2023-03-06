@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -139,17 +139,6 @@ pub struct Advance {
     pub now: MassaTime,
 }
 
-impl Default for Advance {
-    fn default() -> Self {
-        Self {
-            start_timestamp: MassaTime::from(0),
-            timeout: MassaTime::from(0),
-            threshold: Default::default(),
-            now: MassaTime::from(0),
-        }
-    }
-}
-
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
 
 impl Ord for Advance {
@@ -248,12 +237,14 @@ impl MipStateHistory {
     pub fn new(defined: MassaTime) -> Self {
         let state: MipState = Default::default();
         let state_id = MipStateTypeId::from(&state);
-        // let mut advance = Advance::default();
-        // advance.now = defined;
+        // Build a 'dummy' advance msg for state Defined
         let advance = Advance {
+            start_timestamp: MassaTime::from(0),
+            timeout: MassaTime::from(0),
+            threshold: Default::default(),
             now: defined,
-            ..Default::default()
         };
+
         let history = BTreeMap::from([(advance, state_id)]);
         Self {
             state: Default::default(),
@@ -278,7 +269,14 @@ impl MipStateHistory {
             // Update history as well
             if state != self.state {
                 let state_id = MipStateTypeId::from(&state);
-                self.history.insert(input.clone(), state_id);
+
+                // Avoid storing too much things in history
+                // Here we avoid storing for every threshold update
+                if !(matches!(state, MipState::Started(Started { .. }))
+                    && matches!(self.state, MipState::Started(Started { .. })))
+                {
+                    self.history.insert(input.clone(), state_id);
+                }
                 self.state = state;
             }
         }
@@ -418,13 +416,8 @@ pub enum StateAtError {
 pub struct MipStore(pub Arc<RwLock<MipStoreRaw>>);
 
 impl MipStore {
-    // Optim: merge get_version_current / get_version_to_announce so we don't iter twice?
-    //       & rename to get_network_versions(...) -> (u32, u32)
-    //       Move all others funcs from Factory and named them like:
-    //       get_component_version_XXX (best, all, ...)
-
-    /// Retrieve the current "global" version to set in block header
-    pub fn get_version_current(&self) -> u32 {
+    /// Retrieve the current network version to set in block header
+    pub fn get_network_version_current(&self) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
         // Current version == last active
@@ -436,9 +429,9 @@ impl MipStore {
             .unwrap_or(0)
     }
 
-    /// Retrieve the "global" version number to announce in block header
+    /// Retrieve the network version number to announce in block header
     /// return 0 is there is nothing to announce
-    pub fn get_version_to_announce(&self) -> u32 {
+    pub fn get_network_version_to_announce(&self) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
         // Announce the latest versioning info in Started / LockedIn state
@@ -478,8 +471,11 @@ impl MipStoreRaw {
         //             VersioningInfo is not in self.store -> add to 'to_add' list
         //
 
-        // TODO: Check component_version always increase...
-
+        let mut component_versions: HashMap<MipComponent, u32> = self
+            .0
+            .iter()
+            .map(|i| (i.0.component.clone(), i.0.component_version))
+            .collect();
         let mut names: BTreeSet<String> = self.0.iter().map(|i| i.0.name.clone()).collect();
         let mut to_update: BTreeMap<MipInfo, MipStateHistory> = Default::default();
         let mut to_add: BTreeMap<MipInfo, MipStateHistory> = Default::default();
@@ -526,10 +522,19 @@ impl MipStoreRaw {
                         && v_info.timeout > v_info.start
                         && v_info.version > last_v_info.version
                         && !names.contains(&v_info.name)
+                        && v_info.component_version
+                            > *component_versions.get(&v_info.component).unwrap_or(&0)
                     {
                         // Time range is ok / version is ok / name is unique, let's add it
                         to_add.insert(v_info.clone(), v_state.clone());
                         names.insert(v_info.name.clone());
+                        component_versions
+                            .insert(v_info.component.clone(), v_info.component_version);
+                    } else {
+                        // Something is wrong (time range not ok? / version not incr? / names?
+                        // or component version not incr?)
+                        should_merge = false;
+                        break;
                     }
                 } else {
                     // to_add is empty && self.0 is empty
@@ -539,7 +544,8 @@ impl MipStoreRaw {
             }
         }
 
-        if should_merge {
+        // Return false is there is nothing to merge - maybe we could make a distinction here?
+        if should_merge && (!to_update.is_empty() || !to_add.is_empty()) {
             self.0.append(&mut to_update);
             self.0.append(&mut to_add);
             true
@@ -553,18 +559,21 @@ impl<const N: usize> TryFrom<[(MipInfo, MipStateHistory); N]> for MipStoreRaw {
     type Error = ();
 
     fn try_from(value: [(MipInfo, MipStateHistory); N]) -> Result<Self, Self::Error> {
-        let mut store_: BTreeMap<MipInfo, MipStateHistory> = Default::default();
-        let mut has_error = false;
-        for (m_info, m_state) in value {
-            if m_state.is_coherent_with(&m_info) {
-                store_.insert(m_info, m_state);
-            } else {
-                has_error = true;
-                break;
-            }
-        }
+        // Build an empty store
+        let mut store = Self {
+            0: Default::default(),
+        };
 
-        return if has_error { Err(()) } else { Ok(Self(store_)) };
+        // Build another one with given value
+        let other_store = Self {
+            0: BTreeMap::from(value),
+        };
+
+        // Use update_with ensuring that we have no overlapping time range, unique names & ...
+        match store.update_with(&other_store) {
+            true => Ok(store),
+            false => Err(()),
+        }
     }
 }
 
@@ -862,14 +871,14 @@ mod test {
         // let vs_raw = MipStoreRaw::try_from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]).unwrap();
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
-        assert_eq!(vs.get_version_current(), vi.version);
-        assert_eq!(vs.get_version_to_announce(), vi_2.version);
+        assert_eq!(vs.get_network_version_current(), vi.version);
+        assert_eq!(vs.get_network_version_to_announce(), vi_2.version);
 
         // Test also an empty versioning store
         let vs_raw = MipStoreRaw(Default::default());
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
-        assert_eq!(vs.get_version_current(), 0);
-        assert_eq!(vs.get_version_to_announce(), 0);
+        assert_eq!(vs.get_network_version_current(), 0);
+        assert_eq!(vs.get_network_version_to_announce(), 0);
     }
 
     #[test]
@@ -931,12 +940,6 @@ mod test {
         // At state Started at time now -> true
         assert_eq!(vsh.state, MipState::started(Amount::zero()));
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
-
-        // Still coherent here (not after timeout)
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
-        // Not coherent anymore (after timeout) -> should be in state Failed
-        // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from(6)), false);
         // Now with another versioning info
         assert_eq!(vsh.is_coherent_with(&vi_2), false);
 
@@ -1002,6 +1005,10 @@ mod test {
 
     #[test]
     fn test_merge_with_invalid() {
+        // Test updating a versioning store with another invalid:
+        // 1- overlapping time range
+        // 2- overlapping versioning component
+
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
@@ -1011,6 +1018,7 @@ mod test {
             timeout: MassaTime::from(5),
         };
         let vs_1 = advance_state_until(MipState::active(), &vi_1);
+        assert_eq!(vs_1, MipState::active());
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
@@ -1021,6 +1029,7 @@ mod test {
             timeout: MassaTime::from(27),
         };
         let vs_2 = advance_state_until(MipState::defined(), &vi_2);
+        assert_eq!(vs_2, MipState::defined());
 
         let mut vs_raw_1 =
             MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
@@ -1028,21 +1037,38 @@ mod test {
 
         let mut vi_2_2 = vi_2.clone();
         // Make versioning info invalid (because start == vi_1.timeout)
-        vi_2_2.start = MassaTime::from(5);
+        vi_2_2.start = vi_1.timeout;
         let vs_2_2 = advance_state_until(MipState::defined(), &vi_2_2);
         let vs_raw_2 = MipStoreRaw(BTreeMap::from([
             (vi_1.clone(), vs_1.clone()),
             (vi_2_2.clone(), vs_2_2.clone()),
         ]));
 
-        // FIXME: this should fail
-        let _vs_raw_2_ =
-            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
-                .unwrap();
+        // This fails because try_from use update_with
+        let _vs_raw_2_ = MipStoreRaw::try_from([
+            (vi_1.clone(), vs_1.clone()),
+            (vi_2_2.clone(), vs_2_2.clone()),
+        ]);
+        assert_eq!(_vs_raw_2_.is_err(), true);
 
-        vs_raw_1.update_with(&vs_raw_2);
-
+        assert_eq!(vs_raw_1.update_with(&vs_raw_2), false);
         assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().state, vs_1.state);
         assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().state, vs_2.state);
+
+        // 2- overlapping component version
+        let mut vs_raw_1 =
+            MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
+                .unwrap();
+
+        let mut vi_2_2 = vi_2.clone();
+        vi_2_2.component_version = vi_1.component_version;
+
+        let vs_2_2 = advance_state_until(MipState::defined(), &vi_2_2);
+        let vs_raw_2 = MipStoreRaw(BTreeMap::from([
+            (vi_1.clone(), vs_1.clone()),
+            (vi_2_2.clone(), vs_2_2.clone()),
+        ]));
+
+        assert_eq!(vs_raw_1.update_with(&vs_raw_2), false);
     }
 }

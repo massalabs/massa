@@ -54,8 +54,8 @@ pub trait VersioningFactory {
     /// Access to the MipStore
     fn get_versioning_store(&self) -> MipStore;
 
-    /// Get best version (aka last active for factory component)
-    fn get_best_version(&self) -> u32 {
+    /// Get best component version (aka last active for the factory component)
+    fn get_best_component_version(&self) -> u32 {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
@@ -73,7 +73,7 @@ pub trait VersioningFactory {
     }
 
     /// Get best version at given timestamp (e.g. slot)
-    fn get_best_version_at(&self, ts: MassaTime) -> Result<u32, FactoryError> {
+    fn get_best_component_version_at(&self, ts: MassaTime) -> Result<u32, FactoryError> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
@@ -98,7 +98,7 @@ pub trait VersioningFactory {
     }
 
     /// Get all versions in 'Active state' for the associated MipComponent
-    fn get_versions(&self) -> Vec<u32> {
+    fn get_all_best_component_versions(&self) -> Vec<u32> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
@@ -111,8 +111,8 @@ pub trait VersioningFactory {
         versions
     }
 
-    /// Get all versions for the associated MipComponent
-    fn get_all_versions(&self) -> BTreeMap<u32, MipStateTypeId> {
+    /// Get all versions (at any state) for the associated MipComponent
+    fn get_all_component_versions(&self) -> BTreeMap<u32, MipStateTypeId> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
@@ -218,7 +218,7 @@ mod test {
             let version = match strategy {
                 Some(FactoryStrategy::Exact(v)) => {
                     // This is not optimal - can use get_versions and return a less descriptive error
-                    match self.get_all_versions().get(&v) {
+                    match self.get_all_component_versions().get(&v) {
                         Some(s) if *s == MipStateTypeId::Active => Ok(v),
                         Some(s) if *s != MipStateTypeId::Active => {
                             Err(FactoryError::OnStateNotReady(v))
@@ -226,8 +226,8 @@ mod test {
                         _ => Err(FactoryError::UnknownVersion(v)),
                     }
                 }
-                Some(FactoryStrategy::At(ts)) => self.get_best_version_at(ts),
-                None | Some(FactoryStrategy::Best) => Ok(self.get_best_version()),
+                Some(FactoryStrategy::At(ts)) => self.get_best_component_version_at(ts),
+                None | Some(FactoryStrategy::Best) => Ok(self.get_best_component_version()),
             };
 
             match version {
@@ -291,8 +291,8 @@ mod test {
             index: Some(3),
         };
 
-        assert_eq!(fa.get_versions(), vec![0]);
-        assert_eq!(fa.get_best_version(), 0);
+        assert_eq!(fa.get_all_best_component_versions(), vec![0]);
+        assert_eq!(fa.get_best_component_version(), 0);
 
         let addr_a = fa.create(&args, None);
         assert!(matches!(addr_a, Ok(Address::V0(_))));
@@ -308,12 +308,15 @@ mod test {
         // Update versioning store
         vs.0.write().0 = info;
 
-        assert_eq!(fa.get_versions(), vec![0, 1]);
+        assert_eq!(fa.get_all_best_component_versions(), vec![0, 1]);
         assert_eq!(
-            fa.get_all_versions().keys().cloned().collect::<Vec<u32>>(),
+            fa.get_all_component_versions()
+                .keys()
+                .cloned()
+                .collect::<Vec<u32>>(),
             vec![0, 1, 2]
         );
-        assert_eq!(fa.get_best_version(), 1);
+        assert_eq!(fa.get_best_component_version(), 1);
         let addr_b = fa.create(&args, None);
         assert!(matches!(addr_b, Ok(Address::V1(_))));
 
@@ -391,7 +394,7 @@ mod test {
         // Update versioning store
         vs.0.write().0 = info;
 
-        assert_eq!(fa.get_versions(), vec![0, 1, 2]);
+        assert_eq!(fa.get_all_best_component_versions(), vec![0, 1, 2]);
         let addr_st_4 = fa.create(&args, Some(st_4));
         // Version 2 is selected but this is not implemented in factory yet
         assert!(matches!(
