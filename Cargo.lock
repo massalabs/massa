@@ -2738,12 +2738,14 @@ dependencies = [
  "displaydoc",
  "futures-util",
  "h2",
+ "itertools",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_hash 0.1.0",
  "massa_models",
  "massa_network_exports",
  "massa_pool_exports",
+ "massa_pos_exports",
  "massa_proto",
  "massa_protocol_exports",
  "massa_serialization 0.1.0",
@@ -2979,6 +2981,7 @@ name = "massa_proto"
 version = "0.1.0"
 dependencies = [
  "glob",
+ "massa_models",
  "prost",
  "prost-build",
  "prost-types",

@@ -57,6 +57,8 @@
     max_encoding_message_size = 4194304
     # limits the maximum size of streaming channel
     max_channel_size = 128
+    # max number of future periods considered during requests
+    draw_lookahead_period_count = 10
 
 [execution]
     # max number of generated events kept in RAM

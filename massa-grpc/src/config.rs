@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
@@ -45,6 +46,12 @@ pub struct GrpcConfig {
     pub max_parameter_size: u32,
     /// max operations per message in the network to avoid sending to big data packet
     pub max_operations_per_message: u32,
+    /// `genesis_timestamp`
+    pub genesis_timestamp: MassaTime,
+    /// t0
+    pub t0: MassaTime,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
+    /// when looking for next draw we want to look at max `draw_lookahead_period_count`
+    pub draw_lookahead_period_count: u64,
 }

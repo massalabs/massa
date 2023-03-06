@@ -251,6 +251,8 @@ pub struct GrpcSettings {
     pub max_encoding_message_size: usize,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
+    /// when looking for next draw we want to look at max `draw_lookahead_period_count`
+    pub draw_lookahead_period_count: u64,
 }
 
 #[cfg(test)]

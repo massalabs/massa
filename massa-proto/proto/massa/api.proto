@@ -3,6 +3,7 @@ syntax = "proto3";
 package massa.api.v1;
 
 import "common.proto";
+import "slot.proto";
 
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
@@ -25,10 +26,19 @@ service Grpc {
         };
   }
 
+  // GetSelectorDraws
+  rpc GetSelectorDraws ( GetSelectorDrawsRequest ) returns ( GetSelectorDrawsResponse ) {
+      option (google.api.http) = { 
+          post: "/v1/get_selector_draws"
+          body: "*"
+        };
+  }
+
   // GetVersion
   rpc GetVersion ( GetVersionRequest ) returns ( GetVersionResponse ) {
     option (google.api.http) = { get: "/v1/version" };
   }
+  
   // SendBlocks
   rpc SendBlocks ( stream SendBlocksRequest ) returns ( stream SendBlocksResponse ) {}
 
@@ -60,6 +70,42 @@ message GetDatastoreEntriesResponse {
   string id = 1;
   // object value
   repeated BytesMapFieldEntry entries = 2;
+}
+
+// GetSelectorDrawsRequest holds request from GetSelectorDraws
+message GetSelectorDrawsRequest {
+  // string value
+  string id = 1;
+  // string value
+  repeated SelectorDrawsQuery queries = 2;
+}
+
+message SelectorDrawsQuery {
+  // object value
+  SelectorDrawsFilter filter = 1;
+}
+
+message SelectorDrawsFilter {
+  // string value
+  string address = 1;
+}
+
+// GetSelectorDrawsResponse holds response from GetSelectorDraws
+message GetSelectorDrawsResponse {
+  // string value
+  string id = 1;
+  // object value
+  repeated SelectorDraws selector_draws = 2;
+}
+
+// SelectorDraws
+message SelectorDraws {
+    // string value
+  string address = 1;
+  // object value
+  repeated Slot next_block_draws = 2;
+  // object value
+  repeated IndexedSlot next_endorsement_draws = 3;
 }
 
 // GetVersionRequest holds request from GetVersion

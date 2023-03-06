@@ -589,7 +589,10 @@ async fn launch(
             max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
             max_parameter_size: MAX_PARAMETERS_SIZE,
             max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            t0: T0,
             max_channel_size: SETTINGS.grpc.max_channel_size,
+            draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
         };
 
         let grpc_api = MassaService {
@@ -599,6 +602,7 @@ async fn launch(
             pool_channels,
             pool_command_sender: pool_controller.clone(),
             protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
+            selector_controller: selector_controller.clone(),
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: *VERSION,
