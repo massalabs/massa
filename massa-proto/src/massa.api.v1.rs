@@ -32,6 +32,28 @@ pub struct SecureSharePayload {
     #[prost(bytes = "vec", tag = "3")]
     pub serialized_content: ::prost::alloc::vec::Vec<u8>,
 }
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexedSlot {
+    /// fixed64 field
+    #[prost(fixed64, tag = "1")]
+    pub index: u64,
+    /// object field
+    #[prost(message, optional, tag = "2")]
+    pub slot: ::core::option::Option<Slot>,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Slot {
+    /// fixed64 field
+    #[prost(fixed64, tag = "1")]
+    pub period: u64,
+    /// fixed32 field
+    #[prost(fixed32, tag = "2")]
+    pub thread: u32,
+}
 /// GetDatastoreEntriesRequest holds request from GetDatastoreEntries
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -63,6 +85,56 @@ pub struct GetDatastoreEntriesResponse {
     /// object value
     #[prost(message, repeated, tag = "2")]
     pub entries: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
+}
+/// GetSelectorDrawsRequest holds request from GetSelectorDraws
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSelectorDrawsRequest {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// string value
+    #[prost(message, repeated, tag = "2")]
+    pub queries: ::prost::alloc::vec::Vec<SelectorDrawsQuery>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SelectorDrawsQuery {
+    /// object value
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<SelectorDrawsFilter>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SelectorDrawsFilter {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+}
+/// GetSelectorDrawsResponse holds response from GetSelectorDraws
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSelectorDrawsResponse {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// object value
+    #[prost(message, repeated, tag = "2")]
+    pub selector_draws: ::prost::alloc::vec::Vec<SelectorDraws>,
+}
+/// SelectorDraws
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SelectorDraws {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+    /// object value
+    #[prost(message, repeated, tag = "2")]
+    pub next_block_draws: ::prost::alloc::vec::Vec<Slot>,
+    /// object value
+    #[prost(message, repeated, tag = "3")]
+    pub next_endorsement_draws: ::prost::alloc::vec::Vec<IndexedSlot>,
 }
 /// GetVersionRequest holds request from GetVersion
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -317,6 +389,29 @@ pub mod grpc_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// GetSelectorDraws
+        pub async fn get_selector_draws(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetSelectorDrawsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetSelectorDrawsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/GetSelectorDraws",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// GetVersion
         pub async fn get_version(
             &mut self,
@@ -428,6 +523,14 @@ pub mod grpc_server {
             request: tonic::Request<super::GetDatastoreEntriesRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetDatastoreEntriesResponse>,
+            tonic::Status,
+        >;
+        /// GetSelectorDraws
+        async fn get_selector_draws(
+            &self,
+            request: tonic::Request<super::GetSelectorDrawsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetSelectorDrawsResponse>,
             tonic::Status,
         >;
         /// GetVersion
@@ -588,6 +691,52 @@ pub mod grpc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetDatastoreEntriesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/GetSelectorDraws" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetSelectorDrawsSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::UnaryService<super::GetSelectorDrawsRequest>
+                    for GetSelectorDrawsSvc<T> {
+                        type Response = super::GetSelectorDrawsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetSelectorDrawsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_selector_draws(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetSelectorDrawsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -830,17 +979,6 @@ pub mod grpc_server {
     impl<T: Grpc> tonic::server::NamedService for GrpcServer<T> {
         const NAME: &'static str = "massa.api.v1.Grpc";
     }
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Slot {
-    /// fixed64 field
-    #[prost(uint64, tag = "1")]
-    pub period: u64,
-    /// float field
-    #[prost(float, tag = "2")]
-    pub thread: f32,
 }
 /// region Endorsement
 /// message struct

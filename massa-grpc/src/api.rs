@@ -3,6 +3,7 @@
 use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
 
 use crate::config::GrpcConfig;
+use itertools::izip;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_models::{
@@ -12,8 +13,11 @@ use massa_models::{
     error::ModelsError,
     operation::{OperationDeserializer, SecureShareOperation},
     secure_share::SecureShareDeserializer,
+    slot::Slot,
+    timeslots,
 };
 use massa_pool_exports::{PoolChannels, PoolController};
+use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::{self as grpc, grpc_server::GrpcServer, FILE_DESCRIPTOR_SET};
 use massa_serialization::{DeserializeError, Deserializer};
 
@@ -39,6 +43,8 @@ pub struct MassaService {
     pub pool_command_sender: Box<dyn PoolController>,
     /// link(channels) to the protocol component
     pub protocol_command_sender: ProtocolCommandSender,
+    /// link to the selector component
+    pub selector_controller: Box<dyn SelectorController>,
     /// link to the storage component
     pub storage: Storage,
     /// gRPC configuration
@@ -151,6 +157,87 @@ fn match_for_io_error(err_status: &tonic::Status) -> Option<&std::io::Error> {
 
 #[tonic::async_trait]
 impl grpc::grpc_server::Grpc for MassaService {
+    async fn get_selector_draws(
+        &self,
+        request: tonic::Request<grpc::GetSelectorDrawsRequest>,
+    ) -> Result<tonic::Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
+        let selector_controller = self.selector_controller.clone();
+        let config = self.grpc_config.clone();
+        let inner_req = request.into_inner();
+        let id = inner_req.id.clone();
+
+        let addresses_res = inner_req
+            .queries
+            .into_iter()
+            .map(|query| {
+                //TODO remove unwrap ?
+                Address::from_str(query.filter.unwrap().address.as_str())
+            })
+            .collect::<Result<Vec<_>, _>>();
+
+        match addresses_res {
+            Ok(addresses) => {
+                // get future draws from selector
+                let selection_draws = {
+                    let cur_slot = timeslots::get_current_latest_block_slot(
+                        config.thread_count,
+                        config.t0,
+                        config.genesis_timestamp,
+                    )
+                    .expect("could not get latest current slot")
+                    .unwrap_or_else(|| Slot::new(0, 0));
+                    let slot_end = Slot::new(
+                        cur_slot
+                            .period
+                            .saturating_add(config.draw_lookahead_period_count),
+                        cur_slot.thread,
+                    );
+                    addresses
+                        .iter()
+                        .map(|addr| {
+                            let (nt_block_draws, nt_endorsement_draws) = selector_controller
+                                .get_address_selections(addr, cur_slot, slot_end)
+                                .unwrap_or_default();
+
+                            let mut proto_nt_block_draws = Vec::with_capacity(addresses.len());
+                            let mut proto_nt_endorsement_draws =
+                                Vec::with_capacity(addresses.len());
+                            let iterator =
+                                izip!(nt_block_draws.into_iter(), nt_endorsement_draws.into_iter());
+                            for (next_block_draw, next_endorsement_draw) in iterator {
+                                proto_nt_block_draws.push(next_block_draw.into());
+                                proto_nt_endorsement_draws.push(next_endorsement_draw.into());
+                            }
+
+                            (proto_nt_block_draws, proto_nt_endorsement_draws)
+                        })
+                        .collect::<Vec<_>>()
+                };
+
+                // compile results
+                let mut res = Vec::with_capacity(addresses.len());
+                let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
+                for (address, (next_block_draws, next_endorsement_draws)) in iterator {
+                    res.push(grpc::SelectorDraws {
+                        address: address.to_string(),
+                        next_block_draws,
+                        next_endorsement_draws,
+                    });
+                }
+
+                Ok(tonic::Response::new(grpc::GetSelectorDrawsResponse {
+                    id,
+                    selector_draws: res,
+                }))
+            }
+
+            Err(e) => {
+                return Err(tonic::Status::invalid_argument(e.to_string()));
+            }
+        }
+    }
+
+    /// Get multiple datastore entries.
     async fn get_datastore_entries(
         &self,
         request: tonic::Request<grpc::GetDatastoreEntriesRequest>,

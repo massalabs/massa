@@ -26,3 +26,6 @@ pub mod massa {
         }
     }
 }
+
+/// models mapping
+pub mod mapping;
