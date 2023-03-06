@@ -6,31 +6,40 @@ use massa_serialization::{
     DeserializeError, Deserializer, OptionDeserializer, OptionSerializer, Serializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
-use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, WriteBatch, WriteOptions, DB};
+use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, WriteBatch, DB};
 use std::ops::Bound::Included;
 use std::path::PathBuf;
 
 const MODULE_CF: &str = "module";
 const GAS_COSTS_CF: &str = "gas_cost";
-const REF_COUNT_CF: &str = "ref_count";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 const GAS_COSTS_SER_ERR: &str = "gas cost serialization error";
 const MOD_SER_ERR: &str = "module serialization error";
 const KEY_NOT_FOUND: &str = "Key not found";
-const REF_COUNT_NOT_FOUND: &str = "ref count in HD cache can't be None";
 
 pub(crate) struct HDCache {
     db: DB,
-    u64_serializer: U64VarIntSerializer,
-    u64_deserializer: U64VarIntDeserializer,
+    // How many entries are in the db. Count is initialized at creation time by iterating
+    // over all the entries in the db then it is maintained in memory
+    entry_count: usize,
+    // Maximum number of entries we want to keep in the db.
+    // When this maximum is reached `amount_to_snip` entries are removed
+    max_entry_count: usize,
+    // How many entries are removed when `entry_count` reaches `max_entry_count`
+    amount_to_snip: usize,
     option_serializer: OptionSerializer<u64, U64VarIntSerializer>,
     option_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
 }
 
 impl HDCache {
     /// Create a new HDCache
-    pub fn new(path: PathBuf) -> Self {
+    ///
+    /// # Arguments
+    /// * path: where to store the db
+    /// * max_entry_count: maximum number of entries we want to keep in the db
+    /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
+    pub fn new(path: PathBuf, max_entry_count: usize, amount_to_remove: usize) -> Self {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
@@ -41,15 +50,22 @@ impl HDCache {
             vec![
                 ColumnFamilyDescriptor::new(MODULE_CF, Options::default()),
                 ColumnFamilyDescriptor::new(GAS_COSTS_CF, Options::default()),
-                ColumnFamilyDescriptor::new(REF_COUNT_CF, Options::default()),
             ],
         )
         .expect(OPEN_ERROR);
 
+        let entry_count = db
+            .iterator_cf(
+                db.cf_handle(GAS_COSTS_CF).expect(CF_ERROR),
+                rocksdb::IteratorMode::Start,
+            )
+            .count();
+
         Self {
             db,
-            u64_serializer: U64VarIntSerializer::new(),
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            entry_count,
+            max_entry_count,
+            amount_to_snip: amount_to_remove,
             option_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
             option_deserializer: OptionDeserializer::new(U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -59,7 +75,7 @@ impl HDCache {
     }
 
     /// Insert a new module in the cache
-    pub fn insert(&self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
+    pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
         let (module, init_cost) = module_info;
 
         let module = module
@@ -71,27 +87,24 @@ impl HDCache {
             .serialize(&init_cost, &mut gas_cost)
             .expect(GAS_COSTS_SER_ERR);
 
-        let mut ref_count = vec![];
-        self.u64_serializer
-            .serialize(&1u64, &mut ref_count)
-            .expect(GAS_COSTS_SER_ERR);
+        // if db is full do some cleaning
+        if self.entry_count >= self.max_entry_count {
+            self.snip(hash)?;
+        }
 
         let mut batch = WriteBatch::default();
 
-        for (cf, data) in [
-            (self.module_cf(), module),
-            (self.gas_costs_cf(), gas_cost),
-            (self.ref_count_cf(), ref_count),
-        ] {
+        for (cf, data) in [(self.module_cf(), module), (self.gas_costs_cf(), gas_cost)] {
             batch.put_cf(cf, hash.to_bytes(), data);
         }
 
-        let mut write_options = WriteOptions::default();
-        write_options.set_sync(true);
-
         self.db
-            .write_opt(batch, &write_options)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))
+            .write(batch)
+            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+
+        self.entry_count += 1;
+
+        Ok(())
     }
 
     /// Sets the initialization cost of a given module separately
@@ -124,54 +137,6 @@ impl HDCache {
         Ok(())
     }
 
-    /// Retrieve a module and increment its associated reference counter
-    ///
-    /// # Returns
-    /// None if either a module of its cost has not been found
-    /// Some((module, cost)) if both the module and its cost have been found.
-    /// In this case the associated ref count is incremented.
-    pub fn get_and_increment(
-        &self,
-        hash: Hash,
-        limit: u64,
-        gas_costs: GasCosts,
-    ) -> Option<ModuleInfo> {
-        match self.get(hash, limit, gas_costs) {
-            Some(value) => {
-                let ref_count = self.get_ref_count(hash).ok()? + 1u64;
-                self.set_ref_count(hash, ref_count).ok()?;
-
-                Some(value)
-            }
-            None => None,
-        }
-    }
-
-    fn set_ref_count(&self, hash: Hash, ref_count: u64) -> Result<(), ExecutionError> {
-        let mut buffer = vec![];
-        self.u64_serializer
-            .serialize(&ref_count, &mut buffer)
-            .expect(GAS_COSTS_SER_ERR);
-
-        self.db
-            .put_cf(self.ref_count_cf(), hash.to_bytes(), &buffer)
-            .map_err(|err| ExecutionError::RuntimeError(err.into_string()))
-    }
-
-    fn get_ref_count(&self, hash: Hash) -> Result<u64, ExecutionError> {
-        let ref_count = self
-            .db
-            .get_cf(self.ref_count_cf(), hash.to_bytes())
-            .ok()
-            .flatten()
-            .expect(REF_COUNT_NOT_FOUND);
-
-        self.u64_deserializer
-            .deserialize::<DeserializeError>(&ref_count)
-            .map(|(_, ref_count)| ref_count)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))
-    }
-
     /// Retrieve a module
     pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
         let Some(module) = self
@@ -197,32 +162,40 @@ impl HDCache {
         Some((module, cost))
     }
 
-    /// Remove a module
-    ///
-    /// On call
-    /// 1. decrease internal ref_count
-    /// 2  if ref_count reaches 0 then remove data associated to the given hash
-    pub fn remove(&self, hash: Hash) -> Result<(), ExecutionError> {
-        let ref_count = self.get_ref_count(hash)?;
+    /// Try to remove as much as self.amount_to_snip entries from the db.
+    /// Remove at least one entry
+    fn snip(&mut self, hash: Hash) -> Result<(), ExecutionError> {
+        // Should we use a rnd generated number here?
+        let key = hash.to_bytes();
 
-        if ref_count > 1 {
-            return self.set_ref_count(hash, ref_count - 1);
-        }
-
-        // remove all atomically
+        let mut iter = self.db.raw_iterator_cf(self.module_cf());
+        iter.seek_for_prev(key);
 
         let mut batch = WriteBatch::default();
 
-        for cf in [self.module_cf(), self.gas_costs_cf(), self.ref_count_cf()] {
-            batch.delete_cf(cf, hash.to_bytes());
+        let mut snipped_entries_count = 0usize;
+        loop {
+            if !(iter.valid() && snipped_entries_count < self.amount_to_snip) {
+                break;
+            }
+            // thanks to if above we can safely unwrap
+            let key = iter.key().unwrap();
+
+            for cf in [self.module_cf(), self.gas_costs_cf()] {
+                batch.delete_cf(cf, key);
+            }
+
+            iter.next();
+            snipped_entries_count += 1;
         }
 
-        let mut write_options = WriteOptions::default();
-        write_options.set_sync(true);
-
         self.db
-            .write_opt(batch, &write_options)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))
+            .write(batch)
+            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+
+        self.entry_count -= snipped_entries_count;
+
+        Ok(())
     }
 
     fn module_cf(&self) -> &ColumnFamily {
@@ -231,10 +204,6 @@ impl HDCache {
 
     fn gas_costs_cf(&self) -> &ColumnFamily {
         self.db.cf_handle(GAS_COSTS_CF).expect(CF_ERROR)
-    }
-
-    fn ref_count_cf(&self) -> &ColumnFamily {
-        self.db.cf_handle(REF_COUNT_CF).expect(CF_ERROR)
     }
 }
 
@@ -245,6 +214,8 @@ mod tests {
     use massa_sc_runtime::GasCosts;
 
     use std::path::PathBuf;
+
+    use serial_test::serial;
 
     const TEST_DB_PATH: &str = "test_db";
 
@@ -265,33 +236,13 @@ mod tests {
         let _ = std::fs::remove_dir_all(TEST_DB_PATH);
 
         let path = PathBuf::from(TEST_DB_PATH);
-        HDCache::new(path)
+        HDCache::new(path, 1000, 10)
     }
 
     #[test]
-    fn test_insert_and_ref_count() {
-        let cache = setup();
-        let hash = Hash::compute_from(b"test_hash");
-        let module = make_default_runtime_module();
-        let init_cost = 100;
-
-        cache
-            .insert(hash, (module.clone(), Some(init_cost)))
-            .expect("insert should succeed");
-
-        let ref_count = cache.get_ref_count(hash).unwrap();
-        assert_eq!(ref_count, 1u64);
-
-        cache
-            .set_ref_count(hash, 2u64)
-            .expect("set_ref_count should succeed");
-        let ref_count = cache.get_ref_count(hash).unwrap();
-        assert_eq!(ref_count, 2u64);
-    }
-
-    #[test]
-    fn test_insert_and_get() {
-        let cache = setup();
+    #[serial]
+    fn test_insert_and_get_simple() {
+        let mut cache = setup();
         let hash = Hash::compute_from(b"test_hash");
 
         let module = make_default_runtime_module();
@@ -316,8 +267,40 @@ mod tests {
     }
 
     #[test]
+    #[serial]
+    fn test_insert_more_than_max_entry() {
+        let mut cache = setup();
+
+        let module = make_default_runtime_module();
+
+        let init_cost = 100;
+
+        // fill the db: add cache.max_entry_count entries
+        for count in 0..cache.max_entry_count {
+            let key = Hash::compute_from(count.to_string().as_bytes());
+            cache
+                .insert(key, (module.clone(), Some(init_cost)))
+                .expect("insert should succeed");
+        }
+        assert_eq!(cache.entry_count, cache.max_entry_count);
+
+        // insert one more entry
+        let key = Hash::compute_from(cache.max_entry_count.to_string().as_bytes());
+        cache
+            .insert(key, (module.clone(), Some(init_cost)))
+            .expect("insert should succeed");
+        assert_eq!(
+            cache.entry_count,
+            cache.max_entry_count - cache.amount_to_snip + 1
+        );
+
+        dbg!(cache.entry_count);
+    }
+
+    #[test]
+    #[serial]
     fn test_set_init_cost() {
-        let cache = setup();
+        let mut cache = setup();
         let hash = Hash::compute_from(b"test_hash");
         let init_cost = 100;
         let limit = 1;
@@ -333,81 +316,5 @@ mod tests {
 
         let (_, cached_init_cost) = cache.get(hash, limit, gas_costs).unwrap();
         assert_eq!(cached_init_cost.unwrap(), init_cost);
-    }
-
-    #[test]
-    fn test_get_and_increment() {
-        let cache = setup();
-        let hash = Hash::compute_from(b"test_hash");
-        let module = make_default_runtime_module();
-        let init_cost = 100;
-        let limit = 1;
-
-        if let Err(_) = cache.insert(hash, (module.clone(), Some(init_cost))) {
-            assert!(false);
-        };
-
-        let cache_ref_count = cache.get_ref_count(hash).unwrap();
-        assert_eq!(cache_ref_count, 1);
-
-        let (cached_module, cache_init_cost) = cache
-            .get_and_increment(hash, limit, GasCosts::default())
-            .unwrap();
-        assert_eq!(
-            cached_module.serialize().unwrap(),
-            module.serialize().unwrap()
-        );
-        assert_eq!(cache_init_cost.unwrap(), init_cost);
-
-        let (_, cached_init_cost) = cache.get(hash, limit, GasCosts::default()).unwrap();
-        assert_eq!(cached_init_cost.unwrap(), init_cost);
-
-        let cache_ref_count = cache.get_ref_count(hash).unwrap();
-        assert_eq!(cache_ref_count, 2);
-    }
-
-    #[test]
-    fn test_remove() {
-        let cache = setup();
-        let hash = Hash::compute_from(b"test_hash");
-        let module = make_default_runtime_module();
-        let init_cost = 100;
-        let limit = 1;
-
-        cache
-            .insert(hash, (module.clone(), Some(init_cost)))
-            .expect("insert should have succeeded");
-
-        assert!(cache.get(hash, limit, GasCosts::default()).is_some());
-
-        cache.remove(hash).expect("remove should succeed");
-        assert!(cache.get(hash, limit, GasCosts::default()).is_none());
-    }
-
-    #[test]
-    fn test_remove_after_get_inc() {
-        let cache = setup();
-        let hash = Hash::compute_from(b"test_hash");
-        let module = make_default_runtime_module();
-        let init_cost = 100;
-        let limit = 1;
-
-        if let Err(_) = cache.insert(hash, (module.clone(), Some(init_cost))) {
-            assert!(false);
-        };
-
-        assert_eq!(cache.get_ref_count(hash).unwrap(), 1);
-
-        let (_, _) = cache
-            .get_and_increment(hash, limit, GasCosts::default())
-            .unwrap();
-        assert_eq!(cache.get_ref_count(hash).unwrap(), 2);
-
-        cache.remove(hash).expect("remove should succeed");
-        assert!(cache.get(hash, limit, GasCosts::default()).is_some());
-        assert_eq!(cache.get_ref_count(hash).unwrap(), 1);
-
-        cache.remove(hash).expect("remove should succeed");
-        assert!(cache.get(hash, limit, GasCosts::default()).is_none());
     }
 }

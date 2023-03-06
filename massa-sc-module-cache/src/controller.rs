@@ -28,7 +28,7 @@ impl ModuleCache {
         Self {
             gas_costs,
             lru_cache: LRUCache::new(lru_cache_size),
-            hd_cache: HDCache::new("hd_cache_path".into()),
+            hd_cache: HDCache::new("hd_cache_path".into(), 1000, 10),
         }
     }
 
@@ -36,10 +36,7 @@ impl ModuleCache {
     pub fn save_module(&mut self, bytecode: &[u8], limit: u64) -> Result<(), ExecutionError> {
         // TODO: using ExecutionError for now but create a CacheError type
         let hash = Hash::compute_from(bytecode);
-        if let Some(hd_module_info) =
-            self.hd_cache
-                .get_and_increment(hash, limit, self.gas_costs.clone())
-        {
+        if let Some(hd_module_info) = self.hd_cache.get(hash, limit, self.gas_costs.clone()) {
             self.lru_cache.insert(hash, hd_module_info);
         } else {
             if let Some(lru_module_info) = self.lru_cache.get(hash, limit)? {
@@ -79,7 +76,7 @@ impl ModuleCache {
     /// Remove a cached module
     pub fn remove_module(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
-        self.hd_cache.remove(hash);
+        // self.hd_cache.remove(hash);
     }
 
     /// Update a cached module (remove and save)

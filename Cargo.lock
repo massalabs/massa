@@ -2322,6 +2322,7 @@ dependencies = [
  "massa_serialization 0.1.0",
  "rocksdb",
  "schnellru",
+ "serial_test 1.0.0",
 ]
 
 [[package]]
