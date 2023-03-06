@@ -2320,6 +2320,7 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_models",
  "massa_serialization 0.1.0",
+ "rand 0.8.5",
  "rocksdb",
  "schnellru",
  "serial_test 1.0.0",

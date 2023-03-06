@@ -6,6 +6,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, OptionDeserializer, OptionSerializer, Serializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
+use rand::Rng;
 use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, WriteBatch, DB};
 use std::ops::Bound::Included;
 use std::path::PathBuf;
@@ -89,7 +90,7 @@ impl HDCache {
 
         // if db is full do some cleaning
         if self.entry_count >= self.max_entry_count {
-            self.snip(hash)?;
+            self.snip()?;
         }
 
         let mut batch = WriteBatch::default();
@@ -164,15 +165,19 @@ impl HDCache {
 
     /// Try to remove as much as self.amount_to_snip entries from the db.
     /// Remove at least one entry
-    fn snip(&mut self, hash: Hash) -> Result<(), ExecutionError> {
-        // Should we use a rnd generated number here?
-        let key = hash.to_bytes();
+    fn snip(&mut self) -> Result<(), ExecutionError> {
+        let mut rng = rand::thread_rng();
+        let rand = rng.gen_range(1..self.max_entry_count);
+
+        // generate a key from the random number
+        let key = *Hash::compute_from(rand.to_string().as_bytes()).to_bytes();
 
         let mut iter = self.db.raw_iterator_cf(self.module_cf());
         iter.seek_for_prev(key);
 
         let mut batch = WriteBatch::default();
 
+        // prepare key for removal
         let mut snipped_entries_count = 0usize;
         loop {
             if !(iter.valid() && snipped_entries_count < self.amount_to_snip) {
