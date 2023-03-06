@@ -12,7 +12,7 @@ mod types {
     /// connection establisher
     pub type Establisher = mock_establisher::MockEstablisher;
 }
-//#[cfg(not(feature = "testing"))]
+#[cfg(not(feature = "testing"))]
 mod types {
     use massa_time::MassaTime;
     use std::{io, net::SocketAddr};
@@ -91,7 +91,9 @@ mod types {
             
             let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
 
-            socket.set_only_v6(false)?;
+            if addr.is_ipv6() {
+                socket.set_only_v6(false)?;
+            }
             socket.set_nonblocking(true)?;
             socket.bind(&addr.into())?;
 

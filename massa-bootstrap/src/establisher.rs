@@ -85,7 +85,9 @@ pub mod types {
             
             let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
 
-            socket.set_only_v6(false)?;
+            if addr.is_ipv6() {
+                socket.set_only_v6(false)?;
+            }
             socket.set_nonblocking(true)?;
             socket.bind(&addr.into())?;
 
