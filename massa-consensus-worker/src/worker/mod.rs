@@ -96,6 +96,7 @@ pub fn start_consensus_worker(
             config.stats_timespan,
         ),
         prev_blockclique: Default::default(),
+        blocks_per_slot: Default::default(),
     }));
 
     let shared_state_cloned = shared_state.clone();

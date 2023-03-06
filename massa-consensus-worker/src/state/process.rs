@@ -112,6 +112,15 @@ impl ConsensusState {
                         block_id
                     )));
                 };
+                // Verify that we didn't already received more than 2 blocks for this slot
+                let entry = self.blocks_per_slot.entry(header.content.slot).or_default();
+                if !entry.contains(&header.id) {
+                    if entry.len() > 1 {
+                        return Ok(BTreeSet::new());
+                    } else {
+                        entry.insert(block_id);
+                    }
+                }
                 self.check_block_header_and_store(block_id, header, current_slot)?;
                 return Ok(BTreeSet::new());
             }
@@ -140,7 +149,18 @@ impl ConsensusState {
                     .get(&block_id)
                     .cloned()
                     .expect("incoming block not found in storage");
-
+                // Verify that we didn't already received more than 2 blocks for this slot
+                let entry = self
+                    .blocks_per_slot
+                    .entry(stored_block.content.header.content.slot)
+                    .or_default();
+                if !entry.contains(&stored_block.id) {
+                    if entry.len() > 1 {
+                        return Ok(BTreeSet::default());
+                    } else {
+                        entry.insert(block_id);
+                    }
+                }
                 match self.check_block_and_store(
                     block_id,
                     slot,
@@ -149,7 +169,7 @@ impl ConsensusState {
                     current_slot,
                 )? {
                     Some(block_infos) => block_infos,
-                    None => return Ok(BTreeSet::default()),
+                    None => return Ok(BTreeSet::new()),
                 }
             }
 

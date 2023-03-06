@@ -90,6 +90,9 @@ pub struct ConsensusState {
     pub wishlist: PreHashMap<BlockId, Option<SecuredHeader>>,
     /// previous blockclique notified to Execution
     pub prev_blockclique: PreHashMap<BlockId, Slot>,
+    /// Blocks for each slots (used for multi-stake). Blocks
+    /// should be saved in this map when we receive the header or directly full block
+    pub blocks_per_slot: HashMap<Slot, PreHashSet<BlockId>>,
 }
 
 impl ConsensusState {
