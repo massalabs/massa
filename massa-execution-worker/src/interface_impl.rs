@@ -250,11 +250,23 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys(&self) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_keys(&addr) {
-            Some(value) => Ok(value),
+        match (context.get_keys(&addr), prefix_opt) {
+            (Some(value), None) => Ok(value),
+            (Some(value), Some(prefix)) => {
+                value.retain(|key| {
+                    prefix
+                        .iter()
+                        .enumerate()
+                        .all(|(n, b)| match key.get(n) {
+                            None => false,
+                            Some(v) => *v == *b,
+                        })
+                });
+                Ok(value)
+            },
             _ => bail!("data entry not found"),
         }
     }
@@ -263,11 +275,23 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys_for(&self, address: &str) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_keys(addr) {
-            Some(value) => Ok(value),
+        match (context.get_keys(&addr), prefix_opt) {
+            (Some(value), None) => Ok(value),
+            (Some(value), Some(prefix)) => {
+                value.retain(|key| {
+                    prefix
+                        .iter()
+                        .enumerate()
+                        .all(|(n, b)| match key.get(n) {
+                            None => false,
+                            Some(v) => *v == *b,
+                        })
+                });
+                Ok(value)
+            },
             _ => bail!("data entry not found"),
         }
     }
