@@ -115,7 +115,7 @@ impl ConsensusState {
                 // Verify that we didn't already received more than 2 blocks for this slot
                 let entry = self.blocks_per_slot.entry(header.content.slot).or_default();
                 if !entry.contains(&header.id) {
-                    if entry.len() > 1 {
+                    if entry.len() > 1 && !self.wishlist.contains_key(&block_id) {
                         return Ok(BTreeSet::new());
                     } else {
                         entry.insert(block_id);
@@ -155,7 +155,7 @@ impl ConsensusState {
                     .entry(stored_block.content.header.content.slot)
                     .or_default();
                 if !entry.contains(&stored_block.id) {
-                    if entry.len() > 1 {
+                    if entry.len() > 1 && !self.wishlist.contains_key(&block_id) {
                         return Ok(BTreeSet::default());
                     } else {
                         entry.insert(block_id);

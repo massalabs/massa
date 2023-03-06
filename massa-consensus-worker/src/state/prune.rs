@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
     error::ConsensusError,
@@ -135,30 +137,39 @@ impl ConsensusState {
         });
     }
 
-    // Keep only a certain (`config.max_future_processing_blocks`) number of blocks that are discarded
+    // Keep only a certain (`config.max_discarded_blocks`) number of blocks that are discarded
     // to avoid too big memory consumption
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
         if self.discarded_index.len() <= self.config.max_discarded_blocks {
             return Ok(());
         }
-        let mut discard_hashes: Vec<(u64, BlockId)> = self
+        let mut discard_hashes: Vec<(u64, Slot, BlockId)> = self
             .discarded_index
             .iter()
             .filter_map(|block_id| {
                 if let Some(BlockStatus::Discarded {
-                    sequence_number, ..
+                    sequence_number, slot, ..
                 }) = self.block_statuses.get(block_id)
                 {
-                    return Some((*sequence_number, *block_id));
+                    return Some((*sequence_number, *slot, *block_id));
                 }
                 None
             })
             .collect();
         discard_hashes.sort_unstable();
         discard_hashes.truncate(self.discarded_index.len() - self.config.max_discarded_blocks);
-        for (_, block_id) in discard_hashes.iter() {
+        for (_, slot, block_id) in discard_hashes.iter() {
             self.block_statuses.remove(block_id);
             self.discarded_index.remove(block_id);
+            match self.blocks_per_slot.entry(*slot) {
+                Entry::Occupied(mut entry) => {
+                    entry.get_mut().remove(block_id);
+                    if entry.get().is_empty() {
+                        entry.remove();
+                    }
+                }
+                Entry::Vacant(_) => {}
+            }
         }
         Ok(())
     }
