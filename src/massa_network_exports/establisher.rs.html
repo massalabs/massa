@@ -213,7 +213,7 @@
                 <span class="bool-val">true </span>=&gt; socket2::Domain::IPV4,
                 <span class="kw">_ </span>=&gt; socket2::Domain::IPV6,
             };
-            
+
             <span class="kw">let </span>socket = socket2::Socket::new(domain, socket2::Type::STREAM, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
             <span class="kw">if </span>addr.is_ipv6() {
