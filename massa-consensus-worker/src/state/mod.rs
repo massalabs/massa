@@ -92,7 +92,7 @@ pub struct ConsensusState {
     pub prev_blockclique: PreHashMap<BlockId, Slot>,
     /// Blocks for each slots (used for multi-stake). Blocks
     /// should be saved in this map when we receive the header or directly full block
-    pub blocks_per_slot: HashMap<Slot, PreHashSet<BlockId>>,
+    pub nonfinal_active_blocks_per_slot: HashMap<Slot, PreHashSet<BlockId>>,
 }
 
 impl ConsensusState {

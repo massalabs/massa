@@ -112,8 +112,11 @@ impl ConsensusState {
                         block_id
                     )));
                 };
-                // Verify that we didn't already received more than 2 blocks for this slot
-                let entry = self.blocks_per_slot.entry(header.content.slot).or_default();
+                // Verify that we haven't already received 2 blocks for this slot
+                let entry = self
+                    .nonfinal_active_blocks_per_slot
+                    .entry(header.content.slot)
+                    .or_default();
                 if !entry.contains(&header.id) {
                     if entry.len() > 1 && !self.wishlist.contains_key(&block_id) {
                         warn!(
@@ -153,9 +156,9 @@ impl ConsensusState {
                     .get(&block_id)
                     .cloned()
                     .expect("incoming block not found in storage");
-                // Verify that we didn't already received more than 2 blocks for this slot
+                // Verify that we haven't already received 2 blocks for this slot
                 let entry = self
-                    .blocks_per_slot
+                    .nonfinal_active_blocks_per_slot
                     .entry(stored_block.content.header.content.slot)
                     .or_default();
                 if !entry.contains(&stored_block.id) {

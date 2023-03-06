@@ -1,5 +1,3 @@
-use std::collections::hash_map::Entry;
-
 use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
     error::ConsensusError,
@@ -143,35 +141,24 @@ impl ConsensusState {
         if self.discarded_index.len() <= self.config.max_discarded_blocks {
             return Ok(());
         }
-        let mut discard_hashes: Vec<(u64, Slot, BlockId)> = self
+        let mut discard_hashes: Vec<(u64, BlockId)> = self
             .discarded_index
             .iter()
             .filter_map(|block_id| {
                 if let Some(BlockStatus::Discarded {
-                    sequence_number,
-                    slot,
-                    ..
+                    sequence_number, ..
                 }) = self.block_statuses.get(block_id)
                 {
-                    return Some((*sequence_number, *slot, *block_id));
+                    return Some((*sequence_number, *block_id));
                 }
                 None
             })
             .collect();
         discard_hashes.sort_unstable();
         discard_hashes.truncate(self.discarded_index.len() - self.config.max_discarded_blocks);
-        for (_, slot, block_id) in discard_hashes.iter() {
+        for (_, block_id) in discard_hashes.iter() {
             self.block_statuses.remove(block_id);
             self.discarded_index.remove(block_id);
-            match self.blocks_per_slot.entry(*slot) {
-                Entry::Occupied(mut entry) => {
-                    entry.get_mut().remove(block_id);
-                    if entry.get().is_empty() {
-                        entry.remove();
-                    }
-                }
-                Entry::Vacant(_) => {}
-            }
         }
         Ok(())
     }
@@ -345,6 +332,21 @@ impl ConsensusState {
         Ok(())
     }
 
+    fn prune_nonfinal_blocks_per_slot(&mut self) {
+        let keys = self
+            .nonfinal_active_blocks_per_slot
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>();
+        for (thread, (_, period)) in self.latest_final_blocks_periods.iter().enumerate() {
+            for key in &keys {
+                if key.thread == thread as u8 && key.period <= *period {
+                    self.nonfinal_active_blocks_per_slot.remove(&key);
+                }
+            }
+        }
+    }
+
     pub fn prune(&mut self) -> Result<(), ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
@@ -358,6 +360,9 @@ impl ConsensusState {
 
         // Step 4: prune discarded
         self.prune_discarded()?;
+
+        // Step 5: prune nonfinal blocks per slot
+        self.prune_nonfinal_blocks_per_slot();
 
         let after = self.max_cliques.len();
         if before != after {
