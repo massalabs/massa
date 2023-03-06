@@ -275,7 +275,7 @@ impl Interface for InterfaceImpl {
     fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
-        match (context.get_keys(&addr), prefix_opt) {
+        match (context.get_keys(addr), prefix_opt) {
             (Some(value), None) => Ok(value),
             (Some(mut value), Some(prefix)) => {
                 value.retain(|key| {
