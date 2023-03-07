@@ -223,9 +223,11 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         let id = inner_req.id.clone();
 
         let filters = inner_req
-            .entries
+            .queries
             .into_iter()
-            .map(|filter| {
+            .map(|query| {
+                //TODO remove unwrap
+                let filter = query.filter.unwrap();
                 Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
             })
             .collect::<Result<Vec<_>, _>>();
