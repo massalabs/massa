@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::error::Error;
+
 use displaydoc::Display;
 
 use massa_consensus_exports::error::ConsensusError;
@@ -11,15 +13,10 @@ use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_wallet::WalletError;
 
-//TODO handle custom error
 /// Errors of the gRPC component.
 #[non_exhaustive]
 #[derive(Display, thiserror::Error, Debug)]
 pub enum GrpcError {
-    /// Send channel error: {0}
-    SendChannelError(String),
-    /// Receive channel error: {0}
-    ReceiveChannelError(String),
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
@@ -36,18 +33,43 @@ pub enum GrpcError {
     TimeError(#[from] TimeError),
     /// Wallet error: {0}
     WalletError(#[from] WalletError),
-    /// Not found
-    NotFound,
-    /// Inconsistency error: {0}
-    InconsistencyError(String),
-    /// Missing command sender: {0}
-    MissingCommandSender(String),
-    /// Missing configuration: {0}
-    MissingConfig(String),
-    /// The wrong API was called
-    WrongAPI,
-    /// Bad request: {0}
-    BadRequest(String),
-    /// Internal server error: {0}
-    InternalServerError(String),
+}
+
+impl From<GrpcError> for tonic::Status {
+    fn from(error: GrpcError) -> Self {
+        match error {
+            GrpcError::MassaHashError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::ConsensusError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::ExecutionError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::NetworkError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::ProtocolError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::ModelsError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::TimeError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::WalletError(e) => tonic::Status::internal(e.to_string()),
+        }
+    }
+}
+
+/// returns the first IO error found
+pub fn match_for_io_error(err_status: &tonic::Status) -> Option<&std::io::Error> {
+    let mut err: &(dyn Error + 'static) = err_status;
+
+    loop {
+        if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
+            return Some(io_err);
+        }
+
+        // h2::Error do not expose std::io::Error with `source()`
+        // https://github.com/hyperium/h2/pull/462
+        if let Some(h2_err) = err.downcast_ref::<h2::Error>() {
+            if let Some(io_err) = h2_err.get_io() {
+                return Some(io_err);
+            }
+        }
+
+        err = match err.source() {
+            Some(err) => err,
+            None => return None,
+        };
+    }
 }
