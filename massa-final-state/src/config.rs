@@ -29,4 +29,8 @@ pub struct FinalStateConfig {
     pub initial_seed_string: String,
     /// initial rolls file path
     pub initial_rolls_path: PathBuf,
+    /// final state dump folder path
+    pub final_state_path: PathBuf,
+    /// last start period of the network
+    pub last_start_period: u64,
 }

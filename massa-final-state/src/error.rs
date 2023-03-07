@@ -15,4 +15,6 @@ pub enum FinalStateError {
     LedgerError(String),
     /// PoS error: {0}
     PosError(String),
+    /// Snapshot error: {0}
+    SnapshotError(String),
 }

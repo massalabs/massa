@@ -51,3 +51,4 @@ opt-level = 3 # Speed-up the CI
 #
 #
 # * sandbox: for testing purpose, genesis timestamps is set as now + 3 minutes.
+# * create_snapshot

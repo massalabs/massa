@@ -101,36 +101,33 @@ async fn launch(
         }
     }
 
-    if let Some(snapshot_folder_path) = _args.from_snapshot.clone() {
-        // Start from snapshot:
-        // Extract ledger from archive
+    if _args.from_snapshot {
+        // If we are restarting the network from a snapshot
 
-        // From extracted folder (that contains a ledger folder at its root)
-        //fs_extra = "1.3.0"
+        // Start from snapshot, with the config:
+            /// SETTINGS.snapshot.final_state_path.clone()
 
-        /*let mut options = CopyOptions::new().overwrite();
-        let snapshot_ledger = std::path::Path::new(&snapshot_folder_path).join("ledger");
+        // 1. Init some structs from the files:
+        
+        //let final_state_deser = massa_final_state::FinalState::new();
+        
+        /*
+        let async_pool_deser = massa_async_pool::AsyncPoolDeserializer::new(THREAD_COUNT, MAX_ASYNC_POOL_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH);
+        let async_pool: Result<massa_async_pool::AsyncPool, SnapshotError> = std::fs::read_to_string("file_path")
+            .map_err(|_| {
+                SnapshotError()
+            })
+            .and_then(|file_str| {
+                serde_json::from_str(&file_str).map_err(|e| {
+                    SnapshotError()
+                })
+            });*/
 
-        fs_extra::dir::copy(snapshot_ledger, SETTINGS.ledger.disk_ledger_path.clone(), &options)?;
-        */
-        // From archive
-        //zip = "0.6.4"
-
-        extract_snapshot(
-            snapshot_folder_path.clone(),
-            SETTINGS.ledger.disk_ledger_path.clone(),
-            Some(String::from("ledger")),
-        );
-
-        // Extract final state
-        extract_snapshot(
-            snapshot_folder_path,
-            SETTINGS.ledger.disk_ledger_path.clone(),
-            Some(String::from("final_state")),
-        );
     } else {
         // Start from scratch
     }
+
+    // We start the network at LAST_START_PERIOD
 
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
@@ -170,7 +167,10 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
+        final_state_path: SETTINGS.snapshot.final_state_path,
+        last_start_period: SETTINGS.snapshot.last_start_period
     };
+    
 
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -759,7 +759,7 @@ struct Args {
 
     /// Snapshot file
     #[structopt(long = "from-snapshot")]
-    from_snapshot: Option<String>,
+    from_snapshot: bool,
 
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector

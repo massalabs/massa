@@ -6,12 +6,13 @@
 //! and need to be bootstrapped by nodes joining the network.
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
-use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
+use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change, AsyncPoolDeserializer};
 use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{slot::Slot, streaming_step::StreamingStep};
 use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
+use massa_serialization::Deserializer;
 use std::collections::VecDeque;
 use tracing::info;
 
@@ -38,6 +39,8 @@ pub struct FinalState {
 
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
+
+
 impl FinalState {
     /// Initializes a new `FinalState`
     ///
@@ -47,7 +50,30 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        from_snapshot: bool
     ) -> Result<Self, FinalStateError> {
+
+        if from_snapshot {
+
+            let async_pool_hash = massa_hash::Hash::compute_from(b"123");
+
+            // Deserialize Async Pool
+
+            let async_pool_path = config.final_state_path.join("async_pool");
+            let async_pool_file = std::fs::read("async_pool_path").map_err(|_| {
+                FinalStateError::SnapshotError(String::from("Could not read async pool file from snapshot"))
+            })?;
+
+            let MAX_ASYNC_POOL_LENGTH = massa_models::config::constants::MAX_ASYNC_POOL_LENGTH;
+            let MAX_DATASTORE_KEY_LENGTH = massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
+            let async_deser = AsyncPoolDeserializer::new(config.thread_count, MAX_ASYNC_POOL_LENGTH,config.async_pool_config.max_async_message_data, MAX_DATASTORE_KEY_LENGTH);
+
+            let (rest, async_pool_messages) = async_deser.deserialize(&async_pool_file)?;
+
+            AsyncPool {config: config.async_pool_config, messages: async_pool_messages, hash: async_pool_hash}
+        }
+
+
         // create the pos state
         let pos_state = PoSFinalState::new(
             config.pos_config.clone(),
@@ -59,7 +85,7 @@ impl FinalState {
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-        let slot = Slot::new(0, config.thread_count.saturating_sub(1));
+        let slot = Slot::new(config.last_start_period, config.thread_count.saturating_sub(1));
 
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
@@ -146,6 +172,21 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
+        // If feature create_snapshot enabled:
+        // * We first dump the final state changes for this slot in a temporary file
+        // * Then we apply the changes to the ledger
+        // * If the ledger write fails, then do not finalize the dump of the final state (avoid de-sync)
+        // * If the ledger write succeeds, then finalize the dump of the final state.
+        // We can atomically finalize the dump by writing it to a temp dir and renaming it.
+        
+        // /!\ USE STATE CHANGES DIRECTLY IF I SERIALIZE CHANGES !
+
+        // dump_changes_to_snapshot_folder(&snapshot_folder_path, changes, slot);
+        // dump_changes_to_snapshot_folder(&snapshot_folder_path, async_pool_changes, slot);
+        /*for pool_change in changes.async_pool_changes {
+            some_append_only_log_file.write(pool_change.serialize_to_bytes);
+        }*/
+
         // apply the state changes
         // unwrap is justified because every error in PoS `apply_changes` is critical
         self.ledger
@@ -169,6 +210,7 @@ impl FinalState {
             self.changes_history.push_back((slot, changes));
         }
 
+        // What you see when running a node: "Final state hash: ABC"
         // compute the final state hash
         self.compute_state_hash_at_slot(slot);
 
@@ -322,6 +364,16 @@ impl FinalState {
         }
         Ok(res_changes)
     }
+}
+
+#[cfg(not(feature = "create_snapshot"))]
+pub fn dump_final_state() {
+
+}
+
+#[cfg(feature = "create_snapshot")]
+pub fn dump_final_state() {
+
 }
 
 #[cfg(test)]
