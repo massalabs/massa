@@ -105,12 +105,12 @@ async fn launch(
         // If we are restarting the network from a snapshot
 
         // Start from snapshot, with the config:
-            /// SETTINGS.snapshot.final_state_path.clone()
+        // SETTINGS.snapshot.final_state_path.clone()
 
         // 1. Init some structs from the files:
-        
+
         //let final_state_deser = massa_final_state::FinalState::new();
-        
+
         /*
         let async_pool_deser = massa_async_pool::AsyncPoolDeserializer::new(THREAD_COUNT, MAX_ASYNC_POOL_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH);
         let async_pool: Result<massa_async_pool::AsyncPool, SnapshotError> = std::fs::read_to_string("file_path")
@@ -122,7 +122,6 @@ async fn launch(
                     SnapshotError()
                 })
             });*/
-
     } else {
         // Start from scratch
     }
@@ -168,9 +167,8 @@ async fn launch(
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
         final_state_path: SETTINGS.snapshot.final_state_path,
-        last_start_period: SETTINGS.snapshot.last_start_period
+        last_start_period: SETTINGS.snapshot.last_start_period,
     };
-    
 
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -199,6 +197,7 @@ async fn launch(
             final_state_config,
             Box::new(ledger),
             selector_controller.clone(),
+            false
         )
         .expect("could not init final state"),
     ));
