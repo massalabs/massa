@@ -2,7 +2,7 @@
 //! gRPC API for a massa-node
 use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
 
-use crate::config::GrpcConfig;
+use crate::{config::GrpcConfig, error::match_for_io_error};
 use itertools::izip;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
@@ -30,7 +30,7 @@ use tonic_web::GrpcWebLayer;
 use tracing::log::{error, info, warn};
 
 /// gRPC API content
-pub struct MassaService {
+pub struct MassaGrpcService {
     /// link(channels) to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
     /// link(channels) to the consensus component
@@ -53,7 +53,7 @@ pub struct MassaService {
     pub version: massa_models::version::Version,
 }
 
-impl MassaService {
+impl MassaGrpcService {
     /// Start the gRPC API
     pub async fn serve(
         self,
@@ -69,7 +69,7 @@ impl MassaService {
             };
         }
 
-        if let Some(encoding) = &config.accept_compressed {
+        if let Some(encoding) = &config.send_compressed {
             if encoding.eq_ignore_ascii_case("Gzip") {
                 svc = svc.send_compressed(CompressionEncoding::Gzip);
             };
@@ -110,53 +110,29 @@ impl MassaService {
         }
 
         Ok(StopHandle {
-            server_handler: shutdown_send,
+            stop_cmd_sender: shutdown_send,
         })
     }
 }
 
 /// Used to be able to stop the gRPC API
 pub struct StopHandle {
-    server_handler: oneshot::Sender<()>,
+    stop_cmd_sender: oneshot::Sender<()>,
 }
 
 impl StopHandle {
     /// stop the gRPC API gracefully
     pub fn stop(self) {
-        match self.server_handler.send(()) {
-            Ok(_) => {
-                info!("gRPC API finished cleanly");
-            }
-            Err(err) => warn!("gRPC API thread panicked: {:?}", err),
+        if let Err(e) = self.stop_cmd_sender.send(()) {
+            warn!("gRPC API thread panicked: {:?}", e);
+        } else {
+            info!("gRPC API finished cleanly");
         }
-    }
-}
-
-fn match_for_io_error(err_status: &tonic::Status) -> Option<&std::io::Error> {
-    let mut err: &(dyn Error + 'static) = err_status;
-
-    loop {
-        if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
-            return Some(io_err);
-        }
-
-        // h2::Error do not expose std::io::Error with `source()`
-        // https://github.com/hyperium/h2/pull/462
-        if let Some(h2_err) = err.downcast_ref::<h2::Error>() {
-            if let Some(io_err) = h2_err.get_io() {
-                return Some(io_err);
-            }
-        }
-
-        err = match err.source() {
-            Some(err) => err,
-            None => return None,
-        };
     }
 }
 
 #[tonic::async_trait]
-impl grpc::grpc_server::Grpc for MassaService {
+impl grpc::grpc_server::Grpc for MassaGrpcService {
     async fn get_selector_draws(
         &self,
         request: tonic::Request<grpc::GetSelectorDrawsRequest>,
@@ -317,7 +293,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                 max_operations_per_block: config.max_operations_per_block,
                                 endorsement_count: config.endorsement_count,
                             };
-                            let _res: Result<(), DeserializeError> =
+                            let _: Result<(), DeserializeError> =
                                 match SecureShareDeserializer::new(BlockDeserializer::new(args))
                                     .deserialize::<DeserializeError>(
                                     &proto_block.serialized_content,
@@ -325,7 +301,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                     Ok(tuple) => {
                                         let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
                                         if rest.is_empty() {
-                                            if let Ok(_verify_signature) = res_block
+                                            if let Ok(_) = res_block
                                                 .verify_signature()
                                                 .and_then(|_| {
                                                     res_block.content.header.verify_signature()
@@ -354,7 +330,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                     block_storage.clone(),
                                                     false,
                                                 );
-                                                let _res = match protocol_sender
+                                                let _ = match protocol_sender
                                                     .integrated_block(block_id, block_storage)
                                                 {
                                                     Ok(()) => (),
@@ -363,7 +339,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                             "failed to propagate block: {}",
                                                             e
                                                         );
-                                                        let _res = send_blocks_notify_error(
+                                                        let _ = send_blocks_notify_error(
                                                             req_content.id.clone(),
                                                             tx.clone(),
                                                             tonic::Code::Internal,
@@ -375,24 +351,22 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                 let result = grpc::BlockResult {
                                                     id: res_block.id.to_string(),
                                                 };
-                                                let _res = match tx
+
+                                                if let Err(e) = tx
                                                     .send(Ok(grpc::SendBlocksResponse {
                                                         id: req_content.id.clone(),
                                                         message: Some(grpc::send_blocks_response::Message::Result(result)),
                                                     }))
                                                     .await
                                                 {
-                                                    Ok(()) => (),
-                                                    Err(e) => {
                                                         error!("failed to send back block response: {}", e)
-                                                    }
                                                 };
                                             } else {
                                                 let error = format!(
                                                     "wrong signature: {}",
                                                     res_block.signature
                                                 );
-                                                let _res = send_blocks_notify_error(
+                                                let _ = send_blocks_notify_error(
                                                     req_content.id.clone(),
                                                     tx.clone(),
                                                     tonic::Code::InvalidArgument,
@@ -401,7 +375,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                 .await;
                                             };
                                         } else {
-                                            let _res = send_blocks_notify_error(
+                                            let _ = send_blocks_notify_error(
                                                 req_content.id.clone(),
                                                 tx.clone(),
                                                 tonic::Code::InvalidArgument,
@@ -413,7 +387,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                     }
                                     Err(e) => {
                                         let error = format!("failed to deserialize block: {}", e);
-                                        let _res = send_blocks_notify_error(
+                                        let _ = send_blocks_notify_error(
                                             req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::InvalidArgument,
@@ -424,7 +398,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                     }
                                 };
                         } else {
-                            let _res = send_blocks_notify_error(
+                            let _ = send_blocks_notify_error(
                                 req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
@@ -440,12 +414,10 @@ impl grpc::grpc_server::Grpc for MassaService {
                                 break;
                             }
                         }
-                        match tx.send(Err(err)).await {
-                            Ok(_) => (),
-                            Err(e) => {
-                                error!("failed to send back sendblocks error response: {}", e);
-                                break;
-                            }
+                        error!("{}", err);
+                        if let Err(e) = tx.send(Err(err)).await {
+                            error!("failed to send back send_blocks error response: {}", e);
+                            break;
                         }
                     }
                 }
@@ -484,7 +456,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                 match result {
                     Ok(req_content) => {
                         if req_content.endorsements.is_empty() {
-                            let _res = send_endorsements_notify_error(
+                            let _ = send_endorsements_notify_error(
                                 req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
@@ -495,7 +467,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                             let proto_endorsement = req_content.endorsements;
                             if proto_endorsement.len() as u32 > config.max_endorsements_per_message
                             {
-                                let _res = send_endorsements_notify_error(
+                                let _ = send_endorsements_notify_error(
                                     req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
@@ -519,7 +491,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                         Ok(tuple) => {
                                             let (rest, res_endorsement): (&[u8], SecureShareEndorsement) = tuple;
                                                 if rest.is_empty() {
-                                                if let Ok(_verify_signature) = res_endorsement.verify_signature() {
+                                                if let Ok(_) = res_endorsement.verify_signature() {
                                                         Ok((res_endorsement.id.to_string(), res_endorsement))
                                                     } else {
                                                         Err(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
@@ -549,7 +521,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                         );
                                         cmd_sender.add_endorsements(endorsement_storage.clone());
 
-                                        let _res = match protocol_sender
+                                        let _ = match protocol_sender
                                             .propagate_endorsements(endorsement_storage)
                                         {
                                             Ok(()) => (),
@@ -558,7 +530,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                     "failed to propagate endorsement: {}",
                                                     e
                                                 );
-                                                let _res = send_endorsements_notify_error(
+                                                let _ = send_endorsements_notify_error(
                                                     req_content.id.clone(),
                                                     tx.clone(),
                                                     tonic::Code::Internal,
@@ -571,7 +543,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                         let result = grpc::EndorsementResult {
                                             ids: verified_eds.keys().cloned().collect(),
                                         };
-                                        let _res = match tx
+                                        if let Err(e)  = tx
                                             .send(Ok(grpc::SendEndorsementsResponse {
                                                 id: req_content.id.clone(),
                                                 message: Some(
@@ -582,18 +554,15 @@ impl grpc::grpc_server::Grpc for MassaService {
                                             }))
                                             .await
                                         {
-                                            Ok(()) => (),
-                                            Err(e) => {
                                                 error!(
                                                     "failed to send back endorsement response: {}",
                                                     e
                                                 )
-                                            }
                                         };
                                     }
                                     Err(e) => {
                                         let error = format!("invalid endorsement(s): {}", e);
-                                        let _res = send_endorsements_notify_error(
+                                        let _ = send_endorsements_notify_error(
                                             req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::InvalidArgument,
@@ -612,15 +581,13 @@ impl grpc::grpc_server::Grpc for MassaService {
                                 break;
                             }
                         }
-                        match tx.send(Err(err)).await {
-                            Ok(_) => (),
-                            Err(e) => {
-                                error!(
-                                    "failed to send back send_endorsements error response: {}",
-                                    e
-                                );
-                                break;
-                            }
+                        error!("{}", err);
+                        if let Err(e) = tx.send(Err(err)).await {
+                            error!(
+                                "failed to send back send_endorsements error response: {}",
+                                e
+                            );
+                            break;
                         }
                     }
                 }
@@ -659,7 +626,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                 match result {
                     Ok(req_content) => {
                         if req_content.operations.is_empty() {
-                            let _res = send_operations_notify_error(
+                            let _ = send_operations_notify_error(
                                 req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
@@ -669,7 +636,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                         } else {
                             let proto_operations = req_content.operations;
                             if proto_operations.len() as u32 > config.max_operations_per_message {
-                                let _res = send_operations_notify_error(
+                                let _ = send_operations_notify_error(
                                     req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
@@ -697,7 +664,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
                                                 if rest.is_empty() {
-                                                if let Ok(_verify_signature) = res_operation.verify_signature() {
+                                                if let Ok(_) = res_operation.verify_signature() {
                                                         Ok((res_operation.id.to_string(), res_operation))
                                                     } else {
                                                         Err(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
@@ -726,7 +693,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                         );
                                         cmd_sender.add_operations(operation_storage.clone());
 
-                                        let _res = match protocol_sender
+                                        let _ = match protocol_sender
                                             .propagate_operations(operation_storage)
                                         {
                                             Ok(()) => (),
@@ -735,7 +702,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                                     "failed to propagate operations: {}",
                                                     e
                                                 );
-                                                let _res = send_operations_notify_error(
+                                                let _ = send_operations_notify_error(
                                                     req_content.id.clone(),
                                                     tx.clone(),
                                                     tonic::Code::Internal,
@@ -748,7 +715,7 @@ impl grpc::grpc_server::Grpc for MassaService {
                                         let result = grpc::OperationResult {
                                             ids: verified_ops.keys().cloned().collect(),
                                         };
-                                        let _res = match tx
+                                        if let Err(e) = tx
                                             .send(Ok(grpc::SendOperationsResponse {
                                                 id: req_content.id.clone(),
                                                 message: Some(
@@ -759,18 +726,12 @@ impl grpc::grpc_server::Grpc for MassaService {
                                             }))
                                             .await
                                         {
-                                            Ok(()) => (),
-                                            Err(e) => {
-                                                error!(
-                                                    "failed to send back operations response: {}",
-                                                    e
-                                                )
-                                            }
+                                            error!("failed to send back operations response: {}", e)
                                         };
                                     }
                                     Err(e) => {
                                         let error = format!("invalid operation(s): {}", e);
-                                        let _res = send_operations_notify_error(
+                                        let _ = send_operations_notify_error(
                                             req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::InvalidArgument,
@@ -789,12 +750,10 @@ impl grpc::grpc_server::Grpc for MassaService {
                                 break;
                             }
                         }
-                        match tx.send(Err(err)).await {
-                            Ok(_) => (),
-                            Err(e) => {
-                                error!("failed to send back send_operations error response: {}", e);
-                                break;
-                            }
+                        error!("{}", err);
+                        if let Err(e) = tx.send(Err(err)).await {
+                            error!("failed to send back send_operations error response: {}", e);
+                            break;
                         }
                     }
                 }
@@ -816,7 +775,7 @@ async fn send_blocks_notify_error(
     error: String,
 ) -> Result<(), Box<dyn Error>> {
     error!("{}", error);
-    match sender
+    if let Err(e) = sender
         .send(Ok(grpc::SendBlocksResponse {
             id,
             message: Some(grpc::send_blocks_response::Message::Error(
@@ -829,12 +788,10 @@ async fn send_blocks_notify_error(
         }))
         .await
     {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            error!("failed to send back send_blocks error response: {}", e);
-            Ok(())
-        }
+        error!("failed to send back send_blocks error response: {}", e);
     }
+
+    Ok(())
 }
 
 async fn send_endorsements_notify_error(
@@ -844,7 +801,7 @@ async fn send_endorsements_notify_error(
     error: String,
 ) -> Result<(), Box<dyn Error>> {
     error!("{}", error);
-    match sender
+    if let Err(e) = sender
         .send(Ok(grpc::SendEndorsementsResponse {
             id,
             message: Some(grpc::send_endorsements_response::Message::Error(
@@ -857,12 +814,13 @@ async fn send_endorsements_notify_error(
         }))
         .await
     {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            error!("failed to send back send_enorsements error response: {}", e);
-            Ok(())
-        }
+        error!(
+            "failed to send back send_endorsements error response: {}",
+            e
+        );
     }
+
+    Ok(())
 }
 
 async fn send_operations_notify_error(
@@ -872,7 +830,7 @@ async fn send_operations_notify_error(
     error: String,
 ) -> Result<(), Box<dyn Error>> {
     error!("{}", error);
-    match sender
+    if let Err(e) = sender
         .send(Ok(grpc::SendOperationsResponse {
             id,
             message: Some(grpc::send_operations_response::Message::Error(
@@ -885,10 +843,8 @@ async fn send_operations_notify_error(
         }))
         .await
     {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            error!("failed to send back send_operations error response: {}", e);
-            Ok(())
-        }
+        error!("failed to send back send_operations error response: {}", e);
     }
+
+    Ok(())
 }

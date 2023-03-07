@@ -21,7 +21,7 @@ use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_grpc::api::MassaService;
+use massa_grpc::api::MassaGrpcService;
 use massa_grpc::config::GrpcConfig;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
@@ -595,7 +595,7 @@ async fn launch(
             draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
         };
 
-        let grpc_api = MassaService {
+        let grpc_api = MassaGrpcService {
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             execution_controller: execution_controller.clone(),
