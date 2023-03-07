@@ -33,6 +33,8 @@ pub enum GrpcError {
     TimeError(#[from] TimeError),
     /// Wallet error: {0}
     WalletError(#[from] WalletError),
+    /// Internal server error: {0}
+    InternalServerError(String),
 }
 
 impl From<GrpcError> for tonic::Status {
@@ -46,6 +48,7 @@ impl From<GrpcError> for tonic::Status {
             GrpcError::ModelsError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::TimeError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::WalletError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::InternalServerError(e) => tonic::Status::internal(e),
         }
     }
 }

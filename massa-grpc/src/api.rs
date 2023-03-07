@@ -2,7 +2,10 @@
 //! gRPC API for a massa-node
 use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
 
-use crate::{config::GrpcConfig, error::match_for_io_error};
+use crate::{
+    config::GrpcConfig,
+    error::{match_for_io_error, GrpcError},
+};
 use itertools::izip;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
@@ -145,10 +148,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         let addresses_res = inner_req
             .queries
             .into_iter()
-            .map(|query| {
-                //TODO remove unwrap ?
-                Address::from_str(query.filter.unwrap().address.as_str())
-            })
+            .map(|query| Address::from_str(query.filter.unwrap().address.as_str()))
             .collect::<Result<Vec<_>, _>>();
 
         match addresses_res {
@@ -226,7 +226,6 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
             .queries
             .into_iter()
             .map(|query| {
-                //TODO remove unwrap
                 let filter = query.filter.unwrap();
                 Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
             })
@@ -303,7 +302,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                     Ok(tuple) => {
                                         let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
                                         if rest.is_empty() {
-                                            if let Ok(_) = res_block
+                                            match res_block
                                                 .verify_signature()
                                                 .and_then(|_| {
                                                     res_block.content.header.verify_signature()
@@ -319,24 +318,24 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                                             endorsement.verify_signature()
                                                         })
                                                         .collect::<Vec<Result<(), ModelsError>>>()
-                                                })
-                                            {
-                                                let block_id = res_block.id;
-                                                let slot = res_block.content.header.content.slot;
-                                                let mut block_storage =
-                                                    storage.clone_without_refs();
-                                                block_storage.store_block(res_block.clone());
-                                                consensus_controller.register_block(
-                                                    block_id,
-                                                    slot,
-                                                    block_storage.clone(),
-                                                    false,
-                                                );
-                                                let _ = match protocol_sender
-                                                    .integrated_block(block_id, block_storage)
-                                                {
-                                                    Ok(()) => (),
-                                                    Err(e) => {
+                                                }) {
+                                                Ok(_) => {
+                                                    let block_id = res_block.id;
+                                                    let slot =
+                                                        res_block.content.header.content.slot;
+                                                    let mut block_storage =
+                                                        storage.clone_without_refs();
+                                                    block_storage.store_block(res_block.clone());
+                                                    consensus_controller.register_block(
+                                                        block_id,
+                                                        slot,
+                                                        block_storage.clone(),
+                                                        false,
+                                                    );
+
+                                                    if let Err(e) = protocol_sender
+                                                        .integrated_block(block_id, block_storage)
+                                                    {
                                                         let error = format!(
                                                             "failed to propagate block: {}",
                                                             e
@@ -348,34 +347,33 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                                             error.to_owned(),
                                                         )
                                                         .await;
-                                                    }
-                                                };
-                                                let result = grpc::BlockResult {
-                                                    id: res_block.id.to_string(),
-                                                };
+                                                    };
 
-                                                if let Err(e) = tx
+                                                    let result = grpc::BlockResult {
+                                                        id: res_block.id.to_string(),
+                                                    };
+
+                                                    if let Err(e) = tx
                                                     .send(Ok(grpc::SendBlocksResponse {
                                                         id: req_content.id.clone(),
                                                         message: Some(grpc::send_blocks_response::Message::Result(result)),
                                                     }))
                                                     .await
                                                 {
-                                                        error!("failed to send back block response: {}", e)
+                                                    error!("failed to send back block response: {}", e);
                                                 };
-                                            } else {
-                                                let error = format!(
-                                                    "wrong signature: {}",
-                                                    res_block.signature
-                                                );
-                                                let _ = send_blocks_notify_error(
-                                                    req_content.id.clone(),
-                                                    tx.clone(),
-                                                    tonic::Code::InvalidArgument,
-                                                    error.to_owned(),
-                                                )
-                                                .await;
-                                            };
+                                                }
+                                                Err(e) => {
+                                                    let error = format!("wrong signature: {}", e);
+                                                    let _ = send_blocks_notify_error(
+                                                        req_content.id.clone(),
+                                                        tx.clone(),
+                                                        tonic::Code::InvalidArgument,
+                                                        error.to_owned(),
+                                                    )
+                                                    .await;
+                                                }
+                                            }
                                         } else {
                                             let _ = send_blocks_notify_error(
                                                 req_content.id.clone(),
@@ -482,7 +480,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         config.thread_count,
                                         config.endorsement_count,
                                     ));
-                                let verified_eds_res: Result<HashMap<String, SecureShareEndorsement>, ModelsError> = proto_endorsement
+                                let verified_eds_res: Result<HashMap<String, SecureShareEndorsement>, GrpcError> = proto_endorsement
                                 .into_iter()
                                 .map(|proto_endorsement| {
                                     let mut ed_serialized = Vec::new();
@@ -493,21 +491,17 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         Ok(tuple) => {
                                             let (rest, res_endorsement): (&[u8], SecureShareEndorsement) = tuple;
                                                 if rest.is_empty() {
-                                                if let Ok(_) = res_endorsement.verify_signature() {
-                                                        Ok((res_endorsement.id.to_string(), res_endorsement))
-                                                    } else {
-                                                        Err(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            format!("wrong signature: {}", res_endorsement.signature))
-                                                        ))
-                                                    }
+                                                    res_endorsement.verify_signature()
+                                                    .map(|_| (res_endorsement.id.to_string(), res_endorsement))
+                                                    .map_err(|e| e.into())
                                                 } else {
-                                                    Err(ModelsError::DeserializeError(
+                                                    Err(GrpcError::InternalServerError(
                                                         "there is data left after endorsement deserialization".to_owned()
                                                     ))
                                                 }
                                             },
                                         Err(e) => {
-                                            Err(ModelsError::DeserializeError(format!("failed to deserialize endorsement: {}", e)
+                                            Err(GrpcError::InternalServerError(format!("failed to deserialize endorsement: {}", e)
                                             ))
                                         }
                                         };
@@ -523,23 +517,18 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         );
                                         cmd_sender.add_endorsements(endorsement_storage.clone());
 
-                                        let _ = match protocol_sender
+                                        if let Err(e) = protocol_sender
                                             .propagate_endorsements(endorsement_storage)
                                         {
-                                            Ok(()) => (),
-                                            Err(e) => {
-                                                let error = format!(
-                                                    "failed to propagate endorsement: {}",
-                                                    e
-                                                );
-                                                let _ = send_endorsements_notify_error(
-                                                    req_content.id.clone(),
-                                                    tx.clone(),
-                                                    tonic::Code::Internal,
-                                                    error.to_owned(),
-                                                )
-                                                .await;
-                                            }
+                                            let error =
+                                                format!("failed to propagate endorsement: {}", e);
+                                            let _ = send_endorsements_notify_error(
+                                                req_content.id.clone(),
+                                                tx.clone(),
+                                                tonic::Code::Internal,
+                                                error.to_owned(),
+                                            )
+                                            .await;
                                         };
 
                                         let result = grpc::EndorsementResult {
@@ -655,35 +644,31 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         config.max_op_datastore_key_length,
                                         config.max_op_datastore_value_length,
                                     ));
-                                let verified_ops_res: Result<HashMap<String, SecureShareOperation>, ModelsError> = proto_operations
+                                let verified_ops_res: Result<HashMap<String, SecureShareOperation>, GrpcError> = proto_operations
                                 .into_iter()
                                 .map(|proto_operation| {
                                     let mut op_serialized = Vec::new();
                                     op_serialized.extend(proto_operation.signature.as_bytes());
                                     op_serialized.extend(proto_operation.creator_public_key.as_bytes());
                                     op_serialized.extend(proto_operation.serialized_content);
-                                    let verified_op = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
+                                    let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
                                                 if rest.is_empty() {
-                                                if let Ok(_) = res_operation.verify_signature() {
-                                                        Ok((res_operation.id.to_string(), res_operation))
-                                                    } else {
-                                                        Err(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            format!("wrong signature: {}", res_operation.signature))
-                                                        ))
-                                                    }
+                                                    res_operation.verify_signature()
+                                                    .map(|_| (res_operation.id.to_string(), res_operation))
+                                                    .map_err(|e| e.into())
                                                 } else {
-                                                    Err(ModelsError::DeserializeError(
+                                                    Err(GrpcError::InternalServerError(
                                                         "there is data left after operation deserialization".to_owned()
                                                     ))
                                                 }
                                             },
                                         Err(e) => {
-                                            Err(ModelsError::DeserializeError(format!("failed to deserialize operation: {}", e)))
+                                            Err(GrpcError::InternalServerError(format!("failed to deserialize operation: {}", e)))
                                         }
                                         };
-                                        verified_op
+                                        verified_op_res
                                 })
                                 .collect();
 
@@ -695,23 +680,18 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         );
                                         cmd_sender.add_operations(operation_storage.clone());
 
-                                        let _ = match protocol_sender
-                                            .propagate_operations(operation_storage)
+                                        if let Err(e) =
+                                            protocol_sender.propagate_operations(operation_storage)
                                         {
-                                            Ok(()) => (),
-                                            Err(e) => {
-                                                let error = format!(
-                                                    "failed to propagate operations: {}",
-                                                    e
-                                                );
-                                                let _ = send_operations_notify_error(
-                                                    req_content.id.clone(),
-                                                    tx.clone(),
-                                                    tonic::Code::Internal,
-                                                    error.to_owned(),
-                                                )
-                                                .await;
-                                            }
+                                            let error =
+                                                format!("failed to propagate operations: {}", e);
+                                            let _ = send_operations_notify_error(
+                                                req_content.id.clone(),
+                                                tx.clone(),
+                                                tonic::Code::Internal,
+                                                error.to_owned(),
+                                            )
+                                            .await;
                                         };
 
                                         let result = grpc::OperationResult {
@@ -728,7 +708,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                             }))
                                             .await
                                         {
-                                            error!("failed to send back operations response: {}", e)
+                                            error!(
+                                                "failed to send back operations response: {}",
+                                                e
+                                            );
                                         };
                                     }
                                     Err(e) => {
