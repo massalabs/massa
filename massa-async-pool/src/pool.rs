@@ -58,7 +58,7 @@ impl AsyncPool {
     ) -> AsyncPool {
         AsyncPool {
             config,
-            messages: messages,
+            messages,
             hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
         }
     }

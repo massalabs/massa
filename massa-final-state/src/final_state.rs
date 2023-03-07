@@ -53,25 +53,23 @@ impl FinalState {
         from_snapshot: bool,
     ) -> Result<Self, FinalStateError> {
         if from_snapshot {
-            let async_pool_hash = massa_hash::Hash::compute_from(b"123");
-
             // Deserialize Async Pool
 
             let async_pool_path = config.final_state_path.join("async_pool");
-            let async_pool_file = std::fs::read("async_pool_path").map_err(|_| {
+            let async_pool_file = std::fs::read(async_pool_path).map_err(|_| {
                 FinalStateError::SnapshotError(String::from(
                     "Could not read async pool file from snapshot",
                 ))
             })?;
 
-            let MAX_ASYNC_POOL_LENGTH = massa_models::config::constants::MAX_ASYNC_POOL_LENGTH;
-            let MAX_DATASTORE_KEY_LENGTH =
+            let max_async_pool_length = massa_models::config::constants::MAX_ASYNC_POOL_LENGTH;
+            let max_datastore_key_length =
                 massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
             let async_deser = AsyncPoolDeserializer::new(
                 config.thread_count,
-                MAX_ASYNC_POOL_LENGTH,
+                max_async_pool_length,
                 config.async_pool_config.max_async_message_data,
-                MAX_DATASTORE_KEY_LENGTH as u32,
+                max_datastore_key_length as u32,
             );
 
             let (_, async_pool_messages) = async_deser
@@ -414,11 +412,13 @@ impl FinalState {
     }
 }
 
+/*
 #[cfg(not(feature = "create_snapshot"))]
 pub fn dump_final_state() {}
 
 #[cfg(feature = "create_snapshot")]
 pub fn dump_final_state() {}
+*/
 
 #[cfg(test)]
 mod tests {

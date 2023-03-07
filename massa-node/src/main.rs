@@ -21,7 +21,6 @@ use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_ledger_exports::extract_snapshot;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -166,7 +165,7 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
-        final_state_path: SETTINGS.snapshot.final_state_path,
+        final_state_path: SETTINGS.snapshot.final_state_path.clone(),
         last_start_period: SETTINGS.snapshot.last_start_period,
     };
 
