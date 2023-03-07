@@ -1,9 +1,9 @@
-use crate::versioning::{Advance, MipInfo, MipState, MipStateHistory};
+use crate::versioning::{Advance, ComponentState, ComponentStateTypeId, MipInfo, MipState};
 
 use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_time::MassaTime;
 
-pub fn advance_state_until(at_state: MipState, versioning_info: &MipInfo) -> MipStateHistory {
+pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) -> MipState {
     // A helper function to advance a state
     // Assume enough time between versioning info start & timeout
     // TODO: allow to give a threshold as arg?
@@ -11,13 +11,13 @@ pub fn advance_state_until(at_state: MipState, versioning_info: &MipInfo) -> Mip
     let start = versioning_info.start;
     let timeout = versioning_info.timeout;
 
-    if matches!(at_state, MipState::Error) {
+    if matches!(at_state, ComponentState::Error) {
         todo!()
     }
 
-    let mut state = MipStateHistory::new(start.saturating_sub(MassaTime::from(1)));
+    let mut state = MipState::new(start.saturating_sub(MassaTime::from(1)));
 
-    if matches!(at_state, MipState::Defined(_)) {
+    if matches!(at_state, ComponentState::Defined(_)) {
         return state;
     }
 
@@ -29,11 +29,11 @@ pub fn advance_state_until(at_state: MipState, versioning_info: &MipInfo) -> Mip
     };
     state.on_advance(&advance_msg);
 
-    if matches!(at_state, MipState::Started(_)) {
+    if matches!(at_state, ComponentState::Started(_)) {
         return state;
     }
 
-    if matches!(at_state, MipState::Failed(_)) {
+    if matches!(at_state, ComponentState::Failed(_)) {
         advance_msg.now = timeout.saturating_add(MassaTime::from(1));
         state.on_advance(&advance_msg);
         return state;
@@ -43,7 +43,7 @@ pub fn advance_state_until(at_state: MipState, versioning_info: &MipInfo) -> Mip
     advance_msg.threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
     state.on_advance(&advance_msg);
 
-    if matches!(at_state, MipState::LockedIn(_)) {
+    if matches!(at_state, ComponentState::LockedIn(_)) {
         return state;
     }
 

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::iter;
 use thiserror::Error;
 
-use crate::versioning::{MipComponent, MipState, MipStateTypeId, MipStore};
+use crate::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipStore};
 
 /// Factory error
 #[allow(missing_docs)]
@@ -59,7 +59,7 @@ pub trait VersioningFactory {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = MipState::active();
+        let state_active = ComponentState::active();
 
         vi_store
             .0
@@ -77,7 +77,7 @@ pub trait VersioningFactory {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = MipState::active();
+        let state_active = ComponentState::active();
 
         // Iter backward, filter component + state active,
         let version = vi_store
@@ -88,7 +88,7 @@ pub trait VersioningFactory {
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
                 match res {
-                    Ok(MipStateTypeId::Active) => Some(vi.component_version),
+                    Ok(ComponentStateTypeId::Active) => Some(vi.component_version),
                     _ => None,
                 }
             })
@@ -103,7 +103,7 @@ pub trait VersioningFactory {
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
-        let state_active = MipState::active();
+        let state_active = ComponentState::active();
         let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
             (vi.component == component && vsh.inner == state_active).then_some(vi.component_version)
         });
@@ -112,16 +112,16 @@ pub trait VersioningFactory {
     }
 
     /// Get all versions (at any state) for the associated MipComponent
-    fn get_all_component_versions(&self) -> BTreeMap<u32, MipStateTypeId> {
+    fn get_all_component_versions(&self) -> BTreeMap<u32, ComponentStateTypeId> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
         let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
             (vi.component == component)
-                .then_some((vi.component_version, MipStateTypeId::from(&vsh.inner)))
+                .then_some((vi.component_version, ComponentStateTypeId::from(&vsh.inner)))
         });
-        iter::once((0, MipStateTypeId::Active))
+        iter::once((0, ComponentStateTypeId::Active))
             .chain(versions_iter)
             .collect()
     }
@@ -141,7 +141,7 @@ mod test {
     use std::collections::BTreeMap;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
-    use crate::versioning::{MipInfo, MipStateHistory};
+    use crate::versioning::{MipInfo, MipState};
 
     use massa_time::MassaTime;
 
@@ -219,8 +219,8 @@ mod test {
                 Some(FactoryStrategy::Exact(v)) => {
                     // This is not optimal - can use get_versions and return a less descriptive error
                     match self.get_all_component_versions().get(&v) {
-                        Some(s) if *s == MipStateTypeId::Active => Ok(v),
-                        Some(s) if *s != MipStateTypeId::Active => {
+                        Some(s) if *s == ComponentStateTypeId::Active => Ok(v),
+                        Some(s) if *s != ComponentStateTypeId::Active => {
                             Err(FactoryError::OnStateNotReady(v))
                         }
                         _ => Err(FactoryError::UnknownVersion(v)),
@@ -261,7 +261,7 @@ mod test {
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
         };
-        let vs_1 = MipStateHistory::new(MassaTime::from(10));
+        let vs_1 = MipState::new(MassaTime::from(10));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
@@ -271,7 +271,7 @@ mod test {
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
         };
-        let vs_2 = MipStateHistory::new(MassaTime::from(18));
+        let vs_2 = MipState::new(MassaTime::from(18));
 
         let vs = MipStore::try_from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2.clone())]).unwrap();
         let fa = AddressFactory {
@@ -302,7 +302,7 @@ mod test {
         assert!(matches!(addr_, Err(FactoryError::OnStateNotReady(2))));
 
         // Advance state 1 to Active
-        let vs_1_new = advance_state_until(MipState::active(), &vi_1);
+        let vs_1_new = advance_state_until(ComponentState::active(), &vi_1);
         // Create a new factory
         let info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
         // Update versioning store
@@ -342,7 +342,7 @@ mod test {
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
         };
-        let vs_1 = advance_state_until(MipState::active(), &vi_1);
+        let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
@@ -352,7 +352,7 @@ mod test {
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
         };
-        let vs_2 = MipStateHistory::new(MassaTime::from(18));
+        let vs_2 = MipState::new(MassaTime::from(18));
 
         let vs = MipStore::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())])
             .unwrap();
@@ -389,7 +389,7 @@ mod test {
         assert!(matches!(addr_st_4, Ok(Address::V1(_)))); // for now, vs_2 is not active yet
 
         // Advance state 2 to Active
-        let vs_2_new = advance_state_until(MipState::active(), &vi_2);
+        let vs_2_new = advance_state_until(ComponentState::active(), &vi_2);
         let info = BTreeMap::from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2_new)]);
         // Update versioning store
         vs.0.write().0 = info;

@@ -15,7 +15,16 @@
 //!
 //! # Note on MipState
 //!
-//! TODO
+//! MipState has:
+//! * A state machine (stores the current state of deployment for a MipInfo)
+//! * A history (stores a list of `Advance` message that 'really' updated the state machine)
+//!
+//! History is there in order to:
+//! * Query the state at any time, so you can query MipStore and ask the best version at any time
+//! * Used a lot when merging 2 MipStore:
+//!   * By replaying the history of the states of the received MipStore (bootstrap), we can safely updates in the bootstrap process
+//!   * + When we init MipStore (at startup), this ensures that we have a time ranges & versions coherent list of MipInfo
+//!     * For instance, this can avoid to have 2 MipInfo with the same name
 //!
 //! # Advancing MipState
 //!
