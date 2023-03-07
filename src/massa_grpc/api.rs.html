@@ -833,11 +833,6 @@
 <a href="#833" id="833">833</a>
 <a href="#834" id="834">834</a>
 <a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! gRPC API for a massa-node
 </span><span class="kw">use </span>std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
@@ -988,10 +983,7 @@
         <span class="kw">let </span>addresses_res = inner_req
             .queries
             .into_iter()
-            .map(|query| {
-                <span class="comment">//TODO remove unwrap ?
-                </span>Address::from_str(query.filter.unwrap().address.as_str())
-            })
+            .map(|query| Address::from_str(query.filter.unwrap().address.as_str()))
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">match </span>addresses_res {
@@ -1069,10 +1061,8 @@
             .queries
             .into_iter()
             .map(|query| {
-                <span class="comment">//TODO remove unwrap
-                </span><span class="kw">let </span>filter = query.filter.unwrap();
-                Address::from_str(filter.address.as_str())
-                .map(|address| (address, filter.key))
+                <span class="kw">let </span>filter = query.filter.unwrap();
+                Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;();
 
