@@ -56,6 +56,8 @@ impl Default for FinalStateConfig {
             periods_per_cycle: 100,
             initial_rolls_path: PathBuf::new(),
             initial_seed_string: "".to_string(),
+            final_state_path: PathBuf::new(),
+            last_start_period: 0,
         }
     }
 }

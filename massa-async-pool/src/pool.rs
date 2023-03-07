@@ -51,6 +51,18 @@ impl AsyncPool {
         }
     }
 
+    /// Creates an empty `AsyncPool`
+    pub fn from_messages(
+        config: AsyncPoolConfig,
+        messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+    ) -> AsyncPool {
+        AsyncPool {
+            config,
+            messages: messages,
+            hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
+        }
+    }
+
     /// Resets the pool to its initial state
     ///
     /// USED ONLY FOR BOOTSTRAP

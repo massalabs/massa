@@ -74,18 +74,49 @@ impl FinalState {
                 MAX_DATASTORE_KEY_LENGTH as u32,
             );
 
-            let (rest, async_pool_messages) =
-                async_deser.deserialize(&async_pool_file).map_err(|_| {
+            let (_, async_pool_messages) = async_deser
+                .deserialize::<massa_serialization::DeserializeError>(&async_pool_file)
+                .map_err(|_| {
                     FinalStateError::SnapshotError(String::from(
                         "Could not read async pool file from snapshot",
                     ))
                 })?;
 
-            Ok(AsyncPool {
-                config: config.async_pool_config,
-                messages: async_pool_messages,
-                hash: async_pool_hash,
-            })
+            let async_pool =
+                AsyncPool::from_messages(config.async_pool_config.clone(), async_pool_messages);
+
+            // create the pos state
+            let pos_state = PoSFinalState::new(
+                config.pos_config.clone(),
+                &config.initial_seed_string,
+                &config.initial_rolls_path,
+                selector,
+                ledger.get_ledger_hash(),
+            )
+            .map_err(|err| {
+                FinalStateError::PosError(format!("PoS final state init error: {}", err))
+            })?;
+
+            // attach at the output of the latest initial final slot, that is the last genesis slot
+            let slot = Slot::new(
+                config.last_start_period,
+                config.thread_count.saturating_sub(1),
+            );
+
+            // create a default executed ops
+            let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
+
+            // create the final state
+            return Ok(FinalState {
+                slot,
+                ledger,
+                async_pool,
+                pos_state,
+                config,
+                executed_ops,
+                changes_history: Default::default(), // no changes in history
+                final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
+            });
         }
 
         // create the pos state
