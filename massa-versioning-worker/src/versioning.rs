@@ -23,7 +23,7 @@ pub enum MipComponent {
     VM,
 }
 
-/// MIP info (name,  version,
+/// MIP info (name & versions & time range for a MIP)
 #[derive(Clone, Debug)]
 pub struct MipInfo {
     /// MIP name or descriptive name
@@ -79,7 +79,6 @@ impl Hash for MipInfo {
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
-    #[allow(missing_docs)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     enum MipState {
         /// Initial state
@@ -228,16 +227,17 @@ impl Failed {
 /// Wrapper of MipState (in order to keep state history)
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStateHistory {
-    pub(crate) state: MipState,
+    pub(crate) inner: MipState,
     history: BTreeMap<Advance, MipStateTypeId>,
 }
 
 impl MipStateHistory {
     /// Create
     pub fn new(defined: MassaTime) -> Self {
-        let state: MipState = Default::default();
+        let state: MipState = Default::default(); // Default is Defined
         let state_id = MipStateTypeId::from(&state);
-        // Build a 'dummy' advance msg for state Defined
+        // Build a 'dummy' advance msg for state Defined, this is to avoid using an
+        // Option<Advance> in MipStateHistory::history
         let advance = Advance {
             start_timestamp: MassaTime::from(0),
             timeout: MassaTime::from(0),
@@ -247,12 +247,13 @@ impl MipStateHistory {
 
         let history = BTreeMap::from([(advance, state_id)]);
         Self {
-            state: Default::default(),
+            inner: state,
             history,
         }
     }
 
-    /// Advance state
+    /// Advance the state
+    /// Can be called as multiple times as it will only store what changes the state in history
     pub fn on_advance(&mut self, input: &Advance) {
         let now = input.now;
         // Check that input.now is after last item in history
@@ -265,19 +266,19 @@ impl MipStateHistory {
 
         if is_forward {
             // machines crate (for state machine) does not support passing ref :-/
-            let state = self.state.on_advance(input.clone());
+            let state = self.inner.on_advance(input.clone());
             // Update history as well
-            if state != self.state {
+            if state != self.inner {
                 let state_id = MipStateTypeId::from(&state);
 
                 // Avoid storing too much things in history
                 // Here we avoid storing for every threshold update
                 if !(matches!(state, MipState::Started(Started { .. }))
-                    && matches!(self.state, MipState::Started(Started { .. })))
+                    && matches!(self.inner, MipState::Started(Started { .. })))
                 {
                     self.history.insert(input.clone(), state_id);
                 }
-                self.state = state;
+                self.inner = state;
             }
         }
     }
@@ -289,7 +290,7 @@ impl MipStateHistory {
     /// Return false for state == MipState::Error
     pub fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
         // Always return false for state Error or if history is empty
-        if matches!(&self.state, &MipState::Error) || self.history.is_empty() {
+        if matches!(&self.inner, &MipState::Error) || self.history.is_empty() {
             return false;
         }
 
@@ -384,7 +385,7 @@ impl MipStateHistory {
                         now: ts,
                     };
                     // Return the resulting state after advance
-                    let state = self.state.on_advance(msg);
+                    let state = self.inner.on_advance(msg);
                     Ok(MipStateTypeId::from(&state))
                 }
             }
@@ -425,7 +426,7 @@ impl MipStore {
             .0
             .iter()
             .rev()
-            .find_map(|(k, v)| (v.state == MipState::active()).then_some(k.version))
+            .find_map(|(k, v)| (v.inner == MipState::active()).then_some(k.version))
             .unwrap_or(0)
     }
 
@@ -442,7 +443,7 @@ impl MipStore {
             .iter()
             .rev()
             .find_map(|(k, v)| {
-                matches!(&v.state, &MipState::Started(_) | &MipState::LockedIn(_))
+                matches!(&v.inner, &MipState::Started(_) | &MipState::LockedIn(_))
                     .then_some(k.version)
             })
             .unwrap_or(0)
@@ -491,11 +492,11 @@ impl MipStoreRaw {
             if let Some(v_state_orig) = self.0.get(v_info) {
                 // Versioning info (from right) is already in self (left)
                 // Need to check if we add this to 'to_update' list
-                let v_state_id: u32 = MipStateTypeId::from(&v_state.state).into();
-                let v_state_orig_id: u32 = MipStateTypeId::from(&v_state_orig.state).into();
+                let v_state_id: u32 = MipStateTypeId::from(&v_state.inner).into();
+                let v_state_orig_id: u32 = MipStateTypeId::from(&v_state_orig.inner).into();
 
                 if matches!(
-                    v_state_orig.state,
+                    v_state_orig.inner,
                     MipState::Defined(_) | MipState::Started(_) | MipState::LockedIn(_)
                 ) {
                     // Only accept 'higher' state
@@ -595,7 +596,7 @@ mod test {
     // Only for unit tests
     impl PartialEq<MipState> for MipStateHistory {
         fn eq(&self, other: &MipState) -> bool {
-            self.state == *other
+            self.inner == *other
         }
     }
 
@@ -858,11 +859,11 @@ mod test {
 
         // Can only build such object in test - history is empty :-/
         let vs_1 = MipStateHistory {
-            state: MipState::active(),
+            inner: MipState::active(),
             history: Default::default(),
         };
         let vs_2 = MipStateHistory {
-            state: MipState::started(Amount::zero()),
+            inner: MipState::started(Amount::zero()),
             history: Default::default(),
         };
 
@@ -909,14 +910,14 @@ mod test {
         };
 
         let vsh = MipStateHistory {
-            state: MipState::Error,
+            inner: MipState::Error,
             history: Default::default(),
         };
         // At state Error -> (always) false
         assert_eq!(vsh.is_coherent_with(&vi_1), false);
 
         let vsh = MipStateHistory {
-            state: MipState::defined(),
+            inner: MipState::defined(),
             history: Default::default(),
         };
         // At state Defined but no history -> false
@@ -938,7 +939,7 @@ mod test {
         });
 
         // At state Started at time now -> true
-        assert_eq!(vsh.state, MipState::started(Amount::zero()));
+        assert_eq!(vsh.inner, MipState::started(Amount::zero()));
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         // Now with another versioning info
         assert_eq!(vsh.is_coherent_with(&vi_2), false);
@@ -953,7 +954,7 @@ mod test {
         });
 
         // At state LockedIn at time now -> true
-        assert_eq!(vsh.state, MipState::locked_in());
+        assert_eq!(vsh.inner, MipState::locked_in());
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
 
@@ -999,8 +1000,8 @@ mod test {
         vs_raw_1.update_with(&vs_raw_2);
 
         // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "LockedIn"
-        assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().state, vs_1.state);
-        assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().state, vs_2_2.state);
+        assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
+        assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().inner, vs_2_2.inner);
     }
 
     #[test]
@@ -1052,8 +1053,8 @@ mod test {
         assert_eq!(_vs_raw_2_.is_err(), true);
 
         assert_eq!(vs_raw_1.update_with(&vs_raw_2), false);
-        assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().state, vs_1.state);
-        assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().state, vs_2.state);
+        assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
+        assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().inner, vs_2.inner);
 
         // 2- overlapping component version
         let mut vs_raw_1 =

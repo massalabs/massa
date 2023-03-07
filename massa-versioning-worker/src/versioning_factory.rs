@@ -22,8 +22,8 @@ pub enum FactoryError {
 #[derive(Clone)]
 /// Strategy to use when creating a new object from a factory
 pub enum FactoryStrategy {
-    /// use get_best_version (see Factory trait)
-    Best,
+    /// use get_latest_version (see Factory trait)
+    Latest,
     /// Require to create an object with this specific version
     Exact(u32),
     /// Create an object given a timestamp (e.g slot)
@@ -54,8 +54,8 @@ pub trait VersioningFactory {
     /// Access to the MipStore
     fn get_versioning_store(&self) -> MipStore;
 
-    /// Get best component version (aka last active for the factory component)
-    fn get_best_component_version(&self) -> u32 {
+    /// Get latest component version (aka last active for the factory component)
+    fn get_latest_component_version(&self) -> u32 {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
@@ -66,14 +66,14 @@ pub trait VersioningFactory {
             .iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                (vi.component == component && vsh.state == state_active)
+                (vi.component == component && vsh.inner == state_active)
                     .then_some(vi.component_version)
             })
             .unwrap_or(0)
     }
 
-    /// Get best version at given timestamp (e.g. slot)
-    fn get_best_component_version_at(&self, ts: MassaTime) -> Result<u32, FactoryError> {
+    /// Get latest version at given timestamp (e.g. slot)
+    fn get_latest_component_version_at(&self, ts: MassaTime) -> Result<u32, FactoryError> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
@@ -84,7 +84,7 @@ pub trait VersioningFactory {
             .0
             .iter()
             .rev()
-            .filter(|(vi, vsh)| vi.component == component && vsh.state == state_active)
+            .filter(|(vi, vsh)| vi.component == component && vsh.inner == state_active)
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
                 match res {
@@ -98,14 +98,14 @@ pub trait VersioningFactory {
     }
 
     /// Get all versions in 'Active state' for the associated MipComponent
-    fn get_all_best_component_versions(&self) -> Vec<u32> {
+    fn get_all_active_component_versions(&self) -> Vec<u32> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
         let state_active = MipState::active();
         let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
-            (vi.component == component && vsh.state == state_active).then_some(vi.component_version)
+            (vi.component == component && vsh.inner == state_active).then_some(vi.component_version)
         });
         let versions: Vec<u32> = iter::once(0).chain(versions_iter).collect();
         versions
@@ -119,7 +119,7 @@ pub trait VersioningFactory {
 
         let versions_iter = vi_store.0.iter().filter_map(|(vi, vsh)| {
             (vi.component == component)
-                .then_some((vi.component_version, MipStateTypeId::from(&vsh.state)))
+                .then_some((vi.component_version, MipStateTypeId::from(&vsh.inner)))
         });
         iter::once((0, MipStateTypeId::Active))
             .chain(versions_iter)
@@ -226,8 +226,8 @@ mod test {
                         _ => Err(FactoryError::UnknownVersion(v)),
                     }
                 }
-                Some(FactoryStrategy::At(ts)) => self.get_best_component_version_at(ts),
-                None | Some(FactoryStrategy::Best) => Ok(self.get_best_component_version()),
+                Some(FactoryStrategy::At(ts)) => self.get_latest_component_version_at(ts),
+                None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
             };
 
             match version {
@@ -291,8 +291,8 @@ mod test {
             index: Some(3),
         };
 
-        assert_eq!(fa.get_all_best_component_versions(), vec![0]);
-        assert_eq!(fa.get_best_component_version(), 0);
+        assert_eq!(fa.get_all_active_component_versions(), vec![0]);
+        assert_eq!(fa.get_latest_component_version(), 0);
 
         let addr_a = fa.create(&args, None);
         assert!(matches!(addr_a, Ok(Address::V0(_))));
@@ -308,7 +308,7 @@ mod test {
         // Update versioning store
         vs.0.write().0 = info;
 
-        assert_eq!(fa.get_all_best_component_versions(), vec![0, 1]);
+        assert_eq!(fa.get_all_active_component_versions(), vec![0, 1]);
         assert_eq!(
             fa.get_all_component_versions()
                 .keys()
@@ -316,7 +316,7 @@ mod test {
                 .collect::<Vec<u32>>(),
             vec![0, 1, 2]
         );
-        assert_eq!(fa.get_best_component_version(), 1);
+        assert_eq!(fa.get_latest_component_version(), 1);
         let addr_b = fa.create(&args, None);
         assert!(matches!(addr_b, Ok(Address::V1(_))));
 
@@ -394,7 +394,7 @@ mod test {
         // Update versioning store
         vs.0.write().0 = info;
 
-        assert_eq!(fa.get_all_best_component_versions(), vec![0, 1, 2]);
+        assert_eq!(fa.get_all_active_component_versions(), vec![0, 1, 2]);
         let addr_st_4 = fa.create(&args, Some(st_4));
         // Version 2 is selected but this is not implemented in factory yet
         assert!(matches!(
