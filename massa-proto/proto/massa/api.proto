@@ -54,7 +54,13 @@ message GetDatastoreEntriesRequest {
   // string value
   string id = 1;
   // string value
-  repeated DatastoreEntryFilter entries = 2;
+  repeated DatastoreEntriesQuery queries = 2;
+}
+
+// DatastoreEntries Query
+message DatastoreEntriesQuery {
+  // object value
+  DatastoreEntryFilter filter = 1;
 }
 
 message DatastoreEntryFilter {
@@ -76,15 +82,16 @@ message GetDatastoreEntriesResponse {
 message GetSelectorDrawsRequest {
   // string value
   string id = 1;
-  // string value
+  // object value
   repeated SelectorDrawsQuery queries = 2;
 }
 
+// SelectorDraws Query
 message SelectorDrawsQuery {
   // object value
   SelectorDrawsFilter filter = 1;
 }
-
+// SelectorDraws Filter
 message SelectorDrawsFilter {
   // string value
   string address = 1;

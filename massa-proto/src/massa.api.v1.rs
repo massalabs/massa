@@ -63,7 +63,15 @@ pub struct GetDatastoreEntriesRequest {
     pub id: ::prost::alloc::string::String,
     /// string value
     #[prost(message, repeated, tag = "2")]
-    pub entries: ::prost::alloc::vec::Vec<DatastoreEntryFilter>,
+    pub queries: ::prost::alloc::vec::Vec<DatastoreEntriesQuery>,
+}
+/// DatastoreEntries Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatastoreEntriesQuery {
+    /// object value
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<DatastoreEntryFilter>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -93,10 +101,11 @@ pub struct GetSelectorDrawsRequest {
     /// string value
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// string value
+    /// object value
     #[prost(message, repeated, tag = "2")]
     pub queries: ::prost::alloc::vec::Vec<SelectorDrawsQuery>,
 }
+/// SelectorDraws Query
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SelectorDrawsQuery {
@@ -104,6 +113,7 @@ pub struct SelectorDrawsQuery {
     #[prost(message, optional, tag = "1")]
     pub filter: ::core::option::Option<SelectorDrawsFilter>,
 }
+/// SelectorDraws Filter
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SelectorDrawsFilter {
