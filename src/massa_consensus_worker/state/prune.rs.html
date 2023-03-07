@@ -353,18 +353,6 @@
 <a href="#353" id="353">353</a>
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
     error::ConsensusError,
@@ -475,9 +463,7 @@
         <span class="prelude-val">Ok</span>(discarded_finals)
     }
 
-    <span class="comment">// Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
-    // to avoid too big memory consumption
-    </span><span class="kw">fn </span>prune_slot_waiting(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="kw">fn </span>prune_slot_waiting(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span><span class="self">self</span>.waiting_for_slot_index.len() &lt;= <span class="self">self</span>.config.max_future_processing_blocks {
             <span class="kw">return</span>;
         }
@@ -502,9 +488,7 @@
         });
     }
 
-    <span class="comment">// Keep only a certain (`config.max_discarded_blocks`) number of blocks that are discarded
-    // to avoid too big memory consumption
-    </span><span class="kw">fn </span>prune_discarded(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
+    <span class="kw">fn </span>prune_discarded(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">if </span><span class="self">self</span>.discarded_index.len() &lt;= <span class="self">self</span>.config.max_discarded_blocks {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
@@ -699,11 +683,6 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>prune_nonfinal_blocks_per_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.nonfinal_active_blocks_per_slot
-            .retain(|s, <span class="kw">_</span>| s.period &gt; <span class="self">self</span>.latest_final_blocks_periods[s.thread <span class="kw">as </span>usize].<span class="number">1</span>);
-    }
-
     <span class="kw">pub fn </span>prune(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">let </span>before = <span class="self">self</span>.max_cliques.len();
         <span class="comment">// Step 1: discard final blocks that are not useful to the graph anymore and return them
@@ -717,9 +696,6 @@
 
         <span class="comment">// Step 4: prune discarded
         </span><span class="self">self</span>.prune_discarded()<span class="question-mark">?</span>;
-
-        <span class="comment">// Step 5: prune nonfinal blocks per slot
-        </span><span class="self">self</span>.prune_nonfinal_blocks_per_slot();
 
         <span class="kw">let </span>after = <span class="self">self</span>.max_cliques.len();
         <span class="kw">if </span>before != after {
