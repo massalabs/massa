@@ -14,7 +14,7 @@ If he received a command, he will execute it and then go back to sleep.</p>
 <li>In case of adding a block header, it will register it and ask to protocol for dependencies if needed (him included).</li>
 <li>In case of adding a block, it will register it and ask to protocol for dependencies if needed.
 <ul>
-<li>If it already have the dependencies, it will check if it can validate the block and add it to a clique. </li>
+<li>If it already have the dependencies, it will check if it can validate the block and add it to a clique.</li>
 <li>If it’s the second block received for the same slot we will save it for denunciate the creator in the future.</li>
 <li>It it’s the third or mode we ignore the block.
 If he reached the slot time then it will run some checks and trigger, if necessary, the consensus algorithm.
