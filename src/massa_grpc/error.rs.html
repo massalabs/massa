@@ -73,6 +73,9 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::error::Error;
@@ -108,6 +111,8 @@
     </span>TimeError(<span class="attr">#[from] </span>TimeError),
     <span class="doccomment">/// Wallet error: {0}
     </span>WalletError(<span class="attr">#[from] </span>WalletError),
+    <span class="doccomment">/// Internal server error: {0}
+    </span>InternalServerError(String),
 }
 
 <span class="kw">impl </span>From&lt;GrpcError&gt; <span class="kw">for </span>tonic::Status {
@@ -121,6 +126,7 @@
             GrpcError::ModelsError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::TimeError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::WalletError(e) =&gt; tonic::Status::internal(e.to_string()),
+            GrpcError::InternalServerError(e) =&gt; tonic::Status::internal(e),
         }
     }
 }

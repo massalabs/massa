@@ -838,23 +838,14 @@
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
 <a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! gRPC API for a massa-node
 </span><span class="kw">use </span>std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
 
-<span class="kw">use crate</span>::{config::GrpcConfig, error::match_for_io_error};
+<span class="kw">use crate</span>::{
+    config::GrpcConfig,
+    error::{match_for_io_error, GrpcError},
+};
 <span class="kw">use </span>itertools::izip;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -1080,7 +1071,8 @@
             .map(|query| {
                 <span class="comment">//TODO remove unwrap
                 </span><span class="kw">let </span>filter = query.filter.unwrap();
-                Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
+                Address::from_str(filter.address.as_str())
+                .map(|address| (address, filter.key))
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;();
 
@@ -1155,7 +1147,7 @@
                                     <span class="prelude-val">Ok</span>(tuple) =&gt; {
                                         <span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) = tuple;
                                         <span class="kw">if </span>rest.is_empty() {
-                                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = res_block
+                                            <span class="kw">match </span>res_block
                                                 .verify_signature()
                                                 .and_then(|<span class="kw">_</span>| {
                                                     res_block.content.header.verify_signature()
@@ -1171,24 +1163,24 @@
                                                             endorsement.verify_signature()
                                                         })
                                                         .collect::&lt;Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ModelsError&gt;&gt;&gt;()
-                                                })
-                                            {
-                                                <span class="kw">let </span>block_id = res_block.id;
-                                                <span class="kw">let </span>slot = res_block.content.header.content.slot;
-                                                <span class="kw">let </span><span class="kw-2">mut </span>block_storage =
-                                                    storage.clone_without_refs();
-                                                block_storage.store_block(res_block.clone());
-                                                consensus_controller.register_block(
-                                                    block_id,
-                                                    slot,
-                                                    block_storage.clone(),
-                                                    <span class="bool-val">false</span>,
-                                                );
-                                                <span class="kw">let _ </span>= <span class="kw">match </span>protocol_sender
-                                                    .integrated_block(block_id, block_storage)
-                                                {
-                                                    <span class="prelude-val">Ok</span>(()) =&gt; (),
-                                                    <span class="prelude-val">Err</span>(e) =&gt; {
+                                                }) {
+                                                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                                                    <span class="kw">let </span>block_id = res_block.id;
+                                                    <span class="kw">let </span>slot =
+                                                        res_block.content.header.content.slot;
+                                                    <span class="kw">let </span><span class="kw-2">mut </span>block_storage =
+                                                        storage.clone_without_refs();
+                                                    block_storage.store_block(res_block.clone());
+                                                    consensus_controller.register_block(
+                                                        block_id,
+                                                        slot,
+                                                        block_storage.clone(),
+                                                        <span class="bool-val">false</span>,
+                                                    );
+
+                                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = protocol_sender
+                                                        .integrated_block(block_id, block_storage)
+                                                    {
                                                         <span class="kw">let </span>error = <span class="macro">format!</span>(
                                                             <span class="string">&quot;failed to propagate block: {}&quot;</span>,
                                                             e
@@ -1200,34 +1192,33 @@
                                                             error.to_owned(),
                                                         )
                                                         .<span class="kw">await</span>;
-                                                    }
-                                                };
-                                                <span class="kw">let </span>result = grpc::BlockResult {
-                                                    id: res_block.id.to_string(),
-                                                };
+                                                    };
 
-                                                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
+                                                    <span class="kw">let </span>result = grpc::BlockResult {
+                                                        id: res_block.id.to_string(),
+                                                    };
+
+                                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
                                                     .send(<span class="prelude-val">Ok</span>(grpc::SendBlocksResponse {
                                                         id: req_content.id.clone(),
                                                         message: <span class="prelude-val">Some</span>(grpc::send_blocks_response::Message::Result(result)),
                                                     }))
                                                     .<span class="kw">await
                                                 </span>{
-                                                        <span class="macro">error!</span>(<span class="string">&quot;failed to send back block response: {}&quot;</span>, e)
+                                                    <span class="macro">error!</span>(<span class="string">&quot;failed to send back block response: {}&quot;</span>, e);
                                                 };
-                                            } <span class="kw">else </span>{
-                                                <span class="kw">let </span>error = <span class="macro">format!</span>(
-                                                    <span class="string">&quot;wrong signature: {}&quot;</span>,
-                                                    res_block.signature
-                                                );
-                                                <span class="kw">let _ </span>= send_blocks_notify_error(
-                                                    req_content.id.clone(),
-                                                    tx.clone(),
-                                                    tonic::Code::InvalidArgument,
-                                                    error.to_owned(),
-                                                )
-                                                .<span class="kw">await</span>;
-                                            };
+                                                }
+                                                <span class="prelude-val">Err</span>(e) =&gt; {
+                                                    <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, e);
+                                                    <span class="kw">let _ </span>= send_blocks_notify_error(
+                                                        req_content.id.clone(),
+                                                        tx.clone(),
+                                                        tonic::Code::InvalidArgument,
+                                                        error.to_owned(),
+                                                    )
+                                                    .<span class="kw">await</span>;
+                                                }
+                                            }
                                         } <span class="kw">else </span>{
                                             <span class="kw">let _ </span>= send_blocks_notify_error(
                                                 req_content.id.clone(),
@@ -1334,7 +1325,7 @@
                                         config.thread_count,
                                         config.endorsement_count,
                                     ));
-                                <span class="kw">let </span>verified_eds_res: <span class="prelude-ty">Result</span>&lt;HashMap&lt;String, SecureShareEndorsement&gt;, ModelsError&gt; = proto_endorsement
+                                <span class="kw">let </span>verified_eds_res: <span class="prelude-ty">Result</span>&lt;HashMap&lt;String, SecureShareEndorsement&gt;, GrpcError&gt; = proto_endorsement
                                 .into_iter()
                                 .map(|proto_endorsement| {
                                     <span class="kw">let </span><span class="kw-2">mut </span>ed_serialized = Vec::new();
@@ -1345,21 +1336,17 @@
                                         <span class="prelude-val">Ok</span>(tuple) =&gt; {
                                             <span class="kw">let </span>(rest, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) = tuple;
                                                 <span class="kw">if </span>rest.is_empty() {
-                                                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = res_endorsement.verify_signature() {
-                                                        <span class="prelude-val">Ok</span>((res_endorsement.id.to_string(), res_endorsement))
-                                                    } <span class="kw">else </span>{
-                                                        <span class="prelude-val">Err</span>(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, res_endorsement.signature))
-                                                        ))
-                                                    }
+                                                    res_endorsement.verify_signature()
+                                                    .map(|<span class="kw">_</span>| (res_endorsement.id.to_string(), res_endorsement))
+                                                    .map_err(|e| e.into())
                                                 } <span class="kw">else </span>{
-                                                    <span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                                                    <span class="prelude-val">Err</span>(GrpcError::InternalServerError(
                                                         <span class="string">&quot;there is data left after endorsement deserialization&quot;</span>.to_owned()
                                                     ))
                                                 }
                                             },
                                         <span class="prelude-val">Err</span>(e) =&gt; {
-                                            <span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize endorsement: {}&quot;</span>, e)
+                                            <span class="prelude-val">Err</span>(GrpcError::InternalServerError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize endorsement: {}&quot;</span>, e)
                                             ))
                                         }
                                         };
@@ -1375,23 +1362,18 @@
                                         );
                                         cmd_sender.add_endorsements(endorsement_storage.clone());
 
-                                        <span class="kw">let _ </span>= <span class="kw">match </span>protocol_sender
+                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = protocol_sender
                                             .propagate_endorsements(endorsement_storage)
                                         {
-                                            <span class="prelude-val">Ok</span>(()) =&gt; (),
-                                            <span class="prelude-val">Err</span>(e) =&gt; {
-                                                <span class="kw">let </span>error = <span class="macro">format!</span>(
-                                                    <span class="string">&quot;failed to propagate endorsement: {}&quot;</span>,
-                                                    e
-                                                );
-                                                <span class="kw">let _ </span>= send_endorsements_notify_error(
-                                                    req_content.id.clone(),
-                                                    tx.clone(),
-                                                    tonic::Code::Internal,
-                                                    error.to_owned(),
-                                                )
-                                                .<span class="kw">await</span>;
-                                            }
+                                            <span class="kw">let </span>error =
+                                                <span class="macro">format!</span>(<span class="string">&quot;failed to propagate endorsement: {}&quot;</span>, e);
+                                            <span class="kw">let _ </span>= send_endorsements_notify_error(
+                                                req_content.id.clone(),
+                                                tx.clone(),
+                                                tonic::Code::Internal,
+                                                error.to_owned(),
+                                            )
+                                            .<span class="kw">await</span>;
                                         };
 
                                         <span class="kw">let </span>result = grpc::EndorsementResult {
@@ -1507,35 +1489,31 @@
                                         config.max_op_datastore_key_length,
                                         config.max_op_datastore_value_length,
                                     ));
-                                <span class="kw">let </span>verified_ops_res: <span class="prelude-ty">Result</span>&lt;HashMap&lt;String, SecureShareOperation&gt;, ModelsError&gt; = proto_operations
+                                <span class="kw">let </span>verified_ops_res: <span class="prelude-ty">Result</span>&lt;HashMap&lt;String, SecureShareOperation&gt;, GrpcError&gt; = proto_operations
                                 .into_iter()
                                 .map(|proto_operation| {
                                     <span class="kw">let </span><span class="kw-2">mut </span>op_serialized = Vec::new();
                                     op_serialized.extend(proto_operation.signature.as_bytes());
                                     op_serialized.extend(proto_operation.creator_public_key.as_bytes());
                                     op_serialized.extend(proto_operation.serialized_content);
-                                    <span class="kw">let </span>verified_op = <span class="kw">match </span>operation_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized) {
+                                    <span class="kw">let </span>verified_op_res = <span class="kw">match </span>operation_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized) {
                                         <span class="prelude-val">Ok</span>(tuple) =&gt; {
                                             <span class="kw">let </span>(rest, res_operation): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = tuple;
                                                 <span class="kw">if </span>rest.is_empty() {
-                                                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = res_operation.verify_signature() {
-                                                        <span class="prelude-val">Ok</span>((res_operation.id.to_string(), res_operation))
-                                                    } <span class="kw">else </span>{
-                                                        <span class="prelude-val">Err</span>(ModelsError::MassaSignatureError(massa_signature::MassaSignatureError::SignatureError(
-                                                            <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, res_operation.signature))
-                                                        ))
-                                                    }
+                                                    res_operation.verify_signature()
+                                                    .map(|<span class="kw">_</span>| (res_operation.id.to_string(), res_operation))
+                                                    .map_err(|e| e.into())
                                                 } <span class="kw">else </span>{
-                                                    <span class="prelude-val">Err</span>(ModelsError::DeserializeError(
+                                                    <span class="prelude-val">Err</span>(GrpcError::InternalServerError(
                                                         <span class="string">&quot;there is data left after operation deserialization&quot;</span>.to_owned()
                                                     ))
                                                 }
                                             },
                                         <span class="prelude-val">Err</span>(e) =&gt; {
-                                            <span class="prelude-val">Err</span>(ModelsError::DeserializeError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize operation: {}&quot;</span>, e)))
+                                            <span class="prelude-val">Err</span>(GrpcError::InternalServerError(<span class="macro">format!</span>(<span class="string">&quot;failed to deserialize operation: {}&quot;</span>, e)))
                                         }
                                         };
-                                        verified_op
+                                        verified_op_res
                                 })
                                 .collect();
 
@@ -1547,23 +1525,18 @@
                                         );
                                         cmd_sender.add_operations(operation_storage.clone());
 
-                                        <span class="kw">let _ </span>= <span class="kw">match </span>protocol_sender
-                                            .propagate_operations(operation_storage)
+                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) =
+                                            protocol_sender.propagate_operations(operation_storage)
                                         {
-                                            <span class="prelude-val">Ok</span>(()) =&gt; (),
-                                            <span class="prelude-val">Err</span>(e) =&gt; {
-                                                <span class="kw">let </span>error = <span class="macro">format!</span>(
-                                                    <span class="string">&quot;failed to propagate operations: {}&quot;</span>,
-                                                    e
-                                                );
-                                                <span class="kw">let _ </span>= send_operations_notify_error(
-                                                    req_content.id.clone(),
-                                                    tx.clone(),
-                                                    tonic::Code::Internal,
-                                                    error.to_owned(),
-                                                )
-                                                .<span class="kw">await</span>;
-                                            }
+                                            <span class="kw">let </span>error =
+                                                <span class="macro">format!</span>(<span class="string">&quot;failed to propagate operations: {}&quot;</span>, e);
+                                            <span class="kw">let _ </span>= send_operations_notify_error(
+                                                req_content.id.clone(),
+                                                tx.clone(),
+                                                tonic::Code::Internal,
+                                                error.to_owned(),
+                                            )
+                                            .<span class="kw">await</span>;
                                         };
 
                                         <span class="kw">let </span>result = grpc::OperationResult {
@@ -1580,7 +1553,10 @@
                                             }))
                                             .<span class="kw">await
                                         </span>{
-                                            <span class="macro">error!</span>(<span class="string">&quot;failed to send back operations response: {}&quot;</span>, e)
+                                            <span class="macro">error!</span>(
+                                                <span class="string">&quot;failed to send back operations response: {}&quot;</span>,
+                                                e
+                                            );
                                         };
                                     }
                                     <span class="prelude-val">Err</span>(e) =&gt; {
