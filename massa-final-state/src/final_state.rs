@@ -74,11 +74,12 @@ impl FinalState {
                 MAX_DATASTORE_KEY_LENGTH as u32,
             );
 
-            let (rest, async_pool_messages) = async_deser.deserialize(&async_pool_file).map_err(|_| {
-                FinalStateError::SnapshotError(String::from(
-                    "Could not read async pool file from snapshot",
-                ))
-            })?;
+            let (rest, async_pool_messages) =
+                async_deser.deserialize(&async_pool_file).map_err(|_| {
+                    FinalStateError::SnapshotError(String::from(
+                        "Could not read async pool file from snapshot",
+                    ))
+                })?;
 
             Ok(AsyncPool {
                 config: config.async_pool_config,

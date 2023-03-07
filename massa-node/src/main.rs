@@ -197,7 +197,7 @@ async fn launch(
             final_state_config,
             Box::new(ledger),
             selector_controller.clone(),
-            false
+            false,
         )
         .expect("could not init final state"),
     ));
