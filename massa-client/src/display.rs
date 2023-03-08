@@ -62,12 +62,14 @@ pub enum Style {
     Unknown,
     /// Any amount of Massa coin displayed
     Coins,
+    /// Any information related to the protocol, staking, peers and the consensus
+    Protocol,
     /// Any information concerning a block of the blockchain
     Block,
     /// For cryptographic signature
     Signature,
-    /// For addresses or public keys
-    Address,
+    /// For any information related to the wallet, addresses or public keys
+    Wallet,
     /// For any secret information
     Secret,
     /// To separate some informations on the screen by barely visible characters
@@ -84,9 +86,10 @@ impl Style {
             Style::Bad => 160,
             Style::Unknown => 248,
             Style::Coins => 99,
+            Style::Protocol => 226,
             Style::Block => 158,
             Style::Signature => 220,
-            Style::Address => 147,
+            Style::Wallet => 147,
             Style::Secret => 64,
             Style::Separator => 239,
         })
