@@ -1,4 +1,4 @@
-use crate::versioning::{Advance, ComponentState, ComponentStateTypeId, MipInfo, MipState};
+use crate::versioning::{Advance, ComponentState, MipInfo, MipState};
 
 use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_time::MassaTime;
