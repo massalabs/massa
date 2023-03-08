@@ -225,14 +225,22 @@ impl Completer for MassaCompleter {
 }
 
 pub enum Style {
+    /// Any information that identifies an element
     Id,
+    /// If a process is ongoing, not final, will change in the future
     Pending,
+    /// If a process is finished, fixed, and won't evolve in the future
     Finished,
+    /// Good things in general, success of an operation
     Good,
+    /// Bad things in general, failure of an operation
     Bad,
+    /// For any information that is unknown
     Unknown,
     Block,
+    /// For cryptographic signature
     Signature,
+    /// For addresses or public keys
     Address,
     Fee,
 }
