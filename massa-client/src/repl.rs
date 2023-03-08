@@ -237,12 +237,14 @@ pub enum Style {
     Bad,
     /// For any information that is unknown
     Unknown,
+    /// Any amount of Massa coin displayed
+    Coins,
+    /// Any information concerning a block of the blockchain
     Block,
     /// For cryptographic signature
     Signature,
     /// For addresses or public keys
     Address,
-    Fee,
 }
 
 impl Style {
@@ -254,10 +256,10 @@ impl Style {
             Style::Good => 118,
             Style::Bad => 160,
             Style::Unknown => 248,
+            Style::Coins => 99,
             Style::Block => 158,
             Style::Signature => 220,
             Style::Address => 147,
-            Style::Fee => 55,
         })
     }
 }
