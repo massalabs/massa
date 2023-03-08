@@ -146,17 +146,20 @@ mod test {
     use massa_time::MassaTime;
 
     // Define a struct Address with 2 versions AddressV0 & AddressV1
+    #[allow(dead_code)]
     #[derive(Debug)]
     struct AddressV0 {
         hash: String,
     }
 
+    #[allow(dead_code)]
     impl AddressV0 {
         fn new(hash: String) -> Self {
             Self { hash }
         }
     }
 
+    #[allow(dead_code)]
     #[derive(Debug)]
     struct AddressV1 {
         slot: String,
@@ -164,6 +167,7 @@ mod test {
         index: u32,
     }
 
+    #[allow(dead_code)]
     impl AddressV1 {
         fn new(slot: String, creator: String, index: u32) -> Self {
             Self {
