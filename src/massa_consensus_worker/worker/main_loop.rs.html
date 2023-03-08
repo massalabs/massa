@@ -168,6 +168,9 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{sync::mpsc, time::Instant};
 
 <span class="kw">use </span>massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
@@ -220,12 +223,12 @@
         }
     }
 
-    <span class="doccomment">/// Wait and interrupt or wait until an instant or a stop signal
+    <span class="doccomment">/// Wait and interrupt if we receive a command, a stop signal or we reach the `instant`
     ///
-    /// # Return value
-    /// Returns the error of the process of the command if any.
-    /// Returns true if we reached the instant.
-    /// Returns false if we were interrupted by a command.
+    /// # Return:
+    /// WaitingStatus::Interrupted =&gt; if a command has been executed
+    /// WaitingStatus::Ended =&gt; if we reached the `instant`
+    /// WaitingStatus::Disconnected =&gt; if we received a stop signal
     </span><span class="kw">fn </span>wait_slot_or_command(<span class="kw-2">&amp;mut </span><span class="self">self</span>, deadline: Instant) -&gt; WaitingStatus {
         <span class="kw">match </span><span class="self">self</span>.command_receiver.recv_deadline(deadline) {
             <span class="comment">// message received =&gt; manage it
@@ -286,9 +289,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>last_prune = Instant::now();
         <span class="kw">loop </span>{
             <span class="kw">match </span><span class="self">self</span>.wait_slot_or_command(<span class="self">self</span>.next_instant) {
-                WaitingStatus::Ended =&gt; {
+                <span class="comment">// When we reached the instant of the next slot
+                </span>WaitingStatus::Ended =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.config.end_timestamp {
-                        <span class="kw">if </span><span class="self">self</span>.next_instant &gt; end.estimate_instant().unwrap() {
+                        <span class="comment">// The testnet has ended. Will be removed for mainnet.
+                        </span><span class="kw">if </span><span class="self">self</span>.next_instant &gt; end.estimate_instant().unwrap() {
                             <span class="macro">info!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
                             <span class="kw">let _ </span>= <span class="self">self
                                 </span>.shared_state
@@ -310,7 +315,8 @@
                     <span class="kw">if </span>previous_cycle &lt; <span class="prelude-val">Some</span>(observed_cycle) {
                         <span class="macro">info!</span>(<span class="string">&quot;Started cycle {}&quot;</span>, observed_cycle);
                     }
-                    {
+                    <span class="comment">// Execute all operations and checks that should be performed at each slot
+                    </span>{
                         <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = <span class="self">self</span>.shared_state.write();
                         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = write_shared_state.slot_tick(<span class="self">self</span>.next_slot) {
                             <span class="macro">warn!</span>(<span class="string">&quot;Error while processing block tick: {}&quot;</span>, err);
