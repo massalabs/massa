@@ -126,8 +126,7 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
-    let mut final_state =
-        FinalState::new(cfg, Box::new(ledger), selector_controller, false).unwrap();
+    let mut final_state = FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap();
     final_state.compute_initial_draws().unwrap();
     final_state.pos_state.create_initial_cycle();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))

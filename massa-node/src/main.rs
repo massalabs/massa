@@ -100,7 +100,7 @@ async fn launch(
         }
     }
 
-    if _args.from_snapshot {
+    /*if _args.from_snapshot {
         // If we are restarting the network from a snapshot
 
         // Start from snapshot, with the config:
@@ -123,7 +123,7 @@ async fn launch(
             });*/
     } else {
         // Start from scratch
-    }
+    }*/
 
     // We start the network at LAST_START_PERIOD
 
@@ -191,15 +191,25 @@ async fn launch(
     .expect("could not start selector worker");
 
     // Create final state
-    let final_state = Arc::new(parking_lot::RwLock::new(
-        FinalState::new(
-            final_state_config,
-            Box::new(ledger),
-            selector_controller.clone(),
-            false,
-        )
-        .expect("could not init final state"),
-    ));
+    let final_state = if _args.from_snapshot {
+        Arc::new(parking_lot::RwLock::new(
+            FinalState::from_snapshot(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+            )
+            .expect("could not init final state"),
+        ))
+    } else {
+        Arc::new(parking_lot::RwLock::new(
+            FinalState::new(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+            )
+            .expect("could not init final state"),
+        ))
+    };
 
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();

@@ -35,7 +35,7 @@ pub struct AsyncPool {
     config: AsyncPoolConfig,
 
     /// Messages sorted by decreasing ID (decreasing priority)
-    pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+    pub messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 
     /// Hash of the asynchronous pool
     pub hash: Hash,
@@ -55,7 +55,7 @@ impl AsyncPool {
     pub fn from_snapshot(
         config: AsyncPoolConfig,
         messages: BTreeMap<AsyncMessageId, AsyncMessage>,
-        hash: Hash
+        hash: Hash,
     ) -> AsyncPool {
         AsyncPool {
             config,

@@ -7,23 +7,23 @@
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{
-    AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolSerializer, AsyncPoolDeserializer, Change,
+    AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer, AsyncPoolSerializer, Change,
 };
-use massa_executed_ops::{ExecutedOps, ExecutedOpsSerializer, ExecutedOpsDeserializer};
-use massa_hash::{Hash, HASH_SIZE_BYTES, HashSerializer, HashDeserializer};
+use massa_executed_ops::ExecutedOps;
+use massa_hash::{Hash, /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
-use massa_models::{slot::{Slot, SlotSerializer, SlotDeserializer}, streaming_step::StreamingStep};
-use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController, DeferredCreditsDeserializer, CycleHistoryDeserializer, CycleHistorySerializer};
-use nom::{error::{context, ParseError, ContextError}, IResult, sequence::tuple};
+use massa_models::{slot::Slot, streaming_step::StreamingStep};
+use massa_pos_exports::{
+    CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits, DeferredCreditsDeserializer,
+    DeferredCreditsSerializer, PoSFinalState, SelectorController,
+};
+use massa_serialization::{
+    /*DeserializeError,*/ Deserializer,
+    /*SerializeError,*/ Serializer, /*U64VarIntSerializer,*/
+};
 use std::collections::VecDeque;
 use tracing::info;
-use std::ops::Bound::{Included, Excluded};
-use massa_serialization::{
-    Deserializer, SerializeError, DeserializeError, Serializer, U64VarIntSerializer,
-};
 
-pub struct AsyncPoolChangesSerializer {
-}
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
     /// execution state configuration
@@ -48,7 +48,6 @@ pub struct FinalState {
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
-
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
@@ -58,7 +57,6 @@ impl FinalState {
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, FinalStateError> {
-
         // create the pos state
         let pos_state = PoSFinalState::new(
             config.pos_config.clone(),
@@ -94,7 +92,6 @@ impl FinalState {
         })
     }
 
-    
     /// Initializes a `FinalState` from a snapshot
     ///
     /// # Arguments
@@ -113,8 +110,7 @@ impl FinalState {
         })?;
 
         let max_async_pool_length = massa_models::config::constants::MAX_ASYNC_POOL_LENGTH;
-        let max_datastore_key_length =
-            massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
+        let max_datastore_key_length = massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
         let async_deser = AsyncPoolDeserializer::new(
             config.thread_count,
             max_async_pool_length,
@@ -132,8 +128,11 @@ impl FinalState {
 
         let async_pool_hash = Hash::compute_from(b"123");
 
-        let async_pool =
-            AsyncPool::from_snapshot(config.async_pool_config.clone(), async_pool_messages, async_pool_hash);
+        let async_pool = AsyncPool::from_snapshot(
+            config.async_pool_config.clone(),
+            async_pool_messages,
+            async_pool_hash,
+        );
 
         // Deserialize pos state
         let pos_state_path = config.final_state_path.join("pos_state");
@@ -144,34 +143,34 @@ impl FinalState {
         })?;
 
         let max_rolls_length = massa_models::config::constants::MAX_ROLLS_COUNT_LENGTH;
-        let max_production_stats_length = massa_models::config::constants::MAX_PRODUCTION_STATS_LENGTH;
+        let max_production_stats_length =
+            massa_models::config::constants::MAX_PRODUCTION_STATS_LENGTH;
         let max_credit_length = massa_models::config::constants::MAX_DEFERRED_CREDITS_LENGTH;
 
         let cycle_history_deser = CycleHistoryDeserializer::new(
             config.pos_config.cycle_history_length as u64,
             max_rolls_length,
-            max_production_stats_length);
-
-        let deferred_credits_deser = DeferredCreditsDeserializer::new(
-            config.thread_count,
-            max_credit_length
+            max_production_stats_length,
         );
-        
+
+        let deferred_credits_deser =
+            DeferredCreditsDeserializer::new(config.thread_count, max_credit_length);
+
         let (rest, cycle_history) = cycle_history_deser
-        .deserialize::<massa_serialization::DeserializeError>(&pos_state_file)
-        .map_err(|_| {
-            FinalStateError::SnapshotError(String::from(
-                "Could not read async pool file from snapshot",
-            ))
-        })?;
-        
+            .deserialize::<massa_serialization::DeserializeError>(&pos_state_file)
+            .map_err(|_| {
+                FinalStateError::SnapshotError(String::from(
+                    "Could not read async pool file from snapshot",
+                ))
+            })?;
+
         let (_rest, deferred_credits) = deferred_credits_deser
-        .deserialize::<massa_serialization::DeserializeError>(&rest)
-        .map_err(|_| {
-            FinalStateError::SnapshotError(String::from(
-                "Could not read async pool file from snapshot",
-            ))
-        })?;
+            .deserialize::<massa_serialization::DeserializeError>(rest)
+            .map_err(|_| {
+                FinalStateError::SnapshotError(String::from(
+                    "Could not read async pool file from snapshot",
+                ))
+            })?;
 
         let pos_state = PoSFinalState::from_snapshot(
             config.pos_config.clone(),
@@ -181,11 +180,8 @@ impl FinalState {
             &config.initial_rolls_path,
             selector,
             ledger.get_ledger_hash(),
-
         )
-        .map_err(|err| {
-            FinalStateError::PosError(format!("PoS final state init error: {}", err))
-        })?;
+        .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(
@@ -275,25 +271,8 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
-        // If feature create_snapshot enabled:
-        // * We first dump the final state changes for this slot in a temporary file
-        // * Then we apply the changes to the ledger
-        // * If the ledger write fails, then do not finalize the dump of the final state (avoid de-sync)
-        // * If the ledger write succeeds, then finalize the dump of the final state.
-        // We can atomically finalize the dump by writing it to a temp dir and renaming it.
-
-        // /!\ USE STATE CHANGES DIRECTLY IF I SERIALIZE CHANGES !
-
-        // dump_changes_to_snapshot_folder(&snapshot_folder_path, changes, slot);
-        // dump_changes_to_snapshot_folder(&snapshot_folder_path, async_pool_changes, slot);
-        /*for pool_change in changes.async_pool_changes {
-            some_append_only_log_file.write(pool_change.serialize_to_bytes);
-        }*/
-
         // apply the state changes
         // unwrap is justified because every error in PoS `apply_changes` is critical
-        self.ledger
-            .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
@@ -304,6 +283,31 @@ impl FinalState {
         // bootstrap again instead
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
+
+        if cfg!(feature = "create_snapshot") {
+            let async_pool_serializer = AsyncPoolSerializer::new();
+            let cycle_history_serializer = CycleHistorySerializer::new();
+            let deferred_credits_serializer = DeferredCreditsSerializer::new();
+
+            // Serialize Async Pool
+            let mut async_pool_buffer = Vec::new();
+            let _ =
+                async_pool_serializer.serialize(&self.async_pool.messages, &mut async_pool_buffer);
+            let async_pool_path = self.config.final_state_path.join("temp_async_pool");
+            let _ = std::fs::write(async_pool_path, async_pool_buffer);
+
+            // Serialize pos state
+            let mut pos_state_buffer = Vec::new();
+            let _ = cycle_history_serializer
+                .serialize(&self.pos_state.cycle_history, &mut pos_state_buffer);
+            let _ = deferred_credits_serializer
+                .serialize(&self.pos_state.deferred_credits, &mut pos_state_buffer);
+            let pos_state_path = self.config.final_state_path.join("temp_pos_state");
+            let _ = std::fs::write(pos_state_path, pos_state_buffer);
+        }
+
+        self.ledger
+            .apply_changes(changes.ledger_changes.clone(), self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
@@ -321,6 +325,12 @@ impl FinalState {
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, self.final_state_hash);
+
+        if cfg!(feature = "create_snapshot") {
+            // Rename the temp files to permanent files for snapshot, everything is consistent.
+            let _ = std::fs::rename("temp_async_pool", "async_pool");
+            let _ = std::fs::rename("temp_pos_state", "pos_state");
+        }
     }
 
     /// Used for bootstrap.
@@ -468,14 +478,6 @@ impl FinalState {
         Ok(res_changes)
     }
 }
-
-/*
-#[cfg(not(feature = "create_snapshot"))]
-pub fn dump_final_state() {}
-
-#[cfg(feature = "create_snapshot")]
-pub fn dump_final_state() {}
-*/
 
 #[cfg(test)]
 mod tests {

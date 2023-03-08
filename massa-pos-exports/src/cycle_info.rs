@@ -636,9 +636,10 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
     }
 }
 
+/// Serializer for cycle history
 pub struct CycleHistorySerializer {
     u64_serializer: U64VarIntSerializer,
-    cycle_info_serializer: CycleInfoSerializer
+    cycle_info_serializer: CycleInfoSerializer,
 }
 
 impl CycleHistorySerializer {
@@ -651,32 +652,49 @@ impl CycleHistorySerializer {
     }
 }
 
+impl Default for CycleHistorySerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<VecDeque<CycleInfo>> for CycleHistorySerializer {
     fn serialize(
         &self,
         value: &VecDeque<CycleInfo>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        self.u64_serializer.serialize(&(value.len() as u64), buffer)?;
-        for cycle_info in value.iter()
-        {
+        self.u64_serializer
+            .serialize(&(value.len() as u64), buffer)?;
+        for cycle_info in value.iter() {
             self.cycle_info_serializer.serialize(cycle_info, buffer)?;
         }
         Ok(())
     }
 }
 
+/// Deserializer for cycle history
 pub struct CycleHistoryDeserializer {
     u64_deserializer: U64VarIntDeserializer,
-    cycle_info_deserializer: CycleInfoDeserializer
+    cycle_info_deserializer: CycleInfoDeserializer,
 }
 
 impl CycleHistoryDeserializer {
-    /// Creates a new `CycleHistory` serializer
-    pub fn new(max_cycle_history_length: u64, max_rolls_length: u64, max_production_stats_length: u64) -> Self {
+    /// Creates a new `CycleHistory` deserializer
+    pub fn new(
+        max_cycle_history_length: u64,
+        max_rolls_length: u64,
+        max_production_stats_length: u64,
+    ) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(max_cycle_history_length)),
-            cycle_info_deserializer: CycleInfoDeserializer::new(max_rolls_length, max_production_stats_length),
+            u64_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_cycle_history_length),
+            ),
+            cycle_info_deserializer: CycleInfoDeserializer::new(
+                max_rolls_length,
+                max_production_stats_length,
+            ),
         }
     }
 }
