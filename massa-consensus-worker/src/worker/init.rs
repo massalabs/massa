@@ -173,7 +173,7 @@ impl ConsensusWorker {
             next_instant,
         };
 
-        // If the node starts after the genesis timestamp then he has to initialize his graph
+        // If the node starts after the genesis timestamp then it has to initialize its graph
         // with already produced blocks received from the bootstrap.
         if let Some(BootstrapableGraph { final_blocks }) = init_graph {
             // load final blocks

@@ -109,7 +109,7 @@ impl ConsensusState {
     }
 
     // Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
-    // to avoid too big memory consumption
+    // to avoid high memory consumption
     fn prune_slot_waiting(&mut self) {
         if self.waiting_for_slot_index.len() <= self.config.max_future_processing_blocks {
             return;
@@ -136,7 +136,7 @@ impl ConsensusState {
     }
 
     // Keep only a certain (`config.max_discarded_blocks`) number of blocks that are discarded
-    // to avoid too big memory consumption
+    // to avoid high memory consumption
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
         if self.discarded_index.len() <= self.config.max_discarded_blocks {
             return Ok(());

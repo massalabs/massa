@@ -39,11 +39,11 @@ pub trait ConsensusController: Send + Sync {
     /// The list of cliques
     fn get_cliques(&self) -> Vec<Clique>;
 
-    /// Get a part of the graph to send to a node so that he can setup his graph.
+    /// Get a part of the graph to send to a node for it to setup its graph.
     /// Used for bootstrap.
     ///
     /// # Arguments:
-    /// * `cursor`: streaming cursor containing the current state of bootstrap and what blocks have been to the client already
+    /// * `cursor`: streaming cursor containing the current state of bootstrap and what blocks have previously been sent to the client
     /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info corresponds
     ///
     /// # Returns:

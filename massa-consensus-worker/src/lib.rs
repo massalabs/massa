@@ -14,16 +14,16 @@
 //!
 //! ## Workflow description
 //!
-//! The consensus worker is launched and initialize the shared state that contains a lot of caches, counters and informations.
-//! The consensus worker wake up himself each slot or when it receives a command.
-//! If he received a command, he will execute it and then go back to sleep.
-//!  * In case of adding a block header, it will register it and ask to protocol for dependencies if needed (him included).
-//!  * In case of adding a block, it will register it and ask to protocol for dependencies if needed.
-//!    * If it already have the dependencies, it will check if it can validate the block and add it to a clique.
-//!    * If it's the second block received for the same slot we will save it for denunciate the creator in the future.
-//!    * It it's the third or mode we ignore the block.
-//! If he reached the slot time then it will run some checks and trigger, if necessary, the consensus algorithm.
-//! It also prune the block graph and the caches.
+//! The consensus worker is launched and initializes a shared state that contains caches, counters and other info.
+//! The consensus worker wakes up at each slot or when it receives a command.
+//! If a command is received, the worker executes it and goes back to sleep.
+//!  * When an incoming block header is fed to the module, it registers it and asks the Protocol module for the dependencies of the block (including the full block itself) if needed.
+//!  * When an incoming full block is fed to the module, it registers it and asks the Protocol module for its dependencies if needed.
+//!    * If the dependencies are already available, the module checks if it can validate the block and add it to a clique.
+//!    * If it's the second block received for the same slot we save it in order to denounce the creator in the future.
+//!    * If it's the third or more we ignore the block unless we asked for it explicitly as a dependency.
+//! If a queued block reaches the slot time at which it should be processed, the worker wakes up to check it and trigger, if necessary, the consensus algorithm.
+//! It then prunes the block graph and the caches.
 
 #![feature(deadline_api)]
 #![feature(let_chains)]

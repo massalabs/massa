@@ -142,7 +142,7 @@ impl ConsensusWorker {
                     if previous_cycle < Some(observed_cycle) {
                         info!("Started cycle {}", observed_cycle);
                     }
-                    // Execute all operations and checks that should performed each slot
+                    // Execute all operations and checks that should be performed at each slot
                     {
                         let mut write_shared_state = self.shared_state.write();
                         if let Err(err) = write_shared_state.slot_tick(self.next_slot) {

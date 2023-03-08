@@ -156,12 +156,12 @@ impl ConsensusState {
         Ok(())
     }
 
-    /// Store in our indexes that a block or a header is waiting for his dependencies
+    /// Store in our indexes that a block or a header is waiting for its dependencies
     ///
     /// # Arguments:
     /// `block_id`: ID of the block
     /// `header_or_block`: block or header to save
-    /// `dependencies`: dependencies waiting for this block (if it's an header it should contains himself)
+    /// `dependencies`: dependencies that this block requires (if it's a header it should contain the full block itself)
     fn store_wait_for_dependencies(
         &mut self,
         block_id: BlockId,

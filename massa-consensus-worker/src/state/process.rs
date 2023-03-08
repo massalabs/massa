@@ -50,9 +50,9 @@ impl ConsensusState {
     ) -> Result<(), ConsensusError> {
         // order processing by (slot, hash)
         while let Some((_slot, hash)) = to_ack.pop_first() {
-            // When a slot and a block id is processed through the `process` function it's possible that it find others blocks
-            // that should be processed as well. In this case the `process` function will return them and they will be added to
-            // `to_ack` vector to be processed in the future.
+            // When a slot and a block ID is processed through the `process` function, it is possible that it causes others blocks
+            // to need processing as well. In this case the `process` function will return them and they will be added to
+            // the `to_ack` vector to be processed in the future.
             to_ack.extend(self.process(hash, current_slot)?)
         }
         Ok(())
