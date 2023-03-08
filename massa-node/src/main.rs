@@ -4,6 +4,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 extern crate massa_logging;
+
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::{Receiver, TryRecvError};
@@ -608,12 +609,21 @@ async fn launch(
             version: *VERSION,
         };
 
-        let stop_handle = grpc_api
-            .serve(&grpc_config)
-            .await
-            .expect("failed to configure GRPC API");
-
-        Some(stop_handle)
+        // maybe should remove timeout later
+        if let Ok(result) =
+            tokio::time::timeout(Duration::from_secs(3), grpc_api.serve(&grpc_config)).await
+        {
+            match result {
+                Ok(stop) => Some(stop),
+                Err(e) => {
+                    error!(e);
+                    None
+                }
+            }
+        } else {
+            error!("Timeout on start grpc API");
+            None
+        }
     } else {
         None
     };
