@@ -120,7 +120,37 @@ impl Output for Wallet {
 
 impl Output for ExtendedWallet {
     fn pretty_print(&self) {
-        println!("{}", self);
+        if self.0.is_empty() {
+            client_warning!("your wallet does not contain any key, use 'wallet_generate_secret_key' to generate a new key and add it to your wallet");
+        }
+        println!("{}", Style::Separator.style("====="));
+        for entry in self.0.values() {
+            if entry.show_keys {
+                println!("Secret key: {}", Style::Secret.style(&entry.keypair));
+                println!("Public key: {}", Style::Wallet.style(entry.keypair.get_public_key()));
+            }
+            println!("Address: {} (thread {}):",
+                Style::Wallet.style(entry.address_info.address),
+                Style::Protocol.style(entry.address_info.thread),
+            );
+            println!(
+                "\tBalance: {}={}, {}={}",
+                Style::Finished.style("final"),
+                Style::Coins.style(entry.address_info.final_balance),
+                Style::Pending.style("candidate"),
+                Style::Coins.style(entry.address_info.candidate_balance),
+            );
+            println!(
+                "\tRolls: {}={}, {}={}, {}={}",
+                Style::Good.style("active"),
+                Style::Protocol.style(entry.address_info.active_rolls),
+                Style::Finished.style("final"),
+                Style::Protocol.style(entry.address_info.final_rolls),
+                Style::Pending.style("candidate"),
+                Style::Protocol.style(entry.address_info.candidate_rolls),
+            );
+            println!("{}", Style::Separator.style("====="));
+        }
     }
 }
 
