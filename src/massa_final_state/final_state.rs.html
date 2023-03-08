@@ -1011,8 +1011,8 @@
     <span class="kw">fn </span>commit_final_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="comment">// Rename the temp files to permanent files for snapshot, everything is consistent.
         </span>fs::rename(
-            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;/temp_async_pool&quot;</span>),
-            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;/async_pool&quot;</span>),
+            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;temp_async_pool&quot;</span>),
+            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;async_pool&quot;</span>),
         )
         .map_err(|err| {
             FinalStateError::SnapshotError(<span class="macro">format!</span>(
@@ -1021,8 +1021,8 @@
             ))
         })<span class="question-mark">?</span>;
         fs::rename(
-            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;/temp_pos_state&quot;</span>),
-            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;/pos_state&quot;</span>),
+            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;temp_pos_state&quot;</span>),
+            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;pos_state&quot;</span>),
         )
         .map_err(|err| {
             FinalStateError::SnapshotError(<span class="macro">format!</span>(
