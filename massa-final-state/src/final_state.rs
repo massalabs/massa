@@ -22,7 +22,8 @@ use massa_serialization::{
     /*SerializeError,*/ Serializer, /*U64VarIntSerializer,*/
 };
 use std::collections::VecDeque;
-use tracing::info;
+use std::fs;
+use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
@@ -103,7 +104,7 @@ impl FinalState {
     ) -> Result<Self, FinalStateError> {
         // Deserialize Async Pool
         let async_pool_path = config.final_state_path.join("async_pool");
-        let async_pool_file = std::fs::read(async_pool_path).map_err(|_| {
+        let async_pool_file = fs::read(async_pool_path).map_err(|_| {
             FinalStateError::SnapshotError(String::from(
                 "Could not read async pool file from snapshot",
             ))
@@ -136,7 +137,7 @@ impl FinalState {
 
         // Deserialize pos state
         let pos_state_path = config.final_state_path.join("pos_state");
-        let pos_state_file = std::fs::read(pos_state_path).map_err(|_| {
+        let pos_state_file = fs::read(pos_state_path).map_err(|_| {
             FinalStateError::SnapshotError(String::from(
                 "Could not read pos state file from snapshot",
             ))
@@ -285,25 +286,14 @@ impl FinalState {
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
         if cfg!(feature = "create_snapshot") {
-            let async_pool_serializer = AsyncPoolSerializer::new();
-            let cycle_history_serializer = CycleHistorySerializer::new();
-            let deferred_credits_serializer = DeferredCreditsSerializer::new();
-
-            // Serialize Async Pool
-            let mut async_pool_buffer = Vec::new();
-            let _ =
-                async_pool_serializer.serialize(&self.async_pool.messages, &mut async_pool_buffer);
-            let async_pool_path = self.config.final_state_path.join("temp_async_pool");
-            let _ = std::fs::write(async_pool_path, async_pool_buffer);
-
-            // Serialize pos state
-            let mut pos_state_buffer = Vec::new();
-            let _ = cycle_history_serializer
-                .serialize(&self.pos_state.cycle_history, &mut pos_state_buffer);
-            let _ = deferred_credits_serializer
-                .serialize(&self.pos_state.deferred_credits, &mut pos_state_buffer);
-            let pos_state_path = self.config.final_state_path.join("temp_pos_state");
-            let _ = std::fs::write(pos_state_path, pos_state_buffer);
+            match self.dump_final_state() {
+                Ok(()) => {
+                    debug!("Dumped temporary final state");
+                }
+                Err(err) => {
+                    debug!("Error while trying to dump temporary final state: {}", err);
+                }
+            }
         }
 
         self.ledger
@@ -327,10 +317,99 @@ impl FinalState {
             .feed_cycle_state_hash(cycle, self.final_state_hash);
 
         if cfg!(feature = "create_snapshot") {
-            // Rename the temp files to permanent files for snapshot, everything is consistent.
-            let _ = std::fs::rename("temp_async_pool", "async_pool");
-            let _ = std::fs::rename("temp_pos_state", "pos_state");
+            match self.commit_final_state() {
+                Ok(()) => {
+                    debug!("Commited final state");
+                }
+                Err(err) => {
+                    debug!("Error while trying to commit final state: {}", err);
+                }
+            }
         }
+    }
+
+    fn dump_final_state(&self) -> Result<(), FinalStateError> {
+        fs::create_dir_all(self.config.final_state_path.clone()).map_err(|err| {
+            FinalStateError::SnapshotError(format!("Could not create the snapshot dir: {}", err))
+        })?;
+
+        info!(
+            "Snapshot feature activated - Saving to path: {}",
+            self.config.final_state_path.display()
+        );
+        let async_pool_serializer = AsyncPoolSerializer::new();
+        let cycle_history_serializer = CycleHistorySerializer::new();
+        let deferred_credits_serializer = DeferredCreditsSerializer::new();
+
+        // Serialize Async Pool
+        let mut async_pool_buffer = Vec::new();
+        async_pool_serializer
+            .serialize(&self.async_pool.messages, &mut async_pool_buffer)
+            .map_err(|err| {
+                FinalStateError::SnapshotError(format!("Could not serialize async_pool: {}", err))
+            })?;
+        let async_pool_path = self.config.final_state_path.join("temp_async_pool");
+
+        fs::write(async_pool_path, async_pool_buffer).map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not write to the temp async_pool file: {}",
+                err
+            ))
+        })?;
+
+        // Serialize pos state
+        let mut pos_state_buffer = Vec::new();
+        cycle_history_serializer
+            .serialize(&self.pos_state.cycle_history, &mut pos_state_buffer)
+            .map_err(|err| {
+                FinalStateError::SnapshotError(format!(
+                    "Could not serialize cycle_history: {}",
+                    err
+                ))
+            })?;
+        deferred_credits_serializer
+            .serialize(&self.pos_state.deferred_credits, &mut pos_state_buffer)
+            .map_err(|err| {
+                FinalStateError::SnapshotError(format!(
+                    "Could not serialize deferred_credits: {}",
+                    err
+                ))
+            })?;
+        let pos_state_path = self.config.final_state_path.join("temp_pos_state");
+        fs::write(pos_state_path, pos_state_buffer).map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not write to the temp pos_state file: {}",
+                err
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    fn commit_final_state(&self) -> Result<(), FinalStateError> {
+        // Rename the temp files to permanent files for snapshot, everything is consistent.
+        fs::rename(
+            self.config.final_state_path.join("/temp_async_pool"),
+            self.config.final_state_path.join("/async_pool"),
+        )
+        .map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not rename the temp sync_pool file: {}",
+                err
+            ))
+        })?;
+        fs::rename(
+            self.config.final_state_path.join("/temp_pos_state"),
+            self.config.final_state_path.join("/pos_state"),
+        )
+        .map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not rename the temp pos_state file: {}",
+                err
+            ))
+        })?;
+
+        Ok(())
     }
 
     /// Used for bootstrap.
