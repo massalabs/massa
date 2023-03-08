@@ -223,8 +223,42 @@ impl Output for Vec<IpAddr> {
 
 impl Output for Vec<OperationInfo> {
     fn pretty_print(&self) {
-        for operation_info in self {
-            println!("{}", operation_info);
+        for info in self {
+            println!("{}", style("==========").color256(237));
+            print!("Operation {}", Style::Id.style(info.id));
+            if info.in_pool {
+                print!(", {}", Style::Pending.style("in pool"));
+            }
+            if let Some(f) = info.is_operation_final {
+                print!(", operation is {}", if f {
+                    Style::Finished.style("final")
+                } else {
+                    Style::Pending.style("not final")
+                });
+            } else {
+                print!(", finality {}", Style::Unknown.style("unknown"));
+            }
+            println!(", {}", match info.op_exec_status {
+                Some(true) => Style::Good.style("success"),
+                Some(false) => Style::Bad.style("failed"),
+                None => Style::Unknown.style("unknown status"),
+            });
+            if info.in_blocks.is_empty() {
+                println!("{}", Style::Block.style("Not in any blocks"));
+            } else {
+                println!("In blocks:");
+                for bid in info.in_blocks.iter() {
+                    println!("\t- {}", Style::Block.style(bid));
+                }
+            }
+            println!("Signature: {}", Style::Signature.style(info.operation.signature));
+            println!("Creator pubkey: {}",
+                Style::Address.style(info.operation.content_creator_pub_key));
+            println!("Creator address: {}",
+                Style::Address.style(info.operation.content_creator_address));
+            println!("Fee: {}", Style::Coins.style(info.operation.content.fee));
+            println!("Expire period: {}", Style::Pending.style(info.operation.content.expire_period));
+            println!("Operation type: {}", Style::Id.style(&info.operation.content.op));
         }
     }
 }
