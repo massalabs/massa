@@ -308,9 +308,6 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -486,9 +483,7 @@
             next_instant,
         };
 
-        <span class="comment">// If the node starts after the genesis timestamp then it has to initialize its graph
-        // with already produced blocks received from the bootstrap.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BootstrapableGraph { final_blocks }) = init_graph {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(BootstrapableGraph { final_blocks }) = init_graph {
             <span class="comment">// load final blocks
             </span><span class="kw">let </span>final_blocks: Vec&lt;(ActiveBlock, Storage)&gt; = final_blocks
                 .into_iter()
@@ -505,8 +500,8 @@
                     }
                 }
             }
-            <span class="comment">// Initialize the shared state between the worker and the interface used by the other modules.
-            </span>{
+
+            {
                 <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.genesis_hashes = genesis_block_ids;
                 write_shared_state.active_index =
@@ -530,8 +525,7 @@
 
             res_consensus.claim_parent_refs()<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
-            <span class="comment">// Initialize the shared state between the worker and the interface used by the other modules.
-            </span>{
+            {
                 <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.active_index = genesis_block_ids.iter().copied().collect();
                 write_shared_state.latest_final_blocks_periods =

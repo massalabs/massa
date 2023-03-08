@@ -521,9 +521,6 @@
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -616,9 +613,6 @@
     </span><span class="kw">pub </span>wishlist: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
     <span class="doccomment">/// previous blockclique notified to Execution
     </span><span class="kw">pub </span>prev_blockclique: PreHashMap&lt;BlockId, Slot&gt;,
-    <span class="doccomment">/// Blocks indexed by slot (used for multi-stake limiting). Blocks
-    /// should be saved in this map when we receive the header or the full block directly.
-    </span><span class="kw">pub </span>nonfinal_active_blocks_per_slot: HashMap&lt;Slot, PreHashSet&lt;BlockId&gt;&gt;,
 }
 
 <span class="kw">impl </span>ConsensusState {
