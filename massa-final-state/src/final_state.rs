@@ -389,8 +389,8 @@ impl FinalState {
     fn commit_final_state(&self) -> Result<(), FinalStateError> {
         // Rename the temp files to permanent files for snapshot, everything is consistent.
         fs::rename(
-            self.config.final_state_path.join("/temp_async_pool"),
-            self.config.final_state_path.join("/async_pool"),
+            self.config.final_state_path.join("temp_async_pool"),
+            self.config.final_state_path.join("async_pool"),
         )
         .map_err(|err| {
             FinalStateError::SnapshotError(format!(
@@ -399,8 +399,8 @@ impl FinalState {
             ))
         })?;
         fs::rename(
-            self.config.final_state_path.join("/temp_pos_state"),
-            self.config.final_state_path.join("/pos_state"),
+            self.config.final_state_path.join("temp_pos_state"),
+            self.config.final_state_path.join("pos_state"),
         )
         .map_err(|err| {
             FinalStateError::SnapshotError(format!(
