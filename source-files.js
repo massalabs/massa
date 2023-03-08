@@ -13,6 +13,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_factory_exports":["",[],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]],\
 "massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
 "massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]],\
+"massa_grpc":["",[],["api.rs","config.rs","error.rs","lib.rs"]],\
 "massa_hash":["",[],["error.rs","hash.rs","lib.rs","settings.rs"]],\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","types.rs"]],\
 "massa_ledger_worker":["",[],["ledger.rs","ledger_db.rs","lib.rs"]],\
@@ -25,6 +26,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_pool_worker":["",[],["controller_impl.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","types.rs","worker.rs"]],\
 "massa_pos_exports":["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
+"massa_proto":["",[],["google.api.rs","google.rpc.rs","lib.rs","mapping.rs","massa.api.v1.rs"]],\
 "massa_protocol_exports":["",[["tests",[],["mock_network_controller.rs","mod.rs","tools.rs"]]],["channels.rs","error.rs","lib.rs","protocol_controller.rs","settings.rs"]],\
 "massa_protocol_worker":["",[],["cache.rs","checked_operations.rs","lib.rs","node_info.rs","protocol_network.rs","protocol_worker.rs","sig_verifier.rs","worker_operations_impl.rs"]],\
 "massa_sdk":["",[],["config.rs","lib.rs"]],\
