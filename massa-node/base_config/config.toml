@@ -160,7 +160,7 @@
     max_endorsements_propagation_time = 48000
 
 [network]
-    # port on which to listen for protocol communication
+    # port on which to listen for protocol communication. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
     bind = "[::]:31244"
     # port used by protocol
     protocol_port = 31244
@@ -240,7 +240,7 @@
     bootstrap_whitelist_path = "base_config/bootstrap_whitelist.json"
     # path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
     bootstrap_blacklist_path = "base_config/bootstrap_blacklist.json"
-    # [optional] port on which to listen for incoming bootstrap requests
+    # [optional] port on which to listen for incoming bootstrap requests. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
