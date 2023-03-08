@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
+use crate::denunciation::{Denounceable, DenunciationData, DenunciationDataSerializer};
 use crate::{address::Address, error::ModelsError};
 use massa_hash::Hash;
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{Deserializer, OptionSerializer, SerializeError, Serializer};
 use massa_signature::{
     KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
     PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
@@ -54,7 +55,7 @@ pub trait Id {
 /// Trait that define a structure that can be signed for secure sharing.
 pub trait SecureShareContent
 where
-    Self: Sized + Display,
+    Self: Sized + Display + Denounceable,
 {
     /// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
@@ -65,9 +66,18 @@ where
     ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
+        let denunciation_data = content.get_denunciation_data();
+        let mut de_data_ser = Vec::new();
+        let de_data_serializer =
+            OptionSerializer::<DenunciationData, DenunciationDataSerializer>::new(
+                DenunciationDataSerializer::new(),
+            );
+        de_data_serializer.serialize(&denunciation_data, &mut de_data_ser)?;
+
         let mut hash_data = Vec::new();
         let public_key = keypair.get_public_key();
         hash_data.extend(public_key.to_bytes());
+        hash_data.extend(de_data_ser);
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
         let creator_address = Address::from_public_key(&public_key);
@@ -136,6 +146,23 @@ where
         };
         let creator_address = Address::from_public_key(&creator_public_key);
         let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
+
+        let denunciation_data = content.get_denunciation_data();
+        let mut de_data_ser = Vec::new();
+        let de_data_serializer =
+            OptionSerializer::<DenunciationData, DenunciationDataSerializer>::new(
+                DenunciationDataSerializer::new(),
+            );
+        de_data_serializer
+            .serialize(&denunciation_data, &mut de_data_ser)
+            .map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    rest,
+                    nom::error::ErrorKind::Fail,
+                ))
+            })?;
+
+        serialized_full_data.extend(de_data_ser);
         serialized_full_data.extend(&content_serialized);
         Ok((
             rest,
