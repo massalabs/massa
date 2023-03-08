@@ -400,39 +400,6 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ask_password;
@@ -786,41 +753,8 @@
 
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;OperationInfo&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">for </span>info <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">print!</span>(<span class="string">&quot;Operation {}&quot;</span>, style(info.id).color256(<span class="number">175</span>));
-            <span class="kw">if </span>info.in_pool {
-                <span class="macro">print!</span>(<span class="string">&quot;, {}&quot;</span>, style(<span class="string">&quot;in pool&quot;</span>).color256(<span class="number">172</span>));
-            }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(f) = info.is_operation_final {
-                <span class="macro">print!</span>(<span class="string">&quot;, operation is {}&quot;</span>,
-                    style(<span class="kw">if </span>f { <span class="string">&quot;final&quot; </span>} <span class="kw">else </span>{ <span class="string">&quot;not final&quot; </span>}).color256(<span class="number">105</span>)
-                );
-            } <span class="kw">else </span>{
-                <span class="macro">print!</span>(<span class="string">&quot;, finality {}&quot;</span>, style(<span class="string">&quot;unknown&quot;</span>).color256(<span class="number">248</span>));
-            }
-            <span class="macro">println!</span>(<span class="string">&quot;, {}&quot;</span>, <span class="kw">match </span>info.op_exec_status {
-                <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; style(<span class="string">&quot;success&quot;</span>).color256(<span class="number">118</span>),
-                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; style(<span class="string">&quot;failed&quot;</span>).color256(<span class="number">160</span>),
-                <span class="prelude-val">None </span>=&gt; style(<span class="string">&quot;unknown status&quot;</span>).color256(<span class="number">248</span>),
-            });
-            <span class="kw">if </span>info.in_blocks.is_empty() {
-                <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="string">&quot;Not in any blocks&quot;</span>).color256(<span class="number">248</span>));
-            } <span class="kw">else </span>{
-                <span class="macro">println!</span>(<span class="string">&quot;In blocks:&quot;</span>);
-                <span class="kw">for </span>bid <span class="kw">in </span>info.in_blocks.iter() {
-                    <span class="macro">println!</span>(<span class="string">&quot;\t- {}&quot;</span>, style(bid).color256(<span class="number">158</span>));
-                }
-            }
-            <span class="macro">println!</span>(<span class="string">&quot;Signature: {}&quot;</span>, style(info.operation.signature).color256(<span class="number">220</span>));
-            <span class="macro">println!</span>(<span class="string">&quot;Creator pubkey: {}&quot;</span>,
-                style(info.operation.content_creator_pub_key).color256(<span class="number">147</span>)
-            );
-            <span class="macro">println!</span>(<span class="string">&quot;Creator address: {}&quot;</span>,
-                style(info.operation.content_creator_address).color256(<span class="number">147</span>)
-            );
-            <span class="macro">println!</span>(<span class="string">&quot;Fee: {}&quot;</span>, style(info.operation.content.fee).color256(<span class="number">248</span>));
-            <span class="macro">println!</span>(<span class="string">&quot;Expire period: {}&quot;</span>, style(info.operation.content.expire_period).color256(<span class="number">203</span>));
-            <span class="macro">println!</span>(<span class="string">&quot;Operation type: {}&quot;</span>, style(<span class="kw-2">&amp;</span>info.operation.content.op).color256(<span class="number">224</span>));
+        <span class="kw">for </span>operation_info <span class="kw">in </span><span class="self">self </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, operation_info);
         }
     }
 }
