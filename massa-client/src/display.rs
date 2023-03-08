@@ -70,6 +70,8 @@ pub enum Style {
     Address,
     /// For any secret information
     Secret,
+    /// To separate some informations on the screen by barely visible characters
+    Separator,
 }
 
 impl Style {
@@ -86,6 +88,7 @@ impl Style {
             Style::Signature => 220,
             Style::Address => 147,
             Style::Secret => 64,
+            Style::Separator => 239,
         })
     }
 }
