@@ -44,12 +44,12 @@ pub trait ConsensusController: Send + Sync {
     ///
     /// # Arguments:
     /// * `cursor`: streaming cursor containing the current state of bootstrap and what blocks have previously been sent to the client
-    /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info corresponds
+    /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info match the slot of the execution
     ///
     /// # Returns:
     /// * A portion of the graph
     /// * The list of outdated block ids
-    /// * The streaming step value after the current iteration
+    /// * The streaming step value after the current iteration to be saved to be able to use it as parameters and resume the bootstrap
     #[allow(clippy::type_complexity)]
     fn get_bootstrap_part(
         &self,

@@ -24,13 +24,21 @@ use tracing::log::{debug, info, warn};
 
 use super::ConsensusState;
 
+/// All informations necessary to add a block to the graph
 pub(crate) struct BlockInfos {
+    /// The block creator
     pub creator: PublicKey,
+    /// The slot of the block
     pub slot: Slot,
+    /// The list of the parents of the block (block_id, period) (one block per thread)
     pub parents_hash_period: Vec<(BlockId, u64)>,
+    /// The list of the blocks that are incompatible with this block
     pub incompatibilities: PreHashSet<BlockId>,
+    /// Number of incompatibilities this block inherit from his parents
     pub inherited_incompatibilities_count: usize,
+    /// THe storage can the block himself and his operations and endorsements
     pub storage: Storage,
+    /// The fitness of the block
     pub fitness: u64,
 }
 

@@ -332,11 +332,14 @@ impl ConsensusState {
         Ok(())
     }
 
+    /// Clear the cache of blocks indexed by slot.
+    /// Slot are not saved anymore, when the block in the same thread with a equal or greater period is finalized.
     fn prune_nonfinal_blocks_per_slot(&mut self) {
         self.nonfinal_active_blocks_per_slot
             .retain(|s, _| s.period > self.latest_final_blocks_periods[s.thread as usize].1);
     }
 
+    /// Clear all the caches and blocks waiting to be processed to avoid too much memory usage.
     pub fn prune(&mut self) -> Result<(), ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
