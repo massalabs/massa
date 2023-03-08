@@ -400,6 +400,36 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ask_password;
@@ -623,6 +653,36 @@
             }
             <span class="prelude-val">Ok</span>((<span class="number">0</span>, candidates))
         }
+    }
+}
+
+<span class="kw">pub enum </span>Style {
+    Id,
+    Pending,
+    Finished,
+    Good,
+    Bad,
+    Unknown,
+    Block,
+    Signature,
+    Address,
+    Fee,
+}
+
+<span class="kw">impl </span>Style {
+    <span class="kw">fn </span>style&lt;T: ToString&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: T) -&gt; console::StyledObject&lt;std::string::String&gt; {
+        style(msg.to_string()).color256(<span class="kw">match </span><span class="self">self </span>{
+            Style::Id =&gt; <span class="number">175</span>,
+            Style::Pending =&gt; <span class="number">172</span>,
+            Style::Finished =&gt; <span class="number">105</span>,
+            Style::Good =&gt; <span class="number">118</span>,
+            Style::Bad =&gt; <span class="number">160</span>,
+            Style::Unknown =&gt; <span class="number">248</span>,
+            Style::Block =&gt; <span class="number">158</span>,
+            Style::Signature =&gt; <span class="number">220</span>,
+            Style::Address =&gt; <span class="number">147</span>,
+            Style::Fee =&gt; <span class="number">55</span>,
+        })
     }
 }
 
