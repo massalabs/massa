@@ -430,6 +430,16 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ask_password;
@@ -657,16 +667,26 @@
 }
 
 <span class="kw">pub enum </span>Style {
-    Id,
-    Pending,
-    Finished,
-    Good,
-    Bad,
-    Unknown,
-    Block,
-    Signature,
-    Address,
-    Fee,
+    <span class="doccomment">/// Any information that identifies an element
+    </span>Id,
+    <span class="doccomment">/// If a process is ongoing, not final, will change in the future
+    </span>Pending,
+    <span class="doccomment">/// If a process is finished, fixed, and won&#39;t evolve in the future
+    </span>Finished,
+    <span class="doccomment">/// Good things in general, success of an operation
+    </span>Good,
+    <span class="doccomment">/// Bad things in general, failure of an operation
+    </span>Bad,
+    <span class="doccomment">/// For any information that is unknown
+    </span>Unknown,
+    <span class="doccomment">/// Any amount of Massa coin displayed
+    </span>Coins,
+    <span class="doccomment">/// Any information concerning a block of the blockchain
+    </span>Block,
+    <span class="doccomment">/// For cryptographic signature
+    </span>Signature,
+    <span class="doccomment">/// For addresses or public keys
+    </span>Address,
 }
 
 <span class="kw">impl </span>Style {
@@ -678,10 +698,10 @@
             Style::Good =&gt; <span class="number">118</span>,
             Style::Bad =&gt; <span class="number">160</span>,
             Style::Unknown =&gt; <span class="number">248</span>,
+            Style::Coins =&gt; <span class="number">99</span>,
             Style::Block =&gt; <span class="number">158</span>,
             Style::Signature =&gt; <span class="number">220</span>,
             Style::Address =&gt; <span class="number">147</span>,
-            Style::Fee =&gt; <span class="number">55</span>,
         })
     }
 }
