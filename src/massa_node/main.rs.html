@@ -946,42 +946,12 @@
 <a href="#946" id="946">946</a>
 <a href="#947" id="947">947</a>
 <a href="#948" id="948">948</a>
-<a href="#949" id="949">949</a>
-<a href="#950" id="950">950</a>
-<a href="#951" id="951">951</a>
-<a href="#952" id="952">952</a>
-<a href="#953" id="953">953</a>
-<a href="#954" id="954">954</a>
-<a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
-<a href="#976" id="976">976</a>
-<a href="#977" id="977">977</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 </span><span class="kw">extern crate </span>massa_logging;
-
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 
 <span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
@@ -999,8 +969,6 @@
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 <span class="kw">use </span>massa_factory_worker::start_factory;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
-<span class="kw">use </span>massa_grpc::api::MassaGrpcService;
-<span class="kw">use </span>massa_grpc::config::GrpcConfig;
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_logging::massa_trace;
@@ -1026,7 +994,7 @@
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
     T0, THREAD_COUNT, VERSION,
 };
-<span class="kw">use </span>massa_models::config::{CONSENSUS_BOOTSTRAP_PART_SIZE, MAX_OPERATIONS_PER_MESSAGE};
+<span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 <span class="kw">use </span>massa_network_worker::start_network_controller;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -1072,7 +1040,6 @@
     StopHandle,
     StopHandle,
     StopHandle,
-    <span class="prelude-ty">Option</span>&lt;massa_grpc::api::StopHandle&gt;,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
     <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
@@ -1081,7 +1048,34 @@
         }
     }
 
-    <span class="comment">// Storage shared by multiple components.
+    <span class="comment">/*if _args.from_snapshot {
+        // If we are restarting the network from a snapshot
+
+        // Start from snapshot, with the config:
+        // SETTINGS.snapshot.final_state_path.clone()
+
+        // 1. Init some structs from the files:
+
+        //let final_state_deser = massa_final_state::FinalState::new();
+
+        /*
+        let async_pool_deser = massa_async_pool::AsyncPoolDeserializer::new(THREAD_COUNT, MAX_ASYNC_POOL_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH);
+        let async_pool: Result&lt;massa_async_pool::AsyncPool, SnapshotError&gt; = std::fs::read_to_string(&quot;file_path&quot;)
+            .map_err(|_| {
+                SnapshotError()
+            })
+            .and_then(|file_str| {
+                serde_json::from_str(&amp;file_str).map_err(|e| {
+                    SnapshotError()
+                })
+            });*/
+    } else {
+        // Start from scratch
+    }*/
+
+    // We start the network at LAST_START_PERIOD
+
+    // Storage shared by multiple components.
     </span><span class="kw">let </span>shared_storage: Storage = Storage::create_root();
 
     <span class="comment">// init final state
@@ -1119,6 +1113,8 @@
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
+        final_state_path: SETTINGS.snapshot.final_state_path.clone(),
+        last_start_period: SETTINGS.snapshot.last_start_period,
     };
 
     <span class="comment">// Remove current disk ledger if there is one
@@ -1143,14 +1139,25 @@
     .expect(<span class="string">&quot;could not start selector worker&quot;</span>);
 
     <span class="comment">// Create final state
-    </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
-        FinalState::new(
-            final_state_config,
-            Box::new(ledger),
-            selector_controller.clone(),
-        )
-        .expect(<span class="string">&quot;could not init final state&quot;</span>),
-    ));
+    </span><span class="kw">let </span>final_state = <span class="kw">if </span>_args.from_snapshot {
+        Arc::new(parking_lot::RwLock::new(
+            FinalState::from_snapshot(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
+        ))
+    } <span class="kw">else </span>{
+        Arc::new(parking_lot::RwLock::new(
+            FinalState::new(
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
+        ))
+    };
 
     <span class="comment">// interrupt signal listener
     </span><span class="kw">let </span>stop_signal = signal::ctrl_c();
@@ -1530,9 +1537,9 @@
     <span class="comment">// spawn Massa API
     </span><span class="kw">let </span>api = API::&lt;ApiV2&gt;::new(
         consensus_controller.clone(),
-        consensus_channels.clone(),
+        consensus_channels,
         execution_controller.clone(),
-        pool_channels.clone(),
+        pool_channels,
         api_config.clone(),
         <span class="kw-2">*</span>VERSION,
     );
@@ -1544,66 +1551,6 @@
     <span class="comment">// Disable WebSockets for Private and Public API&#39;s
     </span><span class="kw">let </span><span class="kw-2">mut </span>api_config = api_config.clone();
     api_config.enable_ws = <span class="bool-val">false</span>;
-
-    <span class="comment">// Wheter to spawn gRPC API
-    </span><span class="kw">let </span>grpc_handle = <span class="kw">if </span>SETTINGS.grpc.enabled {
-        <span class="kw">let </span>grpc_config = GrpcConfig {
-            enabled: SETTINGS.grpc.enabled,
-            accept_http1: SETTINGS.grpc.accept_http1,
-            enable_reflection: SETTINGS.grpc.enable_reflection,
-            bind: SETTINGS.grpc.bind,
-            accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
-            send_compressed: SETTINGS.grpc.send_compressed.clone(),
-            max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
-            max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
-            thread_count: THREAD_COUNT,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            endorsement_count: ENDORSEMENT_COUNT,
-            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-            max_parameter_size: MAX_PARAMETERS_SIZE,
-            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-            genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            t0: T0,
-            max_channel_size: SETTINGS.grpc.max_channel_size,
-            draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
-        };
-
-        <span class="kw">let </span>grpc_api = MassaGrpcService {
-            consensus_controller: consensus_controller.clone(),
-            consensus_channels: consensus_channels.clone(),
-            execution_controller: execution_controller.clone(),
-            pool_channels,
-            pool_command_sender: pool_controller.clone(),
-            protocol_command_sender: ProtocolCommandSender(protocol_command_sender.clone()),
-            selector_controller: selector_controller.clone(),
-            storage: shared_storage.clone(),
-            grpc_config: grpc_config.clone(),
-            version: <span class="kw-2">*</span>VERSION,
-        };
-
-        <span class="comment">// maybe should remove timeout later
-        </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(result) =
-            tokio::time::timeout(Duration::from_secs(<span class="number">3</span>), grpc_api.serve(<span class="kw-2">&amp;</span>grpc_config)).<span class="kw">await
-        </span>{
-            <span class="kw">match </span>result {
-                <span class="prelude-val">Ok</span>(stop) =&gt; <span class="prelude-val">Some</span>(stop),
-                <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">error!</span>(e);
-                    <span class="prelude-val">None
-                </span>}
-            }
-        } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Timeout on start grpc API&quot;</span>);
-            <span class="prelude-val">None
-        </span>}
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
 
     <span class="comment">// spawn private API
     </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
@@ -1679,7 +1626,6 @@
         api_private_handle,
         api_public_handle,
         api_handle,
-        grpc_handle,
     )
 }
 
@@ -1709,7 +1655,6 @@
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
-    grpc_handle: <span class="prelude-ty">Option</span>&lt;massa_grpc::api::StopHandle&gt;,
 ) {
     <span class="comment">// stop bootstrap
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
@@ -1727,11 +1672,6 @@
 
     <span class="comment">// stop Massa API
     </span>api_handle.stop();
-
-    <span class="comment">// stop Massa gRPC API
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_handle {
-        handle.stop();
-    }
 
     <span class="comment">// stop factory
     </span>factory_manager.stop();
@@ -1772,6 +1712,10 @@
     <span class="doccomment">/// Wallet password
     </span><span class="attr">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
+    <span class="doccomment">/// Snapshot file
+    </span><span class="attr">#[structopt(long = <span class="string">&quot;from-snapshot&quot;</span>)]
+    </span>from_snapshot: bool,
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
     </span><span class="doccomment">/// Deadlocks detector
@@ -1872,7 +1816,6 @@
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
         ) = launch(<span class="kw-2">&amp;</span>args, node_wallet.clone()).<span class="kw">await</span>;
 
         <span class="comment">// interrupt signal listener
@@ -1941,7 +1884,6 @@
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
         )
         .<span class="kw">await</span>;
 
