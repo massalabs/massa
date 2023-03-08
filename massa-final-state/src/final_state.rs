@@ -7,17 +7,23 @@
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{
-    AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer, Change,
+    AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolSerializer, AsyncPoolDeserializer, Change,
 };
-use massa_executed_ops::ExecutedOps;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_executed_ops::{ExecutedOps, ExecutedOpsSerializer, ExecutedOpsDeserializer};
+use massa_hash::{Hash, HASH_SIZE_BYTES, HashSerializer, HashDeserializer};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
-use massa_models::{slot::Slot, streaming_step::StreamingStep};
-use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController};
-use massa_serialization::Deserializer;
+use massa_models::{slot::{Slot, SlotSerializer, SlotDeserializer}, streaming_step::StreamingStep};
+use massa_pos_exports::{DeferredCredits, PoSFinalState, SelectorController, DeferredCreditsDeserializer, CycleHistoryDeserializer, CycleHistorySerializer};
+use nom::{error::{context, ParseError, ContextError}, IResult, sequence::tuple};
 use std::collections::VecDeque;
 use tracing::info;
+use std::ops::Bound::{Included, Excluded};
+use massa_serialization::{
+    Deserializer, SerializeError, DeserializeError, Serializer, U64VarIntSerializer,
+};
 
+pub struct AsyncPoolChangesSerializer {
+}
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
     /// execution state configuration
@@ -42,6 +48,7 @@ pub struct FinalState {
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
+
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
@@ -50,72 +57,7 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
-        from_snapshot: bool,
     ) -> Result<Self, FinalStateError> {
-        if from_snapshot {
-            // Deserialize Async Pool
-
-            let async_pool_path = config.final_state_path.join("async_pool");
-            let async_pool_file = std::fs::read(async_pool_path).map_err(|_| {
-                FinalStateError::SnapshotError(String::from(
-                    "Could not read async pool file from snapshot",
-                ))
-            })?;
-
-            let max_async_pool_length = massa_models::config::constants::MAX_ASYNC_POOL_LENGTH;
-            let max_datastore_key_length =
-                massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
-            let async_deser = AsyncPoolDeserializer::new(
-                config.thread_count,
-                max_async_pool_length,
-                config.async_pool_config.max_async_message_data,
-                max_datastore_key_length as u32,
-            );
-
-            let (_, async_pool_messages) = async_deser
-                .deserialize::<massa_serialization::DeserializeError>(&async_pool_file)
-                .map_err(|_| {
-                    FinalStateError::SnapshotError(String::from(
-                        "Could not read async pool file from snapshot",
-                    ))
-                })?;
-
-            let async_pool =
-                AsyncPool::from_messages(config.async_pool_config.clone(), async_pool_messages);
-
-            // create the pos state
-            let pos_state = PoSFinalState::new(
-                config.pos_config.clone(),
-                &config.initial_seed_string,
-                &config.initial_rolls_path,
-                selector,
-                ledger.get_ledger_hash(),
-            )
-            .map_err(|err| {
-                FinalStateError::PosError(format!("PoS final state init error: {}", err))
-            })?;
-
-            // attach at the output of the latest initial final slot, that is the last genesis slot
-            let slot = Slot::new(
-                config.last_start_period,
-                config.thread_count.saturating_sub(1),
-            );
-
-            // create a default executed ops
-            let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
-
-            // create the final state
-            return Ok(FinalState {
-                slot,
-                ledger,
-                async_pool,
-                pos_state,
-                config,
-                executed_ops,
-                changes_history: Default::default(), // no changes in history
-                final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
-            });
-        }
 
         // create the pos state
         let pos_state = PoSFinalState::new(
@@ -135,6 +77,121 @@ impl FinalState {
 
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
+
+        // create a default executed ops
+        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
+
+        // create the final state
+        Ok(FinalState {
+            slot,
+            ledger,
+            async_pool,
+            pos_state,
+            config,
+            executed_ops,
+            changes_history: Default::default(), // no changes in history
+            final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
+        })
+    }
+
+    
+    /// Initializes a `FinalState` from a snapshot
+    ///
+    /// # Arguments
+    /// * `config`: the configuration of the execution state
+    pub fn from_snapshot(
+        config: FinalStateConfig,
+        ledger: Box<dyn LedgerController>,
+        selector: Box<dyn SelectorController>,
+    ) -> Result<Self, FinalStateError> {
+        // Deserialize Async Pool
+        let async_pool_path = config.final_state_path.join("async_pool");
+        let async_pool_file = std::fs::read(async_pool_path).map_err(|_| {
+            FinalStateError::SnapshotError(String::from(
+                "Could not read async pool file from snapshot",
+            ))
+        })?;
+
+        let max_async_pool_length = massa_models::config::constants::MAX_ASYNC_POOL_LENGTH;
+        let max_datastore_key_length =
+            massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
+        let async_deser = AsyncPoolDeserializer::new(
+            config.thread_count,
+            max_async_pool_length,
+            config.async_pool_config.max_async_message_data,
+            max_datastore_key_length as u32,
+        );
+
+        let (_, async_pool_messages) = async_deser
+            .deserialize::<massa_serialization::DeserializeError>(&async_pool_file)
+            .map_err(|_| {
+                FinalStateError::SnapshotError(String::from(
+                    "Could not read async pool file from snapshot",
+                ))
+            })?;
+
+        let async_pool_hash = Hash::compute_from(b"123");
+
+        let async_pool =
+            AsyncPool::from_snapshot(config.async_pool_config.clone(), async_pool_messages, async_pool_hash);
+
+        // Deserialize pos state
+        let pos_state_path = config.final_state_path.join("pos_state");
+        let pos_state_file = std::fs::read(pos_state_path).map_err(|_| {
+            FinalStateError::SnapshotError(String::from(
+                "Could not read pos state file from snapshot",
+            ))
+        })?;
+
+        let max_rolls_length = massa_models::config::constants::MAX_ROLLS_COUNT_LENGTH;
+        let max_production_stats_length = massa_models::config::constants::MAX_PRODUCTION_STATS_LENGTH;
+        let max_credit_length = massa_models::config::constants::MAX_DEFERRED_CREDITS_LENGTH;
+
+        let cycle_history_deser = CycleHistoryDeserializer::new(
+            config.pos_config.cycle_history_length as u64,
+            max_rolls_length,
+            max_production_stats_length);
+
+        let deferred_credits_deser = DeferredCreditsDeserializer::new(
+            config.thread_count,
+            max_credit_length
+        );
+        
+        let (rest, cycle_history) = cycle_history_deser
+        .deserialize::<massa_serialization::DeserializeError>(&pos_state_file)
+        .map_err(|_| {
+            FinalStateError::SnapshotError(String::from(
+                "Could not read async pool file from snapshot",
+            ))
+        })?;
+        
+        let (_rest, deferred_credits) = deferred_credits_deser
+        .deserialize::<massa_serialization::DeserializeError>(&rest)
+        .map_err(|_| {
+            FinalStateError::SnapshotError(String::from(
+                "Could not read async pool file from snapshot",
+            ))
+        })?;
+
+        let pos_state = PoSFinalState::from_snapshot(
+            config.pos_config.clone(),
+            cycle_history.into(),
+            deferred_credits,
+            &config.initial_seed_string,
+            &config.initial_rolls_path,
+            selector,
+            ledger.get_ledger_hash(),
+
+        )
+        .map_err(|err| {
+            FinalStateError::PosError(format!("PoS final state init error: {}", err))
+        })?;
+
+        // attach at the output of the latest initial final slot, that is the last genesis slot
+        let slot = Slot::new(
+            config.last_start_period,
+            config.thread_count.saturating_sub(1),
+        );
 
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());

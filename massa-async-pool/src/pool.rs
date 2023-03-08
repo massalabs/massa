@@ -51,15 +51,16 @@ impl AsyncPool {
         }
     }
 
-    /// Creates an empty `AsyncPool`
-    pub fn from_messages(
+    /// Creates an `AsyncPool` from an existing snapshot
+    pub fn from_snapshot(
         config: AsyncPoolConfig,
         messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+        hash: Hash
     ) -> AsyncPool {
         AsyncPool {
             config,
             messages,
-            hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
+            hash,
         }
     }
 
