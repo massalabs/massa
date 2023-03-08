@@ -224,6 +224,36 @@ impl Completer for MassaCompleter {
     }
 }
 
+pub enum Style {
+    Id,
+    Pending,
+    Finished,
+    Good,
+    Bad,
+    Unknown,
+    Block,
+    Signature,
+    Address,
+    Fee,
+}
+
+impl Style {
+    fn style<T: ToString>(&self, msg: T) -> console::StyledObject<std::string::String> {
+        style(msg.to_string()).color256(match self {
+            Style::Id => 175,
+            Style::Pending => 172,
+            Style::Finished => 105,
+            Style::Good => 118,
+            Style::Bad => 160,
+            Style::Unknown => 248,
+            Style::Block => 158,
+            Style::Signature => 220,
+            Style::Address => 147,
+            Style::Fee => 55,
+        })
+    }
+}
+
 pub trait Output: Serialize {
     fn pretty_print(&self);
 }
