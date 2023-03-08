@@ -266,6 +266,12 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cmds::ExtendedWallet;
@@ -330,14 +336,18 @@
     </span>Unknown,
     <span class="doccomment">/// Any amount of Massa coin displayed
     </span>Coins,
+    <span class="doccomment">/// Any information related to the protocol, staking, peers and the consensus
+    </span>Protocol,
     <span class="doccomment">/// Any information concerning a block of the blockchain
     </span>Block,
     <span class="doccomment">/// For cryptographic signature
     </span>Signature,
-    <span class="doccomment">/// For addresses or public keys
-    </span>Address,
+    <span class="doccomment">/// For any information related to the wallet, addresses or public keys
+    </span>Wallet,
     <span class="doccomment">/// For any secret information
     </span>Secret,
+    <span class="doccomment">/// To separate some informations on the screen by barely visible characters
+    </span>Separator,
 }
 
 <span class="kw">impl </span>Style {
@@ -350,10 +360,12 @@
             Style::Bad =&gt; <span class="number">160</span>,
             Style::Unknown =&gt; <span class="number">248</span>,
             Style::Coins =&gt; <span class="number">99</span>,
+            Style::Protocol =&gt; <span class="number">226</span>,
             Style::Block =&gt; <span class="number">158</span>,
             Style::Signature =&gt; <span class="number">220</span>,
-            Style::Address =&gt; <span class="number">147</span>,
+            Style::Wallet =&gt; <span class="number">147</span>,
             Style::Secret =&gt; <span class="number">64</span>,
+            Style::Separator =&gt; <span class="number">239</span>,
         })
     }
 }
