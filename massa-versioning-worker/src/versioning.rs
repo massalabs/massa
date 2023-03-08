@@ -457,8 +457,7 @@ impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStore {
     type Error = ();
 
     fn try_from(value: [(MipInfo, MipState); N]) -> Result<Self, Self::Error> {
-        MipStoreRaw::try_from(value)
-            .and_then(|store_raw| Ok(Self(Arc::new(RwLock::new(store_raw)))))
+        MipStoreRaw::try_from(value).map(|store_raw| Self(Arc::new(RwLock::new(store_raw))))
     }
 }
 
@@ -566,14 +565,10 @@ impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStoreRaw {
 
     fn try_from(value: [(MipInfo, MipState); N]) -> Result<Self, Self::Error> {
         // Build an empty store
-        let mut store = Self {
-            0: Default::default(),
-        };
+        let mut store = Self(Default::default());
 
         // Build another one with given value
-        let other_store = Self {
-            0: BTreeMap::from(value),
-        };
+        let other_store = Self(BTreeMap::from(value));
 
         // Use update_with ensuring that we have no overlapping time range, unique names & ...
         match store.update_with(&other_store) {
