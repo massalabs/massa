@@ -403,6 +403,10 @@
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::iter;
@@ -551,25 +555,29 @@
     <span class="kw">use </span>massa_time::MassaTime;
 
     <span class="comment">// Define a struct Address with 2 versions AddressV0 &amp; AddressV1
-    </span><span class="attr">#[derive(Debug)]
+    </span><span class="attr">#[allow(dead_code)]
+    #[derive(Debug)]
     </span><span class="kw">struct </span>AddressV0 {
         hash: String,
     }
 
-    <span class="kw">impl </span>AddressV0 {
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">impl </span>AddressV0 {
         <span class="kw">fn </span>new(hash: String) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{ hash }
         }
     }
 
-    <span class="attr">#[derive(Debug)]
+    <span class="attr">#[allow(dead_code)]
+    #[derive(Debug)]
     </span><span class="kw">struct </span>AddressV1 {
         slot: String,
         creator: String,
         index: u32,
     }
 
-    <span class="kw">impl </span>AddressV1 {
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">impl </span>AddressV1 {
         <span class="kw">fn </span>new(slot: String, creator: String, index: u32) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
                 slot,
