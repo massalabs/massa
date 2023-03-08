@@ -2235,8 +2235,7 @@ dependencies = [
 [[package]]
 name = "machine"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a52fd06b3f90cd4a538e2fe0257ef8ddb4e207c33a2c6b5712d722c0ccd171df"
+source = "git+https://github.com/antifuchs/machine?branch=fix-workspace-build#1736a01400aac54f69a81002862f8555b08caa9b"
 dependencies = [
  "case",
  "log",
