@@ -1498,6 +1498,15 @@
 <a href="#1498" id="1498">1498</a>
 <a href="#1499" id="1499">1499</a>
 <a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2941,18 +2950,18 @@
         })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>get_slot_at_timestamp = |config: <span class="kw-2">&amp;</span>ExecutionConfig, timestamp: MassaTime| {
-            <span class="kw">match </span>massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            massa_models::timeslots::get_latest_block_slot_at_timestamp(
                 config.thread_count,
                 config.t0,
                 config.genesis_timestamp,
                 timestamp,
-            ) {
-                <span class="prelude-val">Ok</span>(opts) =&gt; <span class="prelude-val">Ok</span>(opts.unwrap()),
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(ExecutionError::InitVestingError(<span class="macro">format!</span>(
-                    <span class="string">&quot;can no get the slot at timestamp : {}&quot;</span>,
-                    timestamp
-                ))),
-            }
+            )
+            .map_err(|e| {
+                ExecutionError::InitVestingError(<span class="macro">format!</span>(
+                    <span class="string">&quot;can no get the slot at timestamp {} : {}&quot;</span>,
+                    timestamp, e
+                ))
+            })
         };
 
         <span class="kw">for </span>v <span class="kw">in </span>hashmap.values_mut() {
@@ -2970,15 +2979,24 @@
                         </span><span class="kw">if </span>prev.timestamp.eq(<span class="kw-2">&amp;</span>MassaTime::from(<span class="number">0</span>)) {
                             <span class="comment">// first range with timestamp = 0
                             </span>prev.start_slot = Slot::min();
-                        } <span class="kw">else </span>{
-                            prev.start_slot = get_slot_at_timestamp(config, prev.timestamp)<span class="question-mark">?</span>;
+                        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(slot) = get_slot_at_timestamp(config, prev.timestamp)<span class="question-mark">? </span>{
+                            prev.start_slot = slot;
                         }
 
                         <span class="comment">// retrieve the end_slot
-                        </span><span class="kw">let </span>next_range_slot = get_slot_at_timestamp(config, next.timestamp)<span class="question-mark">?</span>;
-                        prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)<span class="question-mark">?</span>;
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(next_range_slot) =
+                            get_slot_at_timestamp(config, next.timestamp)<span class="question-mark">?
+                        </span>{
+                            prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)<span class="question-mark">?</span>;
+                        }
 
                         <span class="prelude-val">Ok</span>(prev)
+                    })
+                    <span class="comment">// we don&#39;t need range with StartSlot(0,0) &amp;&amp; EndSlot(0,0)
+                    // this can happen when the timestamp is passed
+                    </span>.filter(|a| {
+                        !(a.as_ref().unwrap().end_slot == Slot::min()
+                            &amp;&amp; a.as_ref().unwrap().start_slot == Slot::min())
                     })
                     .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;VestingRange&gt;, ExecutionError&gt;&gt;()<span class="question-mark">?</span>;
             }
