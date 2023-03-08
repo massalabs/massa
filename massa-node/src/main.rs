@@ -171,9 +171,11 @@ async fn launch(
 
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    if SETTINGS.ledger.disk_ledger_path.exists() {
-        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-            .expect("disk ledger delete failed");
+    if !_args.from_snapshot {
+        if SETTINGS.ledger.disk_ledger_path.exists() {
+            std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+                .expect("disk ledger delete failed");
+        }
     }
 
     // Create final ledger

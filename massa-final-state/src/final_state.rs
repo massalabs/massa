@@ -102,6 +102,8 @@ impl FinalState {
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, FinalStateError> {
+        info!("Restarting from snapshot");
+
         // Deserialize Async Pool
         let async_pool_path = config.final_state_path.join("async_pool");
         let async_pool_file = fs::read(async_pool_path).map_err(|_| {
