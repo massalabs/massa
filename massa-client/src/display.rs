@@ -79,19 +79,19 @@ pub enum Style {
 impl Style {
     fn style<T: ToString>(&self, msg: T) -> console::StyledObject<std::string::String> {
         style(msg.to_string()).color256(match self {
-            Style::Id => 175,
-            Style::Pending => 172,
-            Style::Finished => 105,
-            Style::Good => 118,
-            Style::Bad => 160,
-            Style::Unknown => 248,
-            Style::Coins => 99,
-            Style::Protocol => 226,
-            Style::Block => 158,
-            Style::Signature => 220,
-            Style::Wallet => 147,
-            Style::Secret => 64,
-            Style::Separator => 239,
+            Style::Id => 175,        // #d787af
+            Style::Pending => 172,   // #d78700
+            Style::Finished => 81,   // #5fd7ff
+            Style::Good => 112,      // #87d700
+            Style::Bad => 160,       // #d70000
+            Style::Unknown => 248,   // #a8a8a8
+            Style::Coins => 99,      // #875fff
+            Style::Protocol => 184,  // #d7d700
+            Style::Block => 158,     // #afffd7
+            Style::Signature => 220, // #ffd700
+            Style::Wallet => 193,    // #d7ffaf
+            Style::Secret => 64,     // #5f8700
+            Style::Separator => 239, // #4e4e4e
         })
     }
 }
