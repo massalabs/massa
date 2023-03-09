@@ -447,19 +447,13 @@
 <a href="#447" id="447">447</a>
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
 };
-<span class="kw">use </span><span class="kw">crate</span>::secure_share::{
-    SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
-};
+<span class="kw">use </span><span class="kw">crate</span>::secure_share::{SecureShare, SecureShareDeserializer, SecureShareSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
 <span class="kw">use </span>massa_serialization::{
@@ -549,8 +543,6 @@
             .map_err(|er| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, er).into())
     }
 }
-
-<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>BlockHeader {}
 
 <span class="doccomment">/// Serializer for `BlockHeader`
 </span><span class="kw">pub struct </span>BlockHeaderSerializer {

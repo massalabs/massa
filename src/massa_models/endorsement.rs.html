@@ -447,12 +447,10 @@
 <a href="#447" id="447">447</a>
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
-<span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShare, SecureShareContent};
+<span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShare};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
 <span class="kw">use crate</span>::{block_id::BlockId, error::ModelsError};
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
@@ -616,8 +614,6 @@
 
 <span class="doccomment">/// Wrapped endorsement
 </span><span class="kw">pub type </span>SecureShareEndorsement = SecureShare&lt;Endorsement, EndorsementId&gt;;
-
-<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Endorsement {}
 
 <span class="doccomment">/// Serializer for `Endorsement`
 </span><span class="attr">#[derive(Clone)]
@@ -838,7 +834,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span><span class="kw">crate</span>::secure_share::{SecureShareDeserializer, SecureShareSerializer};
+    <span class="kw">use </span><span class="kw">crate</span>::secure_share::{SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>massa_serialization::DeserializeError;
