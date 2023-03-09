@@ -144,8 +144,8 @@ message SendBlocksResponse {
     // string value
     string id = 1;
     // object field
-    oneof message {
-        BlockResult result = 2;
+    oneof result {
+        BlockResult ok = 2;
         google.rpc.Status error = 3;
     }
 }

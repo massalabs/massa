@@ -187,17 +187,17 @@ pub struct SendBlocksResponse {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// object field
-    #[prost(oneof = "send_blocks_response::Message", tags = "2, 3")]
-    pub message: ::core::option::Option<send_blocks_response::Message>,
+    #[prost(oneof = "send_blocks_response::Result", tags = "2, 3")]
+    pub result: ::core::option::Option<send_blocks_response::Result>,
 }
 /// Nested message and enum types in `SendBlocksResponse`.
 pub mod send_blocks_response {
     /// object field
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Message {
+    pub enum Result {
         #[prost(message, tag = "2")]
-        Result(super::BlockResult),
+        Ok(super::BlockResult),
         #[prost(message, tag = "3")]
         Error(super::super::super::super::google::rpc::Status),
     }
