@@ -306,6 +306,9 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cmds::ExtendedWallet;
@@ -382,24 +385,27 @@
     </span>Secret,
     <span class="doccomment">/// To separate some informations on the screen by barely visible characters
     </span>Separator,
+    <span class="doccomment">/// When displaying a timestamp or date
+    </span>Time,
 }
 
 <span class="kw">impl </span>Style {
     <span class="kw">fn </span>style&lt;T: ToString&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: T) -&gt; console::StyledObject&lt;std::string::String&gt; {
         style(msg.to_string()).color256(<span class="kw">match </span><span class="self">self </span>{
-            Style::Id =&gt; <span class="number">175</span>,        <span class="comment">// #d787af
+            Style::Id =&gt; <span class="number">218</span>,        <span class="comment">// #ffafd7
             </span>Style::Pending =&gt; <span class="number">172</span>,   <span class="comment">// #d78700
             </span>Style::Finished =&gt; <span class="number">81</span>,   <span class="comment">// #5fd7ff
             </span>Style::Good =&gt; <span class="number">112</span>,      <span class="comment">// #87d700
             </span>Style::Bad =&gt; <span class="number">160</span>,       <span class="comment">// #d70000
             </span>Style::Unknown =&gt; <span class="number">248</span>,   <span class="comment">// #a8a8a8
-            </span>Style::Coins =&gt; <span class="number">99</span>,      <span class="comment">// #875fff
-            </span>Style::Protocol =&gt; <span class="number">184</span>,  <span class="comment">// #d7d700
+            </span>Style::Coins =&gt; <span class="number">141</span>,     <span class="comment">// #af87ff
+            </span>Style::Protocol =&gt; <span class="number">151</span>,  <span class="comment">// #afd7af
             </span>Style::Block =&gt; <span class="number">158</span>,     <span class="comment">// #afffd7
             </span>Style::Signature =&gt; <span class="number">220</span>, <span class="comment">// #ffd700
-            </span>Style::Wallet =&gt; <span class="number">193</span>,    <span class="comment">// #d7ffaf
+            </span>Style::Wallet =&gt; <span class="number">213</span>,    <span class="comment">// #ff87ff
             </span>Style::Secret =&gt; <span class="number">64</span>,     <span class="comment">// #5f8700
             </span>Style::Separator =&gt; <span class="number">239</span>, <span class="comment">// #4e4e4e
+            </span>Style::Time =&gt; <span class="number">117</span>,      <span class="comment">// #87d7ff
         </span>})
     }
 }
