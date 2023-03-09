@@ -100,31 +100,7 @@ async fn launch(
         }
     }
 
-    /*if _args.from_snapshot {
-        // If we are restarting the network from a snapshot
-
-        // Start from snapshot, with the config:
-        // SETTINGS.snapshot.final_state_path.clone()
-
-        // 1. Init some structs from the files:
-
-        //let final_state_deser = massa_final_state::FinalState::new();
-
-        /*
-        let async_pool_deser = massa_async_pool::AsyncPoolDeserializer::new(THREAD_COUNT, MAX_ASYNC_POOL_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH);
-        let async_pool: Result<massa_async_pool::AsyncPool, SnapshotError> = std::fs::read_to_string("file_path")
-            .map_err(|_| {
-                SnapshotError()
-            })
-            .and_then(|file_str| {
-                serde_json::from_str(&file_str).map_err(|e| {
-                    SnapshotError()
-                })
-            });*/
-    } else {
-        // Start from scratch
-    }*/
-
+    // TODO
     // We start the network at LAST_START_PERIOD
 
     // Storage shared by multiple components.
@@ -171,11 +147,10 @@ async fn launch(
 
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    if !_args.from_snapshot {
-        if SETTINGS.ledger.disk_ledger_path.exists() {
-            std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-                .expect("disk ledger delete failed");
-        }
+
+    if !_args.from_snapshot && SETTINGS.ledger.disk_ledger_path.exists() {
+        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+            .expect("disk ledger delete failed");
     }
 
     // Create final ledger

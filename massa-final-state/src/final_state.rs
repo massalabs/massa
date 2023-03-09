@@ -12,17 +12,21 @@ use massa_async_pool::{
 use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
-use massa_models::{slot::Slot, streaming_step::StreamingStep};
+use massa_models::{
+    slot::{Slot, SlotDeserializer, SlotSerializer},
+    streaming_step::StreamingStep,
+};
 use massa_pos_exports::{
     CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSFinalState, SelectorController,
 };
 use massa_serialization::{
-    /*DeserializeError,*/ Deserializer,
-    /*SerializeError,*/ Serializer, /*U64VarIntSerializer,*/
+    DeserializeError, /*U64VarIntSerializer,*/
+    /*DeserializeError,*/ Deserializer, /*SerializeError,*/ Serializer,
 };
 use std::collections::VecDeque;
 use std::fs;
+use std::ops::Bound::{Excluded, Included};
 use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -129,7 +133,10 @@ impl FinalState {
                 ))
             })?;
 
-        let async_pool_hash = Hash::compute_from(b"123");
+        let mut async_pool_hash = Hash::from_bytes(&[0; HASH_SIZE_BYTES]);
+        for (_, msg) in async_pool_messages.iter() {
+            async_pool_hash ^= msg.hash;
+        }
 
         let async_pool = AsyncPool::from_snapshot(
             config.async_pool_config.clone(),
@@ -187,25 +194,68 @@ impl FinalState {
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-        let slot = Slot::new(
+
+        /*let slot = Slot::new(
             config.last_start_period,
             config.thread_count.saturating_sub(1),
+        );*/
+
+        let latest_consistant_slot_path = config.final_state_path.join("latest_consistant_slot");
+        let latest_consistant_slot_file = fs::read(latest_consistant_slot_path).map_err(|_| {
+            FinalStateError::SnapshotError(String::from(
+                "Could not read latest_consistant_slot file from snapshot",
+            ))
+        })?;
+
+        let slot_deser = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(config.thread_count)),
         );
+
+        let (_, slot) = slot_deser
+            .deserialize::<DeserializeError>(&latest_consistant_slot_file)
+            .map_err(|_| {
+                FinalStateError::SnapshotError(String::from(
+                    "Could not deserialize latest_consistant_slot file from snapshot",
+                ))
+            })?;
 
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
         // create the final state
-        Ok(FinalState {
+        let mut final_state = FinalState {
             slot,
             ledger,
             async_pool,
             pos_state,
-            config,
+            config: config.clone(),
             executed_ops,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
-        })
+        };
+
+        final_state.compute_state_hash_at_slot(slot);
+
+        // Check the hash
+        let final_hash_bytes_path = config.final_state_path.join("final_hash_bytes");
+        let final_hash_bytes_file = fs::read(final_hash_bytes_path).map_err(|_| {
+            FinalStateError::SnapshotError(String::from(
+                "Could not read final_hash_bytes file from snapshot",
+            ))
+        })?;
+
+        let final_state_hash_from_file =
+            Hash::from_bytes(&final_hash_bytes_file.try_into().map_err(|_| {
+                FinalStateError::SnapshotError(String::from("Invalid Final state hash from file"))
+            })?);
+
+        match final_state.final_state_hash == final_state_hash_from_file {
+            true => Ok(final_state),
+            false => Err(FinalStateError::SnapshotError(String::from(
+                "Invalid Final state hash",
+            ))),
+        }
     }
 
     /// Reset the final state to the initial state.
@@ -407,6 +457,36 @@ impl FinalState {
         .map_err(|err| {
             FinalStateError::SnapshotError(format!(
                 "Could not rename the temp pos_state file: {}",
+                err
+            ))
+        })?;
+
+        fs::write(
+            self.config.final_state_path.join("final_hash_bytes"),
+            self.final_state_hash.to_bytes(),
+        )
+        .map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not write to final_hash_bytes file: {}",
+                err
+            ))
+        })?;
+
+        let slot_ser = SlotSerializer::new();
+        let mut slot_buffer = Vec::new();
+        slot_ser
+            .serialize(&self.slot, &mut slot_buffer)
+            .map_err(|err| {
+                FinalStateError::SnapshotError(format!("Could not serialize Slot: {}", err))
+            })?;
+
+        fs::write(
+            self.config.final_state_path.join("latest_consistant_slot"),
+            slot_buffer,
+        )
+        .map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not write to latest_consistant_slot file: {}",
                 err
             ))
         })?;
