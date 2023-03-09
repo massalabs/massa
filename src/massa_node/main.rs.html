@@ -902,47 +902,6 @@
 <a href="#902" id="902">902</a>
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a>
-<a href="#919" id="919">919</a>
-<a href="#920" id="920">920</a>
-<a href="#921" id="921">921</a>
-<a href="#922" id="922">922</a>
-<a href="#923" id="923">923</a>
-<a href="#924" id="924">924</a>
-<a href="#925" id="925">925</a>
-<a href="#926" id="926">926</a>
-<a href="#927" id="927">927</a>
-<a href="#928" id="928">928</a>
-<a href="#929" id="929">929</a>
-<a href="#930" id="930">930</a>
-<a href="#931" id="931">931</a>
-<a href="#932" id="932">932</a>
-<a href="#933" id="933">933</a>
-<a href="#934" id="934">934</a>
-<a href="#935" id="935">935</a>
-<a href="#936" id="936">936</a>
-<a href="#937" id="937">937</a>
-<a href="#938" id="938">938</a>
-<a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
-<a href="#941" id="941">941</a>
-<a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -989,7 +948,7 @@
     NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
     PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
-    T0, THREAD_COUNT, VERSION, VERSIONING_CONTROLLER_CHANNEL_SIZE, VERSIONING_NB_BLOCKS_CONSIDERED,
+    T0, THREAD_COUNT, VERSION,
 };
 <span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -1005,12 +964,6 @@
 <span class="kw">use </span>massa_protocol_worker::start_protocol_controller;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_exports::{
-    VersioningCommand, <span class="comment">/*VersioningCommandSender,*/ </span>VersioningConfig, VersioningManager,
-    VersioningReceivers, VersioningSenders,
-};
-<span class="kw">use </span>massa_versioning_worker::start_versioning_worker;
-<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::path::PathBuf;
@@ -1037,7 +990,6 @@
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
     Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     ProtocolManager,
-    VersioningManager,
     NetworkManager,
     Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
     mpsc::Receiver&lt;()&gt;,
@@ -1334,9 +1286,6 @@
     <span class="kw">let </span>(protocol_command_sender, protocol_command_receiver) =
         mpsc::channel::&lt;ProtocolCommand&gt;(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
 
-    <span class="kw">let </span>(_versioning_command_sender, versioning_command_receiver) =
-        mpsc::channel::&lt;VersioningCommand&gt;(VERSIONING_CONTROLLER_CHANNEL_SIZE);
-
     <span class="kw">let </span>consensus_config = ConsensusConfig {
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         end_timestamp: <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1386,29 +1335,6 @@
         bootstrap_state.graph,
         shared_storage.clone(),
     );
-
-    <span class="kw">let </span>versioning_config = VersioningConfig {
-        nb_blocks_considered: VERSIONING_NB_BLOCKS_CONSIDERED,
-    };
-
-    <span class="kw">let </span>versioning_senders = VersioningSenders {};
-
-    <span class="kw">let </span>versioning_receivers = VersioningReceivers {
-        versioning_command_receiver,
-    };
-
-    <span class="comment">// Creates an empty default store
-    </span><span class="kw">let </span>mip_store = MipStore::try_from([]).unwrap();
-
-    <span class="comment">// launch versioning manager
-    </span><span class="kw">let </span>versioning_manager = start_versioning_worker(
-        versioning_config,
-        versioning_receivers,
-        versioning_senders.clone(),
-        mip_store.clone(),
-    )
-    .<span class="kw">await
-    </span>.expect(<span class="string">&quot;could not start versioning controller&quot;</span>);
 
     <span class="comment">// launch protocol controller
     </span><span class="kw">let </span>protocol_config = ProtocolConfig {
@@ -1610,7 +1536,6 @@
         selector_manager,
         pool_manager,
         protocol_manager,
-        versioning_manager,
         network_manager,
         factory_manager,
         api_private_stop_rx,
@@ -1627,7 +1552,6 @@
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
     pool_manager: Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     protocol_manager: ProtocolManager,
-    versioning_manager: VersioningManager,
     network_manager: NetworkManager,
     factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
 }
@@ -1641,7 +1565,6 @@
         <span class="kw-2">mut </span>selector_manager,
         <span class="kw-2">mut </span>pool_manager,
         protocol_manager,
-        versioning_manager,
         network_manager,
         <span class="kw-2">mut </span>factory_manager,
     }: Managers,
@@ -1686,9 +1609,6 @@
 
     <span class="comment">// stop selector controller
     </span>selector_manager.stop();
-
-    <span class="comment">// stop versioning controller
-    </span>versioning_manager.stop();
 
     <span class="comment">// stop pool controller
     // TODO
@@ -1802,7 +1722,6 @@
             selector_manager,
             pool_manager,
             protocol_manager,
-            versioning_manager,
             network_manager,
             factory_manager,
             <span class="kw-2">mut </span>api_private_stop_rx,
@@ -1871,7 +1790,6 @@
                 selector_manager,
                 pool_manager,
                 protocol_manager,
-                versioning_manager,
                 network_manager,
                 factory_manager,
             },
