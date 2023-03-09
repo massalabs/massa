@@ -201,9 +201,9 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10f203db73a71dfa2fb6dd22763990fa26f3d2625a6da2da900d23b87d26be27"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "proc-macro2 1.0.51",
+ "quote 1.0.23",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -3732,8 +3732,8 @@ version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e97e3215779627f01ee256d2fad52f3d95e8e1c11e9fc6fd08f7cd455d5d5c78"
 dependencies = [
- "proc-macro2",
- "syn",
+ "proc-macro2 1.0.51",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -3824,7 +3824,7 @@ dependencies = [
  "prost",
  "prost-types",
  "regex",
- "syn",
+ "syn 1.0.109",
  "tempfile",
  "which",
 ]
@@ -3837,9 +3837,9 @@ checksum = "4ea9b0f8cbe5e15a8a042d030bd96668db28ecb567ec37d691971ff5731d2b1b"
 dependencies = [
  "anyhow",
  "itertools",
- "proc-macro2",
- "quote",
- "syn",
+ "proc-macro2 1.0.51",
+ "quote 1.0.23",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -5060,10 +5060,10 @@ version = "0.8.4"
 source = "git+https://github.com/hyperium/tonic?branch=master#9f716d841184b8521720c6ed941af137ca2ee6a0"
 dependencies = [
  "prettyplease",
- "proc-macro2",
+ "proc-macro2 1.0.51",
  "prost-build",
- "quote",
- "syn",
+ "quote 1.0.23",
+ "syn 1.0.109",
 ]
 
 [[package]]
