@@ -2990,6 +2990,16 @@ dependencies = [
 [[package]]
 name = "massa_versioning_exports"
 version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "massa_logging",
+ "massa_models",
+ "massa_storage",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "massa_versioning_worker"
@@ -3000,7 +3010,7 @@ dependencies = [
  "massa_models",
  "massa_serialization 0.1.0",
  "massa_time",
- "more-asserts 0.3.1",
+ "massa_versioning_exports",
  "nom",
  "num_enum",
  "parking_lot",

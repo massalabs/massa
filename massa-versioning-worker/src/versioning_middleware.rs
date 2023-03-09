@@ -1,9 +1,10 @@
 use std::collections::{HashMap, VecDeque};
 
 use massa_models::amount::Amount;
-use massa_time::MassaTime;
+use massa_time::{MassaTime, TimeError};
 
-use crate::versioning::{MipStore, MipInfo, Advance};
+use crate::versioning::{Advance, MipStore};
+use massa_versioning_exports::VersioningError;
 
 /// Struct used to keep track of announced versions in previous blocks
 pub struct VersioningMiddleware {
@@ -43,7 +44,7 @@ impl VersioningMiddleware {
         let _ = self.create_and_send_advance_message_for_all();
     }
 
-    fn get_version_info(&self, version: u32) -> Option<MipInfo> {
+    /*fn get_version_info(&self, version: u32) -> Option<MipInfo> {
         let store = self.mip_store.0.read().0.clone();
 
         let res: Vec<_> = store
@@ -55,17 +56,16 @@ impl VersioningMiddleware {
             0 => None,
             _ => Some(res[0].0.clone()),
         }
-    }
+    }*/
 
     fn create_and_send_advance_message_for_all(&mut self) -> Result<(), VersioningError> {
         let mut store = self.mip_store.0.write();
 
-        let now = MassaTime::now()
-            .map_err(|_| {
-                VersioningError::ModelsError(massa_models::error::ModelsError::TimeError(
-                    TimeError::TimeOverflowError,
-                ))
-            })?;
+        let now = MassaTime::now().map_err(|_| {
+            VersioningError::ModelsError(massa_models::error::ModelsError::TimeError(
+                TimeError::TimeOverflowError,
+            ))
+        })?;
 
         // Possible optimisation: filter the store to avoid advancing on failed and active versions
         for (vi, state) in store.0.iter_mut() {
@@ -88,16 +88,12 @@ impl VersioningMiddleware {
 
         Ok(())
     }
-
 }
 
 #[cfg(test)]
 mod test {
+    use crate::versioning::{MipComponent, MipInfo, MipState, MipStoreRaw};
     use core::time::Duration;
-    use crate::versioning::ComponentState;
-    use crate::versioning::MipComponent;
-    use crate::versioning::MipState;
-    use crate::versioning::MipStoreRaw;
     use parking_lot::RwLock;
     use std::collections::BTreeMap;
     use std::sync::Arc;
@@ -136,15 +132,11 @@ mod test {
 
     #[tokio::test]
     async fn test_versioning_middleware() {
+        let (start, _, vi) = get_a_version_info();
+        let now_0 = MassaTime::from(start.timestamp() as u64);
+        let state = MipState::new(now_0);
 
-        let (_, _, vi) = get_a_version_info();
-
-        let vs = MipState {
-            inner: ComponentState::defined(),
-            history: Default::default(),
-        };
-
-        let vs_raw = MipStoreRaw(BTreeMap::from([(vi.clone(), vs)]));
+        let vs_raw = MipStoreRaw(BTreeMap::from([(vi.clone(), state)]));
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
         let mut vm = VersioningMiddleware::new(5, vs.clone());

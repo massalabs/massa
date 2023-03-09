@@ -16,6 +16,7 @@ nom = "7.1"
 massa_time = { path = "../massa-time" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
+massa_versioning_exports = { path = "../massa-versioning-exports" }
 
 [dev-dependencies]
 chrono = "0.4"
