@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["VersioningCommand","VersioningError","VersioningManagementCommand"],"struct":["VersioningCommandSender","VersioningConfig","VersioningManager","VersioningReceivers","VersioningSenders"]};
