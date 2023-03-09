@@ -194,8 +194,60 @@ impl Output for PreHashSet<Address> {
 
 impl Output for Vec<AddressInfo> {
     fn pretty_print(&self) {
-        for address_info in self {
-            println!("{}", address_info);
+        for info in self {
+            println!("{}", Style::Separator.style("========"));
+            println!("Address {} (thread {}):",
+                Style::Wallet.style(info.address),
+                Style::Protocol.style(info.thread),
+            );
+            println!(
+                "\tBalance: {}={}, {}={}",
+                Style::Finished.style("final"),
+                Style::Coins.style(info.final_balance),
+                Style::Pending.style("candidate"),
+                Style::Coins.style(info.candidate_balance),
+            );
+            println!(
+                "\tRolls: {}={}, {}={}",
+                Style::Finished.style("final"),
+                Style::Protocol.style(info.final_roll_count),
+                Style::Pending.style("candidate"),
+                Style::Protocol.style(info.candidate_roll_count),
+            );
+
+            print!("\tLocked coins:");
+            if info.deferred_credits.is_empty() {
+                println!(" {}", Style::Coins.style("0"));
+            } else {
+                println!();
+                for slot_amount in &info.deferred_credits {
+                    println!(
+                        "\t\t{} locked coins will be unlocked at slot {}",
+                        Style::Coins.style(slot_amount.amount),
+                        Style::Protocol.style(slot_amount.slot),
+                    );
+                }
+            }
+            if !info.cycle_infos.is_empty() {
+                println!("\tCycle infos:");
+            }
+            for cycle_info in &info.cycle_infos {
+                println!(
+                    "\t\tCycle {} ({}): produced {} and missed {} blocks{}",
+                    Style::Protocol.style(cycle_info.cycle),
+                    if cycle_info.is_final {
+                        Style::Finished.style("final")
+                    } else {
+                        Style::Pending.style("candidate")
+                    },
+                    Style::Good.style(cycle_info.ok_count),
+                    Style::Bad.style(cycle_info.nok_count),
+                    match cycle_info.active_rolls {
+                        Some(rolls) => format!(" with {} active rolls", Style::Good.style(rolls)),
+                        None => "".into(),
+                    },
+                );
+            }
         }
     }
 }
