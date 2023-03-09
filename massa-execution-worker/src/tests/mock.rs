@@ -177,7 +177,7 @@ pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
         let vesting1 = VestingRange {
             start_slot: Slot::min(),
             end_slot: Slot::min(),
-            timestamp: MassaTime::from(0),
+            timestamp: MassaTime::from(1678126410000),
             min_balance: Amount::from_str("200000").unwrap(),
             max_rolls: 150,
         };
