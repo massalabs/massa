@@ -110,13 +110,12 @@ mod test {
             component: MipComponent::Address,
             component_version: 2,
             start,
-            timeout
+            timeout,
         }
     }
 
     #[tokio::test]
     async fn test_versioning_middleware() {
-
         let now = MassaTime::now().unwrap();
 
         let start = now.checked_add(MassaTime::from(2000)).unwrap();
