@@ -18,8 +18,8 @@ use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::{self as grpc, grpc_server::GrpcServer, FILE_DESCRIPTOR_SET};
 use massa_serialization::{DeserializeError, Deserializer};
 
-use crate::business::{get_datastore_entries, get_selector_draws, get_version, send_blocks};
-use crate::models::SendBlocksStream;
+use crate::business::{get_datastore_entries, get_selector_draws, get_version};
+use crate::stream::send_blocks::{send_blocks, SendBlocksStream};
 use futures_util::{FutureExt, StreamExt};
 use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
