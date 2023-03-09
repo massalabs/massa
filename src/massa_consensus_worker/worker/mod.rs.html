@@ -121,6 +121,7 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
@@ -219,6 +220,7 @@
             config.stats_timespan,
         ),
         prev_blockclique: Default::default(),
+        nonfinal_active_blocks_per_slot: Default::default(),
     }));
 
     <span class="kw">let </span>shared_state_cloned = shared_state.clone();
