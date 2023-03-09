@@ -169,7 +169,6 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, VecDeque};
 
 <span class="kw">use </span>massa_models::amount::Amount;
@@ -282,13 +281,12 @@
             component: MipComponent::Address,
             component_version: <span class="number">2</span>,
             start,
-            timeout
+            timeout,
         }
     }
 
     <span class="attr">#[tokio::test]
     </span><span class="kw">async fn </span>test_versioning_middleware() {
-
         <span class="kw">let </span>now = MassaTime::now().unwrap();
 
         <span class="kw">let </span>start = now.checked_add(MassaTime::from(<span class="number">2000</span>)).unwrap();
