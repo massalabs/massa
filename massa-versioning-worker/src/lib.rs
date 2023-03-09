@@ -45,6 +45,9 @@ pub mod versioning;
 pub mod versioning_factory;
 pub mod versioning_ser_der;
 pub mod versioning_middleware;
+mod versioning_worker;
+
+pub use versioning_worker::start_versioning_worker;
 
 /// Test utils
 #[cfg(any(test, feature = "testing"))]

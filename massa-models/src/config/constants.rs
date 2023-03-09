@@ -225,6 +225,10 @@ pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 //
 /// Threshold to accept a new versioning
 pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
+/// versioning controller event channel size
+pub const VERSIONING_CONTROLLER_CHANNEL_SIZE: usize = 10_000;
+/// versioning block stats queue size
+pub const VERSIONING_NB_BLOCKS_CONSIDERED: usize = 100;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

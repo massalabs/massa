@@ -2306,6 +2306,8 @@ dependencies = [
  "massa_protocol_worker",
  "massa_storage",
  "massa_time",
+ "massa_versioning_exports",
+ "massa_versioning_worker",
  "massa_wallet",
  "parking_lot",
  "paw",
@@ -3016,6 +3018,7 @@ dependencies = [
  "parking_lot",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
