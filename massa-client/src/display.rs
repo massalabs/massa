@@ -74,6 +74,8 @@ pub enum Style {
     Secret,
     /// To separate some informations on the screen by barely visible characters
     Separator,
+    /// When displaying a timestamp or date
+    Time,
 }
 
 impl Style {
@@ -92,6 +94,7 @@ impl Style {
             Style::Wallet => 193,    // #d7ffaf
             Style::Secret => 64,     // #5f8700
             Style::Separator => 239, // #4e4e4e
+            Style::Time => 117,      // #87d7ff
         })
     }
 }
