@@ -354,39 +354,11 @@
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
-<span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denounceable, DenunciationData, DenunciationDataSerializer};
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_serialization::{Deserializer, OptionSerializer, SerializeError, Serializer};
+<span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>massa_signature::{
     KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
     PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
@@ -438,7 +410,7 @@
 <span class="doccomment">/// Trait that define a structure that can be signed for secure sharing.
 </span><span class="kw">pub trait </span>SecureShareContent
 <span class="kw">where
-    </span><span class="self">Self</span>: Sized + Display + Denounceable,
+    </span><span class="self">Self</span>: Sized + Display,
 {
     <span class="doccomment">/// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
@@ -449,18 +421,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShare&lt;<span class="self">Self</span>, ID&gt;, ModelsError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
         content_serializer.serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
-        <span class="kw">let </span>denunciation_data = content.get_denunciation_data();
-        <span class="kw">let </span><span class="kw-2">mut </span>de_data_ser = Vec::new();
-        <span class="kw">let </span>de_data_serializer =
-            OptionSerializer::&lt;DenunciationData, DenunciationDataSerializer&gt;::new(
-                DenunciationDataSerializer::new(),
-            );
-        de_data_serializer.serialize(<span class="kw-2">&amp;</span>denunciation_data, <span class="kw-2">&amp;mut </span>de_data_ser)<span class="question-mark">?</span>;
-
         <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
         <span class="kw">let </span>public_key = keypair.get_public_key();
         hash_data.extend(public_key.to_bytes());
-        hash_data.extend(de_data_ser);
         hash_data.extend(content_serialized.clone());
         <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_data);
         <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
@@ -529,23 +492,6 @@
         };
         <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>creator_public_key);
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_full_data = creator_public_key.to_bytes().to_vec();
-
-        <span class="kw">let </span>denunciation_data = content.get_denunciation_data();
-        <span class="kw">let </span><span class="kw-2">mut </span>de_data_ser = Vec::new();
-        <span class="kw">let </span>de_data_serializer =
-            OptionSerializer::&lt;DenunciationData, DenunciationDataSerializer&gt;::new(
-                DenunciationDataSerializer::new(),
-            );
-        de_data_serializer
-            .serialize(<span class="kw-2">&amp;</span>denunciation_data, <span class="kw-2">&amp;mut </span>de_data_ser)
-            .map_err(|<span class="kw">_</span>| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    rest,
-                    nom::error::ErrorKind::Fail,
-                ))
-            })<span class="question-mark">?</span>;
-
-        serialized_full_data.extend(de_data_ser);
         serialized_full_data.extend(<span class="kw-2">&amp;</span>content_serialized);
         <span class="prelude-val">Ok</span>((
             rest,
