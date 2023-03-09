@@ -1,3 +1,7 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+/// An overview of what is a Denunciation and what it is used for can be found here
+/// https://github.com/massalabs/massa/discussions/3113
 use thiserror::Error;
 
 use crate::block::Block;
@@ -391,9 +395,8 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
     type Error = DenunciationError;
 
     fn try_from((s_bh1, s_bh2): (&SecuredHeader, &SecuredHeader)) -> Result<Self, Self::Error> {
-        // Cannot use the same endorsement twice
-        // In order to create a Denunciation, there should be the same
-        // slot, index & public key
+        // Cannot use the same block header twice
+        // In order to create a Denunciation, there should be the same slot, index & public key
         if s_bh1.content.slot != s_bh2.content.slot
             || s_bh1.content_creator_pub_key != s_bh2.content_creator_pub_key
             || s_bh1.serialized_data == s_bh2.serialized_data
@@ -401,7 +404,7 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
             return Err(DenunciationError::InvalidInput);
         }
 
-        // Check sig of s_e2 but with s_e1.public_key, s_e1.slot, s_e1.index
+        // Check sig of s_bh2 but with s_bh1.public_key, s_bh1.slot, s_bh1.index
         let s_bh1_hash_content = BlockHeaderDenunciation::compute_content_hash(&s_bh1.content)?;
         let s_bh1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
@@ -455,7 +458,7 @@ mod tests {
     };
 
     use crate::config::THREAD_COUNT;
-    use crate::secure_share::SecureShareContent;
+    use crate::secure_share::{Id, SecureShareContent};
     use massa_signature::KeyPair;
 
     /// Helper for Endorsement denunciation
@@ -515,7 +518,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
+        assert_eq!(denunciation.is_valid().unwrap(), true);
     }
 
     #[test]
@@ -551,7 +554,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
+        assert_eq!(denunciation.is_valid().unwrap(), true);
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
@@ -566,16 +569,16 @@ mod tests {
         assert_eq!(
             denunciation
                 .is_also_for_endorsement(&s_endorsement_4)
-                .unwrap_or(false),
+                .unwrap(),
             false
         );
         assert_eq!(
             denunciation
                 .is_also_for_endorsement(&s_endorsement_3)
-                .unwrap_or(false),
+                .unwrap(),
             true
         );
-        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
+        assert_eq!(denunciation.is_valid().unwrap(), true);
     }
 
     fn gen_block_headers_for_denunciation(
@@ -664,11 +667,11 @@ mod tests {
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_block_header(), true);
-        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
+        assert_eq!(denunciation.is_valid().unwrap(), true);
         assert_eq!(
             denunciation
                 .is_also_for_block_header(&s_block_header_3)
-                .unwrap_or(false),
+                .unwrap(),
             true
         );
     }
@@ -711,7 +714,7 @@ mod tests {
         });
 
         // hash_1 == hash_2 -> this is invalid
-        assert_eq!(de_forged_1.is_valid().unwrap_or(false), false);
+        assert_eq!(de_forged_1.is_valid().unwrap(), false);
 
         // from an attacker - building manually a Denunciation object
         let de_forged_2 = Denunciation::Endorsement(EndorsementDenunciation {
@@ -726,6 +729,6 @@ mod tests {
 
         // An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
         // This has to be detected if Denunciation are send via the network
-        assert_eq!(de_forged_2.is_valid().unwrap_or(false), false);
+        assert_eq!(de_forged_2.is_valid().unwrap(), false);
     }
 }
