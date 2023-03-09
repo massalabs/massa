@@ -1654,7 +1654,7 @@ mod tests {
         assert!(events[3].data.contains(&format!("keys2_f: {}", key_a_str)));
 
         // Length of the value left in the datastore. See sources for more context.
-        let value_len = [21, 0, 49].len() as u64;
+        let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
 
         assert_eq!(
             sample_state
