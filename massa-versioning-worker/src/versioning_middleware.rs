@@ -44,20 +44,6 @@ impl VersioningMiddleware {
         let _ = self.create_and_send_advance_message_for_all();
     }
 
-    /*fn get_version_info(&self, version: u32) -> Option<MipInfo> {
-        let store = self.mip_store.0.read().0.clone();
-
-        let res: Vec<_> = store
-            .iter()
-            .filter(|&(k, _v)| k.version == version)
-            .collect();
-
-        match res.len() {
-            0 => None,
-            _ => Some(res[0].0.clone()),
-        }
-    }*/
-
     fn create_and_send_advance_message_for_all(&mut self) -> Result<(), VersioningError> {
         let mut store = self.mip_store.0.write();
 
@@ -107,8 +93,7 @@ mod test {
         MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 2,
+            components: HashMap::from([(MipComponent::Address, 2)]),
             start,
             timeout,
         }
