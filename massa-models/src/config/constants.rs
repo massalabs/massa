@@ -45,7 +45,7 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1677682800000.into()  // Wednesday, March 1, 2023 03:00:00 PM UTC
+        1678366800000.into()  // Wednesday, March 9, 2023 02:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.20.0"
         } else {
-            "TEST.20.0"
+            "TEST.20.1"
         }
         .parse()
         .unwrap()
