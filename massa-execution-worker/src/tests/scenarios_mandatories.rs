@@ -1633,16 +1633,25 @@ mod tests {
 
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         // match the events
-        assert!(!events.is_empty(), "2 events were expected");
-        let key: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
-        let keys_str: String = key
+        assert!(!events.is_empty(), "4 events were expected");
+        let key_a: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
+        let key_a_str: String = key_a
             .iter()
             .map(|b| format!("{}", b))
             .collect::<Vec<String>>()
             .join(",");
 
-        assert!(events[0].data.contains(&format!("keys: {}", keys_str)));
-        assert!(events[1].data.contains(&format!("keys2: {}", keys_str)));
+        let key_b: Vec<u8> = [2, 0, 254, 255].iter().cloned().collect();
+        let key_b_str: String = key_b
+            .iter()
+            .map(|b| format!("{}", b))
+            .collect::<Vec<String>>()
+            .join(",");
+
+        assert!(events[0].data.contains(&format!("keys: {},{}", key_a_str, key_b_str)));
+        assert!(events[1].data.contains(&format!("keys_f: {}", key_b_str)));
+        assert!(events[2].data.contains(&format!("keys2: {},{}", key_a_str, key_b_str)));
+        assert!(events[3].data.contains(&format!("keys2_f: {}", key_a_str)));
 
         // Length of the value left in the datastore. See sources for more context.
         let value_len = [21, 0, 49].len() as u64;
