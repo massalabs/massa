@@ -78,7 +78,12 @@ where
         let public_key = keypair.get_public_key();
         hash_data.extend(public_key.to_bytes());
         hash_data.extend(de_data_ser);
-        hash_data.extend(content_serialized.clone());
+        if denunciation_data.is_some() {
+            hash_data.extend(Hash::compute_from(&content_serialized).to_bytes())
+        } else {
+            // Optim: avoid a Hash::compute_from for objects that are not subject to Denunciation
+            hash_data.extend(content_serialized.clone());
+        }
         let hash = Hash::compute_from(&hash_data);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
@@ -163,7 +168,15 @@ where
             })?;
 
         serialized_full_data.extend(de_data_ser);
+        let mut hash_full_data = serialized_full_data.clone();
         serialized_full_data.extend(&content_serialized);
+
+        if denunciation_data.is_some() {
+            hash_full_data.extend(Hash::compute_from(&content_serialized).to_bytes());
+        } else {
+            hash_full_data.extend(&content_serialized)
+        }
+
         Ok((
             rest,
             SecureShare {
@@ -172,7 +185,7 @@ where
                 content_creator_pub_key: creator_public_key,
                 content_creator_address: creator_address,
                 serialized_data: content_serialized.to_vec(),
-                id: ID::new(Hash::compute_from(&serialized_full_data)),
+                id: ID::new(Hash::compute_from(&hash_full_data)),
             },
         ))
     }

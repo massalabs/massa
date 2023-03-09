@@ -4,7 +4,6 @@ use crate::block::Block;
 use crate::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
 use crate::operation::Operation;
-use crate::secure_share::Id;
 use crate::slot::{Slot, SlotSerializer};
 
 use massa_hash::Hash;
@@ -44,17 +43,6 @@ pub struct DenunciationDataSerializer {
     slot_serializer: SlotSerializer,
     index_serializer: U32VarIntSerializer,
 }
-
-/*
-impl Default for DenunciationDataSerializer {
-    fn default() -> Self {
-        Self {
-            slot_serializer: Default::default(),
-            index_serializer: Default::default(),
-        }
-    }
-}
-*/
 
 impl DenunciationDataSerializer {
     /// Create a new `DenunciationDataSerializer`
@@ -119,11 +107,20 @@ struct EndorsementDenunciation {
 }
 
 impl EndorsementDenunciation {
+    /// Compute hash for Endorsement content
+    fn compute_content_hash(content: &Endorsement) -> Result<Hash, SerializeError> {
+        let mut buf = Vec::new();
+        let endorsement_serializer = EndorsementSerializer::new();
+        endorsement_serializer.serialize(content, &mut buf)?;
+        Ok(Hash::compute_from(&buf))
+    }
+
+    /// Rebuild full hash of SecureShareEndorsement from given arguments
     fn compute_hash_for_sig_verif(
         public_key: &PublicKey,
         slot: &Slot,
         index: &u32,
-        content: &Endorsement,
+        content_hash: &Hash,
     ) -> Result<Hash, SerializeError> {
         let mut hash_data = Vec::new();
         let mut buf = Vec::new();
@@ -131,7 +128,6 @@ impl EndorsementDenunciation {
             OptionSerializer::<DenunciationData, DenunciationDataSerializer>::new(
                 DenunciationDataSerializer::new(),
             );
-        let endorsement_serializer = EndorsementSerializer::new();
 
         // Public key
         hash_data.extend(public_key.to_bytes());
@@ -142,9 +138,8 @@ impl EndorsementDenunciation {
         hash_data.extend(&buf);
         buf.clear();
 
-        // Ser endorsement
-        endorsement_serializer.serialize(content, &mut buf)?;
-        hash_data.extend(&buf);
+        // Add content hash
+        hash_data.extend(content_hash.to_bytes());
 
         Ok(Hash::compute_from(&hash_data))
     }
@@ -161,10 +156,19 @@ struct BlockHeaderDenunciation {
 }
 
 impl BlockHeaderDenunciation {
+    /// Compute hash for Block header content
+    fn compute_content_hash(content: &BlockHeader) -> Result<Hash, SerializeError> {
+        let mut buf = Vec::new();
+        let block_header_serializer = BlockHeaderSerializer::new();
+        block_header_serializer.serialize(content, &mut buf)?;
+        Ok(Hash::compute_from(&buf))
+    }
+
+    /// Rebuild full hash of SecuredHeader from given arguments
     fn compute_hash_for_sig_verif(
         public_key: &PublicKey,
         slot: &Slot,
-        content: &BlockHeader,
+        content_hash: &Hash,
     ) -> Result<Hash, SerializeError> {
         let mut hash_data = Vec::new();
         let mut buf = Vec::new();
@@ -172,20 +176,18 @@ impl BlockHeaderDenunciation {
             OptionSerializer::<DenunciationData, DenunciationDataSerializer>::new(
                 DenunciationDataSerializer::new(),
             );
-        let block_header_serializer = BlockHeaderSerializer::new();
 
         // Public key
         hash_data.extend(public_key.to_bytes());
 
-        // Ser slot & index
+        // Ser slot
         let denunciation_data = Some(DenunciationData::BlockHeader(*slot));
         de_data_serializer.serialize(&denunciation_data, &mut buf)?;
         hash_data.extend(&buf);
         buf.clear();
 
-        // Ser endorsement
-        block_header_serializer.serialize(content, &mut buf)?;
-        hash_data.extend(&buf);
+        // Add content hash
+        hash_data.extend(content_hash.to_bytes());
 
         Ok(Hash::compute_from(&hash_data))
     }
@@ -209,83 +211,123 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this endorsement
-    fn is_also_for_endorsement(&self, s_endorsement: &SecureShareEndorsement) -> bool {
+    fn is_also_for_endorsement(
+        &self,
+        s_endorsement: &SecureShareEndorsement,
+    ) -> Result<bool, DenunciationError> {
         match self {
-            Denunciation::BlockHeader(_) => false,
+            Denunciation::BlockHeader(_) => Ok(false),
             Denunciation::Endorsement(endo_de) => {
+                let content_hash =
+                    EndorsementDenunciation::compute_content_hash(&s_endorsement.content)?;
+
                 let hash_ = EndorsementDenunciation::compute_hash_for_sig_verif(
                     &endo_de.public_key,
                     &endo_de.slot,
                     &endo_de.index,
-                    &s_endorsement.content,
+                    &content_hash,
                 );
 
                 if let Ok(hash) = hash_ {
-                    endo_de.slot == s_endorsement.content.slot
+                    Ok(endo_de.slot == s_endorsement.content.slot
                         && endo_de.index == s_endorsement.content.index
                         && endo_de.public_key == s_endorsement.content_creator_pub_key
-                        && endo_de.hash_1 != *s_endorsement.id.get_hash()
-                        && endo_de.hash_2 != *s_endorsement.id.get_hash()
+                        && endo_de.hash_1 != content_hash
+                        && endo_de.hash_2 != content_hash
                         && endo_de
                             .public_key
                             .verify_signature(&hash, &s_endorsement.signature)
-                            .is_ok()
+                            .is_ok())
                 } else {
-                    false
+                    Ok(false)
                 }
             }
         }
     }
 
     /// Check if it is a Denunciation for this block header
-    fn is_also_for_block_header(&self, s_block_header: &SecuredHeader) -> bool {
+    fn is_also_for_block_header(
+        &self,
+        s_block_header: &SecuredHeader,
+    ) -> Result<bool, DenunciationError> {
         match self {
-            Denunciation::Endorsement(_) => false,
+            Denunciation::Endorsement(_) => Ok(false),
             Denunciation::BlockHeader(endo_bh) => {
+                let content_hash =
+                    BlockHeaderDenunciation::compute_content_hash(&s_block_header.content)?;
+
                 let hash_ = BlockHeaderDenunciation::compute_hash_for_sig_verif(
                     &endo_bh.public_key,
                     &endo_bh.slot,
-                    &s_block_header.content,
+                    &content_hash,
                 );
 
                 if let Ok(hash) = hash_ {
-                    endo_bh.slot == s_block_header.content.slot
+                    Ok(endo_bh.slot == s_block_header.content.slot
                         && endo_bh.public_key == s_block_header.content_creator_pub_key
-                        && endo_bh.hash_1 != *s_block_header.id.get_hash()
-                        && endo_bh.hash_2 != *s_block_header.id.get_hash()
+                        && endo_bh.hash_1 != content_hash
+                        && endo_bh.hash_2 != content_hash
                         && endo_bh
                             .public_key
                             .verify_signature(&hash, &s_block_header.signature)
-                            .is_ok()
+                            .is_ok())
                 } else {
-                    false
+                    Ok(false)
                 }
             }
         }
     }
 
-    fn is_valid(&self) -> bool {
+    fn is_valid(&self) -> Result<bool, DenunciationError> {
         let (signature_1, signature_2, hash_1, hash_2, public_key) = match self {
-            Denunciation::Endorsement(de) => (
-                de.signature_1,
-                de.signature_2,
-                de.hash_1,
-                de.hash_2,
-                de.public_key,
-            ),
-            Denunciation::BlockHeader(de) => (
-                de.signature_1,
-                de.signature_2,
-                de.hash_1,
-                de.hash_2,
-                de.public_key,
-            ),
+            Denunciation::Endorsement(de) => {
+                let hash_1 = EndorsementDenunciation::compute_hash_for_sig_verif(
+                    &de.public_key,
+                    &de.slot,
+                    &de.index,
+                    &de.hash_1,
+                )?;
+                let hash_2 = EndorsementDenunciation::compute_hash_for_sig_verif(
+                    &de.public_key,
+                    &de.slot,
+                    &de.index,
+                    &de.hash_2,
+                )?;
+
+                (
+                    de.signature_1,
+                    de.signature_2,
+                    hash_1,
+                    hash_2,
+                    de.public_key,
+                )
+            }
+            Denunciation::BlockHeader(de) => {
+                let hash_1 = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+                    &de.public_key,
+                    &de.slot,
+                    &de.hash_1,
+                )?;
+                let hash_2 = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+                    &de.public_key,
+                    &de.slot,
+                    &de.hash_2,
+                )?;
+
+                (
+                    de.signature_1,
+                    de.signature_2,
+                    hash_1,
+                    hash_2,
+                    de.public_key,
+                )
+            }
         };
 
-        hash_1 != hash_2
+        Ok(hash_1 != hash_2
             && signature_1 != signature_2
             && public_key.verify_signature(&hash_1, &signature_1).is_ok()
-            && public_key.verify_signature(&hash_2, &signature_2).is_ok()
+            && public_key.verify_signature(&hash_2, &signature_2).is_ok())
     }
 }
 
@@ -310,14 +352,25 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             return Err(DenunciationError::InvalidInput);
         }
 
+        // Check sig of s_e1 with s_e1.public_key, s_e1.slot, s_e1.index
+        let s_e1_hash_content = EndorsementDenunciation::compute_content_hash(&s_e1.content)?;
+        let s_e1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
+            &s_e1.content_creator_pub_key,
+            &s_e1.content.slot,
+            &s_e1.content.index,
+            &s_e1_hash_content,
+        )?;
         // Check sig of s_e2 but with s_e1.public_key, s_e1.slot, s_e1.index
+        let s_e2_hash_content = EndorsementDenunciation::compute_content_hash(&s_e2.content)?;
         let s_e2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
             &s_e1.content_creator_pub_key,
             &s_e1.content.slot,
             &s_e1.content.index,
-            &s_e2.content,
+            &s_e2_hash_content,
         )?;
 
+        s_e1.content_creator_pub_key
+            .verify_signature(&s_e1_hash, &s_e1.signature)?;
         s_e1.content_creator_pub_key
             .verify_signature(&s_e2_hash, &s_e2.signature)?;
 
@@ -327,8 +380,8 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             index: s_e1.content.index,
             signature_1: s_e1.signature,
             signature_2: s_e2.signature,
-            hash_1: *s_e1.id.get_hash(),
-            hash_2: s_e2_hash,
+            hash_1: s_e1_hash_content,
+            hash_2: s_e2_hash_content,
         }))
     }
 }
@@ -349,12 +402,22 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
         }
 
         // Check sig of s_e2 but with s_e1.public_key, s_e1.slot, s_e1.index
+        let s_bh1_hash_content = BlockHeaderDenunciation::compute_content_hash(&s_bh1.content)?;
+        let s_bh1_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
+            &s_bh1.content_creator_pub_key,
+            &s_bh1.content.slot,
+            &s_bh1_hash_content,
+        )?;
+        let s_bh2_hash_content = BlockHeaderDenunciation::compute_content_hash(&s_bh2.content)?;
         let s_bh2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
-            &s_bh2.content,
+            &s_bh2_hash_content,
         )?;
 
+        s_bh1
+            .content_creator_pub_key
+            .verify_signature(&s_bh1_hash, &s_bh1.signature)?;
         s_bh1
             .content_creator_pub_key
             .verify_signature(&s_bh2_hash, &s_bh2.signature)?;
@@ -364,8 +427,8 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
             slot: s_bh1.content.slot,
             signature_1: s_bh1.signature,
             signature_2: s_bh2.signature,
-            hash_1: *s_bh1.id.get_hash(),
-            hash_2: s_bh2_hash,
+            hash_1: s_bh1_hash_content,
+            hash_2: s_bh2_hash_content,
         }))
     }
 }
@@ -452,7 +515,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid(), true);
+        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
     }
 
     #[test]
@@ -488,7 +551,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid(), true);
+        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
@@ -501,11 +564,18 @@ mod tests {
                 .unwrap();
 
         assert_eq!(
-            denunciation.is_also_for_endorsement(&s_endorsement_4),
+            denunciation
+                .is_also_for_endorsement(&s_endorsement_4)
+                .unwrap_or(false),
             false
         );
-        assert_eq!(denunciation.is_also_for_endorsement(&s_endorsement_3), true);
-        assert_eq!(denunciation.is_valid(), true);
+        assert_eq!(
+            denunciation
+                .is_also_for_endorsement(&s_endorsement_3)
+                .unwrap_or(false),
+            true
+        );
+        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
     }
 
     fn gen_block_headers_for_denunciation(
@@ -594,9 +664,11 @@ mod tests {
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_block_header(), true);
-        assert_eq!(denunciation.is_valid(), true);
+        assert_eq!(denunciation.is_valid().unwrap_or(false), true);
         assert_eq!(
-            denunciation.is_also_for_block_header(&s_block_header_3),
+            denunciation
+                .is_also_for_block_header(&s_block_header_3)
+                .unwrap_or(false),
             true
         );
     }
@@ -639,7 +711,7 @@ mod tests {
         });
 
         // hash_1 == hash_2 -> this is invalid
-        assert_eq!(de_forged_1.is_valid(), false);
+        assert_eq!(de_forged_1.is_valid().unwrap_or(false), false);
 
         // from an attacker - building manually a Denunciation object
         let de_forged_2 = Denunciation::Endorsement(EndorsementDenunciation {
@@ -654,6 +726,6 @@ mod tests {
 
         // An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
         // This has to be detected if Denunciation are send via the network
-        assert_eq!(de_forged_2.is_valid(), false);
+        assert_eq!(de_forged_2.is_valid().unwrap_or(false), false);
     }
 }
