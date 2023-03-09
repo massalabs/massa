@@ -9,12 +9,13 @@ use massa_models::error::ModelsError;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::slot::Slot;
 use massa_models::timeslots;
-use massa_proto::massa::api::v1::{self as grpc, GetSelectorDrawsResponse};
+use massa_proto::google::rpc::Status;
+use massa_proto::massa::api::v1::{self as grpc, GetSelectorDrawsResponse, SendBlocksResponse};
 use massa_proto::massa::api::v1::{GetDatastoreEntriesResponse, GetVersionResponse};
 use massa_serialization::{DeserializeError, Deserializer};
-use std::error::Error;
 use std::io::ErrorKind;
 use std::str::FromStr;
+use tokio::sync::mpsc::Sender;
 use tonic::Request;
 use tracing::log::{error, warn};
 
@@ -147,130 +148,122 @@ pub(crate) async fn send_blocks(
 
     tokio::spawn(async move {
         while let Some(result) = in_stream.next().await {
+            let sender = tx.clone();
             match result {
                 Ok(req_content) => {
-                    if let Some(proto_block) = req_content.block {
-                        let args = BlockDeserializerArgs {
-                            thread_count: config.thread_count,
-                            max_operations_per_block: config.max_operations_per_block,
-                            endorsement_count: config.endorsement_count,
-                        };
-                        let _: Result<(), DeserializeError> =
-                            match SecureShareDeserializer::new(BlockDeserializer::new(args))
-                                .deserialize::<DeserializeError>(&proto_block.serialized_content)
-                            {
-                                Ok(tuple) => {
-                                    let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
-                                    if rest.is_empty() {
-                                        match res_block
-                                            .verify_signature()
-                                            .and_then(|_| {
-                                                res_block.content.header.verify_signature()
-                                            })
-                                            .map(|_| {
-                                                res_block
-                                                    .content
-                                                    .header
-                                                    .content
-                                                    .endorsements
-                                                    .iter()
-                                                    .map(|endorsement| {
-                                                        endorsement.verify_signature()
-                                                    })
-                                                    .collect::<Vec<Result<(), ModelsError>>>()
-                                            }) {
-                                            Ok(_) => {
-                                                let block_id = res_block.id;
-                                                let slot = res_block.content.header.content.slot;
-                                                let mut block_storage =
-                                                    storage.clone_without_refs();
-                                                block_storage.store_block(res_block.clone());
-                                                consensus_controller.register_block(
-                                                    block_id,
-                                                    slot,
-                                                    block_storage.clone(),
-                                                    false,
-                                                );
-
-                                                if let Err(e) = protocol_sender
-                                                    .integrated_block(block_id, block_storage)
-                                                {
-                                                    let error =
-                                                        format!("failed to propagate block: {}", e);
-                                                    let _ = send_blocks_notify_error(
-                                                        req_content.id.clone(),
-                                                        tx.clone(),
-                                                        tonic::Code::Internal,
-                                                        error.to_owned(),
-                                                    )
-                                                    .await;
-                                                };
-
-                                                let result = grpc::BlockResult {
-                                                    id: res_block.id.to_string(),
-                                                };
-
-                                                if let Err(e) = tx
-                                                .send(Ok(grpc::SendBlocksResponse {
-                                                    id: req_content.id.clone(),
-                                                    message: Some(
-                                                        grpc::send_blocks_response::Message::Result(
-                                                            result,
-                                                        ),
-                                                    ),
-                                                }))
-                                                .await
-                                            {
-                                                error!("failed to send back block response: {}", e);
-                                            };
-                                            }
-                                            Err(e) => {
-                                                let error = format!("wrong signature: {}", e);
-                                                let _ = send_blocks_notify_error(
-                                                    req_content.id.clone(),
-                                                    tx.clone(),
-                                                    tonic::Code::InvalidArgument,
-                                                    error.to_owned(),
-                                                )
-                                                .await;
-                                            }
-                                        }
-                                    } else {
-                                        let _ = send_blocks_notify_error(
-                                            req_content.id.clone(),
-                                            tx.clone(),
-                                            tonic::Code::InvalidArgument,
-                                            "there is data left after operation deserialization"
-                                                .to_owned(),
-                                        )
-                                        .await;
-                                    }
-                                    Ok(())
-                                }
-                                Err(e) => {
-                                    let error = format!("failed to deserialize block: {}", e);
-                                    let _ = send_blocks_notify_error(
-                                        req_content.id.clone(),
-                                        tx.clone(),
-                                        tonic::Code::InvalidArgument,
-                                        error.to_owned(),
-                                    )
-                                    .await;
-                                    Ok(())
-                                }
-                            };
-                    } else {
-                        let _ = send_blocks_notify_error(
+                    let Some(proto_block) = req_content.block else {
+                        send_blocks_notify_error(
                             req_content.id.clone(),
-                            tx.clone(),
+                            sender,
                             tonic::Code::InvalidArgument,
                             "the request payload is empty".to_owned(),
-                        )
-                        .await;
-                    }
+                        ).await;
+                        continue;
+                    };
+
+                    let args = BlockDeserializerArgs {
+                        thread_count: config.thread_count,
+                        max_operations_per_block: config.max_operations_per_block,
+                        endorsement_count: config.endorsement_count,
+                    };
+
+                    let _: Result<(), DeserializeError> =
+                        match SecureShareDeserializer::new(BlockDeserializer::new(args))
+                            .deserialize::<DeserializeError>(&proto_block.serialized_content)
+                        {
+                            Ok(tuple) => {
+                                let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
+                                if rest.is_empty() {
+                                    if let Err(e) = res_block
+                                        .verify_signature()
+                                        .and_then(|_| res_block.content.header.verify_signature())
+                                        .map(|_| {
+                                            res_block
+                                                .content
+                                                .header
+                                                .content
+                                                .endorsements
+                                                .iter()
+                                                .map(|endorsement| endorsement.verify_signature())
+                                                .collect::<Vec<Result<(), ModelsError>>>()
+                                        })
+                                    {
+                                        // Signature error
+                                        send_blocks_notify_error(
+                                            req_content.id.clone(),
+                                            sender,
+                                            tonic::Code::InvalidArgument,
+                                            format!("wrong signature: {}", e),
+                                        )
+                                        .await;
+                                        continue;
+                                    }
+
+                                    let block_id = res_block.id;
+                                    let slot = res_block.content.header.content.slot;
+                                    let mut block_storage = storage.clone_without_refs();
+                                    block_storage.store_block(res_block.clone());
+                                    consensus_controller.register_block(
+                                        block_id,
+                                        slot,
+                                        block_storage.clone(),
+                                        false,
+                                    );
+
+                                    if let Err(e) =
+                                        protocol_sender.integrated_block(block_id, block_storage)
+                                    {
+                                        send_blocks_notify_error(
+                                            req_content.id.clone(),
+                                            sender,
+                                            tonic::Code::Internal,
+                                            format!("failed to propagate block: {}", e),
+                                        )
+                                        .await;
+                                        // continue ?
+                                        continue;
+                                    };
+
+                                    let result = grpc::BlockResult {
+                                        id: res_block.id.to_string(),
+                                    };
+
+                                    if let Err(e) = tx
+                                        .send(Ok(SendBlocksResponse {
+                                            id: req_content.id.clone(),
+                                            message: Some(
+                                                grpc::send_blocks_response::Message::Result(result),
+                                            ),
+                                        }))
+                                        .await
+                                    {
+                                        error!("failed to send back block response: {}", e);
+                                    };
+                                } else {
+                                    send_blocks_notify_error(
+                                        req_content.id.clone(),
+                                        sender,
+                                        tonic::Code::InvalidArgument,
+                                        "there is data left after operation deserialization"
+                                            .to_owned(),
+                                    )
+                                    .await;
+                                }
+                                Ok(())
+                            }
+                            Err(e) => {
+                                send_blocks_notify_error(
+                                    req_content.id.clone(),
+                                    sender,
+                                    tonic::Code::InvalidArgument,
+                                    format!("failed to deserialize block: {}", e),
+                                )
+                                .await;
+                                Ok(())
+                            }
+                        };
                 }
                 Err(err) => {
-                    dbg!(&err);
                     if let Some(io_err) = match_for_io_error(&err) {
                         if io_err.kind() == ErrorKind::BrokenPipe {
                             warn!("client disconnected, broken pipe: {}", io_err);
@@ -294,26 +287,22 @@ pub(crate) async fn send_blocks(
 
 async fn send_blocks_notify_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendBlocksResponse, tonic::Status>>,
+    sender: Sender<Result<SendBlocksResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
-) -> Result<(), Box<dyn Error>> {
+) {
     error!("{}", error);
     if let Err(e) = sender
-        .send(Ok(grpc::SendBlocksResponse {
+        .send(Ok(SendBlocksResponse {
             id,
-            message: Some(grpc::send_blocks_response::Message::Error(
-                massa_proto::google::rpc::Status {
-                    code: code.into(),
-                    message: error,
-                    details: Vec::new(),
-                },
-            )),
+            message: Some(grpc::send_blocks_response::Message::Error(Status {
+                code: code.into(),
+                message: error,
+                details: Vec::new(),
+            })),
         }))
         .await
     {
         error!("failed to send back send_blocks error response: {}", e);
     }
-
-    Ok(())
 }
