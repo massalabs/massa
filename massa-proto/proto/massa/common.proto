@@ -11,26 +11,26 @@ option objc_class_prefix = "COMMON";
 option php_namespace = "Massa\\Api\\V1";
 
 // commons
-    // message struct
-    message Version {
-      // string field
-      string version = 1;
-    }
+// message struct
+message Version {
+    // string field
+    string version = 1;
+}
 
-    // BytesMapFieldEntry
-    message BytesMapFieldEntry {
-      // bytes key
-      bytes key = 1;
-      // bytes key
-      bytes value = 2;
-    }
+// BytesMapFieldEntry
+message BytesMapFieldEntry {
+    // bytes key
+    bytes key = 1;
+    // bytes key
+    bytes value = 2;
+}
 
-    // message struct
-    message SecureSharePayload {
-      /// The public key of the content creator 
-      string creator_public_key = 1;
-      /// The signature of the content
-      string signature  = 2;
-      /// The serialized version of the content
-      bytes serialized_content  = 3;
-    }
+// message struct
+message SecureSharePayload {
+    /// The public key of the content creator
+    string creator_public_key = 1;
+    /// The signature of the content
+    string signature = 2;
+    /// The serialized version of the content
+    bytes serialized_content = 3;
+}

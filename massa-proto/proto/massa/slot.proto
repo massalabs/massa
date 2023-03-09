@@ -10,18 +10,18 @@ option java_package = "com.massa.api.v1";
 option objc_class_prefix = "SLOT";
 option php_namespace = "Massa\\Api\\V1";
 
- // message struct
- message IndexedSlot {
-  // fixed64 field
-  fixed64 index = 1;
-  // object field
-  Slot slot = 2;
+// message struct
+message IndexedSlot {
+    // fixed64 field
+    fixed64 index = 1;
+    // object field
+    Slot slot = 2;
 }
 
- // message struct
- message Slot {
-   // fixed64 field
-   fixed64 period = 1;
-   // fixed32 field
-   fixed32 thread = 2;
- }
+// message struct
+message Slot {
+    // fixed64 field
+    fixed64 period = 1;
+    // fixed32 field
+    fixed32 thread = 2;
+}
