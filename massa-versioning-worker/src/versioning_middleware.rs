@@ -98,43 +98,33 @@ mod test {
     use std::collections::BTreeMap;
     use std::sync::Arc;
 
-    use chrono::{NaiveDate, NaiveDateTime};
-
     use super::*;
 
-    fn get_a_version_info() -> (NaiveDateTime, NaiveDateTime, MipInfo) {
-        // A helper function to provide a  default VersioningInfo
+    fn get_a_version_info(start: MassaTime, timeout: MassaTime) -> MipInfo {
+        // A helper function to provide a  default MipInfo
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
 
-        let start: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 01)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 11)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        return (
+        MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            component: MipComponent::Address,
+            component_version: 2,
             start,
-            timeout,
-            MipInfo {
-                name: "MIP-0002".to_string(),
-                version: 2,
-                component: MipComponent::Address,
-                component_version: 1,
-                start: MassaTime::from(start.timestamp() as u64),
-                timeout: MassaTime::from(timeout.timestamp() as u64),
-            },
-        );
+            timeout
+        }
     }
 
     #[tokio::test]
     async fn test_versioning_middleware() {
-        let (start, _, vi) = get_a_version_info();
-        let now_0 = MassaTime::from(start.timestamp() as u64);
-        let state = MipState::new(now_0);
+
+        let now = MassaTime::now().unwrap();
+
+        let start = now.checked_add(MassaTime::from(2000)).unwrap();
+        let timeout = now.checked_add(MassaTime::from(4000)).unwrap();
+
+        let vi = get_a_version_info(start, timeout);
+
+        let state = MipState::new(now);
 
         let vs_raw = MipStoreRaw(BTreeMap::from([(vi.clone(), state)]));
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
