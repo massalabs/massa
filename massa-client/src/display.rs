@@ -253,9 +253,9 @@ impl Output for Vec<OperationInfo> {
             }
             println!("Signature: {}", Style::Signature.style(info.operation.signature));
             println!("Creator pubkey: {}",
-                Style::Address.style(info.operation.content_creator_pub_key));
+                Style::Wallet.style(info.operation.content_creator_pub_key));
             println!("Creator address: {}",
-                Style::Address.style(info.operation.content_creator_address));
+                Style::Wallet.style(info.operation.content_creator_address));
             println!("Fee: {}", Style::Coins.style(info.operation.content.fee));
             println!("Expire period: {}", Style::Pending.style(info.operation.content.expire_period));
             println!("Operation type: {}", Style::Id.style(&info.operation.content.op));
