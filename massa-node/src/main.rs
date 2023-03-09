@@ -619,7 +619,7 @@ async fn launch(
             match result {
                 Ok(stop) => Some(stop),
                 Err(e) => {
-                    error!(e);
+                    error!("{}", e);
                     None
                 }
             }
