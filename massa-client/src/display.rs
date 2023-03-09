@@ -11,7 +11,8 @@ use massa_api_exports::{
 use massa_models::composite::PubkeySig;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
-use massa_models::{address::Address, operation::OperationId};
+use massa_models::{address::Address, operation::OperationId, config::CompactConfig};
+use massa_models::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use massa_signature::{KeyPair, PublicKey};
 use massa_wallet::Wallet;
 use std::str;
@@ -169,7 +170,122 @@ impl Output for &str {
 
 impl Output for NodeStatus {
     fn pretty_print(&self) {
-        println!("{}", self);
+        println!("Node's ID: {}", Style::Id.style(self.node_id));
+        if self.node_ip.is_some() {
+            println!("Node's IP: {}", Style::Protocol.style(self.node_ip.unwrap()));
+        } else {
+            println!("{}", Style::Unknown.style("No routable IP set"));
+        }
+        println!();
+
+        println!("Version: {}", Style::Id.style(self.version));
+        self.config.pretty_print();
+        println!();
+
+        println!("Current time: {}", self.current_time.to_utc_string());
+        println!("Current cycle: {}", Style::Protocol.style(self.current_cycle));
+        if self.last_slot.is_some() {
+            println!("Last slot: {}", Style::Protocol.style(self.last_slot.unwrap()));
+        }
+        println!("Next slot: {}", Style::Protocol.style(self.next_slot));
+        println!();
+
+        self.consensus_stats.pretty_print();
+
+        println!("Pool stats:");
+        println!("\tOperations count: {}", Style::Protocol.style(self.pool_stats.0));
+        println!("\tEndorsements count: {}", Style::Protocol.style(self.pool_stats.1));
+        println!();
+
+        self.network_stats.pretty_print();
+        self.execution_stats.pretty_print();
+
+        if !self.connected_nodes.is_empty() {
+            println!("Connected nodes:");
+            for (node_id, (ip_addr, is_outgoing)) in &self.connected_nodes {
+                println!(
+                    "Node's ID: {} / IP address: {} / {} connection",
+                    Style::Id.style(node_id),
+                    Style::Protocol.style(ip_addr),
+                    if *is_outgoing { "Out" } else { "In" }
+                )
+            }
+        }
+    }
+}
+
+impl Output for ExecutionStats {
+    fn pretty_print(&self) {
+        println!("Execution stats:");
+        println!(
+            "\tStart stats timespan time: {}",
+            Style::Time.style(self.time_window_start.to_utc_string())
+        );
+        println!(
+            "\tEnd stats timespan time: {}",
+            Style::Time.style(self.time_window_end.to_utc_string())
+        );
+        println!(
+            "\tFinal executed block count: {}",
+            Style::Block.style(self.final_block_count)
+        );
+        println!(
+            "\tFinal executed operation count: {}",
+            Style::Protocol.style(self.final_executed_operations_count)
+        );
+        println!("\tActive cursor: {}", Style::Protocol.style(self.active_cursor));
+    }
+}
+
+impl Output for NetworkStats {
+    fn pretty_print(&self) {
+        println!("Network stats:");
+        println!("\tIn connections: {}", Style::Protocol.style(self.in_connection_count));
+        println!("\tOut connections: {}", Style::Protocol.style(self.out_connection_count));
+        println!("\tKnown peers: {}", Style::Protocol.style(self.known_peer_count));
+        println!("\tBanned peers: {}", Style::Bad.style(self.banned_peer_count));
+        println!("\tActive nodes: {}", Style::Good.style(self.active_node_count));
+    }
+}
+
+impl Output for CompactConfig {
+    fn pretty_print(&self) {
+        println!("Config:");
+        println!(
+            "\tGenesis time: {}",
+            Style::Time.style(self.genesis_timestamp.to_utc_string())
+        );
+        if let Some(end) = self.end_timestamp {
+            println!("\tEnd time: {}", Style::Time.style(end.to_utc_string()));
+        }
+        println!("\tThread count: {}", Style::Protocol.style(self.thread_count));
+        println!("\tt0: {}", Style::Time.style(self.t0));
+        println!("\tdelta_f0: {}", Style::Protocol.style(self.delta_f0));
+        println!("\tOperation validity periods: {}",
+            Style::Protocol.style(self.operation_validity_periods)
+        );
+        println!("\tPeriods per cycle: {}", Style::Protocol.style(self.periods_per_cycle));
+        println!("\tBlock reward: {}", Style::Coins.style(self.block_reward));
+        println!("\tPeriods per cycle: {}", Style::Protocol.style(self.periods_per_cycle));
+        println!("\tRoll price: {}", Style::Coins.style(self.roll_price));
+        println!("\tMax block size (in bytes): {}", Style::Block.style(self.max_block_size));
+    }
+}
+
+impl Output for ConsensusStats {
+    fn pretty_print(&self) {
+        println!("Consensus stats:");
+        println!(
+            "\tStart stats timespan time: {}",
+            Style::Time.style(self.start_timespan.to_utc_string())
+        );
+        println!(
+            "\tEnd stats timespan time: {}",
+            Style::Time.style(self.end_timespan.to_utc_string())
+        );
+        println!("\tFinal block count: {}", Style::Block.style(self.final_block_count));
+        println!("\tStale block count: {}", Style::Block.style(self.stale_block_count));
+        println!("\tClique count: {}", Style::Protocol.style(self.clique_count));
     }
 }
 
