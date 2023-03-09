@@ -483,9 +483,11 @@ mod tests {
         let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
-
         let parents_2: Vec<BlockId> = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i + 1])))
+            .collect();
+        let parents_3: Vec<BlockId> = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i + 2])))
             .collect();
 
         let endorsement_1 = Endorsement {
@@ -527,23 +529,41 @@ mod tests {
         )
         .expect("error while producing block header");
 
+        let block_header_3 = BlockHeader {
+            slot,
+            parents: parents_3,
+            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+            endorsements: vec![s_endorsement_1.clone()],
+        };
+
+        // create header
+        let s_block_header_3 = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
+            block_header_3,
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .expect("error while producing block header");
+
         return (
             slot,
             keypair,
             s_block_header_1.clone(),
             s_block_header_2,
-            // FIXME
-            s_block_header_1.clone(),
+            s_block_header_3,
         );
     }
 
     #[test]
     fn test_block_header_denunciation() {
         // Create an block header denunciation and check if it is valid
-        let (_slot, _keypair, s_block_header_1, s_block_header_2, _s_block_header_3) =
+        let (_slot, _keypair, s_block_header_1, s_block_header_2, s_block_header_3) =
             gen_block_headers_for_denunciation();
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_block_header(), true);
+        assert_eq!(
+            denunciation.is_also_for_block_header(&s_block_header_3),
+            true
+        );
     }
 }
