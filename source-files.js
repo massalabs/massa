@@ -4,7 +4,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","message.rs","pool.rs"]],\
 "massa_bootstrap":["",[["server",[],["white_black_list.rs"]]],["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server.rs","server_binder.rs","settings.rs","tools.rs"]],\
 "massa_cipher":["",[],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]],\
-"massa_client":["",[],["cmds.rs","display.rs","main.rs","repl.rs","settings.rs"]],\
+"massa_client":["",[],["cmds.rs","main.rs","repl.rs","settings.rs"]],\
 "massa_consensus_exports":["",[],["block_graph_export.rs","block_status.rs","bootstrapable_graph.rs","channels.rs","controller_trait.rs","error.rs","events.rs","export_active_block.rs","lib.rs","settings.rs"]],\
 "massa_consensus_worker":["",[["state",[],["graph.rs","mod.rs","process.rs","process_commands.rs","prune.rs","stats.rs","tick.rs","verifications.rs"]],["worker",[],["init.rs","main_loop.rs","mod.rs"]]],["commands.rs","controller.rs","lib.rs","manager.rs"]],\
 "massa_executed_ops":["",[],["config.rs","executed_ops.rs","lib.rs","ops_changes.rs"]],\
@@ -17,7 +17,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","types.rs"]],\
 "massa_ledger_worker":["",[],["ledger.rs","ledger_db.rs","lib.rs"]],\
 "massa_logging":["",[],["lib.rs"]],\
-"massa_models":["",[["config",[],["compact_config.rs","constants.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","block.rs","block_header.rs","block_id.rs","bytecode.rs","clique.rs","composite.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","version.rs","vesting_range.rs"]],\
+"massa_models":["",[["config",[],["compact_config.rs","constants.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","block.rs","block_header.rs","block_id.rs","bytecode.rs","clique.rs","composite.rs","datastore.rs","denunciation.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","version.rs","vesting_range.rs"]],\
 "massa_network_exports":["",[],["commands.rs","common.rs","error.rs","establisher.rs","lib.rs","network_controller.rs","peers.rs","settings.rs"]],\
 "massa_network_worker":["",[],["binders.rs","handshake_worker.rs","lib.rs","messages.rs","network_cmd_impl.rs","network_event.rs","network_worker.rs","node_worker.rs","peer_info_database.rs"]],\
 "massa_node":["",[],["main.rs","settings.rs"]],\
