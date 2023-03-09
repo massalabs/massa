@@ -1,37 +1,26 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
 /// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
+use nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult,
+};
 use thiserror::Error;
 
-use crate::block::Block;
+use crate::address::Address;
 use crate::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
-use crate::operation::Operation;
+use crate::error::ModelsError;
+use crate::secure_share::{Id, SecureShare, SecureShareContent};
 use crate::slot::{Slot, SlotSerializer};
 
 use massa_hash::Hash;
-use massa_serialization::{OptionSerializer, SerializeError, Serializer, U32VarIntSerializer};
-use massa_signature::{MassaSignatureError, PublicKey, Signature};
-
-//
-
-/// Can we build a Denunciation from this object?
-pub trait Denounceable {
-    /// Return true if object can be denounced, false otherwise
-    fn is_denounceable() -> bool {
-        false
-    }
-
-    /// Return DenunciationData (used to modify Signature for `SecureShare<T>`)
-    /// This is a default impl, return None if Self::is_denounceable() returns false
-    fn get_denunciation_data(&self) -> Option<DenunciationData> {
-        match Self::is_denounceable() {
-            true => unimplemented!(),
-            false => None,
-        }
-    }
-}
+use massa_serialization::{Deserializer, SerializeError, Serializer, U32VarIntSerializer};
+use massa_signature::{
+    KeyPair, MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature,
+    SignatureDeserializer,
+};
 
 /// Denunciation data (to be include in `SecureShare<T>` signature
 pub enum DenunciationData {
@@ -74,28 +63,219 @@ impl Serializer<DenunciationData> for DenunciationDataSerializer {
     }
 }
 
-// Denounceable trait impl
+impl SecureShareContent for Endorsement {
+    fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
+        content: Self,
+        content_serializer: Ser,
+        keypair: &KeyPair,
+    ) -> Result<SecureShare<Self, ID>, ModelsError> {
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&content, &mut content_serialized)?;
 
-impl Denounceable for Endorsement {
-    fn is_denounceable() -> bool {
-        true
+        // Add DenunciationData to hash
+        let de_data = DenunciationData::Endorsement((content.slot, content.index));
+        let de_data_serializer = DenunciationDataSerializer::new();
+        let mut de_data_ser = Vec::new();
+        de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
+
+        let mut hash_data = Vec::new();
+        let public_key = keypair.get_public_key();
+        hash_data.extend(public_key.to_bytes());
+        // Add DenunciationData to hash
+        hash_data.extend(de_data_ser);
+        // Default impl use content_serialized but in order to build a Denunciation
+        // we use the hash(content_serialized) here
+        hash_data.extend(Hash::compute_from(&content_serialized).to_bytes());
+        let hash = Hash::compute_from(&hash_data);
+        let creator_address = Address::from_public_key(&public_key);
+        Ok(SecureShare {
+            signature: keypair.sign(&hash)?,
+            content_creator_pub_key: public_key,
+            content_creator_address: creator_address,
+            content,
+            serialized_data: content_serialized,
+            id: ID::new(hash),
+        })
     }
-    fn get_denunciation_data(&self) -> Option<DenunciationData> {
-        Some(DenunciationData::Endorsement((self.slot, self.index)))
+
+    /// Deserialize the secured structure
+    fn deserialize<
+        'a,
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+        Deser: Deserializer<Self>,
+        ID: Id,
+    >(
+        content_serializer: Option<&dyn Serializer<Self>>,
+        signature_deserializer: &SignatureDeserializer,
+        creator_public_key_deserializer: &PublicKeyDeserializer,
+        content_deserializer: &Deser,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], SecureShare<Self, ID>, E> {
+        let (serialized_data, (signature, creator_public_key)) = context(
+            "Failed SecureShare deserialization",
+            tuple((
+                context("Failed signature deserialization", |input| {
+                    signature_deserializer.deserialize(input)
+                }),
+                context("Failed public_key deserialization", |input| {
+                    creator_public_key_deserializer.deserialize(input)
+                }),
+            )),
+        )(buffer)?;
+        let (rest, content) = content_deserializer.deserialize(serialized_data)?;
+        let content_serialized = if let Some(content_serializer) = content_serializer {
+            let mut content_buffer = Vec::new();
+            content_serializer
+                .serialize(&content, &mut content_buffer)
+                .map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        rest,
+                        nom::error::ErrorKind::Fail,
+                    ))
+                })?;
+            content_buffer
+        } else {
+            // Avoid getting the rest of the data in the serialized data
+            serialized_data[..serialized_data.len() - rest.len()].to_vec()
+        };
+        let creator_address = Address::from_public_key(&creator_public_key);
+
+        let de_data = DenunciationData::Endorsement((content.slot, content.index));
+        let de_data_serializer = DenunciationDataSerializer::new();
+        let mut de_data_ser = Vec::new();
+        de_data_serializer
+            .serialize(&de_data, &mut de_data_ser)
+            .map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    rest,
+                    nom::error::ErrorKind::Fail,
+                ))
+            })?;
+
+        let mut hash_full_data = creator_public_key.to_bytes().to_vec();
+        hash_full_data.extend(de_data_ser);
+        hash_full_data.extend(Hash::compute_from(&content_serialized).to_bytes());
+
+        Ok((
+            rest,
+            SecureShare {
+                content,
+                signature,
+                content_creator_pub_key: creator_public_key,
+                content_creator_address: creator_address,
+                serialized_data: content_serialized.to_vec(),
+                id: ID::new(Hash::compute_from(&hash_full_data)),
+            },
+        ))
     }
 }
 
-impl Denounceable for BlockHeader {
-    fn is_denounceable() -> bool {
-        true
+impl SecureShareContent for BlockHeader {
+    fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
+        content: Self,
+        content_serializer: Ser,
+        keypair: &KeyPair,
+    ) -> Result<SecureShare<Self, ID>, ModelsError> {
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&content, &mut content_serialized)?;
+
+        // Add DenunciationData to hash
+        let de_data = DenunciationData::BlockHeader(content.slot);
+        let de_data_serializer = DenunciationDataSerializer::new();
+        let mut de_data_ser = Vec::new();
+        de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
+
+        let mut hash_data = Vec::new();
+        let public_key = keypair.get_public_key();
+        hash_data.extend(public_key.to_bytes());
+        // Add DenunciationData to hash
+        hash_data.extend(de_data_ser);
+        // Default impl use content_serialized but in order to build a Denunciation
+        // we use the hash(content_serialized) here
+        hash_data.extend(Hash::compute_from(&content_serialized).to_bytes());
+        let hash = Hash::compute_from(&hash_data);
+        let creator_address = Address::from_public_key(&public_key);
+        Ok(SecureShare {
+            signature: keypair.sign(&hash)?,
+            content_creator_pub_key: public_key,
+            content_creator_address: creator_address,
+            content,
+            serialized_data: content_serialized,
+            id: ID::new(hash),
+        })
     }
-    fn get_denunciation_data(&self) -> Option<DenunciationData> {
-        Some(DenunciationData::BlockHeader(self.slot))
+
+    /// Deserialize the secured structure
+    fn deserialize<
+        'a,
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+        Deser: Deserializer<Self>,
+        ID: Id,
+    >(
+        content_serializer: Option<&dyn Serializer<Self>>,
+        signature_deserializer: &SignatureDeserializer,
+        creator_public_key_deserializer: &PublicKeyDeserializer,
+        content_deserializer: &Deser,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], SecureShare<Self, ID>, E> {
+        let (serialized_data, (signature, creator_public_key)) = context(
+            "Failed SecureShare deserialization",
+            tuple((
+                context("Failed signature deserialization", |input| {
+                    signature_deserializer.deserialize(input)
+                }),
+                context("Failed public_key deserialization", |input| {
+                    creator_public_key_deserializer.deserialize(input)
+                }),
+            )),
+        )(buffer)?;
+        let (rest, content) = content_deserializer.deserialize(serialized_data)?;
+        let content_serialized = if let Some(content_serializer) = content_serializer {
+            let mut content_buffer = Vec::new();
+            content_serializer
+                .serialize(&content, &mut content_buffer)
+                .map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        rest,
+                        nom::error::ErrorKind::Fail,
+                    ))
+                })?;
+            content_buffer
+        } else {
+            // Avoid getting the rest of the data in the serialized data
+            serialized_data[..serialized_data.len() - rest.len()].to_vec()
+        };
+        let creator_address = Address::from_public_key(&creator_public_key);
+
+        let de_data = DenunciationData::BlockHeader(content.slot);
+        let de_data_serializer = DenunciationDataSerializer::new();
+        let mut de_data_ser = Vec::new();
+        de_data_serializer
+            .serialize(&de_data, &mut de_data_ser)
+            .map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    rest,
+                    nom::error::ErrorKind::Fail,
+                ))
+            })?;
+
+        let mut hash_full_data = creator_public_key.to_bytes().to_vec();
+        hash_full_data.extend(de_data_ser);
+        hash_full_data.extend(Hash::compute_from(&content_serialized).to_bytes());
+
+        Ok((
+            rest,
+            SecureShare {
+                content,
+                signature,
+                content_creator_pub_key: creator_public_key,
+                content_creator_address: creator_address,
+                serialized_data: content_serialized.to_vec(),
+                id: ID::new(Hash::compute_from(&hash_full_data)),
+            },
+        ))
     }
 }
-
-impl Denounceable for Block {}
-impl Denounceable for Operation {}
 
 //
 
@@ -128,16 +308,13 @@ impl EndorsementDenunciation {
     ) -> Result<Hash, SerializeError> {
         let mut hash_data = Vec::new();
         let mut buf = Vec::new();
-        let de_data_serializer =
-            OptionSerializer::<DenunciationData, DenunciationDataSerializer>::new(
-                DenunciationDataSerializer::new(),
-            );
+        let de_data_serializer = DenunciationDataSerializer::new();
 
         // Public key
         hash_data.extend(public_key.to_bytes());
 
         // Ser slot & index
-        let denunciation_data = Some(DenunciationData::Endorsement((*slot, *index)));
+        let denunciation_data = DenunciationData::Endorsement((*slot, *index));
         de_data_serializer.serialize(&denunciation_data, &mut buf)?;
         hash_data.extend(&buf);
         buf.clear();
@@ -176,16 +353,13 @@ impl BlockHeaderDenunciation {
     ) -> Result<Hash, SerializeError> {
         let mut hash_data = Vec::new();
         let mut buf = Vec::new();
-        let de_data_serializer =
-            OptionSerializer::<DenunciationData, DenunciationDataSerializer>::new(
-                DenunciationDataSerializer::new(),
-            );
+        let de_data_serializer = DenunciationDataSerializer::new();
 
         // Public key
         hash_data.extend(public_key.to_bytes());
 
         // Ser slot
-        let denunciation_data = Some(DenunciationData::BlockHeader(*slot));
+        let denunciation_data = DenunciationData::BlockHeader(*slot);
         de_data_serializer.serialize(&denunciation_data, &mut buf)?;
         hash_data.extend(&buf);
         buf.clear();
@@ -215,6 +389,7 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this endorsement
+    #[cfg(test)]
     fn is_also_for_endorsement(
         &self,
         s_endorsement: &SecureShareEndorsement,
@@ -250,6 +425,7 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this block header
+    #[cfg(test)]
     fn is_also_for_block_header(
         &self,
         s_block_header: &SecuredHeader,

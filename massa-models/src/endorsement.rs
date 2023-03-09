@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::prehash::PreHashed;
-use crate::secure_share::{Id, SecureShare, SecureShareContent};
+use crate::secure_share::{Id, SecureShare};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use crate::{block_id::BlockId, error::ModelsError};
 use massa_hash::{Hash, HashDeserializer};
@@ -165,8 +165,6 @@ impl SecureShareEndorsement {
 
 /// Wrapped endorsement
 pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
-
-impl SecureShareContent for Endorsement {}
 
 /// Serializer for `Endorsement`
 #[derive(Clone)]
@@ -387,7 +385,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
 
 #[cfg(test)]
 mod tests {
-    use crate::secure_share::{SecureShareDeserializer, SecureShareSerializer};
+    use crate::secure_share::{SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
 
     use super::*;
     use massa_serialization::DeserializeError;

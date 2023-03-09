@@ -4,9 +4,7 @@ use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
 };
-use crate::secure_share::{
-    SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
-};
+use crate::secure_share::{SecureShare, SecureShareDeserializer, SecureShareSerializer};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -96,8 +94,6 @@ impl SecuredHeader {
             .map_err(|er| format!("{}", er).into())
     }
 }
-
-impl SecureShareContent for BlockHeader {}
 
 /// Serializer for `BlockHeader`
 pub struct BlockHeaderSerializer {
