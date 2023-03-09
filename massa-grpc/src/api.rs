@@ -1,29 +1,25 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! gRPC API for a massa-node
-use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin, str::FromStr};
+use std::{collections::HashMap, error::Error, io::ErrorKind, pin::Pin};
 
 use crate::{
     config::GrpcConfig,
     error::{match_for_io_error, GrpcError},
 };
-use itertools::izip;
 use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_models::{
-    address::Address,
-    block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
     endorsement::{EndorsementDeserializer, SecureShareEndorsement},
-    error::ModelsError,
     operation::{OperationDeserializer, SecureShareOperation},
     secure_share::SecureShareDeserializer,
-    slot::Slot,
-    timeslots,
 };
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::{self as grpc, grpc_server::GrpcServer, FILE_DESCRIPTOR_SET};
 use massa_serialization::{DeserializeError, Deserializer};
 
+use crate::business::{get_datastore_entries, get_selector_draws, get_version, send_blocks};
+use crate::models::SendBlocksStream;
 use futures_util::{FutureExt, StreamExt};
 use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
@@ -58,10 +54,7 @@ pub struct MassaGrpcService {
 
 impl MassaGrpcService {
     /// Start the gRPC API
-    pub async fn serve(
-        self,
-        config: &GrpcConfig,
-    ) -> Result<StopHandle, Box<dyn std::error::Error>> {
+    pub async fn serve(self, config: &GrpcConfig) -> Result<StopHandle, GrpcError> {
         let mut svc = GrpcServer::new(self)
             .max_decoding_message_size(config.max_decoding_message_size)
             .max_encoding_message_size(config.max_encoding_message_size);
@@ -100,10 +93,11 @@ impl MassaGrpcService {
             //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
             //  };
 
-            tokio::spawn( router_with_http1
-                .serve_with_shutdown(config.bind, shutdown_recv.map(drop)));
+            tokio::spawn(
+                router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
+            );
         } else {
-            let mut router = tonic::transport::Server::builder().add_service(svc.clone());
+            let mut router = tonic::transport::Server::builder().add_service(svc);
 
             if config.enable_reflection {
                 let reflection_service = tonic_reflection::server::Builder::configure()
@@ -113,15 +107,13 @@ impl MassaGrpcService {
                 router = router.add_service(reflection_service);
             }
 
+            //  // todo get config runtime
+            //  match self.cfg.tokio_runtime.take() {
+            //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
+            //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
+            //  };
 
-           //  // todo get config runtime
-           //  match self.cfg.tokio_runtime.take() {
-           //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
-           //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
-           //  };
-
-            tokio::spawn( router
-                .serve_with_shutdown(config.bind, shutdown_recv.map(drop)));
+            tokio::spawn(router.serve_with_shutdown(config.bind, shutdown_recv.map(drop)));
         }
 
         Ok(StopHandle {
@@ -148,299 +140,48 @@ impl StopHandle {
 
 #[tonic::async_trait]
 impl grpc::grpc_server::Grpc for MassaGrpcService {
-    async fn get_selector_draws(
-        &self,
-        request: tonic::Request<grpc::GetSelectorDrawsRequest>,
-    ) -> Result<tonic::Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
-        let selector_controller = self.selector_controller.clone();
-        let config = self.grpc_config.clone();
-        let inner_req = request.into_inner();
-        let id = inner_req.id.clone();
-
-        let addresses_res = inner_req
-            .queries
-            .into_iter()
-            .map(|query| Address::from_str(query.filter.unwrap().address.as_str()))
-            .collect::<Result<Vec<_>, _>>();
-
-        match addresses_res {
-            Ok(addresses) => {
-                // get future draws from selector
-                let selection_draws = {
-                    let cur_slot = timeslots::get_current_latest_block_slot(
-                        config.thread_count,
-                        config.t0,
-                        config.genesis_timestamp,
-                    )
-                    .expect("could not get latest current slot")
-                    .unwrap_or_else(|| Slot::new(0, 0));
-                    let slot_end = Slot::new(
-                        cur_slot
-                            .period
-                            .saturating_add(config.draw_lookahead_period_count),
-                        cur_slot.thread,
-                    );
-                    addresses
-                        .iter()
-                        .map(|addr| {
-                            let (nt_block_draws, nt_endorsement_draws) = selector_controller
-                                .get_address_selections(addr, cur_slot, slot_end)
-                                .unwrap_or_default();
-
-                            let mut proto_nt_block_draws = Vec::with_capacity(addresses.len());
-                            let mut proto_nt_endorsement_draws =
-                                Vec::with_capacity(addresses.len());
-                            let iterator =
-                                izip!(nt_block_draws.into_iter(), nt_endorsement_draws.into_iter());
-                            for (next_block_draw, next_endorsement_draw) in iterator {
-                                proto_nt_block_draws.push(next_block_draw.into());
-                                proto_nt_endorsement_draws.push(next_endorsement_draw.into());
-                            }
-
-                            (proto_nt_block_draws, proto_nt_endorsement_draws)
-                        })
-                        .collect::<Vec<_>>()
-                };
-
-                // compile results
-                let mut res = Vec::with_capacity(addresses.len());
-                let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
-                for (address, (next_block_draws, next_endorsement_draws)) in iterator {
-                    res.push(grpc::SelectorDraws {
-                        address: address.to_string(),
-                        next_block_draws,
-                        next_endorsement_draws,
-                    });
-                }
-
-                Ok(tonic::Response::new(grpc::GetSelectorDrawsResponse {
-                    id,
-                    selector_draws: res,
-                }))
-            }
-
-            Err(e) => {
-                return Err(tonic::Status::invalid_argument(e.to_string()));
-            }
-        }
-    }
-
-    /// Get multiple datastore entries.
+    /// Handler for get multiple datastore entries.
     async fn get_datastore_entries(
         &self,
         request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
     ) -> Result<tonic::Response<grpc::GetDatastoreEntriesResponse>, tonic::Status> {
-        let execution_controller = self.execution_controller.clone();
-        let inner_req = request.into_inner();
-        let id = inner_req.id.clone();
-
-        let filters = inner_req
-            .queries
-            .into_iter()
-            .map(|query| {
-                let filter = query.filter.unwrap();
-                Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
-            })
-            .collect::<Result<Vec<_>, _>>();
-
-        match filters {
-            Ok(filters) => {
-                let entries = execution_controller
-                    .get_final_and_active_data_entry(filters)
-                    .into_iter()
-                    .map(|output| grpc::BytesMapFieldEntry {
-                        //TODO this behaviour should be confirmed
-                        key: output.0.unwrap_or_default(),
-                        value: output.1.unwrap_or_default(),
-                    })
-                    .collect();
-
-                Ok(tonic::Response::new(grpc::GetDatastoreEntriesResponse {
-                    id,
-                    entries,
-                }))
-            }
-
-            Err(e) => {
-                return Err(tonic::Status::invalid_argument(e.to_string()));
-            }
+        match get_datastore_entries(self, request) {
+            Ok(response) => Ok(tonic::Response::new(response)),
+            Err(e) => Err(e.into()),
         }
     }
 
+    /// Handler for get version
     async fn get_version(
         &self,
         request: tonic::Request<grpc::GetVersionRequest>,
     ) -> Result<tonic::Response<grpc::GetVersionResponse>, tonic::Status> {
-        Ok(tonic::Response::new(grpc::GetVersionResponse {
-            id: request.into_inner().id,
-            version: self.version.to_string(),
-        }))
+        match get_version(self, request) {
+            Ok(response) => Ok(tonic::Response::new(response)),
+            Err(e) => Err(e.into()),
+        }
     }
 
-    type SendBlocksStream = Pin<
-        Box<
-            dyn futures_core::Stream<Item = Result<grpc::SendBlocksResponse, tonic::Status>>
-                + Send
-                + 'static,
-        >,
-    >;
+    /// Handler for get selector draws
+    async fn get_selector_draws(
+        &self,
+        request: tonic::Request<grpc::GetSelectorDrawsRequest>,
+    ) -> Result<tonic::Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
+        match get_selector_draws(self, request) {
+            Ok(response) => Ok(tonic::Response::new(response)),
+            Err(e) => Err(e.into()),
+        }
+    }
 
+    /// Handler for send_blocks_stream
     async fn send_blocks(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::SendBlocksRequest>>,
     ) -> Result<tonic::Response<Self::SendBlocksStream>, tonic::Status> {
-        let consensus_controller = self.consensus_controller.clone();
-        let mut protocol_sender = self.protocol_command_sender.clone();
-        let storage = self.storage.clone_without_refs();
-        let config = self.grpc_config.clone();
-        let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
-        let mut in_stream = request.into_inner();
-
-        tokio::spawn(async move {
-            while let Some(result) = in_stream.next().await {
-                match result {
-                    Ok(req_content) => {
-                        if let Some(proto_block) = req_content.block {
-                            let args = BlockDeserializerArgs {
-                                thread_count: config.thread_count,
-                                max_operations_per_block: config.max_operations_per_block,
-                                endorsement_count: config.endorsement_count,
-                            };
-                            let _: Result<(), DeserializeError> =
-                                match SecureShareDeserializer::new(BlockDeserializer::new(args))
-                                    .deserialize::<DeserializeError>(
-                                    &proto_block.serialized_content,
-                                ) {
-                                    Ok(tuple) => {
-                                        let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
-                                        if rest.is_empty() {
-                                            match res_block
-                                                .verify_signature()
-                                                .and_then(|_| {
-                                                    res_block.content.header.verify_signature()
-                                                })
-                                                .map(|_| {
-                                                    res_block
-                                                        .content
-                                                        .header
-                                                        .content
-                                                        .endorsements
-                                                        .iter()
-                                                        .map(|endorsement| {
-                                                            endorsement.verify_signature()
-                                                        })
-                                                        .collect::<Vec<Result<(), ModelsError>>>()
-                                                }) {
-                                                Ok(_) => {
-                                                    let block_id = res_block.id;
-                                                    let slot =
-                                                        res_block.content.header.content.slot;
-                                                    let mut block_storage =
-                                                        storage.clone_without_refs();
-                                                    block_storage.store_block(res_block.clone());
-                                                    consensus_controller.register_block(
-                                                        block_id,
-                                                        slot,
-                                                        block_storage.clone(),
-                                                        false,
-                                                    );
-
-                                                    if let Err(e) = protocol_sender
-                                                        .integrated_block(block_id, block_storage)
-                                                    {
-                                                        let error = format!(
-                                                            "failed to propagate block: {}",
-                                                            e
-                                                        );
-                                                        let _ = send_blocks_notify_error(
-                                                            req_content.id.clone(),
-                                                            tx.clone(),
-                                                            tonic::Code::Internal,
-                                                            error.to_owned(),
-                                                        )
-                                                        .await;
-                                                    };
-
-                                                    let result = grpc::BlockResult {
-                                                        id: res_block.id.to_string(),
-                                                    };
-
-                                                    if let Err(e) = tx
-                                                    .send(Ok(grpc::SendBlocksResponse {
-                                                        id: req_content.id.clone(),
-                                                        message: Some(grpc::send_blocks_response::Message::Result(result)),
-                                                    }))
-                                                    .await
-                                                {
-                                                    error!("failed to send back block response: {}", e);
-                                                };
-                                                }
-                                                Err(e) => {
-                                                    let error = format!("wrong signature: {}", e);
-                                                    let _ = send_blocks_notify_error(
-                                                        req_content.id.clone(),
-                                                        tx.clone(),
-                                                        tonic::Code::InvalidArgument,
-                                                        error.to_owned(),
-                                                    )
-                                                    .await;
-                                                }
-                                            }
-                                        } else {
-                                            let _ = send_blocks_notify_error(
-                                                req_content.id.clone(),
-                                                tx.clone(),
-                                                tonic::Code::InvalidArgument,
-                                                "there is data left after operation deserialization".to_owned(),
-                                            )
-                                            .await;
-                                        }
-                                        Ok(())
-                                    }
-                                    Err(e) => {
-                                        let error = format!("failed to deserialize block: {}", e);
-                                        let _ = send_blocks_notify_error(
-                                            req_content.id.clone(),
-                                            tx.clone(),
-                                            tonic::Code::InvalidArgument,
-                                            error.to_owned(),
-                                        )
-                                        .await;
-                                        Ok(())
-                                    }
-                                };
-                        } else {
-                            let _ = send_blocks_notify_error(
-                                req_content.id.clone(),
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                "the request payload is empty".to_owned(),
-                            )
-                            .await;
-                        }
-                    }
-                    Err(err) => {
-                        if let Some(io_err) = match_for_io_error(&err) {
-                            if io_err.kind() == ErrorKind::BrokenPipe {
-                                warn!("client disconnected, broken pipe: {}", io_err);
-                                break;
-                            }
-                        }
-                        error!("{}", err);
-                        if let Err(e) = tx.send(Err(err)).await {
-                            error!("failed to send back send_blocks error response: {}", e);
-                            break;
-                        }
-                    }
-                }
-            }
-        });
-
-        let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-
-        Ok(tonic::Response::new(
-            Box::pin(out_stream) as Self::SendBlocksStream
-        ))
+        match send_blocks(self, request).await {
+            Ok(res) => Ok(tonic::Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
     }
 
     type SendEndorsementsStream = Pin<
@@ -493,33 +234,33 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         config.endorsement_count,
                                     ));
                                 let verified_eds_res: Result<HashMap<String, SecureShareEndorsement>, GrpcError> = proto_endorsement
-                                .into_iter()
-                                .map(|proto_endorsement| {
-                                    let mut ed_serialized = Vec::new();
-                                    ed_serialized.extend(proto_endorsement.signature.as_bytes());
-                                    ed_serialized.extend(proto_endorsement.creator_public_key.as_bytes());
-                                    ed_serialized.extend(proto_endorsement.serialized_content);
-                                    let verified_op = match endorsement_deserializer.deserialize::<DeserializeError>(&ed_serialized) {
-                                        Ok(tuple) => {
-                                            let (rest, res_endorsement): (&[u8], SecureShareEndorsement) = tuple;
+                                    .into_iter()
+                                    .map(|proto_endorsement| {
+                                        let mut ed_serialized = Vec::new();
+                                        ed_serialized.extend(proto_endorsement.signature.as_bytes());
+                                        ed_serialized.extend(proto_endorsement.creator_public_key.as_bytes());
+                                        ed_serialized.extend(proto_endorsement.serialized_content);
+                                        let verified_op = match endorsement_deserializer.deserialize::<DeserializeError>(&ed_serialized) {
+                                            Ok(tuple) => {
+                                                let (rest, res_endorsement): (&[u8], SecureShareEndorsement) = tuple;
                                                 if rest.is_empty() {
                                                     res_endorsement.verify_signature()
-                                                    .map(|_| (res_endorsement.id.to_string(), res_endorsement))
-                                                    .map_err(|e| e.into())
+                                                        .map(|_| (res_endorsement.id.to_string(), res_endorsement))
+                                                        .map_err(|e| e.into())
                                                 } else {
                                                     Err(GrpcError::InternalServerError(
                                                         "there is data left after endorsement deserialization".to_owned()
                                                     ))
                                                 }
-                                            },
-                                        Err(e) => {
-                                            Err(GrpcError::InternalServerError(format!("failed to deserialize endorsement: {}", e)
-                                            ))
-                                        }
+                                            }
+                                            Err(e) => {
+                                                Err(GrpcError::InternalServerError(format!("failed to deserialize endorsement: {}", e)
+                                                ))
+                                            }
                                         };
                                         verified_op
-                                })
-                                .collect();
+                                    })
+                                    .collect();
 
                                 match verified_eds_res {
                                     Ok(verified_eds) => {
@@ -546,7 +287,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         let result = grpc::EndorsementResult {
                                             ids: verified_eds.keys().cloned().collect(),
                                         };
-                                        if let Err(e)  = tx
+                                        if let Err(e) = tx
                                             .send(Ok(grpc::SendEndorsementsResponse {
                                                 id: req_content.id.clone(),
                                                 message: Some(
@@ -557,7 +298,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                             }))
                                             .await
                                         {
-                                                error!(
+                                            error!(
                                                     "failed to send back endorsement response: {}",
                                                     e
                                                 )
@@ -657,32 +398,32 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
                                         config.max_op_datastore_value_length,
                                     ));
                                 let verified_ops_res: Result<HashMap<String, SecureShareOperation>, GrpcError> = proto_operations
-                                .into_iter()
-                                .map(|proto_operation| {
-                                    let mut op_serialized = Vec::new();
-                                    op_serialized.extend(proto_operation.signature.as_bytes());
-                                    op_serialized.extend(proto_operation.creator_public_key.as_bytes());
-                                    op_serialized.extend(proto_operation.serialized_content);
-                                    let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
-                                        Ok(tuple) => {
-                                            let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
+                                    .into_iter()
+                                    .map(|proto_operation| {
+                                        let mut op_serialized = Vec::new();
+                                        op_serialized.extend(proto_operation.signature.as_bytes());
+                                        op_serialized.extend(proto_operation.creator_public_key.as_bytes());
+                                        op_serialized.extend(proto_operation.serialized_content);
+                                        let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
+                                            Ok(tuple) => {
+                                                let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
                                                 if rest.is_empty() {
                                                     res_operation.verify_signature()
-                                                    .map(|_| (res_operation.id.to_string(), res_operation))
-                                                    .map_err(|e| e.into())
+                                                        .map(|_| (res_operation.id.to_string(), res_operation))
+                                                        .map_err(|e| e.into())
                                                 } else {
                                                     Err(GrpcError::InternalServerError(
                                                         "there is data left after operation deserialization".to_owned()
                                                     ))
                                                 }
-                                            },
-                                        Err(e) => {
-                                            Err(GrpcError::InternalServerError(format!("failed to deserialize operation: {}", e)))
-                                        }
+                                            }
+                                            Err(e) => {
+                                                Err(GrpcError::InternalServerError(format!("failed to deserialize operation: {}", e)))
+                                            }
                                         };
                                         verified_op_res
-                                })
-                                .collect();
+                                    })
+                                    .collect();
 
                                 match verified_ops_res {
                                     Ok(verified_ops) => {
@@ -763,32 +504,8 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
             Box::pin(out_stream) as Self::SendOperationsStream
         ))
     }
-}
 
-async fn send_blocks_notify_error(
-    id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendBlocksResponse, tonic::Status>>,
-    code: tonic::Code,
-    error: String,
-) -> Result<(), Box<dyn Error>> {
-    error!("{}", error);
-    if let Err(e) = sender
-        .send(Ok(grpc::SendBlocksResponse {
-            id,
-            message: Some(grpc::send_blocks_response::Message::Error(
-                massa_proto::google::rpc::Status {
-                    code: code.into(),
-                    message: error,
-                    details: Vec::new(),
-                },
-            )),
-        }))
-        .await
-    {
-        error!("failed to send back send_blocks error response: {}", e);
-    }
-
-    Ok(())
+    type SendBlocksStream = SendBlocksStream;
 }
 
 async fn send_endorsements_notify_error(

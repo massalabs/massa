@@ -27,6 +27,8 @@ pub enum GrpcError {
     NetworkError(#[from] NetworkError),
     /// Protocol error: {0}
     ProtocolError(#[from] ProtocolError),
+    /// Reflection error : {0}
+    ReflectionError(#[from] tonic_reflection::server::Error),
     /// Models error: {0}
     ModelsError(#[from] ModelsError),
     /// Time error: {0}
@@ -49,6 +51,7 @@ impl From<GrpcError> for tonic::Status {
             GrpcError::TimeError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::WalletError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::InternalServerError(e) => tonic::Status::internal(e),
+            GrpcError::ReflectionError(e) => tonic::Status::internal(e.to_string()),
         }
     }
 }

@@ -10,7 +10,11 @@ use tonic_web as _;
 
 /// gRPC API implementation
 pub mod api;
+/// business code
+pub mod business;
 /// gRPC configuration
 pub mod config;
 /// models error
 pub mod error;
+/// models
+pub mod models;
