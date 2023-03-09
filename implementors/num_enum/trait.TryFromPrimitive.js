@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"massa_versioning_worker":[["impl TryFromPrimitive for <a class=\"enum\" href=\"massa_versioning_worker/versioning/enum.ComponentStateTypeId.html\" title=\"enum massa_versioning_worker::versioning::ComponentStateTypeId\">ComponentStateTypeId</a>"],["impl TryFromPrimitive for <a class=\"enum\" href=\"massa_versioning_worker/versioning/enum.MipComponent.html\" title=\"enum massa_versioning_worker::versioning::MipComponent\">MipComponent</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
