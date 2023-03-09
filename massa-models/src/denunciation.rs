@@ -263,6 +263,30 @@ impl Denunciation {
             }
         }
     }
+
+    fn is_valid(&self) -> bool {
+        let (signature_1, signature_2, hash_1, hash_2, public_key) = match self {
+            Denunciation::Endorsement(de) => (
+                de.signature_1,
+                de.signature_2,
+                de.hash_1,
+                de.hash_2,
+                de.public_key,
+            ),
+            Denunciation::BlockHeader(de) => (
+                de.signature_1,
+                de.signature_2,
+                de.hash_1,
+                de.hash_2,
+                de.public_key,
+            ),
+        };
+
+        hash_1 != hash_2
+            && signature_1 != signature_2
+            && public_key.verify_signature(&hash_1, &signature_1).is_ok()
+            && public_key.verify_signature(&hash_2, &signature_2).is_ok()
+    }
 }
 
 /// Create a new Denunciation from 2 SecureShareEndorsement
@@ -428,7 +452,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
-        // assert_eq!(denunciation.is_valid(), true);
+        assert_eq!(denunciation.is_valid(), true);
     }
 
     #[test]
@@ -464,6 +488,7 @@ mod tests {
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_endorsement(), true);
+        assert_eq!(denunciation.is_valid(), true);
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
@@ -480,6 +505,7 @@ mod tests {
             false
         );
         assert_eq!(denunciation.is_also_for_endorsement(&s_endorsement_3), true);
+        assert_eq!(denunciation.is_valid(), true);
     }
 
     fn gen_block_headers_for_denunciation(
@@ -568,6 +594,7 @@ mod tests {
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
         assert_eq!(denunciation.is_for_block_header(), true);
+        assert_eq!(denunciation.is_valid(), true);
         assert_eq!(
             denunciation.is_also_for_block_header(&s_block_header_3),
             true
@@ -577,8 +604,8 @@ mod tests {
     #[test]
     fn test_forge_invalid_denunciation() {
         let keypair = KeyPair::generate();
-        let slot_1 = Slot::new(3, 7);
-        let slot_2 = Slot::new(4, 2);
+        let slot_1 = Slot::new(4, 2);
+        let slot_2 = Slot::new(3, 7);
 
         let endorsement_1 = Endorsement {
             slot: slot_1,
@@ -586,7 +613,7 @@ mod tests {
             endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
         };
 
-        let s_endorsement_1 =
+        let s_endorsement_1: SecureShareEndorsement =
             Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
                 .unwrap();
 
@@ -596,23 +623,37 @@ mod tests {
             endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
         };
 
-        let s_endorsement_2 =
+        let s_endorsement_2: SecureShareEndorsement =
             Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), &keypair)
                 .unwrap();
 
-        assert_eq!(
-            Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).is_ok(),
-            false
-        );
+        // from an attacker - building manually a Denunciation object
+        let de_forged_1 = Denunciation::Endorsement(EndorsementDenunciation {
+            public_key: keypair.get_public_key(),
+            slot: slot_1,
+            index: 0,
+            hash_1: *s_endorsement_1.id.get_hash(), // use only data from s_endorsement_1
+            hash_2: *s_endorsement_1.id.get_hash(),
+            signature_1: s_endorsement_1.signature,
+            signature_2: s_endorsement_1.signature,
+        });
 
-        let s_endorsement_3 = s_endorsement_1.clone();
-        let mut s_endorsement_4 = s_endorsement_2.clone();
+        // hash_1 == hash_2 -> this is invalid
+        assert_eq!(de_forged_1.is_valid(), false);
 
-        s_endorsement_4.content.slot = slot_1;
+        // from an attacker - building manually a Denunciation object
+        let de_forged_2 = Denunciation::Endorsement(EndorsementDenunciation {
+            public_key: keypair.get_public_key(),
+            slot: slot_2,
+            index: 0,
+            hash_1: *s_endorsement_1.id.get_hash(),
+            hash_2: *s_endorsement_2.id.get_hash(),
+            signature_1: s_endorsement_1.signature,
+            signature_2: s_endorsement_2.signature,
+        });
 
-        assert_eq!(
-            Denunciation::try_from((&s_endorsement_3, &s_endorsement_4)).is_ok(),
-            false
-        );
+        // An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
+        // This has to be detected if Denunciation are send via the network
+        assert_eq!(de_forged_2.is_valid(), false);
     }
 }
