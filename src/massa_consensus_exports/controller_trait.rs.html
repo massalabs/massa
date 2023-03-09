@@ -133,6 +133,11 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_graph_export::BlockGraphExport;
 <span class="kw">use crate</span>::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
@@ -143,7 +148,7 @@
 };
 <span class="kw">use </span>massa_storage::Storage;
 
-<span class="doccomment">/// interface that communicates with the graph worker thread
+<span class="doccomment">/// Interface that communicates with the graph worker thread
 </span><span class="kw">pub trait </span>ConsensusController: Send + Sync {
     <span class="doccomment">/// Get an export of a part of the graph
     ///
@@ -162,7 +167,7 @@
     <span class="doccomment">/// Get statuses of a list of blocks
     ///
     /// # Arguments
-    /// * `block_ids`: the list of block ids to get the status of
+    /// * `ids`: the list of block ids to get the status of
     ///
     /// # Returns
     /// The statuses of the blocks sorted by the order of the input list
@@ -174,12 +179,17 @@
     /// The list of cliques
     </span><span class="kw">fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Clique&gt;;
 
-    <span class="doccomment">/// Get a graph to bootstrap from
+    <span class="doccomment">/// Get a part of the graph to send to a node for it to setup its graph.
+    /// Used for bootstrap.
     ///
-    /// # Returns
-    /// * a part of the graph
-    /// * outdated block ids
-    /// * the updated streaming step
+    /// # Arguments:
+    /// * `cursor`: streaming cursor containing the current state of bootstrap and what blocks have previously been sent to the client
+    /// * `execution_cursor`: streaming cursor of the final state to ensure that last slot of the bootstrap info match the slot of the execution
+    ///
+    /// # Returns:
+    /// * A portion of the graph
+    /// * The list of outdated block ids
+    /// * The streaming step value after the current iteration to be saved to be able to use it as parameters and resume the bootstrap
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">fn </span>get_bootstrap_part(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
