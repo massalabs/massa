@@ -20,7 +20,7 @@ pub trait Denounceable {
         false
     }
 
-    /// Return DenunciationData (used to modify Signature for SecureShare<T>)
+    /// Return DenunciationData (used to modify Signature for `SecureShare<T>`)
     /// This is a default impl, return None if Self::is_denounceable() returns false
     fn get_denunciation_data(&self) -> Option<DenunciationData> {
         match Self::is_denounceable() {
@@ -30,7 +30,7 @@ pub trait Denounceable {
     }
 }
 
-/// Denunciation data (to be include in SecureShare<T> signature
+/// Denunciation data (to be include in `SecureShare<T>` signature
 pub enum DenunciationData {
     ///
     Endorsement((Slot, u32)),
@@ -107,6 +107,7 @@ impl Denounceable for Operation {}
 
 //
 
+#[allow(dead_code)]
 struct EndorsementDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -151,6 +152,7 @@ impl EndorsementDenunciation {
     }
 }
 
+#[allow(dead_code)]
 struct BlockHeaderDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -200,6 +202,7 @@ enum Denunciation {
     BlockHeader(BlockHeaderDenunciation),
 }
 
+#[allow(dead_code)]
 impl Denunciation {
     /// Check if it is a Denunciation of several endorsements
     fn is_for_endorsement(&self) -> bool {
@@ -566,4 +569,32 @@ mod tests {
             true
         );
     }
+
+    /*
+    #[test]
+    fn test_forge_invalid_denunciation() {
+        let keypair = KeyPair::generate();
+
+        let slot = Slot::new(3, 7);
+        let endorsement_1 = Endorsement {
+            slot,
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+        };
+
+        // let v_endorsement1 =
+        //     Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
+        //         .unwrap();
+
+        let endorsement_2 = Endorsement {
+            slot,
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+        };
+
+        // let v_endorsement2 =
+        //     Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), &keypair)
+        //         .unwrap();
+    }
+    */
 }
