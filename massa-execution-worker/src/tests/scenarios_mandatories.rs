@@ -1648,9 +1648,13 @@ mod tests {
             .collect::<Vec<String>>()
             .join(",");
 
-        assert!(events[0].data.contains(&format!("keys: {},{}", key_a_str, key_b_str)));
+        assert!(events[0]
+            .data
+            .contains(&format!("keys: {},{}", key_a_str, key_b_str)));
         assert!(events[1].data.contains(&format!("keys_f: {}", key_b_str)));
-        assert!(events[2].data.contains(&format!("keys2: {},{}", key_a_str, key_b_str)));
+        assert!(events[2]
+            .data
+            .contains(&format!("keys2: {},{}", key_a_str, key_b_str)));
         assert!(events[3].data.contains(&format!("keys2_f: {}", key_a_str)));
 
         // Length of the value left in the datastore. See sources for more context.
@@ -1671,7 +1675,7 @@ mod tests {
                     exec_cfg
                         .storage_costs_constants
                         .ledger_cost_per_byte
-                        .saturating_mul_u64(2*LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+                        .saturating_mul_u64(2 * LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
                 )
                 // Storage cost value
                 .saturating_sub(
