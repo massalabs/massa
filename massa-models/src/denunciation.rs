@@ -1,26 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
-use nom::{
-    error::{context, ContextError, ParseError},
-    sequence::tuple,
-    IResult,
-};
 use thiserror::Error;
 
-use crate::address::Address;
 use crate::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
-use crate::error::ModelsError;
-use crate::secure_share::{Id, SecureShare, SecureShareContent};
+use crate::secure_share::SecureShareContent;
 use crate::slot::{Slot, SlotSerializer};
 
 use massa_hash::Hash;
-use massa_serialization::{Deserializer, SerializeError, Serializer, U32VarIntSerializer};
-use massa_signature::{
-    KeyPair, MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature,
-    SignatureDeserializer,
-};
+use massa_serialization::{SerializeError, Serializer, U32VarIntSerializer};
+use massa_signature::{MassaSignatureError, PublicKey, Signature};
 
 /// Denunciation data (to be include in `SecureShare<T>` signature
 pub enum DenunciationData {
@@ -64,216 +54,40 @@ impl Serializer<DenunciationData> for DenunciationDataSerializer {
 }
 
 impl SecureShareContent for Endorsement {
-    fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
-        content: Self,
-        content_serializer: Ser,
-        keypair: &KeyPair,
-    ) -> Result<SecureShare<Self, ID>, ModelsError> {
-        let mut content_serialized = Vec::new();
-        content_serializer.serialize(&content, &mut content_serialized)?;
-
-        // Add DenunciationData to hash
+    fn compute_hash(
+        content: &Self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Result<Hash, SerializeError> {
         let de_data = DenunciationData::Endorsement((content.slot, content.index));
         let de_data_serializer = DenunciationDataSerializer::new();
         let mut de_data_ser = Vec::new();
         de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
 
         let mut hash_data = Vec::new();
-        let public_key = keypair.get_public_key();
-        hash_data.extend(public_key.to_bytes());
-        // Add DenunciationData to hash
+        hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(de_data_ser);
-        // Default impl use content_serialized but in order to build a Denunciation
-        // we use the hash(content_serialized) here
-        hash_data.extend(Hash::compute_from(&content_serialized).to_bytes());
-        let hash = Hash::compute_from(&hash_data);
-        let creator_address = Address::from_public_key(&public_key);
-        Ok(SecureShare {
-            signature: keypair.sign(&hash)?,
-            content_creator_pub_key: public_key,
-            content_creator_address: creator_address,
-            content,
-            serialized_data: content_serialized,
-            id: ID::new(hash),
-        })
-    }
-
-    /// Deserialize the secured structure
-    fn deserialize<
-        'a,
-        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
-        Deser: Deserializer<Self>,
-        ID: Id,
-    >(
-        content_serializer: Option<&dyn Serializer<Self>>,
-        signature_deserializer: &SignatureDeserializer,
-        creator_public_key_deserializer: &PublicKeyDeserializer,
-        content_deserializer: &Deser,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], SecureShare<Self, ID>, E> {
-        let (serialized_data, (signature, creator_public_key)) = context(
-            "Failed SecureShare deserialization",
-            tuple((
-                context("Failed signature deserialization", |input| {
-                    signature_deserializer.deserialize(input)
-                }),
-                context("Failed public_key deserialization", |input| {
-                    creator_public_key_deserializer.deserialize(input)
-                }),
-            )),
-        )(buffer)?;
-        let (rest, content) = content_deserializer.deserialize(serialized_data)?;
-        let content_serialized = if let Some(content_serializer) = content_serializer {
-            let mut content_buffer = Vec::new();
-            content_serializer
-                .serialize(&content, &mut content_buffer)
-                .map_err(|_| {
-                    nom::Err::Error(ParseError::from_error_kind(
-                        rest,
-                        nom::error::ErrorKind::Fail,
-                    ))
-                })?;
-            content_buffer
-        } else {
-            // Avoid getting the rest of the data in the serialized data
-            serialized_data[..serialized_data.len() - rest.len()].to_vec()
-        };
-        let creator_address = Address::from_public_key(&creator_public_key);
-
-        let de_data = DenunciationData::Endorsement((content.slot, content.index));
-        let de_data_serializer = DenunciationDataSerializer::new();
-        let mut de_data_ser = Vec::new();
-        de_data_serializer
-            .serialize(&de_data, &mut de_data_ser)
-            .map_err(|_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    rest,
-                    nom::error::ErrorKind::Fail,
-                ))
-            })?;
-
-        let mut hash_full_data = creator_public_key.to_bytes().to_vec();
-        hash_full_data.extend(de_data_ser);
-        hash_full_data.extend(Hash::compute_from(&content_serialized).to_bytes());
-
-        Ok((
-            rest,
-            SecureShare {
-                content,
-                signature,
-                content_creator_pub_key: creator_public_key,
-                content_creator_address: creator_address,
-                serialized_data: content_serialized.to_vec(),
-                id: ID::new(Hash::compute_from(&hash_full_data)),
-            },
-        ))
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Ok(Hash::compute_from(&hash_data))
     }
 }
 
 impl SecureShareContent for BlockHeader {
-    fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
-        content: Self,
-        content_serializer: Ser,
-        keypair: &KeyPair,
-    ) -> Result<SecureShare<Self, ID>, ModelsError> {
-        let mut content_serialized = Vec::new();
-        content_serializer.serialize(&content, &mut content_serialized)?;
-
-        // Add DenunciationData to hash
+    fn compute_hash(
+        content: &Self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Result<Hash, SerializeError> {
         let de_data = DenunciationData::BlockHeader(content.slot);
         let de_data_serializer = DenunciationDataSerializer::new();
         let mut de_data_ser = Vec::new();
         de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
 
         let mut hash_data = Vec::new();
-        let public_key = keypair.get_public_key();
-        hash_data.extend(public_key.to_bytes());
-        // Add DenunciationData to hash
+        hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(de_data_ser);
-        // Default impl use content_serialized but in order to build a Denunciation
-        // we use the hash(content_serialized) here
-        hash_data.extend(Hash::compute_from(&content_serialized).to_bytes());
-        let hash = Hash::compute_from(&hash_data);
-        let creator_address = Address::from_public_key(&public_key);
-        Ok(SecureShare {
-            signature: keypair.sign(&hash)?,
-            content_creator_pub_key: public_key,
-            content_creator_address: creator_address,
-            content,
-            serialized_data: content_serialized,
-            id: ID::new(hash),
-        })
-    }
-
-    /// Deserialize the secured structure
-    fn deserialize<
-        'a,
-        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
-        Deser: Deserializer<Self>,
-        ID: Id,
-    >(
-        content_serializer: Option<&dyn Serializer<Self>>,
-        signature_deserializer: &SignatureDeserializer,
-        creator_public_key_deserializer: &PublicKeyDeserializer,
-        content_deserializer: &Deser,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], SecureShare<Self, ID>, E> {
-        let (serialized_data, (signature, creator_public_key)) = context(
-            "Failed SecureShare deserialization",
-            tuple((
-                context("Failed signature deserialization", |input| {
-                    signature_deserializer.deserialize(input)
-                }),
-                context("Failed public_key deserialization", |input| {
-                    creator_public_key_deserializer.deserialize(input)
-                }),
-            )),
-        )(buffer)?;
-        let (rest, content) = content_deserializer.deserialize(serialized_data)?;
-        let content_serialized = if let Some(content_serializer) = content_serializer {
-            let mut content_buffer = Vec::new();
-            content_serializer
-                .serialize(&content, &mut content_buffer)
-                .map_err(|_| {
-                    nom::Err::Error(ParseError::from_error_kind(
-                        rest,
-                        nom::error::ErrorKind::Fail,
-                    ))
-                })?;
-            content_buffer
-        } else {
-            // Avoid getting the rest of the data in the serialized data
-            serialized_data[..serialized_data.len() - rest.len()].to_vec()
-        };
-        let creator_address = Address::from_public_key(&creator_public_key);
-
-        let de_data = DenunciationData::BlockHeader(content.slot);
-        let de_data_serializer = DenunciationDataSerializer::new();
-        let mut de_data_ser = Vec::new();
-        de_data_serializer
-            .serialize(&de_data, &mut de_data_ser)
-            .map_err(|_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    rest,
-                    nom::error::ErrorKind::Fail,
-                ))
-            })?;
-
-        let mut hash_full_data = creator_public_key.to_bytes().to_vec();
-        hash_full_data.extend(de_data_ser);
-        hash_full_data.extend(Hash::compute_from(&content_serialized).to_bytes());
-
-        Ok((
-            rest,
-            SecureShare {
-                content,
-                signature,
-                content_creator_pub_key: creator_public_key,
-                content_creator_address: creator_address,
-                serialized_data: content_serialized.to_vec(),
-                id: ID::new(Hash::compute_from(&hash_full_data)),
-            },
-        ))
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Ok(Hash::compute_from(&hash_data))
     }
 }
 
