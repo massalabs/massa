@@ -6,11 +6,12 @@ use massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
+    config::LAST_START_PERIOD,
     endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, config::LAST_START_PERIOD,
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;

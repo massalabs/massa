@@ -3,10 +3,11 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
     block_id::BlockId,
+    config::LAST_START_PERIOD,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, config::LAST_START_PERIOD,
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;

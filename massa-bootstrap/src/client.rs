@@ -423,7 +423,7 @@ pub async fn get_state(
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
-    from_snapshot: bool
+    from_snapshot: bool,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     let now = MassaTime::now()?;
