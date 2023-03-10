@@ -943,7 +943,7 @@
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    from_snapshot: bool,
+    from_snapshot: bool
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
     <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;

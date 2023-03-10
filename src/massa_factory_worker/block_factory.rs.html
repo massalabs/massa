@@ -262,7 +262,6 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
@@ -271,12 +270,11 @@
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
-    config::LAST_START_PERIOD,
     endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, config::LAST_START_PERIOD,
 };
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_wallet::Wallet;
