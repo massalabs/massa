@@ -89,14 +89,14 @@ impl SecureShareContent for BlockHeader {
         content: &Self,
         content_serialized: &[u8],
         content_creator_pub_key: &PublicKey,
-    ) -> Result<Hash, SerializeError> {
+    ) -> Hash {
         let de_data = BlockHeaderDenunciationData::new(content.slot);
 
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(de_data.to_bytes());
         hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Ok(Hash::compute_from(&hash_data))
+        Hash::compute_from(&hash_data)
     }
 }
 
@@ -482,8 +482,7 @@ impl BlockHeaderDenunciationData {
     /// Get byte array
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
-        buf.extend(self.slot.period.to_le_bytes());
-        buf.push(self.slot.thread);
+        buf.extend(self.slot.to_bytes_key());
         buf
     }
 }

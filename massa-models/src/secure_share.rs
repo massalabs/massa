@@ -66,7 +66,7 @@ where
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         let public_key = keypair.get_public_key();
-        let hash = Self::compute_hash(&content, &content_serialized, &public_key)?;
+        let hash = Self::compute_hash(&content, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
             signature: keypair.sign(&hash)?,
@@ -84,11 +84,11 @@ where
         content: &Self, // use only for Denounce able object
         content_serialized: &[u8],
         content_creator_pub_key: &PublicKey,
-    ) -> Result<Hash, SerializeError> {
+    ) -> Hash {
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
-        Ok(Hash::compute_from(&hash_data))
+        Hash::compute_from(&hash_data)
     }
 
     /// Serialize the secured structure
@@ -145,14 +145,7 @@ where
             serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         let creator_address = Address::from_public_key(&creator_public_key);
-        let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key).map_err(
-            |_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    rest,
-                    nom::error::ErrorKind::Fail,
-                ))
-            },
-        )?;
+        let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key);
 
         Ok((
             rest,
