@@ -447,10 +447,32 @@
 <a href="#447" id="447">447</a>
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
-<span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShare};
+</span><span class="kw">use </span><span class="kw">crate</span>::denunciation::{DenunciationData, DenunciationDataSerializer};
+<span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
+<span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShare, SecureShareContent};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
 <span class="kw">use crate</span>::{block_id::BlockId, error::ModelsError};
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
@@ -458,6 +480,7 @@
     DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
     U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+<span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>nom::error::context;
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::Parser;
@@ -614,6 +637,25 @@
 
 <span class="doccomment">/// Wrapped endorsement
 </span><span class="kw">pub type </span>SecureShareEndorsement = SecureShare&lt;Endorsement, EndorsementId&gt;;
+
+<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Endorsement {
+    <span class="kw">fn </span>compute_hash(
+        content: <span class="kw-2">&amp;</span><span class="self">Self</span>,
+        content_serialized: <span class="kw-2">&amp;</span>[u8],
+        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Hash, SerializeError&gt; {
+        <span class="kw">let </span>de_data = DenunciationData::Endorsement((content.slot, content.index));
+        <span class="kw">let </span>de_data_serializer = DenunciationDataSerializer::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>de_data_ser = Vec::new();
+        de_data_serializer.serialize(<span class="kw-2">&amp;</span>de_data, <span class="kw-2">&amp;mut </span>de_data_ser)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(de_data_ser);
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        <span class="prelude-val">Ok</span>(Hash::compute_from(<span class="kw-2">&amp;</span>hash_data))
+    }
+}
 
 <span class="doccomment">/// Serializer for `Endorsement`
 </span><span class="attr">#[derive(Clone)]
