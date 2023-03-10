@@ -54,6 +54,31 @@ pub struct Slot {
     #[prost(fixed32, tag = "2")]
     pub thread: u32,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetNextBlockBestParentsRequest {
+    /// id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetNextBlockBestParentsResponse {
+    /// id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// best parents
+    #[prost(message, repeated, tag = "2")]
+    pub data: ::prost::alloc::vec::Vec<BestParentTuple>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BestParentTuple {
+    #[prost(string, tag = "1")]
+    pub block_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "2")]
+    pub period: u64,
+}
 /// GetDatastoreEntriesRequest holds request from GetDatastoreEntries
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -445,6 +470,29 @@ pub mod grpc_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// GetNextBlockBestParents
+        pub async fn get_next_block_best_parents(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetNextBlockBestParentsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetNextBlockBestParentsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/GetNextBlockBestParents",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// SendBlocks
         pub async fn send_blocks(
             &mut self,
@@ -549,6 +597,14 @@ pub mod grpc_server {
             request: tonic::Request<super::GetVersionRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetVersionResponse>,
+            tonic::Status,
+        >;
+        /// GetNextBlockBestParents
+        async fn get_next_block_best_parents(
+            &self,
+            request: tonic::Request<super::GetNextBlockBestParentsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetNextBlockBestParentsResponse>,
             tonic::Status,
         >;
         /// Server streaming response type for the SendBlocks method.
@@ -789,6 +845,54 @@ pub mod grpc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetVersionSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/GetNextBlockBestParents" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetNextBlockBestParentsSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::UnaryService<super::GetNextBlockBestParentsRequest>
+                    for GetNextBlockBestParentsSvc<T> {
+                        type Response = super::GetNextBlockBestParentsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::GetNextBlockBestParentsRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_next_block_best_parents(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetNextBlockBestParentsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
