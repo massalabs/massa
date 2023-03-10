@@ -1073,18 +1073,6 @@
 <a href="#1073" id="1073">1073</a>
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1548,12 +1536,6 @@
     }
 }
 
-<span class="attr">#[derive(Debug, PartialEq)]
-</span><span class="kw">pub enum </span>UpdateWithResult {
-    Success(Vec&lt;MipInfo&gt;, Vec&lt;MipInfo&gt;),
-    Fail,
-}
-
 <span class="doccomment">/// Store of all versioning info
 </span><span class="attr">#[derive(Debug, Clone, Default)]
 </span><span class="kw">pub struct </span>MipStoreRaw(<span class="kw">pub</span>(<span class="kw">crate</span>) BTreeMap&lt;MipInfo, MipState&gt;);
@@ -1561,14 +1543,11 @@
 <span class="kw">impl </span>MipStoreRaw {
     <span class="doccomment">/// Update our store with another (usually after a bootstrap where we received another store)
     /// Return true if update is successful, false if something is wrong on given store raw
-    </span><span class="kw">fn </span>update_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, store_raw: <span class="kw-2">&amp;</span>MipStoreRaw) -&gt; UpdateWithResult {
+    </span><span class="kw">fn </span>update_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, store_raw: <span class="kw-2">&amp;</span>MipStoreRaw) -&gt; bool {
         <span class="comment">// iter over items in given store:
-        // -&gt; 2 cases:
-        // * MipInfo is already in self store -&gt; add to &#39;to_update&#39; list
-        // * MipInfo is not in self.store -&gt; We received a new MipInfo so we are running an out dated version
-        //                                   of the software
-        //                                   We then return the list of new MipInfo so we can warn and ask
-        //                                   to update the software
+        // -&gt; 2 cases: VersioningInfo is already in self store -&gt; add to &#39;to_update&#39; list
+        //             VersioningInfo is not in self.store -&gt; add to &#39;to_add&#39; list
+        //
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>component_versions: HashMap&lt;MipComponent, u32&gt; = <span class="self">self
             </span>.<span class="number">0
@@ -1647,15 +1626,12 @@
 
         <span class="comment">// Return false is there is nothing to merge - maybe we could make a distinction here?
         </span><span class="kw">if </span>should_merge &amp;&amp; (!to_update.is_empty() || !to_add.is_empty()) {
-            <span class="kw">let </span>added = to_add.keys().cloned().collect();
-            <span class="kw">let </span>updated = to_update.keys().cloned().collect();
-
             <span class="self">self</span>.<span class="number">0</span>.append(<span class="kw-2">&amp;mut </span>to_update);
             <span class="self">self</span>.<span class="number">0</span>.append(<span class="kw-2">&amp;mut </span>to_add);
-            UpdateWithResult::Success(updated, added)
-        } <span class="kw">else </span>{
-            UpdateWithResult::Fail
-        }
+            <span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
     }
 }
 
@@ -1671,8 +1647,8 @@
 
         <span class="comment">// Use update_with ensuring that we have no overlapping time range, unique names &amp; ...
         </span><span class="kw">match </span>store.update_with(<span class="kw-2">&amp;</span>other_store) {
-            UpdateWithResult::Success(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(store),
-            UpdateWithResult::Fail =&gt; <span class="prelude-val">Err</span>(()),
+            <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(store),
+            <span class="bool-val">false </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
 }
@@ -2151,7 +2127,7 @@
         ]);
         <span class="macro">assert_eq!</span>(_vs_raw_2_.is_err(), <span class="bool-val">true</span>);
 
-        <span class="macro">assert_eq!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), UpdateWithResult::Fail);
+        <span class="macro">assert_eq!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), <span class="bool-val">false</span>);
         <span class="macro">assert_eq!</span>(vs_raw_1.<span class="number">0</span>.get(<span class="kw-2">&amp;</span>vi_1).unwrap().inner, vs_1.inner);
         <span class="macro">assert_eq!</span>(vs_raw_1.<span class="number">0</span>.get(<span class="kw-2">&amp;</span>vi_2).unwrap().inner, vs_2.inner);
 
@@ -2169,7 +2145,7 @@
             (vi_2_2.clone(), vs_2_2.clone()),
         ]));
 
-        <span class="macro">assert_eq!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), UpdateWithResult::Fail);
+        <span class="macro">assert_eq!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), <span class="bool-val">false</span>);
     }
 }
 </code></pre></div>
