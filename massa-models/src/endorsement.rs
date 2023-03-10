@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::denunciation::{DenunciationData, DenunciationDataSerializer};
 use crate::prehash::PreHashed;
 use crate::secure_share::{Id, SecureShare, SecureShareContent};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
@@ -174,14 +173,15 @@ impl SecureShareContent for Endorsement {
         content_serialized: &[u8],
         content_creator_pub_key: &PublicKey,
     ) -> Result<Hash, SerializeError> {
-        let de_data = DenunciationData::Endorsement((content.slot, content.index));
-        let de_data_serializer = DenunciationDataSerializer::new();
-        let mut de_data_ser = Vec::new();
-        de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
+        // let de_data = DenunciationData::Endorsement((content.slot, content.index));
+        // let de_data_serializer = DenunciationDataSerializer::new();
+        // let mut de_data_ser = Vec::new();
+        // de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
+        let de_data = EndorsementDenunciationData::new(content.slot, content.index);
 
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data_ser);
+        hash_data.extend(de_data.to_bytes());
         hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
         Ok(Hash::compute_from(&hash_data))
     }
@@ -401,6 +401,28 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
             endorsed_block: self.endorsed_block,
         })
         .parse(buffer)
+    }
+}
+
+/// A denunciation data for endorsement
+pub struct EndorsementDenunciationData {
+    slot: Slot,
+    index: u32,
+}
+
+impl EndorsementDenunciationData {
+    /// Create a new denunciation data for endorsement
+    pub fn new(slot: Slot, index: u32) -> Self {
+        Self { slot, index }
+    }
+
+    /// Get byte array
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend(self.slot.period.to_le_bytes());
+        buf.push(self.slot.thread);
+        buf.extend(self.index.to_le_bytes());
+        buf
     }
 }
 

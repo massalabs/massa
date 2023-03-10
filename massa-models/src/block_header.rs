@@ -1,6 +1,5 @@
 use crate::block_id::BlockId;
 use crate::config::THREAD_COUNT;
-use crate::denunciation::{DenunciationData, DenunciationDataSerializer};
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
@@ -90,14 +89,11 @@ impl SecureShareContent for BlockHeader {
         content_serialized: &[u8],
         content_creator_pub_key: &PublicKey,
     ) -> Result<Hash, SerializeError> {
-        let de_data = DenunciationData::BlockHeader(content.slot);
-        let de_data_serializer = DenunciationDataSerializer::new();
-        let mut de_data_ser = Vec::new();
-        de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
+        let de_data = BlockHeaderDenunciationData::new(content.slot);
 
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data_ser);
+        hash_data.extend(de_data.to_bytes());
         hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
         Ok(Hash::compute_from(&hash_data))
     }
@@ -468,5 +464,25 @@ impl std::fmt::Display for BlockHeader {
             writeln!(f, "\tNo endorsements found")?;
         }
         Ok(())
+    }
+}
+
+/// A denunciation data for block header
+pub struct BlockHeaderDenunciationData {
+    slot: Slot,
+}
+
+impl BlockHeaderDenunciationData {
+    /// Create a new DenunciationData for block hedader
+    pub fn new(slot: Slot) -> Self {
+        Self { slot }
+    }
+
+    /// Get byte array
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend(self.slot.period.to_le_bytes());
+        buf.push(self.slot.thread);
+        buf
     }
 }

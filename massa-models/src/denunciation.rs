@@ -3,56 +3,17 @@
 /// https://github.com/massalabs/massa/discussions/3113
 use thiserror::Error;
 
-use crate::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
-use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
-use crate::slot::{Slot, SlotSerializer};
+use crate::block_header::{
+    BlockHeader, BlockHeaderDenunciationData, BlockHeaderSerializer, SecuredHeader,
+};
+use crate::endorsement::{
+    Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
+};
+use crate::slot::Slot;
 
 use massa_hash::Hash;
-use massa_serialization::{SerializeError, Serializer, U32VarIntSerializer};
+use massa_serialization::{SerializeError, Serializer};
 use massa_signature::{MassaSignatureError, PublicKey, Signature};
-
-/// Denunciation data (to be include in `SecureShare<T>` signature
-pub enum DenunciationData {
-    ///
-    Endorsement((Slot, u32)),
-    ///
-    BlockHeader(Slot),
-}
-
-/// A Serializer for `DenunciationData`
-#[derive(Default)]
-pub struct DenunciationDataSerializer {
-    slot_serializer: SlotSerializer,
-    index_serializer: U32VarIntSerializer,
-}
-
-impl DenunciationDataSerializer {
-    /// Create a new `DenunciationDataSerializer`
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Serializer<DenunciationData> for DenunciationDataSerializer {
-    fn serialize(
-        &self,
-        value: &DenunciationData,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        match value {
-            DenunciationData::Endorsement(data) => {
-                self.slot_serializer.serialize(&data.0, buffer)?;
-                self.index_serializer.serialize(&data.1, buffer)?;
-            }
-            DenunciationData::BlockHeader(data) => {
-                self.slot_serializer.serialize(data, buffer)?;
-            }
-        };
-        Ok(())
-    }
-}
-
-//
 
 #[allow(dead_code)]
 struct EndorsementDenunciation {
@@ -82,18 +43,12 @@ impl EndorsementDenunciation {
         content_hash: &Hash,
     ) -> Result<Hash, SerializeError> {
         let mut hash_data = Vec::new();
-        let mut buf = Vec::new();
-        let de_data_serializer = DenunciationDataSerializer::new();
 
         // Public key
         hash_data.extend(public_key.to_bytes());
-
         // Ser slot & index
-        let denunciation_data = DenunciationData::Endorsement((*slot, *index));
-        de_data_serializer.serialize(&denunciation_data, &mut buf)?;
-        hash_data.extend(&buf);
-        buf.clear();
-
+        let denunciation_data = EndorsementDenunciationData::new(*slot, *index);
+        hash_data.extend(&denunciation_data.to_bytes());
         // Add content hash
         hash_data.extend(content_hash.to_bytes());
 
@@ -127,17 +82,19 @@ impl BlockHeaderDenunciation {
         content_hash: &Hash,
     ) -> Result<Hash, SerializeError> {
         let mut hash_data = Vec::new();
-        let mut buf = Vec::new();
-        let de_data_serializer = DenunciationDataSerializer::new();
+        // let mut buf = Vec::new();
+        // let de_data_serializer = DenunciationDataSerializer::new();
 
         // Public key
         hash_data.extend(public_key.to_bytes());
 
         // Ser slot
-        let denunciation_data = DenunciationData::BlockHeader(*slot);
-        de_data_serializer.serialize(&denunciation_data, &mut buf)?;
-        hash_data.extend(&buf);
-        buf.clear();
+        // let denunciation_data = DenunciationData::BlockHeader(*slot);
+        // de_data_serializer.serialize(&denunciation_data, &mut buf)?;
+        let de_data = BlockHeaderDenunciationData::new(*slot);
+        hash_data.extend(de_data.to_bytes());
+        // hash_data.extend(&buf);
+        // buf.clear();
 
         // Add content hash
         hash_data.extend(content_hash.to_bytes());
