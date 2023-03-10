@@ -5,7 +5,6 @@ use thiserror::Error;
 
 use crate::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
-use crate::secure_share::SecureShareContent;
 use crate::slot::{Slot, SlotSerializer};
 
 use massa_hash::Hash;
@@ -50,44 +49,6 @@ impl Serializer<DenunciationData> for DenunciationDataSerializer {
             }
         };
         Ok(())
-    }
-}
-
-impl SecureShareContent for Endorsement {
-    fn compute_hash(
-        content: &Self,
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Result<Hash, SerializeError> {
-        let de_data = DenunciationData::Endorsement((content.slot, content.index));
-        let de_data_serializer = DenunciationDataSerializer::new();
-        let mut de_data_ser = Vec::new();
-        de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
-
-        let mut hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data_ser);
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Ok(Hash::compute_from(&hash_data))
-    }
-}
-
-impl SecureShareContent for BlockHeader {
-    fn compute_hash(
-        content: &Self,
-        content_serialized: &[u8],
-        content_creator_pub_key: &PublicKey,
-    ) -> Result<Hash, SerializeError> {
-        let de_data = DenunciationData::BlockHeader(content.slot);
-        let de_data_serializer = DenunciationDataSerializer::new();
-        let mut de_data_ser = Vec::new();
-        de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
-
-        let mut hash_data = Vec::new();
-        hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data_ser);
-        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
-        Ok(Hash::compute_from(&hash_data))
     }
 }
 

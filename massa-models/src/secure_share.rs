@@ -145,9 +145,6 @@ where
             serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         let creator_address = Address::from_public_key(&creator_public_key);
-        let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
-        serialized_full_data.extend(&content_serialized);
-
         let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key).map_err(
             |_| {
                 nom::Err::Error(ParseError::from_error_kind(

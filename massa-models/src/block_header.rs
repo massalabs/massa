@@ -1,15 +1,19 @@
 use crate::block_id::BlockId;
 use crate::config::THREAD_COUNT;
+use crate::denunciation::{DenunciationData, DenunciationDataSerializer};
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
 };
-use crate::secure_share::{SecureShare, SecureShareDeserializer, SecureShareSerializer};
+use crate::secure_share::{
+    SecureShare, SecureShareContent, SecureShareDeserializer, SecureShareSerializer,
+};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
+use massa_signature::PublicKey;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::{context, ContextError, ParseError};
@@ -79,6 +83,25 @@ impl BlockHeader {
 
 /// BlockHeader wrapped up alongside verification data
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
+
+impl SecureShareContent for BlockHeader {
+    fn compute_hash(
+        content: &Self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Result<Hash, SerializeError> {
+        let de_data = DenunciationData::BlockHeader(content.slot);
+        let de_data_serializer = DenunciationDataSerializer::new();
+        let mut de_data_ser = Vec::new();
+        de_data_serializer.serialize(&de_data, &mut de_data_ser)?;
+
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(de_data_ser);
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Ok(Hash::compute_from(&hash_data))
+    }
+}
 
 impl SecuredHeader {
     /// gets the header fitness
