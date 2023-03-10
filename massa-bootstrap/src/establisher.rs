@@ -6,7 +6,7 @@ use std::{io, net::SocketAddr};
 /// duplex connection
 pub type Duplex = tokio::net::TcpStream;
 
-/// duplex connection
+/// Listener used to establish a Duplex
 pub type DuplexListener = tokio::net::TcpListener;
 
 #[async_trait]
