@@ -1154,6 +1154,7 @@
 <a href="#1154" id="1154">1154</a>
 <a href="#1155" id="1155">1155</a>
 <a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cache::{LinearHashCacheMap, LinearHashCacheSet};
@@ -1164,6 +1165,7 @@
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_logging::massa_trace;
 
+<span class="kw">use </span>massa_models::config::LAST_START_PERIOD;
 <span class="kw">use </span>massa_models::secure_share::Id;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
@@ -1939,7 +1941,7 @@
         });
 
         <span class="comment">// refuse genesis blocks
-        </span><span class="kw">if </span>header.content.slot.period == <span class="number">0 </span>|| header.content.parents.is_empty() {
+        </span><span class="kw">if </span>header.content.slot.period == LAST_START_PERIOD || header.content.parents.is_empty() {
             <span class="comment">// genesis
             </span><span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_is_genesis&quot;</span>, {
                 <span class="string">&quot;header&quot;</span>: header
