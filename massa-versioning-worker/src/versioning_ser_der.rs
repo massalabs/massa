@@ -50,7 +50,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         let name_len_ = value.name.len();
         if name_len_ > VERSIONING_INFO_NAME_LEN_MAX as usize {
             return Err(SerializeError::StringTooBig(format!(
-                "Versioning info name len is {}, max: {}",
+                "MIP info name len is {}, max: {}",
                 name_len_, VERSIONING_INFO_NAME_LEN_MAX
             )));
         }
@@ -65,11 +65,9 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         // version
         self.u32_serializer.serialize(&value.version, buffer)?;
         // component
-        let component = match &value.component {
-            MipComponent::Address => u32::from(MipComponent::Address),
-            MipComponent::Block => u32::from(MipComponent::Block),
-            MipComponent::VM => u32::from(MipComponent::VM),
-        };
+        let component_ = value.component.clone();
+        let component: u32 = component_.into();
+
         self.u32_serializer.serialize(&component, buffer)?;
         // component version
         self.u32_serializer
@@ -82,7 +80,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
     }
 }
 
-/// Deserializer for VersioningInfo
+/// Deserializer for MipInfo
 pub struct MipInfoDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     len_deserializer: U32VarIntDeserializer,
@@ -119,7 +117,7 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], MipInfo, E> {
         context(
-            "Failed VersioningInfo deserialization",
+            "Failed MipInfo deserialization",
             tuple((
                 context("Failed name deserialization", |input| {
                     let (input_, len_) = self.len_deserializer.deserialize(input)?;
@@ -175,6 +173,9 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use massa_serialization::DeserializeError;
+    use massa_time::MassaTime;
 
     #[test]
     fn test_mip_info_ser_der() {
