@@ -39,7 +39,7 @@ where
     pub content_creator_pub_key: PublicKey,
     /// Derived from the same public key used to generate the signature
     pub content_creator_address: Address,
-    /// A secure hash of the data. See also [massa_hash::Hash]
+    /// An identifier composed of the secure hash of non-malleable data. See also [massa_hash::Hash]
     pub id: ID,
 }
 
@@ -56,6 +56,24 @@ pub trait SecureShareContent
 where
     Self: Sized + Display,
 {
+    /// Compute the ID of the non-malleable contents.
+    ///
+    /// # Arguments
+    /// * content: reference to the content (useful for example for denunciable objects)
+    /// * non_malleable_content_serialized: a reference to the non-malleable serialized content to be used for ID computation. If malleability on some fields is needed, they should not be included.
+    /// * content_creator_pub_key: reference to the public key of the content creator
+    fn compute_id<ID: Id>(
+        _content: &Self,
+        non_malleable_content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> ID {
+        // Default ID format: H(content_creator_pub_key | non_malleable_content_serialized)
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(non_malleable_content_serialized.clone());
+        ID::new(Hash::compute_from(&hash_data))
+    }
+
     /// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
     fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
@@ -65,19 +83,16 @@ where
     ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
-        let mut hash_data = Vec::new();
         let public_key = keypair.get_public_key();
-        hash_data.extend(public_key.to_bytes());
-        hash_data.extend(content_serialized.clone());
-        let hash = Hash::compute_from(&hash_data);
+        let id = Self::compute_id(&content, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
-            signature: keypair.sign(&hash)?,
+            signature: keypair.sign(&id.get_hash())?,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
             content,
             serialized_data: content_serialized,
-            id: ID::new(hash),
+            id,
         })
     }
 
@@ -135,8 +150,7 @@ where
             serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         let creator_address = Address::from_public_key(&creator_public_key);
-        let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
-        serialized_full_data.extend(&content_serialized);
+        let id = Self::compute_id(&content, &content_serialized, &creator_public_key);
         Ok((
             rest,
             SecureShare {
@@ -144,8 +158,8 @@ where
                 signature,
                 content_creator_pub_key: creator_public_key,
                 content_creator_address: creator_address,
-                serialized_data: content_serialized.to_vec(),
-                id: ID::new(Hash::compute_from(&serialized_full_data)),
+                serialized_data: content_serialized,
+                id,
             },
         ))
     }

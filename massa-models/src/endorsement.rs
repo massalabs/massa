@@ -166,7 +166,28 @@ impl SecureShareEndorsement {
 /// Wrapped endorsement
 pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
 
-impl SecureShareContent for Endorsement {}
+impl SecureShareContent for Endorsement {
+    /// Compute the ID of the non-malleable contents.
+    /// This specialization allows for compact multi-stake denunciation.
+    ///
+    /// # Arguments
+    /// * content: reference to the content (useful for example for denunciable objects)
+    /// * non_malleable_content_serialized: a reference to the non-malleable serialized content to be used for ID computation. If malleability on some fields is needed, they should not be included.
+    /// * content_creator_pub_key: reference to the public key of the content creator
+    fn compute_id<ID: Id>(
+        content: &Self,
+        non_malleable_content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> ID {
+        // ID format: H(content_creator_pub_key | slot | index | H(nonmalleable_contents_serialized))
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(content.slot.to_bytes_key()); // fixed-length prefixes are safer when we don't have separators in the hashed data concatenation
+        hash_data.extend(content.index.to_be_bytes()); // fixed-length prefixes are safer when we don't have separators in the hashed data concatenation
+        hash_data.extend(Hash::compute_from(non_malleable_content_serialized).to_bytes());
+        ID::new(Hash::compute_from(&hash_data))
+    }
+}
 
 /// Serializer for `Endorsement`
 #[derive(Clone)]
