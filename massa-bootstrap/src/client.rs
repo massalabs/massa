@@ -432,6 +432,7 @@ pub async fn get_state(
         // init final state
         {
             let mut final_state_guard = final_state.write();
+            /*
             // load ledger from initial ledger file
             final_state_guard
                 .ledger
@@ -439,6 +440,7 @@ pub async fn get_state(
                 .map_err(|err| {
                     BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
                 })?;
+            */
             // create the initial cycle of PoS cycle_history
             final_state_guard.pos_state.create_initial_cycle();
         }
