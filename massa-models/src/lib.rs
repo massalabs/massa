@@ -31,6 +31,8 @@ pub mod composite;
 pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
+/// denunciation
+pub mod denunciation;
 /// endorsements
 pub mod endorsement;
 /// models error
