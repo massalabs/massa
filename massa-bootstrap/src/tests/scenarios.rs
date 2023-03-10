@@ -173,6 +173,7 @@ async fn test_bootstrap_server() {
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
+            false
         )
         .await
         .unwrap()

@@ -24,7 +24,6 @@ pub struct LoggingSettings {
 #[derive(Clone, Debug, Deserialize)]
 pub struct SnapshotSettings {
     pub final_state_path: PathBuf,
-    pub last_start_period: u64,
 }
 
 #[derive(Clone, Debug, Deserialize)]

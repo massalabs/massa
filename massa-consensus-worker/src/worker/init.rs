@@ -9,6 +9,7 @@ use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
+    config::LAST_START_PERIOD,
     prehash::PreHashMap,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -42,7 +43,7 @@ pub fn create_genesis_block(
     let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            slot: Slot::new(0, thread_number),
+            slot: Slot::new(LAST_START_PERIOD, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
@@ -148,6 +149,22 @@ impl ConsensusWorker {
             )
         }
 
+        if config
+            .genesis_timestamp
+            .checked_add(config.t0.checked_mul(LAST_START_PERIOD)?)?
+            > now
+        {
+            let (days, hours, mins, secs) = config
+                .genesis_timestamp
+                .checked_add(config.t0.checked_mul(LAST_START_PERIOD)?)?
+                .saturating_sub(now)
+                .days_hours_mins_secs()?;
+            info!(
+                "{} days, {} hours, {} minutes, {} seconds remaining to last start period",
+                days, hours, mins, secs,
+            )
+        }
+
         // add genesis blocks to stats
         let genesis_addr = Address::from_public_key(&config.genesis_key.get_public_key());
         let mut final_block_stats = VecDeque::new();
@@ -157,7 +174,7 @@ impl ConsensusWorker {
                     config.thread_count,
                     config.t0,
                     config.genesis_timestamp,
-                    Slot::new(0, thread),
+                    Slot::new(LAST_START_PERIOD, thread),
                 )?,
                 genesis_addr,
                 false,

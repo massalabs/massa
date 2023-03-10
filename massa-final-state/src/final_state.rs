@@ -194,12 +194,6 @@ impl FinalState {
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-
-        /*let slot = Slot::new(
-            config.last_start_period,
-            config.thread_count.saturating_sub(1),
-        );*/
-
         let latest_consistant_slot_path = config.final_state_path.join("latest_consistant_slot");
         let latest_consistant_slot_file = fs::read(latest_consistant_slot_path).map_err(|_| {
             FinalStateError::SnapshotError(String::from(

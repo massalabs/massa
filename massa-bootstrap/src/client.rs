@@ -423,27 +423,24 @@ pub async fn get_state(
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
+    from_snapshot: bool
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
+    // if we are after genesis, but we restart from a snapshot, also do not bootstrap!
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
         {
             let mut final_state_guard = final_state.write();
-            /*
-            // load ledger from initial ledger file
-            final_state_guard
-                .ledger
-                .load_initial_ledger()
-                .map_err(|err| {
-                    BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
-                })?;
-            */
             // create the initial cycle of PoS cycle_history
             final_state_guard.pos_state.create_initial_cycle();
         }
+        return Ok(GlobalBootstrapState::new(final_state));
+    }
+    if from_snapshot {
+        massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         return Ok(GlobalBootstrapState::new(final_state));
     }
 

@@ -10,7 +10,7 @@ use massa_models::{
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, config::LAST_START_PERIOD,
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
@@ -76,8 +76,8 @@ impl BlockFactoryWorker {
         );
 
         // ignore genesis
-        if next_slot.period == 0 {
-            next_slot.period = 1;
+        if next_slot.period <= LAST_START_PERIOD {
+            next_slot.period = LAST_START_PERIOD + 1;
         }
 
         // protection against double-production on unexpected system clock adjustment

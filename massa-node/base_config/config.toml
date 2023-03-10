@@ -70,9 +70,7 @@
 [snapshot]
     # Path to save/load the final state
     final_state_path = "storage/final_state"
-    # Period of the last start 
-    last_start_period = 0
-
+    
 [consensus]
     # max number of previously discarded blocks kept in RAM
     max_discarded_blocks = 100

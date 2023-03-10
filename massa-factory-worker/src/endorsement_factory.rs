@@ -6,7 +6,7 @@ use massa_models::{
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, config::LAST_START_PERIOD,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -89,8 +89,8 @@ impl EndorsementFactoryWorker {
         }
 
         // prevent triggering on period-zero slots
-        if next_slot.period == 0 {
-            next_slot = Slot::new(1, 0);
+        if next_slot.period <= LAST_START_PERIOD {
+            next_slot = Slot::new(LAST_START_PERIOD + 1, 0);
         }
 
         // get the timestamp of the target slot

@@ -6,7 +6,8 @@ use massa_consensus_exports::{
 };
 use massa_logging::massa_trace;
 use massa_models::{
-    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, config::LAST_START_PERIOD, prehash::PreHashSet,
+    slot::Slot,
 };
 
 /// Possible output of a header check
@@ -206,7 +207,7 @@ impl ConsensusState {
                     )));
                 }
                 gp_max_slots[parent_i as usize] = parent_period;
-                if parent_period == 0 {
+                if parent_period == LAST_START_PERIOD {
                     // genesis
                     continue;
                 }

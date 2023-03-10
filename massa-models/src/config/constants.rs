@@ -37,12 +37,17 @@ pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
+
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from_millis(1000 * 10))
+                .saturating_add(MassaTime::from_millis(1000 * 10)
+                .saturating_sub(
+                    T0.checked_mul(LAST_START_PERIOD).unwrap()
+                )
+            )
         )
     } else {
         1677682800000.into()  // Wednesday, March 1, 2023 03:00:00 PM UTC
@@ -70,6 +75,13 @@ lazy_static::lazy_static! {
         .unwrap()
     };
 }
+
+/// Last period we restarted the network. Set to 0 for a brand new network.
+//pub const LAST_START_PERIOD: u64 = 0;
+pub const LAST_START_PERIOD: u64 = 3;
+//pub const LAST_START_PERIOD: u64 = 4;
+
+// If we are before GENESIS_TIMESTAMP + T0*LAST_START_PERIOD, create new GENESIS_BLOCKS.
 
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
