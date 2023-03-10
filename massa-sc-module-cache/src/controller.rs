@@ -73,24 +73,6 @@ impl ModuleCache {
         Ok(())
     }
 
-    /// Remove a cached module
-    pub fn remove_module(&mut self, bytecode: &[u8]) {
-        let hash = Hash::compute_from(bytecode);
-        // self.hd_cache.remove(hash);
-    }
-
-    /// Update a cached module (remove and save)
-    pub fn update_module(
-        &mut self,
-        new: &[u8],
-        new_limit: u64,
-        previous: &[u8],
-    ) -> Result<(), ExecutionError> {
-        self.remove_module(previous);
-        self.save_module(new, new_limit)?;
-        Ok(())
-    }
-
     /// Load a cached module for execution
     pub fn load_module(
         &mut self,

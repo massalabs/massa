@@ -13,6 +13,8 @@ massa_serialization = { path = "../massa-serialization" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup", features = ["testing"]}
 serial_test = "1.0.0"
 rand = "0.8.5"
+num_enum = "0.5"
+nom = "7.1"
 
 [features]
 testing = []
