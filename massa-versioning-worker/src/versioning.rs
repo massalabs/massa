@@ -461,20 +461,14 @@ impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStore {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum UpdateWithResult {
-    Success(Vec<MipInfo>, Vec<MipInfo>),
-    Fail,
-}
-
 /// Store of all versioning info
 #[derive(Debug, Clone, Default)]
 pub struct MipStoreRaw(pub(crate) BTreeMap<MipInfo, MipState>);
 
 impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
-    /// Return true if update is successful, false if something is wrong on given store raw
-    fn update_with(&mut self, store_raw: &MipStoreRaw) -> UpdateWithResult {
+    /// Return list of updated / added if update is successful
+    fn update_with(&mut self, store_raw: &MipStoreRaw) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
         // iter over items in given store:
         // -> 2 cases:
         // * MipInfo is already in self store -> add to 'to_update' list
@@ -565,9 +559,9 @@ impl MipStoreRaw {
 
             self.0.append(&mut to_update);
             self.0.append(&mut to_add);
-            UpdateWithResult::Success(updated, added)
+            Ok((updated, added))
         } else {
-            UpdateWithResult::Fail
+            Err(())
         }
     }
 }
@@ -584,8 +578,8 @@ impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStoreRaw {
 
         // Use update_with ensuring that we have no overlapping time range, unique names & ...
         match store.update_with(&other_store) {
-            UpdateWithResult::Success(_, _) => Ok(store),
-            UpdateWithResult::Fail => Err(()),
+            Ok(_) => Ok(store),
+            Err(_) => Err(()),
         }
     }
 }
@@ -1064,7 +1058,7 @@ mod test {
         ]);
         assert_eq!(_vs_raw_2_.is_err(), true);
 
-        assert_eq!(vs_raw_1.update_with(&vs_raw_2), UpdateWithResult::Fail);
+        assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
         assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
         assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().inner, vs_2.inner);
 
@@ -1082,6 +1076,6 @@ mod test {
             (vi_2_2.clone(), vs_2_2.clone()),
         ]));
 
-        assert_eq!(vs_raw_1.update_with(&vs_raw_2), UpdateWithResult::Fail);
+        assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
     }
 }
