@@ -84,6 +84,7 @@ impl BlockHeader {
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
 impl SecureShareContent for BlockHeader {
+    /// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
     fn compute_hash(
         content: &Self,
         content_serialized: &[u8],
