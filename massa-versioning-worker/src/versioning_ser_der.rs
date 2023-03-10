@@ -10,18 +10,10 @@ use nom::{
 
 use crate::versioning::{MipComponent, MipInfo};
 
-// use massa_models::amount::{Amount, AmountSerializer};
-// use massa_models::serialization::StringSerializer;
 use massa_serialization::{
-    DeserializeError,
-    Deserializer,
-    SerializeError,
-    Serializer,
-    U32VarIntDeserializer,
-    U32VarIntSerializer,
-    // U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
+use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
 
 /// Ser / Der
 
