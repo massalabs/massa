@@ -467,12 +467,15 @@ pub struct MipStoreRaw(pub(crate) BTreeMap<MipInfo, MipState>);
 
 impl MipStoreRaw {
     /// Update our store with another (usually after a bootstrap where we received another store)
-    /// Return true if update is successful, false if something is wrong on given store raw
-    fn update_with(&mut self, store_raw: &MipStoreRaw) -> bool {
+    /// Return list of updated / added if update is successful
+    fn update_with(&mut self, store_raw: &MipStoreRaw) -> Result<(Vec<MipInfo>, Vec<MipInfo>), ()> {
         // iter over items in given store:
-        // -> 2 cases: VersioningInfo is already in self store -> add to 'to_update' list
-        //             VersioningInfo is not in self.store -> add to 'to_add' list
-        //
+        // -> 2 cases:
+        // * MipInfo is already in self store -> add to 'to_update' list
+        // * MipInfo is not in self.store -> We received a new MipInfo so we are running an out dated version
+        //                                   of the software
+        //                                   We then return the list of new MipInfo so we can warn and ask
+        //                                   to update the software
 
         let mut component_versions: HashMap<MipComponent, u32> = self
             .0
@@ -551,11 +554,14 @@ impl MipStoreRaw {
 
         // Return false is there is nothing to merge - maybe we could make a distinction here?
         if should_merge && (!to_update.is_empty() || !to_add.is_empty()) {
+            let added = to_add.keys().cloned().collect();
+            let updated = to_update.keys().cloned().collect();
+
             self.0.append(&mut to_update);
             self.0.append(&mut to_add);
-            true
+            Ok((updated, added))
         } else {
-            false
+            Err(())
         }
     }
 }
@@ -572,8 +578,8 @@ impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStoreRaw {
 
         // Use update_with ensuring that we have no overlapping time range, unique names & ...
         match store.update_with(&other_store) {
-            true => Ok(store),
-            false => Err(()),
+            Ok(_) => Ok(store),
+            Err(_) => Err(()),
         }
     }
 }
@@ -1052,7 +1058,7 @@ mod test {
         ]);
         assert_eq!(_vs_raw_2_.is_err(), true);
 
-        assert_eq!(vs_raw_1.update_with(&vs_raw_2), false);
+        assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
         assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
         assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().inner, vs_2.inner);
 
@@ -1070,6 +1076,6 @@ mod test {
             (vi_2_2.clone(), vs_2_2.clone()),
         ]));
 
-        assert_eq!(vs_raw_1.update_with(&vs_raw_2), false);
+        assert_eq!(vs_raw_1.update_with(&vs_raw_2), Err(()));
     }
 }

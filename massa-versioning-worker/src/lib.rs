@@ -10,7 +10,7 @@
 //! # Note on MipInfo versions
 //!
 //! There is 2 different versions:
-//! * version -> Network version -> This is the network version to announce and thus to store in block header
+//! * version == Network version -> This is the network version to announce and thus to store in block header
 //! * component_version -> This is the version for the associated component and is used in VersioningFactory
 //!
 //! # Note on MipState
