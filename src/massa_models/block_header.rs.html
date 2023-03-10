@@ -470,9 +470,24 @@
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
-<span class="kw">use </span><span class="kw">crate</span>::denunciation::{DenunciationData, DenunciationDataSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
@@ -562,14 +577,11 @@
         content_serialized: <span class="kw-2">&amp;</span>[u8],
         content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Hash, SerializeError&gt; {
-        <span class="kw">let </span>de_data = DenunciationData::BlockHeader(content.slot);
-        <span class="kw">let </span>de_data_serializer = DenunciationDataSerializer::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>de_data_ser = Vec::new();
-        de_data_serializer.serialize(<span class="kw-2">&amp;</span>de_data, <span class="kw-2">&amp;mut </span>de_data_ser)<span class="question-mark">?</span>;
+        <span class="kw">let </span>de_data = BlockHeaderDenunciationData::new(content.slot);
 
         <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
-        hash_data.extend(de_data_ser);
+        hash_data.extend(de_data.to_bytes());
         hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
         <span class="prelude-val">Ok</span>(Hash::compute_from(<span class="kw-2">&amp;</span>hash_data))
     }
@@ -940,6 +952,26 @@
             <span class="macro">writeln!</span>(f, <span class="string">&quot;\tNo endorsements found&quot;</span>)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// A denunciation data for block header
+</span><span class="kw">pub struct </span>BlockHeaderDenunciationData {
+    slot: Slot,
+}
+
+<span class="kw">impl </span>BlockHeaderDenunciationData {
+    <span class="doccomment">/// Create a new DenunciationData for block hedader
+    </span><span class="kw">pub fn </span>new(slot: Slot) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ slot }
+    }
+
+    <span class="doccomment">/// Get byte array
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
+        buf.extend(<span class="self">self</span>.slot.period.to_le_bytes());
+        buf.push(<span class="self">self</span>.slot.thread);
+        buf
     }
 }
 </code></pre></div>
