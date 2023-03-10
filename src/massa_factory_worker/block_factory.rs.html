@@ -274,7 +274,7 @@
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, config::LAST_START_PERIOD,
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_wallet::Wallet;
@@ -340,8 +340,8 @@
         );
 
         <span class="comment">// ignore genesis
-        </span><span class="kw">if </span>next_slot.period &lt;= LAST_START_PERIOD {
-            next_slot.period = LAST_START_PERIOD + <span class="number">1</span>;
+        </span><span class="kw">if </span>next_slot.period == <span class="number">0 </span>{
+            next_slot.period = <span class="number">1</span>;
         }
 
         <span class="comment">// protection against double-production on unexpected system clock adjustment

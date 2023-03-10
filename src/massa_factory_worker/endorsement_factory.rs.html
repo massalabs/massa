@@ -230,7 +230,7 @@
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, config::LAST_START_PERIOD,
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -313,8 +313,8 @@
         }
 
         <span class="comment">// prevent triggering on period-zero slots
-        </span><span class="kw">if </span>next_slot.period &lt;= LAST_START_PERIOD {
-            next_slot = Slot::new(LAST_START_PERIOD + <span class="number">1</span>, <span class="number">0</span>);
+        </span><span class="kw">if </span>next_slot.period == <span class="number">0 </span>{
+            next_slot = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         }
 
         <span class="comment">// get the timestamp of the target slot
