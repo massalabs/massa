@@ -1671,7 +1671,7 @@ mod tests {
                     exec_cfg
                         .storage_costs_constants
                         .ledger_cost_per_byte
-                        .saturating_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+                        .saturating_mul_u64(2*LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
                 )
                 // Storage cost value
                 .saturating_sub(
