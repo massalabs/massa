@@ -238,10 +238,10 @@ impl ExecutionState {
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
-            return Err(ExecutionError::IncludeOperationError(format!(
-                "could not spend fees: {}",
-                err
-            )));
+            let error = format!("could not spend fees: {}", err);
+            let event = context.event_create(error.clone(), true);
+            context.event_emit(event);
+            return Err(ExecutionError::IncludeOperationError(error));
         }
 
         // from here, fees transferred. Op will be executed just after in the context of a snapshot.
