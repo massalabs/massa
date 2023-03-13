@@ -15,6 +15,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_models::block_id::BlockId;
+use massa_models::config::LAST_START_PERIOD;
 use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
@@ -53,7 +54,15 @@ impl ExecutionThread {
         selector: Box<dyn SelectorController>,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
-        let final_cursor = execution_state.read().final_cursor;
+        // if we are restarting the network, use last genesis slot of the last start.
+
+        let final_cursor = std::cmp::max(
+            execution_state.read().final_cursor,
+            Slot {
+                period: LAST_START_PERIOD,
+                thread: config.thread_count.saturating_sub(1),
+            },
+        );
 
         // create and return the ExecutionThread
         ExecutionThread {

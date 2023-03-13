@@ -13,6 +13,7 @@ use massa_executed_ops::ExecutedOps;
 use massa_hash::{Hash, /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
+    config::LAST_START_PERIOD,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
@@ -106,7 +107,7 @@ impl FinalState {
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
     ) -> Result<Self, FinalStateError> {
-        info!("Restarting from snapshot");
+        debug!("Restarting from snapshot");
 
         // Deserialize Async Pool
         let async_pool_path = config.final_state_path.join("async_pool");
@@ -206,13 +207,17 @@ impl FinalState {
             (Included(0), Excluded(config.thread_count)),
         );
 
-        let (_, slot) = slot_deser
+        let (_, latest_consistant_slot) = slot_deser
             .deserialize::<DeserializeError>(&latest_consistant_slot_file)
             .map_err(|_| {
                 FinalStateError::SnapshotError(String::from(
                     "Could not deserialize latest_consistant_slot file from snapshot",
                 ))
             })?;
+
+        let slot = Slot::new(LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+
+        debug!("Latest consistant slot found: {}. Setting the current final_state slot at {} for network restart", latest_consistant_slot, slot);
 
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
@@ -256,7 +261,10 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        self.slot = Slot::new(
+            LAST_START_PERIOD,
+            self.config.thread_count.saturating_sub(1),
+        );
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();

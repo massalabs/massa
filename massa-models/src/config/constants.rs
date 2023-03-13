@@ -43,10 +43,11 @@ lazy_static::lazy_static! {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from_millis(1000 * 10)
                 .saturating_sub(
                     T0.checked_mul(LAST_START_PERIOD).unwrap()
                 )
+                .saturating_add(MassaTime::from_millis(1000 * 10)
+
             )
         )
     } else {
@@ -77,9 +78,8 @@ lazy_static::lazy_static! {
 }
 
 /// Last period we restarted the network. Set to 0 for a brand new network.
-//pub const LAST_START_PERIOD: u64 = 0;
-pub const LAST_START_PERIOD: u64 = 3;
-//pub const LAST_START_PERIOD: u64 = 4;
+pub const LAST_START_PERIOD: u64 = 0;
+//pub const LAST_START_PERIOD: u64 = 3;
 
 // If we are before GENESIS_TIMESTAMP + T0*LAST_START_PERIOD, create new GENESIS_BLOCKS.
 
