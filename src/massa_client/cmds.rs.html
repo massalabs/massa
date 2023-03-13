@@ -1436,10 +1436,22 @@
 <a href="#1436" id="1436">1436</a>
 <a href="#1437" id="1437">1437</a>
 <a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
-<span class="kw">use crate</span>::{client_warning, rpc_error};
+</span><span class="kw">use </span><span class="kw">crate</span>::repl::Output;
 <span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>massa_api_exports::{
@@ -1773,10 +1785,30 @@
     </span>Remove,
 }
 
+<span class="doccomment">/// Display the help of all commands
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>help() {
+    <span class="macro">println!</span>(<span class="string">&quot;HELP of Massa client (list of available commands):&quot;</span>);
+    Command::iter().map(|c| c.help()).collect()
+}
+
+<span class="doccomment">/// bail a shinny RPC error
+</span><span class="macro">macro_rules! </span>rpc_error {
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; {
+        <span class="macro">bail!</span>(<span class="string">&quot;check if your node is running: {}&quot;</span>, <span class="macro-nonterminal">$e</span>)
+    };
+}
+
+<span class="doccomment">/// print a yellow warning
+</span><span class="macro">macro_rules! </span>client_warning {
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; {
+        <span class="macro">println!</span>(<span class="string">&quot;{}: {}&quot;</span>, style(<span class="string">&quot;WARNING&quot;</span>).yellow(), <span class="macro-nonterminal">$e</span>)
+    };
+}
+
 <span class="doccomment">/// Used to have a shinny json output
 /// TODO re-factor me
 </span><span class="attr">#[derive(Debug, Serialize)]
-</span><span class="kw">pub </span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExtendedWalletEntry {
+</span><span class="kw">struct </span>ExtendedWalletEntry {
     <span class="doccomment">/// the keypair
     </span><span class="kw">pub </span>keypair: KeyPair,
     <span class="doccomment">/// address and balance information
@@ -1800,7 +1832,7 @@
 <span class="doccomment">/// Aggregation of the local, with some useful information as the balance, etc
 /// to be printed by the client.
 </span><span class="attr">#[derive(Debug, Serialize)]
-</span><span class="kw">pub struct </span>ExtendedWallet(<span class="kw">pub </span>(<span class="kw">crate</span>) PreHashMap&lt;Address, ExtendedWalletEntry&gt;);
+</span><span class="kw">pub struct </span>ExtendedWallet(PreHashMap&lt;Address, ExtendedWalletEntry&gt;);
 
 <span class="kw">impl </span>ExtendedWallet {
     <span class="doccomment">/// Reorganize everything into an extended wallet
@@ -2867,12 +2899,6 @@
     } <span class="kw">else </span>{
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
-}
-
-<span class="doccomment">/// Display the help of all commands
-</span><span class="kw">pub fn </span>help() {
-    <span class="macro">println!</span>(<span class="string">&quot;HELP of Massa client (list of available commands):&quot;</span>);
-    Command::iter().map(|c| c.help()).collect()
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
