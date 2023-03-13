@@ -263,6 +263,7 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
@@ -342,6 +343,7 @@
         );
 
         <span class="comment">// ignore genesis
+        </span><span class="attr">#[allow(clippy::absurd_extreme_comparisons)]
         </span><span class="kw">if </span>next_slot.period &lt;= LAST_START_PERIOD {
             next_slot.period = LAST_START_PERIOD + <span class="number">1</span>;
         }
