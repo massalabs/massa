@@ -1003,7 +1003,7 @@ mod test {
             MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
                 .unwrap();
 
-        vs_raw_1.update_with(&vs_raw_2);
+        vs_raw_1.update_with(&vs_raw_2).unwrap();
 
         // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "LockedIn"
         assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
