@@ -4,3 +4,5 @@ pub mod send_blocks;
 pub mod send_endorsements;
 /// send operations
 pub mod send_operations;
+/// subscribe tx througput
+pub mod subscribe_tx_througput;

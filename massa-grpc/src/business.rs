@@ -6,7 +6,7 @@ use massa_models::slot::Slot;
 use massa_models::timeslots;
 use massa_proto::massa::api::v1::{
     self as grpc, BestParentTuple, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
-    GetSelectorDrawsResponse,
+    GetSelectorDrawsResponse, GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
 };
 use massa_proto::massa::api::v1::{GetDatastoreEntriesResponse, GetVersionResponse};
 use std::str::FromStr;
@@ -122,7 +122,7 @@ pub(crate) fn get_selector_draws(
 }
 
 /// Get next block best parents
-pub(crate) async fn get_next_block_best_parents(
+pub(crate) fn get_next_block_best_parents(
     grpc: &MassaGrpcService,
     request: Request<GetNextBlockBestParentsRequest>,
 ) -> Result<GetNextBlockBestParentsResponse, GrpcError> {
@@ -139,5 +139,16 @@ pub(crate) async fn get_next_block_best_parents(
     Ok(GetNextBlockBestParentsResponse {
         id: inner_req.id,
         data: parents,
+    })
+}
+
+pub(crate) fn get_transactions_throughput(
+    grpc: &MassaGrpcService,
+    request: Request<GetTransactionsThroughputRequest>,
+) -> Result<GetTransactionsThroughputResponse, GrpcError> {
+    let stats = grpc.execution_controller.get_stats();
+    dbg!(stats);
+    Ok(GetTransactionsThroughputResponse {
+        id: request.into_inner().id,
     })
 }

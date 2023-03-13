@@ -56,6 +56,20 @@ pub struct Slot {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTransactionsThroughputRequest {
+    /// id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTransactionsThroughputResponse {
+    /// id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetNextBlockBestParentsRequest {
     /// id
     #[prost(string, tag = "1")]
@@ -470,6 +484,29 @@ pub mod grpc_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// GetTransactionsThroughput
+        pub async fn get_transactions_throughput(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetTransactionsThroughputRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetTransactionsThroughputResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/GetTransactionsThroughput",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// GetNextBlockBestParents
         pub async fn get_next_block_best_parents(
             &mut self,
@@ -566,6 +603,33 @@ pub mod grpc_client {
             );
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
+        /// Subscribe GetTransactionsThroughput
+        pub async fn send_transactions_throughput(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::GetTransactionsThroughputRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::GetTransactionsThroughputResponse>,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/SendTransactionsThroughput",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -597,6 +661,14 @@ pub mod grpc_server {
             request: tonic::Request<super::GetVersionRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetVersionResponse>,
+            tonic::Status,
+        >;
+        /// GetTransactionsThroughput
+        async fn get_transactions_throughput(
+            &self,
+            request: tonic::Request<super::GetTransactionsThroughputRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetTransactionsThroughputResponse>,
             tonic::Status,
         >;
         /// GetNextBlockBestParents
@@ -647,6 +719,25 @@ pub mod grpc_server {
             request: tonic::Request<tonic::Streaming<super::SendOperationsRequest>>,
         ) -> std::result::Result<
             tonic::Response<Self::SendOperationsStream>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the SendTransactionsThroughput method.
+        type SendTransactionsThroughputStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::GetTransactionsThroughputResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// Subscribe GetTransactionsThroughput
+        async fn send_transactions_throughput(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::GetTransactionsThroughputRequest>,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<Self::SendTransactionsThroughputStream>,
             tonic::Status,
         >;
     }
@@ -860,6 +951,55 @@ pub mod grpc_server {
                     };
                     Box::pin(fut)
                 }
+                "/massa.api.v1.Grpc/GetTransactionsThroughput" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetTransactionsThroughputSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::UnaryService<
+                        super::GetTransactionsThroughputRequest,
+                    > for GetTransactionsThroughputSvc<T> {
+                        type Response = super::GetTransactionsThroughputResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::GetTransactionsThroughputRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_transactions_throughput(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetTransactionsThroughputSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/massa.api.v1.Grpc/GetNextBlockBestParents" => {
                     #[allow(non_camel_case_types)]
                     struct GetNextBlockBestParentsSvc<T: Grpc>(pub Arc<T>);
@@ -1038,6 +1178,56 @@ pub mod grpc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = SendOperationsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/SendTransactionsThroughput" => {
+                    #[allow(non_camel_case_types)]
+                    struct SendTransactionsThroughputSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::StreamingService<
+                        super::GetTransactionsThroughputRequest,
+                    > for SendTransactionsThroughputSvc<T> {
+                        type Response = super::GetTransactionsThroughputResponse;
+                        type ResponseStream = T::SendTransactionsThroughputStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::GetTransactionsThroughputRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).send_transactions_throughput(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SendTransactionsThroughputSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
