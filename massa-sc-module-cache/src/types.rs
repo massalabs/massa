@@ -14,6 +14,7 @@ use std::ops::Bound::Included;
 pub type ModuleInfo = (RuntimeModule, Option<u64>);
 
 /// NOTE: this will replace ModuleInfo
+#[derive(Clone)]
 pub enum ModuleInfoBis {
     Invalid,
     Module(RuntimeModule),
