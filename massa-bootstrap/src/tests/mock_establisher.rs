@@ -43,11 +43,11 @@ impl BSListener for MockListener {
                 "MockListener accept channel from Establisher closed".to_string(),
             )
         })?;
-        let duplex_controller = DuplexListener::bind("localhost:0").await.unwrap();
+        let duplex_controller = std::net::TcpListener::bind("localhost:0").unwrap();
         let duplex_mock = Duplex::connect(duplex_controller.local_addr().unwrap())
             .await
             .unwrap();
-        let duplex_controller = duplex_controller.accept().await.unwrap();
+        let (duplex_controller, addr) = duplex_controller.accept().unwrap();
 
         sender.send(duplex_mock).map_err(|_| {
             io::Error::new(
@@ -56,7 +56,7 @@ impl BSListener for MockListener {
             )
         })?;
 
-        Ok(duplex_controller)
+        Ok((Duplex::from_std(duplex_controller).unwrap(), addr))
     }
 }
 
