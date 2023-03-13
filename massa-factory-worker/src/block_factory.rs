@@ -77,6 +77,7 @@ impl BlockFactoryWorker {
         );
 
         // ignore genesis
+        #[allow(clippy::absurd_extreme_comparisons)]
         if next_slot.period <= LAST_START_PERIOD {
             next_slot.period = LAST_START_PERIOD + 1;
         }

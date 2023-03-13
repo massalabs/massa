@@ -90,6 +90,7 @@ impl EndorsementFactoryWorker {
         }
 
         // prevent triggering on period-zero slots
+        #[allow(clippy::absurd_extreme_comparisons)]
         if next_slot.period <= LAST_START_PERIOD {
             next_slot = Slot::new(LAST_START_PERIOD + 1, 0);
         }
