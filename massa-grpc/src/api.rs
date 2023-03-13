@@ -6,9 +6,14 @@ use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_proto::massa::api::v1::{self as grpc, grpc_server::GrpcServer, FILE_DESCRIPTOR_SET};
+use massa_proto::massa::api::v1::{
+    self as grpc, grpc_server::GrpcServer, GetNextBlockBestParentsRequest,
+    GetNextBlockBestParentsResponse, FILE_DESCRIPTOR_SET,
+};
 
-use crate::business::{get_datastore_entries, get_selector_draws, get_version};
+use crate::business::{
+    get_datastore_entries, get_next_block_best_parents, get_selector_draws, get_version,
+};
 use crate::stream::{
     send_blocks::{send_blocks, SendBlocksStream},
     send_endorsements::{send_endorsements, SendEndorsementsStream},
@@ -19,6 +24,7 @@ use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
 use tokio::sync::oneshot;
 use tonic::codegen::CompressionEncoding;
+use tonic::{Request, Response, Status};
 use tonic_web::GrpcWebLayer;
 use tracing::log::{info, warn};
 
@@ -159,10 +165,21 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for get selector draws
     async fn get_selector_draws(
         &self,
-        request: tonic::Request<grpc::GetSelectorDrawsRequest>,
-    ) -> Result<tonic::Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
+        request: Request<grpc::GetSelectorDrawsRequest>,
+    ) -> Result<Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
         match get_selector_draws(self, request) {
             Ok(response) => Ok(tonic::Response::new(response)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Handler for get_next_block_best_parents
+    async fn get_next_block_best_parents(
+        &self,
+        request: Request<GetNextBlockBestParentsRequest>,
+    ) -> Result<Response<GetNextBlockBestParentsResponse>, Status> {
+        match get_next_block_best_parents(self, request).await {
+            Ok(response) => Ok(Response::new(response)),
             Err(e) => Err(e.into()),
         }
     }
@@ -172,6 +189,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     // ███████╗   ██║   ██████╔╝█████╗  ███████║██╔████╔██║
     // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
+
+    type SendBlocksStream = SendBlocksStream;
+    type SendEndorsementsStream = SendEndorsementsStream;
+    type SendOperationsStream = SendOperationsStream;
 
     /// Handler for send_blocks_stream
     async fn send_blocks(
@@ -184,7 +205,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
-    /// handler for send_endorsements
+    /// Handler for send_endorsements
     async fn send_endorsements(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
@@ -195,6 +216,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
+    /// Handler for send_operations
     async fn send_operations(
         &self,
         request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
@@ -204,8 +226,4 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
             Err(e) => Err(e.into()),
         }
     }
-
-    type SendBlocksStream = SendBlocksStream;
-    type SendEndorsementsStream = SendEndorsementsStream;
-    type SendOperationsStream = SendOperationsStream;
 }
