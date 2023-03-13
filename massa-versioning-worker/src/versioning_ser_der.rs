@@ -75,7 +75,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         // start
         self.time_serializer.serialize(&value.start, buffer)?;
         // timeout
-        self.time_serializer.serialize(&value.start, buffer)?;
+        self.time_serializer.serialize(&value.timeout, buffer)?;
         Ok(())
     }
 }
