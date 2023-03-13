@@ -1049,7 +1049,7 @@ mod tests {
                 expire_period: 10,
                 op: OperationType::Transaction {
                     recipient_address,
-                    amount: Amount::from_str("120000").unwrap(),
+                    amount: Amount::from_str("250000").unwrap(),
                 },
             },
             OperationSerializer::new(),
@@ -1078,7 +1078,7 @@ mod tests {
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0]
             .data
-            .contains("We reach the vesting constraint : vesting_min_balance=200000 with value min_balance=190000"));
+            .contains("We reach the vesting constraint : vesting_min_balance=100000 with value min_balance=60000"));
 
         // check recipient balance
         assert!(sample_state

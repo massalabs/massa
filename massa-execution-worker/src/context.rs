@@ -615,7 +615,7 @@ impl ExecutionContext {
             }
 
             // control vesting min_balance for sender address
-            if let Some(vesting_range) = self.find_vesting_range(from_addr, &self.slot) {
+            if let Some(vesting_range) = self.find_vesting_range(from_addr, &self.slot) && (amount != Amount::zero()){
                 let new_balance = self
                     .get_balance(from_addr)
                     .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
