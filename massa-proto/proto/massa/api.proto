@@ -39,6 +39,11 @@ service Grpc {
         option (google.api.http) = {get: "/v1/version"};
     }
 
+    // GetNextBlockBestParents
+    rpc GetNextBlockBestParents (GetNextBlockBestParentsRequest) returns (GetNextBlockBestParentsResponse) {
+        option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
+    }
+
     // SendBlocks
     rpc SendBlocks (stream SendBlocksRequest) returns (stream SendBlocksResponse) {}
 
@@ -47,6 +52,23 @@ service Grpc {
 
     // SendOperations
     rpc SendOperations (stream SendOperationsRequest) returns (stream SendOperationsResponse) {}
+}
+
+message GetNextBlockBestParentsRequest {
+    // id
+    string id = 1;
+}
+
+message GetNextBlockBestParentsResponse {
+    // id
+    string id = 1;
+    // best parents
+    repeated BestParentTuple data = 2;
+}
+
+message BestParentTuple {
+    string blockId = 1;
+    uint64 period = 2;
 }
 
 // GetDatastoreEntriesRequest holds request from GetDatastoreEntries

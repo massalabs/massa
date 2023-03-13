@@ -4,7 +4,10 @@ use itertools::izip;
 use massa_models::address::Address;
 use massa_models::slot::Slot;
 use massa_models::timeslots;
-use massa_proto::massa::api::v1::{self as grpc, GetSelectorDrawsResponse};
+use massa_proto::massa::api::v1::{
+    self as grpc, BestParentTuple, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
+    GetSelectorDrawsResponse,
+};
 use massa_proto::massa::api::v1::{GetDatastoreEntriesResponse, GetVersionResponse};
 use std::str::FromStr;
 use tonic::Request;
@@ -115,5 +118,26 @@ pub(crate) fn get_selector_draws(
     Ok(GetSelectorDrawsResponse {
         id,
         selector_draws: res,
+    })
+}
+
+/// Get next block best parents
+pub(crate) async fn get_next_block_best_parents(
+    grpc: &MassaGrpcService,
+    request: Request<GetNextBlockBestParentsRequest>,
+) -> Result<GetNextBlockBestParentsResponse, GrpcError> {
+    let inner_req = request.into_inner();
+    let parents = grpc
+        .consensus_controller
+        .get_best_parents()
+        .into_iter()
+        .map(|p| BestParentTuple {
+            block_id: p.0.to_string(),
+            period: p.1,
+        })
+        .collect();
+    Ok(GetNextBlockBestParentsResponse {
+        id: inner_req.id,
+        data: parents,
     })
 }
