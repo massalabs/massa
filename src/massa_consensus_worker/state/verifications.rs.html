@@ -408,6 +408,7 @@
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -416,7 +417,8 @@
 };
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, config::LAST_START_PERIOD, prehash::PreHashSet,
+    slot::Slot,
 };
 
 <span class="doccomment">/// Possible output of a header check
@@ -616,7 +618,7 @@
                     )));
                 }
                 gp_max_slots[parent_i <span class="kw">as </span>usize] = parent_period;
-                <span class="kw">if </span>parent_period == <span class="number">0 </span>{
+                <span class="kw">if </span>parent_period == LAST_START_PERIOD {
                     <span class="comment">// genesis
                     </span><span class="kw">continue</span>;
                 }
