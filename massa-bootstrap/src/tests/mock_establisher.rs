@@ -38,7 +38,7 @@ pub struct MockListener {
 
 #[async_trait]
 impl BSListener for MockListener {
-    async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
+    async fn accept(&mut self) -> std::io::Result<(TcpStream, SocketAddr)> {
         dbg!("accept recving");
         let (_addr, sender) = self.connection_listener_rx.recv().map_err(|_| {
             io::Error::new(
@@ -65,7 +65,7 @@ impl BSListener for MockListener {
         dbg!("accept mock sent");
         dbg!("accept returning", &duplex_controller);
 
-        Ok((Duplex::from_std(duplex_controller).unwrap(), addr))
+        Ok((duplex_controller, addr))
     }
 }
 
@@ -77,7 +77,7 @@ pub struct MockConnector {
 
 #[async_trait]
 impl BSConnector for MockConnector {
-    async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
+    async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<TcpStream> {
         dbg!("connect");
         let duplex_mock = TcpListener::bind(addr).unwrap();
         let duplex_controller = TcpStream::connect(addr).unwrap();
@@ -114,7 +114,7 @@ impl BSConnector for MockConnector {
         dbg!("flag is true");
         send.join().unwrap();
         dbg!("joined");
-        Ok(Duplex::from_std(duplex_controller).unwrap())
+        Ok(duplex_controller)
     }
 }
 

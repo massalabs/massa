@@ -1,7 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use async_trait::async_trait;
 use massa_time::MassaTime;
-use std::{io, net::SocketAddr};
+use std::{
+    io,
+    net::{SocketAddr, TcpListener, TcpStream},
+};
 
 /// duplex connection
 pub type Duplex = tokio::net::TcpStream;
@@ -12,13 +15,13 @@ pub type DuplexListener = tokio::net::TcpListener;
 #[async_trait]
 /// Specifies a common interface that can be used by standard, or mockers
 pub trait BSListener {
-    async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)>;
+    async fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)>;
 }
 
 #[async_trait]
 /// Specifies a common interface that can be used by standard, or mockers
 pub trait BSConnector {
-    async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex>;
+    async fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream>;
 }
 
 /// Specifies a common interface that can be used by standard, or mockers
@@ -35,14 +38,14 @@ pub trait BSEstablisher {
 
 /// The listener we are using
 #[derive(Debug)]
-pub struct DefaultListener(DuplexListener);
+pub struct DefaultListener(TcpListener);
 
 #[async_trait]
 impl BSListener for DefaultListener {
     /// Accepts a new incoming connection from this listener.
-    async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
+    async fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)> {
         // accept
-        let (sock, mut remote_addr) = self.0.accept().await?;
+        let (sock, mut remote_addr) = self.0.accept()?;
         // normalize address
         remote_addr.set_ip(remote_addr.ip().to_canonical());
         Ok((sock, remote_addr))
@@ -58,8 +61,8 @@ impl BSConnector for DefaultConnector {
     ///
     /// # Argument
     /// * `addr`: `SocketAddr` we are trying to connect to.
-    async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
-        match tokio::time::timeout(self.0.to_duration(), Duplex::connect(addr)).await {
+    async fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream> {
+        match tokio::time::timeout(self.0.to_duration(), async { TcpStream::connect(addr) }).await {
             Ok(Ok(sock)) => Ok(sock),
             Ok(Err(e)) => Err(e),
             Err(e) => Err(io::Error::new(io::ErrorKind::TimedOut, e)),
@@ -96,9 +99,7 @@ impl BSEstablisher for DefaultEstablisher {
         // Number of connections to queue, set to the hardcoded value used by tokio
         socket.listen(1024)?;
 
-        let socket: std::net::TcpListener = socket.into();
-        socket.set_nonblocking(true).unwrap();
-        Ok(DefaultListener(DuplexListener::from_std(socket)?))
+        Ok(DefaultListener(socket.into()))
     }
 
     /// Get the connector with associated timeout

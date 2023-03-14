@@ -17,7 +17,7 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, BSEstablisher},
+    establisher::{BSConnector, BSEstablisher, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -380,8 +380,9 @@ async fn connect_to_server(
     // connect
     let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
     let socket = connector.connect(*addr).await?;
+    socket.set_nonblocking(true).unwrap();
     Ok(BootstrapClientBinder::new(
-        socket,
+        Duplex::from_std(socket).unwrap(),
         *pub_key,
         bootstrap_config.into(),
     ))
