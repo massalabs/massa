@@ -18,8 +18,8 @@ use massa_models::{
     streaming_step::StreamingStep,
 };
 use massa_pos_exports::{
-    CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits, DeferredCreditsDeserializer,
-    DeferredCreditsSerializer, PoSFinalState, SelectorController,
+    CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
 };
 use massa_serialization::{
     DeserializeError, /*U64VarIntSerializer,*/
@@ -171,7 +171,7 @@ impl FinalState {
             .deserialize::<massa_serialization::DeserializeError>(&pos_state_file)
             .map_err(|_| {
                 FinalStateError::SnapshotError(String::from(
-                    "Could not read async pool file from snapshot",
+                    "Could not read cycle_history from snapshot",
                 ))
             })?;
 
@@ -179,7 +179,7 @@ impl FinalState {
             .deserialize::<massa_serialization::DeserializeError>(rest)
             .map_err(|_| {
                 FinalStateError::SnapshotError(String::from(
-                    "Could not read async pool file from snapshot",
+                    "Could not read deferred_credits from snapshot",
                 ))
             })?;
 
@@ -215,16 +215,14 @@ impl FinalState {
                 ))
             })?;
 
-        let slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
-
-        debug!("Latest consistant slot found: {}. Setting the current final_state slot at {} for network restart", latest_consistant_slot, slot);
+        debug!("Latest consistant slot found: {}", latest_consistant_slot);
 
         // create a default executed ops
         let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
 
         // create the final state
         let mut final_state = FinalState {
-            slot,
+            slot: latest_consistant_slot,
             ledger,
             async_pool,
             pos_state,
@@ -234,7 +232,7 @@ impl FinalState {
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
         };
 
-        final_state.compute_state_hash_at_slot(slot);
+        final_state.compute_state_hash_at_slot(latest_consistant_slot);
 
         // Check the hash
         let final_hash_bytes_path = config.final_state_path.join("final_hash_bytes");
@@ -250,7 +248,90 @@ impl FinalState {
             })?);
 
         match final_state.final_state_hash == final_state_hash_from_file {
-            true => Ok(final_state),
+            true => {
+                /*let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+                debug!(
+                    "Setting the current final_state slot at {} for network restart",
+                    end_slot
+                );
+
+                let mut cur_slot = latest_consistant_slot;
+
+                if cur_slot > end_slot {
+                    return Err(FinalStateError::SnapshotError(String::from(
+                        "Cannot restart network from a slot that is before the last_consistant_slot",
+                    )));
+                }
+
+                while cur_slot < end_slot {
+                    cur_slot = cur_slot
+                        .get_next_slot(config.thread_count)
+                        .expect("overflow in execution state slot");
+                    let changes = StateChanges::default();
+                    final_state.finalize(cur_slot, changes);
+                }*/
+                let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+
+                let latest_consistant_cycle =
+                    latest_consistant_slot.get_cycle(config.periods_per_cycle);
+                let end_slot_cycle = end_slot.get_cycle(config.periods_per_cycle);
+
+                if latest_consistant_cycle == end_slot_cycle {
+                    // In that case, we just complete the gap
+
+                    let latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
+                        FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
+                    )?;
+
+                    for _ in latest_consistant_slot.period..end_slot.period {
+                        latest_cycle_info.rng_seed.push(false);
+                    }
+                } else {
+                    // Here, we we complete the cycle_infos in between also
+
+                    // Firstly, complete the first cycle
+                    let latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
+                        FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
+                    )?;
+
+                    for _ in latest_consistant_slot.period..config.periods_per_cycle {
+                        latest_cycle_info.rng_seed.push(false);
+                    }
+                    latest_cycle_info.complete = true;
+
+                    // Then, build all the already completed cycles
+                    for cycle in latest_consistant_cycle + 1..end_slot_cycle {
+                        final_state.pos_state.create_new_empty_cycle(cycle);
+
+                        let latest_cycle_info =
+                            final_state.pos_state.cycle_history.back_mut().ok_or(
+                                FinalStateError::SnapshotError(String::from(
+                                    "Invalid cycle_history",
+                                )),
+                            )?;
+
+                        for _ in 0..config.periods_per_cycle {
+                            latest_cycle_info.rng_seed.push(false);
+                        }
+                        latest_cycle_info.complete = true;
+                    }
+
+                    // Then, build the last cycle
+                    final_state.pos_state.create_new_empty_cycle(end_slot_cycle);
+
+                    let latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
+                        FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
+                    )?;
+
+                    for _ in 0..end_slot.period {
+                        latest_cycle_info.rng_seed.push(false);
+                    }
+                }
+
+                final_state.slot =
+                    Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+                Ok(final_state)
+            }
             false => Err(FinalStateError::SnapshotError(String::from(
                 "Invalid Final state hash",
             ))),
@@ -361,7 +442,6 @@ impl FinalState {
             self.changes_history.push_back((slot, changes));
         }
 
-        // What you see when running a node: "Final state hash: ABC"
         // compute the final state hash
         self.compute_state_hash_at_slot(slot);
 

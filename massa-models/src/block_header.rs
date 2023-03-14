@@ -1,5 +1,5 @@
 use crate::block_id::BlockId;
-use crate::config::THREAD_COUNT;
+use crate::config::{LAST_START_PERIOD, THREAD_COUNT};
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
@@ -40,7 +40,7 @@ pub struct BlockHeader {
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
     fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if self.slot.period == 0 {
+        if self.slot.period == *LAST_START_PERIOD {
             if !self.parents.is_empty() {
                 return Err("Invariant broken: genesis block with parent(s)".into());
             }
@@ -313,13 +313,15 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 .parse(input)?;
 
                 // validate the parent/slot invariats before moving on to other fields
-                if slot.period == 0 && !parents.is_empty() {
+                if slot.period == *LAST_START_PERIOD && !parents.is_empty() {
                     return Err(nom::Err::Failure(ContextError::add_context(
                         rest,
                         "Genesis block cannot contain parents",
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
-                } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
+                } else if slot.period != *LAST_START_PERIOD
+                    && parents.len() != THREAD_COUNT as usize
+                {
                     return Err(nom::Err::Failure(ContextError::add_context(
                         rest,
                         const_format::formatcp!(

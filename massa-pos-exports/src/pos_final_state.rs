@@ -129,6 +129,25 @@ impl PoSFinalState {
         ));
     }
 
+    /// Create a new empty cycle based off the initial rolls.
+    ///
+    pub fn create_new_empty_cycle(&mut self, cycle: u64) {
+        let rng_seed = BitVec::with_capacity(
+            self.config
+                .periods_per_cycle
+                .saturating_mul(self.config.thread_count as u64)
+                .try_into()
+                .unwrap(),
+        );
+        self.cycle_history.push_back(CycleInfo::new_with_hash(
+            cycle,
+            false,
+            self.initial_rolls.clone(),
+            rng_seed,
+            PreHashMap::default(),
+        ));
+    }
+
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {

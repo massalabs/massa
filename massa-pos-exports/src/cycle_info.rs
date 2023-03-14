@@ -218,7 +218,11 @@ impl CycleInfo {
 
         // if the cycle just completed, check that it has the right number of seed bits
         if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
-            panic!("cycle completed with incorrect number of seed bits");
+            panic!(
+                "cycle completed with incorrect number of seed bits: {} instead of {}",
+                self.rng_seed.len(),
+                slots_per_cycle
+            );
         }
 
         // compute the global hash
