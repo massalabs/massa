@@ -55,6 +55,29 @@ impl ExecutedOps {
         }
     }
 
+    /// Creates a new `ExecutedOps` and computes the hash
+    pub fn new_with_hash(
+        config: ExecutedOpsConfig,
+        sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
+    ) -> Self {
+        let mut hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
+        let mut ops = PreHashSet::default();
+        for (_, op_ids) in sorted_ops.clone() {
+            for op_id in op_ids {
+                if ops.insert(op_id) {
+                    hash ^= *op_id.get_hash();
+                }
+            }
+        }
+        Self {
+            config,
+            sorted_ops,
+            ops,
+            hash,
+            op_exec_status: HashMap::new(),
+        }
+    }
+
     /// Reset the executed operations
     ///
     /// USED FOR BOOTSTRAP ONLY

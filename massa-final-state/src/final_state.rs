@@ -9,7 +9,7 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 use massa_async_pool::{
     AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer, AsyncPoolSerializer, Change,
 };
-use massa_executed_ops::ExecutedOps;
+use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_hash::{Hash, /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
@@ -195,10 +195,10 @@ impl FinalState {
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-        let latest_consistant_slot_path = config.final_state_path.join("latest_consistant_slot");
-        let latest_consistant_slot_file = fs::read(latest_consistant_slot_path).map_err(|_| {
+        let latest_consistent_slot_path = config.final_state_path.join("latest_consistent_slot");
+        let latest_consistent_slot_file = fs::read(latest_consistent_slot_path).map_err(|_| {
             FinalStateError::SnapshotError(String::from(
-                "Could not read latest_consistant_slot file from snapshot",
+                "Could not read latest_consistent_slot file from snapshot",
             ))
         })?;
 
@@ -207,22 +207,46 @@ impl FinalState {
             (Included(0), Excluded(config.thread_count)),
         );
 
-        let (_, latest_consistant_slot) = slot_deser
-            .deserialize::<DeserializeError>(&latest_consistant_slot_file)
+        let (_, latest_consistent_slot) = slot_deser
+            .deserialize::<DeserializeError>(&latest_consistent_slot_file)
             .map_err(|_| {
                 FinalStateError::SnapshotError(String::from(
-                    "Could not deserialize latest_consistant_slot file from snapshot",
+                    "Could not deserialize latest_consistent_slot file from snapshot",
                 ))
             })?;
 
-        debug!("Latest consistant slot found: {}", latest_consistant_slot);
+        debug!("Latest consistent slot found: {}", latest_consistent_slot);
 
-        // create a default executed ops
-        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
+        let executed_ops_path = config.final_state_path.join("executed_ops");
+        let executed_ops_file = fs::read(executed_ops_path).map_err(|_| {
+            FinalStateError::SnapshotError(String::from(
+                "Could not read executed_ops file from snapshot",
+            ))
+        })?;
+
+        let max_executed_ops_length = massa_models::config::constants::MAX_EXECUTED_OPS_LENGTH;
+        let max_operations_per_block = massa_models::config::constants::MAX_OPERATIONS_PER_BLOCK;
+
+        let executed_ops_deser = ExecutedOpsDeserializer::new(
+            config.thread_count,
+            max_executed_ops_length,
+            max_operations_per_block as u64,
+        );
+
+        let (_, sorted_ops) = executed_ops_deser
+            .deserialize::<DeserializeError>(&executed_ops_file)
+            .map_err(|_| {
+                FinalStateError::SnapshotError(String::from(
+                    "Could not deserialize executed_ops file from snapshot",
+                ))
+            })?;
+
+        let executed_ops =
+            ExecutedOps::new_with_hash(config.executed_ops_config.clone(), sorted_ops);
 
         // create the final state
         let mut final_state = FinalState {
-            slot: latest_consistant_slot,
+            slot: latest_consistent_slot,
             ledger,
             async_pool,
             pos_state,
@@ -232,7 +256,7 @@ impl FinalState {
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
         };
 
-        final_state.compute_state_hash_at_slot(latest_consistant_slot);
+        final_state.compute_state_hash_at_slot(latest_consistent_slot);
 
         // Check the hash
         let final_hash_bytes_path = config.final_state_path.join("final_hash_bytes");
@@ -249,41 +273,20 @@ impl FinalState {
 
         match final_state.final_state_hash == final_state_hash_from_file {
             true => {
-                /*let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
-                debug!(
-                    "Setting the current final_state slot at {} for network restart",
-                    end_slot
-                );
-
-                let mut cur_slot = latest_consistant_slot;
-
-                if cur_slot > end_slot {
-                    return Err(FinalStateError::SnapshotError(String::from(
-                        "Cannot restart network from a slot that is before the last_consistant_slot",
-                    )));
-                }
-
-                while cur_slot < end_slot {
-                    cur_slot = cur_slot
-                        .get_next_slot(config.thread_count)
-                        .expect("overflow in execution state slot");
-                    let changes = StateChanges::default();
-                    final_state.finalize(cur_slot, changes);
-                }*/
                 let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
 
-                let latest_consistant_cycle =
-                    latest_consistant_slot.get_cycle(config.periods_per_cycle);
+                let latest_consistent_cycle =
+                    latest_consistent_slot.get_cycle(config.periods_per_cycle);
                 let end_slot_cycle = end_slot.get_cycle(config.periods_per_cycle);
 
-                if latest_consistant_cycle == end_slot_cycle {
+                if latest_consistent_cycle == end_slot_cycle {
                     // In that case, we just complete the gap
 
                     let latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
                         FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
                     )?;
 
-                    for _ in latest_consistant_slot.period..end_slot.period {
+                    for _ in latest_consistent_slot.period..end_slot.period {
                         latest_cycle_info.rng_seed.push(false);
                     }
                 } else {
@@ -294,13 +297,13 @@ impl FinalState {
                         FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
                     )?;
 
-                    for _ in latest_consistant_slot.period..config.periods_per_cycle {
+                    for _ in latest_consistent_slot.period..config.periods_per_cycle {
                         latest_cycle_info.rng_seed.push(false);
                     }
                     latest_cycle_info.complete = true;
 
                     // Then, build all the already completed cycles
-                    for cycle in latest_consistant_cycle + 1..end_slot_cycle {
+                    for cycle in latest_consistent_cycle + 1..end_slot_cycle {
                         final_state.pos_state.create_new_empty_cycle(cycle);
 
                         let latest_cycle_info =
@@ -474,6 +477,7 @@ impl FinalState {
         let async_pool_serializer = AsyncPoolSerializer::new();
         let cycle_history_serializer = CycleHistorySerializer::new();
         let deferred_credits_serializer = DeferredCreditsSerializer::new();
+        let executed_ops_serializer = ExecutedOpsSerializer::new();
 
         // Serialize Async Pool
         let mut async_pool_buffer = Vec::new();
@@ -517,6 +521,22 @@ impl FinalState {
             ))
         })?;
 
+        // Serialize Executed Ops
+        let mut executed_ops_buffer = Vec::new();
+        executed_ops_serializer
+            .serialize(&self.executed_ops.sorted_ops, &mut executed_ops_buffer)
+            .map_err(|err| {
+                FinalStateError::SnapshotError(format!("Could not serialize executed_ops: {}", err))
+            })?;
+        let executed_ops_path = self.config.final_state_path.join("temp_executed_ops");
+
+        fs::write(executed_ops_path, executed_ops_buffer).map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not write to the temp executed_ops file: {}",
+                err
+            ))
+        })?;
+
         Ok(())
     }
 
@@ -532,6 +552,7 @@ impl FinalState {
                 err
             ))
         })?;
+
         fs::rename(
             self.config.final_state_path.join("temp_pos_state"),
             self.config.final_state_path.join("pos_state"),
@@ -539,6 +560,17 @@ impl FinalState {
         .map_err(|err| {
             FinalStateError::SnapshotError(format!(
                 "Could not rename the temp pos_state file: {}",
+                err
+            ))
+        })?;
+
+        fs::rename(
+            self.config.final_state_path.join("temp_executed_ops"),
+            self.config.final_state_path.join("executed_ops"),
+        )
+        .map_err(|err| {
+            FinalStateError::SnapshotError(format!(
+                "Could not rename the temp executed_ops file: {}",
                 err
             ))
         })?;
@@ -563,12 +595,12 @@ impl FinalState {
             })?;
 
         fs::write(
-            self.config.final_state_path.join("latest_consistant_slot"),
+            self.config.final_state_path.join("latest_consistent_slot"),
             slot_buffer,
         )
         .map_err(|err| {
             FinalStateError::SnapshotError(format!(
-                "Could not write to latest_consistant_slot file: {}",
+                "Could not write to latest_consistent_slot file: {}",
                 err
             ))
         })?;

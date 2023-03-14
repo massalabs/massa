@@ -220,9 +220,17 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
                 )),
             ),
         )
-        .map(|elements| DeferredCredits {
-            credits: elements.into_iter().collect(),
-            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+        .map(|elements| {
+            let credits: BTreeMap<Slot, PreHashMap<Address, Amount>> =
+                elements.into_iter().collect();
+            let mut hash = Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES);
+            let hash_computer = DeferredCreditsHashComputer::new();
+            for (slot, credits_hm) in credits.clone() {
+                for (address, amount) in credits_hm {
+                    hash ^= hash_computer.compute_credit_hash(&slot, &address, &amount);
+                }
+            }
+            DeferredCredits { credits, hash }
         })
         .parse(buffer)
     }
