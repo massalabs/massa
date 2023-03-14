@@ -1,5 +1,5 @@
-use crate::api::MassaGrpcService;
 use crate::error::GrpcError;
+use crate::handler::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_proto::massa::api::v1::{self as grpc, GetTransactionsThroughputResponse};
 use std::pin::Pin;

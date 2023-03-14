@@ -1,256 +1,167 @@
-//! Copyright (c) 2022 MASSA LABS <info@massa.net>
-//! gRPC API for a massa-node
-
-use crate::{config::GrpcConfig, error::GrpcError};
-use massa_consensus_exports::{ConsensusChannels, ConsensusController};
-use massa_execution_exports::ExecutionController;
-use massa_pool_exports::{PoolChannels, PoolController};
-use massa_pos_exports::SelectorController;
+use crate::error::GrpcError;
+use crate::handler::MassaGrpcService;
+use itertools::izip;
+use massa_models::address::Address;
+use massa_models::slot::Slot;
+use massa_models::timeslots;
 use massa_proto::massa::api::v1::{
-    self as grpc, grpc_server::GrpcServer, GetNextBlockBestParentsRequest,
-    GetNextBlockBestParentsResponse, GetTransactionsThroughputRequest,
-    GetTransactionsThroughputResponse, GetTransactionsThroughputStreamRequest, FILE_DESCRIPTOR_SET,
+    self as grpc, BestParentTuple, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
+    GetSelectorDrawsResponse, GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
 };
+use massa_proto::massa::api::v1::{GetDatastoreEntriesResponse, GetVersionResponse};
+use std::str::FromStr;
+use tonic::Request;
 
-use crate::business::{
-    get_datastore_entries, get_next_block_best_parents, get_selector_draws,
-    get_transactions_throughput, get_version,
-};
-use crate::stream::subscribe_tx_throughput::{
-    subscribe_transactions_throughput, SubscribeTransactionsThroughputStream,
-};
-use crate::stream::{
-    send_blocks::{send_blocks, SendBlocksStream},
-    send_endorsements::{send_endorsements, SendEndorsementsStream},
-    send_operations::{send_operations, SendOperationsStream},
-};
-use futures_util::FutureExt;
-use massa_protocol_exports::ProtocolCommandSender;
-use massa_storage::Storage;
-use tokio::sync::oneshot;
-use tonic::codegen::CompressionEncoding;
-use tonic::{Request, Response, Status, Streaming};
-use tonic_web::GrpcWebLayer;
-use tracing::log::{info, warn};
-
-/// gRPC API content
-pub struct MassaGrpcService {
-    /// link(channels) to the consensus component
-    pub consensus_controller: Box<dyn ConsensusController>,
-    /// link(channels) to the consensus component
-    pub consensus_channels: ConsensusChannels,
-    /// link to the execution component
-    pub execution_controller: Box<dyn ExecutionController>,
-    /// link(channels) to the pool component
-    pub pool_channels: PoolChannels,
-    /// link to the pool component
-    pub pool_command_sender: Box<dyn PoolController>,
-    /// link(channels) to the protocol component
-    pub protocol_command_sender: ProtocolCommandSender,
-    /// link to the selector component
-    pub selector_controller: Box<dyn SelectorController>,
-    /// link to the storage component
-    pub storage: Storage,
-    /// gRPC configuration
-    pub grpc_config: GrpcConfig,
-    /// node version
-    pub version: massa_models::version::Version,
+/// get version
+pub(crate) fn get_version(
+    grpc: &MassaGrpcService,
+    request: Request<grpc::GetVersionRequest>,
+) -> Result<GetVersionResponse, GrpcError> {
+    Ok(GetVersionResponse {
+        id: request.into_inner().id,
+        version: grpc.version.to_string(),
+    })
 }
 
-impl MassaGrpcService {
-    /// Start the gRPC API
-    pub async fn serve(self, config: &GrpcConfig) -> Result<StopHandle, GrpcError> {
-        let mut svc = GrpcServer::new(self)
-            .max_decoding_message_size(config.max_decoding_message_size)
-            .max_encoding_message_size(config.max_encoding_message_size);
+/// Get multiple datastore entries.
+pub(crate) fn get_datastore_entries(
+    grpc: &MassaGrpcService,
+    request: Request<grpc::GetDatastoreEntriesRequest>,
+) -> Result<GetDatastoreEntriesResponse, GrpcError> {
+    let execution_controller = grpc.execution_controller.clone();
+    let inner_req = request.into_inner();
+    let id = inner_req.id.clone();
 
-        if let Some(encoding) = &config.accept_compressed {
-            if encoding.eq_ignore_ascii_case("Gzip") {
-                svc = svc.accept_compressed(CompressionEncoding::Gzip);
-            };
-        }
-
-        if let Some(encoding) = &config.send_compressed {
-            if encoding.eq_ignore_ascii_case("Gzip") {
-                svc = svc.send_compressed(CompressionEncoding::Gzip);
-            };
-        }
-
-        let (shutdown_send, shutdown_recv) = oneshot::channel::<()>();
-
-        if config.accept_http1 {
-            let mut router_with_http1 = tonic::transport::Server::builder()
-                .accept_http1(true)
-                .layer(GrpcWebLayer::new())
-                .add_service(svc);
-
-            if config.enable_reflection {
-                let reflection_service = tonic_reflection::server::Builder::configure()
-                    .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                    .build()?;
-
-                router_with_http1 = router_with_http1.add_service(reflection_service);
-            }
-
-            //  // todo get config runtime
-            //  match self.cfg.tokio_runtime.take() {
-            //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
-            //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
-            //  };
-
-            tokio::spawn(
-                router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
-            );
-        } else {
-            let mut router = tonic::transport::Server::builder().add_service(svc);
-
-            if config.enable_reflection {
-                let reflection_service = tonic_reflection::server::Builder::configure()
-                    .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-                    .build()?;
-
-                router = router.add_service(reflection_service);
-            }
-
-            //  // todo get config runtime
-            //  match self.cfg.tokio_runtime.take() {
-            //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
-            //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
-            //  };
-
-            tokio::spawn(router.serve_with_shutdown(config.bind, shutdown_recv.map(drop)));
-        }
-
-        Ok(StopHandle {
-            stop_cmd_sender: shutdown_send,
+    let filters = inner_req
+        .queries
+        .into_iter()
+        .map(|query| {
+            let filter = query.filter.unwrap();
+            Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
         })
-    }
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let entries = execution_controller
+        .get_final_and_active_data_entry(filters)
+        .into_iter()
+        .map(|output| grpc::BytesMapFieldEntry {
+            //TODO this behaviour should be confirmed
+            key: output.0.unwrap_or_default(),
+            value: output.1.unwrap_or_default(),
+        })
+        .collect();
+
+    Ok(GetDatastoreEntriesResponse { id, entries })
 }
 
-/// Used to be able to stop the gRPC API
-pub struct StopHandle {
-    stop_cmd_sender: oneshot::Sender<()>,
+pub(crate) fn get_selector_draws(
+    grpc: &MassaGrpcService,
+    request: Request<grpc::GetSelectorDrawsRequest>,
+) -> Result<GetSelectorDrawsResponse, GrpcError> {
+    let selector_controller = grpc.selector_controller.clone();
+    let config = grpc.grpc_config.clone();
+    let inner_req = request.into_inner();
+    let id = inner_req.id.clone();
+
+    let addresses = inner_req
+        .queries
+        .into_iter()
+        .map(|query| Address::from_str(query.filter.unwrap().address.as_str()))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // get future draws from selector
+    let selection_draws = {
+        let cur_slot = timeslots::get_current_latest_block_slot(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+        )
+        .expect("could not get latest current slot")
+        .unwrap_or_else(|| Slot::new(0, 0));
+        let slot_end = Slot::new(
+            cur_slot
+                .period
+                .saturating_add(config.draw_lookahead_period_count),
+            cur_slot.thread,
+        );
+        addresses
+            .iter()
+            .map(|addr| {
+                let (nt_block_draws, nt_endorsement_draws) = selector_controller
+                    .get_address_selections(addr, cur_slot, slot_end)
+                    .unwrap_or_default();
+
+                let mut proto_nt_block_draws = Vec::with_capacity(addresses.len());
+                let mut proto_nt_endorsement_draws = Vec::with_capacity(addresses.len());
+                let iterator = izip!(nt_block_draws.into_iter(), nt_endorsement_draws.into_iter());
+                for (next_block_draw, next_endorsement_draw) in iterator {
+                    proto_nt_block_draws.push(next_block_draw.into());
+                    proto_nt_endorsement_draws.push(next_endorsement_draw.into());
+                }
+
+                (proto_nt_block_draws, proto_nt_endorsement_draws)
+            })
+            .collect::<Vec<_>>()
+    };
+
+    // compile results
+    let mut res = Vec::with_capacity(addresses.len());
+    let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
+    for (address, (next_block_draws, next_endorsement_draws)) in iterator {
+        res.push(grpc::SelectorDraws {
+            address: address.to_string(),
+            next_block_draws,
+            next_endorsement_draws,
+        });
+    }
+
+    Ok(GetSelectorDrawsResponse {
+        id,
+        selector_draws: res,
+    })
 }
 
-impl StopHandle {
-    /// stop the gRPC API gracefully
-    pub fn stop(self) {
-        if let Err(e) = self.stop_cmd_sender.send(()) {
-            warn!("gRPC API thread panicked: {:?}", e);
-        } else {
-            info!("gRPC API finished cleanly");
-        }
-    }
+/// Get next block best parents
+pub(crate) fn get_next_block_best_parents(
+    grpc: &MassaGrpcService,
+    request: Request<GetNextBlockBestParentsRequest>,
+) -> Result<GetNextBlockBestParentsResponse, GrpcError> {
+    let inner_req = request.into_inner();
+    let parents = grpc
+        .consensus_controller
+        .get_best_parents()
+        .into_iter()
+        .map(|p| BestParentTuple {
+            block_id: p.0.to_string(),
+            period: p.1,
+        })
+        .collect();
+    Ok(GetNextBlockBestParentsResponse {
+        id: inner_req.id,
+        data: parents,
+    })
 }
 
-#[tonic::async_trait]
-impl grpc::grpc_server::Grpc for MassaGrpcService {
-    /// Handler for get multiple datastore entries.
-    async fn get_datastore_entries(
-        &self,
-        request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
-    ) -> Result<tonic::Response<grpc::GetDatastoreEntriesResponse>, tonic::Status> {
-        match get_datastore_entries(self, request) {
-            Ok(response) => Ok(tonic::Response::new(response)),
-            Err(e) => Err(e.into()),
-        }
-    }
+/// get transactions throughput
+pub(crate) fn get_transactions_throughput(
+    grpc: &MassaGrpcService,
+    request: Request<GetTransactionsThroughputRequest>,
+) -> Result<GetTransactionsThroughputResponse, GrpcError> {
+    let stats = grpc.execution_controller.get_stats();
+    let nb_sec_range = stats
+        .time_window_end
+        .saturating_sub(stats.time_window_start)
+        .to_duration()
+        .as_secs();
 
-    /// Handler for get version
-    async fn get_version(
-        &self,
-        request: tonic::Request<grpc::GetVersionRequest>,
-    ) -> Result<tonic::Response<grpc::GetVersionResponse>, tonic::Status> {
-        match get_version(self, request) {
-            Ok(response) => Ok(tonic::Response::new(response)),
-            Err(e) => Err(e.into()),
-        }
-    }
+    // checked_div
+    let tx_s = stats
+        .final_executed_operations_count
+        .checked_div(nb_sec_range as usize)
+        .unwrap_or_default() as u32;
 
-    /// Handler for get selector draws
-    async fn get_selector_draws(
-        &self,
-        request: Request<grpc::GetSelectorDrawsRequest>,
-    ) -> Result<Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
-        match get_selector_draws(self, request) {
-            Ok(response) => Ok(tonic::Response::new(response)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    /// Handler for get_next_block_best_parents
-    async fn get_next_block_best_parents(
-        &self,
-        request: Request<GetNextBlockBestParentsRequest>,
-    ) -> Result<Response<GetNextBlockBestParentsResponse>, Status> {
-        match get_next_block_best_parents(self, request) {
-            Ok(response) => Ok(Response::new(response)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    async fn get_transactions_throughput(
-        &self,
-        request: Request<GetTransactionsThroughputRequest>,
-    ) -> Result<Response<GetTransactionsThroughputResponse>, Status> {
-        match get_transactions_throughput(self, request) {
-            Ok(response) => Ok(Response::new(response)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
-    // ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗████╗ ████║
-    // ███████╗   ██║   ██████╔╝█████╗  ███████║██╔████╔██║
-    // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
-    // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
-
-    type SendBlocksStream = SendBlocksStream;
-    type SendEndorsementsStream = SendEndorsementsStream;
-    type SendOperationsStream = SendOperationsStream;
-    type SubscribeTransactionsThroughputStream = SubscribeTransactionsThroughputStream;
-
-    /// Handler for send_blocks_stream
-    async fn send_blocks(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendBlocksRequest>>,
-    ) -> Result<tonic::Response<Self::SendBlocksStream>, tonic::Status> {
-        match send_blocks(self, request).await {
-            Ok(res) => Ok(tonic::Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    /// Handler for send_endorsements
-    async fn send_endorsements(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
-    ) -> Result<tonic::Response<Self::SendEndorsementsStream>, tonic::Status> {
-        match send_endorsements(self, request).await {
-            Ok(res) => Ok(tonic::Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    /// Handler for send_operations
-    async fn send_operations(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
-    ) -> Result<tonic::Response<Self::SendOperationsStream>, tonic::Status> {
-        match send_operations(self, request).await {
-            Ok(res) => Ok(tonic::Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    /// Handler for subscribe on transactions throughput
-    async fn subscribe_transactions_throughput(
-        &self,
-        request: Request<Streaming<GetTransactionsThroughputStreamRequest>>,
-    ) -> Result<Response<Self::SubscribeTransactionsThroughputStream>, Status> {
-        match subscribe_transactions_throughput(self, request).await {
-            Ok(res) => Ok(Response::new(res)),
-            Err(e) => Err(e.into()),
-        }
-    }
+    Ok(GetTransactionsThroughputResponse {
+        id: request.into_inner().id,
+        tx_s,
+    })
 }
