@@ -12,10 +12,9 @@ pub type Duplex = tokio::net::TcpStream;
 /// duplex connection
 pub type DuplexListener = tokio::net::TcpListener;
 
-#[async_trait]
 /// Specifies a common interface that can be used by standard, or mockers
 pub trait BSListener {
-    async fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)>;
+    fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)>;
 }
 
 #[async_trait]
@@ -40,10 +39,9 @@ pub trait BSEstablisher {
 #[derive(Debug)]
 pub struct DefaultListener(TcpListener);
 
-#[async_trait]
 impl BSListener for DefaultListener {
     /// Accepts a new incoming connection from this listener.
-    async fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)> {
+    fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)> {
         // accept
         let (sock, mut remote_addr) = self.0.accept()?;
         // normalize address

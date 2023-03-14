@@ -254,7 +254,7 @@ impl BootstrapServer<'_> {
         listener_tx: crossbeam::channel::Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {
-            let (msg, addr) = listener.accept().await.map_err(BootstrapError::IoError)?;
+            let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
             msg.set_nonblocking(true).unwrap();
             let msg = Duplex::from_std(msg).unwrap();
             match listener_tx.send((msg, addr)) {

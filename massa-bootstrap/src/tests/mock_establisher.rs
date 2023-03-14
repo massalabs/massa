@@ -36,9 +36,8 @@ pub struct MockListener {
     connection_listener_rx: crossbeam::channel::Receiver<(SocketAddr, Sender<TcpStream>)>, // (controller, mock)
 }
 
-#[async_trait]
 impl BSListener for MockListener {
-    async fn accept(&mut self) -> std::io::Result<(TcpStream, SocketAddr)> {
+    fn accept(&mut self) -> std::io::Result<(TcpStream, SocketAddr)> {
         dbg!("accept recving");
         let (_addr, sender) = self.connection_listener_rx.recv().map_err(|_| {
             io::Error::new(
