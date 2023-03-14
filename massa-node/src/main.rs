@@ -512,7 +512,6 @@ async fn launch(
         private_key,
         *VERSION,
     )
-    .await
     .unwrap();
 
     let api_config: APIConfig = APIConfig {

@@ -157,7 +157,6 @@ async fn test_bootstrap_server() {
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
     )
-    .await
     .unwrap()
     .unwrap();
 

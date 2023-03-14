@@ -98,7 +98,7 @@ impl BootstrapManager {
 }
 
 /// See module level documentation for details
-pub async fn start_bootstrap_server(
+pub fn start_bootstrap_server(
     consensus_controller: Box<dyn ConsensusController>,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,

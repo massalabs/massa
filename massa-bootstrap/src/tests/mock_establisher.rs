@@ -4,7 +4,7 @@ use massa_models::config::CHANNEL_SIZE;
 use massa_time::MassaTime;
 use socket2 as _;
 use std::io;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
@@ -43,18 +43,22 @@ impl BSListener for MockListener {
                 "MockListener accept channel from Establisher closed".to_string(),
             )
         })?;
-        let duplex_controller = std::net::TcpListener::bind("localhost:0").unwrap();
-        let duplex_mock = Duplex::connect(duplex_controller.local_addr().unwrap())
-            .await
-            .unwrap();
+        let duplex_controller = TcpListener::bind("localhost:0").unwrap();
+        let duplex_mock = TcpStream::connect(duplex_controller.local_addr().unwrap()).unwrap();
         let (duplex_controller, addr) = duplex_controller.accept().unwrap();
 
-        sender.send(duplex_mock).map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                "MockListener accept return oneshot channel to Establisher closed".to_string(),
-            )
-        })?;
+        // Tokio `from_std` have non-blocking Tcp objects as a requirement
+        duplex_mock.set_nonblocking(true).unwrap();
+        duplex_controller.set_nonblocking(true).unwrap();
+
+        sender
+            .send(Duplex::from_std(duplex_mock).unwrap())
+            .map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    "MockListener accept return oneshot channel to Establisher closed".to_string(),
+                )
+            })?;
 
         Ok((Duplex::from_std(duplex_controller).unwrap(), addr))
     }
