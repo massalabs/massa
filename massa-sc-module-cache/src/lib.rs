@@ -5,4 +5,4 @@
 pub mod controller;
 mod hd_cache;
 mod lru_cache;
-mod types;
+pub mod types;

@@ -34,7 +34,7 @@ use massa_models::{
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_module_cache::controller::ModuleCache;
-use massa_sc_runtime::{Interface, Response, RuntimeModule};
+use massa_sc_runtime::{Interface, Response};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Mutex, RwLock};
@@ -563,13 +563,10 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone(), false)
-            .map_err(|err| {
-            ExecutionError::RuntimeError(format!(
-                "compilation error in execute_executesc_op: {}",
-                err
-            ))
-        })?;
+        let module = self
+            .module_cache
+            .read()
+            .load_tmp_module(bytecode, *max_gas)?;
         match massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
@@ -664,21 +661,22 @@ impl ExecutionState {
 
         // Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
+        let module = self
+            .module_cache
+            .write()
+            .checked_load_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
-            module.clone(),
+            module,
             target_func,
             param,
             max_gas,
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                self.module_cache.write().set_init_cost(
-                    &bytecode,
-                    init_cost,
-                    module.cache_compatible(),
-                )?;
+                self.module_cache
+                    .write()
+                    .set_init_cost(&bytecode, init_cost)?;
                 Ok(())
             }
             Err(err) => Err(ExecutionError::RuntimeError(format!(
@@ -761,7 +759,7 @@ impl ExecutionState {
         let module = self
             .module_cache
             .write()
-            .load_module(&bytecode, message.max_gas)?;
+            .checked_load_module(&bytecode, message.max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -771,11 +769,9 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         ) {
             Ok(Response { init_cost, .. }) => {
-                self.module_cache.write().set_init_cost(
-                    &bytecode,
-                    init_cost,
-                    module.cache_compatible(),
-                )?;
+                self.module_cache
+                    .write()
+                    .set_init_cost(&bytecode, init_cost)?;
                 Ok(())
             }
             Err(err) => {
@@ -1139,18 +1135,10 @@ impl ExecutionState {
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
-                let module = RuntimeModule::new(
-                    &bytecode,
-                    req.max_gas,
-                    self.config.gas_costs.clone(),
-                    false,
-                )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(format!(
-                        "compilation error in execute_readonly_request: {}",
-                        err
-                    ))
-                })?;
+                let module = self
+                    .module_cache
+                    .read()
+                    .load_tmp_module(&bytecode, req.max_gas)?;
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,
@@ -1183,7 +1171,7 @@ impl ExecutionState {
                 let module = self
                     .module_cache
                     .write()
-                    .load_module(&bytecode, req.max_gas)?;
+                    .checked_load_module(&bytecode, req.max_gas)?;
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module.clone(),
@@ -1198,11 +1186,9 @@ impl ExecutionState {
                         err,
                     ))
                 })?;
-                self.module_cache.write().set_init_cost(
-                    &bytecode,
-                    response.init_cost,
-                    module.cache_compatible(),
-                )?;
+                self.module_cache
+                    .write()
+                    .set_init_cost(&bytecode, response.init_cost)?;
                 response
             }
         };
