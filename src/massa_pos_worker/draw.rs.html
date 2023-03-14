@@ -103,7 +103,7 @@
 <a href="#103" id="103">103</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::CycleDraws;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::{address::Address, config::LAST_START_PERIOD, slot::Slot};
+<span class="kw">use </span>massa_models::{address::Address, slot::Slot};
 <span class="kw">use </span>massa_pos_exports::{PosError, PosResult, Selection, SelectorConfig};
 <span class="kw">use </span>rand::{distributions::Distribution, SeedableRng};
 <span class="kw">use </span>rand_distr::WeightedAliasIndex;
@@ -164,7 +164,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
     <span class="kw">loop </span>{
         <span class="comment">// draw block creator
-        </span><span class="kw">let </span>producer = <span class="kw">if </span>cur_slot.period &gt; LAST_START_PERIOD {
+        </span><span class="kw">let </span>producer = <span class="kw">if </span>cur_slot.period &gt; <span class="number">0 </span>{
             addresses[dist.sample(<span class="kw-2">&amp;mut </span>rng)]
         } <span class="kw">else </span>{
             <span class="comment">// force draws for genesis blocks

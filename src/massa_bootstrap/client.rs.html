@@ -537,9 +537,10 @@
 <span class="kw">use crate</span>::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
+    establisher::{BSConnector, BSEstablisher},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
-    BootstrapConfig, Establisher, GlobalBootstrapState,
+    BootstrapConfig, GlobalBootstrapState,
 };
 
 <span class="doccomment">/// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
@@ -891,17 +892,15 @@
 }
 
 <span class="kw">async fn </span>connect_to_server(
-    establisher: <span class="kw-2">&amp;mut </span>Establisher,
+    establisher: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSEstablisher,
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
     pub_key: <span class="kw-2">&amp;</span>PublicKey,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, BootstrapError&gt; {
     <span class="comment">// connect
-    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher
-        .get_connector(bootstrap_config.connect_timeout)
-        .<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable
-    </span><span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable
-    </span><span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
+    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher.get_connector(bootstrap_config.connect_timeout)<span class="question-mark">?</span>;
+    <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
         socket,
         <span class="kw-2">*</span>pub_key,
         bootstrap_config.into(),
@@ -939,28 +938,29 @@
 </span><span class="kw">pub async fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    <span class="kw-2">mut </span>establisher: Establisher,
+    <span class="kw-2">mut </span>establisher: <span class="kw">impl </span>BSEstablisher,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    from_snapshot: bool,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
     <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     <span class="comment">// if we are before genesis, do not bootstrap
-    // if we are after genesis, but we restart from a snapshot, also do not bootstrap!
     </span><span class="kw">if </span>now &lt; genesis_timestamp {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="comment">// init final state
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
+            <span class="comment">// load ledger from initial ledger file
+            </span>final_state_guard
+                .ledger
+                .load_initial_ledger()
+                .map_err(|err| {
+                    BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;could not load initial ledger: {}&quot;</span>, err))
+                })<span class="question-mark">?</span>;
             <span class="comment">// create the initial cycle of PoS cycle_history
             </span>final_state_guard.pos_state.create_initial_cycle();
         }
-        <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
-    }
-    <span class="kw">if </span>from_snapshot {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
 

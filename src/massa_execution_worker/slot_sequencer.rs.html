@@ -753,9 +753,6 @@
 <a href="#753" id="753">753</a>
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -765,7 +762,6 @@
 <span class="kw">use </span>massa_execution_exports::ExecutionConfig;
 <span class="kw">use </span>massa_models::{
     block_id::BlockId,
-    config::LAST_START_PERIOD,
     prehash::PreHashMap,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
@@ -831,9 +827,7 @@
     </span><span class="kw">pub fn </span>new(config: ExecutionConfig, final_cursor: Slot) -&gt; <span class="self">Self </span>{
         SlotSequencer {
             sequence: Default::default(),
-            latest_css_final_slots: (<span class="number">0</span>..config.thread_count)
-                .map(|t| Slot::new(LAST_START_PERIOD, t))
-                .collect(),
+            latest_css_final_slots: (<span class="number">0</span>..config.thread_count).map(|t| Slot::new(<span class="number">0</span>, t)).collect(),
             latest_sce_final_slot: final_cursor,
             latest_executed_final_slot: final_cursor,
             latest_executed_candidate_slot: final_cursor,
@@ -885,7 +879,7 @@
                     .keys()
                     .max()
                     .copied()
-                    .unwrap_or_else(|| Slot::new(LAST_START_PERIOD, <span class="number">0</span>)),
+                    .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>)),
             ),
             <span class="self">self</span>.get_time_cursor(),
         );
@@ -958,7 +952,7 @@
             shifted_now,
         )
         .expect(<span class="string">&quot;could not get latest block slot at shifted execution time&quot;</span>)
-        .unwrap_or_else(|| Slot::new(LAST_START_PERIOD, <span class="number">0</span>))
+        .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
     }
 
     <span class="doccomment">/// Notify the sequencer of incoming changes: CSS-finalized blocks and changes in the blockclique.
@@ -1021,7 +1015,7 @@
                 new_blockclique
                     .as_ref()
                     .and_then(|bq| bq.keys().max().copied())
-                    .unwrap_or_else(|| Slot::new(LAST_START_PERIOD, <span class="number">0</span>)),
+                    .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>)),
             ),
             <span class="self">self</span>.sequence
                 .back()
