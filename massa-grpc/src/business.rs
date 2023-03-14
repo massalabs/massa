@@ -142,13 +142,26 @@ pub(crate) fn get_next_block_best_parents(
     })
 }
 
+/// get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaGrpcService,
     request: Request<GetTransactionsThroughputRequest>,
 ) -> Result<GetTransactionsThroughputResponse, GrpcError> {
     let stats = grpc.execution_controller.get_stats();
-    dbg!(stats);
+    let nb_sec_range = stats
+        .time_window_end
+        .saturating_sub(stats.time_window_start)
+        .to_duration()
+        .as_secs();
+
+    // checked_div
+    let tx_s = stats
+        .final_executed_operations_count
+        .checked_div(nb_sec_range as usize)
+        .unwrap_or_default() as u32;
+
     Ok(GetTransactionsThroughputResponse {
         id: request.into_inner().id,
+        tx_s,
     })
 }

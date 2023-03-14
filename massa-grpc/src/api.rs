@@ -9,14 +9,16 @@ use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::{
     self as grpc, grpc_server::GrpcServer, GetNextBlockBestParentsRequest,
     GetNextBlockBestParentsResponse, GetTransactionsThroughputRequest,
-    GetTransactionsThroughputResponse, FILE_DESCRIPTOR_SET,
+    GetTransactionsThroughputResponse, GetTransactionsThroughputStreamRequest, FILE_DESCRIPTOR_SET,
 };
 
 use crate::business::{
     get_datastore_entries, get_next_block_best_parents, get_selector_draws,
     get_transactions_throughput, get_version,
 };
-use crate::stream::subscribe_tx_througput::SendTransactionsThroughputStream;
+use crate::stream::subscribe_tx_throughput::{
+    subscribe_transactions_throughput, SubscribeTransactionsThroughputStream,
+};
 use crate::stream::{
     send_blocks::{send_blocks, SendBlocksStream},
     send_endorsements::{send_endorsements, SendEndorsementsStream},
@@ -206,7 +208,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     type SendBlocksStream = SendBlocksStream;
     type SendEndorsementsStream = SendEndorsementsStream;
     type SendOperationsStream = SendOperationsStream;
-    type SendTransactionsThroughputStream = SendTransactionsThroughputStream;
+    type SubscribeTransactionsThroughputStream = SubscribeTransactionsThroughputStream;
 
     /// Handler for send_blocks_stream
     async fn send_blocks(
@@ -241,10 +243,14 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
-    async fn send_transactions_throughput(
+    /// Handler for subscribe on transactions throughput
+    async fn subscribe_transactions_throughput(
         &self,
-        request: Request<Streaming<GetTransactionsThroughputRequest>>,
-    ) -> Result<Response<Self::SendTransactionsThroughputStream>, Status> {
-        todo!()
+        request: Request<Streaming<GetTransactionsThroughputStreamRequest>>,
+    ) -> Result<Response<Self::SubscribeTransactionsThroughputStream>, Status> {
+        match subscribe_transactions_throughput(self, request).await {
+            Ok(res) => Ok(Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
     }
 }

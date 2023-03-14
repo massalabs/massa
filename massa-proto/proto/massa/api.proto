@@ -49,6 +49,13 @@ service Grpc {
         option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
     }
 
+
+    // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
+    // ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗████╗ ████║
+    // ███████╗   ██║   ██████╔╝█████╗  ███████║██╔████╔██║
+    // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
+    // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
+
     // SendBlocks
     rpc SendBlocks (stream SendBlocksRequest) returns (stream SendBlocksResponse) {}
 
@@ -59,7 +66,7 @@ service Grpc {
     rpc SendOperations (stream SendOperationsRequest) returns (stream SendOperationsResponse) {}
 
     // Subscribe GetTransactionsThroughput
-    rpc SendTransactionsThroughput (stream GetTransactionsThroughputRequest) returns (stream GetTransactionsThroughputResponse) {}
+    rpc SubscribeTransactionsThroughput (stream GetTransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 }
 
 message GetTransactionsThroughputRequest {
@@ -67,9 +74,19 @@ message GetTransactionsThroughputRequest {
     string id = 1;
 }
 
+message GetTransactionsThroughputStreamRequest {
+    //id
+    string id = 1;
+
+    // optional timer interval in sec
+    optional uint64 interval = 2;
+}
+
 message GetTransactionsThroughputResponse {
     //id
     string id = 1;
+    // tx/s
+    uint32 tx_s = 2;
 }
 
 message GetNextBlockBestParentsRequest {
