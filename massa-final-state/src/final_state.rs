@@ -215,7 +215,7 @@ impl FinalState {
                 ))
             })?;
 
-        let slot = Slot::new(LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+        let slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
 
         debug!("Latest consistant slot found: {}. Setting the current final_state slot at {} for network restart", latest_consistant_slot, slot);
 
@@ -262,7 +262,7 @@ impl FinalState {
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         self.slot = Slot::new(
-            LAST_START_PERIOD,
+            *LAST_START_PERIOD,
             self.config.thread_count.saturating_sub(1),
         );
         self.ledger.reset();

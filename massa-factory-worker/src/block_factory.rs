@@ -78,8 +78,8 @@ impl BlockFactoryWorker {
 
         // ignore genesis
         #[allow(clippy::absurd_extreme_comparisons)]
-        if next_slot.period <= LAST_START_PERIOD {
-            next_slot.period = LAST_START_PERIOD + 1;
+        if next_slot.period <= *LAST_START_PERIOD {
+            next_slot.period = *LAST_START_PERIOD + 1;
         }
 
         // protection against double-production on unexpected system clock adjustment

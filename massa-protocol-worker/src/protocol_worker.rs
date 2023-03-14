@@ -784,7 +784,7 @@ impl ProtocolWorker {
         });
 
         // refuse genesis blocks
-        if header.content.slot.period == LAST_START_PERIOD || header.content.parents.is_empty() {
+        if header.content.slot.period == *LAST_START_PERIOD || header.content.parents.is_empty() {
             // genesis
             massa_trace!("protocol.protocol_worker.check_header.err_is_genesis", {
                 "header": header

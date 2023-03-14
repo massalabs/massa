@@ -59,7 +59,7 @@ impl ExecutionThread {
         let final_cursor = std::cmp::max(
             execution_state.read().final_cursor,
             Slot {
-                period: LAST_START_PERIOD,
+                period: *LAST_START_PERIOD,
                 thread: config.thread_count.saturating_sub(1),
             },
         );

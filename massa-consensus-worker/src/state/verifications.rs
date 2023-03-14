@@ -207,7 +207,7 @@ impl ConsensusState {
                     )));
                 }
                 gp_max_slots[parent_i as usize] = parent_period;
-                if parent_period == LAST_START_PERIOD {
+                if parent_period == *LAST_START_PERIOD {
                     // genesis
                     continue;
                 }

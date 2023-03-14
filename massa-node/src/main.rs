@@ -100,9 +100,6 @@ async fn launch(
         }
     }
 
-    // TODO
-    // We start the network at LAST_START_PERIOD
-
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -142,7 +139,7 @@ async fn launch(
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
         final_state_path: SETTINGS.snapshot.final_state_path.clone(),
-        last_start_period: LAST_START_PERIOD,
+        last_start_period: *LAST_START_PERIOD,
     };
 
     // Remove current disk ledger if there is one

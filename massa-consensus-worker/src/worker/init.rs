@@ -43,7 +43,7 @@ pub fn create_genesis_block(
     let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            slot: Slot::new(LAST_START_PERIOD, thread_number),
+            slot: Slot::new(*LAST_START_PERIOD, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
@@ -151,12 +151,12 @@ impl ConsensusWorker {
 
         if config
             .genesis_timestamp
-            .checked_add(config.t0.checked_mul(LAST_START_PERIOD)?)?
+            .checked_add(config.t0.checked_mul(*LAST_START_PERIOD)?)?
             > now
         {
             let (days, hours, mins, secs) = config
                 .genesis_timestamp
-                .checked_add(config.t0.checked_mul(LAST_START_PERIOD)?)?
+                .checked_add(config.t0.checked_mul(*LAST_START_PERIOD)?)?
                 .saturating_sub(now)
                 .days_hours_mins_secs()?;
             info!(
@@ -174,7 +174,7 @@ impl ConsensusWorker {
                     config.thread_count,
                     config.t0,
                     config.genesis_timestamp,
-                    Slot::new(LAST_START_PERIOD, thread),
+                    Slot::new(*LAST_START_PERIOD, thread),
                 )?,
                 genesis_addr,
                 false,

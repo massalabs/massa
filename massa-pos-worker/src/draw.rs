@@ -61,7 +61,7 @@ pub(crate) fn perform_draws(
     let mut count = 0;
     loop {
         // draw block creator
-        let producer = if cur_slot.period > LAST_START_PERIOD {
+        let producer = if cur_slot.period > *LAST_START_PERIOD {
             addresses[dist.sample(&mut rng)]
         } else {
             // force draws for genesis blocks

@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
             MassaTime::now()
                 .unwrap()
                 .saturating_sub(
-                    T0.checked_mul(LAST_START_PERIOD).unwrap()
+                    T0.checked_mul(*LAST_START_PERIOD).unwrap()
                 )
                 .saturating_add(MassaTime::from_millis(1000 * 10)
 
@@ -75,13 +75,17 @@ lazy_static::lazy_static! {
         .parse()
         .unwrap()
     };
-}
 
-/// Last period we restarted the network. Set to 0 for a brand new network.
-pub const LAST_START_PERIOD: u64 = 0;
-//pub const LAST_START_PERIOD: u64 = 3;
+    /// Last period we restarted the network. Set to 0 for a brand new network.
+    pub static ref LAST_START_PERIOD: u64 = 0;
+    //pub const LAST_START_PERIOD: u64 = 3;
 
 // If we are before GENESIS_TIMESTAMP + T0*LAST_START_PERIOD, create new GENESIS_BLOCKS.
+
+
+
+
+}
 
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
