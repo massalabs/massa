@@ -96,7 +96,9 @@ impl BSEstablisher for DefaultEstablisher {
         // Number of connections to queue, set to the hardcoded value used by tokio
         socket.listen(1024)?;
 
-        Ok(DefaultListener(DuplexListener::from_std(socket.into())?))
+        let socket: std::net::TcpListener = socket.into();
+        socket.set_nonblocking(true).unwrap();
+        Ok(DefaultListener(DuplexListener::from_std(socket)?))
     }
 
     /// Get the connector with associated timeout

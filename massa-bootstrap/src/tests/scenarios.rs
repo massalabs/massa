@@ -7,10 +7,13 @@ use super::{
         get_random_ledger_changes, wait_network_command,
     },
 };
-use crate::tests::tools::{
-    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
-};
 use crate::BootstrapConfig;
+use crate::{
+    establisher::Duplex,
+    tests::tools::{
+        get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
+    },
+};
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
@@ -165,6 +168,7 @@ async fn test_bootstrap_server() {
     .unwrap()
     .unwrap();
 
+    dbg!("test: launching get state");
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
@@ -179,21 +183,23 @@ async fn test_bootstrap_server() {
         .await
         .unwrap()
     });
+    dbg!("test: get state launched, waiting on connection");
 
     // accept connection attempt from remote
-    let (remote_rw, conn_addr, waker) = tokio::time::timeout(
-        std::time::Duration::from_millis(1000),
-        remote_interface.wait_connection_attempt_from_controller(),
-    )
-    .await
-    .expect("timeout waiting for connection attempt from remote")
-    .expect("error receiving connection attempt from remote");
-    let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
-    assert_eq!(
-        conn_addr, expect_conn_addr,
-        "client connected to wrong bootstrap ip"
-    );
-    waker.store(true, Ordering::Relaxed);
+    let remote_rw = std::thread::spawn(move || {
+        dbg!("conn wait thread");
+        let (remote_rw, conn_addr, waker) = remote_interface
+            .wait_connection_attempt_from_controller()
+            .expect("timeout waiting for connection attempt from remote");
+        dbg!("test: got conn", &conn_addr);
+        let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
+        assert_eq!(
+            conn_addr, expect_conn_addr,
+            "client connected to wrong bootstrap ip"
+        );
+        waker.store(true, Ordering::Relaxed);
+        remote_rw
+    });
 
     // connect to bootstrap
     let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked
@@ -206,7 +212,12 @@ async fn test_bootstrap_server() {
     .expect("could not connect to bootstrap");
 
     // launch bridge
+    bootstrap_rw.set_nonblocking(true).unwrap();
+    let bootstrap_rw = Duplex::from_std(bootstrap_rw).unwrap();
     let bridge = tokio::spawn(async move {
+        let remote_rw = remote_rw.join().unwrap();
+        remote_rw.set_nonblocking(true).unwrap();
+        let remote_rw = Duplex::from_std(remote_rw).unwrap();
         bridge_mock_streams(remote_rw, bootstrap_rw).await;
     });
 

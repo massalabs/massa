@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use async_trait::async_trait;
+use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_models::config::CHANNEL_SIZE;
 use massa_time::MassaTime;
 use socket2 as _;
@@ -7,17 +8,16 @@ use std::io;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
 use crate::establisher::{BSConnector, BSEstablisher, BSListener, Duplex};
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
-        crossbeam::channel::bounded::<(SocketAddr, oneshot::Sender<Duplex>)>(CHANNEL_SIZE);
+        bounded::<(SocketAddr, Sender<TcpStream>)>(CHANNEL_SIZE);
 
     let (connection_connector_tx, connection_connector_rx) =
-        mpsc::channel::<(Duplex, SocketAddr, Arc<AtomicBool>)>(CHANNEL_SIZE);
+        bounded::<(TcpStream, SocketAddr, Arc<AtomicBool>)>(CHANNEL_SIZE);
 
     (
         MockEstablisher {
@@ -33,18 +33,20 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx: crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, // (controller, mock)
+    connection_listener_rx: crossbeam::channel::Receiver<(SocketAddr, Sender<TcpStream>)>, // (controller, mock)
 }
 
 #[async_trait]
 impl BSListener for MockListener {
     async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
+        dbg!("accept recving");
         let (_addr, sender) = self.connection_listener_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener accept channel from Establisher closed".to_string(),
             )
         })?;
+        dbg!("accept received");
         let duplex_controller = TcpListener::bind("localhost:0").unwrap();
         let duplex_mock = TcpStream::connect(duplex_controller.local_addr().unwrap()).unwrap();
         let (duplex_controller, addr) = duplex_controller.accept().unwrap();
@@ -53,14 +55,15 @@ impl BSListener for MockListener {
         duplex_mock.set_nonblocking(true).unwrap();
         duplex_controller.set_nonblocking(true).unwrap();
 
-        sender
-            .send(Duplex::from_std(duplex_mock).unwrap())
-            .map_err(|_| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "MockListener accept return oneshot channel to Establisher closed".to_string(),
-                )
-            })?;
+        dbg!("accept sending mock", &duplex_mock);
+        sender.send(duplex_mock).map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "MockListener accept return \"oneshot\" channel to Establisher closed".to_string(),
+            )
+        })?;
+        dbg!("accept mock sent");
+        dbg!("accept returning", &duplex_controller);
 
         Ok((Duplex::from_std(duplex_controller).unwrap(), addr))
     }
@@ -68,13 +71,14 @@ impl BSListener for MockListener {
 
 #[derive(Debug)]
 pub struct MockConnector {
-    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, Arc<AtomicBool>)>,
+    connection_connector_tx: Sender<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
     timeout_duration: MassaTime,
 }
 
 #[async_trait]
 impl BSConnector for MockConnector {
     async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
+        dbg!("connect");
         let duplex_mock = TcpListener::bind(addr).unwrap();
         let duplex_controller = TcpStream::connect(addr).unwrap();
         let duplex_mock = duplex_mock.accept().unwrap();
@@ -87,15 +91,12 @@ impl BSConnector for MockConnector {
         let waker = Arc::new(AtomicBool::from(false));
         let provided_waker = Arc::clone(&waker);
 
-        // send new connection to mock
-        timeout(self.timeout_duration.to_duration(), async move {
-            self.connection_connector_tx
-                .send((
-                    Duplex::from_std(duplex_mock.0).unwrap(),
-                    addr,
-                    provided_waker,
-                ))
-                .await
+        let sender = self.connection_connector_tx.clone();
+        let send = std::thread::spawn(move || {
+            // send new connection to mock
+            dbg!("connect thread sending");
+            sender
+                .send((duplex_mock.0, addr, provided_waker))
                 .map_err(|_err| {
                     io::Error::new(
                         io::ErrorKind::Other,
@@ -103,27 +104,24 @@ impl BSConnector for MockConnector {
                     )
                 })
                 .unwrap();
-            // this will lock the system up with a std::thread...
-            while !waker.load(Ordering::Relaxed) {
-                tokio::task::yield_now().await;
-            }
-            Ok(Duplex::from_std(duplex_controller).unwrap())
-        })
-        .await
-        .map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::TimedOut,
-                "MockConnector connection attempt timed out".to_string(),
-            )
-        })?
+            dbg!("connect thread sent");
+        });
+        dbg!("sent spun up");
+        // this will lock the system up with a std::thread...
+        while !waker.load(Ordering::Relaxed) {
+            tokio::task::yield_now().await;
+        }
+        dbg!("flag is true");
+        send.join().unwrap();
+        dbg!("joined");
+        Ok(Duplex::from_std(duplex_controller).unwrap())
     }
 }
 
 #[derive(Debug)]
 pub struct MockEstablisher {
-    connection_listener_rx:
-        Option<crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>>,
-    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, Arc<AtomicBool>)>,
+    connection_listener_rx: Option<crossbeam::channel::Receiver<(SocketAddr, Sender<TcpStream>)>>,
+    connection_connector_tx: Sender<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
 }
 
 impl BSEstablisher for MockEstablisher {
@@ -150,40 +148,45 @@ impl BSEstablisher for MockEstablisher {
 }
 
 pub struct MockEstablisherInterface {
-    connection_listener_tx:
-        Option<crossbeam::channel::Sender<(SocketAddr, oneshot::Sender<Duplex>)>>,
-    connection_connector_rx: mpsc::Receiver<(Duplex, SocketAddr, Arc<AtomicBool>)>,
+    connection_listener_tx: Option<crossbeam::channel::Sender<(SocketAddr, Sender<TcpStream>)>>,
+    connection_connector_rx: Receiver<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
 }
 
 impl MockEstablisherInterface {
-    pub async fn connect_to_controller(&self, addr: &SocketAddr) -> io::Result<Duplex> {
+    pub async fn connect_to_controller(&self, addr: &SocketAddr) -> io::Result<TcpStream> {
+        dbg!("conn ctrl");
         let sender = self.connection_listener_tx.as_ref().ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "mock connect_to_controller_listener channel not initialized".to_string(),
             )
         })?;
-        let (response_tx, response_rx) = oneshot::channel::<Duplex>();
+        let (response_tx, response_rx) = bounded::<TcpStream>(1);
+        dbg!("conn ctrl: sending resp_tx", addr);
         sender.send((*addr, response_tx)).map_err(|_err| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "mock connect_to_controller_listener channel to listener closed".to_string(),
             )
         })?;
-        let duplex_mock = response_rx.await.map_err(|_| {
+        dbg!("conn ctrl: sent resp_tx");
+        dbg!("conn ctrl: getting duplex mokc");
+        let duplex_mock = response_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener connect_to_controller_listener channel from listener closed"
                     .to_string(),
             )
         })?;
+        dbg!("conn ctrl: got", &duplex_mock);
         Ok(duplex_mock)
     }
 
-    pub async fn wait_connection_attempt_from_controller(
+    pub fn wait_connection_attempt_from_controller(
         &mut self,
-    ) -> io::Result<(Duplex, SocketAddr, Arc<AtomicBool>)> {
-        self.connection_connector_rx.recv().await.ok_or_else(|| {
+    ) -> io::Result<(TcpStream, SocketAddr, Arc<AtomicBool>)> {
+        dbg!("wait conn attempt");
+        self.connection_connector_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener get_connect_stream channel from connector closed".to_string(),
