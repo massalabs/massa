@@ -10,12 +10,9 @@ use nom::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
-/// NOTE: previous type
-pub type ModuleInfo = (RuntimeModule, Option<u64>);
-
 /// NOTE: this will replace ModuleInfo
 #[derive(Clone)]
-pub enum ModuleInfoBis {
+pub enum ModuleInfo {
     Invalid,
     Module(RuntimeModule),
     ModuleAndDelta((RuntimeModule, u64)),
@@ -42,13 +39,13 @@ impl ModuleInfoSerializer {
     }
 }
 
-impl Serializer<ModuleInfoBis> for ModuleInfoSerializer {
-    fn serialize(&self, value: &ModuleInfoBis, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+impl Serializer<ModuleInfo> for ModuleInfoSerializer {
+    fn serialize(&self, value: &ModuleInfo, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
-            ModuleInfoBis::Invalid => self
+            ModuleInfo::Invalid => self
                 .u64_ser
                 .serialize(&u64::from(ModuleInfoId::Invalid), buffer)?,
-            ModuleInfoBis::Module(rt_module) => {
+            ModuleInfo::Module(rt_module) => {
                 self.u64_ser
                     .serialize(&u64::from(ModuleInfoId::Module), buffer)?;
                 let mut ser_module = rt_module
@@ -56,7 +53,7 @@ impl Serializer<ModuleInfoBis> for ModuleInfoSerializer {
                     .map_err(|e| SerializeError::GeneralError(e.to_string()))?;
                 buffer.append(&mut ser_module);
             }
-            ModuleInfoBis::ModuleAndDelta((rt_module, delta)) => {
+            ModuleInfo::ModuleAndDelta((rt_module, delta)) => {
                 self.u64_ser
                     .serialize(&u64::from(ModuleInfoId::ModuleAndDelta), buffer)?;
                 self.u64_ser.serialize(delta, buffer)?;
@@ -85,11 +82,11 @@ impl ModuleInfoDeserializer {
     }
 }
 
-impl Deserializer<ModuleInfoBis> for ModuleInfoDeserializer {
+impl Deserializer<ModuleInfo> for ModuleInfoDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], ModuleInfoBis, E> {
+    ) -> IResult<&'a [u8], ModuleInfo, E> {
         context("ModuleInfo", |buffer| {
             let (input, id) = context("ModuleInfoId", |input| self.u64_deser.deserialize(input))
                 .map(|id| {
@@ -102,11 +99,11 @@ impl Deserializer<ModuleInfoBis> for ModuleInfoDeserializer {
                 })
                 .parse(buffer)?;
             match id? {
-                ModuleInfoId::Invalid => Ok((input, ModuleInfoBis::Invalid)),
+                ModuleInfoId::Invalid => Ok((input, ModuleInfo::Invalid)),
                 ModuleInfoId::Module => context("RuntimeModule", |input| {
                     self.module_deser.deserialize(input)
                 })
-                .map(|module| ModuleInfoBis::Module(module))
+                .map(|module| ModuleInfo::Module(module))
                 .parse(input),
                 ModuleInfoId::ModuleAndDelta => tuple((
                     context("Delta", |input| self.u64_deser.deserialize(input)),
@@ -114,7 +111,7 @@ impl Deserializer<ModuleInfoBis> for ModuleInfoDeserializer {
                         self.module_deser.deserialize(input)
                     }),
                 ))
-                .map(|(delta, module)| ModuleInfoBis::ModuleAndDelta((module, delta)))
+                .map(|(delta, module)| ModuleInfo::ModuleAndDelta((module, delta)))
                 .parse(input),
             }
         })

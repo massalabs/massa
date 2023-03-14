@@ -30,17 +30,8 @@ impl LRUCache {
     /// If the module is contained in the cache:
     /// * retrieve a copy of it
     /// * move it up in the LRU cache
-    pub fn get(&mut self, hash: Hash, limit: u64) -> Result<Option<ModuleInfo>, ExecutionError> {
-        if let Some((cached_module, opt_init_cost)) = self.cache.get(&hash) {
-            if let Some(init_cost) = opt_init_cost && limit < *init_cost {
-                return Err(ExecutionError::RuntimeError(
-                    "given gas cannot cover the initialization costs".to_string(),
-                ));
-            }
-            Ok(Some((cached_module.clone(), *opt_init_cost)))
-        } else {
-            Ok(None)
-        }
+    pub fn get(&mut self, hash: Hash) -> Option<ModuleInfo> {
+        self.cache.get(&hash).cloned()
     }
 
     /// Save a module in the LRU cache
@@ -50,8 +41,18 @@ impl LRUCache {
 
     /// Set the initialization cost of a LRU cached module
     pub fn set_init_cost(&mut self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
-        if let Some((_, opt_init_cost)) = self.cache.get(&hash) {
-            *opt_init_cost = Some(init_cost);
+        if let Some(content) = self.cache.get(&hash) {
+            match content {
+                ModuleInfo::Module(module) => {
+                    *content = ModuleInfo::ModuleAndDelta((module.clone(), init_cost))
+                }
+                ModuleInfo::ModuleAndDelta((_module, delta)) => *delta = init_cost,
+                ModuleInfo::Invalid => {
+                    return Err(ExecutionError::RuntimeError(
+                        "tried to set the init cost of an invalid module".to_string(),
+                    ));
+                }
+            }
             Ok(())
         } else {
             Err(ExecutionError::RuntimeError(

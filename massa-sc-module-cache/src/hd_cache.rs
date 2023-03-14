@@ -1,4 +1,4 @@
-use crate::types::{ModuleInfoBis, ModuleInfoDeserializer, ModuleInfoSerializer};
+use crate::types::{ModuleInfo, ModuleInfoDeserializer, ModuleInfoSerializer};
 use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_sc_runtime::GasCosts;
@@ -79,11 +79,7 @@ impl HDCache {
     }
 
     /// Insert a new module in the cache
-    pub fn insert(
-        &mut self,
-        hash: Hash,
-        module_info: ModuleInfoBis,
-    ) -> Result<(), ExecutionError> {
+    pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
         let mut module = vec![];
         self.module_serializer
             .serialize(&module_info, &mut module)
@@ -111,6 +107,7 @@ impl HDCache {
     ///   been removed
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
+        // TODO: correctly change the ModuleInfo value here
         // check that hash exists in the db
         self.db
             .get_cf(
@@ -134,7 +131,7 @@ impl HDCache {
     }
 
     /// Retrieve a module
-    pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfoBis> {
+    pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
         let Some(module) = self
             .db
             .get_cf(self.module_cf(), hash.to_bytes())
@@ -224,7 +221,7 @@ mod tests {
 
     const TEST_DB_PATH: &str = "test_db";
 
-    fn make_default_module_info() -> ModuleInfoBis {
+    fn make_default_module_info() -> ModuleInfo {
         let bytecode: Vec<u8> = vec![
             0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x06, 0x01, 0x60, 0x01, 0x7f,
             0x01, 0x7f, 0x03, 0x02, 0x01, 0x00, 0x07, 0x0b, 0x01, 0x07, 0x61, 0x64, 0x64, 0x5f,
@@ -234,9 +231,7 @@ mod tests {
             0x70, 0x30,
         ];
 
-        ModuleInfoBis::Module(
-            RuntimeModule::new(&bytecode, 10, GasCosts::default(), true).unwrap(),
-        )
+        ModuleInfo::Module(RuntimeModule::new(&bytecode, 10, GasCosts::default(), true).unwrap())
     }
 
     fn setup() -> HDCache {
