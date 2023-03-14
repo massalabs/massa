@@ -718,6 +718,10 @@
 <a href="#718" id="718">718</a>
 <a href="#719" id="719">719</a>
 <a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
 </pre><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
@@ -938,7 +942,11 @@
 
         <span class="comment">// if the cycle just completed, check that it has the right number of seed bits
         </span><span class="kw">if </span><span class="self">self</span>.complete &amp;&amp; <span class="self">self</span>.rng_seed.len() <span class="kw">as </span>u64 != slots_per_cycle {
-            <span class="macro">panic!</span>(<span class="string">&quot;cycle completed with incorrect number of seed bits&quot;</span>);
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;cycle completed with incorrect number of seed bits: {} instead of {}&quot;</span>,
+                <span class="self">self</span>.rng_seed.len(),
+                slots_per_cycle
+            );
         }
 
         <span class="comment">// compute the global hash

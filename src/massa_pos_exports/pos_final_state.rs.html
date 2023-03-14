@@ -516,6 +516,25 @@
 <a href="#516" id="516">516</a>
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -640,6 +659,25 @@
         }
         <span class="self">self</span>.cycle_history.push_back(CycleInfo::new_with_hash(
             <span class="number">0</span>,
+            <span class="bool-val">false</span>,
+            <span class="self">self</span>.initial_rolls.clone(),
+            rng_seed,
+            PreHashMap::default(),
+        ));
+    }
+
+    <span class="doccomment">/// Create a new empty cycle based off the initial rolls.
+    ///
+    </span><span class="kw">pub fn </span>create_new_empty_cycle(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64) {
+        <span class="kw">let </span>rng_seed = BitVec::with_capacity(
+            <span class="self">self</span>.config
+                .periods_per_cycle
+                .saturating_mul(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
+                .try_into()
+                .unwrap(),
+        );
+        <span class="self">self</span>.cycle_history.push_back(CycleInfo::new_with_hash(
+            cycle,
             <span class="bool-val">false</span>,
             <span class="self">self</span>.initial_rolls.clone(),
             rng_seed,
