@@ -8,13 +8,13 @@ use tonic_health as _;
 use tonic_reflection as _;
 use tonic_web as _;
 
-/// gRPC API implementation
-pub mod api;
 /// business code
-pub mod business;
+pub mod api;
 /// gRPC configuration
 pub mod config;
 /// models error
 pub mod error;
+/// gRPC API implementation
+pub mod handler;
 /// stream
 pub mod stream;
