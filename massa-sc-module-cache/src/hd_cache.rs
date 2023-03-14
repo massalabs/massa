@@ -12,7 +12,6 @@ use std::ops::Bound::Included;
 use std::path::PathBuf;
 
 const MODULE_CF: &str = "module";
-const INIT_COSTS_CF: &str = "init_cost";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 const INIT_COSTS_SER_ERR: &str = "init cost serialization error";
@@ -29,9 +28,8 @@ pub(crate) struct HDCache {
     max_entry_count: usize,
     // How many entries are removed when `entry_count` reaches `max_entry_count`
     amount_to_snip: usize,
-    option_serializer: OptionSerializer<u64, U64VarIntSerializer>,
-    option_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
-    module_serializer: ModuleInfoSerializer,
+    // Module info serializer
+    module_info_ser: ModuleInfoSerializer,
 }
 
 impl HDCache {
@@ -50,16 +48,13 @@ impl HDCache {
         let db = DB::open_cf_descriptors(
             &db_opts,
             path,
-            vec![
-                ColumnFamilyDescriptor::new(MODULE_CF, Options::default()),
-                ColumnFamilyDescriptor::new(INIT_COSTS_CF, Options::default()),
-            ],
+            vec![ColumnFamilyDescriptor::new(MODULE_CF, Options::default())],
         )
         .expect(OPEN_ERROR);
 
         let entry_count = db
             .iterator_cf(
-                db.cf_handle(INIT_COSTS_CF).expect(CF_ERROR),
+                db.cf_handle(MODULE_CF).expect(CF_ERROR),
                 rocksdb::IteratorMode::Start,
             )
             .count();
@@ -69,19 +64,14 @@ impl HDCache {
             entry_count,
             max_entry_count,
             amount_to_snip: amount_to_remove,
-            option_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
-            option_deserializer: OptionDeserializer::new(U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(u64::MAX),
-            )),
-            module_serializer: ModuleInfoSerializer::new(),
+            module_info_ser: ModuleInfoSerializer::new(),
         }
     }
 
     /// Insert a new module in the cache
     pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
         let mut module = vec![];
-        self.module_serializer
+        self.module_info_ser
             .serialize(&module_info, &mut module)
             .map_err(|_| ExecutionError::RuntimeError(MOD_SER_ERR.into()))?;
 
@@ -107,24 +97,19 @@ impl HDCache {
     ///   been removed
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
-        // TODO: correctly change the ModuleInfo value here
+        let cf_handle = self.db.cf_handle(MODULE_CF).expect(CF_ERROR);
         // check that hash exists in the db
-        self.db
-            .get_cf(
-                self.db.cf_handle(INIT_COSTS_CF).expect(CF_ERROR),
-                hash.to_bytes(),
-            )
-            .map_err(|_| ExecutionError::RuntimeError(KEY_NOT_FOUND.to_string()))?;
+        if let Some(ser_module_info) = self
+            .db
+            .get_cf(cf_handle, hash.to_bytes())
+            .map_err(|_| ExecutionError::RuntimeError(KEY_NOT_FOUND.to_string()))?
+        {
 
-        // serialize cost
-        let mut cost = vec![];
-        self.option_serializer
-            .serialize(&Some(init_cost), &mut cost)
-            .expect(INIT_COSTS_SER_ERR);
+        }
 
         // update db
         self.db
-            .put_cf(self.init_costs_cf(), hash.to_bytes(), &cost)
+            .put_cf(self.module_cf(), hash.to_bytes(), &cost)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         Ok(())
@@ -137,27 +122,12 @@ impl HDCache {
             .get_cf(self.module_cf(), hash.to_bytes())
             .ok()
             .flatten() else{return None;};
-
-        let Some(cost) = self
-            .db
-            .get_cf(self.init_costs_cf(), hash.to_bytes())
-            .ok()
-            .flatten() else {return None;};
-
-        let cost = self
-            .option_deserializer
-            .deserialize::<DeserializeError>(&cost)
-            .ok()
-            .and_then(|(_, cost)| cost);
-
-        // let module = RuntimeModule::deserialize(&module, limit, gas_costs).ok()?;
         let module_deserializer: ModuleInfoDeserializer =
             ModuleInfoDeserializer::new(limit, gas_costs);
-        let module = module_deserializer
+        let (part, module) = module_deserializer
             .deserialize::<DeserializeError>(&module)
             .ok()?;
-
-        Some(module.1)
+        Some(module)
     }
 
     /// Try to remove as much as self.amount_to_snip entries from the db.
@@ -183,9 +153,7 @@ impl HDCache {
             // thanks to if above we can safely unwrap
             let key = iter.key().unwrap();
 
-            for cf in [self.module_cf(), self.init_costs_cf()] {
-                batch.delete_cf(cf, key);
-            }
+            batch.delete_cf(self.module_cf(), key);
 
             iter.next();
             snipped_entries_count += 1;
@@ -202,10 +170,6 @@ impl HDCache {
 
     fn module_cf(&self) -> &ColumnFamily {
         self.db.cf_handle(MODULE_CF).expect(CF_ERROR)
-    }
-
-    fn init_costs_cf(&self) -> &ColumnFamily {
-        self.db.cf_handle(INIT_COSTS_CF).expect(CF_ERROR)
     }
 }
 
@@ -263,11 +227,11 @@ mod tests {
 
         let buff_cached = vec![];
         cache
-            .module_serializer
+            .module_info_ser
             .serialize(&cached_module, &mut buff_cached);
 
         let buff = vec![];
-        cache.module_serializer.serialize(&module, &mut buff);
+        cache.module_info_ser.serialize(&module, &mut buff);
 
         assert_eq!(buff_cached, buff);
     }

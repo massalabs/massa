@@ -66,6 +66,11 @@ impl ModuleCache {
         Ok(())
     }
 
+    pub fn set_invalid(&mut self, bytecode: &[u8]) -> Result<(), ExecutionError> {
+        // TODO: implement this
+        Ok(())
+    }
+
     /// Load a cached module for execution
     pub fn load_module(
         &mut self,
