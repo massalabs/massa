@@ -1,10 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::{collections::HashMap, net::SocketAddr};
+
 use massa_time::MassaTime;
+use massa_signature::KeyPair;
+use peernet::transports::TransportType;
 use serde::Deserialize;
+
 /// Dynamic protocol configuration mix in static settings and constants configurations.
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolConfig {
+    /// self keypair
+    pub keypair: KeyPair,
+    /// listeners from where we can receive messages
+    pub listeners: HashMap<SocketAddr, TransportType>,
     /// running threads count
     pub thread_count: u8,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node

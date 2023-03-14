@@ -6,7 +6,7 @@ use massa_protocol_exports_2::{
 use massa_storage::Storage;
 use tracing::debug;
 
-use crate::{controller::ProtocolControllerImpl, manager::ProtocolManagerImpl};
+use crate::{controller::ProtocolControllerImpl, manager::ProtocolManagerImpl, connectivity::start_connectivity_thread};
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 ///
@@ -22,7 +22,9 @@ pub async fn start_protocol_controller(
 ) -> Result<(Box<dyn ProtocolController>, Box<dyn ProtocolManager>), ProtocolError> {
     debug!("starting protocol controller");
 
-    let manager = ProtocolManagerImpl {};
+    let connectivity_thread_handle = start_connectivity_thread(config.clone())?;
+
+    let manager = ProtocolManagerImpl::new(connectivity_thread_handle);
 
     let controller = ProtocolControllerImpl::new();
 

@@ -1,15 +1,34 @@
+use std::thread::JoinHandle;
+
+use crossbeam::channel::Sender;
 use massa_protocol_exports_2::ProtocolManager;
+use tracing::info;
+
+use crate::connectivity::ConnectivityCommand;
 
 /// protocol manager used to stop the protocol
-pub struct ProtocolManagerImpl {}
+pub struct ProtocolManagerImpl {
+    connectivity_thread: Option<(Sender<ConnectivityCommand>, JoinHandle<()>)>,
+}
+
+impl ProtocolManagerImpl {
+    pub fn new(connectivity_thread: (Sender<ConnectivityCommand>, JoinHandle<()>)) -> Self {
+        Self {
+            connectivity_thread: Some(connectivity_thread),
+        }
+    }
+}
 
 impl ProtocolManager for ProtocolManagerImpl {
-    /// Stop the protocol controller
+    /// Stop the protocol module
     fn stop(&mut self) {
-        // info!("stopping protocol controller...");
-        // drop(self.manager_tx);
-        // let network_event_receiver = self.join_handle.await??;
-        // info!("protocol controller stopped");
-        // Ok(network_event_receiver)
+        info!("stopping protocol module...");
+        if let Some((tx, join_handle)) = self.connectivity_thread.take() {
+            tx.send(ConnectivityCommand::Stop).expect("Failed to send stop command of protocol");
+            drop(tx);
+            join_handle
+                .join()
+                .expect("connectivity thread panicked on try to join");
+        }
     }
 }
