@@ -46,7 +46,12 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    path::PathBuf,
+    str::FromStr,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 use tempfile::TempDir;
 use tokio::sync::mpsc;
 
@@ -176,7 +181,7 @@ async fn test_bootstrap_server() {
     });
 
     // accept connection attempt from remote
-    let (remote_rw, conn_addr, resp) = tokio::time::timeout(
+    let (remote_rw, conn_addr, waker) = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         remote_interface.wait_connection_attempt_from_controller(),
     )
@@ -188,8 +193,7 @@ async fn test_bootstrap_server() {
         conn_addr, expect_conn_addr,
         "client connected to wrong bootstrap ip"
     );
-    resp.send(true)
-        .expect("could not send connection accept to remote");
+    waker.store(true, Ordering::Relaxed);
 
     // connect to bootstrap
     let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked

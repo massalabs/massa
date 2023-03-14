@@ -5,17 +5,19 @@ use massa_time::MassaTime;
 use socket2 as _;
 use std::io;
 use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
-use crate::establisher::{BSConnector, BSEstablisher, BSListener, Duplex, DuplexListener};
+use crate::establisher::{BSConnector, BSEstablisher, BSListener, Duplex};
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
         crossbeam::channel::bounded::<(SocketAddr, oneshot::Sender<Duplex>)>(CHANNEL_SIZE);
 
     let (connection_connector_tx, connection_connector_rx) =
-        mpsc::channel::<(Duplex, SocketAddr, oneshot::Sender<bool>)>(CHANNEL_SIZE);
+        mpsc::channel::<(Duplex, SocketAddr, Arc<AtomicBool>)>(CHANNEL_SIZE);
 
     (
         MockEstablisher {
@@ -66,7 +68,7 @@ impl BSListener for MockListener {
 
 #[derive(Debug)]
 pub struct MockConnector {
-    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, Arc<AtomicBool>)>,
     timeout_duration: MassaTime,
 }
 
@@ -82,27 +84,30 @@ impl BSConnector for MockConnector {
         duplex_mock.0.set_nonblocking(true).unwrap();
 
         // Used to see if the connection is accepted
-        let (accept_tx, accept_rx) = oneshot::channel::<bool>();
+        let waker = Arc::new(AtomicBool::from(false));
+        let provided_waker = Arc::clone(&waker);
 
         // send new connection to mock
         timeout(self.timeout_duration.to_duration(), async move {
             self.connection_connector_tx
-                .send((Duplex::from_std(duplex_mock.0).unwrap(), addr, accept_tx))
+                .send((
+                    Duplex::from_std(duplex_mock.0).unwrap(),
+                    addr,
+                    provided_waker,
+                ))
                 .await
                 .map_err(|_err| {
                     io::Error::new(
                         io::ErrorKind::Other,
                         "MockConnector connect channel to Establisher closed".to_string(),
                     )
-                })?;
-            if accept_rx.await.expect("mock accept_tx disappeared") {
-                Ok(Duplex::from_std(duplex_controller).unwrap())
-            } else {
-                Err(io::Error::new(
-                    io::ErrorKind::ConnectionRefused,
-                    "mock refused the connection".to_string(),
-                ))
+                })
+                .unwrap();
+            // this will lock the system up with a std::thread...
+            while !waker.load(Ordering::Relaxed) {
+                tokio::task::yield_now().await;
             }
+            Ok(Duplex::from_std(duplex_controller).unwrap())
         })
         .await
         .map_err(|_| {
@@ -118,7 +123,7 @@ impl BSConnector for MockConnector {
 pub struct MockEstablisher {
     connection_listener_rx:
         Option<crossbeam::channel::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>>,
-    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, Arc<AtomicBool>)>,
 }
 
 impl BSEstablisher for MockEstablisher {
@@ -147,7 +152,7 @@ impl BSEstablisher for MockEstablisher {
 pub struct MockEstablisherInterface {
     connection_listener_tx:
         Option<crossbeam::channel::Sender<(SocketAddr, oneshot::Sender<Duplex>)>>,
-    connection_connector_rx: mpsc::Receiver<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_rx: mpsc::Receiver<(Duplex, SocketAddr, Arc<AtomicBool>)>,
 }
 
 impl MockEstablisherInterface {
@@ -177,7 +182,7 @@ impl MockEstablisherInterface {
 
     pub async fn wait_connection_attempt_from_controller(
         &mut self,
-    ) -> io::Result<(Duplex, SocketAddr, oneshot::Sender<bool>)> {
+    ) -> io::Result<(Duplex, SocketAddr, Arc<AtomicBool>)> {
         self.connection_connector_rx.recv().await.ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Other,
