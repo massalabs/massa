@@ -1,0 +1,16 @@
+[package]
+name = "massa_protocol_worker_2"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[dependencies]
+tracing = "0.1"
+peernet = { git = "https://github.com/massalabs/PeerNet" }
+
+# modules Custom
+massa_models = { path = "../massa-models" }
+massa_protocol_exports_2 = { path = "../massa-protocol-exports-2" }
+massa_consensus_exports = { path = "../massa-consensus-exports" }
+massa_pool_exports = { path = "../massa-pool-exports" }
+massa_storage = { path = "../massa-storage" }

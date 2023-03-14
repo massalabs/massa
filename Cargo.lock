@@ -610,6 +610,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmake"
+version = "0.1.49"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db34956e100b30725f2eb215f90d4871051239535632f84fea3bc92722c66b7c"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1230,6 +1239,30 @@ checksum = "2a4da76b3b6116d758c7ba93f7ec6a35d2e2cf24feda76c6e38a375f4d5c59f2"
 dependencies = [
  "proc-macro2 1.0.51",
  "quote 1.0.23",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "enum_delegate"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8ea75f31022cba043afe037940d73684327e915f88f62478e778c3de914cd0a"
+dependencies = [
+ "enum_delegate_lib",
+ "proc-macro2 1.0.51",
+ "quote 1.0.23",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "enum_delegate_lib"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e1f6c3800b304a6be0012039e2a45a322a093539c45ab818d9e6895a39c90fe"
+dependencies = [
+ "proc-macro2 1.0.51",
+ "quote 1.0.23",
+ "rand 0.8.5",
  "syn 1.0.109",
 ]
 
@@ -2256,7 +2289,7 @@ dependencies = [
  "massa_api_exports",
  "massa_models",
  "massa_sdk",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "massa_wallet",
  "paw",
@@ -2363,7 +2396,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_protocol_exports",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "massa_wallet",
@@ -2391,7 +2424,7 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_protocol_exports",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "massa_wallet",
  "paginate",
@@ -2413,7 +2446,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "nom",
  "num",
@@ -2450,7 +2483,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "nom",
  "num_enum",
@@ -2497,7 +2530,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_protocol_exports",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "nom",
@@ -2516,7 +2549,7 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_logging",
  "massa_models",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "num",
@@ -2571,7 +2604,7 @@ dependencies = [
  "massa_models",
  "massa_pos_exports",
  "massa_pos_worker",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "num",
@@ -2601,7 +2634,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_protocol_exports",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "nom",
@@ -2625,7 +2658,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_protocol_exports",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "massa_wallet",
@@ -2649,7 +2682,7 @@ dependencies = [
  "massa_models",
  "massa_pos_exports",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "nom",
  "serde",
  "thiserror",
@@ -2693,7 +2726,7 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_models",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "nom",
  "num_enum",
  "serde",
@@ -2710,7 +2743,7 @@ dependencies = [
  "massa_ledger_exports",
  "massa_models",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "nom",
  "rocksdb",
  "serde_json",
@@ -2740,7 +2773,7 @@ dependencies = [
  "lazy_static",
  "massa_hash 0.1.0",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "nom",
  "num",
@@ -2761,7 +2794,7 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_models",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "nom",
  "serde",
@@ -2785,7 +2818,7 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "nom",
  "num_enum",
@@ -2817,7 +2850,7 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_models",
  "massa_pool_exports",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "num",
  "parking_lot",
@@ -2836,7 +2869,7 @@ dependencies = [
  "massa_ledger_exports",
  "massa_models",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "nom",
  "num",
@@ -2857,7 +2890,7 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_models",
  "massa_pos_exports",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_time",
  "parking_lot",
  "rand 0.8.5",
@@ -2879,7 +2912,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "serde",
@@ -2887,6 +2920,20 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "massa_protocol_exports_2"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "massa_hash 0.1.0",
+ "massa_models",
+ "massa_storage",
+ "massa_time",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -2903,13 +2950,26 @@ dependencies = [
  "massa_pool_exports",
  "massa_protocol_exports",
  "massa_serialization 0.1.0",
- "massa_signature",
+ "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "rayon",
  "serde_json",
  "serial_test 1.0.0",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_protocol_worker_2"
+version = "0.1.0"
+dependencies = [
+ "massa_consensus_exports",
+ "massa_models",
+ "massa_pool_exports",
+ "massa_protocol_exports_2",
+ "massa_storage",
+ "peernet",
  "tracing",
 ]
 
@@ -2963,13 +3023,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_signature"
+version = "0.1.0"
+source = "git+https://github.com/massalabs/massa.git#a3c6e0373c9dab8bd7bc0f17686d3de1561d54d6"
+dependencies = [
+ "bs58",
+ "displaydoc",
+ "ed25519-dalek",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "nom",
+ "rand 0.7.3",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "massa_storage"
 version = "0.1.0"
 dependencies = [
  "massa_factory_exports",
  "massa_logging",
  "massa_models",
- "massa_signature",
+ "massa_signature 0.1.0",
  "parking_lot",
  "serde_json",
  "tracing",
@@ -3014,7 +3090,7 @@ dependencies = [
  "massa_cipher",
  "massa_hash 0.1.0",
  "massa_models",
- "massa_signature",
+ "massa_signature 0.1.0",
  "serde",
  "serde_json",
  "serde_qs",
@@ -3284,6 +3360,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "octets"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a74f2cda724d43a0a63140af89836d4e7db6138ef67c9f96d3a0f0150d05000"
+
+[[package]]
 name = "once_cell"
 version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3431,6 +3513,21 @@ name = "peeking_take_while"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
+
+[[package]]
+name = "peernet"
+version = "0.1.0"
+source = "git+https://github.com/massalabs/PeerNet#298230c6ac353bb312d7dc12e741b5b341a71f66"
+dependencies = [
+ "crossbeam",
+ "enum_delegate",
+ "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_signature 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "mio",
+ "parking_lot",
+ "quiche",
+ "rand 0.8.5",
+]
 
 [[package]]
 name = "percent-encoding"
@@ -3667,6 +3764,23 @@ dependencies = [
  "proc-macro2 1.0.51",
  "quote 1.0.23",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "quiche"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "991d80b9e559fcbfee21c1a943b46586eca4b830d74e5f3e99a7ab7ea3819b16"
+dependencies = [
+ "cmake",
+ "lazy_static",
+ "libc",
+ "libm",
+ "log",
+ "octets",
+ "ring",
+ "slab",
+ "winapi",
 ]
 
 [[package]]
