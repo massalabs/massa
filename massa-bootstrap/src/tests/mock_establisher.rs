@@ -73,9 +73,13 @@ pub struct MockConnector {
 #[async_trait]
 impl BSConnector for MockConnector {
     async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
-        let duplex_mock = DuplexListener::bind(addr).await.unwrap();
-        let duplex_controller = Duplex::connect(addr).await.unwrap();
-        let duplex_mock = duplex_mock.accept().await.unwrap();
+        let duplex_mock = TcpListener::bind(addr).unwrap();
+        let duplex_controller = TcpStream::connect(addr).unwrap();
+        let duplex_mock = duplex_mock.accept().unwrap();
+
+        // Requirement of tokio from_std things
+        duplex_controller.set_nonblocking(true).unwrap();
+        duplex_mock.0.set_nonblocking(true).unwrap();
 
         // Used to see if the connection is accepted
         let (accept_tx, accept_rx) = oneshot::channel::<bool>();
@@ -83,7 +87,7 @@ impl BSConnector for MockConnector {
         // send new connection to mock
         timeout(self.timeout_duration.to_duration(), async move {
             self.connection_connector_tx
-                .send((duplex_mock.0, addr, accept_tx))
+                .send((Duplex::from_std(duplex_mock.0).unwrap(), addr, accept_tx))
                 .await
                 .map_err(|_err| {
                     io::Error::new(
@@ -92,7 +96,7 @@ impl BSConnector for MockConnector {
                     )
                 })?;
             if accept_rx.await.expect("mock accept_tx disappeared") {
-                Ok(duplex_controller)
+                Ok(Duplex::from_std(duplex_controller).unwrap())
             } else {
                 Err(io::Error::new(
                     io::ErrorKind::ConnectionRefused,
