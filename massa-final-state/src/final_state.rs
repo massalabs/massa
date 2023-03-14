@@ -18,8 +18,8 @@ use massa_models::{
     streaming_step::StreamingStep,
 };
 use massa_pos_exports::{
-    CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
+    CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits, DeferredCreditsDeserializer,
+    DeferredCreditsSerializer, PoSFinalState, SelectorController,
 };
 use massa_serialization::{
     DeserializeError, /*U64VarIntSerializer,*/
