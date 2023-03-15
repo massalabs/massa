@@ -197,6 +197,8 @@ impl FinalState {
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
+        let latest_consistent_cycle_info = pos_state.cycle_history.back().clone().expect("Cycle history should not be empty in snapshot!");
+
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let latest_consistent_slot_path = config.final_state_path.join("latest_consistent_slot");
         let latest_consistent_slot_file = fs::read(latest_consistent_slot_path).map_err(|_| {
@@ -252,7 +254,7 @@ impl FinalState {
             slot: latest_consistent_slot,
             ledger,
             async_pool,
-            pos_state,
+            pos_state: pos_state.clone(),
             config: config.clone(),
             executed_ops,
             changes_history: Default::default(), // no changes in history
@@ -279,7 +281,7 @@ impl FinalState {
                 final_state.pos_state.cycle_history = Vec::new().into();
                 final_state
                     .pos_state
-                    .create_new_cycle_for_snapshot(end_slot);
+                    .create_new_cycle_for_snapshot(latest_consistent_cycle_info, end_slot);
 
                 final_state.slot = end_slot;
                 Ok(final_state)
