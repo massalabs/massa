@@ -785,9 +785,10 @@ impl ExecutionContext {
         // update module cache
         let bc_updates = ledger_changes.get_byetcode_updates();
         {
-            let cache_write_lock = self.module_cache.write();
+            let mut cache_write_lock = self.module_cache.write();
+            // TODO: update return type
             for bytecode in bc_updates {
-                cache_write_lock.save_module(&bytecode.0, limit);
+                cache_write_lock.save_module(&bytecode.0, self.config.max_gas_per_block).unwrap();
             }
         }
 
