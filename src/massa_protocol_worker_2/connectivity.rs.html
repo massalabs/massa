@@ -61,6 +61,8 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::{
@@ -93,8 +95,10 @@
         peernet_config.self_keypair = config.keypair;
         peernet_config.fallback_function = <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>fallback_function);
         <span class="comment">//TODO: Add the rest of the config
+        </span>peernet_config.max_in_connections = config.max_in_connections;
+        peernet_config.max_out_connections = config.max_out_connections;
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>message_handlers: MessageHandlers = Default::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(<span class="number">0</span>, peer_manager_sender);
 
         <span class="kw">let </span><span class="kw-2">mut </span>manager = PeerNetManager::new(peernet_config);

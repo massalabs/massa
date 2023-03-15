@@ -67,6 +67,10 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, path::PathBuf};
@@ -85,6 +89,10 @@
     </span><span class="kw">pub </span>listeners: HashMap&lt;SocketAddr, TransportType&gt;,
     <span class="doccomment">/// initial peers path
     </span><span class="kw">pub </span>initial_peers: PathBuf,
+    <span class="doccomment">/// max number of in connections
+    </span><span class="kw">pub </span>max_in_connections: usize,
+    <span class="doccomment">/// max number of out connections
+    </span><span class="kw">pub </span>max_out_connections: usize,
     <span class="doccomment">/// running threads count
     </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
