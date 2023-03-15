@@ -308,23 +308,6 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -336,7 +319,6 @@
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
-    config::LAST_START_PERIOD,
     prehash::PreHashMap,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -370,7 +352,7 @@
     <span class="kw">let </span>keypair = <span class="kw-2">&amp;</span>cfg.genesis_key;
     <span class="kw">let </span>header = BlockHeader::new_verifiable(
         BlockHeader {
-            slot: Slot::new(<span class="kw-2">*</span>LAST_START_PERIOD, thread_number),
+            slot: Slot::new(<span class="number">0</span>, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(<span class="kw-2">&amp;</span>Vec::new()),
             endorsements: Vec::new(),
@@ -476,22 +458,6 @@
             )
         }
 
-        <span class="kw">if </span>config
-            .genesis_timestamp
-            .checked_add(config.t0.checked_mul(<span class="kw-2">*</span>LAST_START_PERIOD)<span class="question-mark">?</span>)<span class="question-mark">?
-            </span>&gt; now
-        {
-            <span class="kw">let </span>(days, hours, mins, secs) = config
-                .genesis_timestamp
-                .checked_add(config.t0.checked_mul(<span class="kw-2">*</span>LAST_START_PERIOD)<span class="question-mark">?</span>)<span class="question-mark">?
-                </span>.saturating_sub(now)
-                .days_hours_mins_secs()<span class="question-mark">?</span>;
-            <span class="macro">info!</span>(
-                <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining to last start period&quot;</span>,
-                days, hours, mins, secs,
-            )
-        }
-
         <span class="comment">// add genesis blocks to stats
         </span><span class="kw">let </span>genesis_addr = Address::from_public_key(<span class="kw-2">&amp;</span>config.genesis_key.get_public_key());
         <span class="kw">let </span><span class="kw-2">mut </span>final_block_stats = VecDeque::new();
@@ -501,7 +467,7 @@
                     config.thread_count,
                     config.t0,
                     config.genesis_timestamp,
-                    Slot::new(<span class="kw-2">*</span>LAST_START_PERIOD, thread),
+                    Slot::new(<span class="number">0</span>, thread),
                 )<span class="question-mark">?</span>,
                 genesis_addr,
                 <span class="bool-val">false</span>,
