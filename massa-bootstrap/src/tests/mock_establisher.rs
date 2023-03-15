@@ -48,11 +48,10 @@ impl BSListener for MockListener {
         dbg!("accept received");
         let duplex_controller = TcpListener::bind("localhost:0").unwrap();
         let duplex_mock = TcpStream::connect(duplex_controller.local_addr().unwrap()).unwrap();
-        let (duplex_controller, addr) = duplex_controller.accept().unwrap();
+        let duplex_controller = duplex_controller.accept().unwrap();
 
         // Tokio `from_std` have non-blocking Tcp objects as a requirement
         duplex_mock.set_nonblocking(true).unwrap();
-        duplex_controller.set_nonblocking(true).unwrap();
 
         dbg!("accept sending mock", &duplex_mock);
         sender.send(duplex_mock).map_err(|_| {
@@ -64,7 +63,7 @@ impl BSListener for MockListener {
         dbg!("accept mock sent");
         dbg!("accept returning", &duplex_controller);
 
-        Ok((duplex_controller, addr))
+        Ok(duplex_controller)
     }
 }
 

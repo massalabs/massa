@@ -9,6 +9,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
     U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use massa_signature::PublicKey;
 use nom::error::context;
 use nom::sequence::tuple;
 use nom::Parser;
@@ -166,7 +167,21 @@ impl SecureShareEndorsement {
 /// Wrapped endorsement
 pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
 
-impl SecureShareContent for Endorsement {}
+impl SecureShareContent for Endorsement {
+    /// Compute hash for Endorsement in SecuredHeader - taking care of Denunciation verification
+    fn compute_hash(
+        content: &Self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Hash {
+        let de_data = EndorsementDenunciationData::new(content.slot, content.index);
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(de_data.to_bytes());
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Hash::compute_from(&hash_data)
+    }
+}
 
 /// Serializer for `Endorsement`
 #[derive(Clone)]
@@ -385,9 +400,30 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
     }
 }
 
+/// A denunciation data for endorsement
+pub struct EndorsementDenunciationData {
+    slot: Slot,
+    index: u32,
+}
+
+impl EndorsementDenunciationData {
+    /// Create a new denunciation data for endorsement
+    pub fn new(slot: Slot, index: u32) -> Self {
+        Self { slot, index }
+    }
+
+    /// Get byte array
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend(self.slot.to_bytes_key());
+        buf.extend(self.index.to_le_bytes());
+        buf
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::secure_share::{SecureShareDeserializer, SecureShareSerializer};
+    use crate::secure_share::{SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
 
     use super::*;
     use massa_serialization::DeserializeError;

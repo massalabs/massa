@@ -65,11 +65,8 @@ where
     ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
-        let mut hash_data = Vec::new();
         let public_key = keypair.get_public_key();
-        hash_data.extend(public_key.to_bytes());
-        hash_data.extend(content_serialized.clone());
-        let hash = Hash::compute_from(&hash_data);
+        let hash = Self::compute_hash(&content, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
             signature: keypair.sign(&hash)?,
@@ -79,6 +76,19 @@ where
             serialized_data: content_serialized,
             id: ID::new(hash),
         })
+    }
+
+    /// Compute hash
+    #[allow(unused_variables)]
+    fn compute_hash(
+        content: &Self, // use only for Denounce able object
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Hash {
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(content_serialized);
+        Hash::compute_from(&hash_data)
     }
 
     /// Serialize the secured structure
@@ -135,8 +145,8 @@ where
             serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         let creator_address = Address::from_public_key(&creator_public_key);
-        let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
-        serialized_full_data.extend(&content_serialized);
+        let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key);
+
         Ok((
             rest,
             SecureShare {
@@ -145,7 +155,7 @@ where
                 content_creator_pub_key: creator_public_key,
                 content_creator_address: creator_address,
                 serialized_data: content_serialized.to_vec(),
-                id: ID::new(Hash::compute_from(&serialized_full_data)),
+                id: ID::new(hash),
             },
         ))
     }

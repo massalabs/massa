@@ -9,7 +9,7 @@ use std::{
 /// duplex connection
 pub type Duplex = tokio::net::TcpStream;
 
-/// duplex connection
+/// Listener used to establish a Duplex
 pub type DuplexListener = tokio::net::TcpListener;
 
 /// Specifies a common interface that can be used by standard, or mockers
