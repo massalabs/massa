@@ -7,13 +7,17 @@ use crossbeam::{
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use peernet::{
     config::PeerNetConfiguration,
-    handlers::{MessageHandlers, MessageHandler},
+    handlers::{MessageHandler, MessageHandlers},
     network_manager::PeerNetManager,
     peer_id::PeerId,
     transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
 };
 
-use crate::handlers::{peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler}, operation_handler::OperationHandler};
+use crate::handlers::{
+    endorsement_handler::EndorsementHandler,
+    operation_handler::OperationHandler,
+    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+};
 
 pub enum ConnectivityCommand {
     Stop,
@@ -27,9 +31,11 @@ pub fn start_connectivity_thread(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
     let handle = std::thread::spawn(move || {
-        let (mut peer_manager_handler, peer_manager_handler_sender) = PeerManagementHandler::new(initial_peers);
+        let (mut peer_manager_handler, peer_manager_handler_sender) =
+            PeerManagementHandler::new(initial_peers);
         //TODO: Bound the channel
         let (sender_operations, receiver_operations) = unbounded();
+        let (sender_endorsements, receiver_endorsements) = unbounded();
 
         let mut peernet_config = PeerNetConfiguration::default(MassaHandshake {});
         peernet_config.self_keypair = config.keypair;
@@ -41,11 +47,15 @@ pub fn start_connectivity_thread(
         let mut message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(0, peer_manager_handler_sender);
         message_handlers.add_handler(1, MessageHandler::new(sender_operations));
+        message_handlers.add_handler(1, MessageHandler::new(sender_endorsements));
         peernet_config.message_handlers = message_handlers;
 
         let mut manager = PeerNetManager::new(peernet_config);
 
-        let mut operation_handler = OperationHandler::new(manager.active_connections.clone(), receiver_operations);
+        let mut operation_handler =
+            OperationHandler::new(manager.active_connections.clone(), receiver_operations);
+        let mut endorsement_handler =
+            EndorsementHandler::new(manager.active_connections.clone(), receiver_endorsements);
 
         for (addr, transport) in config.listeners {
             manager.start_listener(transport, addr).expect(&format!(
@@ -62,6 +72,7 @@ pub fn start_connectivity_thread(
                             handle.join().expect("Failed to join peer manager thread");
                         }
                         operation_handler.stop();
+                        endorsement_handler.stop();
                         break;
                     }
                 }
