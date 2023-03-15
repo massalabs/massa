@@ -376,10 +376,12 @@ fn connect_to_server(
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder, BootstrapError> {
+) -> Result<BootstrapClientBinder, Box<BootstrapError>> {
     // connect
-    let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
-    let socket = connector.connect(*addr)?;
+    let mut connector = establisher
+        .get_connector(bootstrap_config.connect_timeout)
+        .map_err(|e| Box::new(e.into()))?;
+    let socket = connector.connect(*addr).map_err(|e| Box::new(e.into()))?;
     socket.set_nonblocking(true).unwrap();
     Ok(BootstrapClientBinder::new(
         Duplex::from_std(socket).unwrap(),
