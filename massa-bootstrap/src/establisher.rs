@@ -78,15 +78,23 @@ impl BSEstablisher for DefaultEstablisher {
     /// * `addr`: `SocketAddr` we want to bind to.
     fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
         // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
-        let socket = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::STREAM, None)?;
+        // This is needed to get the same behavior on all OS
+        // However, if IPv6 is disabled system-wide, you may need to bind to an IPv4 address instead.
+        let domain = match addr.is_ipv4() {
+            true => socket2::Domain::IPV4,
+            _ => socket2::Domain::IPV6,
+        };
 
-        socket.set_only_v6(false)?;
+        let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
+
+        if addr.is_ipv6() {
+            socket.set_only_v6(false)?;
+        }
         socket.set_nonblocking(true)?;
         socket.bind(&addr.into())?;
 
         // Number of connections to queue, set to the hardcoded value used by tokio
         socket.listen(1024)?;
-
         Ok(DefaultListener(socket.into()))
     }
 
