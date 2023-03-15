@@ -1,34 +1,51 @@
-use crate::types::{ModuleInfo, ModuleInfoDeserializer, ModuleInfoSerializer};
+use crate::types::{
+    ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
+};
 use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_sc_runtime::GasCosts;
-use massa_serialization::{
-    DeserializeError, Deserializer, OptionDeserializer, OptionSerializer, Serializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
-};
+use massa_serialization::Serializer;
 use rand::Rng;
 use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, WriteBatch, DB};
-use std::ops::Bound::Included;
 use std::path::PathBuf;
 
 const MODULE_CF: &str = "module";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
-const MOD_SER_ERR: &str = "module serialization error";
-const KEY_NOT_FOUND: &str = "Key not found";
+
+const MODULE_IDENT: u8 = 0u8;
+const DATA_IDENT: u8 = 1u8;
+
+/// Module key formatting macro
+#[macro_export]
+macro_rules! module_key {
+    ($bc_hash:expr) => {
+        [&$bc_hash.to_bytes()[..], &[MODULE_IDENT]].concat()
+    };
+}
+
+/// Delta key formatting macro
+#[macro_export]
+macro_rules! data_key {
+    ($bc_hash:expr) => {
+        [&$bc_hash.to_bytes()[..], &[DATA_IDENT]].concat()
+    };
+}
 
 pub(crate) struct HDCache {
     db: DB,
-    // How many entries are in the db. Count is initialized at creation time by iterating
-    // over all the entries in the db then it is maintained in memory
+    /// How many entries are in the db. Count is initialized at creation time by iterating
+    /// over all the entries in the db then it is maintained in memory
     entry_count: usize,
-    // Maximum number of entries we want to keep in the db.
-    // When this maximum is reached `amount_to_snip` entries are removed
+    /// Maximum number of entries we want to keep in the db.
+    /// When this maximum is reached `amount_to_snip` entries are removed
     max_entry_count: usize,
-    // How many entries are removed when `entry_count` reaches `max_entry_count`
+    /// How many entries are removed when `entry_count` reaches `max_entry_count`
     amount_to_snip: usize,
-    // Module info serializer
-    module_info_ser: ModuleInfoSerializer,
+    /// Module metadata serializer
+    meta_ser: ModuleMetadataSerializer,
+    /// Module metadata deserializer
+    meta_deser: ModuleMetadataDeserializer,
 }
 
 impl HDCache {
@@ -63,25 +80,47 @@ impl HDCache {
             entry_count,
             max_entry_count,
             amount_to_snip: amount_to_remove,
-            module_info_ser: ModuleInfoSerializer::new(),
+            meta_ser: ModuleMetadataSerializer::new(),
+            meta_deser: ModuleMetadataDeserializer::new(),
         }
     }
 
     /// Insert a new module in the cache
     pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
-        let mut module = vec![];
-        self.module_info_ser
-            .serialize(&module_info, &mut module)
-            .map_err(|_| ExecutionError::RuntimeError(MOD_SER_ERR.into()))?;
-
-        // if db is full do some cleaning
+        // TODO: batch it
+        // TODO: fix error handling
         if self.entry_count >= self.max_entry_count {
             self.snip()?;
         }
 
+        let mut ser_metadata = Vec::new();
+        let ser_module = match module_info {
+            ModuleInfo::Invalid => {
+                self.meta_ser
+                    .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
+                    .unwrap();
+                Vec::new()
+            }
+            ModuleInfo::Module(module) => {
+                self.meta_ser
+                    .serialize(&ModuleMetadata::Absent, &mut ser_metadata)
+                    .unwrap();
+                module.serialize().unwrap()
+            }
+            ModuleInfo::ModuleAndDelta((module, delta)) => {
+                self.meta_ser
+                    .serialize(&ModuleMetadata::Present(delta), &mut ser_metadata)
+                    .unwrap();
+                module.serialize().unwrap()
+            }
+        };
+
         self.db
-            .put_cf(self.module_cf(), hash.to_bytes(), module)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+            .put_cf(self.module_cf(), module_key!(hash), ser_module)
+            .unwrap();
+        self.db
+            .put_cf(self.module_cf(), data_key!(hash), ser_metadata)
+            .unwrap();
 
         self.entry_count += 1;
 
@@ -96,24 +135,14 @@ impl HDCache {
     ///   been removed
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
-        let cf_handle = self.db.cf_handle(MODULE_CF).expect(CF_ERROR);
-        // TODO: use keys format to store module state
+        // TODO: implement this with new keys format
         Ok(())
     }
 
     /// Retrieve a module
     pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
-        let Some(module) = self
-            .db
-            .get_cf(self.module_cf(), hash.to_bytes())
-            .ok()
-            .flatten() else{return None;};
-        let module_deserializer: ModuleInfoDeserializer =
-            ModuleInfoDeserializer::new(limit, gas_costs);
-        let (part, module) = module_deserializer
-            .deserialize::<DeserializeError>(&module)
-            .ok()?;
-        Some(module)
+        // TODO: implement this with new keys format
+        None
     }
 
     /// Try to remove as much as self.amount_to_snip entries from the db.

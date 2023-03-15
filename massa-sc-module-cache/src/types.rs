@@ -1,16 +1,15 @@
-use massa_sc_runtime::{GasCosts, RuntimeModule};
+use massa_sc_runtime::RuntimeModule;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
-    sequence::tuple,
     IResult, Parser,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
-/// NOTE: this will replace ModuleInfo
+/// Main type
 #[derive(Clone)]
 pub enum ModuleInfo {
     Invalid,
@@ -18,20 +17,28 @@ pub enum ModuleInfo {
     ModuleAndDelta((RuntimeModule, u64)),
 }
 
-#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
-#[repr(u64)]
-enum ModuleInfoId {
-    Invalid = 0u64,
-    Module = 1u64,
-    ModuleAndDelta = 2u64,
+/// Metadata type
+pub enum ModuleMetadata {
+    Absent,
+    Invalid,
+    Present(u64),
 }
 
-/// Serializer
-pub struct ModuleInfoSerializer {
+/// Metadata ID type
+#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u64)]
+enum ModuleMetadataId {
+    Absent = 0u64,
+    Invalid = 1u64,
+    Present = 2u64,
+}
+
+/// Metadata serializer
+pub struct ModuleMetadataSerializer {
     u64_ser: U64VarIntSerializer,
 }
 
-impl ModuleInfoSerializer {
+impl ModuleMetadataSerializer {
     pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
@@ -39,103 +46,67 @@ impl ModuleInfoSerializer {
     }
 }
 
-impl Serializer<ModuleInfo> for ModuleInfoSerializer {
-    fn serialize(&self, value: &ModuleInfo, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+impl Serializer<ModuleMetadata> for ModuleMetadataSerializer {
+    fn serialize(
+        &self,
+        value: &ModuleMetadata,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         match value {
-            ModuleInfo::Invalid => self
+            ModuleMetadata::Absent => self
                 .u64_ser
-                .serialize(&u64::from(ModuleInfoId::Invalid), buffer)?,
-            ModuleInfo::Module(rt_module) => {
+                .serialize(&u64::from(ModuleMetadataId::Absent), buffer)?,
+            ModuleMetadata::Invalid => self
+                .u64_ser
+                .serialize(&u64::from(ModuleMetadataId::Invalid), buffer)?,
+            ModuleMetadata::Present(delta) => {
                 self.u64_ser
-                    .serialize(&u64::from(ModuleInfoId::Module), buffer)?;
-                let mut ser_module = rt_module
-                    .serialize()
-                    .map_err(|e| SerializeError::GeneralError(e.to_string()))?;
-                buffer.append(&mut ser_module);
-            }
-            ModuleInfo::ModuleAndDelta((rt_module, delta)) => {
-                self.u64_ser
-                    .serialize(&u64::from(ModuleInfoId::ModuleAndDelta), buffer)?;
+                    .serialize(&u64::from(ModuleMetadataId::Present), buffer)?;
                 self.u64_ser.serialize(delta, buffer)?;
-                let mut ser_module = rt_module
-                    .serialize()
-                    .map_err(|e| SerializeError::GeneralError(e.to_string()))?;
-                buffer.append(&mut ser_module);
             }
         }
         Ok(())
     }
 }
 
-/// Deserializer
-pub struct ModuleInfoDeserializer {
-    u64_deser: U64VarIntDeserializer,
-    module_deser: RuntimeModuleDeserializer,
+/// Metadata deserializer
+pub struct ModuleMetadataDeserializer {
+    id_deser: U64VarIntDeserializer,
+    delta_deser: U64VarIntDeserializer,
 }
 
-impl ModuleInfoDeserializer {
-    pub fn new(limit: u64, gas_costs: GasCosts) -> Self {
+impl ModuleMetadataDeserializer {
+    pub fn new() -> Self {
         Self {
-            u64_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            module_deser: RuntimeModuleDeserializer::new(limit, gas_costs),
+            id_deser: U64VarIntDeserializer::new(
+                Included(u64::from(ModuleMetadataId::Absent)),
+                Included(u64::from(ModuleMetadataId::Present)),
+            ),
+            delta_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
     }
 }
 
-impl Deserializer<ModuleInfo> for ModuleInfoDeserializer {
+impl Deserializer<ModuleMetadata> for ModuleMetadataDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], ModuleInfo, E> {
-        context("ModuleInfo", |buffer| {
-            let (input, id) = context("ModuleInfoId", |input| self.u64_deser.deserialize(input))
-                .map(|id| ModuleInfoId::try_from(id).unwrap())
+    ) -> IResult<&'a [u8], ModuleMetadata, E> {
+        context("ModuleMetadata", |buffer| {
+            // can unwrap here because the range is defined in the serializer setup
+            let (input, id) = context("ModuleMetadataId", |input| self.id_deser.deserialize(input))
+                .map(|id| ModuleMetadataId::try_from(id).unwrap())
                 .parse(buffer)?;
             match id {
-                ModuleInfoId::Invalid => Ok((input, ModuleInfo::Invalid)),
-                ModuleInfoId::Module => context("RuntimeModule", |input| {
-                    self.module_deser.deserialize(input)
-                })
-                .map(|module| ModuleInfo::Module(module))
-                .parse(input),
-                ModuleInfoId::ModuleAndDelta => tuple((
-                    context("Delta", |input| self.u64_deser.deserialize(input)),
-                    context("RuntimeModule", |input| {
-                        self.module_deser.deserialize(input)
-                    }),
-                ))
-                .map(|(delta, module)| ModuleInfo::ModuleAndDelta((module, delta)))
-                .parse(input),
+                ModuleMetadataId::Absent => Ok((input, ModuleMetadata::Absent)),
+                ModuleMetadataId::Invalid => Ok((input, ModuleMetadata::Invalid)),
+                ModuleMetadataId::Present => {
+                    context("Delta", |input| self.delta_deser.deserialize(input))
+                        .map(|delta| ModuleMetadata::Present(delta))
+                        .parse(input)
+                }
             }
         })
         .parse(buffer)
-    }
-}
-
-/// Sub Deserializer
-pub struct RuntimeModuleDeserializer {
-    limit: u64,
-    gas_costs: GasCosts,
-}
-
-impl RuntimeModuleDeserializer {
-    pub fn new(limit: u64, gas_costs: GasCosts) -> Self {
-        Self { limit, gas_costs }
-    }
-}
-
-impl Deserializer<RuntimeModule> for RuntimeModuleDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], RuntimeModule, E> {
-        RuntimeModule::deserialize(buffer, self.limit, self.gas_costs.clone())
-            .map(|module| (buffer, module))
-            .map_err(|_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    buffer,
-                    nom::error::ErrorKind::Eof,
-                ))
-            })
     }
 }
