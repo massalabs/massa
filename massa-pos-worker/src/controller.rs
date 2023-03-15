@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
