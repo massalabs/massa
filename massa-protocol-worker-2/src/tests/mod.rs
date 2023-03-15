@@ -41,7 +41,6 @@ fn basic() {
     let (sender_manager2, _manager2) =
         start_connectivity_thread(config2).expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(1));
     std::thread::sleep(Duration::from_secs(10));
     // Stop the protocols
     sender_manager1

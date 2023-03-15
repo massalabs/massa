@@ -7,13 +7,13 @@ use crossbeam::{
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use peernet::{
     config::PeerNetConfiguration,
-    handlers::MessageHandlers,
+    handlers::{MessageHandlers, MessageHandler},
     network_manager::PeerNetManager,
     peer_id::PeerId,
     transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
 };
 
-use crate::handlers::peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler};
+use crate::handlers::{peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler}, operation_handler::OperationHandler};
 
 pub enum ConnectivityCommand {
     Stop,
@@ -27,7 +27,9 @@ pub fn start_connectivity_thread(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
     let handle = std::thread::spawn(move || {
-        let (mut peer_manager, peer_manager_sender) = PeerManagementHandler::new(initial_peers);
+        let (mut peer_manager_handler, peer_manager_handler_sender) = PeerManagementHandler::new(initial_peers);
+        //TODO: Bound the channel
+        let (sender_operations, receiver_operations) = unbounded();
 
         let mut peernet_config = PeerNetConfiguration::default(MassaHandshake {});
         peernet_config.self_keypair = config.keypair;
@@ -37,10 +39,14 @@ pub fn start_connectivity_thread(
         peernet_config.max_out_connections = config.max_out_connections;
 
         let mut message_handlers: MessageHandlers = Default::default();
-        message_handlers.add_handler(0, peer_manager_sender);
+        message_handlers.add_handler(0, peer_manager_handler_sender);
+        message_handlers.add_handler(1, MessageHandler::new(sender_operations));
         peernet_config.message_handlers = message_handlers;
 
         let mut manager = PeerNetManager::new(peernet_config);
+
+        let mut operation_handler = OperationHandler::new(manager.active_connections.clone(), receiver_operations);
+
         for (addr, transport) in config.listeners {
             manager.start_listener(transport, addr).expect(&format!(
                 "Failed to start listener {:?} of transport {:?} in protocol",
@@ -52,9 +58,10 @@ pub fn start_connectivity_thread(
             select! {
                 recv(receiver) -> msg => {
                     if let Ok(ConnectivityCommand::Stop) = msg {
-                        if let Some(handle) = peer_manager.thread_join.take() {
+                        if let Some(handle) = peer_manager_handler.thread_join.take() {
                             handle.join().expect("Failed to join peer manager thread");
                         }
+                        operation_handler.stop();
                         break;
                     }
                 }
@@ -70,7 +77,7 @@ pub fn start_connectivity_thread(
                     };
                     // Get the best peers
                     {
-                        let peer_db_read = peer_manager.peer_db.read();
+                        let peer_db_read = peer_manager_handler.peer_db.read();
                         let best_peers = peer_db_read.index_by_newest.iter().take(nb_connection_to_try as usize);
                         for (_timestamp, peer_id) in best_peers {
                             let peer_info = peer_db_read.peers.get(peer_id).unwrap();
