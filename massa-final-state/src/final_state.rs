@@ -200,7 +200,6 @@ impl FinalState {
         let latest_consistent_cycle_info = pos_state
             .cycle_history
             .back()
-            .clone()
             .expect("Cycle history should not be empty in snapshot!");
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
