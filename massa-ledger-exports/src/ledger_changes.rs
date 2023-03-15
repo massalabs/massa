@@ -526,6 +526,23 @@ impl LedgerChanges {
         self.0.get(addr)
     }
 
+    /// Retrieves all the bytcode updates contained in the current changes
+    pub fn get_byetcode_updates(&self) -> Vec<Bytecode> {
+        let mut v = Vec::new();
+        for (_addr, change) in self.0.iter() {
+            match change {
+                SetUpdateOrDelete::Set(entry) => v.push(entry.bytecode.clone()),
+                SetUpdateOrDelete::Update(entry_update) => {
+                    if let SetOrKeep::Set(bytecode) = entry_update.bytecode.clone() {
+                        v.push(bytecode);
+                    }
+                }
+                SetUpdateOrDelete::Delete => (),
+            }
+        }
+        v
+    }
+
     /// Create a new, empty address.
     /// Overwrites the address if it is already there.
     pub fn create_address(&mut self, address: &Address) {

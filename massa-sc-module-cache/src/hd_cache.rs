@@ -14,7 +14,6 @@ use std::path::PathBuf;
 const MODULE_CF: &str = "module";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
-const INIT_COSTS_SER_ERR: &str = "init cost serialization error";
 const MOD_SER_ERR: &str = "module serialization error";
 const KEY_NOT_FOUND: &str = "Key not found";
 
@@ -98,20 +97,7 @@ impl HDCache {
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
         let cf_handle = self.db.cf_handle(MODULE_CF).expect(CF_ERROR);
-        // check that hash exists in the db
-        if let Some(ser_module_info) = self
-            .db
-            .get_cf(cf_handle, hash.to_bytes())
-            .map_err(|_| ExecutionError::RuntimeError(KEY_NOT_FOUND.to_string()))?
-        {
-
-        }
-
-        // update db
-        self.db
-            .put_cf(self.module_cf(), hash.to_bytes(), &cost)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
-
+        // TODO: use keys format to store module state
         Ok(())
     }
 

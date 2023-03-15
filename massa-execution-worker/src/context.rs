@@ -771,13 +771,24 @@ impl ExecutionContext {
         // execute the deferred credits coming from roll sells
         self.execute_deferred_credits(&slot);
 
-        // settle emitted async messages and reimburse the senders of deleted messages
+        // take the ledger changes first as they are needed for async messages and cache
         let ledger_changes = self.speculative_ledger.take();
+
+        // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
             .speculative_async_pool
             .settle_slot(&slot, &ledger_changes);
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
+        }
+
+        // update module cache
+        let bc_updates = ledger_changes.get_byetcode_updates();
+        {
+            let cache_write_lock = self.module_cache.write();
+            for bytecode in bc_updates {
+                cache_write_lock.save_module(&bytecode.0, limit);
+            }
         }
 
         // if the current slot is last in cycle check the production stats and act accordingly

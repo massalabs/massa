@@ -89,16 +89,9 @@ impl Deserializer<ModuleInfo> for ModuleInfoDeserializer {
     ) -> IResult<&'a [u8], ModuleInfo, E> {
         context("ModuleInfo", |buffer| {
             let (input, id) = context("ModuleInfoId", |input| self.u64_deser.deserialize(input))
-                .map(|id| {
-                    ModuleInfoId::try_from(id).map_err(|_| {
-                        nom::Err::Error(ParseError::from_error_kind(
-                            buffer,
-                            nom::error::ErrorKind::Eof,
-                        ))
-                    })
-                })
+                .map(|id| ModuleInfoId::try_from(id).unwrap())
                 .parse(buffer)?;
-            match id? {
+            match id {
                 ModuleInfoId::Invalid => Ok((input, ModuleInfo::Invalid)),
                 ModuleInfoId::Module => context("RuntimeModule", |input| {
                     self.module_deser.deserialize(input)
