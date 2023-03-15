@@ -19,18 +19,18 @@ pub enum ModuleInfo {
 
 /// Metadata type
 pub enum ModuleMetadata {
-    Absent,
     Invalid,
-    Present(u64),
+    NotExecuted,
+    Delta(u64),
 }
 
 /// Metadata ID type
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 enum ModuleMetadataId {
-    Absent = 0u64,
-    Invalid = 1u64,
-    Present = 2u64,
+    Invalid = 0u64,
+    NotExecuted = 1u64,
+    Delta = 2u64,
 }
 
 /// Metadata serializer
@@ -53,15 +53,15 @@ impl Serializer<ModuleMetadata> for ModuleMetadataSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         match value {
-            ModuleMetadata::Absent => self
+            ModuleMetadata::NotExecuted => self
                 .u64_ser
-                .serialize(&u64::from(ModuleMetadataId::Absent), buffer)?,
+                .serialize(&u64::from(ModuleMetadataId::NotExecuted), buffer)?,
             ModuleMetadata::Invalid => self
                 .u64_ser
                 .serialize(&u64::from(ModuleMetadataId::Invalid), buffer)?,
-            ModuleMetadata::Present(delta) => {
+            ModuleMetadata::Delta(delta) => {
                 self.u64_ser
-                    .serialize(&u64::from(ModuleMetadataId::Present), buffer)?;
+                    .serialize(&u64::from(ModuleMetadataId::Delta), buffer)?;
                 self.u64_ser.serialize(delta, buffer)?;
             }
         }
@@ -79,8 +79,8 @@ impl ModuleMetadataDeserializer {
     pub fn new() -> Self {
         Self {
             id_deser: U64VarIntDeserializer::new(
-                Included(u64::from(ModuleMetadataId::Absent)),
-                Included(u64::from(ModuleMetadataId::Present)),
+                Included(u64::from(ModuleMetadataId::NotExecuted)),
+                Included(u64::from(ModuleMetadataId::Delta)),
             ),
             delta_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
@@ -98,11 +98,11 @@ impl Deserializer<ModuleMetadata> for ModuleMetadataDeserializer {
                 .map(|id| ModuleMetadataId::try_from(id).unwrap())
                 .parse(buffer)?;
             match id {
-                ModuleMetadataId::Absent => Ok((input, ModuleMetadata::Absent)),
+                ModuleMetadataId::NotExecuted => Ok((input, ModuleMetadata::NotExecuted)),
                 ModuleMetadataId::Invalid => Ok((input, ModuleMetadata::Invalid)),
-                ModuleMetadataId::Present => {
+                ModuleMetadataId::Delta => {
                     context("Delta", |input| self.delta_deser.deserialize(input))
-                        .map(|delta| ModuleMetadata::Present(delta))
+                        .map(|delta| ModuleMetadata::Delta(delta))
                         .parse(input)
                 }
             }

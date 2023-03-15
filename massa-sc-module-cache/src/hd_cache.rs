@@ -103,13 +103,13 @@ impl HDCache {
             }
             ModuleInfo::Module(module) => {
                 self.meta_ser
-                    .serialize(&ModuleMetadata::Absent, &mut ser_metadata)
+                    .serialize(&ModuleMetadata::NotExecuted, &mut ser_metadata)
                     .unwrap();
                 module.serialize().unwrap()
             }
             ModuleInfo::ModuleAndDelta((module, delta)) => {
                 self.meta_ser
-                    .serialize(&ModuleMetadata::Present(delta), &mut ser_metadata)
+                    .serialize(&ModuleMetadata::Delta(delta), &mut ser_metadata)
                     .unwrap();
                 module.serialize().unwrap()
             }
