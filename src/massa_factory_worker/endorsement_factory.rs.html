@@ -222,11 +222,14 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
 <span class="kw">use </span>massa_models::{
     block_id::BlockId,
+    config::LAST_START_PERIOD,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     secure_share::SecureShareContent,
     slot::Slot,
@@ -313,8 +316,9 @@
         }
 
         <span class="comment">// prevent triggering on period-zero slots
-        </span><span class="kw">if </span>next_slot.period == <span class="number">0 </span>{
-            next_slot = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
+        </span><span class="attr">#[allow(clippy::absurd_extreme_comparisons)]
+        </span><span class="kw">if </span>next_slot.period &lt;= <span class="kw-2">*</span>LAST_START_PERIOD {
+            next_slot = Slot::new(<span class="kw-2">*</span>LAST_START_PERIOD + <span class="number">1</span>, <span class="number">0</span>);
         }
 
         <span class="comment">// get the timestamp of the target slot

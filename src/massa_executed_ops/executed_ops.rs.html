@@ -360,6 +360,29 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -413,6 +436,29 @@
             sorted_ops: BTreeMap::new(),
             ops: PreHashSet::default(),
             hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
+            op_exec_status: HashMap::new(),
+        }
+    }
+
+    <span class="doccomment">/// Creates a new `ExecutedOps` and computes the hash
+    </span><span class="kw">pub fn </span>new_with_hash(
+        config: ExecutedOpsConfig,
+        sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
+        <span class="kw">let </span><span class="kw-2">mut </span>ops = PreHashSet::default();
+        <span class="kw">for </span>(<span class="kw">_</span>, op_ids) <span class="kw">in </span>sorted_ops.clone() {
+            <span class="kw">for </span>op_id <span class="kw">in </span>op_ids {
+                <span class="kw">if </span>ops.insert(op_id) {
+                    hash ^= <span class="kw-2">*</span>op_id.get_hash();
+                }
+            }
+        }
+        <span class="self">Self </span>{
+            config,
+            sorted_ops,
+            ops,
+            hash,
             op_exec_status: HashMap::new(),
         }
     }
