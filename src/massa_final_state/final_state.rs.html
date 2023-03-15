@@ -784,6 +784,38 @@
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -795,7 +827,7 @@
 <span class="kw">use </span>massa_async_pool::{
     AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer, AsyncPoolSerializer, Change,
 };
-<span class="kw">use </span>massa_executed_ops::ExecutedOps;
+<span class="kw">use </span>massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
 <span class="kw">use </span>massa_hash::{Hash, <span class="comment">/*HashDeserializer, HashSerializer,*/ </span>HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{
@@ -981,10 +1013,10 @@
         .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;PoS final state init error: {}&quot;</span>, err)))<span class="question-mark">?</span>;
 
         <span class="comment">// attach at the output of the latest initial final slot, that is the last genesis slot
-        </span><span class="kw">let </span>latest_consistant_slot_path = config.final_state_path.join(<span class="string">&quot;latest_consistant_slot&quot;</span>);
-        <span class="kw">let </span>latest_consistant_slot_file = fs::read(latest_consistant_slot_path).map_err(|<span class="kw">_</span>| {
+        </span><span class="kw">let </span>latest_consistent_slot_path = config.final_state_path.join(<span class="string">&quot;latest_consistent_slot&quot;</span>);
+        <span class="kw">let </span>latest_consistent_slot_file = fs::read(latest_consistent_slot_path).map_err(|<span class="kw">_</span>| {
             FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Could not read latest_consistant_slot file from snapshot&quot;</span>,
+                <span class="string">&quot;Could not read latest_consistent_slot file from snapshot&quot;</span>,
             ))
         })<span class="question-mark">?</span>;
 
@@ -993,22 +1025,46 @@
             (Included(<span class="number">0</span>), Excluded(config.thread_count)),
         );
 
-        <span class="kw">let </span>(<span class="kw">_</span>, latest_consistant_slot) = slot_deser
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>latest_consistant_slot_file)
+        <span class="kw">let </span>(<span class="kw">_</span>, latest_consistent_slot) = slot_deser
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>latest_consistent_slot_file)
             .map_err(|<span class="kw">_</span>| {
                 FinalStateError::SnapshotError(String::from(
-                    <span class="string">&quot;Could not deserialize latest_consistant_slot file from snapshot&quot;</span>,
+                    <span class="string">&quot;Could not deserialize latest_consistent_slot file from snapshot&quot;</span>,
                 ))
             })<span class="question-mark">?</span>;
 
-        <span class="macro">debug!</span>(<span class="string">&quot;Latest consistant slot found: {}&quot;</span>, latest_consistant_slot);
+        <span class="macro">debug!</span>(<span class="string">&quot;Latest consistent slot found: {}&quot;</span>, latest_consistent_slot);
 
-        <span class="comment">// create a default executed ops
-        </span><span class="kw">let </span>executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
+        <span class="kw">let </span>executed_ops_path = config.final_state_path.join(<span class="string">&quot;executed_ops&quot;</span>);
+        <span class="kw">let </span>executed_ops_file = fs::read(executed_ops_path).map_err(|<span class="kw">_</span>| {
+            FinalStateError::SnapshotError(String::from(
+                <span class="string">&quot;Could not read executed_ops file from snapshot&quot;</span>,
+            ))
+        })<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>max_executed_ops_length = massa_models::config::constants::MAX_EXECUTED_OPS_LENGTH;
+        <span class="kw">let </span>max_operations_per_block = massa_models::config::constants::MAX_OPERATIONS_PER_BLOCK;
+
+        <span class="kw">let </span>executed_ops_deser = ExecutedOpsDeserializer::new(
+            config.thread_count,
+            max_executed_ops_length,
+            max_operations_per_block <span class="kw">as </span>u64,
+        );
+
+        <span class="kw">let </span>(<span class="kw">_</span>, sorted_ops) = executed_ops_deser
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>executed_ops_file)
+            .map_err(|<span class="kw">_</span>| {
+                FinalStateError::SnapshotError(String::from(
+                    <span class="string">&quot;Could not deserialize executed_ops file from snapshot&quot;</span>,
+                ))
+            })<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>executed_ops =
+            ExecutedOps::new_with_hash(config.executed_ops_config.clone(), sorted_ops);
 
         <span class="comment">// create the final state
         </span><span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState {
-            slot: latest_consistant_slot,
+            slot: latest_consistent_slot,
             ledger,
             async_pool,
             pos_state,
@@ -1018,7 +1074,7 @@
             </span>final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
         };
 
-        final_state.compute_state_hash_at_slot(latest_consistant_slot);
+        final_state.compute_state_hash_at_slot(latest_consistent_slot);
 
         <span class="comment">// Check the hash
         </span><span class="kw">let </span>final_hash_bytes_path = config.final_state_path.join(<span class="string">&quot;final_hash_bytes&quot;</span>);
@@ -1035,41 +1091,20 @@
 
         <span class="kw">match </span>final_state.final_state_hash == final_state_hash_from_file {
             <span class="bool-val">true </span>=&gt; {
-                <span class="comment">/*let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
-                debug!(
-                    &quot;Setting the current final_state slot at {} for network restart&quot;,
-                    end_slot
-                );
+                <span class="kw">let </span>end_slot = Slot::new(<span class="kw-2">*</span>LAST_START_PERIOD, config.thread_count.saturating_sub(<span class="number">1</span>));
 
-                let mut cur_slot = latest_consistant_slot;
-
-                if cur_slot &gt; end_slot {
-                    return Err(FinalStateError::SnapshotError(String::from(
-                        &quot;Cannot restart network from a slot that is before the last_consistant_slot&quot;,
-                    )));
-                }
-
-                while cur_slot &lt; end_slot {
-                    cur_slot = cur_slot
-                        .get_next_slot(config.thread_count)
-                        .expect(&quot;overflow in execution state slot&quot;);
-                    let changes = StateChanges::default();
-                    final_state.finalize(cur_slot, changes);
-                }*/
-                </span><span class="kw">let </span>end_slot = Slot::new(<span class="kw-2">*</span>LAST_START_PERIOD, config.thread_count.saturating_sub(<span class="number">1</span>));
-
-                <span class="kw">let </span>latest_consistant_cycle =
-                    latest_consistant_slot.get_cycle(config.periods_per_cycle);
+                <span class="kw">let </span>latest_consistent_cycle =
+                    latest_consistent_slot.get_cycle(config.periods_per_cycle);
                 <span class="kw">let </span>end_slot_cycle = end_slot.get_cycle(config.periods_per_cycle);
 
-                <span class="kw">if </span>latest_consistant_cycle == end_slot_cycle {
+                <span class="kw">if </span>latest_consistent_cycle == end_slot_cycle {
                     <span class="comment">// In that case, we just complete the gap
 
                     </span><span class="kw">let </span>latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
                         FinalStateError::SnapshotError(String::from(<span class="string">&quot;Invalid cycle_history&quot;</span>)),
                     )<span class="question-mark">?</span>;
 
-                    <span class="kw">for _ in </span>latest_consistant_slot.period..end_slot.period {
+                    <span class="kw">for _ in </span>latest_consistent_slot.period..end_slot.period {
                         latest_cycle_info.rng_seed.push(<span class="bool-val">false</span>);
                     }
                 } <span class="kw">else </span>{
@@ -1080,13 +1115,13 @@
                         FinalStateError::SnapshotError(String::from(<span class="string">&quot;Invalid cycle_history&quot;</span>)),
                     )<span class="question-mark">?</span>;
 
-                    <span class="kw">for _ in </span>latest_consistant_slot.period..config.periods_per_cycle {
+                    <span class="kw">for _ in </span>latest_consistent_slot.period..config.periods_per_cycle {
                         latest_cycle_info.rng_seed.push(<span class="bool-val">false</span>);
                     }
                     latest_cycle_info.complete = <span class="bool-val">true</span>;
 
                     <span class="comment">// Then, build all the already completed cycles
-                    </span><span class="kw">for </span>cycle <span class="kw">in </span>latest_consistant_cycle + <span class="number">1</span>..end_slot_cycle {
+                    </span><span class="kw">for </span>cycle <span class="kw">in </span>latest_consistent_cycle + <span class="number">1</span>..end_slot_cycle {
                         final_state.pos_state.create_new_empty_cycle(cycle);
 
                         <span class="kw">let </span>latest_cycle_info =
@@ -1260,6 +1295,7 @@
         <span class="kw">let </span>async_pool_serializer = AsyncPoolSerializer::new();
         <span class="kw">let </span>cycle_history_serializer = CycleHistorySerializer::new();
         <span class="kw">let </span>deferred_credits_serializer = DeferredCreditsSerializer::new();
+        <span class="kw">let </span>executed_ops_serializer = ExecutedOpsSerializer::new();
 
         <span class="comment">// Serialize Async Pool
         </span><span class="kw">let </span><span class="kw-2">mut </span>async_pool_buffer = Vec::new();
@@ -1303,6 +1339,22 @@
             ))
         })<span class="question-mark">?</span>;
 
+        <span class="comment">// Serialize Executed Ops
+        </span><span class="kw">let </span><span class="kw-2">mut </span>executed_ops_buffer = Vec::new();
+        executed_ops_serializer
+            .serialize(<span class="kw-2">&amp;</span><span class="self">self</span>.executed_ops.sorted_ops, <span class="kw-2">&amp;mut </span>executed_ops_buffer)
+            .map_err(|err| {
+                FinalStateError::SnapshotError(<span class="macro">format!</span>(<span class="string">&quot;Could not serialize executed_ops: {}&quot;</span>, err))
+            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>executed_ops_path = <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;temp_executed_ops&quot;</span>);
+
+        fs::write(executed_ops_path, executed_ops_buffer).map_err(|err| {
+            FinalStateError::SnapshotError(<span class="macro">format!</span>(
+                <span class="string">&quot;Could not write to the temp executed_ops file: {}&quot;</span>,
+                err
+            ))
+        })<span class="question-mark">?</span>;
+
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1318,6 +1370,7 @@
                 err
             ))
         })<span class="question-mark">?</span>;
+
         fs::rename(
             <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;temp_pos_state&quot;</span>),
             <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;pos_state&quot;</span>),
@@ -1325,6 +1378,17 @@
         .map_err(|err| {
             FinalStateError::SnapshotError(<span class="macro">format!</span>(
                 <span class="string">&quot;Could not rename the temp pos_state file: {}&quot;</span>,
+                err
+            ))
+        })<span class="question-mark">?</span>;
+
+        fs::rename(
+            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;temp_executed_ops&quot;</span>),
+            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;executed_ops&quot;</span>),
+        )
+        .map_err(|err| {
+            FinalStateError::SnapshotError(<span class="macro">format!</span>(
+                <span class="string">&quot;Could not rename the temp executed_ops file: {}&quot;</span>,
                 err
             ))
         })<span class="question-mark">?</span>;
@@ -1349,12 +1413,12 @@
             })<span class="question-mark">?</span>;
 
         fs::write(
-            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;latest_consistant_slot&quot;</span>),
+            <span class="self">self</span>.config.final_state_path.join(<span class="string">&quot;latest_consistent_slot&quot;</span>),
             slot_buffer,
         )
         .map_err(|err| {
             FinalStateError::SnapshotError(<span class="macro">format!</span>(
-                <span class="string">&quot;Could not write to latest_consistant_slot file: {}&quot;</span>,
+                <span class="string">&quot;Could not write to latest_consistent_slot file: {}&quot;</span>,
                 err
             ))
         })<span class="question-mark">?</span>;
