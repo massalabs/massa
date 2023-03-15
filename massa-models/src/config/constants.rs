@@ -77,13 +77,7 @@ lazy_static::lazy_static! {
     };
 
     /// Last period we restarted the network. Set to 0 for a brand new network.
-    pub static ref LAST_START_PERIOD: u64 = 80;
-    //pub const LAST_START_PERIOD: u64 = 3;
-
-// If we are before GENESIS_TIMESTAMP + T0*LAST_START_PERIOD, create new GENESIS_BLOCKS.
-
-
-
+    pub static ref LAST_START_PERIOD: u64 = 0;
 
 }
 
