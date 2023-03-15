@@ -5,10 +5,11 @@ use massa_models::address::Address;
 use massa_models::slot::Slot;
 use massa_models::timeslots;
 use massa_proto::massa::api::v1::{
-    self as grpc, BestParentTuple, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
+    self as grpc, BestParentTuple, Block, GetBlocksBySlotRequest, GetBlocksBySlotResponse,
+    GetDatastoreEntriesResponse, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
     GetSelectorDrawsResponse, GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
+    GetVersionResponse,
 };
-use massa_proto::massa::api::v1::{GetDatastoreEntriesResponse, GetVersionResponse};
 use std::str::FromStr;
 use tonic::Request;
 
@@ -163,5 +164,102 @@ pub(crate) fn get_transactions_throughput(
     Ok(GetTransactionsThroughputResponse {
         id: request.into_inner().id,
         tx_s,
+    })
+}
+
+/// get blocks by slots
+pub(crate) fn get_blocks_by_slots(
+    gprc: &MassaGrpcService,
+    request: Request<GetBlocksBySlotRequest>,
+) -> Result<GetBlocksBySlotResponse, GrpcError> {
+    let inner_req = request.into_inner();
+    let consensus_controller = gprc.consensus_controller.clone();
+    let storage = gprc.storage.clone_without_refs();
+
+    let mut blocks = vec![];
+
+    for slot in inner_req.slots.into_iter() {
+        let block_id_option = consensus_controller.get_blockclique_block_at_slot(Slot {
+            period: slot.period,
+            thread: slot.thread as u8,
+        });
+
+        let block_id = match block_id_option {
+            Some(id) => id,
+            None => continue,
+        };
+        let res = storage.read_blocks().get(&block_id).map(|b| {
+            // todo rework ?
+            let header = b.clone().content.header;
+            // transform to grpc struct
+
+            let parents = header
+                .content
+                .parents
+                .into_iter()
+                .map(|p| p.to_string())
+                .collect();
+
+            let endorsements = header
+                .content
+                .endorsements
+                .into_iter()
+                .map(|endorsement| grpc::SecureShareEndorsement {
+                    content: Some(grpc::Endorsement {
+                        slot: Some(grpc::Slot {
+                            period: endorsement.content.slot.period,
+                            thread: endorsement.content.slot.thread as u32,
+                        }),
+                        index: endorsement.content.index,
+                        endorsed_block: endorsement.content.endorsed_block.to_string(),
+                    }),
+                    signature: endorsement.signature.to_string(),
+                    content_creator_pub_key: endorsement.content_creator_pub_key.to_string(),
+                    content_creator_address: endorsement.content_creator_address.to_string(),
+                    id: endorsement.id.to_string(),
+                })
+                .collect();
+
+            let block_header = grpc::BlockHeader {
+                slot: Some(grpc::Slot {
+                    period: header.content.slot.period,
+                    thread: header.content.slot.thread as u32,
+                }),
+                parents,
+                operation_merkle_root: header.content.operation_merkle_root.to_string(),
+                endorsements,
+            };
+
+            let operations: Vec<String> = b
+                .content
+                .operations
+                .clone()
+                .into_iter()
+                .map(|ope| ope.to_string())
+                .collect();
+
+            (
+                grpc::SecureShareBlockHeader {
+                    content: Some(block_header),
+                    signature: header.signature.to_string(),
+                    content_creator_pub_key: header.content_creator_pub_key.to_string(),
+                    content_creator_address: header.content_creator_address.to_string(),
+                    id: header.id.to_string(),
+                },
+                operations,
+            )
+        });
+
+        if let Some(block) = res {
+            blocks.push(Block {
+                header: Some(block.0),
+                operations: block.1,
+            });
+        }
+    }
+
+    Ok(GetBlocksBySlotResponse {
+        id: inner_req.id,
+        blocks,
     })
 }

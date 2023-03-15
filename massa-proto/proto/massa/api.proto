@@ -7,6 +7,7 @@ import "slot.proto";
 
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
+import "block.proto";
 
 option cc_enable_arenas = true;
 option csharp_namespace = "Massa.Api.V1";
@@ -49,6 +50,11 @@ service Grpc {
         option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
     }
 
+    rpc GetBlocksBySlot (GetBlocksBySlotRequest) returns (GetBlocksBySlotResponse) {
+        option (google.api.http) = {get: "/v1/get_blocks_by_slots"};
+    }
+
+
 
     // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
     // ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗████╗ ████║
@@ -67,6 +73,22 @@ service Grpc {
 
     // Subscribe GetTransactionsThroughput
     rpc SubscribeTransactionsThroughput (stream GetTransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
+}
+
+message GetBlocksBySlotRequest {
+    // id
+    string id = 1;
+
+    // slots
+    repeated Slot slots = 2;
+}
+
+message GetBlocksBySlotResponse {
+    // request id
+    string id = 1;
+
+    // blocks
+    repeated Block blocks = 2;
 }
 
 message GetTransactionsThroughputRequest {
