@@ -519,6 +519,7 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -905,7 +906,8 @@
     <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).map_err(|e| Box::new(e.into()))<span class="question-mark">?</span>;
     socket.set_nonblocking(<span class="bool-val">true</span>).unwrap();
     <span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
-        Duplex::from_std(socket).unwrap(),
+        <span class="comment">// this from_std will panic if this method doesn&#39;t exist within an async runtime...
+        </span>Duplex::from_std(socket).unwrap(),
         <span class="kw-2">*</span>pub_key,
         bootstrap_config.into(),
     ))
