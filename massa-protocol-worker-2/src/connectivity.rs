@@ -71,16 +71,23 @@ pub fn start_connectivity_thread(
                     // Get the best peers
                     {
                         let peer_db_read = peer_manager.peer_db.read();
-                        peer_db_read.index_by_newest.iter().take(nb_connection_to_try as usize).for_each(|(_timestamp, peer_id)| {
+                        let best_peers = peer_db_read.index_by_newest.iter().take(nb_connection_to_try as usize);
+                        for (_timestamp, peer_id) in best_peers {
                             let peer_info = peer_db_read.peers.get(peer_id).unwrap();
                             if peer_info.last_announce.listeners.is_empty() {
-                                return;
+                                continue;
+                            }
+                            {
+                                let active_connections = manager.active_connections.read();
+                                if active_connections.connections.contains_key(peer_id) {
+                                    continue;
+                                }
                             }
                             // We only manage TCP for now
                             let (addr, _transport) = peer_info.last_announce.listeners.iter().next().unwrap();
                             manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(TcpOutConnectionConfig {})).unwrap();
-                        });
-                    }
+                        };
+                    };
                 }
             }
             // TODO: add a way to stop the thread
