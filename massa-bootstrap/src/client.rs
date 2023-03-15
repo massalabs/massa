@@ -384,6 +384,7 @@ fn connect_to_server(
     let socket = connector.connect(*addr).map_err(|e| Box::new(e.into()))?;
     socket.set_nonblocking(true).unwrap();
     Ok(BootstrapClientBinder::new(
+        // this from_std will panic if this method doesn't exist within an async runtime...
         Duplex::from_std(socket).unwrap(),
         *pub_key,
         bootstrap_config.into(),

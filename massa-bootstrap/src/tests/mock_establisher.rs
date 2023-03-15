@@ -68,7 +68,6 @@ impl BSListener for MockListener {
 #[derive(Debug)]
 pub struct MockConnector {
     connection_connector_tx: Sender<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
-    timeout_duration: MassaTime,
 }
 
 impl BSConnector for MockConnector {
@@ -128,12 +127,11 @@ impl BSEstablisher for MockEstablisher {
         })
     }
 
-    fn get_connector(&mut self, timeout_duration: MassaTime) -> std::io::Result<MockConnector> {
+    fn get_connector(&mut self, _timeout_duration: MassaTime) -> std::io::Result<MockConnector> {
         // create connector stream
 
         Ok(MockConnector {
             connection_connector_tx: self.connection_connector_tx.clone(),
-            timeout_duration,
         })
     }
 }
