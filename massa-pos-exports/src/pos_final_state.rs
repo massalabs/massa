@@ -30,6 +30,8 @@ pub struct PoSFinalState {
     pub initial_seeds: Vec<Hash>,
     /// initial state hash
     pub initial_ledger_hash: Hash,
+    /// initial cycle
+    pub initial_cycle: u64,
 }
 
 impl PoSFinalState {
@@ -61,9 +63,11 @@ impl PoSFinalState {
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
+            initial_cycle: 0,
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// create a `PoSFinalState` from an existing snapshot
     pub fn from_snapshot(
         config: PoSConfig,
@@ -73,6 +77,7 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
         initial_ledger_hash: Hash,
+        initial_cycle: u64,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -94,6 +99,7 @@ impl PoSFinalState {
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
+            initial_cycle,
         })
     }
 
@@ -131,14 +137,29 @@ impl PoSFinalState {
 
     /// Create a new empty cycle based off the initial rolls.
     ///
-    pub fn create_new_empty_cycle(&mut self, cycle: u64) {
-        let rng_seed = BitVec::with_capacity(
+    pub fn create_new_cycle_for_snapshot(&mut self, end_slot: Slot) {
+        let mut rng_seed = BitVec::with_capacity(
             self.config
                 .periods_per_cycle
                 .saturating_mul(self.config.thread_count as u64)
                 .try_into()
                 .unwrap(),
         );
+        let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
+
+        let num_slots = end_slot
+            .slots_since(
+                &Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
+                    .expect("Cannot create first slot for cycle"),
+                self.config.thread_count,
+            )
+            .expect("Error in slot ordering")
+            .saturating_add(1);
+
+        for _ in 0..num_slots {
+            rng_seed.push(false);
+        }
+
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             false,
@@ -155,14 +176,14 @@ impl PoSFinalState {
         let history_starts_late = self
             .cycle_history
             .front()
-            .map(|c_info| c_info.cycle > 0)
+            .map(|c_info| c_info.cycle > self.initial_cycle)
             .unwrap_or(false);
 
         let mut max_cycle = None;
 
         // feed cycles 0, 1 to selector if necessary
         if !history_starts_late {
-            for draw_cycle in 0u64..=1 {
+            for draw_cycle in self.initial_cycle..=self.initial_cycle + 1 {
                 self.feed_selector(draw_cycle)?;
                 max_cycle = Some(draw_cycle);
             }
@@ -301,7 +322,7 @@ impl PoSFinalState {
         // get roll lookback
         let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
-            Some(c) => {
+            Some(c) if c.checked_sub(self.initial_cycle).is_some() => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -318,13 +339,13 @@ impl PoSFinalState {
                 (cycle_info.roll_counts.clone(), state_hash)
             }
             // looking back to negative cycles
-            None => (self.initial_rolls.clone(), self.initial_ledger_hash),
+            _ => (self.initial_rolls.clone(), self.initial_ledger_hash),
         };
 
         // get seed lookback
         let lookback_seed = match draw_cycle.checked_sub(2) {
             // looking back in history
-            Some(c) => {
+            Some(c) if c.checked_sub(self.initial_cycle).is_some() => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -340,7 +361,11 @@ impl PoSFinalState {
                 Hash::compute_from(&seed)
             }
             // looking back to negative cycles
-            None => self.initial_seeds[draw_cycle as usize],
+            _ => {
+                self.initial_seeds[draw_cycle
+                    .checked_sub(self.initial_cycle)
+                    .unwrap_or_default() as usize]
+            }
         };
 
         // feed selector

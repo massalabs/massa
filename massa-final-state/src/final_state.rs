@@ -109,6 +109,8 @@ impl FinalState {
     ) -> Result<Self, FinalStateError> {
         debug!("Restarting from snapshot");
 
+        let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+
         // Deserialize Async Pool
         let async_pool_path = config.final_state_path.join("async_pool");
         let async_pool_file = fs::read(async_pool_path).map_err(|_| {
@@ -191,6 +193,7 @@ impl FinalState {
             &config.initial_rolls_path,
             selector,
             ledger.get_ledger_hash(),
+            end_slot.get_cycle(config.periods_per_cycle),
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
@@ -273,66 +276,12 @@ impl FinalState {
 
         match final_state.final_state_hash == final_state_hash_from_file {
             true => {
-                let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+                final_state.pos_state.cycle_history = Vec::new().into();
+                final_state
+                    .pos_state
+                    .create_new_cycle_for_snapshot(end_slot);
 
-                let latest_consistent_cycle =
-                    latest_consistent_slot.get_cycle(config.periods_per_cycle);
-                let end_slot_cycle = end_slot.get_cycle(config.periods_per_cycle);
-
-                if latest_consistent_cycle == end_slot_cycle {
-                    // In that case, we just complete the gap
-
-                    let latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
-                        FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
-                    )?;
-
-                    for _ in latest_consistent_slot.period..end_slot.period {
-                        latest_cycle_info.rng_seed.push(false);
-                    }
-                } else {
-                    // Here, we we complete the cycle_infos in between also
-
-                    // Firstly, complete the first cycle
-                    let latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
-                        FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
-                    )?;
-
-                    for _ in latest_consistent_slot.period..config.periods_per_cycle {
-                        latest_cycle_info.rng_seed.push(false);
-                    }
-                    latest_cycle_info.complete = true;
-
-                    // Then, build all the already completed cycles
-                    for cycle in latest_consistent_cycle + 1..end_slot_cycle {
-                        final_state.pos_state.create_new_empty_cycle(cycle);
-
-                        let latest_cycle_info =
-                            final_state.pos_state.cycle_history.back_mut().ok_or(
-                                FinalStateError::SnapshotError(String::from(
-                                    "Invalid cycle_history",
-                                )),
-                            )?;
-
-                        for _ in 0..config.periods_per_cycle {
-                            latest_cycle_info.rng_seed.push(false);
-                        }
-                        latest_cycle_info.complete = true;
-                    }
-
-                    // Then, build the last cycle
-                    final_state.pos_state.create_new_empty_cycle(end_slot_cycle);
-
-                    let latest_cycle_info = final_state.pos_state.cycle_history.back_mut().ok_or(
-                        FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
-                    )?;
-
-                    for _ in 0..end_slot.period {
-                        latest_cycle_info.rng_seed.push(false);
-                    }
-                }
-
-                final_state.slot =
-                    Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+                final_state.slot = end_slot;
                 Ok(final_state)
             }
             false => Err(FinalStateError::SnapshotError(String::from(
