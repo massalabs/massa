@@ -88,6 +88,13 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::{
@@ -161,16 +168,23 @@
                     <span class="comment">// Get the best peers
                     </span>{
                         <span class="kw">let </span>peer_db_read = peer_manager.peer_db.read();
-                        peer_db_read.index_by_newest.iter().take(nb_connection_to_try <span class="kw">as </span>usize).for_each(|(_timestamp, peer_id)| {
+                        <span class="kw">let </span>best_peers = peer_db_read.index_by_newest.iter().take(nb_connection_to_try <span class="kw">as </span>usize);
+                        <span class="kw">for </span>(_timestamp, peer_id) <span class="kw">in </span>best_peers {
                             <span class="kw">let </span>peer_info = peer_db_read.peers.get(peer_id).unwrap();
                             <span class="kw">if </span>peer_info.last_announce.listeners.is_empty() {
-                                <span class="kw">return</span>;
+                                <span class="kw">continue</span>;
+                            }
+                            {
+                                <span class="kw">let </span>active_connections = manager.active_connections.read();
+                                <span class="kw">if </span>active_connections.connections.contains_key(peer_id) {
+                                    <span class="kw">continue</span>;
+                                }
                             }
                             <span class="comment">// We only manage TCP for now
                             </span><span class="kw">let </span>(addr, _transport) = peer_info.last_announce.listeners.iter().next().unwrap();
                             manager.try_connect(<span class="kw-2">*</span>addr, Duration::from_millis(<span class="number">200</span>), <span class="kw-2">&amp;</span>OutConnectionConfig::Tcp(TcpOutConnectionConfig {})).unwrap();
-                        });
-                    }
+                        };
+                    };
                 }
             }
             <span class="comment">// TODO: add a way to stop the thread
