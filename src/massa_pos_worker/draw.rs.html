@@ -101,9 +101,11 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::CycleDraws;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::{address::Address, config::LAST_START_PERIOD, slot::Slot};
+<span class="kw">use </span>massa_models::{address::Address, slot::Slot};
 <span class="kw">use </span>massa_pos_exports::{PosError, PosResult, Selection, SelectorConfig};
 <span class="kw">use </span>rand::{distributions::Distribution, SeedableRng};
 <span class="kw">use </span>rand_distr::WeightedAliasIndex;
@@ -112,8 +114,10 @@
 <span class="kw">use </span>tracing::debug;
 
 <span class="doccomment">/// Draws block and creators for a given cycle.
-///
 /// Then prune the `cache` pointer if max cache is exceeded.
+/// It uses BTreeMap to store the address &lt;-&gt;rolls mapping.
+/// Although not efficient as a hashmap, it still
+/// is the best choice since the order has to be maintained.
 ///
 /// # Parameters
 /// * `cycle`: Cycle to draw
@@ -164,7 +168,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
     <span class="kw">loop </span>{
         <span class="comment">// draw block creator
-        </span><span class="kw">let </span>producer = <span class="kw">if </span>cur_slot.period &gt; <span class="kw-2">*</span>LAST_START_PERIOD {
+        </span><span class="kw">let </span>producer = <span class="kw">if </span>cur_slot.period &gt; <span class="number">0 </span>{
             addresses[dist.sample(<span class="kw-2">&amp;mut </span>rng)]
         } <span class="kw">else </span>{
             <span class="comment">// force draws for genesis blocks

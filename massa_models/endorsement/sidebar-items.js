@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["ENDORSEMENT_ID_SIZE_BYTES"],"struct":["Endorsement","EndorsementDenunciationData","EndorsementDeserializer","EndorsementDeserializerLW","EndorsementId","EndorsementSerializer","EndorsementSerializerLW"],"type":["SecureShareEndorsement"]};
+window.SIDEBAR_ITEMS = {"constant":["ENDORSEMENT_ID_SIZE_BYTES"],"struct":["Endorsement","EndorsementDeserializer","EndorsementDeserializerLW","EndorsementId","EndorsementSerializer","EndorsementSerializerLW"],"type":["SecureShareEndorsement"]};
