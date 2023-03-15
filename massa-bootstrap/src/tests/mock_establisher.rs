@@ -1,5 +1,4 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use async_trait::async_trait;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_models::config::CHANNEL_SIZE;
 use massa_time::MassaTime;
@@ -8,9 +7,8 @@ use std::io;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::time::timeout;
 
-use crate::establisher::{BSConnector, BSEstablisher, BSListener, Duplex};
+use crate::establisher::{BSConnector, BSEstablisher, BSListener};
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
@@ -79,10 +77,6 @@ impl BSConnector for MockConnector {
         let duplex_mock = TcpListener::bind(addr).unwrap();
         let duplex_controller = TcpStream::connect(addr).unwrap();
         let duplex_mock = duplex_mock.accept().unwrap();
-
-        // Requirement of tokio from_std things
-        duplex_controller.set_nonblocking(true).unwrap();
-        duplex_mock.0.set_nonblocking(true).unwrap();
 
         // Used to see if the connection is accepted
         let waker = Arc::new(AtomicBool::from(false));

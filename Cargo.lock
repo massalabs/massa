@@ -2431,7 +2431,6 @@ name = "massa_bootstrap"
 version = "0.1.0"
 dependencies = [
  "async-speed-limit",
- "async-trait",
  "bitvec",
  "crossbeam",
  "displaydoc",

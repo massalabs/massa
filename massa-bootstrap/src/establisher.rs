@@ -1,5 +1,4 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use async_trait::async_trait;
 use massa_time::MassaTime;
 use std::{
     io,
@@ -8,9 +7,6 @@ use std::{
 
 /// duplex connection
 pub type Duplex = tokio::net::TcpStream;
-
-/// Listener used to establish a Duplex
-pub type DuplexListener = tokio::net::TcpListener;
 
 /// Specifies a common interface that can be used by standard, or mockers
 pub trait BSListener {
