@@ -29,18 +29,23 @@ impl HandshakeHandler for TesterHandshake {
         let data = endpoint.receive()?;
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
         let announcement = Announcement::from_bytes(&data[32..], &peer_id)?;
-        self.peer_db
-            .write()
-            .peers
-            .entry(peer_id.clone())
-            .and_modify(|info| {
-                if info.last_announce.timestamp < announcement.timestamp {
-                    info.last_announce = announcement.clone();
-                }
-            })
-            .or_insert(PeerInfo {
-                last_announce: announcement,
-            });
+        {
+            let mut peer_db_write = self.peer_db.write();
+            peer_db_write
+                .index_by_newest
+                .insert(announcement.timestamp, peer_id.clone());
+            peer_db_write
+                .peers
+                .entry(peer_id.clone())
+                .and_modify(|info| {
+                    if info.last_announce.timestamp < announcement.timestamp {
+                        info.last_announce = announcement.clone();
+                    }
+                })
+                .or_insert(PeerInfo {
+                    last_announce: announcement,
+                });
+        }
         Ok(peer_id)
     }
 }

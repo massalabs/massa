@@ -6,8 +6,11 @@ use crossbeam::{
 };
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 use peernet::{
-    config::PeerNetConfiguration, handlers::MessageHandlers, network_manager::PeerNetManager,
-    peer_id::PeerId, transports::TransportType,
+    config::PeerNetConfiguration,
+    handlers::MessageHandlers,
+    network_manager::PeerNetManager,
+    peer_id::PeerId,
+    transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
 };
 
 use crate::handlers::peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler};
@@ -35,6 +38,7 @@ pub fn start_connectivity_thread(
 
         let mut message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(0, peer_manager_sender);
+        peernet_config.message_handlers = message_handlers;
 
         let mut manager = PeerNetManager::new(peernet_config);
         for (addr, transport) in config.listeners {
@@ -54,8 +58,29 @@ pub fn start_connectivity_thread(
                         break;
                     }
                 }
-                default(Duration::from_millis(100)) => {
+                default(Duration::from_millis(2000)) => {
                     // Check if we need to connect to peers
+                    let nb_connection_to_try = {
+                        let active_connections = manager.active_connections.read();
+                        let connection_to_try = active_connections.max_out_connections - active_connections.nb_out_connections;
+                        if connection_to_try <= 0 {
+                            continue;
+                        }
+                       connection_to_try
+                    };
+                    // Get the best peers
+                    {
+                        let peer_db_read = peer_manager.peer_db.read();
+                        peer_db_read.index_by_newest.iter().take(nb_connection_to_try as usize).for_each(|(_timestamp, peer_id)| {
+                            let peer_info = peer_db_read.peers.get(peer_id).unwrap();
+                            if peer_info.last_announce.listeners.is_empty() {
+                                return;
+                            }
+                            // We only manage TCP for now
+                            let (addr, _transport) = peer_info.last_announce.listeners.iter().next().unwrap();
+                            manager.try_connect(*addr, Duration::from_millis(200), &OutConnectionConfig::Tcp(TcpOutConnectionConfig {})).unwrap();
+                        });
+                    }
                 }
             }
             // TODO: add a way to stop the thread

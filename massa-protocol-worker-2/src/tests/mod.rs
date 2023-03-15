@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use massa_protocol_exports_2::ProtocolConfig;
 use peernet::{peer_id::PeerId, transports::TransportType};
 use tempfile::NamedTempFile;
@@ -34,11 +36,13 @@ fn basic() {
     config2.initial_peers = initial_peers_file.path().to_path_buf();
 
     // Setup the protocols
-    let (sender_manager1, manager1) =
+    let (sender_manager1, _manager1) =
         start_connectivity_thread(config1).expect("Failed to start protocol 1");
-    let (sender_manager2, manager2) =
+    let (sender_manager2, _manager2) =
         start_connectivity_thread(config2).expect("Failed to start protocol 2");
 
+    std::thread::sleep(Duration::from_secs(1));
+    std::thread::sleep(Duration::from_secs(10));
     // Stop the protocols
     sender_manager1
         .send(ConnectivityCommand::Stop)
