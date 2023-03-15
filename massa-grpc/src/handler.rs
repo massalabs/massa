@@ -7,13 +7,14 @@ use massa_execution_exports::ExecutionController;
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_proto::massa::api::v1::{
-    self as grpc, grpc_server::GrpcServer, GetNextBlockBestParentsRequest,
-    GetNextBlockBestParentsResponse, GetTransactionsThroughputRequest,
-    GetTransactionsThroughputResponse, GetTransactionsThroughputStreamRequest, FILE_DESCRIPTOR_SET,
+    self as grpc, grpc_server::GrpcServer, GetBlocksBySlotRequest, GetBlocksBySlotResponse,
+    GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
+    GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
+    GetTransactionsThroughputStreamRequest, FILE_DESCRIPTOR_SET,
 };
 
 use crate::api::{
-    get_datastore_entries, get_next_block_best_parents, get_selector_draws,
+    get_blocks_by_slots, get_datastore_entries, get_next_block_best_parents, get_selector_draws,
     get_transactions_throughput, get_version,
 };
 use crate::stream::subscribe_tx_throughput::{
@@ -194,6 +195,16 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         request: Request<GetTransactionsThroughputRequest>,
     ) -> Result<Response<GetTransactionsThroughputResponse>, Status> {
         match get_transactions_throughput(self, request) {
+            Ok(response) => Ok(Response::new(response)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    async fn get_blocks_by_slot(
+        &self,
+        request: Request<GetBlocksBySlotRequest>,
+    ) -> Result<Response<GetBlocksBySlotResponse>, Status> {
+        match get_blocks_by_slots(self, request) {
             Ok(response) => Ok(Response::new(response)),
             Err(e) => Err(e.into()),
         }
