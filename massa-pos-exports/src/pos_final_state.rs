@@ -138,7 +138,11 @@ impl PoSFinalState {
 
     /// Create a new empty cycle based off the initial rolls.
     ///
-    pub fn create_new_cycle_for_snapshot(&mut self, latest_consistent_cycle_info: &CycleInfo , end_slot: Slot) {
+    pub fn create_new_cycle_for_snapshot(
+        &mut self,
+        latest_consistent_cycle_info: &CycleInfo,
+        end_slot: Slot,
+    ) {
         let mut rng_seed = BitVec::with_capacity(
             self.config
                 .periods_per_cycle

@@ -197,7 +197,11 @@ impl FinalState {
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
-        let latest_consistent_cycle_info = pos_state.cycle_history.back().clone().expect("Cycle history should not be empty in snapshot!");
+        let latest_consistent_cycle_info = pos_state
+            .cycle_history
+            .back()
+            .clone()
+            .expect("Cycle history should not be empty in snapshot!");
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let latest_consistent_slot_path = config.final_state_path.join("latest_consistent_slot");
