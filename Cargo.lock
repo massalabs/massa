@@ -2927,14 +2927,13 @@ name = "massa_protocol_exports_2"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "massa_hash 0.1.0",
  "massa_models",
- "massa_signature 0.1.0",
  "massa_storage",
  "massa_time",
  "peernet",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
 ]
 
@@ -2978,6 +2977,7 @@ dependencies = [
  "peernet",
  "rand 0.8.5",
  "serde_json",
+ "tempfile",
  "tracing",
 ]
 
@@ -3525,7 +3525,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet#eb0db095783611217538c55366b8ac9c11ea58bb"
+source = "git+https://github.com/massalabs/PeerNet#c970fd5937e29de81166f7cb7dabe873c74f9585"
 dependencies = [
  "crossbeam",
  "enum_delegate",
@@ -4922,9 +4922,9 @@ checksum = "3ab8ed2edee10b50132aed5f331333428b011c99402b5a534154ed15746f9622"
 
 [[package]]
 name = "toml_edit"
-version = "0.19.6"
+version = "0.19.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08de71aa0d6e348f070457f85af8bd566e2bc452156a423ddf22861b3a953fae"
+checksum = "dc18466501acd8ac6a3f615dd29a3438f8ca6bb3b19537138b3106e575621274"
 dependencies = [
  "indexmap",
  "toml_datetime",
@@ -5673,9 +5673,9 @@ checksum = "9aec5da331524158c6d1a4ac0ab1541149c0b9505fde06423b02f5ef0106b9f0"
 
 [[package]]
 name = "winnow"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee7b2c67f962bf5042bfd8b6a916178df33a26eec343ae064cb8e069f638fa6f"
+checksum = "23d020b441f92996c80d94ae9166e8501e59c7bb56121189dc9eab3bd8216966"
 dependencies = [
  "memchr",
 ]

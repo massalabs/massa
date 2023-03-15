@@ -30,6 +30,8 @@ pub fn start_connectivity_thread(
         peernet_config.self_keypair = config.keypair;
         peernet_config.fallback_function = Some(&fallback_function);
         //TODO: Add the rest of the config
+        peernet_config.max_in_connections = config.max_in_connections;
+        peernet_config.max_out_connections = config.max_out_connections;
 
         let mut message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(0, peer_manager_sender);
