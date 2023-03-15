@@ -4,17 +4,19 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use massa_hash::Hash;
-use massa_signature::{KeyPair, Signature, SIGNATURE_SIZE_BYTES};
-
-use crate::{error::PeerNetError, peer_id::PeerId, transports::TransportType};
+use peernet::{
+    error::PeerNetError,
+    peer_id::PeerId,
+    transports::TransportType,
+    types::{Hash, KeyPair, Signature},
+};
 
 #[derive(Clone, Debug)]
 pub struct Announcement {
     /// Listeners
     pub listeners: HashMap<SocketAddr, TransportType>,
     /// Timestamp
-    timestamp: u128,
+    pub timestamp: u128,
     /// serialized version
     serialized: Vec<u8>,
     /// Signature

@@ -1,27 +1,24 @@
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
-use crossbeam::channel::Sender;
-use massa_signature::KeyPair;
-
-use crate::{
+use peernet::{
     config::PeerNetConfiguration,
     error::PeerNetError,
-    handlers::{MessageHandler, MessageHandlers},
-    internal_handlers::peer_management::{announcement::Announcement, PeerInfo},
+    handlers::MessageHandlers,
     network_manager::PeerNetManager,
     peer::HandshakeHandler,
     peer_id::PeerId,
     transports::{endpoint::Endpoint, OutConnectionConfig, TcpOutConnectionConfig, TransportType},
+    types::KeyPair,
 };
 
-use super::{PeerDB, SharedPeerDB};
+use super::{announcement::Announcement, PeerInfo, SharedPeerDB};
 
 #[derive(Clone)]
-pub struct EmptyHandshake {
+pub struct TesterHandshake {
     peer_db: SharedPeerDB,
 }
 
-impl HandshakeHandler for EmptyHandshake {
+impl HandshakeHandler for TesterHandshake {
     fn perform_handshake(
         &mut self,
         _: &KeyPair,
@@ -32,24 +29,30 @@ impl HandshakeHandler for EmptyHandshake {
         let data = endpoint.receive()?;
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
         let announcement = Announcement::from_bytes(&data[32..], &peer_id)?;
-        self.peer_db.write().peers.insert(
-            peer_id.clone(),
-            PeerInfo {
+        self.peer_db
+            .write()
+            .peers
+            .entry(peer_id.clone())
+            .and_modify(|info| {
+                if info.last_announce.timestamp < announcement.timestamp {
+                    info.last_announce = announcement.clone();
+                }
+            })
+            .or_insert(PeerInfo {
                 last_announce: announcement,
-            },
-        );
+            });
         Ok(peer_id)
     }
 }
 
 pub struct Tester {
-    handler: Option<JoinHandle<()>>,
+    pub handler: Option<JoinHandle<()>>,
 }
 
 impl Tester {
     pub fn new(peer_db: SharedPeerDB, listener: (SocketAddr, TransportType)) -> Self {
         let handle = std::thread::spawn(move || {
-            let mut config = PeerNetConfiguration::default(EmptyHandshake { peer_db });
+            let mut config = PeerNetConfiguration::default(TesterHandshake { peer_db });
             config.fallback_function = Some(&empty_fallback);
             config.max_out_connections = 1;
             let mut network_manager = PeerNetManager::new(config);

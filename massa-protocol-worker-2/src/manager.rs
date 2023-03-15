@@ -24,7 +24,8 @@ impl ProtocolManager for ProtocolManagerImpl {
     fn stop(&mut self) {
         info!("stopping protocol module...");
         if let Some((tx, join_handle)) = self.connectivity_thread.take() {
-            tx.send(ConnectivityCommand::Stop).expect("Failed to send stop command of protocol");
+            tx.send(ConnectivityCommand::Stop)
+                .expect("Failed to send stop command of protocol");
             drop(tx);
             join_handle
                 .join()

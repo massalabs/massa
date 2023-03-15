@@ -6,20 +6,20 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::channel::Receiver;
-use massa_hash::Hash;
-use massa_signature::{KeyPair, PublicKey, Signature};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
-use crate::{
+use peernet::{
     error::PeerNetError,
     handlers::{MessageHandler, MessageHandlers},
-    internal_handlers::peer_management::tester::Tester,
-    network_manager::{ActiveConnections, PeerNetManager},
+    peer::HandshakeHandler,
     peer_id::PeerId,
     transports::{endpoint::Endpoint, TransportType},
+    types::Hash,
+    types::{KeyPair, Signature},
 };
+
+use crate::handlers::peer_handler::tester::Tester;
 
 use self::announcement::Announcement;
 
@@ -40,15 +40,15 @@ pub struct PeerDB {
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
 
 pub struct PeerManagementHandler {
-    thread_join: Option<JoinHandle<()>>,
+    pub thread_join: Option<JoinHandle<()>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum PeerManagementMessage {
     // Receive the ip addresses sent by a peer when connecting.
-    NEW_PEER_CONNECTED((PeerId, HashMap<SocketAddr, TransportType>)),
+    NewPeerConnected((PeerId, HashMap<SocketAddr, TransportType>)),
     // Receive the ip addresses sent by a peer that is already connected.
-    LIST_PEERS(Vec<(PeerId, HashMap<SocketAddr, TransportType>)>),
+    ListPeers(Vec<(PeerId, HashMap<SocketAddr, TransportType>)>),
 }
 
 //TODO: Use a proper serialization system like we have in massa.
@@ -86,7 +86,7 @@ impl PeerManagementMessage {
                     offset += 1;
                     listeners.insert(SocketAddr::new(ip, port), transport_type);
                 }
-                Ok(PeerManagementMessage::NEW_PEER_CONNECTED((
+                Ok(PeerManagementMessage::NewPeerConnected((
                     peer_id, listeners,
                 )))
             }
@@ -129,8 +129,9 @@ impl PeerManagementMessage {
                         offset += 1;
                         listeners.insert(SocketAddr::new(ip, port), transport_type);
                     }
+                    peers.push((peer_id, listeners));
                 }
-                Ok(PeerManagementMessage::LIST_PEERS(peers))
+                Ok(PeerManagementMessage::ListPeers(peers))
             }
             _ => Err(PeerNetError::InvalidMessage),
         }
@@ -138,7 +139,7 @@ impl PeerManagementMessage {
 
     fn to_bytes(&self) -> Vec<u8> {
         match self {
-            PeerManagementMessage::NEW_PEER_CONNECTED((peer_id, listeners)) => {
+            PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                 let mut bytes = vec![0];
                 bytes.extend_from_slice(&peer_id.to_bytes());
                 bytes.extend((listeners.len() as u64).to_be_bytes());
@@ -160,7 +161,7 @@ impl PeerManagementMessage {
                 }
                 bytes
             }
-            PeerManagementMessage::LIST_PEERS(peers) => {
+            PeerManagementMessage::ListPeers(peers) => {
                 let mut bytes = vec![1];
                 let nb_peers = peers.len() as u64;
                 bytes.extend_from_slice(&nb_peers.to_le_bytes());
@@ -202,7 +203,7 @@ impl PeerManagementHandler {
             sender
                 .send((
                     peer_id.clone(),
-                    PeerManagementMessage::NEW_PEER_CONNECTED((peer_id.clone(), listeners.clone()))
+                    PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone()))
                         .to_bytes(),
                 ))
                 .unwrap();
@@ -218,12 +219,12 @@ impl PeerManagementHandler {
                 // TODO: Bufferize launch of test thread
                 // TODO: Add wait group or something like that to wait for all threads to finish when stop
                 match message {
-                    PeerManagementMessage::NEW_PEER_CONNECTED((_peer_id, listeners)) => {
+                    PeerManagementMessage::NewPeerConnected((_peer_id, listeners)) => {
                         for listener in listeners.into_iter() {
                             let _tester = Tester::new(peer_db.clone(), listener.clone());
                         }
                     }
-                    PeerManagementMessage::LIST_PEERS(peers) => {
+                    PeerManagementMessage::ListPeers(peers) => {
                         for (_peer_id, listeners) in peers.into_iter() {
                             for listener in listeners.into_iter() {
                                 let _tester = Tester::new(peer_db.clone(), listener.clone());
@@ -242,82 +243,88 @@ impl PeerManagementHandler {
     }
 }
 
-pub fn handshake(
-    keypair: &KeyPair,
-    endpoint: &mut Endpoint,
-    listeners: &HashMap<SocketAddr, TransportType>,
-    message_handlers: &MessageHandlers,
-) -> Result<PeerId, PeerNetError> {
-    let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
-    //TODO: Add version in announce
-    let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
-    bytes.extend_from_slice(&listeners_announcement.to_bytes());
-    endpoint.send(&bytes)?;
+#[derive(Clone)]
+pub struct MassaHandshake {}
 
-    let received = endpoint.receive()?;
-    if received.is_empty() {
-        return Err(PeerNetError::InvalidMessage);
-    }
-    let mut offset = 0;
-    //TODO: We use this to verify the signature before sending it to the handler.
-    //This will be done also in the handler but as we are in the handshake we want to do it to invalid the handshake in case it fails.
-    let peer_id = PeerId::from_bytes(&received[offset..offset + 32].try_into().unwrap())?;
-    offset += 32;
-    let announcement = Announcement::from_bytes(&received[offset..], &peer_id)?;
-    //TODO: Verify that the handler is defined
-    message_handlers
-        .get_handler(0)
-        .unwrap()
-        .send_message((
-            peer_id.clone(),
-            PeerManagementMessage::NEW_PEER_CONNECTED((
+impl HandshakeHandler for MassaHandshake {
+    fn perform_handshake(
+        &mut self,
+        keypair: &KeyPair,
+        endpoint: &mut Endpoint,
+        listeners: &HashMap<SocketAddr, TransportType>,
+        message_handlers: &MessageHandlers,
+    ) -> Result<PeerId, PeerNetError> {
+        let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
+        //TODO: Add version in announce
+        let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
+        bytes.extend_from_slice(&listeners_announcement.to_bytes());
+        endpoint.send(&bytes)?;
+
+        let received = endpoint.receive()?;
+        if received.is_empty() {
+            return Err(PeerNetError::InvalidMessage);
+        }
+        let mut offset = 0;
+        //TODO: We use this to verify the signature before sending it to the handler.
+        //This will be done also in the handler but as we are in the handshake we want to do it to invalid the handshake in case it fails.
+        let peer_id = PeerId::from_bytes(&received[offset..offset + 32].try_into().unwrap())?;
+        offset += 32;
+        let announcement = Announcement::from_bytes(&received[offset..], &peer_id)?;
+        //TODO: Verify that the handler is defined
+        message_handlers
+            .get_handler(0)
+            .unwrap()
+            .send_message((
                 peer_id.clone(),
-                announcement.listeners.clone(),
+                PeerManagementMessage::NewPeerConnected((
+                    peer_id.clone(),
+                    announcement.listeners.clone(),
+                ))
+                .to_bytes(),
             ))
-            .to_bytes(),
-        ))
-        .unwrap();
+            .unwrap();
 
-    let mut self_random_bytes = [0u8; 32];
-    StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
-    let self_random_hash = Hash::compute_from(&self_random_bytes);
-    let mut bytes = [0u8; 32];
-    bytes[..32].copy_from_slice(&self_random_bytes);
+        let mut self_random_bytes = [0u8; 32];
+        StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
+        let self_random_hash = Hash::compute_from(&self_random_bytes);
+        let mut bytes = [0u8; 32];
+        bytes[..32].copy_from_slice(&self_random_bytes);
 
-    endpoint.send(&bytes)?;
-    let received = endpoint.receive()?;
-    let other_random_bytes: &[u8; 32] = received.as_slice()[..32].try_into().unwrap();
+        endpoint.send(&bytes)?;
+        let received = endpoint.receive()?;
+        let other_random_bytes: &[u8; 32] = received.as_slice()[..32].try_into().unwrap();
 
-    // sign their random bytes
-    let other_random_hash = Hash::compute_from(other_random_bytes);
-    let self_signature = keypair.sign(&other_random_hash).unwrap();
+        // sign their random bytes
+        let other_random_hash = Hash::compute_from(other_random_bytes);
+        let self_signature = keypair.sign(&other_random_hash).unwrap();
 
-    let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(&self_signature.to_bytes());
+        let mut bytes = [0u8; 64];
+        bytes.copy_from_slice(&self_signature.to_bytes());
 
-    endpoint.send(&bytes)?;
-    let received = endpoint.receive()?;
+        endpoint.send(&bytes)?;
+        let received = endpoint.receive()?;
 
-    let other_signature = Signature::from_bytes(received.as_slice().try_into().unwrap()).unwrap();
+        let other_signature =
+            Signature::from_bytes(received.as_slice().try_into().unwrap()).unwrap();
 
-    // check their signature
-    peer_id.verify_signature(&self_random_hash, &other_signature)?;
+        // check their signature
+        peer_id.verify_signature(&self_random_hash, &other_signature)?;
 
-    println!("Handshake finished");
-    Ok(peer_id)
+        println!("Handshake finished");
+        Ok(peer_id)
+    }
 }
 
 pub fn fallback_function(
     keypair: &KeyPair,
     endpoint: &mut Endpoint,
     listeners: &HashMap<SocketAddr, TransportType>,
-    message_handlers: &MessageHandlers,
+    _message_handlers: &MessageHandlers,
 ) -> Result<(), PeerNetError> {
     //TODO: Fix this clone
     let keypair = keypair.clone();
     let mut endpoint = endpoint.clone();
     let listeners = listeners.clone();
-    let message_handlers = message_handlers.clone();
     std::thread::spawn(move || {
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce

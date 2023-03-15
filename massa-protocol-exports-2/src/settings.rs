@@ -1,10 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 
 use massa_time::MassaTime;
-use massa_signature::KeyPair;
 use peernet::transports::TransportType;
+use peernet::types::KeyPair;
 use serde::Deserialize;
 
 /// Dynamic protocol configuration mix in static settings and constants configurations.
@@ -14,6 +14,8 @@ pub struct ProtocolConfig {
     pub keypair: KeyPair,
     /// listeners from where we can receive messages
     pub listeners: HashMap<SocketAddr, TransportType>,
+    /// initial peers path
+    pub initial_peers: PathBuf,
     /// running threads count
     pub thread_count: u8,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node

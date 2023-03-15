@@ -1,6 +1,7 @@
+mod connectivity;
 mod controller;
+mod handlers;
 mod manager;
 mod worker;
-mod connectivity;
 
 pub use worker::start_protocol_controller;

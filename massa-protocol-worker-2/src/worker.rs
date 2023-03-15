@@ -6,7 +6,10 @@ use massa_protocol_exports_2::{
 use massa_storage::Storage;
 use tracing::debug;
 
-use crate::{controller::ProtocolControllerImpl, manager::ProtocolManagerImpl, connectivity::start_connectivity_thread};
+use crate::{
+    connectivity::start_connectivity_thread, controller::ProtocolControllerImpl,
+    manager::ProtocolManagerImpl,
+};
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 ///
