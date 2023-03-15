@@ -6,10 +6,10 @@ use massa_models::slot::Slot;
 use massa_models::timeslots;
 use massa_proto::massa::api::v1::{
     self as grpc, BestParentTuple, Block, GetBlocksBySlotRequest, GetBlocksBySlotResponse,
-    GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse, GetSelectorDrawsResponse,
-    GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
+    GetDatastoreEntriesResponse, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
+    GetSelectorDrawsResponse, GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
+    GetVersionResponse,
 };
-use massa_proto::massa::api::v1::{GetDatastoreEntriesResponse, GetVersionResponse};
 use std::str::FromStr;
 use tonic::Request;
 
@@ -204,26 +204,24 @@ pub(crate) fn get_blocks_by_slots(
                 .content
                 .endorsements
                 .into_iter()
-                .map(
-                    |endorsement| massa_proto::massa::api::v1::SecureShareEndorsement {
-                        content: Some(massa_proto::massa::api::v1::Endorsement {
-                            slot: Some(massa_proto::massa::api::v1::Slot {
-                                period: endorsement.content.slot.period,
-                                thread: endorsement.content.slot.thread as u32,
-                            }),
-                            index: endorsement.content.index,
-                            endorsed_block: endorsement.content.endorsed_block.to_string(),
+                .map(|endorsement| grpc::SecureShareEndorsement {
+                    content: Some(grpc::Endorsement {
+                        slot: Some(grpc::Slot {
+                            period: endorsement.content.slot.period,
+                            thread: endorsement.content.slot.thread as u32,
                         }),
-                        signature: endorsement.signature.to_string(),
-                        content_creator_pub_key: endorsement.content_creator_pub_key.to_string(),
-                        content_creator_address: endorsement.content_creator_address.to_string(),
-                        id: endorsement.id.to_string(),
-                    },
-                )
+                        index: endorsement.content.index,
+                        endorsed_block: endorsement.content.endorsed_block.to_string(),
+                    }),
+                    signature: endorsement.signature.to_string(),
+                    content_creator_pub_key: endorsement.content_creator_pub_key.to_string(),
+                    content_creator_address: endorsement.content_creator_address.to_string(),
+                    id: endorsement.id.to_string(),
+                })
                 .collect();
 
-            let block_header = massa_proto::massa::api::v1::BlockHeader {
-                slot: Some(massa_proto::massa::api::v1::Slot {
+            let block_header = grpc::BlockHeader {
+                slot: Some(grpc::Slot {
                     period: header.content.slot.period,
                     thread: header.content.slot.thread as u32,
                 }),
@@ -241,7 +239,7 @@ pub(crate) fn get_blocks_by_slots(
                 .collect();
 
             (
-                massa_proto::massa::api::v1::SecureShareBlockHeader {
+                grpc::SecureShareBlockHeader {
                     content: Some(block_header),
                     signature: header.signature.to_string(),
                     content_creator_pub_key: header.content_creator_pub_key.to_string(),
