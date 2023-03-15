@@ -102,6 +102,17 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::{
@@ -111,13 +122,17 @@
 <span class="kw">use </span>massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
 <span class="kw">use </span>peernet::{
     config::PeerNetConfiguration,
-    handlers::{MessageHandlers, MessageHandler},
+    handlers::{MessageHandler, MessageHandlers},
     network_manager::PeerNetManager,
     peer_id::PeerId,
     transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::handlers::{peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler}, operation_handler::OperationHandler};
+<span class="kw">use </span><span class="kw">crate</span>::handlers::{
+    endorsement_handler::EndorsementHandler,
+    operation_handler::OperationHandler,
+    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+};
 
 <span class="kw">pub enum </span>ConnectivityCommand {
     Stop,
@@ -131,9 +146,11 @@
         <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span>config.initial_peers)<span class="question-mark">?</span>,
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>handle = std::thread::spawn(<span class="kw">move </span>|| {
-        <span class="kw">let </span>(<span class="kw-2">mut </span>peer_manager_handler, peer_manager_handler_sender) = PeerManagementHandler::new(initial_peers);
+        <span class="kw">let </span>(<span class="kw-2">mut </span>peer_manager_handler, peer_manager_handler_sender) =
+            PeerManagementHandler::new(initial_peers);
         <span class="comment">//TODO: Bound the channel
         </span><span class="kw">let </span>(sender_operations, receiver_operations) = unbounded();
+        <span class="kw">let </span>(sender_endorsements, receiver_endorsements) = unbounded();
 
         <span class="kw">let </span><span class="kw-2">mut </span>peernet_config = PeerNetConfiguration::default(MassaHandshake {});
         peernet_config.self_keypair = config.keypair;
@@ -145,11 +162,15 @@
         <span class="kw">let </span><span class="kw-2">mut </span>message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(<span class="number">0</span>, peer_manager_handler_sender);
         message_handlers.add_handler(<span class="number">1</span>, MessageHandler::new(sender_operations));
+        message_handlers.add_handler(<span class="number">1</span>, MessageHandler::new(sender_endorsements));
         peernet_config.message_handlers = message_handlers;
 
         <span class="kw">let </span><span class="kw-2">mut </span>manager = PeerNetManager::new(peernet_config);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>operation_handler = OperationHandler::new(manager.active_connections.clone(), receiver_operations);
+        <span class="kw">let </span><span class="kw-2">mut </span>operation_handler =
+            OperationHandler::new(manager.active_connections.clone(), receiver_operations);
+        <span class="kw">let </span><span class="kw-2">mut </span>endorsement_handler =
+            EndorsementHandler::new(manager.active_connections.clone(), receiver_endorsements);
 
         <span class="kw">for </span>(addr, transport) <span class="kw">in </span>config.listeners {
             manager.start_listener(transport, addr).expect(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
@@ -166,6 +187,7 @@
                             handle.join().expect(<span class="string">&quot;Failed to join peer manager thread&quot;</span>);
                         }
                         operation_handler.stop();
+                        endorsement_handler.stop();
                         <span class="kw">break</span>;
                     }
                 }
