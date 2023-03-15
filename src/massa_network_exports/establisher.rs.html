@@ -125,6 +125,8 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">mod </span>types {
@@ -229,7 +231,9 @@
             <span class="comment">// Number of connections to queue, set to the hardcoded value used by tokio
             </span>socket.listen(<span class="number">1024</span>)<span class="question-mark">?</span>;
 
-            <span class="prelude-val">Ok</span>(DefaultListener(TcpListener::from_std(socket.into())<span class="question-mark">?</span>))
+            <span class="kw">let </span>socket: std::net::TcpListener = socket.into();
+            socket.set_nonblocking(<span class="bool-val">true</span>).unwrap();
+            <span class="prelude-val">Ok</span>(DefaultListener(TcpListener::from_std(socket)<span class="question-mark">?</span>))
         }
 
         <span class="doccomment">/// Get the connector with associated timeout

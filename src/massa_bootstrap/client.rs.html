@@ -518,6 +518,7 @@
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -537,7 +538,7 @@
 <span class="kw">use crate</span>::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, BSEstablisher},
+    establisher::{BSConnector, BSEstablisher, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -891,17 +892,20 @@
     }
 }
 
-<span class="kw">async fn </span>connect_to_server(
+<span class="kw">fn </span>connect_to_server(
     establisher: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSEstablisher,
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
     pub_key: <span class="kw-2">&amp;</span>PublicKey,
-) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, BootstrapError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, Box&lt;BootstrapError&gt;&gt; {
     <span class="comment">// connect
-    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher.get_connector(bootstrap_config.connect_timeout)<span class="question-mark">?</span>;
-    <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>;
+    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher
+        .get_connector(bootstrap_config.connect_timeout)
+        .map_err(|e| Box::new(e.into()))<span class="question-mark">?</span>;
+    <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).map_err(|e| Box::new(e.into()))<span class="question-mark">?</span>;
+    socket.set_nonblocking(<span class="bool-val">true</span>).unwrap();
     <span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
-        socket,
+        Duplex::from_std(socket).unwrap(),
         <span class="kw-2">*</span>pub_key,
         bootstrap_config.into(),
     ))
@@ -1010,9 +1014,7 @@
                 bootstrap_config,
                 addr,
                 <span class="kw-2">&amp;</span>node_id.get_public_key(),
-            )
-            .<span class="kw">await
-            </span>{
+            ) {
                 <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>client) =&gt; {
                     <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
                     .<span class="kw">await  </span><span class="comment">// cancellable
