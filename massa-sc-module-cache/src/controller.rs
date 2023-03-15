@@ -72,7 +72,7 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution
-    pub fn load_module(
+    fn load_module_info(
         &mut self,
         bytecode: &[u8],
         limit: u64,
@@ -101,12 +101,12 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution and check its validity for execution
-    pub fn checked_load_module(
+    pub fn load_module(
         &mut self,
         bytecode: &[u8],
         limit: u64,
     ) -> Result<RuntimeModule, ExecutionError> {
-        let module_info = self.load_module(&bytecode, limit)?;
+        let module_info = self.load_module_info(&bytecode, limit)?;
         let module = match module_info {
             ModuleInfo::Invalid => {
                 return Err(ExecutionError::RuntimeError(

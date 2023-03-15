@@ -203,7 +203,7 @@ impl Interface for InterfaceImpl {
         let module = context
             .module_cache
             .write()
-            .checked_load_module(bytecode, limit)?;
+            .load_module(bytecode, limit)?;
         Ok(module)
     }
 

@@ -664,7 +664,7 @@ impl ExecutionState {
         let module = self
             .module_cache
             .write()
-            .checked_load_module(&bytecode, max_gas)?;
+            .load_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -759,7 +759,7 @@ impl ExecutionState {
         let module = self
             .module_cache
             .write()
-            .checked_load_module(&bytecode, message.max_gas)?;
+            .load_module(&bytecode, message.max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module.clone(),
@@ -1171,7 +1171,7 @@ impl ExecutionState {
                 let module = self
                     .module_cache
                     .write()
-                    .checked_load_module(&bytecode, req.max_gas)?;
+                    .load_module(&bytecode, req.max_gas)?;
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module.clone(),
