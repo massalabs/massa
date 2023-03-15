@@ -73,9 +73,8 @@ pub struct MockConnector {
     timeout_duration: MassaTime,
 }
 
-#[async_trait]
 impl BSConnector for MockConnector {
-    async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<TcpStream> {
+    fn connect(&mut self, addr: SocketAddr) -> std::io::Result<TcpStream> {
         dbg!("connect");
         let duplex_mock = TcpListener::bind(addr).unwrap();
         let duplex_controller = TcpStream::connect(addr).unwrap();
@@ -105,9 +104,9 @@ impl BSConnector for MockConnector {
             dbg!("connect thread sent");
         });
         dbg!("sent spun up");
-        // this will lock the system up with a std::thread...
+
         while !waker.load(Ordering::Relaxed) {
-            tokio::task::yield_now().await;
+            std::thread::yield_now();
         }
         dbg!("flag is true");
         send.join().unwrap();

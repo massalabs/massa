@@ -17,10 +17,9 @@ pub trait BSListener {
     fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)>;
 }
 
-#[async_trait]
 /// Specifies a common interface that can be used by standard, or mockers
 pub trait BSConnector {
-    async fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream>;
+    fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream>;
 }
 
 /// Specifies a common interface that can be used by standard, or mockers
@@ -53,18 +52,13 @@ impl BSListener for DefaultListener {
 #[derive(Debug)]
 pub struct DefaultConnector(MassaTime);
 
-#[async_trait]
 impl BSConnector for DefaultConnector {
     /// Tries to connect to address
     ///
     /// # Argument
     /// * `addr`: `SocketAddr` we are trying to connect to.
-    async fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream> {
-        match tokio::time::timeout(self.0.to_duration(), async { TcpStream::connect(addr) }).await {
-            Ok(Ok(sock)) => Ok(sock),
-            Ok(Err(e)) => Err(e),
-            Err(e) => Err(io::Error::new(io::ErrorKind::TimedOut, e)),
-        }
+    fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream> {
+        TcpStream::connect_timeout(&addr, self.0.to_duration())
     }
 }
 

@@ -371,7 +371,7 @@ async fn send_client_message(
     }
 }
 
-async fn connect_to_server(
+fn connect_to_server(
     establisher: &mut impl BSEstablisher,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
@@ -379,7 +379,7 @@ async fn connect_to_server(
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     // connect
     let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
-    let socket = connector.connect(*addr).await?;
+    let socket = connector.connect(*addr)?;
     socket.set_nonblocking(true).unwrap();
     Ok(BootstrapClientBinder::new(
         Duplex::from_std(socket).unwrap(),
@@ -491,9 +491,7 @@ pub async fn get_state(
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
-            )
-            .await
-            {
+            ) {
                 Ok(mut client) => {
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable
