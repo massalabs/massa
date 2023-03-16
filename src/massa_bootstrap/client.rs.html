@@ -518,14 +518,6 @@
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -950,18 +942,15 @@
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    from_snapshot: bool,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
     <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     <span class="comment">// if we are before genesis, do not bootstrap
-    // if we are after genesis, but we restart from a snapshot, also do not bootstrap!
     </span><span class="kw">if </span>now &lt; genesis_timestamp {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="comment">// init final state
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
-
             <span class="comment">// load ledger from initial ledger file
             </span>final_state_guard
                 .ledger
@@ -969,14 +958,9 @@
                 .map_err(|err| {
                     BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;could not load initial ledger: {}&quot;</span>, err))
                 })<span class="question-mark">?</span>;
-
             <span class="comment">// create the initial cycle of PoS cycle_history
             </span>final_state_guard.pos_state.create_initial_cycle();
         }
-        <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
-    }
-    <span class="kw">if </span>from_snapshot {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
 

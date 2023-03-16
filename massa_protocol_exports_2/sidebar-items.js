@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ProtocolError"],"struct":["ProtocolConfig"],"trait":["ProtocolController","ProtocolManager"]};
