@@ -28,7 +28,7 @@ message OperationInfo {
 // message struct
 message Roll {
     // int64 field
-    int64 roll_count = 1;
+    uint64 roll_count = 1;
 }
 
 // message struct
@@ -49,6 +49,14 @@ message OperationType {
     RollBuy roll_buy = 4;
     // object field
     RollSell roll_sell = 5;
+}
+
+enum OperationStreamFilterType {
+    TRANSACTION = 0;
+    EXECUTE_SC = 1;
+    CALL_SC = 2;
+    ROLL_BUY = 3;
+    ROLL_SELL = 4;
 }
 
 // message struct
@@ -92,13 +100,13 @@ message ExecuteSC {
 // message struct
 message RollBuy {
     // float field
-    float roll_count = 1;
+    uint64 roll_count = 1;
 }
 
 // message struct
 message RollSell {
     // float field
-    float roll_count = 1;
+    uint64 roll_count = 1;
 }
 
 // message struct

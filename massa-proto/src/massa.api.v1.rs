@@ -160,8 +160,8 @@ pub struct OperationInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Roll {
     /// int64 field
-    #[prost(int64, tag = "1")]
-    pub roll_count: i64,
+    #[prost(uint64, tag = "1")]
+    pub roll_count: u64,
 }
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -250,16 +250,16 @@ pub struct ExecuteSc {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollBuy {
     /// float field
-    #[prost(float, tag = "1")]
-    pub roll_count: f32,
+    #[prost(uint64, tag = "1")]
+    pub roll_count: u64,
 }
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollSell {
     /// float field
-    #[prost(float, tag = "1")]
-    pub roll_count: f32,
+    #[prost(uint64, tag = "1")]
+    pub roll_count: u64,
 }
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -294,6 +294,41 @@ pub struct SecureShareOperation {
     /// string field
     #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum OperationStreamFilterType {
+    Transaction = 0,
+    ExecuteSc = 1,
+    CallSc = 2,
+    RollBuy = 3,
+    RollSell = 4,
+}
+impl OperationStreamFilterType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            OperationStreamFilterType::Transaction => "TRANSACTION",
+            OperationStreamFilterType::ExecuteSc => "EXECUTE_SC",
+            OperationStreamFilterType::CallSc => "CALL_SC",
+            OperationStreamFilterType::RollBuy => "ROLL_BUY",
+            OperationStreamFilterType::RollSell => "ROLL_SELL",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "TRANSACTION" => Some(Self::Transaction),
+            "EXECUTE_SC" => Some(Self::ExecuteSc),
+            "CALL_SC" => Some(Self::CallSc),
+            "ROLL_BUY" => Some(Self::RollBuy),
+            "ROLL_SELL" => Some(Self::RollSell),
+            _ => None,
+        }
+    }
 }
 /// region Block
 /// message struct
@@ -410,6 +445,23 @@ pub struct SecureShareBlockHeader {
     /// string field
     #[prost(string, tag = "5")]
     pub id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubscribeNewOperationsStreamRequest {
+    /// id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(enumeration = "OperationStreamFilterType", repeated, tag = "2")]
+    pub filter: ::prost::alloc::vec::Vec<i32>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubscribeNewOperationsStreamResponse {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub operation: ::core::option::Option<SecureShareOperation>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1042,6 +1094,32 @@ pub mod grpc_client {
             );
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
+        pub async fn subscribe_new_operations(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::SubscribeNewOperationsStreamRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::SubscribeNewOperationsStreamResponse>,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/SubscribeNewOperations",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -1157,6 +1235,24 @@ pub mod grpc_server {
             >,
         ) -> std::result::Result<
             tonic::Response<Self::SubscribeTransactionsThroughputStream>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the SubscribeNewOperations method.
+        type SubscribeNewOperationsStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::SubscribeNewOperationsStreamResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        async fn subscribe_new_operations(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::SubscribeNewOperationsStreamRequest>,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<Self::SubscribeNewOperationsStream>,
             tonic::Status,
         >;
     }
@@ -1695,6 +1791,56 @@ pub mod grpc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = SubscribeTransactionsThroughputSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/SubscribeNewOperations" => {
+                    #[allow(non_camel_case_types)]
+                    struct SubscribeNewOperationsSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::StreamingService<
+                        super::SubscribeNewOperationsStreamRequest,
+                    > for SubscribeNewOperationsSvc<T> {
+                        type Response = super::SubscribeNewOperationsStreamResponse;
+                        type ResponseStream = T::SubscribeNewOperationsStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::SubscribeNewOperationsStreamRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).subscribe_new_operations(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SubscribeNewOperationsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

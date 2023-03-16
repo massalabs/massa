@@ -8,6 +8,7 @@ import "slot.proto";
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
 import "block.proto";
+import "operation.proto";
 
 option cc_enable_arenas = true;
 option csharp_namespace = "Massa.Api.V1";
@@ -73,6 +74,21 @@ service Grpc {
 
     // Subscribe GetTransactionsThroughput
     rpc SubscribeTransactionsThroughput (stream GetTransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
+
+    rpc SubscribeNewOperations (stream SubscribeNewOperationsStreamRequest) returns (stream SubscribeNewOperationsStreamResponse) {}
+}
+
+message SubscribeNewOperationsStreamRequest {
+    // id
+    string id = 1;
+
+    repeated OperationStreamFilterType filter = 2;
+}
+
+message SubscribeNewOperationsStreamResponse {
+    string id = 1;
+
+    SecureShareOperation operation = 2;
 }
 
 message GetBlocksBySlotRequest {
