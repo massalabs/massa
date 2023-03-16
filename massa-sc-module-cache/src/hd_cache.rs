@@ -3,10 +3,10 @@ use crate::types::{
 };
 use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
-use massa_sc_runtime::GasCosts;
-use massa_serialization::Serializer;
+use massa_sc_runtime::{GasCosts, RuntimeModule};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::Rng;
-use rocksdb::{WriteBatch, DB};
+use rocksdb::{Direction, IteratorMode, WriteBatch, DB};
 use std::path::PathBuf;
 
 const MODULE_IDENT: u8 = 0u8;
@@ -54,7 +54,7 @@ impl HDCache {
     ///   `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, amount_to_remove: usize) -> Self {
         let db = DB::open_default(path).expect("critical: rocksdb open operation failed");
-        let entry_count = db.iterator(rocksdb::IteratorMode::Start).count();
+        let entry_count = db.iterator(IteratorMode::Start).count();
 
         Self {
             db,
@@ -99,7 +99,7 @@ impl HDCache {
         self.db.put(module_key!(hash), ser_module).unwrap();
         self.db.put(metadata_key!(hash), ser_metadata).unwrap();
 
-        self.entry_count += 1;
+        self.entry_count = self.entry_count.saturating_add(1);
 
         Ok(())
     }
@@ -122,8 +122,26 @@ impl HDCache {
 
     /// Retrieve a module
     pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
-        // TODO: implement this with new keys format
-        None
+        // TODO: make sure of the missing object behaviour
+        let mut iterator = self
+            .db
+            .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
+        if let Some(Ok((_, ser_module))) = iterator.next() {
+            let (_, ser_metadata) = iterator.next().unwrap().unwrap();
+            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs).unwrap();
+            let (_, metadata) = self
+                .meta_deser
+                .deserialize::<DeserializeError>(&ser_metadata)
+                .unwrap();
+            let result = match metadata {
+                ModuleMetadata::Invalid => ModuleInfo::Invalid,
+                ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
+                ModuleMetadata::Delta(delta) => ModuleInfo::ModuleAndDelta((module, delta)),
+            };
+            Some(result)
+        } else {
+            None
+        }
     }
 
     /// Try to remove as much as self.amount_to_snip entries from the db.
