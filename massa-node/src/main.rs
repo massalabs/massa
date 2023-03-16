@@ -315,6 +315,7 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
+
     let initial_cycle_info = final_state
         .read()
         .pos_state
@@ -325,6 +326,7 @@ async fn launch(
     let initial_rolls = initial_cycle_info.roll_counts.clone();
     let initial_cycle = initial_cycle_info.cycle;
     let initial_ledger_hash = final_state.read().ledger.get_ledger_hash();
+
     final_state
         .write()
         .pos_state
@@ -339,10 +341,10 @@ async fn launch(
         .set_initial_ledger_hash(initial_ledger_hash);
 
     let final_hash = final_state.read().final_state_hash;
-    let cycle_history = &final_state.read().pos_state.cycle_history;
+    let cycle_history = final_state.read().pos_state.cycle_history.clone();
     let initial_cycle = final_state.read().pos_state.initial_cycle;
-    let initial_rolls = &final_state.read().pos_state.initial_rolls;
-    let initial_seeds = &final_state.read().pos_state.initial_seeds;
+    let initial_rolls = final_state.read().pos_state.initial_rolls.clone();
+    let initial_seeds = final_state.read().pos_state.initial_seeds.clone();
 
     info!(
         "final_hash: {},\n
