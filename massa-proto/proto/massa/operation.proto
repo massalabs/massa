@@ -73,16 +73,12 @@ message CallSC {
     string target_addr = 1;
     // string field
     string target_func = 2;
-    // string field
-    string param = 3;
+    // byte vec
+    bytes param = 3;
     // float field
-    float max_gas = 4;
-    // float field
-    float sequential_coins = 5;
-    // float field
-    float parallel_coins = 6;
-    // float field
-    float gas_price = 7;
+    uint64 max_gas = 4;
+    // uint64 field
+    uint64 coins = 5;
 }
 
 // message struct

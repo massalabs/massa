@@ -212,21 +212,15 @@ pub struct CallSc {
     /// string field
     #[prost(string, tag = "2")]
     pub target_func: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub param: ::prost::alloc::string::String,
+    /// byte vec
+    #[prost(bytes = "vec", tag = "3")]
+    pub param: ::prost::alloc::vec::Vec<u8>,
     /// float field
-    #[prost(float, tag = "4")]
-    pub max_gas: f32,
-    /// float field
-    #[prost(float, tag = "5")]
-    pub sequential_coins: f32,
-    /// float field
-    #[prost(float, tag = "6")]
-    pub parallel_coins: f32,
-    /// float field
-    #[prost(float, tag = "7")]
-    pub gas_price: f32,
+    #[prost(uint64, tag = "4")]
+    pub max_gas: u64,
+    /// uint64 field
+    #[prost(uint64, tag = "5")]
+    pub coins: u64,
 }
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]

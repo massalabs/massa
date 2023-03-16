@@ -70,18 +70,32 @@ pub(crate) async fn subscribe_new_operations(
                                         }
                                     },
                                     OperationType::ExecuteSC { .. } => {
+                                        if is_filtered(&filter, OperationStreamFilterType::ExecuteSc) {
+                                            continue
+                                        }
+
+                                        // missing field : gas_price , coins
+
                                         todo!()
                                         // grpc::OperationType {
                                         //     execut_sc: Some( grpc::ExecuteSc {data, max_gas,}),
                                         //     ..Default::default()
                                         // }
                                     },
-                                    OperationType::CallSC { .. } => {
-                                        todo!()
-                                           // grpc::OperationType {
-                                           //  execut_sc: Some( grpc::CallSc {target_addr, target_func, param, max_gas, coins}),
-                                           //  ..Default::default()
-                                        // }
+                                    OperationType::CallSC { target_addr, target_func,  max_gas, param, coins} => {
+                                        if is_filtered(&filter, OperationStreamFilterType::CallSc) {
+                                            continue
+                                        }
+                                        grpc::OperationType {
+                                            call_sc: Some( grpc::CallSc {
+                                                target_addr: target_addr.to_string(),
+                                                target_func: target_func.to_string(),
+                                                param,
+                                                max_gas,
+                                                coins: coins.to_raw()
+                                            }),
+                                            ..Default::default()
+                                        }
                                     },
                                 };
 
