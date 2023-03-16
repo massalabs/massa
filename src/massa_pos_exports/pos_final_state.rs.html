@@ -558,10 +558,14 @@
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
 <span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_models::config::LAST_START_PERIOD;
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::streaming_step::StreamingStep;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
@@ -616,15 +620,17 @@
         </span><span class="kw">let </span>init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
 
+        <span class="kw">let </span>end_slot = Slot::new(<span class="kw-2">*</span>LAST_START_PERIOD, config.thread_count.saturating_sub(<span class="number">1</span>));
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            config,
+            config: config.clone(),
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::default(),
             selector,
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
-            initial_cycle: <span class="number">0</span>,
+            initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
         })
     }
 
