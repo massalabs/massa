@@ -560,4 +560,20 @@ impl PoSFinalState {
             StreamingStep::Finished(None)
         }
     }
+
+    /// Used to set the initial rolls after bootstrapping
+    pub fn set_initial_rolls(&mut self, initial_rolls: BTreeMap<Address, u64>) {
+        self.initial_rolls = initial_rolls;
+    }
+
+    /// Used to set the initial cycle after bootstrapping
+    pub fn set_initial_cycle(&mut self, cycle: u64) {
+        self.initial_cycle = cycle;
+    }
+
+    /// Used to set the initial ledger hash after bootstrapping
+    pub fn set_initial_ledger_hash(&mut self, initial_ledger_hash: Hash) {
+        self.initial_ledger_hash = initial_ledger_hash
+    }
 }
+
