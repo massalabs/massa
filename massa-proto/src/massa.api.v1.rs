@@ -226,18 +226,15 @@ pub struct CallSc {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteSc {
-    /// float field
-    #[prost(float, repeated, tag = "1")]
-    pub data: ::prost::alloc::vec::Vec<f32>,
-    /// float field
-    #[prost(float, tag = "2")]
-    pub max_gas: f32,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub coins: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "4")]
-    pub gas_price: ::prost::alloc::string::String,
+    /// data field
+    #[prost(bytes = "vec", tag = "1")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    /// uint64 field
+    #[prost(uint64, tag = "2")]
+    pub max_gas: u64,
+    /// datastore
+    #[prost(message, repeated, tag = "3")]
+    pub datastore: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
 }
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]

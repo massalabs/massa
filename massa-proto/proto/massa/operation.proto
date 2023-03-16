@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "common.proto";
 
 package massa.api.v1;
 
@@ -83,14 +84,12 @@ message CallSC {
 
 // message struct
 message ExecuteSC {
-    // float field
-    repeated float data = 1;
-    // float field
-    float max_gas = 2;
-    // string field
-    string coins = 3;
-    // string field
-    string gas_price = 4;
+    // data field
+    bytes data = 1;
+    // uint64 field
+    uint64 max_gas = 2;
+    // datastore
+    repeated BytesMapFieldEntry datastore = 3;
 }
 
 // message struct

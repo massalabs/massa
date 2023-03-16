@@ -3,8 +3,8 @@ use crate::handler::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::operation::{OperationType, SecureShareOperation};
 use massa_proto::massa::api::v1::{
-    self as grpc, OperationStreamFilterType, SubscribeNewOperationsStreamRequest,
-    SubscribeNewOperationsStreamResponse,
+    self as grpc, BytesMapFieldEntry, OperationStreamFilterType,
+    SubscribeNewOperationsStreamRequest, SubscribeNewOperationsStreamResponse,
 };
 use std::pin::Pin;
 use tokio::select;
@@ -69,18 +69,25 @@ pub(crate) async fn subscribe_new_operations(
                                             ..Default::default()
                                         }
                                     },
-                                    OperationType::ExecuteSC { .. } => {
+                                    OperationType::ExecuteSC { data, max_gas, datastore } => {
                                         if is_filtered(&filter, OperationStreamFilterType::ExecuteSc) {
                                             continue
                                         }
 
-                                        // missing field : gas_price , coins
+                                       let vec_bytes_map =  datastore.into_iter().map(|(k, v)| {
+                                             BytesMapFieldEntry {
+                                                key: k,
+                                                value: v
+                                            }
+                                        }).collect();
 
-                                        todo!()
-                                        // grpc::OperationType {
-                                        //     execut_sc: Some( grpc::ExecuteSc {data, max_gas,}),
-                                        //     ..Default::default()
-                                        // }
+                                        grpc::OperationType {
+                                            execut_sc: Some( grpc::ExecuteSc {
+                                                data,
+                                                max_gas,
+                                                datastore: vec_bytes_map}),
+                                            ..Default::default()
+                                        }
                                     },
                                     OperationType::CallSC { target_addr, target_func,  max_gas, param, coins} => {
                                         if is_filtered(&filter, OperationStreamFilterType::CallSc) {
