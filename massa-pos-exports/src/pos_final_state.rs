@@ -2,6 +2,7 @@ use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, Selecto
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
+use massa_models::config::LAST_START_PERIOD;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
@@ -56,15 +57,17 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
+        let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+
         Ok(Self {
-            config,
+            config: config.clone(),
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::default(),
             selector,
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
-            initial_cycle: 0,
+            initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
         })
     }
 

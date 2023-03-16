@@ -298,7 +298,8 @@ impl FinalState {
 
                 // feed final_state_hash to the last cycle
                 let cycle = final_state.slot.get_cycle(config.periods_per_cycle);
-                final_state.pos_state
+                final_state
+                    .pos_state
                     .feed_cycle_state_hash(cycle, final_state.final_state_hash);
 
                 Ok(final_state)
@@ -366,6 +367,12 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
+        if slot.period % 10 == 0 {
+            info!(
+                "Slot {}: pos_state initial_cycle: {}",
+                slot, self.pos_state.initial_cycle
+            );
+        }
         // check slot consistency
         let next_slot = self
             .slot
