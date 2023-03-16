@@ -1,4 +1,3 @@
-use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use schnellru::{ByLength, LruMap};
@@ -40,7 +39,7 @@ impl LRUCache {
     }
 
     /// Set the initialization cost of a LRU cached module
-    pub fn set_init_cost(&mut self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
+    pub fn set_init_cost(&mut self, hash: Hash, init_cost: u64) {
         if let Some(content) = self.cache.get(&hash) {
             match content {
                 ModuleInfo::Module(module) => {
@@ -48,16 +47,21 @@ impl LRUCache {
                 }
                 ModuleInfo::ModuleAndDelta((_module, delta)) => *delta = init_cost,
                 ModuleInfo::Invalid => {
-                    return Err(ExecutionError::RuntimeError(
-                        "tried to set the init cost of an invalid module".to_string(),
-                    ));
+                    // return Err(ExecutionError::RuntimeError(
+                    //     "tried to set the init cost of an invalid module".to_string(),
+                    // ));
                 }
             }
-            Ok(())
-        } else {
-            Err(ExecutionError::RuntimeError(
-                "tried to set the init cost of a nonexistent module".to_string(),
-            ))
+        }
+        // Err(ExecutionError::RuntimeError(
+        //     "tried to set the init cost of a nonexistent module".to_string(),
+        // ))
+    }
+
+    /// Set a module as invalid
+    pub fn set_invalid(&mut self, hash: Hash) {
+        if let Some(content) = self.cache.get(&hash) {
+            *content = ModuleInfo::Invalid;
         }
     }
 }

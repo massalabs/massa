@@ -15,6 +15,8 @@ pub struct ModuleCache {
     /// * setup `massa-sc-runtime` metering on compilation
     /// * TODO: debit compilation costs
     gas_costs: GasCosts,
+    /// Default gas for compilation
+    compilation_gas: u64,
     /// RAM stored LRU cache.
     /// See `LRUCache` documentation for more information.
     lru_cache: LRUCache,
@@ -24,31 +26,40 @@ pub struct ModuleCache {
 }
 
 impl ModuleCache {
-    pub fn new(gas_costs: GasCosts, lru_cache_size: u32) -> Self {
+    pub fn new(gas_costs: GasCosts, lru_cache_size: u32, compilation_gas: u64) -> Self {
         Self {
             gas_costs,
+            compilation_gas,
             lru_cache: LRUCache::new(lru_cache_size),
             hd_cache: HDCache::new("hd_cache_path".into(), 1000, 10),
         }
     }
 
     /// Save a new or an already existing module in the cache
-    pub fn save_module(&mut self, bytecode: &[u8], limit: u64) -> Result<(), ExecutionError> {
+    pub fn save_module(&mut self, bytecode: &[u8]) -> Result<(), ExecutionError> {
         // TODO: using ExecutionError for now but create a CacheError type
         let hash = Hash::compute_from(bytecode);
-        if let Some(hd_module_info) = self.hd_cache.get(hash, limit, self.gas_costs.clone()) {
+        if let Some(hd_module_info) =
+            self.hd_cache
+                .get(hash, self.compilation_gas, self.gas_costs.clone())
+        {
             self.lru_cache.insert(hash, hd_module_info);
         } else {
             if let Some(lru_module_info) = self.lru_cache.get(hash) {
                 self.hd_cache.insert(hash, lru_module_info)?;
             } else {
-                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), true)
-                    .map_err(|err| {
-                        ExecutionError::RuntimeError(format!(
-                            "compilation of missing cache module failed: {}",
-                            err
-                        ))
-                    })?;
+                let new_module = RuntimeModule::new(
+                    bytecode,
+                    self.compilation_gas,
+                    self.gas_costs.clone(),
+                    true,
+                )
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(format!(
+                        "compilation of missing cache module failed: {}",
+                        err
+                    ))
+                })?;
                 let new_module_info = ModuleInfo::Module(new_module);
                 self.hd_cache.insert(hash, new_module_info.clone())?;
                 self.lru_cache.insert(hash, new_module_info);
@@ -59,15 +70,18 @@ impl ModuleCache {
 
     /// Set the initialization cost of a cached module
     pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) -> Result<(), ExecutionError> {
-        // TODO: determnine in what scenario this can fail
+        // TODO: determine what fail scenarios we want in hd
         let hash = Hash::compute_from(bytecode);
-        self.lru_cache.set_init_cost(hash, init_cost)?;
+        self.lru_cache.set_init_cost(hash, init_cost);
         self.hd_cache.set_init_cost(hash, init_cost)?;
         Ok(())
     }
 
     pub fn set_invalid(&mut self, bytecode: &[u8]) -> Result<(), ExecutionError> {
-        // TODO: implement this
+        // TODO: determine what fail scenarios we want in hd
+        let hash = Hash::compute_from(bytecode);
+        self.lru_cache.set_invalid(hash);
+        self.hd_cache.set_invalid(hash)?;
         Ok(())
     }
 
@@ -77,6 +91,7 @@ impl ModuleCache {
         bytecode: &[u8],
         limit: u64,
     ) -> Result<ModuleInfo, ExecutionError> {
+        // TODO: check if limit can be removed here
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             Ok(lru_module_info)
@@ -93,6 +108,8 @@ impl ModuleCache {
                         ))
                     })?;
                 let new_module_info = ModuleInfo::Module(new_module);
+                // TODO: move this back out
+                // TODO: maybe keep it but set as invalid if compil failed
                 self.hd_cache.insert(hash, new_module_info.clone())?;
                 self.lru_cache.insert(hash, new_module_info.clone());
                 Ok(new_module_info)

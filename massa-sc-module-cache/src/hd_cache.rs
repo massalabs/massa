@@ -120,6 +120,16 @@ impl HDCache {
         Ok(())
     }
 
+    /// Sets a given module as invalid
+    pub fn set_invalid(&self, hash: Hash) -> Result<(), ExecutionError> {
+        let mut ser_metadata = Vec::new();
+        self.meta_ser
+            .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
+            .unwrap();
+        self.db.put(metadata_key!(hash), ser_metadata).unwrap();
+        Ok(())
+    }
+
     /// Retrieve a module
     pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
         // TODO: make sure of the missing object behaviour

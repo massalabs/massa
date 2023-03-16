@@ -109,6 +109,7 @@ impl ExecutionState {
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(
             config.gas_costs.clone(),
             config.max_module_cache_size,
+            config.max_gas_per_block,
         )));
 
         // Create an empty placeholder execution context, with shared atomic access
@@ -661,10 +662,7 @@ impl ExecutionState {
 
         // Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self
-            .module_cache
-            .write()
-            .load_module(&bytecode, max_gas)?;
+        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,

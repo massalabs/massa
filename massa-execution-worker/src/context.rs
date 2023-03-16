@@ -788,9 +788,7 @@ impl ExecutionContext {
             let mut cache_write_lock = self.module_cache.write();
             // TODO: update return type
             for bytecode in bc_updates {
-                cache_write_lock
-                    .save_module(&bytecode.0, self.config.max_gas_per_block)
-                    .unwrap();
+                cache_write_lock.save_module(&bytecode.0).unwrap();
             }
         }
 
