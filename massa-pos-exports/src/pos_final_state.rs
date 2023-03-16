@@ -576,4 +576,3 @@ impl PoSFinalState {
         self.initial_ledger_hash = initial_ledger_hash
     }
 }
-
