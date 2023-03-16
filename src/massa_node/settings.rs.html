@@ -233,6 +233,12 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -254,6 +260,11 @@
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>LoggingSettings {
     <span class="kw">pub </span>level: usize,
+}
+
+<span class="attr">#[derive(Clone, Debug, Deserialize)]
+</span><span class="kw">pub struct </span>SnapshotSettings {
+    <span class="kw">pub </span>final_state_path: PathBuf,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]
@@ -388,6 +399,7 @@
     <span class="kw">pub </span>ledger: LedgerSettings,
     <span class="kw">pub </span>selector: SelectionSettings,
     <span class="kw">pub </span>factory: FactorySettings,
+    <span class="kw">pub </span>snapshot: SnapshotSettings,
 }
 
 <span class="doccomment">/// Consensus configuration
