@@ -16,7 +16,7 @@ use peernet::{
 use crate::handlers::{
     endorsement_handler::EndorsementHandler,
     operation_handler::OperationHandler,
-    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler}, block_handler::BlockHandler,
 };
 
 pub enum ConnectivityCommand {
@@ -36,6 +36,7 @@ pub fn start_connectivity_thread(
         //TODO: Bound the channel
         let (sender_operations, receiver_operations) = unbounded();
         let (sender_endorsements, receiver_endorsements) = unbounded();
+        let (sender_blocks, receiver_blocks) = unbounded();
 
         let mut peernet_config = PeerNetConfiguration::default(MassaHandshake {});
         peernet_config.self_keypair = config.keypair;
@@ -47,7 +48,8 @@ pub fn start_connectivity_thread(
         let mut message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(0, peer_manager_handler_sender);
         message_handlers.add_handler(1, MessageHandler::new(sender_operations));
-        message_handlers.add_handler(1, MessageHandler::new(sender_endorsements));
+        message_handlers.add_handler(2, MessageHandler::new(sender_endorsements));
+        message_handlers.add_handler(3, MessageHandler::new(sender_blocks));
         peernet_config.message_handlers = message_handlers;
 
         let mut manager = PeerNetManager::new(peernet_config);
@@ -56,6 +58,7 @@ pub fn start_connectivity_thread(
             OperationHandler::new(manager.active_connections.clone(), receiver_operations);
         let mut endorsement_handler =
             EndorsementHandler::new(manager.active_connections.clone(), receiver_endorsements);
+        let mut block_handler = BlockHandler::new(manager.active_connections.clone(), receiver_blocks);
 
         for (addr, transport) in config.listeners {
             manager.start_listener(transport, addr).expect(&format!(
@@ -73,6 +76,7 @@ pub fn start_connectivity_thread(
                         }
                         operation_handler.stop();
                         endorsement_handler.stop();
+                        block_handler.stop();
                         break;
                     }
                 }
