@@ -1,5 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
+use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{
     config::PeerNetConfiguration,
     error::PeerNetError,
@@ -11,11 +12,29 @@ use peernet::{
     types::KeyPair,
 };
 
-use super::{announcement::Announcement, PeerInfo, SharedPeerDB};
+use super::{
+    announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
+    PeerInfo, SharedPeerDB,
+};
 
 #[derive(Clone)]
 pub struct TesterHandshake {
     peer_db: SharedPeerDB,
+    announcement_deserializer: AnnouncementDeserializer,
+}
+
+impl TesterHandshake {
+    pub fn new(peer_db: SharedPeerDB) -> Self {
+        Self {
+            peer_db,
+            announcement_deserializer: AnnouncementDeserializer::new(
+                AnnouncementDeserializerArgs {
+                    //TODO: Config
+                    max_listeners: 100,
+                },
+            ),
+        }
+    }
 }
 
 impl HandshakeHandler for TesterHandshake {
@@ -28,7 +47,20 @@ impl HandshakeHandler for TesterHandshake {
     ) -> Result<PeerId, PeerNetError> {
         let data = endpoint.receive()?;
         let peer_id = PeerId::from_bytes(&data[..32].try_into().unwrap())?;
-        let announcement = Announcement::from_bytes(&data[32..], &peer_id)?;
+        let (_, announcement) = self
+            .announcement_deserializer
+            .deserialize::<DeserializeError>(&data[32..])
+            .map_err(|err| {
+                PeerNetError::HandshakeError(format!("Failed to deserialize announcement: {}", err))
+            })?;
+        if peer_id
+            .verify_signature(&announcement.hash, &announcement.signature)
+            .is_err()
+        {
+            return Err(PeerNetError::HandshakeError(String::from(
+                "Invalid signature",
+            )));
+        }
         {
             let mut peer_db_write = self.peer_db.write();
             peer_db_write
@@ -57,7 +89,7 @@ pub struct Tester {
 impl Tester {
     pub fn new(peer_db: SharedPeerDB, listener: (SocketAddr, TransportType)) -> Self {
         let handle = std::thread::spawn(move || {
-            let mut config = PeerNetConfiguration::default(TesterHandshake { peer_db });
+            let mut config = PeerNetConfiguration::default(TesterHandshake::new(peer_db));
             config.fallback_function = Some(&empty_fallback);
             config.max_out_connections = 1;
             let mut network_manager = PeerNetManager::new(config);

@@ -2,14 +2,18 @@ use massa_hash::HashDeserializer;
 use massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
     block_id::{BlockId, BlockIdSerializer},
-    operation::{OperationId, OperationIdSerializer, SecureShareOperation, OperationIdsDeserializer, OperationsDeserializer},
+    operation::{
+        OperationId, OperationIdSerializer, OperationIdsDeserializer, OperationsDeserializer,
+        SecureShareOperation,
+    },
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
 use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
-    IResult, Parser, sequence::tuple,
+    sequence::tuple,
+    IResult, Parser,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
@@ -203,10 +207,23 @@ impl BlockMessageDeserializer {
                 args.thread_count,
                 args.endorsement_count,
             )),
-            block_infos_length_deserializer: U64VarIntDeserializer::new(Included(0), Included(args.block_infos_length_max)),
+            block_infos_length_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(args.block_infos_length_max),
+            ),
             hash_deserializer: HashDeserializer::new(),
-            operation_ids_deserializer: OperationIdsDeserializer::new(args.max_operations_per_block),
-            operations_deserializer: OperationsDeserializer::new(args.max_operations_per_block, args.max_datastore_value_length, args.max_function_name_length, args.max_parameters_size, args.max_op_datastore_entry_count, args.max_op_datastore_key_length, args.max_op_datastore_value_length),
+            operation_ids_deserializer: OperationIdsDeserializer::new(
+                args.max_operations_per_block,
+            ),
+            operations_deserializer: OperationsDeserializer::new(
+                args.max_operations_per_block,
+                args.max_datastore_value_length,
+                args.max_function_name_length,
+                args.max_parameters_size,
+                args.max_op_datastore_entry_count,
+                args.max_op_datastore_key_length,
+                args.max_op_datastore_value_length,
+            ),
         }
     }
 }

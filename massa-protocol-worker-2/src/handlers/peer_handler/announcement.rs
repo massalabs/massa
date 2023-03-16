@@ -1,26 +1,155 @@
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
+    ops::Bound::Included,
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use massa_models::serialization::IpAddrDeserializer;
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use peernet::{
     error::PeerNetError,
-    peer_id::PeerId,
     transports::TransportType,
     types::{Hash, KeyPair, Signature},
 };
 
-#[derive(Clone, Debug)]
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Announcement {
     /// Listeners
     pub listeners: HashMap<SocketAddr, TransportType>,
     /// Timestamp
     pub timestamp: u128,
+    /// Hash
+    pub hash: Hash,
     /// serialized version
     serialized: Vec<u8>,
     /// Signature
-    signature: Signature,
+    pub signature: Signature,
+}
+
+#[derive(Clone)]
+pub struct AnnouncementSerializer;
+
+impl AnnouncementSerializer {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<Announcement> for AnnouncementSerializer {
+    fn serialize(&self, value: &Announcement, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.extend(value.serialized.clone());
+        buffer.extend(value.signature.to_bytes());
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub struct AnnouncementDeserializer {
+    length_listeners_deserializer: U64VarIntDeserializer,
+    ip_addr_deserializer: IpAddrDeserializer,
+}
+
+pub struct AnnouncementDeserializerArgs {
+    pub max_listeners: u64,
+}
+
+impl AnnouncementDeserializer {
+    pub fn new(args: AnnouncementDeserializerArgs) -> Self {
+        Self {
+            length_listeners_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(args.max_listeners),
+            ),
+            ip_addr_deserializer: IpAddrDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<Announcement> for AnnouncementDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Announcement, E> {
+        let (rest, (listeners, timestamp)) = context(
+            "Failed announcement deserialization",
+            tuple((
+                length_count(
+                    context("Failed listeners deserialization", |buffer| {
+                        self.length_listeners_deserializer.deserialize(buffer)
+                    }),
+                    context("Failed listener deserialization", |buffer: &'a [u8]| {
+                        tuple((
+                            tuple((
+                                context("Failed ip deserialization", |buffer| {
+                                    self.ip_addr_deserializer.deserialize(buffer)
+                                }),
+                                context("Failed port deserialization", |buffer| {
+                                    nom::number::complete::be_u16(buffer)
+                                }),
+                            ))
+                            .map(|(addr, ip)| SocketAddr::new(addr, ip)),
+                            context("Failed transport deserialization", |buffer| {
+                                let (rest, id) = nom::number::complete::be_u8(buffer)?;
+                                match id {
+                                    0 => Ok((rest, TransportType::Tcp)),
+                                    1 => Ok((rest, TransportType::Quic)),
+                                    _ => Err(nom::Err::Error(ParseError::from_error_kind(
+                                        buffer,
+                                        nom::error::ErrorKind::MapRes,
+                                    ))),
+                                }
+                            }),
+                        ))(buffer)
+                    }),
+                ),
+                context("Failed timestamp deserialization", |buffer: &'a [u8]| {
+                    let timestamp = u128::from_be_bytes(buffer[..16].try_into().map_err(|_| {
+                        nom::Err::Error(ParseError::from_error_kind(
+                            buffer,
+                            nom::error::ErrorKind::LengthValue,
+                        ))
+                    })?);
+                    Ok((&buffer[16..], timestamp))
+                }),
+            )),
+        )
+        .map(|info| info)
+        .parse(buffer)?;
+        let serialized = buffer[..buffer.len() - rest.len()].to_vec();
+        let hash = Hash::compute_from(&serialized);
+        let signature = Signature::from_bytes(&rest[..64].try_into().map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                rest,
+                nom::error::ErrorKind::LengthValue,
+            ))
+        })?)
+        .map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                rest,
+                nom::error::ErrorKind::Verify,
+            ))
+        })?;
+        Ok((
+            rest,
+            Announcement {
+                listeners: listeners.into_iter().collect(),
+                hash,
+                timestamp,
+                serialized,
+                signature,
+            },
+        ))
+    }
 }
 
 impl Announcement {
@@ -29,7 +158,12 @@ impl Announcement {
         keypair: &KeyPair,
     ) -> Result<Self, PeerNetError> {
         let mut buf: Vec<u8> = vec![];
-        buf.extend(listeners.len().to_be_bytes());
+        let length_serializer = U64VarIntSerializer::new();
+        length_serializer
+            .serialize(&(listeners.len() as u64), &mut buf)
+            .map_err(|err| {
+                PeerNetError::HandlerError(format!("Failed to serialize announcement: {}", err))
+            })?;
         for listener in &listeners {
             let ip_bytes = match listener.0.ip() {
                 IpAddr::V4(ip) => {
@@ -51,77 +185,46 @@ impl Announcement {
             .expect("Time went backward")
             .as_millis();
         buf.extend(timestamp.to_be_bytes());
+        let hash = Hash::compute_from(&buf);
         Ok(Self {
             listeners,
             timestamp,
+            hash,
             signature: keypair
-                .sign(&Hash::compute_from(&buf))
+                .sign(&hash)
                 .map_err(|err| PeerNetError::SignError(err.to_string()))?,
             serialized: buf,
         })
     }
+}
 
-    pub fn from_bytes(bytes: &[u8], peer_id: &PeerId) -> Result<Self, PeerNetError> {
+#[cfg(test)]
+mod tests {
+    use crate::handlers::peer_handler::announcement::{
+        Announcement, AnnouncementDeserializer, AnnouncementDeserializerArgs,
+    };
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
+    use peernet::{transports::TransportType, types::KeyPair};
+    use std::collections::HashMap;
+
+    use super::AnnouncementSerializer;
+
+    #[test]
+    fn test_ser_deser() {
         let mut listeners = HashMap::new();
-        let nb_listeners = usize::from_be_bytes(bytes[..8].try_into().unwrap());
-        let mut i = 8;
-        for _ in 0..nb_listeners {
-            let ip: IpAddr = match bytes[i] {
-                4 => {
-                    i += 1;
-                    let bytes: [u8; 4] = bytes[i..i + 4].try_into().unwrap();
-                    i += 4;
-                    IpAddr::from(bytes)
-                }
-                6 => {
-                    i += 1;
-                    let bytes: [u8; 16] = bytes[i..i + 16].try_into().unwrap();
-                    i += 16;
-                    IpAddr::from(bytes)
-                }
-                _ => {
-                    return Err(PeerNetError::HandshakeError(
-                        "Invalid IP version".to_string(),
-                    ))
-                }
-            };
-            let port_bytes = bytes[i..i + 2].try_into().unwrap();
-            i += 2;
-            let port = u16::from_be_bytes(port_bytes);
-            let transport_type = match bytes[i] {
-                0 => TransportType::Tcp,
-                1 => TransportType::Quic,
-                _ => {
-                    return Err(PeerNetError::HandshakeError(
-                        "Invalid transport type".to_string(),
-                    ))
-                }
-            };
-            i += 1;
-            let addr = SocketAddr::new(ip, port);
-            listeners.insert(addr, transport_type);
-        }
-        let timestamp = u128::from_be_bytes(bytes[i..i + 16].try_into().unwrap());
-        i += 16;
-        let hash = Hash::compute_from(&bytes[..i]);
-        let signature = Signature::from_bytes(bytes[i..].try_into().unwrap()).unwrap();
-        if peer_id.verify_signature(&hash, &signature).is_ok() {
-            Ok(Self {
-                listeners,
-                timestamp,
-                signature,
-                serialized: bytes[..i].to_vec(),
-            })
-        } else {
-            Err(PeerNetError::HandshakeError(
-                "Invalid signature".to_string(),
-            ))
-        }
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = self.serialized.clone();
-        bytes.extend_from_slice(&self.signature.to_bytes());
-        bytes
+        listeners.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+        listeners.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Quic);
+        let announcement = Announcement::new(listeners, &KeyPair::generate()).unwrap();
+        let announcement_serializer = AnnouncementSerializer::new();
+        let announcement_deserializer =
+            AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: 100 });
+        let mut buf: Vec<u8> = vec![];
+        announcement_serializer
+            .serialize(&announcement, &mut buf)
+            .unwrap();
+        let (_, announcement_deserialized) = announcement_deserializer
+            .deserialize::<DeserializeError>(&buf)
+            .unwrap();
+        assert_eq!(announcement, announcement_deserialized);
     }
 }

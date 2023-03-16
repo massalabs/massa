@@ -14,9 +14,10 @@ use peernet::{
 };
 
 use crate::handlers::{
+    block_handler::BlockHandler,
     endorsement_handler::EndorsementHandler,
     operation_handler::OperationHandler,
-    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler}, block_handler::BlockHandler,
+    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
 };
 
 pub enum ConnectivityCommand {
@@ -38,7 +39,7 @@ pub fn start_connectivity_thread(
         let (sender_endorsements, receiver_endorsements) = unbounded();
         let (sender_blocks, receiver_blocks) = unbounded();
 
-        let mut peernet_config = PeerNetConfiguration::default(MassaHandshake {});
+        let mut peernet_config = PeerNetConfiguration::default(MassaHandshake::new());
         peernet_config.self_keypair = config.keypair;
         peernet_config.fallback_function = Some(&fallback_function);
         //TODO: Add the rest of the config
@@ -58,7 +59,8 @@ pub fn start_connectivity_thread(
             OperationHandler::new(manager.active_connections.clone(), receiver_operations);
         let mut endorsement_handler =
             EndorsementHandler::new(manager.active_connections.clone(), receiver_endorsements);
-        let mut block_handler = BlockHandler::new(manager.active_connections.clone(), receiver_blocks);
+        let mut block_handler =
+            BlockHandler::new(manager.active_connections.clone(), receiver_blocks);
 
         for (addr, transport) in config.listeners {
             manager.start_listener(transport, addr).expect(&format!(

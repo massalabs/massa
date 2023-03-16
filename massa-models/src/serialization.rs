@@ -173,7 +173,7 @@ impl Serializer<IpAddr> for IpAddrSerializer {
 }
 
 /// Deserializer for `IpAddr`
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IpAddrDeserializer;
 
 impl IpAddrDeserializer {

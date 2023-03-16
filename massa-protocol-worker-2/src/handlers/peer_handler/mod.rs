@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
@@ -21,7 +22,9 @@ use peernet::{
 
 use crate::handlers::peer_handler::{messages::PeerManagementMessage, tester::Tester};
 
-use self::announcement::Announcement;
+use self::announcement::{
+    Announcement, AnnouncementDeserializer, AnnouncementDeserializerArgs, AnnouncementSerializer,
+};
 
 /// This file contains the definition of the peer management handler
 /// This handler is here to check that announcements we receive are valid and
@@ -103,7 +106,24 @@ impl PeerManagementHandler {
 }
 
 #[derive(Clone)]
-pub struct MassaHandshake {}
+pub struct MassaHandshake {
+    pub announcement_serializer: AnnouncementSerializer,
+    pub announcement_deserializer: AnnouncementDeserializer,
+}
+
+impl MassaHandshake {
+    pub fn new() -> Self {
+        Self {
+            announcement_serializer: AnnouncementSerializer::new(),
+            announcement_deserializer: AnnouncementDeserializer::new(
+                AnnouncementDeserializerArgs {
+                    //TODO: Config
+                    max_listeners: 1000,
+                },
+            ),
+        }
+    }
+}
 
 impl HandshakeHandler for MassaHandshake {
     fn perform_handshake(
@@ -116,7 +136,11 @@ impl HandshakeHandler for MassaHandshake {
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         let listeners_announcement = Announcement::new(listeners.clone(), keypair).unwrap();
-        bytes.extend_from_slice(&listeners_announcement.to_bytes());
+        self.announcement_serializer
+            .serialize(&listeners_announcement, &mut bytes)
+            .map_err(|err| {
+                PeerNetError::HandshakeError(format!("Failed to serialize announcement: {}", err))
+            })?;
         endpoint.send(&bytes)?;
 
         let received = endpoint.receive()?;
@@ -130,7 +154,20 @@ impl HandshakeHandler for MassaHandshake {
         //This will be done also in the handler but as we are in the handshake we want to do it to invalid the handshake in case it fails.
         let peer_id = PeerId::from_bytes(&received[offset..offset + 32].try_into().unwrap())?;
         offset += 32;
-        let announcement = Announcement::from_bytes(&received[offset..], &peer_id)?;
+        let (_, announcement) = self
+            .announcement_deserializer
+            .deserialize::<DeserializeError>(&received[offset..])
+            .map_err(|err| {
+                PeerNetError::HandshakeError(format!("Failed to deserialize announcement: {}", err))
+            })?;
+        if peer_id
+            .verify_signature(&announcement.hash, &announcement.signature)
+            .is_err()
+        {
+            return Err(PeerNetError::HandshakeError(String::from(
+                "Invalid signature",
+            )));
+        }
         //TODO: Verify that the handler is defined
         message_handlers
             .get_handler(0)
@@ -190,7 +227,10 @@ pub fn fallback_function(
         let mut bytes = PeerId::from_public_key(keypair.get_public_key()).to_bytes();
         //TODO: Add version in announce
         let listeners_announcement = Announcement::new(listeners.clone(), &keypair).unwrap();
-        bytes.extend_from_slice(&listeners_announcement.to_bytes());
+        let announcement_serializer = AnnouncementSerializer::new();
+        announcement_serializer
+            .serialize(&listeners_announcement, &mut bytes)
+            .unwrap();
         endpoint.send(&bytes).unwrap();
         std::thread::sleep(Duration::from_millis(200));
         endpoint.shutdown();
