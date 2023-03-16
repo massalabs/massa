@@ -827,7 +827,10 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-    let node_wallet = load_wallet(cur_args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
+    let node_wallet = load_wallet(
+        cur_args.password.clone(),
+        &SETTINGS.factory.staking_wallet_path,
+    )?;
 
     loop {
         let (

@@ -293,8 +293,14 @@ impl FinalState {
                     .create_new_cycle_for_snapshot(latest_consistent_cycle_info, end_slot);
 
                 final_state.slot = end_slot;
-                
+
                 final_state.compute_state_hash_at_slot(final_state.slot);
+
+                // feed final_state_hash to the last cycle
+                let cycle = final_state.slot.get_cycle(config.periods_per_cycle);
+                final_state.pos_state
+                    .feed_cycle_state_hash(cycle, final_state.final_state_hash);
+
                 Ok(final_state)
             }
             false => Err(FinalStateError::SnapshotError(String::from(

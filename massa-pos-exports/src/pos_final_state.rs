@@ -80,7 +80,7 @@ impl PoSFinalState {
         initial_ledger_hash: Hash,
         initial_cycle: u64,
     ) -> Result<Self, PosError> {
-        // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
+        // Seeds used as the initial seeds for negative cycles (initial_cycle-2 and initial_cycle-1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
@@ -153,12 +153,12 @@ impl PoSFinalState {
             .expect("Error in slot ordering")
             .saturating_add(1);
 
+        // TODO: easier to read version
+        // rng_seed.extend_from_raw_slice([false;num_slots]);
         for _ in 0..num_slots {
             rng_seed.push(false);
         }
-        //rng_seed.extend_from_raw_slice([false;num_slots]);
 
-        //rng_seed.fill(value)
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             false,
@@ -393,7 +393,6 @@ impl PoSFinalState {
 
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
-
         match cycle.checked_sub(3) {
             Some(lookback_cycle) if lookback_cycle.checked_sub(self.initial_cycle).is_some() => {
                 let lookback_index = match self.get_cycle_index(lookback_cycle) {
@@ -405,10 +404,8 @@ impl PoSFinalState {
                     .roll_counts
                     .get(addr)
                     .cloned()
-            },
-            _ => {
-                self.initial_rolls.get(addr).cloned()
             }
+            _ => self.initial_rolls.get(addr).cloned(),
         }
     }
 
