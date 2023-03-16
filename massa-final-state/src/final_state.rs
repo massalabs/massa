@@ -349,6 +349,31 @@ impl FinalState {
         hash_concat.extend(self.executed_ops.hash.to_bytes());
         // 6. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
+
+        info!(
+            "ledger_hash hash at slot {}: {}",
+            slot, ledger_hash
+        );
+        info!(
+            "async_pool hash at slot {}: {}",
+            slot, self.async_pool.hash
+        );
+        info!(
+            "deferred_credit hash at slot {}: {}",
+            slot, self.pos_state.deferred_credits.hash
+        );
+        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length) as usize;
+        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
+            info!(
+                "cycle_global_hash hash at slot {}: {}",
+                slot, cycle_info.cycle_global_hash
+            );
+        }
+        info!(
+            "executed_ops hash at slot {}: {}",
+            slot, self.executed_ops.hash
+        );
+
         info!(
             "final_state hash at slot {}: {}",
             slot, self.final_state_hash
