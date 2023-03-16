@@ -796,6 +796,7 @@ fn main(args: Args) -> anyhow::Result<()> {
 }
 
 async fn run(args: Args) -> anyhow::Result<()> {
+    let mut cur_args = args;
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
     let tracing_layer = tracing_subscriber::fmt::layer()
@@ -826,7 +827,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }));
 
     // load or create wallet, asking for password if necessary
-    let node_wallet = load_wallet(args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
+    let node_wallet = load_wallet(cur_args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
 
     loop {
         let (
@@ -843,7 +844,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
-        ) = launch(&args, node_wallet.clone()).await;
+        ) = launch(&cur_args, node_wallet.clone()).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);
@@ -917,6 +918,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
         if !restart {
             break;
         }
+        cur_args.from_snapshot = false;
         interrupt_signal_listener.abort();
     }
     Ok(())

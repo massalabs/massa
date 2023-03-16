@@ -185,12 +185,18 @@ impl FinalState {
                 ))
             })?;
 
+        let cycle_history: VecDeque<_> = cycle_history.into();
+
+        let latest_consistent_cycle_info = cycle_history
+            .back()
+            .expect("Cycle history should not be empty in snapshot!");
+
         let pos_state = PoSFinalState::from_snapshot(
             config.pos_config.clone(),
-            cycle_history.into(),
+            cycle_history.clone(),
             deferred_credits,
             &config.initial_seed_string,
-            &config.initial_rolls_path,
+            latest_consistent_cycle_info.roll_counts.clone(),
             selector,
             ledger.get_ledger_hash(),
             end_slot.get_cycle(config.periods_per_cycle),
@@ -287,6 +293,8 @@ impl FinalState {
                     .create_new_cycle_for_snapshot(latest_consistent_cycle_info, end_slot);
 
                 final_state.slot = end_slot;
+                
+                final_state.compute_state_hash_at_slot(final_state.slot);
                 Ok(final_state)
             }
             false => Err(FinalStateError::SnapshotError(String::from(
@@ -424,7 +432,7 @@ impl FinalState {
             FinalStateError::SnapshotError(format!("Could not create the snapshot dir: {}", err))
         })?;
 
-        info!(
+        debug!(
             "Snapshot feature activated - Saving to path: {}",
             self.config.final_state_path.display()
         );

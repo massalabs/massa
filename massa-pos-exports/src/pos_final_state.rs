@@ -75,19 +75,11 @@ impl PoSFinalState {
         cycle_history: VecDeque<CycleInfo>,
         deferred_credits: DeferredCredits,
         initial_seed_string: &str,
-        initial_rolls_path: &PathBuf,
+        initial_rolls_in_snapshot: BTreeMap<Address, u64>,
         selector: Box<dyn SelectorController>,
         initial_ledger_hash: Hash,
         initial_cycle: u64,
     ) -> Result<Self, PosError> {
-        // load get initial rolls from file
-        let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
-            &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
-                PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
-            })?,
-        )
-        .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
-
         // Seeds used as the initial seeds for negative cycles (-2 and -1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
@@ -97,7 +89,7 @@ impl PoSFinalState {
             cycle_history,
             deferred_credits,
             selector,
-            initial_rolls,
+            initial_rolls: initial_rolls_in_snapshot,
             initial_seeds,
             initial_ledger_hash,
             initial_cycle,
@@ -164,11 +156,13 @@ impl PoSFinalState {
         for _ in 0..num_slots {
             rng_seed.push(false);
         }
+        //rng_seed.extend_from_raw_slice([false;num_slots]);
 
+        //rng_seed.fill(value)
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             false,
-            latest_consistent_cycle_info.roll_counts.clone(),
+            self.initial_rolls.clone(),
             rng_seed,
             latest_consistent_cycle_info.production_stats.clone(),
         ));
@@ -177,7 +171,7 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
-        // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
+        // if cycle_history starts at a cycle that is strictly higher than initial_cycle, do not feed cycles initial_cycle, initial_cycle+1 to selector
         let history_starts_late = self
             .cycle_history
             .front()
@@ -186,7 +180,7 @@ impl PoSFinalState {
 
         let mut max_cycle = None;
 
-        // feed cycles 0, 1 to selector if necessary
+        // feed cycles initial_cycle, initial_cycle+1 to selector if necessary
         if !history_starts_late {
             for draw_cycle in self.initial_cycle..=self.initial_cycle + 1 {
                 self.feed_selector(draw_cycle)?;
@@ -399,20 +393,22 @@ impl PoSFinalState {
 
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
-        // get lookback cycle index
-        let lookback_cycle = cycle.checked_sub(3);
-        if let Some(lookback_cycle) = lookback_cycle {
-            let lookback_index = match self.get_cycle_index(lookback_cycle) {
-                Some(idx) => idx,
-                None => return None,
-            };
-            // get rolls
-            self.cycle_history[lookback_index]
-                .roll_counts
-                .get(addr)
-                .cloned()
-        } else {
-            self.initial_rolls.get(addr).cloned()
+
+        match cycle.checked_sub(3) {
+            Some(lookback_cycle) if lookback_cycle.checked_sub(self.initial_cycle).is_some() => {
+                let lookback_index = match self.get_cycle_index(lookback_cycle) {
+                    Some(idx) => idx,
+                    None => return None,
+                };
+                // get rolls
+                self.cycle_history[lookback_index]
+                    .roll_counts
+                    .get(addr)
+                    .cloned()
+            },
+            _ => {
+                self.initial_rolls.get(addr).cloned()
+            }
         }
     }
 
