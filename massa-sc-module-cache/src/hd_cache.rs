@@ -6,12 +6,8 @@ use massa_hash::Hash;
 use massa_sc_runtime::GasCosts;
 use massa_serialization::Serializer;
 use rand::Rng;
-use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, Options, WriteBatch, DB};
+use rocksdb::{WriteBatch, DB};
 use std::path::PathBuf;
-
-const MODULE_CF: &str = "module";
-const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
-const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 
 const MODULE_IDENT: u8 = 0u8;
 const DATA_IDENT: u8 = 1u8;
@@ -26,7 +22,7 @@ macro_rules! module_key {
 
 /// Delta key formatting macro
 #[macro_export]
-macro_rules! data_key {
+macro_rules! metadata_key {
     ($bc_hash:expr) => {
         [&$bc_hash.to_bytes()[..], &[DATA_IDENT]].concat()
     };
@@ -57,23 +53,8 @@ impl HDCache {
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches
     ///   `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, amount_to_remove: usize) -> Self {
-        let mut db_opts = Options::default();
-        db_opts.create_if_missing(true);
-        db_opts.create_missing_column_families(true);
-
-        let db = DB::open_cf_descriptors(
-            &db_opts,
-            path,
-            vec![ColumnFamilyDescriptor::new(MODULE_CF, Options::default())],
-        )
-        .expect(OPEN_ERROR);
-
-        let entry_count = db
-            .iterator_cf(
-                db.cf_handle(MODULE_CF).expect(CF_ERROR),
-                rocksdb::IteratorMode::Start,
-            )
-            .count();
+        let db = DB::open_default(path).expect("critical: rocksdb open operation failed");
+        let entry_count = db.iterator(rocksdb::IteratorMode::Start).count();
 
         Self {
             db,
@@ -115,12 +96,8 @@ impl HDCache {
             }
         };
 
-        self.db
-            .put_cf(self.module_cf(), module_key!(hash), ser_module)
-            .unwrap();
-        self.db
-            .put_cf(self.module_cf(), data_key!(hash), ser_metadata)
-            .unwrap();
+        self.db.put(module_key!(hash), ser_module).unwrap();
+        self.db.put(metadata_key!(hash), ser_metadata).unwrap();
 
         self.entry_count += 1;
 
@@ -135,7 +112,11 @@ impl HDCache {
     ///   been removed
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
-        // TODO: implement this with new keys format
+        let mut ser_metadata = Vec::new();
+        self.meta_ser
+            .serialize(&ModuleMetadata::Delta(init_cost), &mut ser_metadata)
+            .unwrap();
+        self.db.put(metadata_key!(hash), ser_metadata).unwrap();
         Ok(())
     }
 
@@ -154,7 +135,7 @@ impl HDCache {
         // generate a key from the random number
         let key = *Hash::compute_from(rand.to_string().as_bytes()).to_bytes();
 
-        let mut iter = self.db.raw_iterator_cf(self.module_cf());
+        let mut iter = self.db.raw_iterator();
         iter.seek_for_prev(key);
 
         let mut batch = WriteBatch::default();
@@ -168,7 +149,7 @@ impl HDCache {
             // thanks to if above we can safely unwrap
             let key = iter.key().unwrap();
 
-            batch.delete_cf(self.module_cf(), key);
+            batch.delete(key);
 
             iter.next();
             snipped_entries_count += 1;
@@ -181,10 +162,6 @@ impl HDCache {
         self.entry_count -= snipped_entries_count;
 
         Ok(())
-    }
-
-    fn module_cf(&self) -> &ColumnFamily {
-        self.db.cf_handle(MODULE_CF).expect(CF_ERROR)
     }
 }
 
