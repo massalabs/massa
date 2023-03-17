@@ -526,6 +526,15 @@
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
 <a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -598,6 +607,9 @@
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    initial_cycle,
+                    initial_rolls,
+                    initial_ledger_hash,
                 } =&gt; {
                     <span class="comment">// Set final state
                     </span><span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
@@ -607,6 +619,12 @@
                     <span class="kw">let </span>last_cycle_step = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part);
+                    write_final_state.pos_state.set_initial_cycle(initial_cycle);
+                    write_final_state.pos_state.set_initial_rolls(initial_rolls);
+                    write_final_state
+                        .pos_state
+                        .set_initial_ledger_hash(initial_ledger_hash);
+
                     <span class="kw">let </span>last_credits_step = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part);
