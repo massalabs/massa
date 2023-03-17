@@ -4,7 +4,9 @@ use crossbeam::{
     channel::{unbounded, Sender},
     select,
 };
+use massa_pool_exports::PoolController;
 use massa_protocol_exports_2::{ProtocolConfig, ProtocolError};
+use massa_storage::Storage;
 use peernet::{
     config::PeerNetConfiguration,
     handlers::{MessageHandler, MessageHandlers},
@@ -26,6 +28,8 @@ pub enum ConnectivityCommand {
 
 pub fn start_connectivity_thread(
     config: ProtocolConfig,
+    pool_controller: Box<dyn PoolController>,
+    storage: Storage,
 ) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let (sender, receiver) = unbounded();
     let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
@@ -57,8 +61,12 @@ pub fn start_connectivity_thread(
 
         let mut operation_handler =
             OperationHandler::new(manager.active_connections.clone(), receiver_operations);
-        let mut endorsement_handler =
-            EndorsementHandler::new(manager.active_connections.clone(), receiver_endorsements);
+        let mut endorsement_handler = EndorsementHandler::new(
+            pool_controller,
+            storage,
+            manager.active_connections.clone(),
+            receiver_endorsements,
+        );
         let mut block_handler =
             BlockHandler::new(manager.active_connections.clone(), receiver_blocks);
 

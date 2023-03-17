@@ -2,7 +2,9 @@ use std::thread::JoinHandle;
 
 use crossbeam::channel::{Receiver, Sender};
 use massa_models::{endorsement::EndorsementId, prehash::PreHashSet};
+use massa_pool_exports::PoolController;
 use massa_serialization::{DeserializeError, Deserializer};
+use massa_storage::Storage;
 use peernet::peer_id::PeerId;
 
 use crate::handlers::endorsement_handler::messages::EndorsementMessage;
@@ -13,17 +15,15 @@ use super::{
 };
 
 pub struct RetrievalThread {
+    receiver: Receiver<(PeerId, Vec<u8>)>,
     cached_endorsement_ids: PreHashSet<EndorsementId>,
+    pool_controller: Box<dyn PoolController>,
+    storage: Storage,
+    internal_sender: Sender<InternalMessage>,
 }
 
-pub fn start_retrieval_thread(
-    receiver: Receiver<(PeerId, Vec<u8>)>,
-    internal_sender: Sender<InternalMessage>,
-) -> JoinHandle<()> {
-    std::thread::spawn(move || {
-        let mut retrieval_thread = RetrievalThread {
-            cached_endorsement_ids: PreHashSet::default(),
-        };
+impl RetrievalThread {
+    fn run(&mut self) {
         //TODO: Real values
         let endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
@@ -32,7 +32,7 @@ pub fn start_retrieval_thread(
                 endorsement_count: 32,
             });
         loop {
-            match receiver.recv() {
+            match self.receiver.recv() {
                 Ok((peer_id, message)) => {
                     let (rest, message) = endorsement_message_deserializer
                         .deserialize::<DeserializeError>(&message)
@@ -45,19 +45,17 @@ pub fn start_retrieval_thread(
                         EndorsementMessage::Endorsements(mut endorsements) => {
                             // Retain endorsements not in cache in endorsement vec and add them
                             endorsements.retain(|endorsement| {
-                                if retrieval_thread
-                                    .cached_endorsement_ids
-                                    .contains(&endorsement.id)
-                                {
+                                if self.cached_endorsement_ids.contains(&endorsement.id) {
                                     false
                                 } else {
-                                    retrieval_thread
-                                        .cached_endorsement_ids
-                                        .insert(endorsement.id);
+                                    self.cached_endorsement_ids.insert(endorsement.id);
                                     true
                                 }
                             });
-                            internal_sender
+                            let mut endorsements_storage = self.storage.clone_without_refs();
+                            endorsements_storage.store_endorsements(endorsements.clone());
+                            self.pool_controller.add_endorsements(endorsements_storage);
+                            self.internal_sender
                                 .send(InternalMessage::PropagateEndorsements((
                                     peer_id,
                                     endorsements,
@@ -72,5 +70,23 @@ pub fn start_retrieval_thread(
                 }
             }
         }
+    }
+}
+
+pub fn start_retrieval_thread(
+    receiver: Receiver<(PeerId, Vec<u8>)>,
+    pool_controller: Box<dyn PoolController>,
+    storage: Storage,
+    internal_sender: Sender<InternalMessage>,
+) -> JoinHandle<()> {
+    std::thread::spawn(move || {
+        let mut retrieval_thread = RetrievalThread {
+            receiver,
+            cached_endorsement_ids: PreHashSet::default(),
+            pool_controller,
+            storage,
+            internal_sender,
+        };
+        retrieval_thread.run();
     })
 }

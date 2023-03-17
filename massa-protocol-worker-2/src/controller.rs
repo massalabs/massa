@@ -9,7 +9,9 @@ use massa_protocol_exports_2::{ProtocolController, ProtocolError};
 use massa_storage::Storage;
 
 #[derive(Clone)]
-pub struct ProtocolControllerImpl {}
+pub struct ProtocolControllerImpl {
+    //TODO: Add channels to send to different handlers
+}
 
 impl ProtocolControllerImpl {
     pub fn new() -> Self {

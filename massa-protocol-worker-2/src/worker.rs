@@ -19,13 +19,14 @@ use crate::{
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     config: ProtocolConfig,
-    consensus_controller: Box<dyn ConsensusController>,
+    _consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
 ) -> Result<(Box<dyn ProtocolController>, Box<dyn ProtocolManager>), ProtocolError> {
     debug!("starting protocol controller");
 
-    let connectivity_thread_handle = start_connectivity_thread(config.clone())?;
+    let connectivity_thread_handle =
+        start_connectivity_thread(config.clone(), pool_controller, storage)?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);
 
