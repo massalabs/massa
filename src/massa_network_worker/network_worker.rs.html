@@ -815,6 +815,9 @@
 <a href="#815" id="815">815</a>
 <a href="#816" id="816">816</a>
 <a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The network worker actually does the job of managing connections
@@ -1520,6 +1523,7 @@
             <span class="kw">let </span>max_op_datastore_entry_count = <span class="self">self</span>.cfg.max_op_datastore_entry_count;
             <span class="kw">let </span>max_op_datastore_key_length = <span class="self">self</span>.cfg.max_op_datastore_key_length;
             <span class="kw">let </span>max_op_datastore_value_length = <span class="self">self</span>.cfg.max_op_datastore_value_length;
+            <span class="kw">let </span>last_start_period = <span class="self">self</span>.cfg.last_start_period;
             <span class="self">self</span>.handshake_peer_list_futures
                 .push(tokio::spawn(<span class="kw">async move </span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
@@ -1541,6 +1545,7 @@
                             max_op_datastore_entry_count,
                             max_op_datastore_key_length,
                             max_op_datastore_value_length,
+                            last_start_period
                         ),
                     );
                     <span class="kw">match </span>tokio::time::timeout(
@@ -1588,6 +1593,7 @@
             connection_id,
             <span class="self">self</span>.cfg.max_bytes_read,
             <span class="self">self</span>.cfg.max_bytes_write,
+            <span class="self">self</span>.cfg.last_start_period
         ));
         <span class="prelude-val">Ok</span>(())
     }
