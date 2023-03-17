@@ -23,7 +23,7 @@ use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_grpc::config::GrpcConfig;
-use massa_grpc::handler::MassaGrpcService;
+use massa_grpc::service::MassaGrpcService;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -95,7 +95,7 @@ async fn launch(
     StopHandle,
     StopHandle,
     StopHandle,
-    Option<massa_grpc::handler::StopHandle>,
+    Option<massa_grpc::service::StopHandle>,
 ) {
     info!("Node version : {}", *VERSION);
     if let Some(end) = *END_TIMESTAMP {
@@ -732,7 +732,7 @@ async fn stop(
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
-    grpc_handle: Option<massa_grpc::handler::StopHandle>,
+    grpc_handle: Option<massa_grpc::service::StopHandle>,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {

@@ -1,5 +1,5 @@
 use crate::error::GrpcError;
-use crate::handler::MassaGrpcService;
+use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::operation::{OperationType, SecureShareOperation};
 use massa_proto::massa::api::v1::{

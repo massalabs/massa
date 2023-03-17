@@ -16,5 +16,10 @@ pub mod config;
 pub mod error;
 /// gRPC API implementation
 pub mod handler;
+/// service
+pub mod service;
 /// stream
 pub mod stream;
+
+#[cfg(test)]
+mod tests;

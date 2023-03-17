@@ -1,5 +1,5 @@
 use crate::error::{match_for_io_error, GrpcError};
-use crate::handler::MassaGrpcService;
+use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::operation::{OperationDeserializer, SecureShareOperation};
 use massa_models::secure_share::SecureShareDeserializer;
