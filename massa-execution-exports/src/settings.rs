@@ -68,4 +68,6 @@ pub struct ExecutionConfig {
     pub gas_costs: GasCosts,
     /// path of the initial vesting file
     pub initial_vesting_path: PathBuf,
+    ///
+    pub last_start_period: u64
 }

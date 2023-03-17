@@ -6,7 +6,6 @@ use massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
-    config::LAST_START_PERIOD,
     endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
@@ -77,9 +76,8 @@ impl BlockFactoryWorker {
         );
 
         // ignore genesis
-        #[allow(clippy::absurd_extreme_comparisons)]
-        if next_slot.period <= *LAST_START_PERIOD {
-            next_slot.period = *LAST_START_PERIOD + 1;
+        if next_slot.period <= self.cfg.last_start_period {
+            next_slot.period = self.cfg.last_start_period + 1;
         }
 
         // protection against double-production on unexpected system clock adjustment

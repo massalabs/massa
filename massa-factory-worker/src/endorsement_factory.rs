@@ -3,7 +3,6 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
     block_id::BlockId,
-    config::LAST_START_PERIOD,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     secure_share::SecureShareContent,
     slot::Slot,
@@ -90,9 +89,8 @@ impl EndorsementFactoryWorker {
         }
 
         // prevent triggering on period-zero slots
-        #[allow(clippy::absurd_extreme_comparisons)]
-        if next_slot.period <= *LAST_START_PERIOD {
-            next_slot = Slot::new(*LAST_START_PERIOD + 1, 0);
+        if next_slot.period <= self.cfg.last_start_period {
+            next_slot = Slot::new(self.cfg.last_start_period + 1, 0);
         }
 
         // get the timestamp of the target slot

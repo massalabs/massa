@@ -24,6 +24,7 @@ pub(crate) enum Command {
         cycle: u64,
         lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
+        last_start_period: u64
     },
     /// Stop the thread (usually sent by the manager and pushed at the top
     /// of the command queue)

@@ -29,7 +29,7 @@ use massa_models::config::constants::{
     ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
     DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0, ENDORSEMENT_COUNT, END_TIMESTAMP,
     EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LAST_START_PERIOD, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE,
+    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE,
     LEDGER_ENTRY_DATASTORE_BASE_SIZE, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH,
     MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
     MAX_BLOCK_SIZE, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
@@ -138,14 +138,13 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
-        final_state_path: SETTINGS.snapshot.final_state_path.clone(),
-        last_start_period: *LAST_START_PERIOD,
+        final_state_path: SETTINGS.snapshot.final_state_path.clone()
     };
 
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
 
-    if !_args.from_snapshot && SETTINGS.ledger.disk_ledger_path.exists() {
+    if _args.restart_from_snapshot_at_period.is_none() && SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
             .expect("disk ledger delete failed");
     }
@@ -165,25 +164,15 @@ async fn launch(
     .expect("could not start selector worker");
 
     // Create final state
-    let final_state = if _args.from_snapshot {
-        Arc::new(parking_lot::RwLock::new(
-            FinalState::from_snapshot(
-                final_state_config,
-                Box::new(ledger),
-                selector_controller.clone(),
-            )
-            .expect("could not init final state"),
-        ))
-    } else {
-        Arc::new(parking_lot::RwLock::new(
+    let final_state = Arc::new(parking_lot::RwLock::new(
             FinalState::new(
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                _args.restart_from_snapshot_at_period.unwrap_or_default()
             )
             .expect("could not init final state"),
-        ))
-    };
+        ));
 
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
@@ -254,7 +243,7 @@ async fn launch(
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
-            _args.from_snapshot
+            _args.restart_from_snapshot_at_period
         ) => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
@@ -302,6 +291,7 @@ async fn launch(
         event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
         node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
         node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
+        last_start_period: final_state.read().last_start_period
     };
 
     // launch network controller
@@ -375,6 +365,7 @@ async fn launch(
             SETTINGS.execution.wasm_gas_costs_file.clone(),
         )
         .expect("Failed to load gas costs"),
+        last_start_period: final_state.read().last_start_period
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
@@ -438,6 +429,7 @@ async fn launch(
         broadcast_blocks_headers_capacity: SETTINGS.consensus.broadcast_blocks_headers_capacity,
         broadcast_blocks_capacity: SETTINGS.consensus.broadcast_blocks_capacity,
         broadcast_filled_blocks_capacity: SETTINGS.consensus.broadcast_filled_blocks_capacity,
+        last_start_period: final_state.read().last_start_period
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -492,6 +484,7 @@ async fn launch(
         t0: T0,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
+        last_start_period: final_state.read().last_start_period
     };
 
     let protocol_senders = ProtocolSenders {
@@ -522,6 +515,7 @@ async fn launch(
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        last_start_period: final_state.read().last_start_period
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -755,9 +749,9 @@ struct Args {
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
 
-    /// Snapshot file
-    #[structopt(long = "from-snapshot")]
-    from_snapshot: bool,
+    /// restart_from_snapshot_at_period
+    #[structopt(long = "restart-from-snapshot-at-period")]
+    restart_from_snapshot_at_period: Option<u64>,
 
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector
@@ -936,7 +930,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
         if !restart {
             break;
         }
-        cur_args.from_snapshot = false;
+        cur_args.restart_from_snapshot_at_period = None;
         interrupt_signal_listener.abort();
     }
     Ok(())

@@ -24,4 +24,7 @@ pub struct FactoryConfig {
 
     /// maximal block gas
     pub max_block_gas: u64,
+    
+    ///
+    pub last_start_period: u64
 }

@@ -32,6 +32,7 @@ pub fn create_final_state(
         pos_state,
         executed_ops,
         final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+        last_start_period: 0
     }
 }
 

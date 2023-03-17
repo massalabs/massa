@@ -31,6 +31,7 @@ impl FinalState {
             changes_history: Default::default(),
             config,
             final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+            last_start_period: 0,
         }
     }
 }
@@ -57,7 +58,6 @@ impl Default for FinalStateConfig {
             initial_rolls_path: PathBuf::new(),
             initial_seed_string: "".to_string(),
             final_state_path: PathBuf::new(),
-            last_start_period: 0,
         }
     }
 }

@@ -8,7 +8,6 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
-use massa_models::config::LAST_START_PERIOD;
 use massa_models::secure_share::Id;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -784,7 +783,7 @@ impl ProtocolWorker {
         });
 
         // refuse genesis blocks
-        if header.content.slot.period == *LAST_START_PERIOD || header.content.parents.is_empty() {
+        if header.content.slot.period == self.config.last_start_period || header.content.parents.is_empty() {
             // genesis
             massa_trace!("protocol.protocol_worker.check_header.err_is_genesis", {
                 "header": header

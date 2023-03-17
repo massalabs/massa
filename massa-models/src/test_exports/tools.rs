@@ -1,9 +1,6 @@
 use massa_time::MassaTime;
 
-use crate::{
-    config::LAST_START_PERIOD,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-};
+use crate::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
 
 /// Gets the instant of the next slot.
 pub fn get_next_slot_instant(
@@ -18,9 +15,8 @@ pub fn get_next_slot_instant(
     let mut slot = get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, now);
 
     // ignore genesis
-    #[allow(clippy::absurd_extreme_comparisons)]
-    if slot.period <= *LAST_START_PERIOD {
-        slot.period = *LAST_START_PERIOD + 1;
+    if slot.period <= 0 {
+        slot.period = 1;
     }
 
     let actual_slot_time =

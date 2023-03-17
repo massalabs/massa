@@ -37,14 +37,22 @@ pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
-
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
+        let mut last_start_period = 0;
+        let mut parse_next;
+        for args in std::env::args() {
+            parse_next = args == String::from("restart-from-snapshot-at-period");
+            if parse_next {
+                last_start_period = u64::from_str(&args).unwrap_or_default();
+                break;
+            }
+        }
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
                 .saturating_sub(
-                    T0.checked_mul(*LAST_START_PERIOD).unwrap()
+                    T0.checked_mul(last_start_period).unwrap()
                 )
                 .saturating_add(MassaTime::from_millis(1000 * 10)
 
@@ -75,9 +83,6 @@ lazy_static::lazy_static! {
         .parse()
         .unwrap()
     };
-
-    /// Last period we restarted the network. Set to 0 for a brand new network.
-    pub static ref LAST_START_PERIOD: u64 = 0;
 
 }
 

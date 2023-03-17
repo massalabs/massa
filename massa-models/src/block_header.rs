@@ -1,5 +1,5 @@
 use crate::block_id::BlockId;
-use crate::config::{LAST_START_PERIOD, THREAD_COUNT};
+use crate::config::THREAD_COUNT;
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
     EndorsementSerializerLW, SecureShareEndorsement,
@@ -40,7 +40,7 @@ pub struct BlockHeader {
 #[cfg(any(test, feature = "testing"))]
 impl BlockHeader {
     fn assert_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if self.slot.period == *LAST_START_PERIOD {
+        if self.slot.period == 0 {
             if !self.parents.is_empty() {
                 return Err("Invariant broken: genesis block with parent(s)".into());
             }
@@ -210,11 +210,12 @@ pub struct BlockHeaderDeserializer {
     hash_deserializer: HashDeserializer,
     thread_count: u8,
     endorsement_count: u32,
+    last_start_period: u64,
 }
 
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializerLW`
-    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    pub const fn new(thread_count: u8, endorsement_count: u32, last_start_period: u64) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -228,6 +229,7 @@ impl BlockHeaderDeserializer {
             hash_deserializer: HashDeserializer::new(),
             thread_count,
             endorsement_count,
+            last_start_period,
         }
     }
 }
@@ -313,13 +315,13 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 .parse(input)?;
 
                 // validate the parent/slot invariats before moving on to other fields
-                if slot.period == *LAST_START_PERIOD && !parents.is_empty() {
+                if slot.period == self.last_start_period && !parents.is_empty() {
                     return Err(nom::Err::Failure(ContextError::add_context(
                         rest,
                         "Genesis block cannot contain parents",
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
-                } else if slot.period != *LAST_START_PERIOD
+                } else if slot.period != self.last_start_period
                     && parents.len() != THREAD_COUNT as usize
                 {
                     return Err(nom::Err::Failure(ContextError::add_context(

@@ -69,7 +69,7 @@ async fn stream_final_state_and_consensus(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    initial_cycle,
+                    last_start_period,
                     initial_rolls,
                     initial_ledger_hash,
                 } => {
@@ -81,7 +81,7 @@ async fn stream_final_state_and_consensus(
                     let last_cycle_step = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part);
-                    write_final_state.pos_state.set_initial_cycle(initial_cycle);
+                    write_final_state.set_last_start_period(last_start_period);
                     write_final_state.pos_state.set_initial_rolls(initial_rolls);
                     write_final_state
                         .pos_state
@@ -432,7 +432,7 @@ pub async fn get_state(
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
-    from_snapshot: bool,
+    restart_from_snapshot_at_period: Option<u64>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     let now = MassaTime::now()?;
@@ -457,7 +457,7 @@ pub async fn get_state(
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
-    if from_snapshot {
+    if restart_from_snapshot_at_period.is_some() {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         return Ok(GlobalBootstrapState::new(final_state));
     }

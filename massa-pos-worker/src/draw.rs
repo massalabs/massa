@@ -1,6 +1,6 @@
 use crate::CycleDraws;
 use massa_hash::Hash;
-use massa_models::{address::Address, config::LAST_START_PERIOD, slot::Slot};
+use massa_models::{address::Address, slot::Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorConfig};
 use rand::{distributions::Distribution, SeedableRng};
 use rand_distr::WeightedAliasIndex;
@@ -28,6 +28,7 @@ pub(crate) fn perform_draws(
     cycle: u64,
     lookback_rolls: BTreeMap<Address, u64>,
     lookback_seed: Hash,
+    last_start_period: u64
 ) -> PosResult<CycleDraws> {
     // get seeded RNG
     let mut rng = Xoshiro256PlusPlus::from_seed(*lookback_seed.to_bytes());
@@ -61,7 +62,7 @@ pub(crate) fn perform_draws(
     let mut count = 0;
     loop {
         // draw block creator
-        let producer = if cur_slot.period > *LAST_START_PERIOD {
+        let producer = if cur_slot.period > last_start_period {
             addresses[dist.sample(&mut rng)]
         } else {
             // force draws for genesis blocks

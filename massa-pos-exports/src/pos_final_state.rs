@@ -2,7 +2,6 @@ use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, Selecto
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
-use massa_models::config::LAST_START_PERIOD;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
 use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
@@ -34,6 +33,8 @@ pub struct PoSFinalState {
     pub initial_ledger_hash: Hash,
     /// initial cycle
     pub initial_cycle: u64,
+    ///
+    pub last_start_period: u64
 }
 
 impl PoSFinalState {
@@ -57,7 +58,7 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+        let end_slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
         Ok(Self {
             config: config.clone(),
@@ -68,6 +69,7 @@ impl PoSFinalState {
             initial_seeds,
             initial_ledger_hash,
             initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
+            last_start_period: end_slot.period,
         })
     }
 
@@ -81,21 +83,22 @@ impl PoSFinalState {
         initial_rolls_in_snapshot: BTreeMap<Address, u64>,
         selector: Box<dyn SelectorController>,
         initial_ledger_hash: Hash,
-        initial_cycle: u64,
+        end_slot: Slot,
     ) -> Result<Self, PosError> {
         // Seeds used as the initial seeds for negative cycles (initial_cycle-2 and initial_cycle-1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
-
+        
         Ok(Self {
-            config,
+            config: config.clone(),
             cycle_history,
             deferred_credits,
             selector,
             initial_rolls: initial_rolls_in_snapshot,
             initial_seeds,
             initial_ledger_hash,
-            initial_cycle,
+            initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
+            last_start_period: end_slot.period,
         })
     }
 
@@ -373,7 +376,7 @@ impl PoSFinalState {
         // feed selector
         self.selector
             .as_ref()
-            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
+            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed, self.last_start_period)
     }
 
     /// Feeds the selector targeting a given draw cycle

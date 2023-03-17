@@ -1,6 +1,6 @@
 use super::ConsensusState;
 use massa_consensus_exports::error::ConsensusError;
-use massa_models::{config::LAST_START_PERIOD, stats::ConsensusStats};
+use massa_models::stats::ConsensusStats;
 use massa_time::MassaTime;
 use std::cmp::max;
 
@@ -49,7 +49,7 @@ impl ConsensusState {
                 > max(
                     self.config
                         .genesis_timestamp
-                        .checked_add(self.config.t0.checked_mul(*LAST_START_PERIOD)?)?,
+                        .checked_add(self.config.t0.checked_mul(self.config.last_start_period)?)?,
                     self.launch_time,
                 )
                 .saturating_add(self.stats_desync_detection_timespan)

@@ -574,7 +574,7 @@ pub async fn stream_bootstrap_information(
         let pos_credits_part;
         let exec_ops_part;
         let final_state_changes;
-        let initial_cycle;
+        let last_start_period;
         let initial_rolls;
         let initial_ledger_hash;
 
@@ -607,7 +607,7 @@ pub async fn stream_bootstrap_information(
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
 
-            initial_cycle = final_state_read.pos_state.initial_cycle;
+            last_start_period = final_state_read.last_start_period;
             initial_rolls = final_state_read.pos_state.initial_rolls.clone();
             initial_ledger_hash = final_state_read.pos_state.initial_ledger_hash;
 
@@ -741,7 +741,7 @@ pub async fn stream_bootstrap_information(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    initial_cycle,
+                    last_start_period,
                     initial_rolls,
                     initial_ledger_hash,
                 },

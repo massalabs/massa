@@ -58,6 +58,7 @@ impl Default for ExecutionConfig {
             .unwrap(),
             max_module_cache_size: 1000,
             initial_vesting_path: PathBuf::default(),
+            last_start_period: 0
         }
     }
 }

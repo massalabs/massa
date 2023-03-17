@@ -13,7 +13,6 @@ use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerial
 use massa_hash::{Hash, /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
-    config::LAST_START_PERIOD,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
@@ -49,11 +48,21 @@ pub struct FinalState {
     pub changes_history: VecDeque<(Slot, StateChanges)>,
     /// hash of the final state, it is computed on finality
     pub final_state_hash: Hash,
+    /// last_start_period
+    pub last_start_period: u64,
 }
 
 const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
+    /// Initializes the last_start_period value
+    /// If start all new network: set to 0
+    /// If from snapshot: retrieve from args
+    /// If from bootstrap: set during bootstrap
+    pub fn set_last_start_period(&mut self, period: u64) {
+        self.last_start_period = period;
+    }
+
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
@@ -62,7 +71,13 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        last_start_period: u64
     ) -> Result<Self, FinalStateError> {
+
+        if last_start_period > 0 {
+            return Self::from_snapshot(config, ledger, selector, last_start_period);
+        }
+
         // create the pos state
         let pos_state = PoSFinalState::new(
             config.pos_config.clone(),
@@ -75,7 +90,7 @@ impl FinalState {
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(
-            config.last_start_period,
+            last_start_period,
             config.thread_count.saturating_sub(1),
         );
 
@@ -95,6 +110,7 @@ impl FinalState {
             executed_ops,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
+            last_start_period: 0
         })
     }
 
@@ -106,10 +122,11 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        last_start_period: u64
     ) -> Result<Self, FinalStateError> {
         debug!("Restarting from snapshot");
 
-        let end_slot = Slot::new(*LAST_START_PERIOD, config.thread_count.saturating_sub(1));
+        let end_slot = Slot::new(last_start_period, config.thread_count.saturating_sub(1));
 
         // Deserialize Async Pool
         let async_pool_path = config.final_state_path.join("async_pool");
@@ -199,7 +216,7 @@ impl FinalState {
             latest_consistent_cycle_info.roll_counts.clone(),
             selector,
             ledger.get_ledger_hash(),
-            end_slot.get_cycle(config.periods_per_cycle),
+            end_slot
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
@@ -268,6 +285,7 @@ impl FinalState {
             executed_ops,
             changes_history: Default::default(), // no changes in history
             final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
+            last_start_period
         };
 
         final_state.compute_state_hash_at_slot(latest_consistent_slot);
@@ -315,7 +333,7 @@ impl FinalState {
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         self.slot = Slot::new(
-            *LAST_START_PERIOD,
+            self.last_start_period,
             self.config.thread_count.saturating_sub(1),
         );
         self.ledger.reset();

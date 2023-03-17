@@ -15,7 +15,6 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_models::block_id::BlockId;
-use massa_models::config::LAST_START_PERIOD;
 use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
@@ -59,7 +58,7 @@ impl ExecutionThread {
         let final_cursor = std::cmp::max(
             execution_state.read().final_cursor,
             Slot {
-                period: *LAST_START_PERIOD,
+                period: config.last_start_period,
                 thread: config.thread_count.saturating_sub(1),
             },
         );

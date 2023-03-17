@@ -103,7 +103,6 @@ async fn test_bootstrap_server() {
         thread_count,
         periods_per_cycle,
         final_state_path: "".into(),
-        last_start_period: 0,
     };
 
     // setup selector local config
@@ -173,7 +172,7 @@ async fn test_bootstrap_server() {
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
-            false,
+            None,
         )
         .await
         .unwrap()
