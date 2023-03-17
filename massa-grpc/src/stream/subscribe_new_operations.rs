@@ -125,26 +125,25 @@ pub(crate) async fn subscribe_new_operations(
                         }
                     },
                     res = in_stream.next() => {
-                            match res {
-                                Some(res) => {
-                                    match res {
-                                        Ok(data) => {
-                                            dbg!(&data);
-                                            // update current filter && request id
-                                            filter = data.filter;
-                                            request_id = data.id;
-                                        },
-                                        Err(e) => {
-                                            error!("{}", e);
-                                            break;
-                                        }
+                        match res {
+                            Some(res) => {
+                                match res {
+                                    Ok(data) => {
+                                        // update current filter && request id
+                                        filter = data.filter;
+                                        request_id = data.id;
+                                    },
+                                    Err(e) => {
+                                        error!("{}", e);
+                                        break;
                                     }
-                                },
-                                None => {
-                                    // client disconnected
-                                    break;
-                                },
-                            }
+                                }
+                            },
+                            None => {
+                                // client disconnected
+                                break;
+                            },
+                        }
                     }
                 }
             }
