@@ -2312,23 +2312,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa-sc-module-cache"
-version = "0.1.0"
-dependencies = [
- "massa-sc-runtime",
- "massa_execution_exports",
- "massa_hash 0.1.0",
- "massa_models",
- "massa_serialization 0.1.0",
- "nom",
- "num_enum",
- "rand 0.8.5",
- "rocksdb",
- "schnellru",
- "serial_test 1.0.0",
-]
-
-[[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
 source = "git+https://github.com/massalabs/massa-sc-runtime?branch=caching-followup#165d15eefb5014992d3cb8e9ec17acdcc07cf8bf"
@@ -2557,6 +2540,7 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_models",
+ "massa_module_cache",
  "massa_storage",
  "massa_time",
  "num",
@@ -2571,7 +2555,6 @@ dependencies = [
  "anyhow",
  "criterion",
  "hex-literal",
- "massa-sc-module-cache",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_executed_ops",
@@ -2581,6 +2564,7 @@ dependencies = [
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
+ "massa_module_cache",
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_signature",
@@ -2759,6 +2743,25 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_with",
+ "serial_test 1.0.0",
+ "thiserror",
+]
+
+[[package]]
+name = "massa_module_cache"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "displaydoc",
+ "massa-sc-runtime",
+ "massa_hash 0.1.0",
+ "massa_models",
+ "massa_serialization 0.1.0",
+ "nom",
+ "num_enum",
+ "rand 0.8.5",
+ "rocksdb",
+ "schnellru",
  "serial_test 1.0.0",
  "thiserror",
 ]

@@ -2,15 +2,14 @@ use displaydoc::Display;
 use thiserror::Error;
 // use massa_serialization::{DeserializeError, SerializeError};
 
-/// Cache result
-pub type CacheResult<T, E = CacheError> = core::result::Result<T, E>;
-
 /// Cache error
 #[non_exhaustive]
-#[derive(Display, Error, Debug)]
+#[derive(Display, Error, Debug, Clone)]
 pub enum CacheError {
     /// VM error: {0}
     VMError(String),
+    /// Load error: {0}
+    LoadError(String),
 }
 
 impl From<anyhow::Error> for CacheError {

@@ -30,8 +30,8 @@ use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
 };
+use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
-use massa_sc_module_cache::controller::ModuleCache;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;

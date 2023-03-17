@@ -3,6 +3,7 @@
 //! this file defines all possible execution error categories
 
 use displaydoc::Display;
+use massa_module_cache::error::CacheError;
 use thiserror::Error;
 
 /// Errors of the execution component.
@@ -50,4 +51,7 @@ pub enum ExecutionError {
 
     /// We reach the vesting constraint : {0}
     VestingError(String),
+
+    /// Cache error: {0}
+    CacheError(#[from] CacheError),
 }

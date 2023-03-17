@@ -1,12 +1,11 @@
 [package]
-name = "massa-sc-module-cache"
+name = "massa_module_cache"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 schnellru = "0.2.0"
 rocksdb = "0.19"
-massa_execution_exports = { path = "../massa-execution-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }

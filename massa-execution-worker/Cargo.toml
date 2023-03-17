@@ -26,7 +26,7 @@ massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup" }
-massa-sc-module-cache = { path = "../massa-sc-module-cache" }
+massa_module_cache = { path = "../massa-sc-module-cache" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }

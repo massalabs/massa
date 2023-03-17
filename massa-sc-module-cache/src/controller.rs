@@ -1,10 +1,9 @@
-use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use schnellru::{ByLength, LruMap};
 
-use crate::{hd_cache::HDCache, lru_cache::LRUCache, types::ModuleInfo};
+use crate::{error::CacheError, hd_cache::HDCache, lru_cache::LRUCache, types::ModuleInfo};
 
 /// `LruMap` specialization for `PreHashed` keys
 pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
@@ -36,8 +35,7 @@ impl ModuleCache {
     }
 
     /// Save a new or an already existing module in the cache
-    pub fn save_module(&mut self, bytecode: &[u8]) -> Result<(), ExecutionError> {
-        // TODO: using ExecutionError for now but create a CacheError type
+    pub fn save_module(&mut self, bytecode: &[u8]) -> Result<(), CacheError> {
         let hash = Hash::compute_from(bytecode);
         if let Some(hd_module_info) =
             self.hd_cache
@@ -53,13 +51,7 @@ impl ModuleCache {
                     self.compilation_gas,
                     self.gas_costs.clone(),
                     true,
-                )
-                .map_err(|err| {
-                    ExecutionError::RuntimeError(format!(
-                        "compilation of missing cache module failed: {}",
-                        err
-                    ))
-                })?;
+                )?;
                 let new_module_info = ModuleInfo::Module(new_module);
                 self.hd_cache.insert(hash, new_module_info.clone())?;
                 self.lru_cache.insert(hash, new_module_info);
@@ -69,28 +61,20 @@ impl ModuleCache {
     }
 
     /// Set the initialization cost of a cached module
-    pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) -> Result<(), ExecutionError> {
-        // TODO: determine what fail scenarios we want in hd
+    pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_init_cost(hash, init_cost);
-        self.hd_cache.set_init_cost(hash, init_cost)?;
-        Ok(())
+        self.hd_cache.set_init_cost(hash, init_cost);
     }
 
-    pub fn set_invalid(&mut self, bytecode: &[u8]) -> Result<(), ExecutionError> {
-        // TODO: determine what fail scenarios we want in hd
+    pub fn set_invalid(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_invalid(hash);
-        self.hd_cache.set_invalid(hash)?;
-        Ok(())
+        self.hd_cache.set_invalid(hash);
     }
 
     /// Load a cached module for execution
-    fn load_module_info(
-        &mut self,
-        bytecode: &[u8],
-        limit: u64,
-    ) -> Result<ModuleInfo, ExecutionError> {
+    fn load_module_info(&mut self, bytecode: &[u8], limit: u64) -> Result<ModuleInfo, CacheError> {
         // TODO: check if limit can be removed here
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
@@ -100,13 +84,7 @@ impl ModuleCache {
                 self.lru_cache.insert(hash, hd_module_info.clone());
                 Ok(hd_module_info)
             } else {
-                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), true)
-                    .map_err(|err| {
-                        ExecutionError::RuntimeError(format!(
-                            "compilation of missing cache module failed: {}",
-                            err
-                        ))
-                    })?;
+                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), true)?;
                 let new_module_info = ModuleInfo::Module(new_module);
                 // TODO: move this back out
                 // TODO: maybe keep it but set as invalid if compil failed
@@ -122,18 +100,16 @@ impl ModuleCache {
         &mut self,
         bytecode: &[u8],
         limit: u64,
-    ) -> Result<RuntimeModule, ExecutionError> {
+    ) -> Result<RuntimeModule, CacheError> {
         let module_info = self.load_module_info(&bytecode, limit)?;
         let module = match module_info {
             ModuleInfo::Invalid => {
-                return Err(ExecutionError::RuntimeError(
-                    "Loading invalid module".to_string(),
-                ));
+                return Err(CacheError::LoadError("Loading invalid module".to_string()));
             }
             ModuleInfo::Module(module) => module,
             ModuleInfo::ModuleAndDelta((module, delta)) => {
                 if delta > limit {
-                    return Err(ExecutionError::RuntimeError(
+                    return Err(CacheError::LoadError(
                         "Provided max gas is below the instance creation cost".to_string(),
                     ));
                 } else {
@@ -149,14 +125,12 @@ impl ModuleCache {
         &self,
         bytecode: &[u8],
         limit: u64,
-    ) -> Result<RuntimeModule, ExecutionError> {
-        let tmp_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), true)
-            .map_err(|err| {
-                ExecutionError::RuntimeError(format!(
-                    "compilation of temporary module failed: {}",
-                    err
-                ))
-            })?;
-        Ok(tmp_module)
+    ) -> Result<RuntimeModule, CacheError> {
+        Ok(RuntimeModule::new(
+            bytecode,
+            limit,
+            self.gas_costs.clone(),
+            true,
+        )?)
     }
 }

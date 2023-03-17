@@ -32,8 +32,8 @@ use massa_models::{
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};
+use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
-use massa_sc_module_cache::controller::ModuleCache;
 use massa_sc_runtime::{Interface, Response};
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -674,7 +674,7 @@ impl ExecutionState {
             Ok(Response { init_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, init_cost)?;
+                    .set_init_cost(&bytecode, init_cost);
                 Ok(())
             }
             Err(err) => Err(ExecutionError::RuntimeError(format!(
@@ -769,7 +769,7 @@ impl ExecutionState {
             Ok(Response { init_cost, .. }) => {
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, init_cost)?;
+                    .set_init_cost(&bytecode, init_cost);
                 Ok(())
             }
             Err(err) => {
@@ -1186,7 +1186,7 @@ impl ExecutionState {
                 })?;
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, response.init_cost)?;
+                    .set_init_cost(&bytecode, response.init_cost);
                 response
             }
         };

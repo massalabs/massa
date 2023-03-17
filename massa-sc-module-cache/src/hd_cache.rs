@@ -1,7 +1,7 @@
-use crate::types::{
-    ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
+use crate::{
+    error::CacheError,
+    types::{ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer},
 };
-use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -9,9 +9,10 @@ use rand::RngCore;
 use rocksdb::{Direction, IteratorMode, WriteBatch, DB};
 use std::path::PathBuf;
 
-const CRUD_ERROR: &str = "critical: rocksdb crud operation failed in hd cache";
-const MD_SER_ERROR: &str = "critical: metadata serialization failed in hd cache";
-const MD_DESER_ERROR: &str = "critical: metadata deserialization failed in hd cache";
+const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
+const MD_SER_ERROR: &str = "critical: metadata serialization failed";
+const MD_DESER_ERROR: &str = "critical: metadata deserialization failed";
 const MODULE_IDENT: u8 = 0u8;
 const DATA_IDENT: u8 = 1u8;
 
@@ -56,7 +57,7 @@ impl HDCache {
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches
     ///   `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, amount_to_remove: usize) -> Self {
-        let db = DB::open_default(path).expect("critical: rocksdb open operation failed");
+        let db = DB::open_default(path).expect(OPEN_ERROR);
         let entry_count = db.iterator(IteratorMode::Start).count();
 
         Self {
@@ -70,10 +71,10 @@ impl HDCache {
     }
 
     /// Insert a new module in the cache
-    pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
+    pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), CacheError> {
         // TODO: batch it
         if self.entry_count >= self.max_entry_count {
-            self.snip()?;
+            self.snip();
         }
 
         let mut ser_metadata = Vec::new();
@@ -88,13 +89,13 @@ impl HDCache {
                 self.meta_ser
                     .serialize(&ModuleMetadata::NotExecuted, &mut ser_metadata)
                     .expect(MD_SER_ERROR);
-                module.serialize().unwrap()
+                module.serialize()?
             }
             ModuleInfo::ModuleAndDelta((module, delta)) => {
                 self.meta_ser
                     .serialize(&ModuleMetadata::Delta(delta), &mut ser_metadata)
                     .expect(MD_SER_ERROR);
-                module.serialize().unwrap()
+                module.serialize()?
             }
         };
 
@@ -115,28 +116,31 @@ impl HDCache {
     ///   exit with error: i.e. insert has been called before with the same hash and it has not
     ///   been removed
     /// * `init_cost`: the new cost associated to the module
-    pub fn set_init_cost(&self, hash: Hash, init_cost: u64) -> Result<(), ExecutionError> {
+    pub fn set_init_cost(&self, hash: Hash, init_cost: u64) {
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Delta(init_cost), &mut ser_metadata)
-            .unwrap();
-        self.db.put(metadata_key!(hash), ser_metadata).unwrap();
-        Ok(())
+            .expect(MD_SER_ERROR);
+        self.db
+            .put(metadata_key!(hash), ser_metadata)
+            .expect(CRUD_ERROR);
     }
 
     /// Sets a given module as invalid
-    pub fn set_invalid(&self, hash: Hash) -> Result<(), ExecutionError> {
+    pub fn set_invalid(&self, hash: Hash) {
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
-            .unwrap();
-        self.db.put(metadata_key!(hash), ser_metadata).unwrap();
-        Ok(())
+            .expect(MD_SER_ERROR);
+        self.db
+            .put(metadata_key!(hash), ser_metadata)
+            .expect(CRUD_ERROR);
     }
 
     /// Retrieve a module
     pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
         // TODO: make sure of the missing object behaviour
+        // HERE
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
@@ -146,7 +150,7 @@ impl HDCache {
             let (_, metadata) = self
                 .meta_deser
                 .deserialize::<DeserializeError>(&ser_metadata)
-                .unwrap();
+                .expect(MD_DESER_ERROR);
             let result = match metadata {
                 ModuleMetadata::Invalid => ModuleInfo::Invalid,
                 ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
@@ -160,7 +164,7 @@ impl HDCache {
 
     /// Try to remove as much as self.amount_to_snip entries from the db.
     /// Remove at least one entry
-    fn snip(&mut self) -> Result<(), ExecutionError> {
+    fn snip(&mut self) {
         let mut rbytes = Vec::new();
         rand::thread_rng().fill_bytes(&mut rbytes);
 
@@ -187,13 +191,9 @@ impl HDCache {
             snipped_entries_count += 1;
         }
 
-        self.db
-            .write(batch)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+        self.db.write(batch).expect(CRUD_ERROR);
 
         self.entry_count -= snipped_entries_count;
-
-        Ok(())
     }
 }
 
