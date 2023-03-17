@@ -118,6 +118,7 @@
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
@@ -181,7 +182,8 @@
                 <span class="string">&quot;Invalid signature&quot;</span>,
             )));
         }
-        {
+        <span class="comment">//TODO: Check ip we are connected match one of the announced ips
+        </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = <span class="self">self</span>.peer_db.write();
             peer_db_write
                 .index_by_newest
