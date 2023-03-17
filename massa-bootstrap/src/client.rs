@@ -69,6 +69,9 @@ async fn stream_final_state_and_consensus(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    initial_cycle,
+                    initial_rolls,
+                    initial_ledger_hash,
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
@@ -78,6 +81,12 @@ async fn stream_final_state_and_consensus(
                     let last_cycle_step = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part);
+                    write_final_state.pos_state.set_initial_cycle(initial_cycle);
+                    write_final_state.pos_state.set_initial_rolls(initial_rolls);
+                    write_final_state
+                        .pos_state
+                        .set_initial_ledger_hash(initial_ledger_hash);
+
                     let last_credits_step = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part);

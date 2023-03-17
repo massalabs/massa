@@ -574,6 +574,9 @@ pub async fn stream_bootstrap_information(
         let pos_credits_part;
         let exec_ops_part;
         let final_state_changes;
+        let initial_cycle;
+        let initial_rolls;
+        let initial_ledger_hash;
 
         let mut slot_too_old = false;
 
@@ -603,6 +606,10 @@ pub async fn stream_bootstrap_information(
                 .executed_ops
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
+
+            initial_cycle = final_state_read.pos_state.initial_cycle;
+            initial_rolls = final_state_read.pos_state.initial_rolls.clone();
+            initial_ledger_hash = final_state_read.pos_state.initial_ledger_hash;
 
             if let Some(slot) = last_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
@@ -734,6 +741,9 @@ pub async fn stream_bootstrap_information(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    initial_cycle,
+                    initial_rolls,
+                    initial_ledger_hash,
                 },
             )
             .await

@@ -10,7 +10,9 @@ use massa_consensus_exports::bootstrapable_graph::{
 };
 use massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
+use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_ledger_exports::{Key as LedgerKey, KeyDeserializer, KeySerializer};
+use massa_models::address::{Address, AddressSerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
@@ -25,7 +27,7 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer, RollsDeserializer,
 };
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
@@ -81,6 +83,12 @@ pub enum BootstrapServerMessage {
         consensus_part: BootstrapableGraph,
         /// Outdated block ids in the current consensus graph bootstrap
         consensus_outdated_ids: PreHashSet<BlockId>,
+        ///
+        initial_cycle: u64,
+        ///
+        initial_rolls: BTreeMap<Address, u64>,
+        ///
+        initial_ledger_hash: Hash,
     },
     /// Message sent when the final state and consensus bootstrap are finished
     BootstrapFinished,
@@ -120,6 +128,8 @@ pub struct BootstrapServerMessageSerializer {
     opt_pos_cycle_serializer: OptionSerializer<CycleInfo, CycleInfoSerializer>,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
+    address_serializer: AddressSerializer,
+    hash_serializer: HashSerializer,
 }
 
 impl Default for BootstrapServerMessageSerializer {
@@ -146,6 +156,8 @@ impl BootstrapServerMessageSerializer {
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
+            address_serializer: AddressSerializer::new(),
+            hash_serializer: HashSerializer::new(),
         }
     }
 }
@@ -197,6 +209,9 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
+                initial_cycle,
+                initial_rolls,
+                initial_ledger_hash,
             } => {
                 // message type
                 self.u32_serializer
@@ -231,6 +246,15 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 // consensus outdated ids
                 self.block_id_set_serializer
                     .serialize(consensus_outdated_ids, buffer)?;
+                self.u64_serializer.serialize(initial_cycle, buffer)?;
+                self.u64_serializer
+                    .serialize(&(initial_rolls.len() as u64), buffer)?;
+                for (addr, count) in initial_rolls {
+                    self.address_serializer.serialize(addr, buffer)?;
+                    self.u64_serializer.serialize(count, buffer)?;
+                }
+                self.hash_serializer
+                    .serialize(initial_ledger_hash, buffer)?;
             }
             BootstrapServerMessage::BootstrapFinished => {
                 self.u32_serializer
@@ -273,6 +297,9 @@ pub struct BootstrapServerMessageDeserializer {
     opt_pos_cycle_deserializer: OptionDeserializer<CycleInfo, CycleInfoDeserializer>,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
+    cycle_deserializer: U64VarIntDeserializer,
+    rolls_deserializer: RollsDeserializer,
+    hash_deserializer: HashDeserializer,
 }
 
 impl BootstrapServerMessageDeserializer {
@@ -344,6 +371,9 @@ impl BootstrapServerMessageDeserializer {
                 args.max_executed_ops_length,
                 args.max_operations_per_block as u64,
             ),
+            cycle_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            rolls_deserializer: RollsDeserializer::new(args.max_rolls_length),
+            hash_deserializer: HashDeserializer::new(),
         }
     }
 }
@@ -464,6 +494,15 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed consensus_outdated_ids deserialization", |input| {
                         self.block_id_set_deserializer.deserialize(input)
                     }),
+                    context("Failed initial_cycle deserialization", |input| {
+                        self.cycle_deserializer.deserialize(input)
+                    }),
+                    context("Failed initial_rolls deserialization", |input| {
+                        self.rolls_deserializer.deserialize(input)
+                    }),
+                    context("Failed initial_ledger_hash deserialization", |input| {
+                        self.hash_deserializer.deserialize(input)
+                    }),
                 ))
                 .map(
                     |(
@@ -476,6 +515,9 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
+                        initial_cycle,
+                        initial_rolls,
+                        initial_ledger_hash,
                     )| {
                         BootstrapServerMessage::BootstrapPart {
                             slot,
@@ -487,6 +529,9 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
+                            initial_cycle,
+                            initial_rolls: initial_rolls.into_iter().collect(),
+                            initial_ledger_hash,
                         }
                     },
                 )
