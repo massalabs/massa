@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "common.proto";
 
 package massa.api.v1;
 
@@ -28,7 +29,7 @@ message OperationInfo {
 // message struct
 message Roll {
     // int64 field
-    int64 roll_count = 1;
+    uint64 roll_count = 1;
 }
 
 // message struct
@@ -51,6 +52,14 @@ message OperationType {
     RollSell roll_sell = 5;
 }
 
+enum OperationStreamFilterType {
+    TRANSACTION = 0;
+    EXECUTE_SC = 1;
+    CALL_SC = 2;
+    ROLL_BUY = 3;
+    ROLL_SELL = 4;
+}
+
 // message struct
 message Transaction {
     // string field
@@ -65,40 +74,34 @@ message CallSC {
     string target_addr = 1;
     // string field
     string target_func = 2;
-    // string field
-    string param = 3;
+    // byte vec
+    bytes param = 3;
     // float field
-    float max_gas = 4;
-    // float field
-    float sequential_coins = 5;
-    // float field
-    float parallel_coins = 6;
-    // float field
-    float gas_price = 7;
+    uint64 max_gas = 4;
+    // uint64 field
+    uint64 coins = 5;
 }
 
 // message struct
 message ExecuteSC {
-    // float field
-    repeated float data = 1;
-    // float field
-    float max_gas = 2;
-    // string field
-    string coins = 3;
-    // string field
-    string gas_price = 4;
+    // data field
+    bytes data = 1;
+    // uint64 field
+    uint64 max_gas = 2;
+    // datastore
+    repeated BytesMapFieldEntry datastore = 3;
 }
 
 // message struct
 message RollBuy {
     // float field
-    float roll_count = 1;
+    uint64 roll_count = 1;
 }
 
 // message struct
 message RollSell {
     // float field
-    float roll_count = 1;
+    uint64 roll_count = 1;
 }
 
 // message struct

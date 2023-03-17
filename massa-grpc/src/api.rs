@@ -1,5 +1,5 @@
 use crate::error::GrpcError;
-use crate::handler::MassaGrpcService;
+use crate::service::MassaGrpcService;
 use itertools::izip;
 use massa_models::address::Address;
 use massa_models::slot::Slot;

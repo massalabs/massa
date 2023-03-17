@@ -126,7 +126,7 @@ impl OperationPool {
                     .expect("attempting to add operation to pool, but it is absent from storage");
                 // Broadcast operation to active sender(channel) subscribers.
                 if self.config.broadcast_enabled {
-                    let _ = self.channels.operation_sender.send(op.content.clone());
+                    let _ = self.channels.operation_sender.send(op.clone());
                 }
                 let op_info = OperationInfo::from_op(
                     op,
