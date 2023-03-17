@@ -95,9 +95,14 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 <span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
-<span class="kw">use </span>massa_models::stats::ConsensusStats;
+<span class="kw">use </span>massa_models::{config::LAST_START_PERIOD, stats::ConsensusStats};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::cmp::max;
 
@@ -143,8 +148,13 @@
         </span>{
             <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
             <span class="kw">if </span>now
-                &gt; max(<span class="self">self</span>.config.genesis_timestamp, <span class="self">self</span>.launch_time)
-                    .saturating_add(<span class="self">self</span>.stats_desync_detection_timespan)
+                &gt; max(
+                    <span class="self">self</span>.config
+                        .genesis_timestamp
+                        .checked_add(<span class="self">self</span>.config.t0.checked_mul(<span class="kw-2">*</span>LAST_START_PERIOD)<span class="question-mark">?</span>)<span class="question-mark">?</span>,
+                    <span class="self">self</span>.launch_time,
+                )
+                .saturating_add(<span class="self">self</span>.stats_desync_detection_timespan)
                 &amp;&amp; !<span class="self">self
                     </span>.final_block_stats
                     .iter()
