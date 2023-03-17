@@ -811,6 +811,18 @@
 <a href="#811" id="811">811</a>
 <a href="#812" id="812">812</a>
 <a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1163,26 +1175,26 @@
         <span class="comment">// 6. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
-        <span class="macro">info!</span>(<span class="string">&quot;ledger_hash hash at slot {}: {}&quot;</span>, slot, ledger_hash);
-        <span class="macro">info!</span>(<span class="string">&quot;async_pool hash at slot {}: {}&quot;</span>, slot, <span class="self">self</span>.async_pool.hash);
-        <span class="macro">info!</span>(
-            <span class="string">&quot;deferred_credit hash at slot {}: {}&quot;</span>,
-            slot, <span class="self">self</span>.pos_state.deferred_credits.hash
+        <span class="comment">/*info!(&quot;ledger_hash hash at slot {}: {}&quot;, slot, ledger_hash);
+        info!(&quot;async_pool hash at slot {}: {}&quot;, slot, self.async_pool.hash);
+        info!(
+            &quot;deferred_credit hash at slot {}: {}&quot;,
+            slot, self.pos_state.deferred_credits.hash
         );
-        <span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
-            <span class="kw">as </span>usize;
-        <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
-            <span class="macro">info!</span>(
-                <span class="string">&quot;cycle_global_hash hash at slot {}: {}&quot;</span>,
+        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
+            as usize;
+        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
+            info!(
+                &quot;cycle_global_hash hash at slot {}: {}&quot;,
                 slot, cycle_info.cycle_global_hash
             );
         }
-        <span class="macro">info!</span>(
-            <span class="string">&quot;executed_ops hash at slot {}: {}&quot;</span>,
-            slot, <span class="self">self</span>.executed_ops.hash
-        );
+        info!(
+            &quot;executed_ops hash at slot {}: {}&quot;,
+            slot, self.executed_ops.hash
+        );*/
 
-        <span class="macro">info!</span>(
+        </span><span class="macro">info!</span>(
             <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
             slot, <span class="self">self</span>.final_state_hash
         );
@@ -1260,6 +1272,18 @@
         </span><span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
         <span class="self">self</span>.pos_state
             .feed_cycle_state_hash(cycle, <span class="self">self</span>.final_state_hash);
+
+        <span class="macro">info!</span>(
+            <span class="string">&quot;cycle_history at slot {}: {}&quot;</span>,
+            slot,
+            <span class="self">self</span>.pos_state.cycle_history.len()
+        );
+        <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.clone() {
+            <span class="macro">info!</span>(
+                <span class="string">&quot;cycle_info at slot {}: [cycle: {}, complete: {}, roll_counts: {:?}]&quot;</span>,
+                slot, cycle_info.cycle, cycle_info.complete, cycle_info.roll_counts
+            );
+        }
 
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>) {
             <span class="kw">match </span><span class="self">self</span>.commit_final_state() {
