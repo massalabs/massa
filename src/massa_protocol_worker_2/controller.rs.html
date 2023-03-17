@@ -130,6 +130,8 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -141,7 +143,9 @@
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>ProtocolControllerImpl {}
+</span><span class="kw">pub struct </span>ProtocolControllerImpl {
+    <span class="comment">//TODO: Add channels to send to different handlers
+</span>}
 
 <span class="kw">impl </span>ProtocolControllerImpl {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{

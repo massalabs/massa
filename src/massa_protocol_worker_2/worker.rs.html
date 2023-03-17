@@ -33,6 +33,7 @@
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports_2::{
@@ -54,13 +55,14 @@
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 </span><span class="kw">pub async fn </span>start_protocol_controller(
     config: ProtocolConfig,
-    consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
+    _consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     storage: Storage,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(Box&lt;<span class="kw">dyn </span>ProtocolController&gt;, Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;), ProtocolError&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;starting protocol controller&quot;</span>);
 
-    <span class="kw">let </span>connectivity_thread_handle = start_connectivity_thread(config.clone())<span class="question-mark">?</span>;
+    <span class="kw">let </span>connectivity_thread_handle =
+        start_connectivity_thread(config.clone(), pool_controller, storage)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>manager = ProtocolManagerImpl::new(connectivity_thread_handle);
 

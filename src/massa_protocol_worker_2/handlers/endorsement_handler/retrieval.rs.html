@@ -74,11 +74,29 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
 <span class="kw">use </span>massa_models::{endorsement::EndorsementId, prehash::PreHashSet};
+<span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>peernet::peer_id::PeerId;
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::endorsement_handler::messages::EndorsementMessage;
@@ -89,17 +107,15 @@
 };
 
 <span class="kw">pub struct </span>RetrievalThread {
+    receiver: Receiver&lt;(PeerId, Vec&lt;u8&gt;)&gt;,
     cached_endorsement_ids: PreHashSet&lt;EndorsementId&gt;,
+    pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    storage: Storage,
+    internal_sender: Sender&lt;InternalMessage&gt;,
 }
 
-<span class="kw">pub fn </span>start_retrieval_thread(
-    receiver: Receiver&lt;(PeerId, Vec&lt;u8&gt;)&gt;,
-    internal_sender: Sender&lt;InternalMessage&gt;,
-) -&gt; JoinHandle&lt;()&gt; {
-    std::thread::spawn(<span class="kw">move </span>|| {
-        <span class="kw">let </span><span class="kw-2">mut </span>retrieval_thread = RetrievalThread {
-            cached_endorsement_ids: PreHashSet::default(),
-        };
+<span class="kw">impl </span>RetrievalThread {
+    <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">//TODO: Real values
         </span><span class="kw">let </span>endorsement_message_deserializer =
             EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
@@ -108,7 +124,7 @@
                 endorsement_count: <span class="number">32</span>,
             });
         <span class="kw">loop </span>{
-            <span class="kw">match </span>receiver.recv() {
+            <span class="kw">match </span><span class="self">self</span>.receiver.recv() {
                 <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
                     <span class="kw">let </span>(rest, message) = endorsement_message_deserializer
                         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message)
@@ -121,19 +137,17 @@
                         EndorsementMessage::Endorsements(<span class="kw-2">mut </span>endorsements) =&gt; {
                             <span class="comment">// Retain endorsements not in cache in endorsement vec and add them
                             </span>endorsements.retain(|endorsement| {
-                                <span class="kw">if </span>retrieval_thread
-                                    .cached_endorsement_ids
-                                    .contains(<span class="kw-2">&amp;</span>endorsement.id)
-                                {
+                                <span class="kw">if </span><span class="self">self</span>.cached_endorsement_ids.contains(<span class="kw-2">&amp;</span>endorsement.id) {
                                     <span class="bool-val">false
                                 </span>} <span class="kw">else </span>{
-                                    retrieval_thread
-                                        .cached_endorsement_ids
-                                        .insert(endorsement.id);
+                                    <span class="self">self</span>.cached_endorsement_ids.insert(endorsement.id);
                                     <span class="bool-val">true
                                 </span>}
                             });
-                            internal_sender
+                            <span class="kw">let </span><span class="kw-2">mut </span>endorsements_storage = <span class="self">self</span>.storage.clone_without_refs();
+                            endorsements_storage.store_endorsements(endorsements.clone());
+                            <span class="self">self</span>.pool_controller.add_endorsements(endorsements_storage);
+                            <span class="self">self</span>.internal_sender
                                 .send(InternalMessage::PropagateEndorsements((
                                     peer_id,
                                     endorsements,
@@ -148,6 +162,24 @@
                 }
             }
         }
+    }
+}
+
+<span class="kw">pub fn </span>start_retrieval_thread(
+    receiver: Receiver&lt;(PeerId, Vec&lt;u8&gt;)&gt;,
+    pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    storage: Storage,
+    internal_sender: Sender&lt;InternalMessage&gt;,
+) -&gt; JoinHandle&lt;()&gt; {
+    std::thread::spawn(<span class="kw">move </span>|| {
+        <span class="kw">let </span><span class="kw-2">mut </span>retrieval_thread = RetrievalThread {
+            receiver,
+            cached_endorsement_ids: PreHashSet::default(),
+            pool_controller,
+            storage,
+            internal_sender,
+        };
+        retrieval_thread.run();
     })
 }
 </code></pre></div>
