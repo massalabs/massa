@@ -811,11 +811,6 @@
 <a href="#811" id="811">811</a>
 <a href="#812" id="812">812</a>
 <a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1168,19 +1163,14 @@
         <span class="comment">// 6. compute and save final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
-        <span class="macro">info!</span>(
-            <span class="string">&quot;ledger_hash hash at slot {}: {}&quot;</span>,
-            slot, ledger_hash
-        );
-        <span class="macro">info!</span>(
-            <span class="string">&quot;async_pool hash at slot {}: {}&quot;</span>,
-            slot, <span class="self">self</span>.async_pool.hash
-        );
+        <span class="macro">info!</span>(<span class="string">&quot;ledger_hash hash at slot {}: {}&quot;</span>, slot, ledger_hash);
+        <span class="macro">info!</span>(<span class="string">&quot;async_pool hash at slot {}: {}&quot;</span>, slot, <span class="self">self</span>.async_pool.hash);
         <span class="macro">info!</span>(
             <span class="string">&quot;deferred_credit hash at slot {}: {}&quot;</span>,
             slot, <span class="self">self</span>.pos_state.deferred_credits.hash
         );
-        <span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length) <span class="kw">as </span>usize;
+        <span class="kw">let </span>n = (<span class="self">self</span>.pos_state.cycle_history.len() == <span class="self">self</span>.config.pos_config.cycle_history_length)
+            <span class="kw">as </span>usize;
         <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="self">self</span>.pos_state.cycle_history.iter().skip(n) {
             <span class="macro">info!</span>(
                 <span class="string">&quot;cycle_global_hash hash at slot {}: {}&quot;</span>,
