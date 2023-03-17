@@ -15,6 +15,9 @@ serial_test = "1.0.0"
 rand = "0.8.5"
 num_enum = "0.5"
 nom = "7.1"
+displaydoc = "0.2"
+thiserror = "1.0"
+anyhow = "1.0"
 
 [features]
 testing = []

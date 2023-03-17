@@ -5,10 +5,13 @@ use massa_execution_exports::ExecutionError;
 use massa_hash::Hash;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use rand::Rng;
+use rand::RngCore;
 use rocksdb::{Direction, IteratorMode, WriteBatch, DB};
 use std::path::PathBuf;
 
+const CRUD_ERROR: &str = "critical: rocksdb crud operation failed in hd cache";
+const MD_SER_ERROR: &str = "critical: metadata serialization failed in hd cache";
+const MD_DESER_ERROR: &str = "critical: metadata deserialization failed in hd cache";
 const MODULE_IDENT: u8 = 0u8;
 const DATA_IDENT: u8 = 1u8;
 
@@ -69,7 +72,6 @@ impl HDCache {
     /// Insert a new module in the cache
     pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), ExecutionError> {
         // TODO: batch it
-        // TODO: fix error handling
         if self.entry_count >= self.max_entry_count {
             self.snip()?;
         }
@@ -79,25 +81,27 @@ impl HDCache {
             ModuleInfo::Invalid => {
                 self.meta_ser
                     .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
-                    .unwrap();
+                    .expect(MD_SER_ERROR);
                 Vec::new()
             }
             ModuleInfo::Module(module) => {
                 self.meta_ser
                     .serialize(&ModuleMetadata::NotExecuted, &mut ser_metadata)
-                    .unwrap();
+                    .expect(MD_SER_ERROR);
                 module.serialize().unwrap()
             }
             ModuleInfo::ModuleAndDelta((module, delta)) => {
                 self.meta_ser
                     .serialize(&ModuleMetadata::Delta(delta), &mut ser_metadata)
-                    .unwrap();
+                    .expect(MD_SER_ERROR);
                 module.serialize().unwrap()
             }
         };
 
-        self.db.put(module_key!(hash), ser_module).unwrap();
-        self.db.put(metadata_key!(hash), ser_metadata).unwrap();
+        let mut batch = WriteBatch::default();
+        batch.put(module_key!(hash), ser_module);
+        batch.put(metadata_key!(hash), ser_metadata);
+        self.db.write(batch).expect(CRUD_ERROR);
 
         self.entry_count = self.entry_count.saturating_add(1);
 
@@ -157,11 +161,11 @@ impl HDCache {
     /// Try to remove as much as self.amount_to_snip entries from the db.
     /// Remove at least one entry
     fn snip(&mut self) -> Result<(), ExecutionError> {
-        let mut rng = rand::thread_rng();
-        let rand = rng.gen_range(1..self.max_entry_count);
+        let mut rbytes = Vec::new();
+        rand::thread_rng().fill_bytes(&mut rbytes);
 
         // generate a key from the random number
-        let key = *Hash::compute_from(rand.to_string().as_bytes()).to_bytes();
+        let key = *Hash::compute_from(&rbytes).to_bytes();
 
         let mut iter = self.db.raw_iterator();
         iter.seek_for_prev(key);
