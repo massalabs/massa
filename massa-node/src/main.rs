@@ -315,7 +315,6 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-
     let initial_cycle_info = final_state
         .read()
         .pos_state
