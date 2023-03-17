@@ -5,8 +5,12 @@ use massa_pool_exports::PoolController;
 use massa_storage::Storage;
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
-use self::{propagation::start_propagation_thread, retrieval::start_retrieval_thread};
+use self::{
+    commands::EndorsementHandlerCommand, propagation::start_propagation_thread,
+    retrieval::start_retrieval_thread,
+};
 
+pub mod commands;
 mod internal_messages;
 mod messages;
 mod propagation;
@@ -23,11 +27,17 @@ impl EndorsementHandler {
         storage: Storage,
         active_connections: SharedActiveConnections,
         receiver: Receiver<(PeerId, Vec<u8>)>,
+        receiver_ext: Receiver<EndorsementHandlerCommand>,
     ) -> Self {
         //TODO: Define bound channel
         let (internal_sender, internal_receiver) = unbounded();
-        let endorsement_retrieval_thread =
-            start_retrieval_thread(receiver, pool_controller, storage, internal_sender);
+        let endorsement_retrieval_thread = start_retrieval_thread(
+            receiver,
+            receiver_ext,
+            pool_controller,
+            storage,
+            internal_sender,
+        );
 
         let endorsement_propagation_thread =
             start_propagation_thread(internal_receiver, active_connections);

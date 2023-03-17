@@ -1,13 +1,18 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::{unbounded, Receiver, Sender};
+use crossbeam::{
+    channel::{unbounded, Receiver, Sender},
+    select,
+};
 use massa_serialization::{DeserializeError, Deserializer};
 use peernet::{network_manager::SharedActiveConnections, peer_id::PeerId};
 
-use self::messages::{
-    BlockMessageDeserializer, BlockMessageDeserializerArgs, BlockMessageSerializer,
+use self::{
+    commands::BlockHandlerCommand,
+    messages::{BlockMessageDeserializer, BlockMessageDeserializerArgs, BlockMessageSerializer},
 };
 
+pub mod commands;
 mod messages;
 
 pub struct BlockHandler {
@@ -19,6 +24,7 @@ impl BlockHandler {
     pub fn new(
         active_connections: SharedActiveConnections,
         receiver: Receiver<(PeerId, Vec<u8>)>,
+        receiver_ext: Receiver<BlockHandlerCommand>,
     ) -> Self {
         //TODO: Define real data
         let (_internal_sender, internal_receiver): (Sender<()>, Receiver<()>) = unbounded();
@@ -39,20 +45,35 @@ impl BlockHandler {
                 });
             //TODO: Real logic
             loop {
-                match receiver.recv() {
-                    Ok((peer_id, message)) => {
-                        let (rest, message) = block_message_deserializer
-                            .deserialize::<DeserializeError>(&message)
-                            .unwrap();
-                        if !rest.is_empty() {
-                            println!("Error: message not fully consumed");
-                            return;
+                select! {
+                    recv(receiver) -> msg => {
+                        match msg {
+                            Ok((peer_id, message)) => {
+                                let (rest, message) = block_message_deserializer
+                                    .deserialize::<DeserializeError>(&message)
+                                    .unwrap();
+                                if !rest.is_empty() {
+                                    println!("Error: message not fully consumed");
+                                    return;
+                                }
+                                println!("Received message from {:?}: {:?}", peer_id, message);
+                            }
+                            Err(err) => {
+                                println!("Error: {:?}", err);
+                                return;
+                            }
                         }
-                        println!("Received message from {:?}: {:?}", peer_id, message);
-                    }
-                    Err(err) => {
-                        println!("Error: {:?}", err);
-                        return;
+                    },
+                    recv(receiver_ext) -> command => {
+                        match command {
+                            Ok(command) => {
+                                println!("Received command: {:?}", command);
+                            }
+                            Err(err) => {
+                                println!("Error: {:?}", err);
+                                return;
+                            }
+                        }
                     }
                 }
             }

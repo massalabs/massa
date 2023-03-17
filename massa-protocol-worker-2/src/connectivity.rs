@@ -15,11 +15,14 @@ use peernet::{
     transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
 };
 
-use crate::handlers::{
-    block_handler::BlockHandler,
-    endorsement_handler::EndorsementHandler,
-    operation_handler::OperationHandler,
-    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+use crate::{
+    controller::ProtocolControllerImpl,
+    handlers::{
+        block_handler::BlockHandler,
+        endorsement_handler::EndorsementHandler,
+        operation_handler::OperationHandler,
+        peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+    },
 };
 
 pub enum ConnectivityCommand {
@@ -30,15 +33,28 @@ pub fn start_connectivity_thread(
     config: ProtocolConfig,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
-) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
+) -> Result<
+    (
+        (Sender<ConnectivityCommand>, JoinHandle<()>),
+        ProtocolControllerImpl,
+    ),
+    ProtocolError,
+> {
     let (sender, receiver) = unbounded();
     let initial_peers = serde_json::from_str::<HashMap<PeerId, HashMap<SocketAddr, TransportType>>>(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
+    //TODO: Bound the channel
+    // Channels handlers <-> outside world
+    let (sender_operations_ext, receiver_operations_ext) = unbounded();
+    let (sender_endorsements_ext, receiver_endorsements_ext) = unbounded();
+    let (sender_blocks_ext, receiver_blocks_ext) = unbounded();
+
     let handle = std::thread::spawn(move || {
         let (mut peer_manager_handler, peer_manager_handler_sender) =
             PeerManagementHandler::new(initial_peers);
         //TODO: Bound the channel
+        // Channels network <-> handlers
         let (sender_operations, receiver_operations) = unbounded();
         let (sender_endorsements, receiver_endorsements) = unbounded();
         let (sender_blocks, receiver_blocks) = unbounded();
@@ -50,6 +66,7 @@ pub fn start_connectivity_thread(
         peernet_config.max_in_connections = config.max_in_connections;
         peernet_config.max_out_connections = config.max_out_connections;
 
+        // Register channels for handlers
         let mut message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(0, peer_manager_handler_sender);
         message_handlers.add_handler(1, MessageHandler::new(sender_operations));
@@ -59,16 +76,24 @@ pub fn start_connectivity_thread(
 
         let mut manager = PeerNetManager::new(peernet_config);
 
-        let mut operation_handler =
-            OperationHandler::new(manager.active_connections.clone(), receiver_operations);
+        // Start handlers
+        let mut operation_handler = OperationHandler::new(
+            manager.active_connections.clone(),
+            receiver_operations,
+            receiver_operations_ext,
+        );
         let mut endorsement_handler = EndorsementHandler::new(
             pool_controller,
             storage,
             manager.active_connections.clone(),
             receiver_endorsements,
+            receiver_endorsements_ext,
         );
-        let mut block_handler =
-            BlockHandler::new(manager.active_connections.clone(), receiver_blocks);
+        let mut block_handler = BlockHandler::new(
+            manager.active_connections.clone(),
+            receiver_blocks,
+            receiver_blocks_ext,
+        );
 
         for (addr, transport) in config.listeners {
             manager.start_listener(transport, addr).expect(&format!(
@@ -122,8 +147,13 @@ pub fn start_connectivity_thread(
                     };
                 }
             }
-            // TODO: add a way to stop the thread
         }
     });
-    Ok((sender, handle))
+    // Start controller
+    let controller = ProtocolControllerImpl::new(
+        sender_blocks_ext,
+        sender_operations_ext,
+        sender_endorsements_ext,
+    );
+    Ok(((sender, handle), controller))
 }
