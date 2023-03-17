@@ -61,6 +61,7 @@ impl HandshakeHandler for TesterHandshake {
                 "Invalid signature",
             )));
         }
+        //TODO: Check ip we are connected match one of the announced ips
         {
             let mut peer_db_write = self.peer_db.write();
             peer_db_write
