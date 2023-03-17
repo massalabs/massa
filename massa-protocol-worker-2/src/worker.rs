@@ -14,7 +14,7 @@ use crate::{connectivity::start_connectivity_thread, manager::ProtocolManagerImp
 /// * `config`: protocol settings
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
-pub async fn start_protocol_controller(
+pub fn start_protocol_controller(
     config: ProtocolConfig,
     _consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
