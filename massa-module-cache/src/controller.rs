@@ -74,23 +74,32 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution
-    fn load_module_info(&mut self, bytecode: &[u8], limit: u64) -> Result<ModuleInfo, CacheError> {
-        // TODO: check if limit can be removed here
+    fn load_module_info(&mut self, bytecode: &[u8]) -> Result<ModuleInfo, CacheError> {
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             Ok(lru_module_info)
         } else {
-            if let Some(hd_module_info) = self.hd_cache.get(hash, limit, self.gas_costs.clone())? {
+            if let Some(hd_module_info) =
+                self.hd_cache
+                    .get(hash, self.compilation_gas, self.gas_costs.clone())?
+            {
                 self.lru_cache.insert(hash, hd_module_info.clone());
                 Ok(hd_module_info)
             } else {
-                let new_module = RuntimeModule::new(bytecode, limit, self.gas_costs.clone(), true)?;
-                let new_module_info = ModuleInfo::Module(new_module);
-                // TODO: move this back out
-                // TODO: maybe keep it but set as invalid if compil failed
-                self.hd_cache.insert(hash, new_module_info.clone())?;
-                self.lru_cache.insert(hash, new_module_info.clone());
-                Ok(new_module_info)
+                match RuntimeModule::new(
+                    bytecode,
+                    self.compilation_gas,
+                    self.gas_costs.clone(),
+                    true,
+                ) {
+                    Ok(module) => {
+                        let module_info = ModuleInfo::Module(module);
+                        self.hd_cache.insert(hash, module_info.clone())?;
+                        self.lru_cache.insert(hash, module_info.clone());
+                        Ok(module_info)
+                    }
+                    Err(e) => Err(CacheError::from(e)),
+                }
             }
         }
     }
@@ -99,16 +108,16 @@ impl ModuleCache {
     pub fn load_module(
         &mut self,
         bytecode: &[u8],
-        limit: u64,
+        execution_gas: u64,
     ) -> Result<RuntimeModule, CacheError> {
-        let module_info = self.load_module_info(&bytecode, limit)?;
+        let module_info = self.load_module_info(&bytecode)?;
         let module = match module_info {
             ModuleInfo::Invalid => {
                 return Err(CacheError::LoadError("Loading invalid module".to_string()));
             }
             ModuleInfo::Module(module) => module,
             ModuleInfo::ModuleAndDelta((module, delta)) => {
-                if delta > limit {
+                if delta > execution_gas {
                     return Err(CacheError::LoadError(
                         "Provided max gas is below the instance creation cost".to_string(),
                     ));
