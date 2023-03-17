@@ -45,7 +45,7 @@
 /// * `config`: protocol settings
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
-</span><span class="kw">pub async fn </span>start_protocol_controller(
+</span><span class="kw">pub fn </span>start_protocol_controller(
     config: ProtocolConfig,
     _consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
