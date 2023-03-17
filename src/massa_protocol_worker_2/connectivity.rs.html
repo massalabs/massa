@@ -127,6 +127,36 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::{
@@ -144,11 +174,14 @@
     transports::{OutConnectionConfig, TcpOutConnectionConfig, TransportType},
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::handlers::{
-    block_handler::BlockHandler,
-    endorsement_handler::EndorsementHandler,
-    operation_handler::OperationHandler,
-    peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+<span class="kw">use crate</span>::{
+    controller::ProtocolControllerImpl,
+    handlers::{
+        block_handler::BlockHandler,
+        endorsement_handler::EndorsementHandler,
+        operation_handler::OperationHandler,
+        peer_handler::{fallback_function, MassaHandshake, PeerManagementHandler},
+    },
 };
 
 <span class="kw">pub enum </span>ConnectivityCommand {
@@ -159,15 +192,28 @@
     config: ProtocolConfig,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     storage: Storage,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(Sender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;), ProtocolError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;
+    (
+        (Sender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;),
+        ProtocolControllerImpl,
+    ),
+    ProtocolError,
+&gt; {
     <span class="kw">let </span>(sender, receiver) = unbounded();
     <span class="kw">let </span>initial_peers = serde_json::from_str::&lt;HashMap&lt;PeerId, HashMap&lt;SocketAddr, TransportType&gt;&gt;&gt;(
         <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span>config.initial_peers)<span class="question-mark">?</span>,
     )<span class="question-mark">?</span>;
+    <span class="comment">//TODO: Bound the channel
+    // Channels handlers &lt;-&gt; outside world
+    </span><span class="kw">let </span>(sender_operations_ext, receiver_operations_ext) = unbounded();
+    <span class="kw">let </span>(sender_endorsements_ext, receiver_endorsements_ext) = unbounded();
+    <span class="kw">let </span>(sender_blocks_ext, receiver_blocks_ext) = unbounded();
+
     <span class="kw">let </span>handle = std::thread::spawn(<span class="kw">move </span>|| {
         <span class="kw">let </span>(<span class="kw-2">mut </span>peer_manager_handler, peer_manager_handler_sender) =
             PeerManagementHandler::new(initial_peers);
         <span class="comment">//TODO: Bound the channel
+        // Channels network &lt;-&gt; handlers
         </span><span class="kw">let </span>(sender_operations, receiver_operations) = unbounded();
         <span class="kw">let </span>(sender_endorsements, receiver_endorsements) = unbounded();
         <span class="kw">let </span>(sender_blocks, receiver_blocks) = unbounded();
@@ -179,7 +225,8 @@
         </span>peernet_config.max_in_connections = config.max_in_connections;
         peernet_config.max_out_connections = config.max_out_connections;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>message_handlers: MessageHandlers = Default::default();
+        <span class="comment">// Register channels for handlers
+        </span><span class="kw">let </span><span class="kw-2">mut </span>message_handlers: MessageHandlers = Default::default();
         message_handlers.add_handler(<span class="number">0</span>, peer_manager_handler_sender);
         message_handlers.add_handler(<span class="number">1</span>, MessageHandler::new(sender_operations));
         message_handlers.add_handler(<span class="number">2</span>, MessageHandler::new(sender_endorsements));
@@ -188,16 +235,24 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>manager = PeerNetManager::new(peernet_config);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>operation_handler =
-            OperationHandler::new(manager.active_connections.clone(), receiver_operations);
+        <span class="comment">// Start handlers
+        </span><span class="kw">let </span><span class="kw-2">mut </span>operation_handler = OperationHandler::new(
+            manager.active_connections.clone(),
+            receiver_operations,
+            receiver_operations_ext,
+        );
         <span class="kw">let </span><span class="kw-2">mut </span>endorsement_handler = EndorsementHandler::new(
             pool_controller,
             storage,
             manager.active_connections.clone(),
             receiver_endorsements,
+            receiver_endorsements_ext,
         );
-        <span class="kw">let </span><span class="kw-2">mut </span>block_handler =
-            BlockHandler::new(manager.active_connections.clone(), receiver_blocks);
+        <span class="kw">let </span><span class="kw-2">mut </span>block_handler = BlockHandler::new(
+            manager.active_connections.clone(),
+            receiver_blocks,
+            receiver_blocks_ext,
+        );
 
         <span class="kw">for </span>(addr, transport) <span class="kw">in </span>config.listeners {
             manager.start_listener(transport, addr).expect(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
@@ -251,10 +306,15 @@
                     };
                 }
             }
-            <span class="comment">// TODO: add a way to stop the thread
-        </span>}
+        }
     });
-    <span class="prelude-val">Ok</span>((sender, handle))
+    <span class="comment">// Start controller
+    </span><span class="kw">let </span>controller = ProtocolControllerImpl::new(
+        sender_blocks_ext,
+        sender_operations_ext,
+        sender_endorsements_ext,
+    );
+    <span class="prelude-val">Ok</span>(((sender, handle), controller))
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_protocol_worker_2" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

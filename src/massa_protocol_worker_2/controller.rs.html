@@ -94,100 +94,40 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_models::{
+</pre><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::Sender;
+<span class="kw">use </span>massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
-    endorsement::EndorsementId,
-    operation::OperationId,
     prehash::{PreHashMap, PreHashSet},
 };
 <span class="kw">use </span>massa_protocol_exports_2::{ProtocolController, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
 
+<span class="kw">use </span><span class="kw">crate</span>::handlers::{
+    block_handler::commands::BlockHandlerCommand,
+    endorsement_handler::commands::EndorsementHandlerCommand,
+    operation_handler::commands::OperationHandlerCommand,
+};
+
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ProtocolControllerImpl {
-    <span class="comment">//TODO: Add channels to send to different handlers
-</span>}
-
-<span class="kw">impl </span>ProtocolControllerImpl {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        ProtocolControllerImpl {}
-    }
+    <span class="kw">pub </span>sender_block_handler: Sender&lt;BlockHandlerCommand&gt;,
+    <span class="kw">pub </span>sender_operation_handler: Sender&lt;OperationHandlerCommand&gt;,
+    <span class="kw">pub </span>sender_endorsement_handler: Sender&lt;EndorsementHandlerCommand&gt;,
 }
 
-<span class="doccomment">/// block result: map block id to
-/// ```md
-/// Option(
-///     Option(set(operation id)),
-///     Option(Vec(endorsement id))
-/// )
-/// ```
-</span><span class="kw">pub type </span>BlocksResults =
-    PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;(<span class="prelude-ty">Option</span>&lt;PreHashSet&lt;OperationId&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;EndorsementId&gt;&gt;)&gt;&gt;;
-
-<span class="doccomment">/// Commands that protocol worker can process
-</span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>ProtocolCommand {
-    <span class="doccomment">/// Notify block integration of a given block.
-    </span>IntegratedBlock {
-        <span class="doccomment">/// block id
-        </span>block_id: BlockId,
-        <span class="doccomment">/// block storage
-        </span>storage: Storage,
-    },
-    <span class="doccomment">/// A block, or it&#39;s header, amounted to an attempted attack.
-    </span>AttackBlockDetected(BlockId),
-    <span class="doccomment">/// Wish list delta
-    </span>WishlistDelta {
-        <span class="doccomment">/// add to wish list
-        </span>new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
-        <span class="doccomment">/// remove from wish list
-        </span>remove: PreHashSet&lt;BlockId&gt;,
-    },
-    <span class="doccomment">/// Propagate operations (send batches)
-    /// note: `Set&lt;OperationId&gt;` are replaced with `OperationPrefixIds`
-    ///       by the controller
-    </span>PropagateOperations(Storage),
-    <span class="doccomment">/// Propagate endorsements
-    </span>PropagateEndorsements(Storage),
+<span class="kw">impl </span>ProtocolControllerImpl {
+    <span class="kw">pub fn </span>new(
+        sender_block_handler: Sender&lt;BlockHandlerCommand&gt;,
+        sender_operation_handler: Sender&lt;OperationHandlerCommand&gt;,
+        sender_endorsement_handler: Sender&lt;EndorsementHandlerCommand&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        ProtocolControllerImpl {
+            sender_block_handler,
+            sender_operation_handler,
+            sender_endorsement_handler,
+        }
+    }
 }
 
 <span class="kw">impl </span>ProtocolController <span class="kw">for </span>ProtocolControllerImpl {
@@ -197,26 +137,18 @@
     /// * `block_id`: ID of the block
     /// * `storage`: Storage instance containing references to the block and all its dependencies
     </span><span class="kw">fn </span>integrated_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, storage: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">// massa_trace!(&quot;protocol.command_sender.integrated_block&quot;, {
-        //     &quot;block_id&quot;: block_id
-        // });
-        // self.0
-        //     .blocking_send(ProtocolCommand::IntegratedBlock { block_id, storage })
-        //     .map_err(|_| ProtocolError::ChannelError(&quot;block_integrated command send error&quot;.into()))
-        </span><span class="prelude-val">Ok</span>(())
+        <span class="self">self</span>.sender_block_handler
+            .send(BlockHandlerCommand::IntegratedBlock { block_id, storage })
+            .map_err(|<span class="kw">_</span>| ProtocolError::ChannelError(<span class="string">&quot;integrated_block command send error&quot;</span>.into()))
     }
 
     <span class="doccomment">/// Notify to protocol an attack attempt.
     </span><span class="kw">fn </span>notify_block_attack(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">// massa_trace!(&quot;protocol.command_sender.notify_block_attack&quot;, {
-        //     &quot;block_id&quot;: block_id
-        // });
-        // self.0
-        //     .blocking_send(ProtocolCommand::AttackBlockDetected(block_id))
-        //     .map_err(|_| {
-        //         ProtocolError::ChannelError(&quot;notify_block_attack command send error&quot;.into())
-        //     })
-        </span><span class="prelude-val">Ok</span>(())
+        <span class="self">self</span>.sender_block_handler
+            .send(BlockHandlerCommand::AttackBlockDetected(block_id))
+            .map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;notify_block_attack command send error&quot;</span>.into())
+            })
     }
 
     <span class="doccomment">/// update the block wish list
@@ -225,41 +157,33 @@
         new: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
         remove: PreHashSet&lt;BlockId&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">// massa_trace!(&quot;protocol.command_sender.send_wishlist_delta&quot;, { &quot;new&quot;: new, &quot;remove&quot;: remove });
-        // self.0
-        //     .blocking_send(ProtocolCommand::WishlistDelta { new, remove })
-        //     .map_err(|_| {
-        //         ProtocolError::ChannelError(&quot;send_wishlist_delta command send error&quot;.into())
-        //     })
-        </span><span class="prelude-val">Ok</span>(())
+        <span class="self">self</span>.sender_block_handler
+            .send(BlockHandlerCommand::WishlistDelta { new, remove })
+            .map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;send_wishlist_delta command send error&quot;</span>.into())
+            })
     }
 
     <span class="doccomment">/// Propagate a batch of operation ids (from pool).
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
     </span><span class="kw">fn </span>propagate_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, operations: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">// massa_trace!(&quot;protocol.command_sender.propagate_operations&quot;, {
-        //     &quot;operations&quot;: operations.get_op_refs()
-        // });
-        // self.0
-        //     .blocking_send(ProtocolCommand::PropagateOperations(operations))
-        //     .map_err(|_| {
-        //         ProtocolError::ChannelError(&quot;propagate_operation command send error&quot;.into())
-        //     })
-        </span><span class="prelude-val">Ok</span>(())
+        <span class="self">self</span>.sender_operation_handler
+            .send(OperationHandlerCommand::PropagateOperations(operations))
+            .map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;propagate_operations command send error&quot;</span>.into())
+            })
     }
 
     <span class="doccomment">/// propagate endorsements to connected node
     </span><span class="kw">fn </span>propagate_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, endorsements: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">// massa_trace!(&quot;protocol.command_sender.propagate_endorsements&quot;, {
-        //     &quot;endorsements&quot;: endorsements.get_endorsement_refs()
-        // });
-        // self.0
-        //     .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
-        //     .map_err(|_| {
-        //         ProtocolError::ChannelError(&quot;propagate_endorsements command send error&quot;.into())
-        //     })
-        </span><span class="prelude-val">Ok</span>(())
+        <span class="self">self</span>.sender_endorsement_handler
+            .send(EndorsementHandlerCommand::PropagateEndorsements(
+                endorsements,
+            ))
+            .map_err(|<span class="kw">_</span>| {
+                ProtocolError::ChannelError(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.into())
+            })
     }
 
     <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ProtocolController&gt; {
