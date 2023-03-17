@@ -892,16 +892,6 @@
 <a href="#892" id="892">892</a>
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1479,9 +1469,6 @@
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
         <span class="kw">let </span>final_state_changes;
-        <span class="kw">let </span>initial_cycle;
-        <span class="kw">let </span>initial_rolls;
-        <span class="kw">let </span>initial_ledger_hash;
 
         <span class="kw">let </span><span class="kw-2">mut </span>slot_too_old = <span class="bool-val">false</span>;
 
@@ -1511,10 +1498,6 @@
                 .executed_ops
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
-
-            initial_cycle = final_state_read.pos_state.initial_cycle;
-            initial_rolls = final_state_read.pos_state.initial_rolls.clone();
-            initial_ledger_hash = final_state_read.pos_state.initial_ledger_hash;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
@@ -1646,9 +1629,6 @@
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    initial_cycle,
-                    initial_rolls,
-                    initial_ledger_hash,
                 },
             )
             .<span class="kw">await
