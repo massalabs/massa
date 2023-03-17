@@ -1,6 +1,7 @@
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use schnellru::{ByLength, LruMap};
+use tracing::warn;
 
 use crate::types::ModuleInfo;
 
@@ -47,15 +48,10 @@ impl LRUCache {
                 }
                 ModuleInfo::ModuleAndDelta((_module, delta)) => *delta = init_cost,
                 ModuleInfo::Invalid => {
-                    // return Err(ExecutionError::RuntimeError(
-                    //     "tried to set the init cost of an invalid module".to_string(),
-                    // ));
+                    warn!("tried to set the init cost of an invalid module");
                 }
             }
         }
-        // Err(ExecutionError::RuntimeError(
-        //     "tried to set the init cost of a nonexistent module".to_string(),
-        // ))
     }
 
     /// Set a module as invalid

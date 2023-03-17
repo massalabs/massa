@@ -6,10 +6,6 @@ edition = "2021"
 [dependencies]
 schnellru = "0.2.0"
 rocksdb = "0.19"
-massa_hash = { path = "../massa-hash" }
-massa_models = { path = "../massa-models" }
-massa_serialization = { path = "../massa-serialization" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup", features = ["testing"]}
 serial_test = "1.0.0"
 rand = "0.8.5"
 num_enum = "0.5"
@@ -17,6 +13,14 @@ nom = "7.1"
 displaydoc = "0.2"
 thiserror = "1.0"
 anyhow = "1.0"
+tracing = "0.1"
+# massa
+massa_hash = { path = "../massa-hash" }
+massa_models = { path = "../massa-models" }
+massa_serialization = { path = "../massa-serialization" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup", features = [
+    "testing",
+] }
 
 [features]
 testing = []

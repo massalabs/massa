@@ -1,6 +1,5 @@
 use displaydoc::Display;
 use thiserror::Error;
-// use massa_serialization::{DeserializeError, SerializeError};
 
 /// Cache error
 #[non_exhaustive]

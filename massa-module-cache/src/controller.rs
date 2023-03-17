@@ -39,7 +39,7 @@ impl ModuleCache {
         let hash = Hash::compute_from(bytecode);
         if let Some(hd_module_info) =
             self.hd_cache
-                .get(hash, self.compilation_gas, self.gas_costs.clone())
+                .get(hash, self.compilation_gas, self.gas_costs.clone())?
         {
             self.lru_cache.insert(hash, hd_module_info);
         } else {
@@ -80,7 +80,7 @@ impl ModuleCache {
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             Ok(lru_module_info)
         } else {
-            if let Some(hd_module_info) = self.hd_cache.get(hash, limit, self.gas_costs.clone()) {
+            if let Some(hd_module_info) = self.hd_cache.get(hash, limit, self.gas_costs.clone())? {
                 self.lru_cache.insert(hash, hd_module_info.clone());
                 Ok(hd_module_info)
             } else {

@@ -2764,6 +2764,7 @@ dependencies = [
  "schnellru",
  "serial_test 1.0.0",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

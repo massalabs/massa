@@ -72,7 +72,6 @@ impl HDCache {
 
     /// Insert a new module in the cache
     pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), CacheError> {
-        // TODO: batch it
         if self.entry_count >= self.max_entry_count {
             self.snip();
         }
@@ -138,15 +137,20 @@ impl HDCache {
     }
 
     /// Retrieve a module
-    pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
-        // TODO: make sure of the missing object behaviour
-        // HERE
+    pub fn get(
+        &self,
+        hash: Hash,
+        limit: u64,
+        gas_costs: GasCosts,
+    ) -> Result<Option<ModuleInfo>, CacheError> {
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
-        if let Some(Ok((_, ser_module))) = iterator.next() {
-            let (_, ser_metadata) = iterator.next().unwrap().unwrap();
-            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs).unwrap();
+        // TODO: make sure of the missing object behaviour here
+        if let (Some(Ok((_, ser_module))), Some(Ok((_, ser_metadata)))) =
+            (iterator.next(), iterator.next())
+        {
+            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs)?;
             let (_, metadata) = self
                 .meta_deser
                 .deserialize::<DeserializeError>(&ser_metadata)
@@ -156,9 +160,9 @@ impl HDCache {
                 ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
                 ModuleMetadata::Delta(delta) => ModuleInfo::ModuleAndDelta((module, delta)),
             };
-            Some(result)
+            Ok(Some(result))
         } else {
-            None
+            Ok(None)
         }
     }
 
