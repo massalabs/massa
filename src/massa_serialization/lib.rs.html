@@ -384,12 +384,6 @@
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::VecDeque,
     fmt::{Debug, Display},
@@ -763,16 +757,10 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], bool, E&gt; {
         context(<span class="string">&quot;Failed bool deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
-            <span class="kw">let </span><span class="prelude-val">Some</span>((first, rest)) = input.split_first() <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
-                    input,
-                    nom::error::ErrorKind::Fail,
-                )));
-            };
-            <span class="prelude-val">Ok</span>((rest, {
-                <span class="kw">match </span>first {
-                    <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-                    <span class="number">0 </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+            <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..], {
+                <span class="kw">match </span>buffer.first() {
+                    <span class="prelude-val">Some</span>(<span class="number">1</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+                    <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                         input,
                         nom::error::ErrorKind::Fail,
