@@ -1494,7 +1494,7 @@ impl ExecutionState {
                                 "unable to retrieve reference for vesting range with error : {}",
                                 e
                             );
-                            return false;
+                            false
                         }
                     })
                     .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
