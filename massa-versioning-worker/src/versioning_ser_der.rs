@@ -8,7 +8,9 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipInfo, Started};
+use crate::versioning::{
+    Advance, ComponentState, ComponentStateTypeId, MipComponent, MipInfo, Started,
+};
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_serialization::{
@@ -287,10 +289,113 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
 
 // End ComponentState
 
+// Advance
+
+/// Serializer for `Advance`
+pub struct AdvanceSerializer {
+    amount_serializer: AmountSerializer,
+    time_serializer: MassaTimeSerializer,
+}
+
+impl AdvanceSerializer {
+    /// Creates a new `Serializer`
+    pub fn new() -> Self {
+        Self {
+            amount_serializer: AmountSerializer::new(),
+            time_serializer: MassaTimeSerializer::new(),
+        }
+    }
+}
+
+impl Default for AdvanceSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<Advance> for AdvanceSerializer {
+    fn serialize(&self, value: &Advance, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.time_serializer
+            .serialize(&value.start_timestamp, buffer)?;
+        self.time_serializer.serialize(&value.timeout, buffer)?;
+        self.amount_serializer.serialize(&value.threshold, buffer)?;
+        self.time_serializer.serialize(&value.now, buffer)?;
+        Ok(())
+    }
+}
+
+/// A Deserializer for ComponentState`
+pub struct AdvanceDeserializer {
+    // state_deserializer: U32VarIntDeserializer,
+    amount_deserializer: AmountDeserializer,
+    time_deserializer: MassaTimeDeserializer,
+}
+
+impl AdvanceDeserializer {
+    /// Creates a new `Deserializer`
+    pub fn new() -> Self {
+        Self {
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+            time_deserializer: MassaTimeDeserializer::new((
+                Included(0.into()),
+                Included(u64::MAX.into()),
+            )),
+        }
+    }
+}
+
+impl Default for AdvanceDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<Advance> for AdvanceDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Advance, E> {
+        context(
+            "Failed Advance deserialization",
+            tuple((
+                context("Failed start_timestamp deserialization", |input| {
+                    self.time_deserializer.deserialize(input)
+                }),
+                context("Failed timeout deserialization", |input| {
+                    self.time_deserializer.deserialize(input)
+                }),
+                context("Failed threshold deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed now deserialization", |input| {
+                    self.time_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(start_timestamp, timeout, threshold, now)| Advance {
+            start_timestamp,
+            timeout,
+            threshold,
+            now,
+        })
+        .parse(buffer)
+    }
+}
+
+// End Advance
+
+// MipState
+
+// End MipState
+
 #[cfg(test)]
 mod test {
     use super::*;
 
+    use chrono::{NaiveDate, NaiveDateTime};
     use std::str::FromStr;
 
     use massa_serialization::DeserializeError;
@@ -343,5 +448,41 @@ mod test {
 
         assert!(rem.is_empty());
         assert_eq!(st_2, st_2_der);
+    }
+
+    #[test]
+    fn test_advance_ser_der() {
+        let start: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 01)
+            .unwrap()
+            .and_hms_opt(7, 33, 44)
+            .unwrap();
+
+        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 11)
+            .unwrap()
+            .and_hms_opt(7, 33, 44)
+            .unwrap();
+
+        let now: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 05, 11)
+            .unwrap()
+            .and_hms_opt(11, 33, 44)
+            .unwrap();
+
+        let adv = Advance {
+            start_timestamp: MassaTime::from(start.timestamp() as u64),
+            timeout: MassaTime::from(timeout.timestamp() as u64),
+            threshold: Default::default(),
+            now: MassaTime::from(now.timestamp() as u64),
+        };
+
+        let mut buf = Vec::new();
+        let adv_ser = AdvanceSerializer::new();
+        adv_ser.serialize(&adv, &mut buf).unwrap();
+
+        let state_der = AdvanceDeserializer::new();
+
+        let (rem, adv_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(adv, adv_der);
     }
 }
