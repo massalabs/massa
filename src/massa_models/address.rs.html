@@ -575,7 +575,7 @@
     /// assert_eq!(address, res_addr);
     /// ```
     </span><span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
-        <span class="kw">let </span>err = <span class="prelude-val">Err</span>(ModelsError::AddressParseError);
+        <span class="kw">let </span>err = <span class="prelude-val">Err</span>(ModelsError::AddressParseError(s.to_string()));
 
         <span class="comment">// Handle the prefix (&quot;A{U|S}&quot;)
         </span><span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
@@ -591,18 +591,18 @@
         <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
             .with_check(<span class="prelude-val">None</span>)
             .into_vec()
-            .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError(s.to_string()))<span class="question-mark">?</span>;
 
         <span class="comment">// extract the version
         </span><span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
         <span class="kw">let </span>(rest, _version) = u64_deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
-            .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError(s.to_string()))<span class="question-mark">?</span>;
 
         <span class="comment">// ...and package it up
         </span><span class="kw">let </span>res = UserAddress(Hash::from_bytes(
             rest.try_into()
-                .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError)<span class="question-mark">?</span>,
+                .map_err(|<span class="kw">_</span>| ModelsError::AddressParseError(s.to_string()))<span class="question-mark">?</span>,
         ));
 
         <span class="kw">let </span>res = <span class="kw">match </span>pref {
