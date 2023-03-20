@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ComponentState","ComponentStateMessages","ComponentStateTypeId","MipComponent","StateAtError"],"struct":["Active","Advance","Defined","Failed","LockedIn","MipInfo","MipState","MipStore","MipStoreRaw","Started"]};

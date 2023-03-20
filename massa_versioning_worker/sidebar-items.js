@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["start_versioning_worker"],"mod":["versioning","versioning_factory","versioning_middleware","versioning_ser_der"]};
