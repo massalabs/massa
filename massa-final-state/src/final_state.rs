@@ -88,7 +88,7 @@ impl FinalState {
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
-        self.executed_ops.reset();
+        self.executed_ops = ExecutedOps::new(self.executed_ops.config.clone());
         self.changes_history.clear();
         // reset the final state hash
         self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);

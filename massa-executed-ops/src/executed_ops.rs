@@ -32,7 +32,7 @@ const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 #[derive(Debug, Clone)]
 pub struct ExecutedOps {
     /// Executed operations configuration
-    config: ExecutedOpsConfig,
+    pub config: ExecutedOpsConfig,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// Executed operations only for better insertion complexity
@@ -53,15 +53,6 @@ impl ExecutedOps {
             hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
             op_exec_status: HashMap::new(),
         }
-    }
-
-    /// Reset the executed operations
-    ///
-    /// USED FOR BOOTSTRAP ONLY
-    pub fn reset(&mut self) {
-        self.sorted_ops.clear();
-        self.ops.clear();
-        self.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
     }
 
     /// Returns the number of executed operations
