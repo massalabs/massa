@@ -227,6 +227,12 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -274,7 +280,7 @@
                 .saturating_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">10</span>))
         )
     } <span class="kw">else </span>{
-        <span class="number">1677675600000</span>.into()  <span class="comment">// Wednesday, March 1, 2023 01:00:00 PM UTC
+        <span class="number">1677682800000</span>.into()  <span class="comment">// Wednesday, March 1, 2023 03:00:00 PM UTC
     </span>};
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
@@ -293,7 +299,7 @@
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
             <span class="string">&quot;SAND.20.0&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.20.0&quot;
+            <span class="string">&quot;TEST.21.0&quot;
         </span>}
         .parse()
         .unwrap()
@@ -448,6 +454,12 @@
 </span><span class="kw">pub const </span>NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
 <span class="doccomment">/// network node event channel size
 </span><span class="kw">pub const </span>NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
+
+<span class="comment">//
+// Constants used in versioning
+//
+</span><span class="doccomment">/// Threshold to accept a new versioning
+</span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(<span class="number">75</span>, <span class="number">0</span>);
 
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attr">#[allow(clippy::assertions_on_constants)]
