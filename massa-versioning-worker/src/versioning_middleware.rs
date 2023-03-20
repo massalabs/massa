@@ -53,7 +53,7 @@ impl VersioningMiddleware {
             ))
         })?;
 
-        // Possible optimisation: filter the store to avoid advancing on failed and active versions
+        // TODO / OPTIM: filter the store to avoid advancing on failed and active versions
         for (vi, state) in store.0.iter_mut() {
             let ratio_counts = 100.0 * *self.counts.get(&vi.version).unwrap_or(&0) as f32
                 / self.count_blocks_considered as f32;
@@ -78,22 +78,19 @@ impl VersioningMiddleware {
 
 #[cfg(test)]
 mod test {
-    use crate::versioning::{MipComponent, MipInfo, MipState, MipStoreRaw};
+    use crate::versioning::{MipComponent, MipInfo, MipState};
     use core::time::Duration;
-    use parking_lot::RwLock;
-    use std::collections::BTreeMap;
-    use std::sync::Arc;
 
     use super::*;
 
     fn get_a_version_info(start: MassaTime, timeout: MassaTime) -> MipInfo {
         // A helper function to provide a  default MipInfo
-        // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
+        // Models a Massa Improvements Proposal (MIP-0001), transitioning component address to v1
 
         MipInfo {
-            name: "MIP-0002".to_string(),
-            version: 2,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            name: "MIP-0001".to_string(),
+            version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start,
             timeout,
         }
@@ -110,11 +107,11 @@ mod test {
 
         let state = MipState::new(now);
 
-        let vs_raw = MipStoreRaw(BTreeMap::from([(vi.clone(), state)]));
-        let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
+        let vs = MipStore::try_from([(vi.clone(), state)]).expect("Cannot create the MipStore");
 
         let mut vm = VersioningMiddleware::new(5, vs.clone());
 
+        // The MIP-0001 hasn't Started yet, so we do not announce it.
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 0);
 
@@ -125,6 +122,7 @@ mod test {
         vm.new_block(0);
         vm.new_block(0);
 
+        // The MIP-0001 hasn't Started yet, so we do not announce it.
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 0);
 
@@ -132,25 +130,28 @@ mod test {
 
         vm.new_block(0);
 
+        // The MIP-0001 has Started, we start announcing it.
         assert_eq!(vs.get_network_version_current(), 0);
-        assert_eq!(vs.get_network_version_to_announce(), 2);
+        assert_eq!(vs.get_network_version_to_announce(), 1);
 
-        vm.new_block(2);
-        vm.new_block(2);
-        vm.new_block(2);
-        vm.new_block(2);
-        vm.new_block(2);
+        vm.new_block(1);
+        vm.new_block(1);
+        vm.new_block(1);
+        vm.new_block(1);
+        vm.new_block(1);
 
+        // Enough people voted for MIP-0001, but Timeout has not occurred, so we still announce it and don't consider it active
         assert_eq!(vs.get_network_version_current(), 0);
-        assert_eq!(vs.get_network_version_to_announce(), 2);
+        assert_eq!(vs.get_network_version_to_announce(), 1);
 
         tokio::time::sleep(Duration::from_secs(2)).await;
 
-        vm.new_block(2);
-        vm.new_block(2);
-        vm.new_block(2);
+        vm.new_block(1);
+        vm.new_block(1);
+        vm.new_block(1);
 
-        assert_eq!(vs.get_network_version_current(), 2);
+        // Timeout occurred, so we don't announce MIP-0001 anymore, and consider it active
+        assert_eq!(vs.get_network_version_current(), 1);
         assert_eq!(vs.get_network_version_to_announce(), 0);
     }
 }
