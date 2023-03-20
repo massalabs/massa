@@ -40,7 +40,7 @@ use massa_time::MassaTime;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -1485,9 +1485,17 @@ impl ExecutionState {
                     })
                     // we don't need range with StartSlot(0,0) && EndSlot(0,0)
                     // this can happen when the timestamp is passed
-                    .filter(|a| {
-                        !(a.as_ref().unwrap().end_slot == Slot::min()
-                            && a.as_ref().unwrap().start_slot == Slot::min())
+                    .filter(|a| match a.as_ref() {
+                        Ok(vesting) => {
+                            !(vesting.end_slot == Slot::min() && vesting.start_slot == Slot::min())
+                        }
+                        Err(e) => {
+                            error!(
+                                "unable to retrieve reference for vesting range with error : {}",
+                                e
+                            );
+                            return false;
+                        }
                     })
                     .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
             }
