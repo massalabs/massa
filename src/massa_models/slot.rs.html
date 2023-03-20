@@ -524,7 +524,7 @@
             .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Slot {
             period,
-            thread: thread_count - <span class="number">1</span>,
+            thread: thread_count.saturating_sub(<span class="number">1</span>),
         })
     }
 
@@ -548,7 +548,7 @@
     </span><span class="kw">pub const fn </span>max(thread_count: u8) -&gt; Slot {
         Slot {
             period: u64::MAX,
-            thread: thread_count,
+            thread: thread_count.saturating_sub(<span class="number">1</span>),
         }
     }
 
