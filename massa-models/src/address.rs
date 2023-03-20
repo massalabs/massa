@@ -248,9 +248,14 @@ impl Address {
     /// Convenience wrapper around the address serializer. Useful for hard-coding an address when testing
     pub fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
         let deser = AddressDeserializer::new();
-        let (_, res) = deser
-            .deserialize::<DeserializeError>(data)
-            .map_err(|_| ModelsError::AddressParseError)?;
+        let (_, res) = deser.deserialize::<DeserializeError>(data).map_err(|_| {
+            match std::str::from_utf8(data) {
+                Ok(res) => ModelsError::AddressParseError(res.to_string()),
+                Err(e) => {
+                    ModelsError::AddressParseError(format!("Error on retrieve address : {}", e))
+                }
+            }
+        })?;
         Ok(res)
     }
 }
