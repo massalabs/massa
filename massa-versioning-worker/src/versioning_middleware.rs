@@ -4,7 +4,7 @@ use massa_models::amount::Amount;
 use massa_time::{MassaTime, TimeError};
 
 use crate::versioning::{Advance, MipStore};
-use massa_versioning_exports::VersioningError;
+use massa_versioning_exports::VersioningMiddlewareError;
 
 /// Struct used to keep track of announced versions in previous blocks
 pub struct VersioningMiddleware {
@@ -44,11 +44,11 @@ impl VersioningMiddleware {
         let _ = self.create_and_send_advance_message_for_all();
     }
 
-    fn create_and_send_advance_message_for_all(&mut self) -> Result<(), VersioningError> {
+    fn create_and_send_advance_message_for_all(&mut self) -> Result<(), VersioningMiddlewareError> {
         let mut store = self.mip_store.0.write();
 
         let now = MassaTime::now().map_err(|_| {
-            VersioningError::ModelsError(massa_models::error::ModelsError::TimeError(
+            VersioningMiddlewareError::ModelsError(massa_models::error::ModelsError::TimeError(
                 TimeError::TimeOverflowError,
             ))
         })?;

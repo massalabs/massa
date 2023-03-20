@@ -7,7 +7,7 @@ use thiserror::Error;
 /// versioning error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub enum VersioningError {
+pub enum VersioningMiddlewareError {
     /// An error occurred during channel communication: {0}
     ChannelError(String),
     /// Models error: {0}

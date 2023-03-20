@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::error::VersioningError;
+use crate::error::VersioningMiddlewareError;
 
 use serde::Serialize;
 
@@ -22,11 +22,11 @@ pub enum VersioningManagementCommand {}
 pub struct VersioningCommandSender(pub mpsc::Sender<VersioningCommand>);
 
 impl VersioningCommandSender {
-    pub fn send_block_version(&mut self, announced_version: u32) -> Result<(), VersioningError> {
+    pub fn send_block_version(&mut self, announced_version: u32) -> Result<(), VersioningMiddlewareError> {
         self.0
             .blocking_send(VersioningCommand::FinalizedBlockVersion { announced_version })
             .map_err(|_| {
-                VersioningError::ChannelError("send_block_header command send error".into())
+                VersioningMiddlewareError::ChannelError("send_block_header command send error".into())
             })
     }
 }

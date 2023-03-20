@@ -1,5 +1,5 @@
 use massa_versioning_exports::{
-    VersioningCommand, VersioningConfig, VersioningError, VersioningManagementCommand,
+    VersioningCommand, VersioningConfig, VersioningMiddlewareError, VersioningManagementCommand,
     VersioningManager, VersioningReceivers, VersioningSenders,
 };
 
@@ -20,7 +20,7 @@ pub async fn start_versioning_worker(
     receivers: VersioningReceivers,
     _senders: VersioningSenders,
     store: MipStore,
-) -> Result<VersioningManager, VersioningError> {
+) -> Result<VersioningManager, VersioningMiddlewareError> {
     // launch worker
     let (manager_tx, controller_manager_rx) = mpsc::channel::<VersioningManagementCommand>(1);
     let _join_handle = tokio::spawn(async move {
@@ -93,7 +93,7 @@ impl VersioningWorker {
         }
     }
 
-    pub async fn run_loop(mut self) -> Result<(), VersioningError> {
+    pub async fn run_loop(mut self) -> Result<(), VersioningMiddlewareError> {
         loop {
             tokio::select! {
                 cmd = self.controller_manager_rx.recv() => {
@@ -113,7 +113,7 @@ impl VersioningWorker {
         Ok(())
     }
 
-    async fn process_command(&mut self, cmd: VersioningCommand) -> Result<(), VersioningError> {
+    async fn process_command(&mut self, cmd: VersioningCommand) -> Result<(), VersioningMiddlewareError> {
         match cmd {
             VersioningCommand::FinalizedBlockVersion { announced_version } => {
                 self.versioning_middleware.new_block(announced_version);
