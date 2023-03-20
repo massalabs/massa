@@ -1507,6 +1507,14 @@
 <a href="#1507" id="1507">1507</a>
 <a href="#1508" id="1508">1508</a>
 <a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1549,7 +1557,7 @@
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>tracing::{debug, error, info, warn};
 
 <span class="doccomment">/// Used to acquire a lock on the execution context
 </span><span class="macro">macro_rules! </span>context_guard {
@@ -2994,9 +3002,17 @@
                     })
                     <span class="comment">// we don&#39;t need range with StartSlot(0,0) &amp;&amp; EndSlot(0,0)
                     // this can happen when the timestamp is passed
-                    </span>.filter(|a| {
-                        !(a.as_ref().unwrap().end_slot == Slot::min()
-                            &amp;&amp; a.as_ref().unwrap().start_slot == Slot::min())
+                    </span>.filter(|a| <span class="kw">match </span>a.as_ref() {
+                        <span class="prelude-val">Ok</span>(vesting) =&gt; {
+                            !(vesting.end_slot == Slot::min() &amp;&amp; vesting.start_slot == Slot::min())
+                        }
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(
+                                <span class="string">&quot;unable to retrieve reference for vesting range with error : {}&quot;</span>,
+                                e
+                            );
+                            <span class="kw">return </span><span class="bool-val">false</span>;
+                        }
                     })
                     .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;VestingRange&gt;, ExecutionError&gt;&gt;()<span class="question-mark">?</span>;
             }
