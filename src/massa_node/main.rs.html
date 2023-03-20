@@ -1140,7 +1140,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::DefaultEstablisher::default(),
+            massa_bootstrap::types::Establisher::default(),
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1412,7 +1412,7 @@
         network_command_sender.clone(),
         final_state.clone(),
         bootstrap_config,
-        massa_bootstrap::DefaultEstablisher::new(),
+        massa_bootstrap::Establisher::new(),
         private_key,
         <span class="kw-2">*</span>VERSION,
     )
