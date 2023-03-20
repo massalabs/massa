@@ -93,7 +93,6 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting
@@ -138,7 +137,6 @@
         cycle: u64,
         lookback_rolls: BTreeMap&lt;Address, u64&gt;,
         lookback_seed: Hash,
-        last_start_period: u64
     ) -&gt; PosResult&lt;()&gt;;
 
     <span class="doccomment">/// Get [Selection] computed for a slot:

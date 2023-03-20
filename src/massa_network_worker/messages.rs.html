@@ -603,9 +603,6 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_hash::HashDeserializer;
@@ -890,7 +887,6 @@
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
-        last_start_period: u64,
     ) -&gt; <span class="self">Self </span>{
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -918,7 +914,6 @@
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
-                last_start_period
             )),
             endorsements_length_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
@@ -1178,8 +1173,7 @@
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            <span class="number">0
-        </span>);
+        );
         <span class="kw">let </span><span class="kw-2">mut </span>random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
         StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>random_bytes);
         <span class="kw">let </span>keypair = KeyPair::generate();

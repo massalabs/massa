@@ -1939,7 +1939,7 @@
         });
 
         <span class="comment">// refuse genesis blocks
-        </span><span class="kw">if </span>header.content.slot.period == <span class="self">self</span>.config.last_start_period || header.content.parents.is_empty() {
+        </span><span class="kw">if </span>header.content.slot.period == <span class="number">0 </span>|| header.content.parents.is_empty() {
             <span class="comment">// genesis
             </span><span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_is_genesis&quot;</span>, {
                 <span class="string">&quot;header&quot;</span>: header

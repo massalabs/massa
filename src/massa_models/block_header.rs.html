@@ -486,10 +486,6 @@
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -718,12 +714,11 @@
     hash_deserializer: HashDeserializer,
     thread_count: u8,
     endorsement_count: u32,
-    last_start_period: u64,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
     <span class="doccomment">/// Creates a new `BlockHeaderDeserializerLW`
-    </span><span class="kw">pub const fn </span>new(thread_count: u8, endorsement_count: u32, last_start_period: u64) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub const fn </span>new(thread_count: u8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -737,7 +732,6 @@
             hash_deserializer: HashDeserializer::new(),
             thread_count,
             endorsement_count,
-            last_start_period,
         }
     }
 }
@@ -823,15 +817,13 @@
                 .parse(input)<span class="question-mark">?</span>;
 
                 <span class="comment">// validate the parent/slot invariats before moving on to other fields
-                </span><span class="kw">if </span>slot.period == <span class="self">self</span>.last_start_period &amp;&amp; !parents.is_empty() {
+                </span><span class="kw">if </span>slot.period == <span class="number">0 </span>&amp;&amp; !parents.is_empty() {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                         rest,
                         <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
-                } <span class="kw">else if </span>slot.period != <span class="self">self</span>.last_start_period
-                    &amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize
-                {
+                } <span class="kw">else if </span>slot.period != <span class="number">0 </span>&amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                         rest,
                         <span class="macro">const_format::formatcp!</span>(

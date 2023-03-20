@@ -888,20 +888,6 @@
 <a href="#888" id="888">888</a>
 <a href="#889" id="889">889</a>
 <a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -993,11 +979,13 @@
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
-        // unwrap() effectively passes up a panic from the thread being handled
-        </span><span class="self">self</span>.update_handle.join().unwrap()<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.update_handle
+            .join()
+            .expect(<span class="string">&quot;in BootstrapManager::stop() joining on updater thread&quot;</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// unwrap() effectively passes up a panic from the thread being handled
-        </span><span class="self">self</span>.main_handle.join().unwrap()
+        <span class="self">self</span>.main_handle
+            .join()
+            .expect(<span class="string">&quot;in BootstrapManager::stop() joining on bootstrap main-loop thread&quot;</span>)
     }
 }
 
@@ -1062,9 +1050,7 @@
             };
             res
         })
-        <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
-        // it&#39;s an error at the OS level.
-        </span>.unwrap();
+        .expect(<span class="string">&quot;in `start_bootstrap_server`, OS failed to spawn list-updater thread&quot;</span>);
     <span class="kw">let </span>listen_rt_handle = bs_server_runtime.handle().clone();
     <span class="kw">let </span>listen_handle = thread::Builder::new()
         .name(<span class="string">&quot;bs_listener&quot;</span>.to_string())
@@ -1075,9 +1061,7 @@
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
             res
         })
-        <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
-        // it&#39;s an error at the OS level.
-        </span>.unwrap();
+        .expect(<span class="string">&quot;in `start_bootstrap_server`, OS failed to spawn listener thread&quot;</span>);
 
     <span class="kw">let </span>main_handle = thread::Builder::new()
         .name(<span class="string">&quot;bs-main-loop&quot;</span>.to_string())
@@ -1097,9 +1081,7 @@
             }
             .run_loop(max_bootstraps)
         })
-        <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
-        // it&#39;s an error at the OS level.
-        </span>.unwrap();
+        .expect(<span class="string">&quot;in `start_bootstrap_server`, OS failed to spawn main-loop thread&quot;</span>);
     <span class="comment">// Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
     </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(BootstrapManager {
@@ -1479,9 +1461,6 @@
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
         <span class="kw">let </span>final_state_changes;
-        <span class="kw">let </span>last_start_period;
-        <span class="kw">let </span>initial_rolls;
-        <span class="kw">let </span>initial_ledger_hash;
 
         <span class="kw">let </span><span class="kw-2">mut </span>slot_too_old = <span class="bool-val">false</span>;
 
@@ -1511,10 +1490,6 @@
                 .executed_ops
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
-
-            last_start_period = final_state_read.last_start_period;
-            initial_rolls = final_state_read.pos_state.initial_rolls.clone();
-            initial_ledger_hash = final_state_read.pos_state.initial_ledger_hash;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
@@ -1646,9 +1621,6 @@
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    last_start_period,
-                    initial_rolls,
-                    initial_ledger_hash,
                 },
             )
             .<span class="kw">await
