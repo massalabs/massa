@@ -178,7 +178,7 @@ impl Slot {
             .ok_or(ModelsError::PeriodOverflowError)?;
         Ok(Slot {
             period,
-            thread: thread_count - 1,
+            thread: thread_count.saturating_sub(1),
         })
     }
 
@@ -202,7 +202,7 @@ impl Slot {
     pub const fn max(thread_count: u8) -> Slot {
         Slot {
             period: u64::MAX,
-            thread: thread_count,
+            thread: thread_count.saturating_sub(1),
         }
     }
 
