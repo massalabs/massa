@@ -3016,6 +3016,7 @@ dependencies = [
  "nom",
  "num_enum",
  "parking_lot",
+ "queues",
  "thiserror",
  "tokio",
  "tracing",
@@ -3683,6 +3684,12 @@ dependencies = [
  "quote 1.0.23",
  "syn 1.0.109",
 ]
+
+[[package]]
+name = "queues"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1475abae4f8ad4998590fe3acfe20104f0a5d48fc420c817cd2c09c3f56151f0"
 
 [[package]]
 name = "quote"

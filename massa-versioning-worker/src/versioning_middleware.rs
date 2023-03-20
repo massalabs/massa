@@ -1,26 +1,28 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 use massa_models::amount::Amount;
 use massa_time::{MassaTime, TimeError};
+use tracing::debug;
 
 use crate::versioning::{Advance, MipStore};
 use massa_versioning_exports::VersioningMiddlewareError;
+use queues::{CircularBuffer, IsQueue};
 
 /// Struct used to keep track of announced versions in previous blocks
 pub struct VersioningMiddleware {
-    latest_announcements: VecDeque<u32>,
+    latest_announcements: CircularBuffer<u32>,
     counts: HashMap<u32, usize>,
-    nb_blocks_considered: usize,
+    count_blocks_considered: usize,
     mip_store: MipStore,
 }
 
 impl VersioningMiddleware {
     /// Creates a new empty versioning middleware.
-    pub fn new(nb_blocks_considered: usize, mip_store: MipStore) -> Self {
+    pub fn new(count_blocks_considered: usize, mip_store: MipStore) -> Self {
         VersioningMiddleware {
-            latest_announcements: VecDeque::with_capacity(nb_blocks_considered + 1),
+            latest_announcements: CircularBuffer::new(count_blocks_considered),
             counts: HashMap::new(),
-            nb_blocks_considered,
+            count_blocks_considered,
             mip_store,
         }
     }
@@ -28,19 +30,17 @@ impl VersioningMiddleware {
     /// Add the announced version of a new block
     /// If needed, remove the info related to a ancient block
     pub fn new_block(&mut self, version: u32) {
-        self.latest_announcements.push_back(version);
+        // This will never return Err for a queue::CircularBuffer
+        if let Ok(removed_version) = self.latest_announcements.add(version) {
+            // We update the count of the received version
+            *self.counts.entry(version).or_default() += 1;
 
-        *self.counts.entry(version).or_default() += 1;
-
-        // If the queue is too large, remove the most ancient block and its associated count
-        if self.latest_announcements.len() > self.nb_blocks_considered {
-            let prev_version = self.latest_announcements.pop_front();
-            if let Some(prev_version) = prev_version {
+            if let Some(prev_version) = removed_version {
+                // We update the count of the oldest version in the buffer, if at capacity
                 *self.counts.entry(prev_version).or_insert(1) -= 1;
             }
         }
 
-        //let _ = self.create_and_send_advance_message(*self.counts.get(&version).unwrap(), version);
         let _ = self.create_and_send_advance_message_for_all();
     }
 
@@ -56,7 +56,7 @@ impl VersioningMiddleware {
         // Possible optimisation: filter the store to avoid advancing on failed and active versions
         for (vi, state) in store.0.iter_mut() {
             let ratio_counts = 100.0 * *self.counts.get(&vi.version).unwrap_or(&0) as f32
-                / self.nb_blocks_considered as f32;
+                / self.count_blocks_considered as f32;
 
             let ratio_counts = Amount::from_mantissa_scale(ratio_counts.round() as u64, 0);
 
@@ -69,7 +69,7 @@ impl VersioningMiddleware {
 
             state.on_advance(&advance_msg.clone());
 
-            println!("New state: vi: {:?}, state: {:?}", vi, state);
+            debug!("New state: vi: {:?}, state: {:?}", vi, state);
         }
 
         Ok(())

@@ -1,6 +1,6 @@
 use massa_versioning_exports::{
-    VersioningCommand, VersioningConfig, VersioningMiddlewareError, VersioningManagementCommand,
-    VersioningManager, VersioningReceivers, VersioningSenders,
+    VersioningCommand, VersioningConfig, VersioningManagementCommand, VersioningManager,
+    VersioningMiddlewareError, VersioningReceivers, VersioningSenders,
 };
 
 use crate::versioning_middleware::VersioningMiddleware;
@@ -36,16 +36,16 @@ pub async fn start_versioning_worker(
         .await;
         match res {
             Err(err) => {
-                error!("protocol worker crashed: {}", err);
+                error!("versioning worker crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {
-                info!("protocol worker finished cleanly");
+                info!("versioning worker finished cleanly");
                 Ok(v)
             }
         }
     });
-    debug!("protocol controller ready");
+    debug!("versioning controller ready");
     Ok(VersioningManager::new(manager_tx))
 }
 
@@ -82,7 +82,7 @@ impl VersioningWorker {
         store: MipStore,
     ) -> VersioningWorker {
         let versioning_middleware =
-            VersioningMiddleware::new(config.nb_blocks_considered, store.clone());
+            VersioningMiddleware::new(config.count_blocks_considered, store.clone());
 
         VersioningWorker {
             config,
@@ -113,7 +113,10 @@ impl VersioningWorker {
         Ok(())
     }
 
-    async fn process_command(&mut self, cmd: VersioningCommand) -> Result<(), VersioningMiddlewareError> {
+    async fn process_command(
+        &mut self,
+        cmd: VersioningCommand,
+    ) -> Result<(), VersioningMiddlewareError> {
         match cmd {
             VersioningCommand::FinalizedBlockVersion { announced_version } => {
                 self.versioning_middleware.new_block(announced_version);

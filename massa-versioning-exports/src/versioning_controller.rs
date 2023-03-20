@@ -22,11 +22,16 @@ pub enum VersioningManagementCommand {}
 pub struct VersioningCommandSender(pub mpsc::Sender<VersioningCommand>);
 
 impl VersioningCommandSender {
-    pub fn send_block_version(&mut self, announced_version: u32) -> Result<(), VersioningMiddlewareError> {
+    pub fn send_block_version(
+        &mut self,
+        announced_version: u32,
+    ) -> Result<(), VersioningMiddlewareError> {
         self.0
             .blocking_send(VersioningCommand::FinalizedBlockVersion { announced_version })
             .map_err(|_| {
-                VersioningMiddlewareError::ChannelError("send_block_header command send error".into())
+                VersioningMiddlewareError::ChannelError(
+                    "send_block_header command send error".into(),
+                )
             })
     }
 }

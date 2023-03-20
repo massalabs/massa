@@ -529,8 +529,8 @@ impl MipStoreRaw {
                 if let Some(last_v_info) = last_v_info_ {
                     // check for versions of all components in v_info
                     let mut version_compatible = true;
-                    for component in v_info.components.clone().into_iter() {
-                        if component.1 <= *component_versions.get(&component.0).unwrap_or(&0) {
+                    for component in v_info.components.iter() {
+                        if component.1 <= component_versions.get(component.0).unwrap_or(&0) {
                             version_compatible = false;
                             break;
                         }
