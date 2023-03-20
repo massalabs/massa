@@ -1,15 +1,16 @@
+use std::mem;
 use std::ops::Bound::{Excluded, Included};
 
-use nom::error::context;
-use nom::sequence::tuple;
-use nom::Parser;
 use nom::{
+    error::context,
     error::{ContextError, ParseError},
-    IResult,
+    sequence::tuple,
+    IResult, Parser,
 };
 
-use crate::versioning::{MipComponent, MipInfo};
+use crate::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipInfo, Started};
 
+use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -18,7 +19,7 @@ use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
 /// Ser / Der
 
 const VERSIONING_INFO_NAME_LEN_MAX: u32 = 255;
-// const VERSIONING_STATE_VARIANT_COUNT: u32 = mem::variant_count::<VersioningState>() as u32;
+const COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::<ComponentState>() as u32;
 // const VERSIONING_STORE_ENTRIES_MAX: u32 = 2048;
 
 /// Serializer for `MipInfo`
@@ -80,7 +81,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
     }
 }
 
-/// Deserializer for MipInfo
+/// Deserializer for `MipInfo`
 pub struct MipInfoDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     len_deserializer: U32VarIntDeserializer,
@@ -170,9 +171,127 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
     }
 }
 
+// End MipInfo
+
+// ComponentState
+
+/// Serializer for `ComponentState`
+#[derive(Clone)]
+pub struct ComponentStateSerializer {
+    u32_serializer: U32VarIntSerializer,
+    amount_serializer: AmountSerializer,
+}
+
+impl ComponentStateSerializer {
+    /// Creates a new `Serializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
+        }
+    }
+}
+
+impl Default for ComponentStateSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<ComponentState> for ComponentStateSerializer {
+    fn serialize(
+        &self,
+        value: &ComponentState,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        let (state, threshold_): (u32, Option<Amount>) = match value {
+            ComponentState::Error => (u32::from(ComponentStateTypeId::Error), None),
+            ComponentState::Defined(_) => (u32::from(ComponentStateTypeId::Defined), None),
+            ComponentState::Started(Started { threshold }) => {
+                (u32::from(ComponentStateTypeId::Started), Some(*threshold))
+            }
+            ComponentState::LockedIn(_) => (u32::from(ComponentStateTypeId::LockedIn), None),
+            ComponentState::Active(_) => (u32::from(ComponentStateTypeId::Active), None),
+            ComponentState::Failed(_) => (u32::from(ComponentStateTypeId::Failed), None),
+        };
+        self.u32_serializer.serialize(&state, buffer)?;
+        if let Some(threshold) = threshold_ {
+            self.amount_serializer.serialize(&threshold, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// A Deserializer for ComponentState`
+pub struct ComponentStateDeserializer {
+    state_deserializer: U32VarIntDeserializer,
+    amount_deserializer: AmountDeserializer,
+}
+
+impl ComponentStateDeserializer {
+    /// Creates a new ``
+    pub fn new() -> Self {
+        Self {
+            state_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(COMPONENT_STATE_VARIANT_COUNT + 1),
+            ),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+        }
+    }
+}
+
+impl Default for ComponentStateDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<ComponentState> for ComponentStateDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], ComponentState, E> {
+        let (rem, enum_value_) = context("Failed enum value der", |input| {
+            self.state_deserializer.deserialize(input)
+        })
+        .parse(buffer)?;
+
+        let enum_value = ComponentStateTypeId::try_from(enum_value_).map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Eof,
+            ))
+        })?;
+        let (rem2, state): (&[u8], ComponentState) = match enum_value {
+            ComponentStateTypeId::Defined => (rem, ComponentState::defined()),
+            ComponentStateTypeId::Started => {
+                let (rem2, threshold) = context("Failed threshold value der", |input| {
+                    self.amount_deserializer.deserialize(input)
+                })
+                .parse(rem)?;
+                (rem2, ComponentState::started(threshold))
+            }
+            ComponentStateTypeId::LockedIn => (rem, ComponentState::locked_in()),
+            ComponentStateTypeId::Active => (rem, ComponentState::active()),
+            ComponentStateTypeId::Failed => (rem, ComponentState::failed()),
+            _ => (rem, ComponentState::Error),
+        };
+
+        IResult::Ok((rem2, state))
+    }
+}
+
+// End ComponentState
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use std::str::FromStr;
 
     use massa_serialization::DeserializeError;
     use massa_time::MassaTime;
@@ -198,5 +317,31 @@ mod test {
 
         assert!(rem.is_empty());
         assert_eq!(vi_1, vi_1_der);
+    }
+
+    #[test]
+    fn test_component_state_ser_der() {
+        let st_1 = ComponentState::failed();
+        let st_2 = ComponentState::Started(Started {
+            threshold: Amount::from_str("98.42").unwrap(),
+        });
+
+        let mut buf = Vec::new();
+        let state_ser = ComponentStateSerializer::new();
+        state_ser.serialize(&st_1, &mut buf).unwrap();
+
+        let state_der = ComponentStateDeserializer::new();
+
+        let (rem, st_1_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(st_1, st_1_der);
+
+        buf.clear();
+        state_ser.serialize(&st_2, &mut buf).unwrap();
+        let (rem, st_2_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(st_2, st_2_der);
     }
 }

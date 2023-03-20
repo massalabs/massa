@@ -80,11 +80,11 @@ impl Hash for MipInfo {
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
     #[derive(Clone, Copy, Debug, PartialEq)]
-    enum ComponentState {
+    pub(crate) enum ComponentState {
         /// Initial state
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
-        Started { threshold: Amount },
+        Started { pub(crate) threshold: Amount },
         /// Wait for some time before going to active (to let user the time to upgrade)
         LockedIn,
         /// After LockedIn, deployment is considered successful
