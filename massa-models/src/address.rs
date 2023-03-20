@@ -168,7 +168,7 @@ impl FromStr for Address {
     /// assert_eq!(address, res_addr);
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let err = Err(ModelsError::AddressParseError);
+        let err = Err(ModelsError::AddressParseError(s.to_string()));
 
         // Handle the prefix ("A{U|S}")
         let mut chars = s.chars();
@@ -184,18 +184,18 @@ impl FromStr for Address {
         let decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
-            .map_err(|_| ModelsError::AddressParseError)?;
+            .map_err(|_| ModelsError::AddressParseError(s.to_string()))?;
 
         // extract the version
         let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
         let (rest, _version) = u64_deserializer
             .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-            .map_err(|_| ModelsError::AddressParseError)?;
+            .map_err(|_| ModelsError::AddressParseError(s.to_string()))?;
 
         // ...and package it up
         let res = UserAddress(Hash::from_bytes(
             rest.try_into()
-                .map_err(|_| ModelsError::AddressParseError)?,
+                .map_err(|_| ModelsError::AddressParseError(s.to_string()))?,
         ));
 
         let res = match pref {
