@@ -1162,7 +1162,7 @@ mod tests {
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0].data.contains(
-            "We reach the vesting constraint : vesting_max_rolls=150 with value max_rolls=160"
+            "We reach the vesting constraint : trying to get to a total of 160 rolls but only 150 are allowed at that time by the vesting scheme"
         ));
 
         // check roll count of the buyer address and its balance, same as start because operation was rejected
