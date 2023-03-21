@@ -40,13 +40,13 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         let mut last_start_period = 0;
-        let mut parse_next;
+        let mut parse_next = false;
         for args in std::env::args() {
-            parse_next = args == *"restart-from-snapshot-at-period";
             if parse_next {
                 last_start_period = u64::from_str(&args).unwrap_or_default();
                 break;
             }
+            parse_next = args == *"--restart-from-snapshot-at-period";
         }
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()

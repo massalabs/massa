@@ -100,6 +100,8 @@ async fn launch(
         }
     }
 
+    info!("GENESIS_TIMESTAMP {}", *GENESIS_TIMESTAMP);
+
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -146,6 +148,7 @@ async fn launch(
 
     if _args.restart_from_snapshot_at_period.is_none() && SETTINGS.ledger.disk_ledger_path.exists()
     {
+        info!("Removing existing ledger!");
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
             .expect("disk ledger delete failed");
     }
@@ -153,7 +156,7 @@ async fn launch(
     // Create final ledger
     let ledger = FinalLedger::new(
         ledger_config.clone(),
-        _args.restart_from_snapshot_at_period.is_some(),
+        _args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
     );
 
     // launch selector worker

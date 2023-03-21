@@ -10,7 +10,10 @@ use massa_async_pool::{
     AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer, AsyncPoolSerializer, Change,
 };
 use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-use massa_hash::{Hash, /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES};
+use massa_hash::{
+    Hash, HashDeserializer, HashSerializer,
+    /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES,
+};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -211,21 +214,6 @@ impl FinalState {
             .back()
             .expect("Cycle history should not be empty in snapshot!");
 
-        let slot_deser = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(config.thread_count)),
-        );
-
-        let (rest, latest_consistent_slot) = slot_deser
-            .deserialize::<DeserializeError>(rest)
-            .map_err(|_| {
-                FinalStateError::SnapshotError(String::from(
-                    "Could not deserialize latest_consistent_slot from snapshot",
-                ))
-            })?;
-
-        debug!("Latest consistent slot found: {}", latest_consistent_slot);
-
         let max_executed_ops_length = massa_models::config::constants::MAX_EXECUTED_OPS_LENGTH;
         let max_operations_per_block = massa_models::config::constants::MAX_OPERATIONS_PER_BLOCK;
 
@@ -246,6 +234,31 @@ impl FinalState {
         let executed_ops =
             ExecutedOps::new_with_hash(config.executed_ops_config.clone(), sorted_ops);
 
+        let slot_deser = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(config.thread_count)),
+        );
+
+        let (rest, latest_consistent_slot) = slot_deser
+            .deserialize::<DeserializeError>(rest)
+            .map_err(|_| {
+                FinalStateError::SnapshotError(String::from(
+                    "Could not deserialize latest_consistent_slot from snapshot",
+                ))
+            })?;
+
+        debug!("Latest consistent slot found: {}", latest_consistent_slot);
+
+        let hash_deser = HashDeserializer::new();
+
+        let (_rest, final_state_hash_from_snapshot) = hash_deser
+            .deserialize::<DeserializeError>(rest)
+            .map_err(|_| {
+                FinalStateError::SnapshotError(String::from(
+                    "Could not deserialize hash from snapshot",
+                ))
+            })?;
+
         // create the final state
         let mut final_state = FinalState {
             slot: latest_consistent_slot,
@@ -263,11 +276,7 @@ impl FinalState {
 
         // Check the hash
 
-        let final_state_hash_from_file = Hash::from_bytes(&rest.try_into().map_err(|_| {
-            FinalStateError::SnapshotError(String::from("Invalid Final state hash from file"))
-        })?);
-
-        match final_state.final_state_hash == final_state_hash_from_file {
+        match final_state.final_state_hash == final_state_hash_from_snapshot {
             true => {
                 final_state.pos_state.cycle_history = Vec::new().into();
                 final_state
@@ -401,7 +410,7 @@ impl FinalState {
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
         if cfg!(feature = "create_snapshot") {
-            match self.dump_final_state() {
+            match self.dump_final_state(false) {
                 Ok(()) => {
                     debug!("Dumped temporary final state");
                 }
@@ -443,7 +452,7 @@ impl FinalState {
         }
 
         if cfg!(feature = "create_snapshot") {
-            match self.commit_final_state() {
+            match self.dump_final_state(true) {
                 Ok(()) => {
                     debug!("Commited final state");
                 }
@@ -454,13 +463,15 @@ impl FinalState {
         }
     }
 
-    fn dump_final_state(&mut self) -> Result<(), FinalStateError> {
+    fn dump_final_state(&mut self, commit: bool) -> Result<(), FinalStateError> {
         let mut final_state_buffer = Vec::new();
 
         let async_pool_serializer = AsyncPoolSerializer::new();
         let cycle_history_serializer = CycleHistorySerializer::new();
         let deferred_credits_serializer = DeferredCreditsSerializer::new();
         let executed_ops_serializer = ExecutedOpsSerializer::new();
+        let slot_serializer = SlotSerializer::new();
+        let hash_serializer = HashSerializer::new();
 
         // Serialize Async Pool
         async_pool_serializer
@@ -494,13 +505,36 @@ impl FinalState {
                 FinalStateError::SnapshotError(format!("Could not serialize executed_ops: {}", err))
             })?;
 
-        final_state_buffer.extend_from_slice(self.final_state_hash.to_bytes());
+        match commit {
+            true => {
+                slot_serializer
+                    .serialize(&self.slot, &mut final_state_buffer)
+                    .map_err(|err| {
+                        FinalStateError::SnapshotError(format!("Could not serialize Slot: {}", err))
+                    })?;
+            }
+            false => {
+                slot_serializer
+                    .serialize(
+                        &self
+                            .slot
+                            .get_prev_slot(self.config.thread_count)
+                            .unwrap_or(Slot {
+                                period: self.last_start_period,
+                                thread: self.config.thread_count.saturating_sub(1),
+                            }),
+                        &mut final_state_buffer,
+                    )
+                    .map_err(|err| {
+                        FinalStateError::SnapshotError(format!("Could not serialize Slot: {}", err))
+                    })?;
+            }
+        }
 
-        let slot_ser = SlotSerializer::new();
-        slot_ser
-            .serialize(&self.slot, &mut final_state_buffer)
+        hash_serializer
+            .serialize(&self.final_state_hash, &mut final_state_buffer)
             .map_err(|err| {
-                FinalStateError::SnapshotError(format!("Could not serialize Slot: {}", err))
+                FinalStateError::SnapshotError(format!("Could not serialize hash: {}", err))
             })?;
 
         self.ledger
@@ -511,10 +545,6 @@ impl FinalState {
                     err
                 ))
             })
-    }
-
-    fn commit_final_state(&self) -> Result<(), FinalStateError> {
-        Ok(())
     }
 
     /// Used for bootstrap.

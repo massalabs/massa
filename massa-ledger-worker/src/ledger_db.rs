@@ -28,6 +28,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     convert::TryInto,
 };
+use tracing::{debug, info};
 
 #[cfg(feature = "testing")]
 use massa_models::amount::{Amount, AmountDeserializer};
@@ -44,6 +45,7 @@ const KEY_SER_ERROR: &str = "critical: key serialization failed";
 const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
 const LEDGER_HASH_KEY: &[u8; 1] = b"h";
+const LEDGER_FINAL_STATE_KEY: &[u8; 2] = b"fs";
 const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// Ledger sub entry enum
@@ -126,6 +128,9 @@ impl LedgerDB {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
+
+        info!("Init LedgerDB, with_final_state = {}", with_final_state);
+        debug!("Init LedgerDB, with_final_state = {}", with_final_state);
 
         let db = if with_final_state {
             DB::open_cf_descriptors(
@@ -414,49 +419,53 @@ impl LedgerDB {
             .expect("Error creating metadata cf");
     }
 
-    pub fn set_final_state<'a>(&mut self, data: &'a [u8]) -> Result<(), ModelsError> {
+    pub fn set_final_state(&mut self, data: &[u8]) -> Result<(), ModelsError> {
+        info!("SETTING FINAL STATE IN LEDGER: LEN {}", data.len());
+
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
-        let vec_u8_deserializer =
-            VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
-        let mut batch = LedgerBatch::new(self.get_ledger_hash());
 
-        let (rest, _) = many0(|input: &'a [u8]| {
-            let (rest, (key, value)) = tuple((
-                |input| self.key_deserializer.deserialize::<DeserializeError>(input),
-                |input| vec_u8_deserializer.deserialize(input),
-            ))(input)?;
-            self.put_entry_value(handle, &mut batch, &key, &value);
-            Ok((rest, ()))
-        })(data)
-        .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
+        let mut batch = WriteBatch::default();
+        batch.put_cf(handle, LEDGER_FINAL_STATE_KEY, data);
 
-        if rest.is_empty() {
-            self.write_batch(batch);
-            Ok(())
-        } else {
-            Err(ModelsError::SerializeError(
-                "Error in deserialization".to_string(),
-            ))
-        }
+        self.db.write(batch).expect(CRUD_ERROR);
+
+        Ok(())
     }
 
     pub fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
+        info!("GETTING FINAL STATE IN LEDGER");
+
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
         let opt = ReadOptions::default();
-        let ser = VecU8Serializer::new();
+        //let ser = VecU8Serializer::new();
         let mut final_state = Vec::new();
 
         let db_iterator = self.db.iterator_cf_opt(handle, opt, IteratorMode::Start);
+
+        info!("ITERATING FINAL STATE");
 
         // Iterates over the whole database
         for (key, entry) in db_iterator.flatten() {
             // We deserialize and re-serialize the key to change the key format from the
             // database one to a format we can use outside of the ledger.
+            info!(
+                "NEW ITERATION, with Key: {:?}, value length: {}",
+                key,
+                entry.len()
+            );
 
-            let (_, key) = self.key_deserializer_db.deserialize(&key)?;
-            self.key_serializer.serialize(&key, &mut final_state)?;
-            ser.serialize(&entry.to_vec(), &mut final_state)?;
+            /*let (_, key) = self.key_deserializer_db.deserialize(&key)?;
+            self.key_serializer.serialize(&key, &mut final_state)?;*/
+
+            //ser.serialize(&entry.to_vec(), &mut final_state)?;
+
+            final_state.extend_from_slice(&entry);
         }
+
+        info!("END ITERATING");
+
+        info!("Final_state length: {}", final_state.len());
+        info!("final_state: {:?}", final_state);
 
         Ok(final_state)
     }
