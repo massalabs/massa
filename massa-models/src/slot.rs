@@ -174,7 +174,7 @@ impl Slot {
         let period = cycle
             .checked_mul(periods_per_cycle)
             .ok_or(ModelsError::PeriodOverflowError)?
-            .checked_add(periods_per_cycle - 1)
+            .checked_add(periods_per_cycle.saturating_sub(1))
             .ok_or(ModelsError::PeriodOverflowError)?;
         Ok(Slot {
             period,
@@ -219,7 +219,7 @@ impl Slot {
     /// check if the slot is last in the cycle
     pub fn is_last_of_cycle(&self, periods_per_cycle: u64, thread_count: u8) -> bool {
         self.period % periods_per_cycle == (periods_per_cycle - 1)
-            && self.thread == (thread_count - 1)
+            && self.thread == (thread_count.saturating_sub(1))
     }
 
     /// check if the slot is first in the cycle
