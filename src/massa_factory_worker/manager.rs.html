@@ -51,7 +51,7 @@
 /// Allows stopping the factory worker
 </span><span class="kw">pub struct </span>FactoryManagerImpl {
     <span class="doccomment">/// block worker message sender and join handle
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_worker: <span class="prelude-ty">Option</span>&lt;(mpsc::Sender&lt;()&gt;, JoinHandle&lt;()&gt;)&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_worker: <span class="prelude-ty">Option</span>&lt;(mpsc::Sender&lt;()&gt;, JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), ()&gt;&gt;)&gt;,
 
     <span class="doccomment">/// endorsement worker message sender and join handle
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) endorsement_worker: <span class="prelude-ty">Option</span>&lt;(mpsc::Sender&lt;()&gt;, JoinHandle&lt;()&gt;)&gt;,

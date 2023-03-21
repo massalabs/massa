@@ -891,17 +891,6 @@
 <a href="#891" id="891">891</a>
 <a href="#892" id="892">892</a>
 <a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -959,10 +948,10 @@
 
 <span class="kw">use crate</span>::{
     error::BootstrapError,
-    establisher::{BSEstablisher, BSListener, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    BootstrapConfig,
+    types::{Duplex, Listener},
+    BootstrapConfig, Establisher,
 };
 
 <span class="doccomment">/// Abstraction layer over data produced by the listener, and transported
@@ -1007,7 +996,7 @@
     network_command_sender: NetworkCommandSender,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     config: BootstrapConfig,
-    <span class="kw-2">mut </span>establisher: <span class="kw">impl </span>BSEstablisher,
+    <span class="kw-2">mut </span>establisher: Establisher,
     keypair: KeyPair,
     version: Version,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;, Box&lt;BootstrapError&gt;&gt; {
@@ -1037,7 +1026,8 @@
 
     <span class="kw">let </span>listener = establisher
         .get_listener(listen_addr)
-        .map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
+        .<span class="kw">await
+        </span>.map_err(BootstrapError::IoError)<span class="question-mark">?</span>;
 
     <span class="comment">// This is the primary interface between the async-listener, and the &quot;sync&quot; worker
     </span><span class="kw">let </span>(listener_tx, listener_rx) = crossbeam::channel::bounded::&lt;BsConn&gt;(max_bootstraps * <span class="number">2</span>);
@@ -1068,9 +1058,7 @@
     <span class="kw">let </span>listen_rt_handle = bs_server_runtime.handle().clone();
     <span class="kw">let </span>listen_handle = thread::Builder::new()
         .name(<span class="string">&quot;bs_listener&quot;</span>.to_string())
-        <span class="comment">// FIXME: The interface being used shouldn&#39;t have `: Send + &#39;static` as a constraint on the listener assosciated type.
-        // GAT lifetime is likely to remedy this, however.
-        </span>.spawn(<span class="kw">move </span>|| {
+        .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span>res =
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
             res
@@ -1154,7 +1142,7 @@
     /// Err(..) Error accepting a connection
     /// TODO: Integrate the listener into the bootstrap-main-loop
     </span><span class="kw">async fn </span>run_listener(
-        <span class="kw-2">mut </span>listener: <span class="kw">impl </span>BSListener,
+        <span class="kw-2">mut </span>listener: Listener,
         listener_tx: crossbeam::channel::Sender&lt;BsConn&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), BsConn&gt;, Box&lt;BootstrapError&gt;&gt; {
         <span class="kw">loop </span>{
@@ -1479,9 +1467,6 @@
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
         <span class="kw">let </span>final_state_changes;
-        <span class="kw">let </span>last_start_period;
-        <span class="kw">let </span>initial_rolls;
-        <span class="kw">let </span>initial_ledger_hash;
 
         <span class="kw">let </span><span class="kw-2">mut </span>slot_too_old = <span class="bool-val">false</span>;
 
@@ -1511,10 +1496,6 @@
                 .executed_ops
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
-
-            last_start_period = final_state_read.last_start_period;
-            initial_rolls = final_state_read.pos_state.initial_rolls.clone();
-            initial_ledger_hash = final_state_read.pos_state.initial_ledger_hash;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot != final_state_read.slot {
                 <span class="kw">if </span>slot &gt; final_state_read.slot {
@@ -1646,9 +1627,6 @@
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    last_start_period,
-                    initial_rolls,
-                    initial_ledger_hash,
                 },
             )
             .<span class="kw">await
