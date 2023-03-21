@@ -76,7 +76,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::amount::Amount;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::fmt::Display;
+<span class="kw">use </span>std::{fmt::Display, num::NonZeroU8};
 
 <span class="doccomment">/// Compact representation of key values of consensus algorithm used in API
 </span><span class="attr">#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
@@ -86,7 +86,7 @@
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
     </span><span class="kw">pub </span>end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
     <span class="doccomment">/// Number of threads
-    </span><span class="kw">pub </span>thread_count: u8,
+    </span><span class="kw">pub </span>thread_count: NonZeroU8,
     <span class="doccomment">/// Time between the periods in the same thread.
     </span><span class="kw">pub </span>t0: MassaTime,
     <span class="doccomment">/// Threshold for fitness.

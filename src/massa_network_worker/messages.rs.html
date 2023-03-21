@@ -635,8 +635,8 @@
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
+<span class="kw">use </span>std::{net::IpAddr, num::NonZeroU8};
 
 <span class="doccomment">/// All messages that can be sent or received.
 </span><span class="attr">#[allow(clippy::large_enum_variant)]
@@ -874,7 +874,7 @@
     <span class="doccomment">/// Creates a new `MessageDeserializer`.
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         endorsement_count: u32,
         max_advertise_length: u32,
         max_ask_block: u32,

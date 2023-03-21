@@ -342,9 +342,9 @@
     ) -&gt; <span class="self">Self </span>{
         OperationPool {
             operations: Default::default(),
-            sorted_ops_per_thread: <span class="macro">vec!</span>[Default::default(); config.thread_count <span class="kw">as </span>usize],
+            sorted_ops_per_thread: <span class="macro">vec!</span>[Default::default(); config.thread_count.get().into()],
             ops_per_expiration: Default::default(),
-            last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count <span class="kw">as </span>usize],
+            last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count.get().into()],
             config,
             storage: storage.clone_without_refs(),
             execution_controller,

@@ -564,11 +564,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>rng_seed = BitVec::with_capacity(
             <span class="self">self</span>.config
                 .periods_per_cycle
-                .saturating_mul(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
+                .saturating_mul(<span class="self">self</span>.config.thread_count.get() <span class="kw">as </span>u64)
                 .try_into()
                 .unwrap(),
         );
-        <span class="kw">for _ in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
+        <span class="kw">for _ in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count.get() {
             <span class="comment">// assume genesis blocks have a &quot;False&quot; seed bit to avoid passing them around
             </span>rng_seed.push(<span class="bool-val">false</span>);
         }
@@ -652,7 +652,7 @@
         <span class="kw">let </span>slots_per_cycle: usize = <span class="self">self
             </span>.config
             .periods_per_cycle
-            .saturating_mul(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
+            .saturating_mul(<span class="self">self</span>.config.thread_count.get() <span class="kw">as </span>u64)
             .try_into()
             .unwrap();
 

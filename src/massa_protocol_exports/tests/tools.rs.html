@@ -506,7 +506,7 @@
         asked_operations_pruning_period: <span class="number">500</span>.into(),
         operation_announcement_interval: <span class="number">150</span>.into(),
         max_operations_per_message: <span class="number">1024</span>,
-        thread_count: <span class="number">32</span>,
+        thread_count: <span class="number">32</span>.try_into().unwrap(),
         max_serialized_operations_size_per_block: <span class="number">1024</span>,
         controller_channel_size: <span class="number">1024</span>,
         event_channel_size: <span class="number">1024</span>,

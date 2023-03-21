@@ -405,6 +405,7 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -420,6 +421,7 @@
 <span class="kw">use </span>nom::sequence::preceded;
 <span class="kw">use </span>nom::{IResult, Parser};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::ops::Bound::Included;
 <span class="kw">use </span>std::str::FromStr;
 
@@ -618,9 +620,9 @@
 
 <span class="kw">impl </span>Address {
     <span class="doccomment">/// Gets the associated thread. Depends on the `thread_count`
-    </span><span class="kw">pub fn </span>get_thread(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: u8) -&gt; u8 {
+    </span><span class="kw">pub fn </span>get_thread(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: NonZeroU8) -&gt; u8 {
         (<span class="self">self</span>.hash_bytes()[<span class="number">0</span>])
-            .checked_shr(<span class="number">8 </span>- thread_count.trailing_zeros())
+            .checked_shr(<span class="number">8 </span>- thread_count.get().trailing_zeros())
             .unwrap_or(<span class="number">0</span>)
     }
 

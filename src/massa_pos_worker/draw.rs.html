@@ -156,7 +156,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>cycle_draws = CycleDraws {
         cycle,
         draws: HashMap::with_capacity(
-            (cfg.periods_per_cycle <span class="kw">as </span>usize) * (cfg.thread_count <span class="kw">as </span>usize),
+            (cfg.periods_per_cycle <span class="kw">as </span>usize) * (cfg.thread_count.get() <span class="kw">as </span>usize),
         ),
     };
 

@@ -671,6 +671,7 @@
 <a href="#671" id="671">671</a>
 <a href="#672" id="672">672</a>
 <a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -695,6 +696,7 @@
 <span class="kw">use </span>nom::{IResult, Parser};
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// Unique identifier of a message.
@@ -771,11 +773,11 @@
 }
 
 <span class="kw">impl </span>AsyncMessageIdDeserializer {
-    <span class="kw">pub fn </span>new(thread_count: u8) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(thread_count: NonZeroU8) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
+                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
@@ -808,7 +810,7 @@
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
-    /// let deserializer = AsyncMessageIdDeserializer::new(10);
+    /// let deserializer = AsyncMessageIdDeserializer::new(10.try_into().unwrap());
     /// serializer.serialize(&amp;id, &amp;mut serialized).unwrap();
     /// let (rest, id_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -1136,11 +1138,11 @@
 }
 
 <span class="kw">impl </span>AsyncMessageDeserializer {
-    <span class="kw">pub fn </span>new(thread_count: u8, max_async_message_data: u64, max_key_length: u32) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(thread_count: NonZeroU8, max_async_message_data: u64, max_key_length: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
+                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
             ),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -1191,7 +1193,7 @@
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&amp;message, &amp;mut serialized).unwrap();
-    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000, 255);
+    /// let message_deserializer = AsyncMessageDeserializer::new(32.try_into().unwrap(), 100000, 255);
     /// // dbg!(&amp;serialized);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());

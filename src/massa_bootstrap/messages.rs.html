@@ -836,6 +836,7 @@
 <a href="#836" id="836">836</a>
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -881,6 +882,7 @@
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::convert::TryInto;
+<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// Messages used during bootstrap by server
@@ -1161,7 +1163,7 @@
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(args.thread_count)),
+                (Included(<span class="number">0</span>), Excluded(args.thread_count.get())),
             ),
             async_pool_deserializer: AsyncPoolDeserializer::new(
                 args.thread_count,
@@ -1198,7 +1200,7 @@
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let args = BootstrapServerMessageDeserializerArgs {
-    ///     thread_count: 32, endorsement_count: 16,
+    ///     thread_count: 32.try_into().unwrap(), endorsement_count: 16,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
     ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
     ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,
@@ -1515,7 +1517,7 @@
 <span class="kw">impl </span>BootstrapClientMessageDeserializer {
     <span class="doccomment">/// Creates a new `BootstrapClientMessageDeserializer`
     </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_datastore_key_length: u8,
         max_consensus_block_ids: u64,
     ) -&gt; <span class="self">Self </span>{
@@ -1524,7 +1526,7 @@
             length_error_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(<span class="number">100000</span>)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
+                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
             ),
             ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
                 max_datastore_key_length,
@@ -1539,7 +1541,7 @@
             )),
             slot_step_deserializer: StreamingStepDeserializer::new(SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
+                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
             )),
             block_ids_step_deserializer: StreamingStepDeserializer::new(
                 PreHashSetDeserializer::new(
@@ -1562,7 +1564,7 @@
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
-    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 255, 50);
+    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32.try_into().unwrap(), 255, 50);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&amp;bootstrap_server_message, &amp;mut message_serialized).unwrap();

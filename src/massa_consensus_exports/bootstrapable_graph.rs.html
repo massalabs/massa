@@ -243,7 +243,7 @@
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&amp;bootstrapable_graph, &amp;mut buffer).unwrap();
     /// let args = BlockDeserializerArgs {
-    /// thread_count: 32,max_operations_per_block: 16,endorsement_count: 10,};
+    /// thread_count: 32.try_into().unwrap(),max_operations_per_block: 16,endorsement_count: 10,};
     /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(args, 10).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&amp;bootstrapable_graph_deserialized, &amp;mut buffer2).unwrap();

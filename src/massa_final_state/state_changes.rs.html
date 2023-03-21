@@ -259,11 +259,15 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
 
-</span><span class="kw">use </span>massa_async_pool::{
+</span><span class="kw">use </span>std::num::NonZeroU8;
+
+<span class="kw">use </span>massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 <span class="kw">use </span>massa_executed_ops::{
@@ -388,7 +392,7 @@
     <span class="doccomment">/// Creates a `StateChangesDeserializer`
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_async_pool_changes: u64,
         max_async_message_data: u64,
         max_ledger_changes_count: u64,
@@ -471,7 +475,7 @@
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32.try_into().unwrap(), 255, 255, 255, 255, 255, 255, 255, 255, 255, 255).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
     /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);

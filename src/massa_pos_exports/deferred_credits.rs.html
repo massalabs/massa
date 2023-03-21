@@ -336,8 +336,8 @@
     IResult, Parser,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
+<span class="kw">use </span>std::{collections::BTreeMap, num::NonZeroU8};
 
 <span class="kw">const </span>DEFERRED_CREDITS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
@@ -505,7 +505,7 @@
 
 <span class="kw">impl </span>DeferredCreditsDeserializer {
     <span class="doccomment">/// Creates a new `DeferredCredits` deserializer
-    </span><span class="kw">pub fn </span>new(thread_count: u8, max_credits_length: u64) -&gt; DeferredCreditsDeserializer {
+    </span><span class="kw">pub fn </span>new(thread_count: NonZeroU8, max_credits_length: u64) -&gt; DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -513,7 +513,7 @@
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
+                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
             ),
             credit_deserializer: CreditsDeserializer::new(max_credits_length),
         }

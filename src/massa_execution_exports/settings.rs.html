@@ -77,7 +77,7 @@
 <span class="kw">use </span>massa_sc_runtime::GasCosts;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
-<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::{num::NonZeroU8, path::PathBuf};
 
 <span class="doccomment">/// Storage cost constants
 </span><span class="attr">#[derive(Debug, Clone, Copy)]
@@ -102,7 +102,7 @@
     <span class="doccomment">/// maximum gas per block
     </span><span class="kw">pub </span>max_gas_per_block: u64,
     <span class="doccomment">/// number of threads
-    </span><span class="kw">pub </span>thread_count: u8,
+    </span><span class="kw">pub </span>thread_count: NonZeroU8,
     <span class="doccomment">/// price of a roll inside the network
     </span><span class="kw">pub </span>roll_price: Amount,
     <span class="doccomment">/// extra lag to add on the execution cursor to improve performance
