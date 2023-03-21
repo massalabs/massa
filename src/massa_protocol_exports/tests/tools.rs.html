@@ -509,13 +509,13 @@
         max_operations_per_message: <span class="number">1024</span>,
         thread_count: <span class="number">32</span>,
         max_serialized_operations_size_per_block: <span class="number">1024</span>,
-        max_operations_per_block: <span class="number">5000</span>,
         controller_channel_size: <span class="number">1024</span>,
         event_channel_size: <span class="number">1024</span>,
         genesis_timestamp: MassaTime::now().unwrap(),
         t0: MassaTime::from_millis(<span class="number">16000</span>),
         max_operations_propagation_time: MassaTime::from_millis(<span class="number">30000</span>),
         max_endorsements_propagation_time: MassaTime::from_millis(<span class="number">60000</span>),
+        last_start_period: <span class="number">0</span>,
     }
 }
 

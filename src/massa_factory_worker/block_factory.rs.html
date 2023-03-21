@@ -262,20 +262,6 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
@@ -316,7 +302,7 @@
         wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
         channels: FactoryChannels,
         factory_receiver: mpsc::Receiver&lt;()&gt;,
-    ) -&gt; thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), ()&gt;&gt; {
+    ) -&gt; thread::JoinHandle&lt;()&gt; {
         thread::Builder::new()
             .name(<span class="string">&quot;block-factory&quot;</span>.into())
             .spawn(|| {
@@ -326,7 +312,7 @@
                     channels,
                     factory_receiver,
                 };
-                this.run()
+                this.run();
             })
             .expect(<span class="string">&quot;failed to spawn thread : block-factory&quot;</span>)
     }
@@ -354,8 +340,8 @@
         );
 
         <span class="comment">// ignore genesis
-        </span><span class="kw">if </span>next_slot.period == <span class="number">0 </span>{
-            next_slot.period = <span class="number">1</span>;
+        </span><span class="kw">if </span>next_slot.period &lt;= <span class="self">self</span>.cfg.last_start_period {
+            next_slot.period = <span class="self">self</span>.cfg.last_start_period + <span class="number">1</span>;
         }
 
         <span class="comment">// protection against double-production on unexpected system clock adjustment
@@ -397,7 +383,7 @@
     }
 
     <span class="doccomment">/// Process a slot: produce a block at that slot if one of the managed keys is drawn.
-    </span><span class="kw">fn </span>process_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    </span><span class="kw">fn </span>process_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
         <span class="comment">// get block producer address for that slot
         </span><span class="kw">let </span>block_producer_addr = <span class="kw">match </span><span class="self">self</span>.channels.selector.get_producer(slot) {
             <span class="prelude-val">Ok</span>(addr) =&gt; addr,
@@ -406,7 +392,7 @@
                     <span class="string">&quot;block factory could not get selector draws for slot {}: {}&quot;</span>,
                     slot, err
                 );
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                <span class="kw">return</span>;
             }
         };
 
@@ -424,7 +410,7 @@
             </span>kp
         } <span class="kw">else </span>{
             <span class="comment">// the selected block producer is not managed locally =&gt; quit
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
+            </span><span class="kw">return</span>;
         };
         <span class="comment">// get best parents and their periods
         </span><span class="kw">let </span>parents: Vec&lt;(BlockId, u64)&gt; = <span class="self">self</span>.channels.consensus.get_best_parents(); <span class="comment">// Vec&lt;(parent_id, parent_period)&gt;
@@ -441,7 +427,7 @@
             );
             <span class="kw">if </span>claimed_parents.len() != parents.len() {
                 <span class="macro">warn!</span>(<span class="string">&quot;block factory could claim parents for slot {}&quot;</span>, slot);
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                <span class="kw">return</span>;
             }
         }
 
@@ -473,16 +459,6 @@
 
         <span class="comment">// gather operations and compute global operations hash
         </span><span class="kw">let </span>(op_ids, op_storage) = <span class="self">self</span>.channels.pool.get_block_operations(<span class="kw-2">&amp;</span>slot);
-
-        <span class="kw">let </span><span class="prelude-val">Ok</span>(max_ops_usize) = usize::try_from(<span class="self">self</span>.cfg.max_operations_per_block) <span class="kw">else </span>{
-            <span class="comment">// TODO: build a conversion error handling story
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(());
-        };
-        <span class="kw">if </span>op_ids.len() &gt; max_ops_usize {
-            <span class="macro">warn!</span>(<span class="string">&quot;Too many operations returned&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-        }
-
         block_storage.extend(op_storage);
         <span class="kw">let </span>global_operations_hash = Hash::compute_from(
             <span class="kw-2">&amp;</span>op_ids
@@ -505,13 +481,11 @@
         .expect(<span class="string">&quot;error while producing block header&quot;</span>);
 
         <span class="comment">// create block
-        </span><span class="kw">let </span>block_ = Block {
-            header,
-            operations: op_ids.into_iter().collect(),
-        };
-
-        <span class="kw">let </span>block = Block::new_verifiable(
-            block_,
+        </span><span class="kw">let </span>block = Block::new_verifiable(
+            Block {
+                header,
+                operations: op_ids.into_iter().collect(),
+            },
             BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
             </span>block_producer_keypair,
         )
@@ -530,11 +504,10 @@
         </span><span class="self">self</span>.channels
             .consensus
             .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// main run loop of the block creator thread
-    </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span><span class="kw-2">mut </span>prev_slot = <span class="prelude-val">None</span>;
         <span class="kw">loop </span>{
             <span class="comment">// get next slot
@@ -546,12 +519,11 @@
             }
 
             <span class="comment">// process slot
-            </span><span class="self">self</span>.process_slot(slot)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.process_slot(slot);
 
             <span class="comment">// update previous slot
             </span>prev_slot = <span class="prelude-val">Some</span>(slot);
         }
-        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
