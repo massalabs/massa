@@ -170,7 +170,7 @@ async fn stream_final_state_and_consensus(
 
                     // TODO:
                     // Building a new FinalState outside of this function would probably be better.
-                    // There are to much deps to manage for the moment.
+                    // There are too much deps to manage for the moment.
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
 
