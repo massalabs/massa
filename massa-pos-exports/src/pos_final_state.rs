@@ -70,7 +70,7 @@ impl PoSFinalState {
     pub fn renew(&mut self) {
         // The implementation ensure that all fields are tracked.
         // Creating an instance of Self forces to initialize all members
-        let obj =  Self {
+        let obj = Self {
             config: std::mem::take(&mut self.config),
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::default(),
@@ -80,7 +80,7 @@ impl PoSFinalState {
             initial_ledger_hash: self.initial_ledger_hash,
         };
 
-        *self=obj;
+        *self = obj;
     }
 
     /// Create the initial cycle based off the initial rolls.
