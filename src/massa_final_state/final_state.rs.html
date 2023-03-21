@@ -474,9 +474,9 @@
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.slot = Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>));
         <span class="self">self</span>.ledger.reset();
-        <span class="self">self</span>.async_pool.reset();
-        <span class="self">self</span>.pos_state.reset();
-        <span class="self">self</span>.executed_ops.reset();
+        <span class="self">self</span>.async_pool = AsyncPool::new(<span class="self">self</span>.async_pool.config.clone());
+        PoSFinalState::renew(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pos_state);
+        <span class="self">self</span>.executed_ops = ExecutedOps::new(<span class="self">self</span>.executed_ops.config.clone());
         <span class="self">self</span>.changes_history.clear();
         <span class="comment">// reset the final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
