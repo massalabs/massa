@@ -276,6 +276,9 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
@@ -284,7 +287,10 @@
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId,
     prehash::PreHashMap, slot::Slot,
 };
-<span class="kw">use </span>std::collections::{HashMap, VecDeque};
+<span class="kw">use </span>std::{
+    collections::{HashMap, VecDeque},
+    num::NonZeroU8,
+};
 
 <span class="attr">#[derive(Default)]
 </span><span class="doccomment">/// History of the outputs of recently executed slots.
@@ -313,7 +319,7 @@
 
 <span class="kw">impl </span>ActiveHistory {
     <span class="doccomment">/// Remove `slot` and the slots after it from history
-    </span><span class="kw">pub fn </span>truncate_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, thread_count: u8) {
+    </span><span class="kw">pub fn </span>truncate_from(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, thread_count: NonZeroU8) {
         <span class="kw">match </span><span class="self">self</span>.get_slot_index(slot, thread_count) {
             SlotIndexPosition::Past =&gt; <span class="self">self</span>.<span class="number">0</span>.clear(),
             SlotIndexPosition::Found(index) =&gt; <span class="self">self</span>.<span class="number">0</span>.truncate(index),
@@ -459,7 +465,7 @@
     </span>}
 
     <span class="doccomment">/// Gets the index of a slot in history
-    </span><span class="kw">pub fn </span>get_slot_index(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, thread_count: u8) -&gt; SlotIndexPosition {
+    </span><span class="kw">pub fn </span>get_slot_index(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, thread_count: NonZeroU8) -&gt; SlotIndexPosition {
         <span class="kw">let </span>first_slot = <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.front() {
             <span class="prelude-val">Some</span>(itm) =&gt; <span class="kw-2">&amp;</span>itm.slot,
             <span class="prelude-val">None </span>=&gt; <span class="kw">return </span>SlotIndexPosition::NoHistory,
@@ -495,7 +501,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cycle: u64,
         periods_per_cycle: u64,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -&gt; (std::ops::Range&lt;usize&gt;, bool, bool) {
         <span class="comment">// Get first and last slots indices of cycle in history. We consider overflows as &quot;Future&quot;
         </span><span class="kw">let </span>first_index = Slot::new_first_of_cycle(cycle, periods_per_cycle).map_or_else(

@@ -1079,9 +1079,6 @@
 <a href="#1079" id="1079">1079</a>
 <a href="#1080" id="1080">1080</a>
 <a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1114,8 +1111,10 @@
     </span><span class="kw">pub </span>name: String,
     <span class="doccomment">/// Network (or global) version (to be included in block header)
     </span><span class="kw">pub </span>version: u32,
-    <span class="doccomment">/// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    </span><span class="kw">pub </span>components: HashMap&lt;MipComponent, u32&gt;,
+    <span class="doccomment">/// Component concerned by this versioning (e.g. a new Block version)
+    </span><span class="kw">pub </span>component: MipComponent,
+    <span class="doccomment">/// Component version
+    </span><span class="kw">pub </span>component_version: u32,
     <span class="doccomment">/// a timestamp at which the version gains its meaning (e.g. accepted in block header)
     </span><span class="kw">pub </span>start: MassaTime,
     <span class="doccomment">/// a timestamp at which the deployment is considered active or failed (timeout &gt; start)
@@ -1140,7 +1139,7 @@
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="self">self</span>.name == other.name
             &amp;&amp; <span class="self">self</span>.version == other.version
-            &amp;&amp; <span class="self">self</span>.components == other.components
+            &amp;&amp; <span class="self">self</span>.component == other.component
             &amp;&amp; <span class="self">self</span>.start == other.start
             &amp;&amp; <span class="self">self</span>.timeout == other.timeout
     }
@@ -1153,9 +1152,7 @@
     <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
         <span class="self">self</span>.name.hash(state);
         <span class="self">self</span>.version.hash(state);
-        <span class="kw">for </span>elt <span class="kw">in </span><span class="self">self</span>.components.clone() {
-            elt.hash(state);
-        }
+        <span class="self">self</span>.component.hash(state);
         <span class="self">self</span>.start.hash(state);
         <span class="self">self</span>.timeout.hash(state);
     }
@@ -1561,12 +1558,11 @@
         //                                   We then return the list of new MipInfo so we can warn and ask
         //                                   to update the software
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>component_versions: HashMap&lt;MipComponent, u32&gt; = Default::default();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter() {
-            <span class="kw">for </span>component <span class="kw">in </span>i.<span class="number">0</span>.components.clone().into_iter() {
-                component_versions.insert(component.<span class="number">0</span>, component.<span class="number">1</span>);
-            }
-        }
+        </span><span class="kw">let </span><span class="kw-2">mut </span>component_versions: HashMap&lt;MipComponent, u32&gt; = <span class="self">self
+            </span>.<span class="number">0
+            </span>.iter()
+            .map(|i| (i.<span class="number">0</span>.component.clone(), i.<span class="number">0</span>.component_version))
+            .collect();
         <span class="kw">let </span><span class="kw-2">mut </span>names: BTreeSet&lt;String&gt; = <span class="self">self</span>.<span class="number">0</span>.iter().map(|i| i.<span class="number">0</span>.name.clone()).collect();
         <span class="kw">let </span><span class="kw-2">mut </span>to_update: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
         <span class="kw">let </span><span class="kw-2">mut </span>to_add: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
@@ -1611,27 +1607,18 @@
                     .or(<span class="self">self</span>.<span class="number">0</span>.last_key_value().map(|i| i.<span class="number">0</span>));
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(last_v_info) = last_v_info_ {
-                    <span class="comment">// check for versions of all components in v_info
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>version_compatible = <span class="bool-val">true</span>;
-                    <span class="kw">for </span>component <span class="kw">in </span>v_info.components.iter() {
-                        <span class="kw">if </span>component.<span class="number">1 </span>&lt;= component_versions.get(component.<span class="number">0</span>).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>) {
-                            version_compatible = <span class="bool-val">false</span>;
-                            <span class="kw">break</span>;
-                        }
-                    }
                     <span class="kw">if </span>v_info.start &gt; last_v_info.timeout
                         &amp;&amp; v_info.timeout &gt; v_info.start
                         &amp;&amp; v_info.version &gt; last_v_info.version
                         &amp;&amp; !names.contains(<span class="kw-2">&amp;</span>v_info.name)
-                        &amp;&amp; version_compatible
+                        &amp;&amp; v_info.component_version
+                            &gt; <span class="kw-2">*</span>component_versions.get(<span class="kw-2">&amp;</span>v_info.component).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>)
                     {
                         <span class="comment">// Time range is ok / version is ok / name is unique, let&#39;s add it
                         </span>to_add.insert(v_info.clone(), v_state.clone());
                         names.insert(v_info.name.clone());
-
-                        <span class="kw">for </span>component <span class="kw">in </span>v_info.components.clone().into_iter() {
-                            component_versions.insert(component.<span class="number">0</span>, component.<span class="number">1</span>);
-                        }
+                        component_versions
+                            .insert(v_info.component.clone(), v_info.component_version);
                     } <span class="kw">else </span>{
                         <span class="comment">// Something is wrong (time range not ok? / version not incr? / names?
                         // or component version not incr?)
@@ -1720,7 +1707,8 @@
             MipInfo {
                 name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
                 version: <span class="number">2</span>,
-                components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+                component: MipComponent::Address,
+                component_version: <span class="number">1</span>,
                 start: MassaTime::from(start.timestamp() <span class="kw">as </span>u64),
                 timeout: MassaTime::from(timeout.timestamp() <span class="kw">as </span>u64),
             },
@@ -1993,7 +1981,8 @@
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
         };
@@ -2001,7 +1990,8 @@
         </span><span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">7</span>),
             timeout: MassaTime::from(<span class="number">10</span>),
         };
@@ -2064,7 +2054,8 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
         };
@@ -2075,7 +2066,8 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
         };
@@ -2108,7 +2100,8 @@
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
         };
@@ -2118,7 +2111,8 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
         };
@@ -2155,7 +2149,7 @@
                 .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>vi_2_2 = vi_2.clone();
-        vi_2_2.components = vi_1.components.clone();
+        vi_2_2.component_version = vi_1.component_version;
 
         <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2_2);
         <span class="kw">let </span>vs_raw_2 = MipStoreRaw(BTreeMap::from([

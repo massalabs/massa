@@ -408,6 +408,8 @@
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -482,7 +484,7 @@
             <span class="string">&quot;block_id&quot;</span>: block_id
         });
         <span class="kw">let </span><span class="kw-2">mut </span>parents: Vec&lt;(BlockId, u64)&gt; =
-            Vec::with_capacity(<span class="self">self</span>.config.thread_count <span class="kw">as </span>usize);
+            Vec::with_capacity(<span class="self">self</span>.config.thread_count.get() <span class="kw">as </span>usize);
         <span class="kw">let </span><span class="kw-2">mut </span>incomp = PreHashSet::&lt;BlockId&gt;::default();
         <span class="kw">let </span><span class="kw-2">mut </span>missing_deps = PreHashSet::&lt;BlockId&gt;::default();
         <span class="kw">let </span>creator_addr = header.content_creator_address;
@@ -535,7 +537,7 @@
 
         // list parents and ensure they are present
         </span><span class="kw">let </span>parent_set: PreHashSet&lt;BlockId&gt; = header.content.parents.iter().copied().collect();
-        <span class="kw">for </span>parent_thread <span class="kw">in </span><span class="number">0u8</span>..<span class="self">self</span>.config.thread_count {
+        <span class="kw">for </span>parent_thread <span class="kw">in </span><span class="number">0u8</span>..<span class="self">self</span>.config.thread_count.get() {
             <span class="kw">let </span>parent_hash = header.content.parents[parent_thread <span class="kw">as </span>usize];
             <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>parent_hash) {
                 <span class="prelude-val">Some</span>(BlockStatus::Discarded { reason, .. }) =&gt; {
@@ -593,8 +595,8 @@
 
         <span class="comment">// check the topological consistency of the parents
         </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>gp_max_slots = <span class="macro">vec!</span>[<span class="number">0u64</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
-            <span class="kw">for </span>parent_i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
+            <span class="kw">let </span><span class="kw-2">mut </span>gp_max_slots = <span class="macro">vec!</span>[<span class="number">0u64</span>; <span class="self">self</span>.config.thread_count.get() <span class="kw">as </span>usize];
+            <span class="kw">for </span>parent_i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count.get() {
                 <span class="kw">let </span>(parent_h, parent_period) = parents[parent_i <span class="kw">as </span>usize];
                 <span class="kw">let </span>parent = <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>parent_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active {
@@ -620,7 +622,7 @@
                     <span class="comment">// genesis
                     </span><span class="kw">continue</span>;
                 }
-                <span class="kw">for </span>gp_i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
+                <span class="kw">for </span>gp_i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count.get() {
                     <span class="kw">if </span>gp_i == parent_i {
                         <span class="kw">continue</span>;
                     }
@@ -687,7 +689,9 @@
             })<span class="question-mark">?</span>;
 
         <span class="comment">// grandpa incompatibility test
-        </span><span class="kw">for </span>tau <span class="kw">in </span>(<span class="number">0u8</span>..<span class="self">self</span>.config.thread_count).filter(|<span class="kw-2">&amp;</span>t| t != header.content.slot.thread) {
+        </span><span class="kw">for </span>tau <span class="kw">in
+            </span>(<span class="number">0u8</span>..<span class="self">self</span>.config.thread_count.get()).filter(|<span class="kw-2">&amp;</span>t| t != header.content.slot.thread)
+        {
             <span class="comment">// for each parent in a different thread tau
             // traverse parent&#39;s descendants in tau
             </span><span class="kw">let </span><span class="kw-2">mut </span>to_explore = <span class="macro">vec!</span>[(<span class="number">0usize</span>, header.content.parents[tau <span class="kw">as </span>usize])];

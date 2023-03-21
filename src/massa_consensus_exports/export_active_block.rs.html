@@ -299,7 +299,7 @@
 };
 <span class="kw">use </span>nom::{error::context, IResult, Parser};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::ops::Bound::Included;
+<span class="kw">use </span>std::{num::NonZeroU8, ops::Bound::Included};
 
 <span class="doccomment">/// Exportable version of `ActiveBlock`
 /// Fields that can be easily recomputed were left out
@@ -335,7 +335,7 @@
     </span><span class="kw">pub fn </span>to_active_block(
         <span class="self">self</span>,
         ref_storage: <span class="kw-2">&amp;</span>Storage,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(ActiveBlock, Storage), ConsensusError&gt; {
         <span class="comment">// create resulting storage
         </span><span class="kw">let </span><span class="kw-2">mut </span>storage = ref_storage.clone_without_refs();
@@ -351,7 +351,7 @@
             creator_address: <span class="self">self</span>.block.content_creator_address,
             block_id: <span class="self">self</span>.block.id,
             parents: <span class="self">self</span>.parents.clone(),
-            children: <span class="macro">vec!</span>[PreHashMap::default(); thread_count <span class="kw">as </span>usize], <span class="comment">// will be computed once the full graph is available
+            children: <span class="macro">vec!</span>[PreHashMap::default(); thread_count.get() <span class="kw">as </span>usize], <span class="comment">// will be computed once the full graph is available
             </span>descendants: Default::default(), <span class="comment">// will be computed once the full graph is available
             </span>is_final: <span class="self">self</span>.is_final,
             slot: <span class="self">self</span>.block.content.header.content.slot,
@@ -411,7 +411,7 @@
     sec_share_block_deserializer: SecureShareDeserializer&lt;Block, BlockDeserializer&gt;,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
-    thread_count: u8,
+    thread_count: NonZeroU8,
 }
 
 <span class="kw">impl </span>ExportActiveBlockDeserializer {
@@ -445,7 +445,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
+    /// let parents = (0..THREAD_COUNT.try_into().unwrap())
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
     ///
@@ -499,7 +499,7 @@
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&amp;export_active_block, &amp;mut serialized).unwrap();
     /// let args = BlockDeserializerArgs {
-    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000};
+    ///   thread_count: 32.try_into().unwrap(), max_operations_per_block: 16, endorsement_count: 1000};
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
@@ -534,7 +534,7 @@
                                         <span class="self">self</span>.period_deserializer.deserialize(input)
                                     }),
                                 )),
-                                <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
+                                <span class="self">self</span>.thread_count.get() <span class="kw">as </span>usize,
                             ),
                         ),
                     )),

@@ -56,15 +56,19 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_time::MassaTime;
+</span><span class="kw">use </span>std::num::NonZeroU8;
+
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
 <span class="doccomment">/// Dynamic protocol configuration mix in static settings and constants configurations.
 </span><span class="attr">#[derive(Debug, Deserialize, Clone, Copy)]
 </span><span class="kw">pub struct </span>ProtocolConfig {
     <span class="doccomment">/// running threads count
-    </span><span class="kw">pub </span>thread_count: u8,
+    </span><span class="kw">pub </span>thread_count: NonZeroU8,
     <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
     </span><span class="kw">pub </span>ask_block_timeout: MassaTime,
     <span class="doccomment">/// max known blocks of current nodes we keep in memory (by node)

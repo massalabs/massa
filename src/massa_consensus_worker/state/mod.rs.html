@@ -521,6 +521,7 @@
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -746,7 +747,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(BlockId, u64)&gt;, ConsensusError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>latest: Vec&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, u64)&gt;&gt; = <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
+        <span class="kw">let </span><span class="kw-2">mut </span>latest: Vec&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, u64)&gt;&gt; =
+            <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count.get() <span class="kw">as </span>usize];
         <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.active_index.iter() {
             <span class="kw">let </span>(block, _storage) = <span class="self">self</span>.try_get_full_active_block(id)<span class="question-mark">?</span>;
             <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = latest[block.slot.thread <span class="kw">as </span>usize] &amp;&amp; block.slot.period &lt; p {
@@ -779,7 +781,7 @@
         end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(BlockId, u64)&gt;, ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>earliest: Vec&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, u64)&gt;&gt; =
-            <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
+            <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count.get() <span class="kw">as </span>usize];
         <span class="kw">for </span>id <span class="kw">in </span>block_ids {
             <span class="kw">let </span>(block, _storage) = <span class="self">self</span>.try_get_full_active_block(id)<span class="question-mark">?</span>;
             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot &amp;&amp; block.slot &gt; slot {

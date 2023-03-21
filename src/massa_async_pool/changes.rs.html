@@ -280,7 +280,7 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::ops::Bound::Included;
+</pre><pre class="rust"><code><span class="kw">use </span>std::{num::NonZeroU8, ops::Bound::Included};
 
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -416,7 +416,7 @@
 
 <span class="kw">impl </span>AsyncPoolChangesDeserializer {
     <span class="kw">pub fn </span>new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_async_pool_changes: u64,
         max_async_message_data: u64,
         max_key_length: u32,
@@ -465,7 +465,7 @@
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32.try_into().unwrap(), 100000, 100000, 100000);
     /// serializer.serialize(&amp;changes, &amp;mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());

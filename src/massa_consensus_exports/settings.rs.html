@@ -55,7 +55,11 @@
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
-</pre><pre class="rust"><code><span class="kw">use </span>massa_signature::KeyPair;
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::num::NonZeroU8;
+
+<span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
@@ -66,7 +70,7 @@
     <span class="doccomment">/// Delta time between two period
     </span><span class="kw">pub </span>t0: MassaTime,
     <span class="doccomment">/// Number of threads
-    </span><span class="kw">pub </span>thread_count: u8,
+    </span><span class="kw">pub </span>thread_count: NonZeroU8,
     <span class="doccomment">/// Keypair to sign genesis blocks.
     </span><span class="kw">pub </span>genesis_key: KeyPair,
     <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.

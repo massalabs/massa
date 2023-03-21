@@ -360,6 +360,7 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -385,6 +386,7 @@
 };
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap},
+    num::NonZeroU8,
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
@@ -546,7 +548,7 @@
 
     <span class="comment">// initialize the executed ops config
     </span><span class="kw">let </span>config = ExecutedOpsConfig {
-        thread_count: <span class="number">2</span>,
+        thread_count: <span class="number">2</span>.try_into().unwrap(),
         bootstrap_part_size: <span class="number">10</span>,
     };
 
@@ -664,7 +666,7 @@
 <span class="kw">impl </span>ExecutedOpsDeserializer {
     <span class="doccomment">/// Create a new deserializer for `ExecutedOps`
     </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_executed_ops_length: u64,
         max_operations_per_block: u64,
     ) -&gt; ExecutedOpsDeserializer {
@@ -672,7 +674,7 @@
             operation_id_deserializer: OperationIdDeserializer::new(),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
+                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
             ),
             ops_length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),

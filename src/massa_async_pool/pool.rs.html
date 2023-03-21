@@ -410,8 +410,8 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
+<span class="kw">use </span>std::{collections::BTreeMap, num::NonZeroU8};
 
 <span class="kw">const </span>ASYNC_POOL_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
@@ -691,7 +691,7 @@
 <span class="kw">impl </span>AsyncPoolDeserializer {
     <span class="doccomment">/// Creates a new `AsyncPool` deserializer
     </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_async_pool_length: u64,
         max_async_message_data: u64,
         max_key_length: u32,
@@ -748,7 +748,7 @@
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">let </span>config = AsyncPoolConfig {
-        thread_count: <span class="number">2</span>,
+        thread_count: <span class="number">2</span>.try_into().unwrap(),
         max_length: <span class="number">10</span>,
         max_async_message_data: <span class="number">1_000_000</span>,
         bootstrap_part_size: <span class="number">100</span>,

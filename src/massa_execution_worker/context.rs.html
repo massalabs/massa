@@ -933,6 +933,7 @@
 <a href="#933" id="933">933</a>
 <a href="#934" id="934">934</a>
 <a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -971,6 +972,7 @@
 <span class="kw">use </span>rand::SeedableRng;
 <span class="kw">use </span>rand_xoshiro::Xoshiro256PlusPlus;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::debug;
 
@@ -1847,7 +1849,7 @@
     </span><span class="kw">pub fn </span>get_address_future_deferred_credits(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         address: <span class="kw-2">&amp;</span>Address,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
         <span class="kw">let </span>min_slot = <span class="self">self
             </span>.slot

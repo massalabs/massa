@@ -447,7 +447,7 @@
         .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;PoS final state init error: {}&quot;</span>, err)))<span class="question-mark">?</span>;
 
         <span class="comment">// attach at the output of the latest initial final slot, that is the last genesis slot
-        </span><span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, config.thread_count.saturating_sub(<span class="number">1</span>));
+        </span><span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, config.thread_count.get() - <span class="number">1</span>);
 
         <span class="comment">// create the async pool
         </span><span class="kw">let </span>async_pool = AsyncPool::new(config.async_pool_config.clone());
@@ -472,7 +472,7 @@
     ///
     /// USED ONLY FOR BOOTSTRAP
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.slot = Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>));
+        <span class="self">self</span>.slot = Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.get() - <span class="number">1</span>);
         <span class="self">self</span>.ledger.reset();
         <span class="self">self</span>.async_pool.reset();
         <span class="self">self</span>.pos_state.reset();

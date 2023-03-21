@@ -259,6 +259,7 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -279,6 +280,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::net::SocketAddr;
+<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -290,7 +292,7 @@
 </span><span class="kw">pub struct </span>BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
-    thread_count: u8,
+    thread_count: NonZeroU8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     size_field_len: usize,
