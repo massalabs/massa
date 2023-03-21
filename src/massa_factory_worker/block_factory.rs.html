@@ -340,8 +340,8 @@
         );
 
         <span class="comment">// ignore genesis
-        </span><span class="kw">if </span>next_slot.period &lt;= <span class="self">self</span>.cfg.last_start_period {
-            next_slot.period = <span class="self">self</span>.cfg.last_start_period + <span class="number">1</span>;
+        </span><span class="kw">if </span>next_slot.period == <span class="number">0 </span>{
+            next_slot.period = <span class="number">1</span>;
         }
 
         <span class="comment">// protection against double-production on unexpected system clock adjustment
