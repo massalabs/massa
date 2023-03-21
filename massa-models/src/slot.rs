@@ -218,7 +218,7 @@ impl Slot {
 
     /// check if the slot is last in the cycle
     pub fn is_last_of_cycle(&self, periods_per_cycle: u64, thread_count: u8) -> bool {
-        self.period % periods_per_cycle == (periods_per_cycle - 1)
+        self.period % periods_per_cycle == (periods_per_cycle.saturating_sub(1))
             && self.thread == (thread_count.saturating_sub(1))
     }
 
