@@ -38,7 +38,7 @@ impl BlockFactoryWorker {
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
         factory_receiver: mpsc::Receiver<()>,
-    ) -> thread::JoinHandle<Result<(), ()>> {
+    ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("block-factory".into())
             .spawn(|| {
@@ -48,7 +48,7 @@ impl BlockFactoryWorker {
                     channels,
                     factory_receiver,
                 };
-                this.run()
+                this.run();
             })
             .expect("failed to spawn thread : block-factory")
     }
@@ -119,7 +119,7 @@ impl BlockFactoryWorker {
     }
 
     /// Process a slot: produce a block at that slot if one of the managed keys is drawn.
-    fn process_slot(&mut self, slot: Slot) -> Result<(), ()> {
+    fn process_slot(&mut self, slot: Slot) {
         // get block producer address for that slot
         let block_producer_addr = match self.channels.selector.get_producer(slot) {
             Ok(addr) => addr,
@@ -128,7 +128,7 @@ impl BlockFactoryWorker {
                     "block factory could not get selector draws for slot {}: {}",
                     slot, err
                 );
-                return Ok(());
+                return;
             }
         };
 
@@ -146,7 +146,7 @@ impl BlockFactoryWorker {
             kp
         } else {
             // the selected block producer is not managed locally => quit
-            return Ok(());
+            return;
         };
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
@@ -163,7 +163,7 @@ impl BlockFactoryWorker {
             );
             if claimed_parents.len() != parents.len() {
                 warn!("block factory could claim parents for slot {}", slot);
-                return Ok(());
+                return;
             }
         }
 
@@ -196,13 +196,9 @@ impl BlockFactoryWorker {
         // gather operations and compute global operations hash
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
 
-        let Ok(max_ops_usize) = usize::try_from(self.cfg.max_operations_per_block) else {
-            // TODO: build a conversion error handling story
-            return Err(());
-        };
-        if op_ids.len() > max_ops_usize {
+        if op_ids.len() > self.cfg.max_operations_per_block as usize {
             warn!("Too many operations returned");
-            return Ok(());
+            return;
         }
 
         block_storage.extend(op_storage);
@@ -252,11 +248,10 @@ impl BlockFactoryWorker {
         self.channels
             .consensus
             .register_block(block_id, slot, block_storage, true);
-        Ok(())
     }
 
     /// main run loop of the block creator thread
-    fn run(&mut self) -> Result<(), ()> {
+    fn run(&mut self) {
         let mut prev_slot = None;
         loop {
             // get next slot
@@ -268,11 +263,10 @@ impl BlockFactoryWorker {
             }
 
             // process slot
-            self.process_slot(slot)?;
+            self.process_slot(slot);
 
             // update previous slot
             prev_slot = Some(slot);
         }
-        Ok(())
     }
 }

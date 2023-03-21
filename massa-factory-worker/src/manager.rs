@@ -12,7 +12,7 @@ use tracing::{info, warn};
 /// Allows stopping the factory worker
 pub struct FactoryManagerImpl {
     /// block worker message sender and join handle
-    pub(crate) block_worker: Option<(mpsc::Sender<()>, JoinHandle<Result<(), ()>>)>,
+    pub(crate) block_worker: Option<(mpsc::Sender<()>, JoinHandle<()>)>,
 
     /// endorsement worker message sender and join handle
     pub(crate) endorsement_worker: Option<(mpsc::Sender<()>, JoinHandle<()>)>,
