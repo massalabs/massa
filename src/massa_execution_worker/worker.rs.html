@@ -273,6 +273,14 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -328,7 +336,15 @@
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// get the latest executed final slot, at the output of which the final ledger is attached
-        </span><span class="kw">let </span>final_cursor = execution_state.read().final_cursor;
+        // if we are restarting the network, use last genesis slot of the last start.
+
+        </span><span class="kw">let </span>final_cursor = std::cmp::max(
+            execution_state.read().final_cursor,
+            Slot {
+                period: config.last_start_period,
+                thread: config.thread_count.saturating_sub(<span class="number">1</span>),
+            },
+        );
 
         <span class="comment">// create and return the ExecutionThread
         </span>ExecutionThread {
