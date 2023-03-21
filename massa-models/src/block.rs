@@ -215,7 +215,7 @@ pub struct BlockDeserializerArgs {
     /// endorsement_count
     pub endorsement_count: u32,
     /// last start period
-    pub last_start_period: u64,
+    pub last_start_period: Option<u64>,
 }
 
 /// Deserializer for `Block`
@@ -295,7 +295,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
-    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9,last_start_period: 0,};
+    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9,last_start_period: Some(0),};
     /// let (rest, res_block) = BlockDeserializer::new(args).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());
@@ -489,7 +489,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let (rest, res_block): (&[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -565,7 +565,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let (rest, res_block): (&[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -650,7 +650,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -703,7 +703,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -751,7 +751,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -802,7 +802,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -875,7 +875,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let (_, res): (&[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -925,7 +925,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -990,7 +990,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1060,7 +1060,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1142,7 +1142,7 @@ mod test {
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: 0,
+            last_start_period: Some(0),
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
             SecureShareDeserializer::new(BlockDeserializer::new(args))

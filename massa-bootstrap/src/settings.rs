@@ -201,7 +201,7 @@ impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
             thread_count: value.thread_count,
             max_operations_per_block: value.max_operations_per_block,
             endorsement_count: value.endorsement_count,
-            last_start_period: 0,
+            last_start_period: None,
         }
     }
 }

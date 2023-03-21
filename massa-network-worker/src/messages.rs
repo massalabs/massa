@@ -282,7 +282,7 @@ impl MessageDeserializer {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
-        last_start_period: u64,
+        last_start_period: Option<u64>,
     ) -> Self {
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -570,7 +570,7 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            0,
+            Some(0),
         );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);

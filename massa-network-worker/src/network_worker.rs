@@ -725,7 +725,7 @@ impl NetworkWorker {
                             max_op_datastore_entry_count,
                             max_op_datastore_key_length,
                             max_op_datastore_value_length,
-                            last_start_period,
+                            Some(last_start_period),
                         ),
                     );
                     match tokio::time::timeout(
