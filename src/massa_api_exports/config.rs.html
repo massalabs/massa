@@ -67,12 +67,10 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::net::SocketAddr;
-<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::path::PathBuf;
 
 <span class="kw">use </span>serde::Deserialize;
@@ -130,7 +128,7 @@
     <span class="doccomment">/// max parameter size
     </span><span class="kw">pub </span>max_parameter_size: u32,
     <span class="doccomment">/// thread count
-    </span><span class="kw">pub </span>thread_count: NonZeroU8,
+    </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// `genesis_timestamp`
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// t0

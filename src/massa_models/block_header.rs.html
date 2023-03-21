@@ -486,7 +486,6 @@
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -512,7 +511,6 @@
 <span class="kw">use </span>std::collections::Bound::{Excluded, Included};
 <span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::fmt::Formatter;
-<span class="kw">use </span>std::num::NonZeroU8;
 
 <span class="doccomment">/// block header
 </span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
@@ -539,7 +537,7 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: genesis block with endorsement(s)&quot;</span>.into());
             }
         } <span class="kw">else </span>{
-            <span class="kw">if </span><span class="self">self</span>.parents.len() != <span class="kw">crate</span>::config::THREAD_COUNT.get() <span class="kw">as </span>usize {
+            <span class="kw">if </span><span class="self">self</span>.parents.len() != <span class="kw">crate</span>::config::THREAD_COUNT <span class="kw">as </span>usize {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(
                     <span class="string">&quot;Invariant broken: non-genesis block with incorrect number of parents&quot;</span>.into(),
                 );
@@ -643,7 +641,7 @@
     /// use massa_serialization::Serializer;
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT.get())
+    /// let parents = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///   .collect();
     /// let header = BlockHeader {
@@ -714,17 +712,17 @@
     endorsement_serializer: EndorsementSerializer,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
-    thread_count: NonZeroU8,
+    thread_count: u8,
     endorsement_count: u32,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
     <span class="doccomment">/// Creates a new `BlockHeaderDeserializerLW`
-    </span><span class="kw">pub const fn </span>new(thread_count: NonZeroU8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub const fn </span>new(thread_count: u8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
+                (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
             endorsement_serializer: EndorsementSerializer::new(),
             length_endorsements_deserializer: U32VarIntDeserializer::new(
@@ -750,7 +748,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT.get())
+    /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
     ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///   .collect();
     /// let header = BlockHeader {
@@ -782,7 +780,7 @@
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&amp;header, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32.try_into().unwrap(), 9).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&amp;deserialized_header, &amp;mut buffer2).unwrap();
@@ -810,7 +808,7 @@
                                             .deserialize(input)
                                             .map(|(rest, hash)| (rest, BlockId(hash)))
                                     }),
-                                    <span class="self">self</span>.thread_count.get() <span class="kw">as </span>usize,
+                                    <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
                                 ),
                             ),
                         )),
@@ -825,12 +823,12 @@
                         <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
-                } <span class="kw">else if </span>slot.period != <span class="number">0 </span>&amp;&amp; parents.len() != THREAD_COUNT.get() <span class="kw">as </span>usize {
+                } <span class="kw">else if </span>slot.period != <span class="number">0 </span>&amp;&amp; parents.len() != THREAD_COUNT <span class="kw">as </span>usize {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                         rest,
                         <span class="macro">const_format::formatcp!</span>(
                             <span class="string">&quot;Non-genesis block must have {} parents&quot;</span>,
-                            THREAD_COUNT.get()
+                            THREAD_COUNT
                         ),
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));

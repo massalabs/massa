@@ -836,8 +836,6 @@
 <a href="#836" id="836">836</a>
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -860,6 +858,7 @@
     ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
     WriteBatch, DB,
 };
+<span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::rc::Rc;
 <span class="kw">use </span>std::{collections::BTreeMap, fmt::Debug};
@@ -867,7 +866,6 @@
     collections::{BTreeSet, HashMap},
     convert::TryInto,
 };
-<span class="kw">use </span>std::{num::NonZeroU8, ops::Bound};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer};
@@ -910,7 +908,7 @@
 /// Contains a `RocksDB` DB instance
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LedgerDB {
     db: DB,
-    thread_count: NonZeroU8,
+    thread_count: u8,
     key_serializer: KeySerializer,
     key_serializer_db: KeySerializer,
     key_deserializer: KeyDeserializer,
@@ -957,7 +955,7 @@
     /// * path: path to the desired disk ledger db directory
     </span><span class="kw">pub fn </span>new(
         path: PathBuf,
-        thread_count: NonZeroU8,
+        thread_count: u8,
         max_datastore_key_length: u8,
         ledger_part_size_message_bytes: u64,
     ) -&gt; <span class="self">Self </span>{
@@ -1006,7 +1004,10 @@
         <span class="kw">for </span>(address, entry) <span class="kw">in </span>initial_ledger {
             <span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>address, entry, <span class="kw-2">&amp;mut </span>batch);
         }
-        <span class="self">self</span>.set_slot(Slot::new(<span class="number">0</span>, <span class="self">self</span>.thread_count.get() - <span class="number">1</span>), <span class="kw-2">&amp;mut </span>batch);
+        <span class="self">self</span>.set_slot(
+            Slot::new(<span class="number">0</span>, <span class="self">self</span>.thread_count.saturating_sub(<span class="number">1</span>)),
+            <span class="kw-2">&amp;mut </span>batch,
+        );
         <span class="self">self</span>.write_batch(batch);
     }
 
@@ -1607,12 +1608,7 @@
 
         <span class="comment">// write data
         </span><span class="kw">let </span>temp_dir = TempDir::new().unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(
-            temp_dir.path().to_path_buf(),
-            <span class="number">32</span>.try_into().unwrap(),
-            <span class="number">255</span>,
-            <span class="number">1_000_000</span>,
-        );
+        <span class="kw">let </span><span class="kw-2">mut </span>db = LedgerDB::new(temp_dir.path().to_path_buf(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1_000_000</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = LedgerBatch::new(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES));
         db.put_entry(<span class="kw-2">&amp;</span>addr, entry, <span class="kw-2">&amp;mut </span>batch);
         db.update_entry(<span class="kw-2">&amp;</span>addr, entry_update, <span class="kw-2">&amp;mut </span>batch);

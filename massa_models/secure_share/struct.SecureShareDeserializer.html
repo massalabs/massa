@@ -46,7 +46,7 @@ that can be use for the id and signature computing.</p>
 ).unwrap();
 <span class="kw">let </span><span class="kw-2">mut </span>serialized_data = Vec::new();
 <span class="kw">let </span>serialized = SecureShareSerializer::new().serialize(<span class="kw-2">&amp;</span>secured, <span class="kw-2">&amp;mut </span>serialized_data).unwrap();
-<span class="kw">let </span>deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>.try_into().unwrap(), <span class="number">1</span>));
+<span class="kw">let </span>deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">1</span>));
 <span class="kw">let </span>(rest, deserialized): (<span class="kw-2">&amp;</span>[u8], SecureShare&lt;Endorsement, BlockId&gt;) = deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_data).unwrap();
 <span class="macro">assert!</span>(rest.is_empty());
 <span class="macro">assert_eq!</span>(secured.id, deserialized.id);</code></pre></div>

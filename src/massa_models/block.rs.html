@@ -1139,7 +1139,6 @@
 <a href="#1139" id="1139">1139</a>
 <a href="#1140" id="1140">1140</a>
 <a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="comment">// use crate::config::THREAD_COUNT;
@@ -1181,7 +1180,6 @@
 // use std::collections::HashSet;
 // use std::convert::TryInto;
 </span><span class="kw">use </span>std::fmt::Formatter;
-<span class="kw">use </span>std::num::NonZeroU8;
 <span class="comment">// use std::ops::Bound::{Excluded, Included};
 // use std::str::FromStr;
 </span><span class="kw">use </span><span class="kw">crate</span>::block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader};
@@ -1294,7 +1292,7 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT.get())
+    /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
     ///
@@ -1352,7 +1350,7 @@
 <span class="doccomment">///
 </span><span class="kw">pub struct </span>BlockDeserializerArgs {
     <span class="doccomment">///
-    </span><span class="kw">pub </span>thread_count: NonZeroU8,
+    </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">///
     </span><span class="kw">pub </span>max_operations_per_block: u32,
     <span class="doccomment">///
@@ -1389,7 +1387,7 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
-    /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT.get())
+    /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
     ///     .collect();
     ///
@@ -1561,7 +1559,7 @@
     </span><span class="kw">fn </span>test_block_serialization() {
         <span class="kw">let </span>keypair =
             KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
-        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT.get())
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
                 BlockId(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
@@ -1804,7 +1802,7 @@
     #[serial]
     </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_parents() {
         <span class="kw">let </span>keypair = KeyPair::generate();
-        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT.get())
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
@@ -1901,7 +1899,7 @@
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_parent_count() {
         <span class="kw">let </span>keypair = KeyPair::generate();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
-        </span><span class="kw">let </span>parents = (<span class="number">0</span>..=THREAD_COUNT.get())
+        </span><span class="kw">let </span>parents = (<span class="number">0</span>..=THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
@@ -1955,7 +1953,7 @@
         <span class="kw">let </span>endorsed = BlockId(
             Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>).unwrap(),
         );
-        <span class="kw">let </span>fillers = (<span class="number">1</span>..THREAD_COUNT.get()).map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])));
+        <span class="kw">let </span>fillers = (<span class="number">1</span>..THREAD_COUNT).map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])));
         <span class="kw">let </span>parents = std::iter::once(endorsed).chain(fillers).collect();
 
         <span class="kw">let </span>endorsements = (<span class="number">0</span>..ENDORSEMENT_COUNT)
@@ -2022,7 +2020,7 @@
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_low_parent_count() {
         <span class="kw">let </span>keypair = KeyPair::generate();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
-        </span><span class="kw">let </span>parents = (<span class="number">1</span>..THREAD_COUNT.get())
+        </span><span class="kw">let </span>parents = (<span class="number">1</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
@@ -2072,7 +2070,7 @@
     </span><span class="kw">fn </span>test_invalid_block_serialization_obo_high_endo_count() {
         <span class="kw">let </span>keypair = KeyPair::generate();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
-        </span><span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT.get())
+        </span><span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
@@ -2136,7 +2134,7 @@
     </span><span class="kw">fn </span>test_invalid_endorsement_idx() {
         <span class="kw">let </span>keypair =
             KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
-        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT.get())
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
                 BlockId(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
@@ -2204,7 +2202,7 @@
     </span><span class="kw">fn </span>test_invalid_dupe_endo_idx() {
         <span class="kw">let </span>keypair =
             KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
-        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT.get())
+        <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
                 BlockId(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)

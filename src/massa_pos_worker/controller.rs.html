@@ -203,7 +203,7 @@
 </span><span class="doccomment">//! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
-</span><span class="kw">use </span>std::{collections::BTreeMap, num::NonZeroU8};
+</span><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use crate</span>::{Command, DrawCachePtr};
 <span class="kw">use </span>massa_hash::Hash;
@@ -223,7 +223,7 @@
     <span class="doccomment">/// todo: use a configuration structure
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) periods_per_cycle: u64,
     <span class="doccomment">/// thread count
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) thread_count: NonZeroU8,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) thread_count: u8,
     <span class="doccomment">/// Cache storing the computed selections for each cycle.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) cache: DrawCachePtr,
     <span class="doccomment">/// MPSC to send commands to the selector thread

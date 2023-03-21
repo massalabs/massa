@@ -122,12 +122,6 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -145,10 +139,7 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>std::{
-    num::NonZeroU8,
-    ops::Bound::{Excluded, Included},
-};
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// Speculative changes for ExecutedOps
 </span><span class="kw">pub type </span>ExecutedOpsChanges = PreHashMap&lt;OperationId, (bool, Slot)&gt;;
@@ -207,10 +198,7 @@
 
 <span class="kw">impl </span>ExecutedOpsChangesDeserializer {
     <span class="doccomment">/// Create a new deserializer for `ExecutedOps`
-    </span><span class="kw">pub fn </span>new(
-        thread_count: NonZeroU8,
-        max_ops_changes_length: u64,
-    ) -&gt; ExecutedOpsChangesDeserializer {
+    </span><span class="kw">pub fn </span>new(thread_count: u8, max_ops_changes_length: u64) -&gt; ExecutedOpsChangesDeserializer {
         ExecutedOpsChangesDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -220,7 +208,7 @@
             op_execution_deserializer: BoolDeserializer::new(),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
+                (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
         }
     }

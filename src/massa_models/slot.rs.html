@@ -344,7 +344,6 @@
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -354,7 +353,6 @@
 };
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::ops::{Bound, RangeBounds};
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::{cmp::Ordering, convert::TryInto};
@@ -517,7 +515,7 @@
     </span><span class="kw">pub fn </span>new_last_of_cycle(
         cycle: u64,
         periods_per_cycle: u64,
-        thread_count: NonZeroU8,
+        thread_count: u8,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
         <span class="kw">let </span>period = cycle
             .checked_mul(periods_per_cycle)
@@ -526,7 +524,7 @@
             .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Slot {
             period,
-            thread: thread_count.get() - <span class="number">1</span>,
+            thread: thread_count - <span class="number">1</span>,
         })
     }
 
@@ -547,10 +545,10 @@
     }
 
     <span class="doccomment">/// returns the maximal slot
-    </span><span class="kw">pub const fn </span>max(thread_count: NonZeroU8) -&gt; Slot {
+    </span><span class="kw">pub const fn </span>max(thread_count: u8) -&gt; Slot {
         Slot {
             period: u64::MAX,
-            thread: thread_count.get() - <span class="number">1</span>,
+            thread: thread_count,
         }
     }
 
@@ -565,9 +563,9 @@
     }
 
     <span class="doccomment">/// check if the slot is last in the cycle
-    </span><span class="kw">pub fn </span>is_last_of_cycle(<span class="kw-2">&amp;</span><span class="self">self</span>, periods_per_cycle: u64, thread_count: NonZeroU8) -&gt; bool {
+    </span><span class="kw">pub fn </span>is_last_of_cycle(<span class="kw-2">&amp;</span><span class="self">self</span>, periods_per_cycle: u64, thread_count: u8) -&gt; bool {
         <span class="self">self</span>.period % periods_per_cycle == (periods_per_cycle - <span class="number">1</span>)
-            &amp;&amp; <span class="self">self</span>.thread == (thread_count.get() - <span class="number">1</span>)
+            &amp;&amp; <span class="self">self</span>.thread == (thread_count - <span class="number">1</span>)
     }
 
     <span class="doccomment">/// check if the slot is first in the cycle
@@ -615,12 +613,12 @@
     /// ```rust
     /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,3);
-    /// assert_eq!(slot.get_next_slot(5.try_into().unwrap()).unwrap(), Slot::new(10, 4));
+    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(10, 4));
     /// let slot = Slot::new(10,4);
-    /// assert_eq!(slot.get_next_slot(5.try_into().unwrap()).unwrap(), Slot::new(11, 0));
+    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0));
     /// ```
-    </span><span class="kw">pub fn </span>get_next_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: NonZeroU8) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
-        <span class="kw">if </span><span class="self">self</span>.thread.saturating_add(<span class="number">1u8</span>) &gt;= thread_count.get() {
+    </span><span class="kw">pub fn </span>get_next_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: u8) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
+        <span class="kw">if </span><span class="self">self</span>.thread.saturating_add(<span class="number">1u8</span>) &gt;= thread_count {
             <span class="prelude-val">Ok</span>(Slot::new(
                 <span class="self">self</span>.period
                     .checked_add(<span class="number">1u64</span>)
@@ -643,18 +641,18 @@
     /// ```rust
     /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,1);
-    /// assert_eq!(slot.get_prev_slot(5.try_into().unwrap()).unwrap(), Slot::new(10, 0));
+    /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(10, 0));
     /// let slot = Slot::new(10,0);
-    /// assert_eq!(slot.get_prev_slot(5.try_into().unwrap()).unwrap(), Slot::new(9, 4));
+    /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(9, 4));
     /// ```
-    </span><span class="kw">pub fn </span>get_prev_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: NonZeroU8) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
+    </span><span class="kw">pub fn </span>get_prev_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: u8) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt; {
         <span class="kw">match </span><span class="self">self</span>.thread.checked_sub(<span class="number">1u8</span>) {
             <span class="prelude-val">Some</span>(t) =&gt; <span class="prelude-val">Ok</span>(Slot::new(<span class="self">self</span>.period, t)),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(Slot::new(
                 <span class="self">self</span>.period
                     .checked_sub(<span class="number">1</span>)
                     .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?</span>,
-                thread_count.get() - <span class="number">1</span>,
+                thread_count.saturating_sub(<span class="number">1</span>),
             )),
         }
     }
@@ -662,7 +660,7 @@
     <span class="doccomment">/// Counts the number of slots since the one passed in parameter and until self
     /// If the two slots are equal, the returned value is `0`.
     /// If the passed slot is strictly higher than self, an error is returned
-    </span><span class="kw">pub fn </span>slots_since(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>Slot, thread_count: NonZeroU8) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ModelsError&gt; {
+    </span><span class="kw">pub fn </span>slots_since(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>Slot, thread_count: u8) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ModelsError&gt; {
         <span class="comment">// if s &gt; self, return an error
         </span><span class="kw">if </span>s &gt; <span class="self">self </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::PeriodOverflowError);
@@ -670,7 +668,7 @@
 
         <span class="comment">// compute the number of slots from s to self
         </span><span class="prelude-val">Ok</span>((<span class="self">self</span>.period - s.period)
-            .checked_mul(thread_count.get() <span class="kw">as </span>u64)
+            .checked_mul(thread_count <span class="kw">as </span>u64)
             .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?
             </span>.checked_add(<span class="self">self</span>.thread <span class="kw">as </span>u64)
             .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?

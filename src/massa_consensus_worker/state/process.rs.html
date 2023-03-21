@@ -1383,7 +1383,7 @@
                     parents: parents_hash_period.clone(),
                     descendants: PreHashSet::&lt;BlockId&gt;::default(),
                     block_id: add_block_id,
-                    children: <span class="macro">vec!</span>[Default::default(); <span class="self">self</span>.config.thread_count.get().into()],
+                    children: <span class="macro">vec!</span>[Default::default(); <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize],
                     is_final: <span class="bool-val">false</span>,
                     slot: add_block_slot,
                     fitness,

@@ -658,8 +658,8 @@
 };
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::Included;
-<span class="kw">use </span>std::{collections::BTreeMap, num::NonZeroU8};
 
 <span class="kw">use </span><span class="kw">crate</span>::PoSChanges;
 
@@ -799,10 +799,10 @@
         changes: PoSChanges,
         slot: Slot,
         periods_per_cycle: u64,
-        thread_count: NonZeroU8,
+        thread_count: u8,
     ) -&gt; bool {
         <span class="kw">let </span>hash_computer = CycleInfoHashComputer::new();
-        <span class="kw">let </span>slots_per_cycle = periods_per_cycle.saturating_mul(thread_count.get() <span class="kw">as </span>u64);
+        <span class="kw">let </span>slots_per_cycle = periods_per_cycle.saturating_mul(thread_count <span class="kw">as </span>u64);
         <span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = Vec::new();
 
         <span class="comment">// compute cycle hash and concat
@@ -898,7 +898,7 @@
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(<span class="number">0</span>, <span class="number">0</span>), <span class="number">2</span>, <span class="number">2</span>.try_into().unwrap());
+    cycle_a.apply_changes(changes, Slot::new(<span class="number">0</span>, <span class="number">0</span>), <span class="number">2</span>, <span class="number">2</span>);
 
     <span class="comment">// update changes once
     </span>roll_changes.clear();
@@ -917,7 +917,7 @@
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(<span class="number">0</span>, <span class="number">1</span>), <span class="number">2</span>, <span class="number">2</span>.try_into().unwrap());
+    cycle_a.apply_changes(changes, Slot::new(<span class="number">0</span>, <span class="number">1</span>), <span class="number">2</span>, <span class="number">2</span>);
 
     <span class="comment">// update changes twice
     </span>roll_changes.clear();
@@ -936,7 +936,7 @@
         production_stats,
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(<span class="number">1</span>, <span class="number">0</span>), <span class="number">2</span>, <span class="number">2</span>.try_into().unwrap());
+    cycle_a.apply_changes(changes, Slot::new(<span class="number">1</span>, <span class="number">0</span>), <span class="number">2</span>, <span class="number">2</span>);
 
     <span class="comment">// create a seconde cycle from same value and match hash
     </span><span class="kw">let </span>cycle_b = CycleInfo::new_with_hash(
