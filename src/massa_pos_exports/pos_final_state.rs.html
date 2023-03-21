@@ -492,6 +492,7 @@
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -558,10 +559,11 @@
         })
     }
 
-    <span class="doccomment">/// Inspire by mem::take()
+    <span class="doccomment">/// Inspired by mem::take()
     /// This function reinitialize in place the given object.
-    /// It reuse what it can from the given reference.
-    </span><span class="kw">pub fn </span>renew(<span class="kw-2">&amp;mut </span><span class="self">self</span>) <span class="comment">/* -&gt; Self */ </span>{
+    /// It reuses what it can from the given reference.
+    /// The implementation ensure that all fields are tracked.
+    </span><span class="kw">pub fn </span>renew(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
       <span class="kw">let </span>obj =  <span class="self">Self </span>{
             config: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.config),
             cycle_history: Default::default(),
