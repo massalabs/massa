@@ -73,7 +73,7 @@ impl ExportActiveBlock {
             creator_address: self.block.content_creator_address,
             block_id: self.block.id,
             parents: self.parents.clone(),
-            children: vec![PreHashMap::default(); thread_count.get() as usize], // will be computed once the full graph is available
+            children: vec![PreHashMap::default(); thread_count.get().into()], // will be computed once the full graph is available
             descendants: Default::default(), // will be computed once the full graph is available
             is_final: self.is_final,
             slot: self.block.content.header.content.slot,

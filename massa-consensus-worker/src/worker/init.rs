@@ -106,7 +106,7 @@ impl ConsensusWorker {
                     a_block: Box::new(ActiveBlock {
                         creator_address: block.content_creator_address,
                         parents: Vec::new(),
-                        children: vec![PreHashMap::default(); config.thread_count.get() as usize],
+                        children: vec![PreHashMap::default(); config.thread_count.get().into()],
                         descendants: Default::default(),
                         is_final: true,
                         block_id: block.id,

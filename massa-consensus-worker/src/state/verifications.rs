@@ -183,7 +183,7 @@ impl ConsensusState {
 
         // check the topological consistency of the parents
         {
-            let mut gp_max_slots = vec![0u64; self.config.thread_count.get() as usize];
+            let mut gp_max_slots = vec![0u64; self.config.thread_count.get().into()];
             for parent_i in 0..self.config.thread_count.get() {
                 let (parent_h, parent_period) = parents[parent_i as usize];
                 let parent = match read_shared_state.block_statuses.get(&parent_h) {

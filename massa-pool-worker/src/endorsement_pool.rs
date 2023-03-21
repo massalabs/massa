@@ -31,9 +31,9 @@ pub struct EndorsementPool {
 impl EndorsementPool {
     pub fn init(config: PoolConfig, storage: &Storage) -> Self {
         EndorsementPool {
-            last_cs_final_periods: vec![0u64; config.thread_count.get() as usize],
+            last_cs_final_periods: vec![0u64; config.thread_count.get().into()],
             endorsements_indexed: Default::default(),
-            endorsements_sorted: vec![Default::default(); config.thread_count.get() as usize],
+            endorsements_sorted: vec![Default::default(); config.thread_count.get().into()],
             config,
             storage: storage.clone_without_refs(),
         }

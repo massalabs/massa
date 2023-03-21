@@ -389,7 +389,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                     // associated slot
                     // all header endorsements are supposed to point towards this one
                     slot: Slot::new(1, 0),
-                    parents: vec![get_dummy_block_id("p1"); THREAD_COUNT.get() as usize],
+                    parents: vec![get_dummy_block_id("p1"); THREAD_COUNT.get().into()],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
                         Endorsement::new_verifiable(
@@ -428,7 +428,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
     // TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
         block,
-        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT.get() as usize],
+        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT.get().into()],
         is_final: true,
     };
 

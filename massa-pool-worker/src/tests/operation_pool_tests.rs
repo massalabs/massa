@@ -62,7 +62,7 @@ fn test_pool() {
         pool_config,
         |mut pool_manager, mut pool, execution_receiver, storage_base| {
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count.get() as usize];
+            let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count.get().into()];
 
             let mut storage = storage_base.clone_without_refs();
             for i in 0..18 {

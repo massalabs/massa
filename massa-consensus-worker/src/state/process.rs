@@ -508,7 +508,7 @@ impl ConsensusState {
                     parents: parents_hash_period.clone(),
                     descendants: PreHashSet::<BlockId>::default(),
                     block_id: add_block_id,
-                    children: vec![Default::default(); self.config.thread_count.get() as usize],
+                    children: vec![Default::default(); self.config.thread_count.get().into()],
                     is_final: false,
                     slot: add_block_slot,
                     fitness,
