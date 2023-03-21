@@ -130,7 +130,7 @@ mod tests {
         let genesis_keypair = KeyPair::generate();
         let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
         let mut block_storage: PreHashMap<BlockId, Storage> = PreHashMap::default();
-        for thread in 0..config.thread_count {
+        for thread in 0..config.thread_count.get() {
             let slot = Slot::new(0, thread);
             let final_block = create_block(genesis_keypair.clone(), vec![], slot).unwrap();
             finalized_blocks.insert(slot, final_block.id);
@@ -1253,7 +1253,7 @@ mod tests {
         let mut exec_cfg = ExecutionConfig {
             t0: 100.into(),
             periods_per_cycle: 2,
-            thread_count: 2,
+            thread_count: 2.try_into().unwrap(),
             cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..Default::default()

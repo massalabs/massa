@@ -1,3 +1,5 @@
+use std::num::NonZeroU8;
+
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
@@ -9,7 +11,7 @@ pub struct ConsensusConfig {
     /// Delta time between two period
     pub t0: MassaTime,
     /// Number of threads
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// Keypair to sign genesis blocks.
     pub genesis_key: KeyPair,
     /// Maximum number of blocks allowed in discarded blocks.

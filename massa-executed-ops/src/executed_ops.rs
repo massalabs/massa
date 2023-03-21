@@ -23,6 +23,7 @@ use nom::{
 };
 use std::{
     collections::{BTreeMap, HashMap},
+    num::NonZeroU8,
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
@@ -184,7 +185,7 @@ fn test_executed_ops_xor_computing() {
 
     // initialize the executed ops config
     let config = ExecutedOpsConfig {
-        thread_count: 2,
+        thread_count: 2.try_into().unwrap(),
         bootstrap_part_size: 10,
     };
 
@@ -302,7 +303,7 @@ pub struct ExecutedOpsDeserializer {
 impl ExecutedOpsDeserializer {
     /// Create a new deserializer for `ExecutedOps`
     pub fn new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_executed_ops_length: u64,
         max_operations_per_block: u64,
     ) -> ExecutedOpsDeserializer {
@@ -310,7 +311,7 @@ impl ExecutedOpsDeserializer {
             operation_id_deserializer: OperationIdDeserializer::new(),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
             ops_length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),

@@ -79,11 +79,11 @@ impl PoSFinalState {
         let mut rng_seed = BitVec::with_capacity(
             self.config
                 .periods_per_cycle
-                .saturating_mul(self.config.thread_count as u64)
+                .saturating_mul(self.config.thread_count.get() as u64)
                 .try_into()
                 .unwrap(),
         );
-        for _ in 0..self.config.thread_count {
+        for _ in 0..self.config.thread_count.get() {
             // assume genesis blocks have a "False" seed bit to avoid passing them around
             rng_seed.push(false);
         }
@@ -167,7 +167,7 @@ impl PoSFinalState {
         let slots_per_cycle: usize = self
             .config
             .periods_per_cycle
-            .saturating_mul(self.config.thread_count as u64)
+            .saturating_mul(self.config.thread_count.get() as u64)
             .try_into()
             .unwrap();
 

@@ -2,13 +2,13 @@
 
 //! This file defines a configuration structure containing all settings for the ledger system
 
-use std::path::PathBuf;
+use std::{num::NonZeroU8, path::PathBuf};
 
 /// Ledger configuration
 #[derive(Debug, Clone)]
 pub struct LedgerConfig {
     /// thread count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// initial SCE ledger file
     pub initial_ledger_path: PathBuf,
     /// disk ledger db directory

@@ -1,4 +1,4 @@
-use std::ops::Bound::Included;
+use std::{num::NonZeroU8, ops::Bound::Included};
 
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -134,7 +134,7 @@ pub struct AsyncPoolChangesDeserializer {
 
 impl AsyncPoolChangesDeserializer {
     pub fn new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_async_pool_changes: u64,
         max_async_message_data: u64,
         max_key_length: u32,
@@ -183,7 +183,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message.clone()), Change::Delete(message.compute_id())]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32.try_into().unwrap(), 100000, 100000, 100000);
     /// serializer.serialize(&changes, &mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

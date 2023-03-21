@@ -43,6 +43,7 @@ use nom::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use std::num::NonZeroU8;
 use std::ops::Bound::{Excluded, Included};
 
 /// Messages used during bootstrap by server
@@ -323,7 +324,7 @@ impl BootstrapServerMessageDeserializer {
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(args.thread_count)),
+                (Included(0), Excluded(args.thread_count.get())),
             ),
             async_pool_deserializer: AsyncPoolDeserializer::new(
                 args.thread_count,
@@ -360,7 +361,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let args = BootstrapServerMessageDeserializerArgs {
-    ///     thread_count: 32, endorsement_count: 16,
+    ///     thread_count: 32.try_into().unwrap(), endorsement_count: 16,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
     ///     max_operations_per_block: 1000, max_bootstrap_final_state_parts_size: 1000,
     ///     max_async_pool_changes: 1000, max_async_pool_length: 1000, max_async_message_data: 1000,
@@ -677,7 +678,7 @@ pub struct BootstrapClientMessageDeserializer {
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
     pub fn new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_datastore_key_length: u8,
         max_consensus_block_ids: u64,
     ) -> Self {
@@ -686,7 +687,7 @@ impl BootstrapClientMessageDeserializer {
             length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
             ledger_step_deserializer: StreamingStepDeserializer::new(KeyDeserializer::new(
                 max_datastore_key_length,
@@ -701,7 +702,7 @@ impl BootstrapClientMessageDeserializer {
             )),
             slot_step_deserializer: StreamingStepDeserializer::new(SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             )),
             block_ids_step_deserializer: StreamingStepDeserializer::new(
                 PreHashSetDeserializer::new(
@@ -724,7 +725,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
-    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 255, 50);
+    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32.try_into().unwrap(), 255, 50);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();

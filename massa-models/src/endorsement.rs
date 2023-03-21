@@ -19,6 +19,7 @@ use nom::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
+use std::num::NonZeroU8;
 use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
 
@@ -154,7 +155,7 @@ impl SecureShareEndorsement {
         if let Err(e) = self.verify_signature() {
             return Err(e.into());
         }
-        if self.content.slot.thread >= crate::config::THREAD_COUNT {
+        if self.content.slot.thread >= crate::config::THREAD_COUNT.get() {
             Err("Endorsement slot on non-existant thread".into())
         } else if self.content.index >= crate::config::ENDORSEMENT_COUNT {
             Err("Endorsement index out of range".into())
@@ -238,11 +239,11 @@ pub struct EndorsementDeserializer {
 
 impl EndorsementDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    pub const fn new(thread_count: NonZeroU8, endorsement_count: u32) -> Self {
         EndorsementDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
             index_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -267,7 +268,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
     /// };
     /// let mut buffer = Vec::new();
     /// EndorsementSerializer::new().serialize(&endorsement, &mut buffer).unwrap();
-    /// let (rest, deserialized) = EndorsementDeserializer::new(32, 10).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized) = EndorsementDeserializer::new(32.try_into().unwrap(), 10).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized.slot, endorsement.slot);
     /// assert_eq!(deserialized.index, endorsement.index);
@@ -449,7 +450,7 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
         let (_, res_endorsement): (&[u8], SecureShareEndorsement) =
-            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1))
+            SecureShareDeserializer::new(EndorsementDeserializer::new(32.try_into().unwrap(), 1))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         assert_eq!(res_endorsement, endorsement);

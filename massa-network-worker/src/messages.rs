@@ -30,8 +30,8 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
 use std::ops::Bound::{Excluded, Included};
+use std::{net::IpAddr, num::NonZeroU8};
 
 /// All messages that can be sent or received.
 #[allow(clippy::large_enum_variant)]
@@ -269,7 +269,7 @@ impl MessageDeserializer {
     /// Creates a new `MessageDeserializer`.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         endorsement_count: u32,
         max_advertise_length: u32,
         max_ask_block: u32,

@@ -2,6 +2,8 @@
 
 //! This file provides structures representing changes to the final state
 
+use std::num::NonZeroU8;
+
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
@@ -127,7 +129,7 @@ impl StateChangesDeserializer {
     /// Creates a `StateChangesDeserializer`
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_async_pool_changes: u64,
         max_async_message_data: u64,
         max_ledger_changes_count: u64,
@@ -210,7 +212,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32.try_into().unwrap(), 255, 255, 255, 255, 255, 255, 255, 255, 255, 255).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
     /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);

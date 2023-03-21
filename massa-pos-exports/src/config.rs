@@ -1,12 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::num::NonZeroU8;
+
 /// proof-of-stake final state configuration
 #[derive(Debug, Clone)]
 pub struct PoSConfig {
     /// periods per cycle
     pub periods_per_cycle: u64,
     /// thread count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// number of saved cycle
     pub cycle_history_length: usize,
     /// maximum size of a deferred credits bootstrap part

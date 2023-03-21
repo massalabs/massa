@@ -39,6 +39,7 @@ use serde::{Deserialize, Serialize};
 // use std::collections::HashSet;
 // use std::convert::TryInto;
 use std::fmt::Formatter;
+use std::num::NonZeroU8;
 // use std::ops::Bound::{Excluded, Included};
 // use std::str::FromStr;
 use crate::block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader};
@@ -151,7 +152,7 @@ impl Serializer<Block> for BlockSerializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
+    /// let parents = (0..THREAD_COUNT.get())
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();
     ///
@@ -209,7 +210,7 @@ impl Serializer<Block> for BlockSerializer {
 ///
 pub struct BlockDeserializerArgs {
     ///
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     ///
     pub max_operations_per_block: u32,
     ///
@@ -246,7 +247,7 @@ impl Deserializer<Block> for BlockDeserializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate();
-    /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
+    /// let parents: Vec<BlockId> = (0..THREAD_COUNT.get())
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();
     ///
@@ -418,7 +419,7 @@ mod test {
     fn test_block_serialization() {
         let keypair =
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
-        let parents = (0..THREAD_COUNT)
+        let parents = (0..THREAD_COUNT.get())
             .map(|_i| {
                 BlockId(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
@@ -661,7 +662,7 @@ mod test {
     #[serial]
     fn test_invalid_genesis_block_serialization_with_parents() {
         let keypair = KeyPair::generate();
-        let parents = (0..THREAD_COUNT)
+        let parents = (0..THREAD_COUNT.get())
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
 
@@ -758,7 +759,7 @@ mod test {
     fn test_invalid_block_serialization_obo_high_parent_count() {
         let keypair = KeyPair::generate();
         // Non genesis block must have THREAD_COUNT parents
-        let parents = (0..=THREAD_COUNT)
+        let parents = (0..=THREAD_COUNT.get())
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
 
@@ -812,7 +813,7 @@ mod test {
         let endorsed = BlockId(
             Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf").unwrap(),
         );
-        let fillers = (1..THREAD_COUNT).map(|i| BlockId(Hash::compute_from(&[i])));
+        let fillers = (1..THREAD_COUNT.get()).map(|i| BlockId(Hash::compute_from(&[i])));
         let parents = std::iter::once(endorsed).chain(fillers).collect();
 
         let endorsements = (0..ENDORSEMENT_COUNT)
@@ -879,7 +880,7 @@ mod test {
     fn test_invalid_block_serialization_obo_low_parent_count() {
         let keypair = KeyPair::generate();
         // Non genesis block must have THREAD_COUNT parents
-        let parents = (1..THREAD_COUNT)
+        let parents = (1..THREAD_COUNT.get())
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
 
@@ -929,7 +930,7 @@ mod test {
     fn test_invalid_block_serialization_obo_high_endo_count() {
         let keypair = KeyPair::generate();
         // Non genesis block must have THREAD_COUNT parents
-        let parents = (0..THREAD_COUNT)
+        let parents = (0..THREAD_COUNT.get())
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
 
@@ -993,7 +994,7 @@ mod test {
     fn test_invalid_endorsement_idx() {
         let keypair =
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
-        let parents = (0..THREAD_COUNT)
+        let parents = (0..THREAD_COUNT.get())
             .map(|_i| {
                 BlockId(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
@@ -1061,7 +1062,7 @@ mod test {
     fn test_invalid_dupe_endo_idx() {
         let keypair =
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
-        let parents = (0..THREAD_COUNT)
+        let parents = (0..THREAD_COUNT.get())
             .map(|_i| {
                 BlockId(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")

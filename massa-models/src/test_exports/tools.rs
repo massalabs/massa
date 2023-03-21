@@ -1,3 +1,5 @@
+use std::num::NonZeroU8;
+
 use massa_time::MassaTime;
 
 use crate::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
@@ -5,7 +7,7 @@ use crate::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
 /// Gets the instant of the next slot.
 pub fn get_next_slot_instant(
     genesis_timestamp: MassaTime,
-    thread_count: u8,
+    thread_count: NonZeroU8,
     t0: MassaTime,
 ) -> MassaTime {
     // get current time

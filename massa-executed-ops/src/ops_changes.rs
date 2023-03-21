@@ -15,7 +15,10 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::ops::Bound::{Excluded, Included};
+use std::{
+    num::NonZeroU8,
+    ops::Bound::{Excluded, Included},
+};
 
 /// Speculative changes for ExecutedOps
 pub type ExecutedOpsChanges = PreHashMap<OperationId, (bool, Slot)>;
@@ -74,7 +77,10 @@ pub struct ExecutedOpsChangesDeserializer {
 
 impl ExecutedOpsChangesDeserializer {
     /// Create a new deserializer for `ExecutedOps`
-    pub fn new(thread_count: u8, max_ops_changes_length: u64) -> ExecutedOpsChangesDeserializer {
+    pub fn new(
+        thread_count: NonZeroU8,
+        max_ops_changes_length: u64,
+    ) -> ExecutedOpsChangesDeserializer {
         ExecutedOpsChangesDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -84,7 +90,7 @@ impl ExecutedOpsChangesDeserializer {
             op_execution_deserializer: BoolDeserializer::new(),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
         }
     }

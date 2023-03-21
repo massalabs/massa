@@ -6,7 +6,7 @@ use massa_async_pool::AsyncPoolConfig;
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_ledger_exports::LedgerConfig;
 use massa_pos_exports::PoSConfig;
-use std::path::PathBuf;
+use std::{num::NonZeroU8, path::PathBuf};
 
 /// Ledger configuration
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ pub struct FinalStateConfig {
     /// final changes history length
     pub final_history_length: usize,
     /// thread count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// periods per cycle
     pub periods_per_cycle: u64,
     /// initial PoS seed string

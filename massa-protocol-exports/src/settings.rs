@@ -1,12 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::num::NonZeroU8;
+
 use massa_time::MassaTime;
 use serde::Deserialize;
 /// Dynamic protocol configuration mix in static settings and constants configurations.
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolConfig {
     /// running threads count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
     /// max known blocks of current nodes we keep in memory (by node)

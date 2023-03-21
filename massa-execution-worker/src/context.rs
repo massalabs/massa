@@ -36,6 +36,7 @@ use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZeroU8;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -912,7 +913,7 @@ impl ExecutionContext {
     pub fn get_address_future_deferred_credits(
         &self,
         address: &Address,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -> BTreeMap<Slot, Amount> {
         let min_slot = self
             .slot

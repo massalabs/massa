@@ -15,8 +15,8 @@ use nom::{
     IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included};
+use std::{collections::BTreeMap, num::NonZeroU8};
 
 const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
@@ -184,7 +184,7 @@ pub struct DeferredCreditsDeserializer {
 
 impl DeferredCreditsDeserializer {
     /// Creates a new `DeferredCredits` deserializer
-    pub fn new(thread_count: u8, max_credits_length: u64) -> DeferredCreditsDeserializer {
+    pub fn new(thread_count: NonZeroU8, max_credits_length: u64) -> DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -192,7 +192,7 @@ impl DeferredCreditsDeserializer {
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
             credit_deserializer: CreditsDeserializer::new(max_credits_length),
         }

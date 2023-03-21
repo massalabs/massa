@@ -66,7 +66,7 @@ impl TestFactory {
         let mut accounts = PreHashMap::default();
 
         let mut genesis_blocks = vec![];
-        for i in 0..factory_config.thread_count {
+        for i in 0..factory_config.thread_count.get() {
             let block = create_empty_block(producer_keypair, &Slot::new(0, i));
             genesis_blocks.push((block.id, 0));
             storage.store_block(block);

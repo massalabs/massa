@@ -53,7 +53,7 @@ pub(crate) fn perform_draws(
     let mut cycle_draws = CycleDraws {
         cycle,
         draws: HashMap::with_capacity(
-            (cfg.periods_per_cycle as usize) * (cfg.thread_count as usize),
+            (cfg.periods_per_cycle as usize) * (cfg.thread_count.get() as usize),
         ),
     };
 

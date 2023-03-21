@@ -50,9 +50,9 @@ impl OperationPool {
     ) -> Self {
         OperationPool {
             operations: Default::default(),
-            sorted_ops_per_thread: vec![Default::default(); config.thread_count as usize],
+            sorted_ops_per_thread: vec![Default::default(); config.thread_count.get() as usize],
             ops_per_expiration: Default::default(),
-            last_cs_final_periods: vec![0u64; config.thread_count as usize],
+            last_cs_final_periods: vec![0u64; config.thread_count.get() as usize],
             config,
             storage: storage.clone_without_refs(),
             execution_controller,

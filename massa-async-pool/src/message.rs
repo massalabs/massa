@@ -22,6 +22,7 @@ use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU8;
 use std::ops::Bound::{Excluded, Included};
 
 /// Unique identifier of a message.
@@ -98,11 +99,11 @@ pub struct AsyncMessageIdDeserializer {
 }
 
 impl AsyncMessageIdDeserializer {
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new(thread_count: NonZeroU8) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
@@ -135,7 +136,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
-    /// let deserializer = AsyncMessageIdDeserializer::new(10);
+    /// let deserializer = AsyncMessageIdDeserializer::new(10.try_into().unwrap());
     /// serializer.serialize(&id, &mut serialized).unwrap();
     /// let (rest, id_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -463,11 +464,11 @@ pub struct AsyncMessageDeserializer {
 }
 
 impl AsyncMessageDeserializer {
-    pub fn new(thread_count: u8, max_async_message_data: u64, max_key_length: u32) -> Self {
+    pub fn new(thread_count: NonZeroU8, max_async_message_data: u64, max_key_length: u32) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -518,7 +519,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&message, &mut serialized).unwrap();
-    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000, 255);
+    /// let message_deserializer = AsyncMessageDeserializer::new(32.try_into().unwrap(), 100000, 255);
     /// // dbg!(&serialized);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

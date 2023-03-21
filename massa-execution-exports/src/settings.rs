@@ -6,7 +6,7 @@ use massa_models::amount::Amount;
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
 use num::rational::Ratio;
-use std::path::PathBuf;
+use std::{num::NonZeroU8, path::PathBuf};
 
 /// Storage cost constants
 #[derive(Debug, Clone, Copy)]
@@ -31,7 +31,7 @@ pub struct ExecutionConfig {
     /// maximum gas per block
     pub max_gas_per_block: u64,
     /// number of threads
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// price of a roll inside the network
     pub roll_price: Amount,
     /// extra lag to add on the execution cursor to improve performance

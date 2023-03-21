@@ -38,12 +38,12 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
 
             let mut keypair = KeyPair::generate();
             let mut address = Address::from_public_key(&keypair.get_public_key());
-            let mut thread = address.get_thread(2);
+            let mut thread = address.get_thread(2.try_into().unwrap());
 
             while thread != 0 {
                 keypair = KeyPair::generate();
                 address = Address::from_public_key(&keypair.get_public_key());
-                thread = address.get_thread(2);
+                thread = address.get_thread(2.try_into().unwrap());
             }
 
             // block with ok operation
@@ -148,12 +148,12 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             let mut keypair = KeyPair::generate();
             let mut address = Address::from_public_key(&keypair.get_public_key());
-            let mut thread = address.get_thread(2);
+            let mut thread = address.get_thread(2.try_into().unwrap());
 
             while thread != 0 {
                 keypair = KeyPair::generate();
                 address = Address::from_public_key(&keypair.get_public_key());
-                thread = address.get_thread(2);
+                thread = address.get_thread(2.try_into().unwrap());
             }
 
             // block with ok operation

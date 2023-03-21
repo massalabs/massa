@@ -59,7 +59,7 @@ impl FinalState {
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-        let slot = Slot::new(0, config.thread_count.saturating_sub(1));
+        let slot = Slot::new(0, config.thread_count.get() - 1);
 
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
@@ -84,7 +84,7 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        self.slot = Slot::new(0, self.config.thread_count.get() - 1);
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();

@@ -218,7 +218,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         asked_operations_pruning_period: 500.into(),
         operation_announcement_interval: 150.into(),
         max_operations_per_message: 1024,
-        thread_count: 32,
+        thread_count: 32.try_into().unwrap(),
         max_serialized_operations_size_per_block: 1024,
         controller_channel_size: 1024,
         event_channel_size: 1024,

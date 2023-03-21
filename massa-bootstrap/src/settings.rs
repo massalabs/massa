@@ -4,7 +4,7 @@ use massa_models::block::BlockDeserializerArgs;
 use massa_models::node::NodeId;
 use massa_time::MassaTime;
 use serde::Deserialize;
-use std::{net::SocketAddr, path::PathBuf};
+use std::{net::SocketAddr, num::NonZeroU8, path::PathBuf};
 
 use substruct::SubStruct;
 
@@ -64,7 +64,7 @@ pub struct BootstrapConfig {
     /// max bootstrap message size in bytes
     pub max_bootstrap_message_size: u32,
     /// thread count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// period per cycle
     pub periods_per_cycle: u64,
     /// max datastore key length
@@ -130,7 +130,7 @@ pub struct BootstrapConfig {
 pub struct BootstrapSrvBindCfg {
     pub max_bytes_read_write: f64,
     pub max_bootstrap_message_size: u32,
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     pub max_datastore_key_length: u8,
     pub randomness_size_bytes: usize,
     pub consensus_bootstrap_part_size: u64,
@@ -148,7 +148,7 @@ pub struct BootstrapClientConfig {
     pub max_advertise_length: u32,
     pub max_bootstrap_blocks_length: u32,
     pub max_operations_per_block: u32,
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     pub randomness_size_bytes: usize,
     pub max_bootstrap_error_length: u64,
     pub max_bootstrap_final_state_parts_size: u64,
@@ -172,7 +172,7 @@ pub struct BootstrapClientConfig {
 #[derive(SubStruct)]
 #[parent(type = "BootstrapClientConfig")]
 pub struct BootstrapServerMessageDeserializerArgs {
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     pub endorsement_count: u32,
     pub max_advertise_length: u32,
     pub max_bootstrap_blocks_length: u32,

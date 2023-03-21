@@ -7,6 +7,7 @@ use massa_serialization::{
 };
 use nom::error::{context, ContextError, ParseError};
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU8;
 use std::ops::{Bound, RangeBounds};
 use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
@@ -169,7 +170,7 @@ impl Slot {
     pub fn new_last_of_cycle(
         cycle: u64,
         periods_per_cycle: u64,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -> Result<Slot, ModelsError> {
         let period = cycle
             .checked_mul(periods_per_cycle)
@@ -178,7 +179,7 @@ impl Slot {
             .ok_or(ModelsError::PeriodOverflowError)?;
         Ok(Slot {
             period,
-            thread: thread_count.saturating_sub(1),
+            thread: thread_count.get() - 1,
         })
     }
 
@@ -199,10 +200,10 @@ impl Slot {
     }
 
     /// returns the maximal slot
-    pub const fn max(thread_count: u8) -> Slot {
+    pub const fn max(thread_count: NonZeroU8) -> Slot {
         Slot {
             period: u64::MAX,
-            thread: thread_count.saturating_sub(1),
+            thread: thread_count.get() - 1,
         }
     }
 
@@ -217,9 +218,9 @@ impl Slot {
     }
 
     /// check if the slot is last in the cycle
-    pub fn is_last_of_cycle(&self, periods_per_cycle: u64, thread_count: u8) -> bool {
+    pub fn is_last_of_cycle(&self, periods_per_cycle: u64, thread_count: NonZeroU8) -> bool {
         self.period % periods_per_cycle == (periods_per_cycle - 1)
-            && self.thread == (thread_count - 1)
+            && self.thread == (thread_count.get() - 1)
     }
 
     /// check if the slot is first in the cycle
@@ -267,12 +268,12 @@ impl Slot {
     /// ```rust
     /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,3);
-    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(10, 4));
+    /// assert_eq!(slot.get_next_slot(5.try_into().unwrap()).unwrap(), Slot::new(10, 4));
     /// let slot = Slot::new(10,4);
-    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0));
+    /// assert_eq!(slot.get_next_slot(5.try_into().unwrap()).unwrap(), Slot::new(11, 0));
     /// ```
-    pub fn get_next_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
-        if self.thread.saturating_add(1u8) >= thread_count {
+    pub fn get_next_slot(&self, thread_count: NonZeroU8) -> Result<Slot, ModelsError> {
+        if self.thread.saturating_add(1u8) >= thread_count.get() {
             Ok(Slot::new(
                 self.period
                     .checked_add(1u64)
@@ -295,18 +296,18 @@ impl Slot {
     /// ```rust
     /// # use massa_models::slot::Slot;
     /// let slot = Slot::new(10,1);
-    /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(10, 0));
+    /// assert_eq!(slot.get_prev_slot(5.try_into().unwrap()).unwrap(), Slot::new(10, 0));
     /// let slot = Slot::new(10,0);
-    /// assert_eq!(slot.get_prev_slot(5).unwrap(), Slot::new(9, 4));
+    /// assert_eq!(slot.get_prev_slot(5.try_into().unwrap()).unwrap(), Slot::new(9, 4));
     /// ```
-    pub fn get_prev_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
+    pub fn get_prev_slot(&self, thread_count: NonZeroU8) -> Result<Slot, ModelsError> {
         match self.thread.checked_sub(1u8) {
             Some(t) => Ok(Slot::new(self.period, t)),
             None => Ok(Slot::new(
                 self.period
                     .checked_sub(1)
                     .ok_or(ModelsError::PeriodOverflowError)?,
-                thread_count.saturating_sub(1),
+                thread_count.get() - 1,
             )),
         }
     }
@@ -314,7 +315,7 @@ impl Slot {
     /// Counts the number of slots since the one passed in parameter and until self
     /// If the two slots are equal, the returned value is `0`.
     /// If the passed slot is strictly higher than self, an error is returned
-    pub fn slots_since(&self, s: &Slot, thread_count: u8) -> Result<u64, ModelsError> {
+    pub fn slots_since(&self, s: &Slot, thread_count: NonZeroU8) -> Result<u64, ModelsError> {
         // if s > self, return an error
         if s > self {
             return Err(ModelsError::PeriodOverflowError);
@@ -322,7 +323,7 @@ impl Slot {
 
         // compute the number of slots from s to self
         Ok((self.period - s.period)
-            .checked_mul(thread_count as u64)
+            .checked_mul(thread_count.get() as u64)
             .ok_or(ModelsError::PeriodOverflowError)?
             .checked_add(self.thread as u64)
             .ok_or(ModelsError::PeriodOverflowError)?

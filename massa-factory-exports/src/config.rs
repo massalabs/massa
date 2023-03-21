@@ -2,13 +2,15 @@
 
 //! This file defines the factory settings
 
+use std::num::NonZeroU8;
+
 use massa_time::MassaTime;
 
 /// Structure defining the settings of the factory
 #[derive(Debug, Clone)]
 pub struct FactoryConfig {
     /// number of threads
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
 
     /// genesis timestamp
     pub genesis_timestamp: MassaTime,

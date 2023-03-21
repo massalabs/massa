@@ -13,7 +13,7 @@
 //!
 //! A parallel file with the same constant definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
-use std::str::FromStr;
+use std::{num::NonZeroU8, str::FromStr};
 
 use crate::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
 use massa_signature::KeyPair;
@@ -86,7 +86,9 @@ pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
-pub const THREAD_COUNT: u8 = 32;
+/// # Safety
+/// This is guaranteed to be safe if the value is non-zero
+pub const THREAD_COUNT: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(32) };
 /// Number of endorsement
 pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
@@ -155,7 +157,8 @@ pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
 /// Maximum size of parameters in call SC
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of `rng_seed` in thread cycle
-pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
+pub const MAX_RNG_SEED_LENGTH: u32 =
+    PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT.get() as u64) as u32;
 // ***********************
 // Bootstrap constants
 //
@@ -229,7 +232,7 @@ pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantis
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {
-    assert!(THREAD_COUNT > 1);
+    assert!(THREAD_COUNT.get() > 1);
     assert!((T0).to_millis() >= 1);
-    assert!((T0).to_millis() % (THREAD_COUNT as u64) == 0);
+    assert!((T0).to_millis() % (THREAD_COUNT.get() as u64) == 0);
 };

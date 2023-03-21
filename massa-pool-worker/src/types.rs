@@ -4,8 +4,8 @@ use massa_models::{
     operation::{OperationId, SecureShareOperation},
 };
 use num::rational::Ratio;
-use std::cmp::Reverse;
 use std::ops::RangeInclusive;
+use std::{cmp::Reverse, num::NonZeroU8};
 
 pub type OperationCursorInner = (Reverse<Ratio<u64>>, OperationId);
 /// A cursor for pool operations, sorted by increasing quality
@@ -43,7 +43,7 @@ impl OperationInfo {
         op: &SecureShareOperation,
         operation_validity_periods: u64,
         roll_price: Amount,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -> Self {
         OperationInfo {
             id: op.id,

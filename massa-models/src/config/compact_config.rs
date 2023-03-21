@@ -2,7 +2,7 @@ use super::*;
 use crate::amount::Amount;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{fmt::Display, num::NonZeroU8};
 
 /// Compact representation of key values of consensus algorithm used in API
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
@@ -12,7 +12,7 @@ pub struct CompactConfig {
     /// TESTNET: time when the blockclique is ended.
     pub end_timestamp: Option<MassaTime>,
     /// Number of threads
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// Time between the periods in the same thread.
     pub t0: MassaTime,
     /// Threshold for fitness.

@@ -60,7 +60,7 @@ lazy_static::lazy_static! {
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
-    let thread_count = 2;
+    let thread_count = 2.try_into().unwrap();
     let periods_per_cycle = 2;
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();

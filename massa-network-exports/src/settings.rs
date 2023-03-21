@@ -3,7 +3,10 @@
 use enum_map::EnumMap;
 use massa_time::MassaTime;
 use serde::Deserialize;
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    num::NonZeroU8,
+};
 
 use crate::peers::PeerType;
 
@@ -63,7 +66,7 @@ pub struct NetworkConfig {
     /// Max operations per block
     pub max_operations_per_block: u32,
     /// Thread count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// Endorsement count
     pub endorsement_count: u32,
     /// Max peer advertise length

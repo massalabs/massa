@@ -11,6 +11,7 @@ use massa_pos_exports::{DeferredCredits, PoSChanges, ProductionStats};
 use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::collections::{BTreeMap, HashMap};
+use std::num::NonZeroU8;
 use std::sync::Arc;
 
 /// Speculative state of the rolls
@@ -104,7 +105,7 @@ impl SpeculativeRollState {
         slot: Slot,
         roll_count: u64,
         periods_per_cycle: u64,
-        thread_count: u8,
+        thread_count: NonZeroU8,
         roll_price: Amount,
     ) -> Result<(), ExecutionError> {
         // fetch the roll count from: current changes > active history > final state
@@ -186,7 +187,7 @@ impl SpeculativeRollState {
         &mut self,
         slot: &Slot,
         periods_per_cycle: u64,
-        thread_count: u8,
+        thread_count: NonZeroU8,
         roll_price: Amount,
         max_miss_ratio: Ratio<u64>,
     ) {
@@ -423,7 +424,7 @@ impl SpeculativeRollState {
         &self,
         cycle: u64,
         periods_per_cycle: u64,
-        thread_count: u8,
+        thread_count: NonZeroU8,
         cur_slot: &Slot,
     ) -> (PreHashMap<Address, ProductionStats>, bool) {
         let mut accumulated_stats: PreHashMap<Address, ProductionStats> = Default::default();

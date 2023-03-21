@@ -72,7 +72,9 @@ impl SlotSequencer {
     pub fn new(config: ExecutionConfig, final_cursor: Slot) -> Self {
         SlotSequencer {
             sequence: Default::default(),
-            latest_css_final_slots: (0..config.thread_count).map(|t| Slot::new(0, t)).collect(),
+            latest_css_final_slots: (0..config.thread_count.get())
+                .map(|t| Slot::new(0, t))
+                .collect(),
             latest_sce_final_slot: final_cursor,
             latest_executed_final_slot: final_cursor,
             latest_executed_candidate_slot: final_cursor,
@@ -731,7 +733,7 @@ impl SlotSequencer {
                 .saturating_add(
                     self.config
                         .t0
-                        .checked_div_u64(self.config.thread_count as u64)
+                        .checked_div_u64(self.config.thread_count.get() as u64)
                         .unwrap(),
                 );
         }

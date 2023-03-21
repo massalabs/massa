@@ -21,7 +21,7 @@ use nom::{
 };
 use nom::{error::context, IResult, Parser};
 use serde::{Deserialize, Serialize};
-use std::ops::Bound::Included;
+use std::{num::NonZeroU8, ops::Bound::Included};
 
 /// Exportable version of `ActiveBlock`
 /// Fields that can be easily recomputed were left out
@@ -57,7 +57,7 @@ impl ExportActiveBlock {
     pub fn to_active_block(
         self,
         ref_storage: &Storage,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -> Result<(ActiveBlock, Storage), ConsensusError> {
         // create resulting storage
         let mut storage = ref_storage.clone_without_refs();
@@ -73,7 +73,7 @@ impl ExportActiveBlock {
             creator_address: self.block.content_creator_address,
             block_id: self.block.id,
             parents: self.parents.clone(),
-            children: vec![PreHashMap::default(); thread_count as usize], // will be computed once the full graph is available
+            children: vec![PreHashMap::default(); thread_count.get() as usize], // will be computed once the full graph is available
             descendants: Default::default(), // will be computed once the full graph is available
             is_final: self.is_final,
             slot: self.block.content.header.content.slot,
@@ -133,7 +133,7 @@ pub struct ExportActiveBlockDeserializer {
     sec_share_block_deserializer: SecureShareDeserializer<Block, BlockDeserializer>,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
-    thread_count: u8,
+    thread_count: NonZeroU8,
 }
 
 impl ExportActiveBlockDeserializer {
@@ -167,7 +167,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
+    /// let parents = (0..THREAD_COUNT.try_into().unwrap())
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();
     ///
@@ -221,7 +221,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
     /// let args = BlockDeserializerArgs {
-    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000};
+    ///   thread_count: 32.try_into().unwrap(), max_operations_per_block: 16, endorsement_count: 1000};
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
@@ -256,7 +256,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                                         self.period_deserializer.deserialize(input)
                                     }),
                                 )),
-                                self.thread_count as usize,
+                                self.thread_count.get() as usize,
                             ),
                         ),
                     )),

@@ -2,6 +2,7 @@
 
 use massa_time::MassaTime;
 use std::net::SocketAddr;
+use std::num::NonZeroU8;
 use std::path::PathBuf;
 
 use serde::Deserialize;
@@ -59,7 +60,7 @@ pub struct APIConfig {
     /// max parameter size
     pub max_parameter_size: u32,
     /// thread count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// `genesis_timestamp`
     pub genesis_timestamp: MassaTime,
     /// t0

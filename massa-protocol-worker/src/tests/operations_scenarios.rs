@@ -441,7 +441,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.get_public_key());
-            let thread = address.get_thread(2);
+            let thread = address.get_thread(2.try_into().unwrap());
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
 
@@ -692,7 +692,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let operation = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             let address = Address::from_public_key(&creator_node.id.get_public_key());
-            let thread = address.get_thread(2);
+            let thread = address.get_thread(2.try_into().unwrap());
 
             // 2. Create a block coming from node creator_node, and including the operation.
             let block = tools::create_block_with_operations(

@@ -18,6 +18,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::convert::TryInto;
 use std::net::SocketAddr;
+use std::num::NonZeroU8;
 use std::thread;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -29,7 +30,7 @@ use tracing::error;
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
-    thread_count: u8,
+    thread_count: NonZeroU8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     size_field_len: usize,

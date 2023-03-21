@@ -223,7 +223,8 @@ impl ConsensusState {
         &self,
         slot: Slot,
     ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
-        let mut latest: Vec<Option<(BlockId, u64)>> = vec![None; self.config.thread_count as usize];
+        let mut latest: Vec<Option<(BlockId, u64)>> =
+            vec![None; self.config.thread_count.get() as usize];
         for id in self.active_index.iter() {
             let (block, _storage) = self.try_get_full_active_block(id)?;
             if let Some((_, p)) = latest[block.slot.thread as usize] && block.slot.period < p {
@@ -256,7 +257,7 @@ impl ConsensusState {
         end_slot: Option<Slot>,
     ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
         let mut earliest: Vec<Option<(BlockId, u64)>> =
-            vec![None; self.config.thread_count as usize];
+            vec![None; self.config.thread_count.get() as usize];
         for id in block_ids {
             let (block, _storage) = self.try_get_full_active_block(id)?;
             if let Some(slot) = end_slot && block.slot > slot {

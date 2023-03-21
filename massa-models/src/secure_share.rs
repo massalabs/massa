@@ -346,7 +346,7 @@ where
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = SecureShareSerializer::new().serialize(&secured, &mut serialized_data).unwrap();
-    /// let deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1));
+    /// let deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(32.try_into().unwrap(), 1));
     /// let (rest, deserialized): (&[u8], SecureShare<Endorsement, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(secured.id, deserialized.id);

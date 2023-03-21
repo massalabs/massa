@@ -13,6 +13,7 @@ use nom::error::{context, ContextError, ParseError};
 use nom::sequence::preceded;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU8;
 use std::ops::Bound::Included;
 use std::str::FromStr;
 
@@ -211,9 +212,9 @@ impl PreHashed for Address {}
 
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
-    pub fn get_thread(&self, thread_count: u8) -> u8 {
+    pub fn get_thread(&self, thread_count: NonZeroU8) -> u8 {
         (self.hash_bytes()[0])
-            .checked_shr(8 - thread_count.trailing_zeros())
+            .checked_shr(8 - thread_count.get().trailing_zeros())
             .unwrap_or(0)
     }
 

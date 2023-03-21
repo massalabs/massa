@@ -694,10 +694,10 @@ impl Interface for InterfaceImpl {
         data: &[u8],
         filter: Option<(&str, Option<&[u8]>)>,
     ) -> Result<()> {
-        if validity_start.1 >= self.config.thread_count {
+        if validity_start.1 >= self.config.thread_count.get() {
             bail!("validity start thread exceeds the configuration thread count")
         }
-        if validity_end.1 >= self.config.thread_count {
+        if validity_end.1 >= self.config.thread_count.get() {
             bail!("validity end thread exceeds the configuration thread count")
         }
         let mut execution_context = context_guard!(self);

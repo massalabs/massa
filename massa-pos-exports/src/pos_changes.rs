@@ -1,3 +1,5 @@
+use std::num::NonZeroU8;
+
 use crate::{
     DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
     ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
@@ -128,7 +130,7 @@ pub struct PoSChangesDeserializer {
 impl PoSChangesDeserializer {
     /// Create a new `PoSChanges` Deserializer
     pub fn new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_rolls_length: u64,
         max_production_stats_length: u64,
         max_credits_length: u64,

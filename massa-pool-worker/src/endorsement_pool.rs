@@ -31,9 +31,9 @@ pub struct EndorsementPool {
 impl EndorsementPool {
     pub fn init(config: PoolConfig, storage: &Storage) -> Self {
         EndorsementPool {
-            last_cs_final_periods: vec![0u64; config.thread_count as usize],
+            last_cs_final_periods: vec![0u64; config.thread_count.get() as usize],
             endorsements_indexed: Default::default(),
-            endorsements_sorted: vec![Default::default(); config.thread_count as usize],
+            endorsements_sorted: vec![Default::default(); config.thread_count.get() as usize],
             config,
             storage: storage.clone_without_refs(),
         }
@@ -56,7 +56,7 @@ impl EndorsementPool {
 
         // remove all endorsements whose periods <= last_cs_final_periods[endorsement.thread]
         let mut removed: PreHashSet<EndorsementId> = Default::default();
-        for thread in 0..self.config.thread_count {
+        for thread in 0..self.config.thread_count.get() {
             while let Some((&(inclusion_slot, index, block_id), &endo_id)) =
                 self.endorsements_sorted[thread as usize].first_key_value()
             {
@@ -120,7 +120,7 @@ impl EndorsementPool {
         }
 
         // prune excess endorsements
-        for thread in 0..self.config.thread_count {
+        for thread in 0..self.config.thread_count.get() {
             while self.endorsements_sorted[thread as usize].len()
                 > self.config.max_endorsements_pool_size_per_thread
             {

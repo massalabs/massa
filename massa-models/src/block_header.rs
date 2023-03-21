@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::Bound::{Excluded, Included};
 use std::collections::HashSet;
 use std::fmt::Formatter;
+use std::num::NonZeroU8;
 
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,7 +50,7 @@ impl BlockHeader {
                 return Err("Invariant broken: genesis block with endorsement(s)".into());
             }
         } else {
-            if self.parents.len() != crate::config::THREAD_COUNT as usize {
+            if self.parents.len() != crate::config::THREAD_COUNT.get() as usize {
                 return Err(
                     "Invariant broken: non-genesis block with incorrect number of parents".into(),
                 );
@@ -153,7 +154,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     /// use massa_serialization::Serializer;
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..THREAD_COUNT)
+    /// let parents = (0..THREAD_COUNT.get())
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
@@ -224,17 +225,17 @@ pub struct BlockHeaderDeserializer {
     endorsement_serializer: EndorsementSerializer,
     length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
-    thread_count: u8,
+    thread_count: NonZeroU8,
     endorsement_count: u32,
 }
 
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializerLW`
-    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    pub const fn new(thread_count: NonZeroU8, endorsement_count: u32) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(thread_count.get())),
             ),
             endorsement_serializer: EndorsementSerializer::new(),
             length_endorsements_deserializer: U32VarIntDeserializer::new(
@@ -260,7 +261,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
+    /// let parents: Vec<BlockId> = (0..THREAD_COUNT.get())
     ///   .map(|i| BlockId(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
@@ -292,7 +293,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32.try_into().unwrap(), 9).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
@@ -320,7 +321,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                                             .deserialize(input)
                                             .map(|(rest, hash)| (rest, BlockId(hash)))
                                     }),
-                                    self.thread_count as usize,
+                                    self.thread_count.get() as usize,
                                 ),
                             ),
                         )),
@@ -335,12 +336,12 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                         "Genesis block cannot contain parents",
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
-                } else if slot.period != 0 && parents.len() != THREAD_COUNT as usize {
+                } else if slot.period != 0 && parents.len() != THREAD_COUNT.get() as usize {
                     return Err(nom::Err::Failure(ContextError::add_context(
                         rest,
                         const_format::formatcp!(
                             "Non-genesis block must have {} parents",
-                            THREAD_COUNT
+                            THREAD_COUNT.get()
                         ),
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));

@@ -20,7 +20,6 @@ use rocksdb::{
     ColumnFamily, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
     WriteBatch, DB,
 };
-use std::ops::Bound;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::{collections::BTreeMap, fmt::Debug};
@@ -28,6 +27,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     convert::TryInto,
 };
+use std::{num::NonZeroU8, ops::Bound};
 
 #[cfg(feature = "testing")]
 use massa_models::amount::{Amount, AmountDeserializer};
@@ -70,7 +70,7 @@ impl LedgerSubEntry {
 /// Contains a `RocksDB` DB instance
 pub(crate) struct LedgerDB {
     db: DB,
-    thread_count: u8,
+    thread_count: NonZeroU8,
     key_serializer: KeySerializer,
     key_serializer_db: KeySerializer,
     key_deserializer: KeyDeserializer,
@@ -117,7 +117,7 @@ impl LedgerDB {
     /// * path: path to the desired disk ledger db directory
     pub fn new(
         path: PathBuf,
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_datastore_key_length: u8,
         ledger_part_size_message_bytes: u64,
     ) -> Self {
@@ -166,10 +166,7 @@ impl LedgerDB {
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
         }
-        self.set_slot(
-            Slot::new(0, self.thread_count.saturating_sub(1)),
-            &mut batch,
-        );
+        self.set_slot(Slot::new(0, self.thread_count.get() - 1), &mut batch);
         self.write_batch(batch);
     }
 
@@ -770,7 +767,12 @@ mod tests {
 
         // write data
         let temp_dir = TempDir::new().unwrap();
-        let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
+        let mut db = LedgerDB::new(
+            temp_dir.path().to_path_buf(),
+            32.try_into().unwrap(),
+            255,
+            1_000_000,
+        );
         let mut batch = LedgerBatch::new(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES));
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);

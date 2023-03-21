@@ -6,7 +6,10 @@ use massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId,
     prehash::PreHashMap, slot::Slot,
 };
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    num::NonZeroU8,
+};
 
 #[derive(Default)]
 /// History of the outputs of recently executed slots.
@@ -35,7 +38,7 @@ pub enum SlotIndexPosition {
 
 impl ActiveHistory {
     /// Remove `slot` and the slots after it from history
-    pub fn truncate_from(&mut self, slot: &Slot, thread_count: u8) {
+    pub fn truncate_from(&mut self, slot: &Slot, thread_count: NonZeroU8) {
         match self.get_slot_index(slot, thread_count) {
             SlotIndexPosition::Past => self.0.clear(),
             SlotIndexPosition::Found(index) => self.0.truncate(index),
@@ -181,7 +184,7 @@ impl ActiveHistory {
     }
 
     /// Gets the index of a slot in history
-    pub fn get_slot_index(&self, slot: &Slot, thread_count: u8) -> SlotIndexPosition {
+    pub fn get_slot_index(&self, slot: &Slot, thread_count: NonZeroU8) -> SlotIndexPosition {
         let first_slot = match self.0.front() {
             Some(itm) => &itm.slot,
             None => return SlotIndexPosition::NoHistory,
@@ -217,7 +220,7 @@ impl ActiveHistory {
         &self,
         cycle: u64,
         periods_per_cycle: u64,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -> (std::ops::Range<usize>, bool, bool) {
         // Get first and last slots indices of cycle in history. We consider overflows as "Future"
         let first_index = Slot::new_first_of_cycle(cycle, periods_per_cycle).map_or_else(

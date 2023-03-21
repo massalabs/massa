@@ -497,13 +497,13 @@ mod tests {
         let keypair = KeyPair::generate();
 
         let slot = Slot::new(2, 1);
-        let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
+        let parents_1: Vec<BlockId> = (0..THREAD_COUNT.get())
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
-        let parents_2: Vec<BlockId> = (0..THREAD_COUNT)
+        let parents_2: Vec<BlockId> = (0..THREAD_COUNT.get())
             .map(|i| BlockId(Hash::compute_from(&[i + 1])))
             .collect();
-        let parents_3: Vec<BlockId> = (0..THREAD_COUNT)
+        let parents_3: Vec<BlockId> = (0..THREAD_COUNT.get())
             .map(|i| BlockId(Hash::compute_from(&[i + 2])))
             .collect();
 

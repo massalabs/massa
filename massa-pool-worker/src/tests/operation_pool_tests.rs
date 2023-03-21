@@ -46,7 +46,7 @@ fn test_add_irrelevant_operation() {
     operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
         let op_gen = OpGenerator::default().expirery(2);
         storage.store_operations(create_some_operations(10, &op_gen));
-        operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
+        operation_pool.notify_final_cs_periods(&vec![51; thread_count.get().into()]);
         operation_pool.add_operations(storage);
         // Allow some time for the pool to add the operations
         std::thread::sleep(Duration::from_millis(100));
@@ -62,7 +62,7 @@ fn test_pool() {
         pool_config,
         |mut pool_manager, mut pool, execution_receiver, storage_base| {
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); pool_config.thread_count.get() as usize];
 
             let mut storage = storage_base.clone_without_refs();
             for i in 0..18 {
@@ -129,7 +129,7 @@ fn test_pool() {
             });
 
             // checks ops are the expected ones for thread 0 and 1 and various periods
-            for thread in 0u8..pool_config.thread_count {
+            for thread in 0u8..pool_config.thread_count.get() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let (ids, storage) = pool.get_block_operations(&target_slot);
@@ -158,7 +158,10 @@ fn test_pool() {
             // op ending before or at period 45 won't appear in the block due to incompatible validity range
             // we don't keep them as expected ops
             let final_period = 45u64;
-            pool.notify_final_cs_periods(&vec![final_period; pool_config.thread_count as usize]);
+            pool.notify_final_cs_periods(&vec![
+                final_period;
+                pool_config.thread_count.get() as usize
+            ]);
             // Wait for pool to manage the above command
             std::thread::sleep(Duration::from_millis(200));
             for lst in thread_tx_lists.iter_mut() {
@@ -166,7 +169,7 @@ fn test_pool() {
             }
 
             // checks ops are the expected ones for thread 0 and 1 and various periods
-            for thread in 0u8..pool_config.thread_count {
+            for thread in 0u8..pool_config.thread_count.get() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;

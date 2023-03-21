@@ -92,8 +92,8 @@ impl ConsensusWorker {
 
         // load genesis blocks
         let mut block_statuses = PreHashMap::default();
-        let mut genesis_block_ids = Vec::with_capacity(config.thread_count as usize);
-        for thread in 0u8..config.thread_count {
+        let mut genesis_block_ids = Vec::with_capacity(config.thread_count.get() as usize);
+        for thread in 0u8..config.thread_count.get() {
             let block = create_genesis_block(&config, thread).map_err(|err| {
                 ConsensusError::GenesisCreationError(format!("genesis error {}", err))
             })?;
@@ -106,7 +106,7 @@ impl ConsensusWorker {
                     a_block: Box::new(ActiveBlock {
                         creator_address: block.content_creator_address,
                         parents: Vec::new(),
-                        children: vec![PreHashMap::default(); config.thread_count as usize],
+                        children: vec![PreHashMap::default(); config.thread_count.get() as usize],
                         descendants: Default::default(),
                         is_final: true,
                         block_id: block.id,
@@ -151,7 +151,7 @@ impl ConsensusWorker {
         // add genesis blocks to stats
         let genesis_addr = Address::from_public_key(&config.genesis_key.get_public_key());
         let mut final_block_stats = VecDeque::new();
-        for thread in 0..config.thread_count {
+        for thread in 0..config.thread_count.get() {
             final_block_stats.push_back((
                 get_block_slot_timestamp(
                     config.thread_count,
@@ -281,7 +281,7 @@ impl ConsensusWorker {
 
                 if !a_block.is_final {
                     // note: parents of final blocks will be missing, that's ok, but it shouldn't be the case for non-finals
-                    if n_claimed_parents != self.config.thread_count as usize {
+                    if n_claimed_parents != self.config.thread_count.get() as usize {
                         return Err(ConsensusError::MissingBlock(
                             "block storage could not claim refs to all parent blocks".into(),
                         ));

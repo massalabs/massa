@@ -72,7 +72,7 @@ impl ConsensusState {
             "block_id": block_id
         });
         let mut parents: Vec<(BlockId, u64)> =
-            Vec::with_capacity(self.config.thread_count as usize);
+            Vec::with_capacity(self.config.thread_count.get() as usize);
         let mut incomp = PreHashSet::<BlockId>::default();
         let mut missing_deps = PreHashSet::<BlockId>::default();
         let creator_addr = header.content_creator_address;
@@ -125,7 +125,7 @@ impl ConsensusState {
 
         // list parents and ensure they are present
         let parent_set: PreHashSet<BlockId> = header.content.parents.iter().copied().collect();
-        for parent_thread in 0u8..self.config.thread_count {
+        for parent_thread in 0u8..self.config.thread_count.get() {
             let parent_hash = header.content.parents[parent_thread as usize];
             match read_shared_state.block_statuses.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
@@ -183,8 +183,8 @@ impl ConsensusState {
 
         // check the topological consistency of the parents
         {
-            let mut gp_max_slots = vec![0u64; self.config.thread_count as usize];
-            for parent_i in 0..self.config.thread_count {
+            let mut gp_max_slots = vec![0u64; self.config.thread_count.get() as usize];
+            for parent_i in 0..self.config.thread_count.get() {
                 let (parent_h, parent_period) = parents[parent_i as usize];
                 let parent = match read_shared_state.block_statuses.get(&parent_h) {
                     Some(BlockStatus::Active {
@@ -210,7 +210,7 @@ impl ConsensusState {
                     // genesis
                     continue;
                 }
-                for gp_i in 0..self.config.thread_count {
+                for gp_i in 0..self.config.thread_count.get() {
                     if gp_i == parent_i {
                         continue;
                     }
@@ -277,7 +277,9 @@ impl ConsensusState {
             })?;
 
         // grandpa incompatibility test
-        for tau in (0u8..self.config.thread_count).filter(|&t| t != header.content.slot.thread) {
+        for tau in
+            (0u8..self.config.thread_count.get()).filter(|&t| t != header.content.slot.thread)
+        {
             // for each parent in a different thread tau
             // traverse parent's descendants in tau
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];

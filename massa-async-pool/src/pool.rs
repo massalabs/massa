@@ -21,8 +21,8 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::{collections::BTreeMap, num::NonZeroU8};
 
 const ASYNC_POOL_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
@@ -302,7 +302,7 @@ pub struct AsyncPoolDeserializer {
 impl AsyncPoolDeserializer {
     /// Creates a new `AsyncPool` deserializer
     pub fn new(
-        thread_count: u8,
+        thread_count: NonZeroU8,
         max_async_pool_length: u64,
         max_async_message_data: u64,
         max_key_length: u32,
@@ -359,7 +359,7 @@ fn test_take_batch() {
     use std::str::FromStr;
 
     let config = AsyncPoolConfig {
-        thread_count: 2,
+        thread_count: 2.try_into().unwrap(),
         max_length: 10,
         max_async_message_data: 1_000_000,
         bootstrap_part_size: 100,

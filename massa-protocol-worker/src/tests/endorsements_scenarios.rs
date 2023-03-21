@@ -273,7 +273,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.get_public_key());
-            let thread = address.get_thread(2);
+            let thread = address.get_thread(2.try_into().unwrap());
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.id;
@@ -347,7 +347,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.get_public_key());
-            let thread = address.get_thread(2);
+            let thread = address.get_thread(2.try_into().unwrap());
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.id;
@@ -420,7 +420,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.get_public_key());
-            let thread = address.get_thread(2);
+            let thread = address.get_thread(2.try_into().unwrap());
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.id;

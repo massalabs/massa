@@ -1,5 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::num::NonZeroU8;
+
 use massa_models::amount::Amount;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct PoolConfig {
     /// thread count
-    pub thread_count: u8,
+    pub thread_count: NonZeroU8,
     /// maximal total block operations size
     pub max_block_size: u32,
     /// maximal gas per block

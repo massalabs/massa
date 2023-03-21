@@ -21,8 +21,8 @@ use nom::{
 };
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::ops::Bound::Included;
+use std::{collections::BTreeMap, num::NonZeroU8};
 
 use crate::PoSChanges;
 
@@ -162,10 +162,10 @@ impl CycleInfo {
         changes: PoSChanges,
         slot: Slot,
         periods_per_cycle: u64,
-        thread_count: u8,
+        thread_count: NonZeroU8,
     ) -> bool {
         let hash_computer = CycleInfoHashComputer::new();
-        let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
+        let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count.get() as u64);
         let mut hash_concat: Vec<u8> = Vec::new();
 
         // compute cycle hash and concat
@@ -261,7 +261,7 @@ fn test_cycle_info_hash_computation() {
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
+    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2.try_into().unwrap());
 
     // update changes once
     roll_changes.clear();
@@ -280,7 +280,7 @@ fn test_cycle_info_hash_computation() {
         production_stats: production_stats.clone(),
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
+    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2.try_into().unwrap());
 
     // update changes twice
     roll_changes.clear();
@@ -299,7 +299,7 @@ fn test_cycle_info_hash_computation() {
         production_stats,
         deferred_credits: DeferredCredits::default(),
     };
-    cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2);
+    cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2.try_into().unwrap());
 
     // create a seconde cycle from same value and match hash
     let cycle_b = CycleInfo::new_with_hash(

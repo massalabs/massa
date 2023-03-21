@@ -52,7 +52,7 @@ impl Default for FinalStateConfig {
                 credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
             },
             final_history_length: 10,
-            thread_count: 2,
+            thread_count: 2.try_into().unwrap(),
             periods_per_cycle: 100,
             initial_rolls_path: PathBuf::new(),
             initial_seed_string: "".to_string(),
