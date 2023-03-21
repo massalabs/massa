@@ -221,7 +221,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
     /// let args = BlockDeserializerArgs {
-    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000};
+    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,last_start_period: 0,};
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);

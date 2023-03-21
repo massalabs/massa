@@ -206,15 +206,15 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
-///
+/// Block Deserializer Args
 pub struct BlockDeserializerArgs {
-    ///
+    /// thread count
     pub thread_count: u8,
-    ///
+    /// max operations per block
     pub max_operations_per_block: u32,
-    ///
+    /// endorsement_count
     pub endorsement_count: u32,
-    ///
+    /// last start period
     pub last_start_period: u64,
 }
 
@@ -295,7 +295,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
-    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9};
+    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9,last_start_period: 0,};
     /// let (rest, res_block) = BlockDeserializer::new(args).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());

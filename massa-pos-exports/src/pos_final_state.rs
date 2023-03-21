@@ -33,7 +33,7 @@ pub struct PoSFinalState {
     pub initial_ledger_hash: Hash,
     /// initial cycle
     pub initial_cycle: u64,
-    ///
+    /// last start period
     pub last_start_period: u64,
 }
 

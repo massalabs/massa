@@ -92,7 +92,7 @@ pub struct NetworkConfig {
     pub node_command_channel_size: usize,
     /// Node event channel size
     pub node_event_channel_size: usize,
-    ///
+    /// last start period
     pub last_start_period: u64,
 }
 

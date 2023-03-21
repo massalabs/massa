@@ -83,11 +83,11 @@ pub enum BootstrapServerMessage {
         consensus_part: BootstrapableGraph,
         /// Outdated block ids in the current consensus graph bootstrap
         consensus_outdated_ids: PreHashSet<BlockId>,
-        ///
+        /// Last start period
         last_start_period: u64,
-        ///
+        /// Initial rolls to use (from genesis or from snapshot)
         initial_rolls: BTreeMap<Address, u64>,
-        ///
+        /// Initial ledger hash to use (from genesis or from snapshot)
         initial_ledger_hash: Hash,
     },
     /// Message sent when the final state and consensus bootstrap are finished

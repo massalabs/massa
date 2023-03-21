@@ -278,7 +278,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9, 0).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
