@@ -485,7 +485,6 @@
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
@@ -507,7 +506,6 @@
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::{DeserializeFromStr, SerializeDisplay};
-<span class="kw">use </span>std::num::NonZeroU8;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 <span class="kw">use </span>std::{fmt::Display, str::FromStr};
 
@@ -643,7 +641,7 @@
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.verify_signature() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
         }
-        <span class="kw">if </span><span class="self">self</span>.content.slot.thread &gt;= <span class="kw">crate</span>::config::THREAD_COUNT.get() {
+        <span class="kw">if </span><span class="self">self</span>.content.slot.thread &gt;= <span class="kw">crate</span>::config::THREAD_COUNT {
             <span class="prelude-val">Err</span>(<span class="string">&quot;Endorsement slot on non-existant thread&quot;</span>.into())
         } <span class="kw">else if </span><span class="self">self</span>.content.index &gt;= <span class="kw">crate</span>::config::ENDORSEMENT_COUNT {
             <span class="prelude-val">Err</span>(<span class="string">&quot;Endorsement index out of range&quot;</span>.into())
@@ -727,11 +725,11 @@
 
 <span class="kw">impl </span>EndorsementDeserializer {
     <span class="doccomment">/// Creates a new `EndorsementDeserializer`
-    </span><span class="kw">pub const fn </span>new(thread_count: NonZeroU8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub const fn </span>new(thread_count: u8, endorsement_count: u32) -&gt; <span class="self">Self </span>{
         EndorsementDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count.get())),
+                (Included(<span class="number">0</span>), Excluded(thread_count)),
             ),
             index_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
@@ -756,7 +754,7 @@
     /// };
     /// let mut buffer = Vec::new();
     /// EndorsementSerializer::new().serialize(&amp;endorsement, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized) = EndorsementDeserializer::new(32.try_into().unwrap(), 10).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, deserialized) = EndorsementDeserializer::new(32, 10).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized.slot, endorsement.slot);
     /// assert_eq!(deserialized.index, endorsement.index);
@@ -938,7 +936,7 @@
             .serialize(<span class="kw-2">&amp;</span>endorsement, <span class="kw-2">&amp;mut </span>ser_endorsement)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) =
-            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>.try_into().unwrap(), <span class="number">1</span>))
+            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">1</span>))
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_endorsement)
                 .unwrap();
         <span class="macro">assert_eq!</span>(res_endorsement, endorsement);

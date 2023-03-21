@@ -7,16 +7,12 @@
 <a href="#7" id="7">7</a>
 <a href="#8" id="8">8</a>
 <a href="#9" id="9">9</a>
-<a href="#10" id="10">10</a>
-<a href="#11" id="11">11</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>std::num::NonZeroU8;
-
-<span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ExecutedOpsConfig {
     <span class="doccomment">/// Number of threads
-    </span><span class="kw">pub </span>thread_count: NonZeroU8,
+    </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// Maximum size of a bootstrap part
     </span><span class="kw">pub </span>bootstrap_part_size: u64,
 }

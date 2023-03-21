@@ -72,8 +72,8 @@
     operation::{OperationId, SecureShareOperation},
 };
 <span class="kw">use </span>num::rational::Ratio;
+<span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::ops::RangeInclusive;
-<span class="kw">use </span>std::{cmp::Reverse, num::NonZeroU8};
 
 <span class="kw">pub type </span>OperationCursorInner = (Reverse&lt;Ratio&lt;u64&gt;&gt;, OperationId);
 <span class="doccomment">/// A cursor for pool operations, sorted by increasing quality
@@ -111,7 +111,7 @@
         op: <span class="kw-2">&amp;</span>SecureShareOperation,
         operation_validity_periods: u64,
         roll_price: Amount,
-        thread_count: NonZeroU8,
+        thread_count: u8,
     ) -&gt; <span class="self">Self </span>{
         OperationInfo {
             id: op.id,

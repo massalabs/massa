@@ -210,7 +210,7 @@
 <span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
-<span class="kw">use </span>std::{net::SocketAddr, num::NonZeroU8, path::PathBuf};
+<span class="kw">use </span>std::{net::SocketAddr, path::PathBuf};
 
 <span class="kw">use </span>substruct::SubStruct;
 
@@ -270,7 +270,7 @@
     <span class="doccomment">/// max bootstrap message size in bytes
     </span><span class="kw">pub </span>max_bootstrap_message_size: u32,
     <span class="doccomment">/// thread count
-    </span><span class="kw">pub </span>thread_count: NonZeroU8,
+    </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// period per cycle
     </span><span class="kw">pub </span>periods_per_cycle: u64,
     <span class="doccomment">/// max datastore key length
@@ -336,7 +336,7 @@
 </span><span class="kw">pub struct </span>BootstrapSrvBindCfg {
     <span class="kw">pub </span>max_bytes_read_write: f64,
     <span class="kw">pub </span>max_bootstrap_message_size: u32,
-    <span class="kw">pub </span>thread_count: NonZeroU8,
+    <span class="kw">pub </span>thread_count: u8,
     <span class="kw">pub </span>max_datastore_key_length: u8,
     <span class="kw">pub </span>randomness_size_bytes: usize,
     <span class="kw">pub </span>consensus_bootstrap_part_size: u64,
@@ -354,7 +354,7 @@
     <span class="kw">pub </span>max_advertise_length: u32,
     <span class="kw">pub </span>max_bootstrap_blocks_length: u32,
     <span class="kw">pub </span>max_operations_per_block: u32,
-    <span class="kw">pub </span>thread_count: NonZeroU8,
+    <span class="kw">pub </span>thread_count: u8,
     <span class="kw">pub </span>randomness_size_bytes: usize,
     <span class="kw">pub </span>max_bootstrap_error_length: u64,
     <span class="kw">pub </span>max_bootstrap_final_state_parts_size: u64,
@@ -378,7 +378,7 @@
 #[derive(SubStruct)]
 #[parent(<span class="kw">type </span>= <span class="string">&quot;BootstrapClientConfig&quot;</span>)]
 </span><span class="kw">pub struct </span>BootstrapServerMessageDeserializerArgs {
-    <span class="kw">pub </span>thread_count: NonZeroU8,
+    <span class="kw">pub </span>thread_count: u8,
     <span class="kw">pub </span>endorsement_count: u32,
     <span class="kw">pub </span>max_advertise_length: u32,
     <span class="kw">pub </span>max_bootstrap_blocks_length: u32,

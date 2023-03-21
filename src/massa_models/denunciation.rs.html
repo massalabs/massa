@@ -1142,13 +1142,13 @@
         <span class="kw">let </span>keypair = KeyPair::generate();
 
         <span class="kw">let </span>slot = Slot::new(<span class="number">2</span>, <span class="number">1</span>);
-        <span class="kw">let </span>parents_1: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT.get())
+        <span class="kw">let </span>parents_1: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
-        <span class="kw">let </span>parents_2: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT.get())
+        <span class="kw">let </span>parents_2: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i + <span class="number">1</span>])))
             .collect();
-        <span class="kw">let </span>parents_3: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT.get())
+        <span class="kw">let </span>parents_3: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i + <span class="number">2</span>])))
             .collect();
 

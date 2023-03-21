@@ -208,9 +208,9 @@
 <span class="kw">impl </span>EndorsementPool {
     <span class="kw">pub fn </span>init(config: PoolConfig, storage: <span class="kw-2">&amp;</span>Storage) -&gt; <span class="self">Self </span>{
         EndorsementPool {
-            last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count.get() <span class="kw">as </span>usize],
+            last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count <span class="kw">as </span>usize],
             endorsements_indexed: Default::default(),
-            endorsements_sorted: <span class="macro">vec!</span>[Default::default(); config.thread_count.get() <span class="kw">as </span>usize],
+            endorsements_sorted: <span class="macro">vec!</span>[Default::default(); config.thread_count <span class="kw">as </span>usize],
             config,
             storage: storage.clone_without_refs(),
         }
@@ -233,7 +233,7 @@
 
         <span class="comment">// remove all endorsements whose periods &lt;= last_cs_final_periods[endorsement.thread]
         </span><span class="kw">let </span><span class="kw-2">mut </span>removed: PreHashSet&lt;EndorsementId&gt; = Default::default();
-        <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count.get() {
+        <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
             <span class="kw">while let </span><span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>(inclusion_slot, index, block_id), <span class="kw-2">&amp;</span>endo_id)) =
                 <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize].first_key_value()
             {
@@ -297,7 +297,7 @@
         }
 
         <span class="comment">// prune excess endorsements
-        </span><span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count.get() {
+        </span><span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
             <span class="kw">while </span><span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize].len()
                 &gt; <span class="self">self</span>.config.max_endorsements_pool_size_per_thread
             {

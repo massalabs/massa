@@ -753,8 +753,6 @@
 <a href="#753" id="753">753</a>
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -829,9 +827,7 @@
     </span><span class="kw">pub fn </span>new(config: ExecutionConfig, final_cursor: Slot) -&gt; <span class="self">Self </span>{
         SlotSequencer {
             sequence: Default::default(),
-            latest_css_final_slots: (<span class="number">0</span>..config.thread_count.get())
-                .map(|t| Slot::new(<span class="number">0</span>, t))
-                .collect(),
+            latest_css_final_slots: (<span class="number">0</span>..config.thread_count).map(|t| Slot::new(<span class="number">0</span>, t)).collect(),
             latest_sce_final_slot: final_cursor,
             latest_executed_final_slot: final_cursor,
             latest_executed_candidate_slot: final_cursor,
@@ -1490,7 +1486,7 @@
                 .saturating_add(
                     <span class="self">self</span>.config
                         .t0
-                        .checked_div_u64(<span class="self">self</span>.config.thread_count.get() <span class="kw">as </span>u64)
+                        .checked_div_u64(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
                         .unwrap(),
                 );
         }

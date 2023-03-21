@@ -233,9 +233,6 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -251,7 +248,7 @@
 //!
 //! A parallel file with the same constant definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.
-</span><span class="kw">use </span>std::{num::NonZeroU8, str::FromStr};
+</span><span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">use crate</span>::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
 <span class="kw">use </span>massa_signature::KeyPair;
@@ -324,9 +321,7 @@
 <span class="doccomment">/// Proof of stake seed for the initial draw
 </span><span class="kw">pub const </span>INITIAL_DRAW_SEED: <span class="kw-2">&amp;</span>str = <span class="string">&quot;massa_genesis_seed&quot;</span>;
 <span class="doccomment">/// Number of threads
-/// # Safety
-/// This is guaranteed to be safe if the value is non-zero
-</span><span class="kw">pub const </span>THREAD_COUNT: NonZeroU8 = <span class="kw">unsafe </span>{ NonZeroU8::new_unchecked(<span class="number">32</span>) };
+</span><span class="kw">pub const </span>THREAD_COUNT: u8 = <span class="number">32</span>;
 <span class="doccomment">/// Number of endorsement
 </span><span class="kw">pub const </span>ENDORSEMENT_COUNT: u32 = <span class="number">16</span>;
 <span class="doccomment">/// Threshold for fitness.
@@ -395,8 +390,7 @@
 <span class="doccomment">/// Maximum size of parameters in call SC
 </span><span class="kw">pub const </span>MAX_PARAMETERS_SIZE: u32 = <span class="number">10_000_000</span>;
 <span class="doccomment">/// Maximum length of `rng_seed` in thread cycle
-</span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 =
-    PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT.get() <span class="kw">as </span>u64) <span class="kw">as </span>u32;
+</span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT <span class="kw">as </span>u64) <span class="kw">as </span>u32;
 <span class="comment">// ***********************
 // Bootstrap constants
 //
@@ -470,9 +464,9 @@
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attr">#[allow(clippy::assertions_on_constants)]
 </span><span class="kw">const _</span>: () = {
-    <span class="macro">assert!</span>(THREAD_COUNT.get() &gt; <span class="number">1</span>);
+    <span class="macro">assert!</span>(THREAD_COUNT &gt; <span class="number">1</span>);
     <span class="macro">assert!</span>((T0).to_millis() &gt;= <span class="number">1</span>);
-    <span class="macro">assert!</span>((T0).to_millis() % (THREAD_COUNT.get() <span class="kw">as </span>u64) == <span class="number">0</span>);
+    <span class="macro">assert!</span>((T0).to_millis() % (THREAD_COUNT <span class="kw">as </span>u64) == <span class="number">0</span>);
 };
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

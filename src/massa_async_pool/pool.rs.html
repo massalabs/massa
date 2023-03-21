@@ -379,14 +379,6 @@
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -410,8 +402,8 @@
     sequence::tuple,
     IResult, Parser,
 };
+<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
-<span class="kw">use </span>std::{collections::BTreeMap, num::NonZeroU8};
 
 <span class="kw">const </span>ASYNC_POOL_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
@@ -421,7 +413,7 @@
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>AsyncPool {
     <span class="doccomment">/// Asynchronous pool configuration
-    </span>config: AsyncPoolConfig,
+    </span><span class="kw">pub </span>config: AsyncPoolConfig,
 
     <span class="doccomment">/// Messages sorted by decreasing ID (decreasing priority)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) messages: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
@@ -438,14 +430,6 @@
             messages: Default::default(),
             hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
         }
-    }
-
-    <span class="doccomment">/// Resets the pool to its initial state
-    ///
-    /// USED ONLY FOR BOOTSTRAP
-    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.messages.clear();
-        <span class="self">self</span>.hash = Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES);
     }
 
     <span class="doccomment">/// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
@@ -691,7 +675,7 @@
 <span class="kw">impl </span>AsyncPoolDeserializer {
     <span class="doccomment">/// Creates a new `AsyncPool` deserializer
     </span><span class="kw">pub fn </span>new(
-        thread_count: NonZeroU8,
+        thread_count: u8,
         max_async_pool_length: u64,
         max_async_message_data: u64,
         max_key_length: u32,
@@ -748,7 +732,7 @@
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">let </span>config = AsyncPoolConfig {
-        thread_count: <span class="number">2</span>.try_into().unwrap(),
+        thread_count: <span class="number">2</span>,
         max_length: <span class="number">10</span>,
         max_async_message_data: <span class="number">1_000_000</span>,
         bootstrap_part_size: <span class="number">100</span>,

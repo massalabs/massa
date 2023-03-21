@@ -38,7 +38,7 @@
 <span class="kw">use </span>massa_executed_ops::ExecutedOpsConfig;
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_pos_exports::PoSConfig;
-<span class="kw">use </span>std::{num::NonZeroU8, path::PathBuf};
+<span class="kw">use </span>std::path::PathBuf;
 
 <span class="doccomment">/// Ledger configuration
 </span><span class="attr">#[derive(Debug, Clone)]
@@ -54,7 +54,7 @@
     <span class="doccomment">/// final changes history length
     </span><span class="kw">pub </span>final_history_length: usize,
     <span class="doccomment">/// thread count
-    </span><span class="kw">pub </span>thread_count: NonZeroU8,
+    </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// periods per cycle
     </span><span class="kw">pub </span>periods_per_cycle: u64,
     <span class="doccomment">/// initial PoS seed string
