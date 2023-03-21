@@ -3,6 +3,7 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::prehash::PreHashMap;
 use massa_models::slot::Slot;
+use massa_models::timeslots;
 use massa_models::vesting_range::VestingRange;
 use massa_time::MassaTime;
 
@@ -13,12 +14,26 @@ struct VestingInfo {
 }
 
 #[derive(Debug)]
-struct VestingManager(PreHashMap<Address, Vec<(MassaTime, VestingInfo)>>);
+struct VestingManager {
+    vesting_registry: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>>,
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+}
 
 impl VestingManager {
-    pub fn new() -> Result<Self, ExecutionError> {
+    pub fn new(
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> Result<Self, ExecutionError> {
         // todo init with file
-        Ok(VestingManager(Default::default()))
+        Ok(VestingManager {
+            vesting_registry: Default::default(),
+            thread_count,
+            t0,
+            genesis_timestamp,
+        })
     }
 
     /// Retrieve vesting info for address at given time
@@ -29,7 +44,7 @@ impl VestingManager {
         addr: &Address,
         timestamp: &MassaTime,
     ) -> Option<&(MassaTime, VestingInfo)> {
-        let Some(vest) = self.0.get(addr) else {
+        let Some(vest) = self.vesting_registry.get(addr) else {
             return None;
         };
 
@@ -37,6 +52,30 @@ impl VestingManager {
             vest.binary_search_by_key(timestamp, |(t, _)| *t)
                 .unwrap_or_else(|i| i.saturating_sub(1)),
         )
+    }
+
+    /// Retrieve vesting info for address at given slot
+    ///
+    /// Return Ok(None) if address is not vested
+    pub fn get_addr_vesting_at_slot(
+        &self,
+        addr: &Address,
+        slot: Slot,
+    ) -> Result<Option<&(MassaTime, VestingInfo)>, ExecutionError> {
+        let timestamp = timeslots::get_block_slot_timestamp(
+            self.thread_count,
+            self.t0,
+            self.genesis_timestamp,
+            slot,
+        )
+        .map_err(|e| {
+            ExecutionError::RuntimeError(format!(
+                "error with get_block_slot_timestamp with slot : {}, error : {}",
+                slot, e
+            ))
+        })?;
+
+        Ok(self.get_addr_vesting_at_time(addr, &timestamp))
     }
 
     /// Initialize the hashmap of addresses from the vesting file
@@ -60,7 +99,7 @@ impl VestingManager {
         })?;
 
         let get_slot_at_timestamp = |config: &ExecutionConfig, timestamp: MassaTime| {
-            massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            timeslots::get_latest_block_slot_at_timestamp(
                 config.thread_count,
                 config.t0,
                 config.genesis_timestamp,
@@ -120,6 +159,7 @@ impl VestingManager {
 mod test {
     // todo move to tests module
     use crate::vesting_manager::{VestingInfo, VestingManager};
+    use massa_execution_exports::ExecutionConfig;
     use massa_models::address::Address;
     use massa_models::amount::Amount;
     use massa_models::prehash::PreHashMap;
@@ -132,7 +172,10 @@ mod test {
         const SEC_TIMESTAMP: u64 = 1677775892000; // 02/03/2023 17h51;
         const FUTURE_TIMESTAMP: u64 = 1731257385000; // 10/11/2024 17h49;
 
-        let mut manager = VestingManager::new().unwrap();
+        let cfg = ExecutionConfig::default();
+
+        let mut manager =
+            VestingManager::new(cfg.thread_count, cfg.t0, cfg.genesis_timestamp).unwrap();
 
         let map = if with_data {
             let addr =
@@ -170,7 +213,7 @@ mod test {
             PreHashMap::default()
         };
 
-        manager.0 = map;
+        manager.vesting_registry = map;
         manager
     }
 
