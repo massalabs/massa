@@ -1,11 +1,11 @@
 {
-  "assembly_script_abort": 0,
+  "assembly_script_abort": 1,
   "assembly_script_address_from_public_key": 294,
   "assembly_script_append_data": 198,
   "assembly_script_append_data_for": 231,
   "assembly_script_call": 10000,
   "assembly_script_caller_has_write_access": 146,
-  "assembly_script_create_sc": 0,
+  "assembly_script_create_sc": 1,
   "assembly_script_date_now": 66,
   "assembly_script_delete_data": 168,
   "assembly_script_delete_data_for": 198,
