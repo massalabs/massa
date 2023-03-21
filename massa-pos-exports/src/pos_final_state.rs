@@ -64,12 +64,21 @@ impl PoSFinalState {
         })
     }
 
-    /// Reset the state of the PoS final state
-    ///
-    /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&mut self) {
-        self.cycle_history.clear();
-        self.deferred_credits = DeferredCredits::default();
+    /// Inspire by mem::take()
+    /// This function reinitialize in place the given object.
+    /// It reuse what it can from the given reference.
+    pub fn renew(&mut self) /* -> Self */ {
+      let obj =  Self {
+            config: std::mem::take(&mut self.config),
+            cycle_history: Default::default(),
+            deferred_credits: DeferredCredits::default(),
+            selector: self.selector.clone(),
+            initial_rolls: self.initial_rolls.clone(),
+            initial_seeds: self.initial_seeds.clone(),
+            initial_ledger_hash: self.initial_ledger_hash,
+        };
+
+        *self=obj;
     }
 
     /// Create the initial cycle based off the initial rolls.

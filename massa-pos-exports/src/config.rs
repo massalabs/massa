@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 /// proof-of-stake final state configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PoSConfig {
     /// periods per cycle
     pub periods_per_cycle: u64,

@@ -87,7 +87,7 @@ impl FinalState {
         self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
         self.ledger.reset();
         self.async_pool = AsyncPool::new(self.async_pool.config.clone());
-        self.pos_state.reset();
+        PoSFinalState::renew(&mut self.pos_state);
         self.executed_ops = ExecutedOps::new(self.executed_ops.config.clone());
         self.changes_history.clear();
         // reset the final state hash
