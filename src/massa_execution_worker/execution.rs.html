@@ -1747,10 +1747,10 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
             context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
         {
-            <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">&quot;could not spend fees: {}&quot;</span>, err);
-            <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
-            context.event_emit(event);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(<span class="macro">format!</span>(
+                <span class="string">&quot;could not spend fees: {}&quot;</span>,
+                err
+            )));
         }
 
         <span class="comment">// from here, fees transferred. Op will be executed just after in the context of a snapshot.
@@ -1944,8 +1944,8 @@
             </span><span class="kw">let </span>max_rolls = rolls.<span class="number">1</span>.saturating_add(<span class="kw-2">*</span>roll_count);
             <span class="kw">if </span>max_rolls &gt; vesting_range.max_rolls {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(
-                    <span class="string">&quot;trying to get to a total of {} rolls but only {} are allowed at that time by the vesting scheme&quot;</span>,
-                    max_rolls, vesting_range.max_rolls
+                    <span class="string">&quot;vesting_max_rolls={} with value max_rolls={} &quot;</span>,
+                    vesting_range.max_rolls, max_rolls
                 )));
             }
         }
@@ -2967,7 +2967,7 @@
         <span class="kw">for </span>v <span class="kw">in </span>hashmap.values_mut() {
             <span class="kw">if </span>v.len().eq(<span class="kw-2">&amp;</span><span class="number">1</span>) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::InitVestingError(
-                    <span class="string">&quot;vesting file should have more than one element&quot;</span>.to_string(),
+                    <span class="string">&quot;vesting file should has more one element&quot;</span>.to_string(),
                 ));
             } <span class="kw">else </span>{
                 <span class="kw-2">*</span>v = v
