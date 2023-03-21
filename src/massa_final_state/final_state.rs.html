@@ -476,7 +476,7 @@
         <span class="self">self</span>.ledger.reset();
         <span class="self">self</span>.async_pool.reset();
         <span class="self">self</span>.pos_state.reset();
-        <span class="self">self</span>.executed_ops = ExecutedOps::new(<span class="self">self</span>.executed_ops.config.clone());
+        <span class="self">self</span>.executed_ops.reset();
         <span class="self">self</span>.changes_history.clear();
         <span class="comment">// reset the final state hash
         </span><span class="self">self</span>.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
