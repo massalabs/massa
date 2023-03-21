@@ -108,7 +108,7 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
 {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let mut ledger = FinalLedger::new(ledger_config.clone());
+    let mut ledger = FinalLedger::new(ledger_config.clone(), false);
     ledger.load_initial_ledger().unwrap();
     let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {

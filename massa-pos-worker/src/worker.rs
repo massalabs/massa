@@ -109,20 +109,27 @@ impl SelectorThread {
     /// draws for future cycle.
     fn run(self) -> PosResult<()> {
         loop {
-            let (cycle, lookback_rolls, lookback_seed, last_start_period) = match self.input_mpsc.recv() {
-                Err(_) => break,
-                Ok(Command::Stop) => break,
+            let (cycle, lookback_rolls, lookback_seed, last_start_period) =
+                match self.input_mpsc.recv() {
+                    Err(_) => break,
+                    Ok(Command::Stop) => break,
 
-                Ok(Command::DrawInput {
-                    cycle,
-                    lookback_rolls,
-                    lookback_seed,
-                    last_start_period
-                }) => (cycle, lookback_rolls, lookback_seed, last_start_period),
-            };
+                    Ok(Command::DrawInput {
+                        cycle,
+                        lookback_rolls,
+                        lookback_seed,
+                        last_start_period,
+                    }) => (cycle, lookback_rolls, lookback_seed, last_start_period),
+                };
 
             // perform draws
-            let draws_result = perform_draws(&self.cfg, cycle, lookback_rolls, lookback_seed, last_start_period);
+            let draws_result = perform_draws(
+                &self.cfg,
+                cycle,
+                lookback_rolls,
+                lookback_seed,
+                last_start_period,
+            );
 
             // add result to cache and notify waiters
             self.process_draws_result(cycle, draws_result)?;

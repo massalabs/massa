@@ -80,7 +80,7 @@ impl HandshakeWorker {
         connection_id: ConnectionId,
         max_bytes_read: f64,
         max_bytes_write: f64,
-        last_start_period: u64
+        last_start_period: u64,
     ) -> JoinHandle<(ConnectionId, HandshakeReturnType)> {
         debug!("starting handshake with connection_id={}", connection_id);
         massa_trace!("network_worker.new_connection", {
@@ -110,7 +110,7 @@ impl HandshakeWorker {
                             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                             MAX_OPERATION_DATASTORE_KEY_LENGTH,
                             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-                            last_start_period
+                            last_start_period,
                         ),
                     ),
                     writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),

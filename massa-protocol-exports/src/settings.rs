@@ -56,5 +56,5 @@ pub struct ProtocolConfig {
     /// max time we propagate endorsements
     pub max_endorsements_propagation_time: MassaTime,
     ///
-    pub last_start_period: u64
+    pub last_start_period: u64,
 }

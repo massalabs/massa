@@ -70,6 +70,10 @@ pub trait LedgerController: Send + Sync + Debug {
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self);
 
+    fn set_final_state(&mut self, data: Vec<u8>) -> Result<(), ModelsError>;
+
+    fn get_final_state(&self) -> Result<Vec<u8>, ModelsError>;
+
     /// Get every address and their corresponding balance.
     ///
     /// IMPORTANT: This should only be used for debug and test purposes.

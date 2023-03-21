@@ -310,7 +310,7 @@ impl MessageDeserializer {
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
-                last_start_period
+                last_start_period,
             )),
             endorsements_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -570,7 +570,7 @@ mod tests {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            0
+            0,
         );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);

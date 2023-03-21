@@ -42,7 +42,7 @@ lazy_static::lazy_static! {
         let mut last_start_period = 0;
         let mut parse_next;
         for args in std::env::args() {
-            parse_next = args == String::from("restart-from-snapshot-at-period");
+            parse_next = args == *"restart-from-snapshot-at-period";
             if parse_next {
                 last_start_period = u64::from_str(&args).unwrap_or_default();
                 break;

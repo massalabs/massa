@@ -34,13 +34,14 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig) -> Self {
+    pub fn new(config: LedgerConfig, with_final_state: bool) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             config.disk_ledger_path.clone(),
             config.thread_count,
             config.max_key_length,
             config.max_ledger_part_size,
+            with_final_state,
         );
 
         // generate the final ledger
@@ -184,6 +185,14 @@ impl LedgerController for FinalLedger {
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self) {
         self.sorted_ledger.reset();
+    }
+
+    fn set_final_state(&mut self, data: Vec<u8>) -> Result<(), ModelsError> {
+        self.sorted_ledger.set_final_state(&data)
+    }
+
+    fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
+        self.sorted_ledger.get_final_state()
     }
 
     /// Get every address and their corresponding balance.

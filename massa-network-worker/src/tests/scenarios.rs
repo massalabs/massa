@@ -93,7 +93,7 @@ async fn test_node_worker_shutdown() {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            0
+            0,
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
@@ -168,7 +168,7 @@ async fn test_node_worker_operations_message() {
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            0
+            0,
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);

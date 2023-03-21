@@ -725,7 +725,7 @@ impl NetworkWorker {
                             max_op_datastore_entry_count,
                             max_op_datastore_key_length,
                             max_op_datastore_value_length,
-                            last_start_period
+                            last_start_period,
                         ),
                     );
                     match tokio::time::timeout(
@@ -773,7 +773,7 @@ impl NetworkWorker {
             connection_id,
             self.cfg.max_bytes_read,
             self.cfg.max_bytes_write,
-            self.cfg.last_start_period
+            self.cfg.last_start_period,
         ));
         Ok(())
     }

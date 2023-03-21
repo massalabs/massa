@@ -94,7 +94,7 @@ pub async fn full_connection_to_controller(
         connection_id,
         f64::INFINITY,
         f64::INFINITY,
-        0
+        0,
     )
     .await
     .expect("handshake creation failed")
@@ -154,7 +154,7 @@ pub async fn rejected_connection_to_controller(
         connection_id,
         f64::INFINITY,
         f64::INFINITY,
-        0
+        0,
     )
     .await
     .expect("handshake creation failed")
@@ -240,7 +240,7 @@ pub async fn full_connection_from_controller(
         connection_id,
         f64::INFINITY,
         f64::INFINITY,
-        0
+        0,
     )
     .await
     .expect("handshake creation failed")

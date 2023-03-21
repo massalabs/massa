@@ -96,7 +96,7 @@ impl SelectorController for MockSelectorController {
         cycle: u64,
         lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
-        _last_start_period: u64
+        _last_start_period: u64,
     ) -> PosResult<()> {
         self.0
             .lock()

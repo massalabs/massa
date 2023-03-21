@@ -63,7 +63,7 @@ impl SelectorController for SelectorControllerImpl {
         cycle: u64,
         lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
-        last_start_period: u64
+        last_start_period: u64,
     ) -> PosResult<()> {
         // check status
         {
@@ -77,7 +77,7 @@ impl SelectorController for SelectorControllerImpl {
                 cycle,
                 lookback_rolls,
                 lookback_seed,
-                last_start_period
+                last_start_period,
             })
             .map_err(|_err| {
                 PosError::ChannelDown(

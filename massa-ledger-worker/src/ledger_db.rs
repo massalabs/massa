@@ -34,6 +34,7 @@ use massa_models::amount::{Amount, AmountDeserializer};
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
+const FINAL_STATE_CF: &str = "final_state";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
@@ -120,20 +121,34 @@ impl LedgerDB {
         thread_count: u8,
         max_datastore_key_length: u8,
         ledger_part_size_message_bytes: u64,
+        with_final_state: bool,
     ) -> Self {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
-        let db = DB::open_cf_descriptors(
-            &db_opts,
-            path,
-            vec![
-                ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-            ],
-        )
-        .expect(OPEN_ERROR);
+        let db = if with_final_state {
+            DB::open_cf_descriptors(
+                &db_opts,
+                path,
+                vec![
+                    ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(FINAL_STATE_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        } else {
+            DB::open_cf_descriptors(
+                &db_opts,
+                path,
+                vec![
+                    ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        };
 
         LedgerDB {
             db,
@@ -397,6 +412,53 @@ impl LedgerDB {
         self.db
             .create_cf(METADATA_CF, &db_opts)
             .expect("Error creating metadata cf");
+    }
+
+    pub fn set_final_state<'a>(&mut self, data: &'a [u8]) -> Result<(), ModelsError> {
+        let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+        let vec_u8_deserializer =
+            VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let mut batch = LedgerBatch::new(self.get_ledger_hash());
+
+        let (rest, _) = many0(|input: &'a [u8]| {
+            let (rest, (key, value)) = tuple((
+                |input| self.key_deserializer.deserialize::<DeserializeError>(input),
+                |input| vec_u8_deserializer.deserialize(input),
+            ))(input)?;
+            self.put_entry_value(handle, &mut batch, &key, &value);
+            Ok((rest, ()))
+        })(data)
+        .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
+
+        if rest.is_empty() {
+            self.write_batch(batch);
+            Ok(())
+        } else {
+            Err(ModelsError::SerializeError(
+                "Error in deserialization".to_string(),
+            ))
+        }
+    }
+
+    pub fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
+        let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+        let opt = ReadOptions::default();
+        let ser = VecU8Serializer::new();
+        let mut final_state = Vec::new();
+
+        let db_iterator = self.db.iterator_cf_opt(handle, opt, IteratorMode::Start);
+
+        // Iterates over the whole database
+        for (key, entry) in db_iterator.flatten() {
+            // We deserialize and re-serialize the key to change the key format from the
+            // database one to a format we can use outside of the ledger.
+
+            let (_, key) = self.key_deserializer_db.deserialize(&key)?;
+            self.key_serializer.serialize(&key, &mut final_state)?;
+            ser.serialize(&entry.to_vec(), &mut final_state)?;
+        }
+
+        Ok(final_state)
     }
 }
 
@@ -770,7 +832,7 @@ mod tests {
 
         // write data
         let temp_dir = TempDir::new().unwrap();
-        let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000);
+        let mut db = LedgerDB::new(temp_dir.path().to_path_buf(), 32, 255, 1_000_000, false);
         let mut batch = LedgerBatch::new(Hash::from_bytes(LEDGER_HASH_INITIAL_BYTES));
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);

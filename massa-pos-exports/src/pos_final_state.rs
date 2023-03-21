@@ -34,7 +34,7 @@ pub struct PoSFinalState {
     /// initial cycle
     pub initial_cycle: u64,
     ///
-    pub last_start_period: u64
+    pub last_start_period: u64,
 }
 
 impl PoSFinalState {
@@ -88,7 +88,7 @@ impl PoSFinalState {
         // Seeds used as the initial seeds for negative cycles (initial_cycle-2 and initial_cycle-1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
-        
+
         Ok(Self {
             config: config.clone(),
             cycle_history,
@@ -374,9 +374,12 @@ impl PoSFinalState {
         };
 
         // feed selector
-        self.selector
-            .as_ref()
-            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed, self.last_start_period)
+        self.selector.as_ref().feed_cycle(
+            draw_cycle,
+            lookback_rolls,
+            lookback_seed,
+            self.last_start_period,
+        )
     }
 
     /// Feeds the selector targeting a given draw cycle

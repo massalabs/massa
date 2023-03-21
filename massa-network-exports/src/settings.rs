@@ -93,7 +93,7 @@ pub struct NetworkConfig {
     /// Node event channel size
     pub node_event_channel_size: usize,
     ///
-    pub last_start_period: u64
+    pub last_start_period: u64,
 }
 
 /// Connection configuration for a peer type
@@ -187,7 +187,7 @@ pub mod tests {
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
-                last_start_period: 0
+                last_start_period: 0,
             }
         }
     }
@@ -255,7 +255,7 @@ pub mod tests {
                 event_channel_size: NETWORK_EVENT_CHANNEL_SIZE,
                 node_command_channel_size: NETWORK_NODE_COMMAND_CHANNEL_SIZE,
                 node_event_channel_size: NETWORK_NODE_EVENT_CHANNEL_SIZE,
-                last_start_period: 0
+                last_start_period: 0,
             }
         }
     }

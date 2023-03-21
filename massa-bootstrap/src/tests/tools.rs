@@ -447,7 +447,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
         thread_count: THREAD_COUNT,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
-        last_start_period: 0
+        last_start_period: 0,
     };
     let bootstrapable_graph_deserializer =
         BootstrapableGraphDeserializer::new(args, MAX_BOOTSTRAP_BLOCKS);

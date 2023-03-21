@@ -28,7 +28,7 @@ pub(crate) fn perform_draws(
     cycle: u64,
     lookback_rolls: BTreeMap<Address, u64>,
     lookback_seed: Hash,
-    last_start_period: u64
+    last_start_period: u64,
 ) -> PosResult<CycleDraws> {
     // get seeded RNG
     let mut rng = Xoshiro256PlusPlus::from_seed(*lookback_seed.to_bytes());
