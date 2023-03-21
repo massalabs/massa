@@ -32,7 +32,7 @@ const ASYNC_POOL_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 #[derive(Clone)]
 pub struct AsyncPool {
     /// Asynchronous pool configuration
-    config: AsyncPoolConfig,
+    pub config: AsyncPoolConfig,
 
     /// Messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
@@ -49,14 +49,6 @@ impl AsyncPool {
             messages: Default::default(),
             hash: Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES),
         }
-    }
-
-    /// Resets the pool to its initial state
-    ///
-    /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&mut self) {
-        self.messages.clear();
-        self.hash = Hash::from_bytes(ASYNC_POOL_HASH_INITIAL_BYTES);
     }
 
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.

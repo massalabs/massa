@@ -86,7 +86,7 @@ impl FinalState {
     pub fn reset(&mut self) {
         self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
         self.ledger.reset();
-        self.async_pool.reset();
+        self.async_pool = AsyncPool::new(self.async_pool.config.clone());
         self.pos_state.reset();
         self.executed_ops = ExecutedOps::new(self.executed_ops.config.clone());
         self.changes_history.clear();

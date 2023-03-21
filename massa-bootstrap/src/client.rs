@@ -167,8 +167,13 @@ async fn stream_final_state_and_consensus(
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                     };
+
+                    // TODO:
+                    // Building a new FinalState outside of this function would probably be better.
+                    // There are to much deps to manage for the moment.
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
+
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 BootstrapServerMessage::BootstrapError { error } => {
