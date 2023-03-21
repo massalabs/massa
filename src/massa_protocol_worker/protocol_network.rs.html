@@ -945,7 +945,7 @@
         <span class="comment">// Check operation_list against expected operations hash from header.
         </span><span class="kw">if </span>header.content.operation_merkle_root == Hash::compute_from(<span class="kw-2">&amp;</span>total_hash) {
             <span class="kw">if </span>operation_ids.len() &gt; <span class="self">self</span>.config.max_operations_per_block <span class="kw">as </span>usize {
-                <span class="macro">warn!</span>(<span class="string">&quot;Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max operations per block constant.&quot;</span>, from_node_id, block_id);
+                <span class="macro">warn!</span>(<span class="string">&quot;Node id {} sent us an operations list for block id {} that contains more operations than the max allowed for a block.&quot;</span>, from_node_id, block_id);
                 <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
