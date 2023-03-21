@@ -108,6 +108,8 @@ impl ConsensusState {
         Ok(discarded_finals)
     }
 
+    // Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
+    // to avoid high memory consumption
     fn prune_slot_waiting(&mut self) {
         if self.waiting_for_slot_index.len() <= self.config.max_future_processing_blocks {
             return;
@@ -133,6 +135,8 @@ impl ConsensusState {
         });
     }
 
+    // Keep only a certain (`config.max_discarded_blocks`) number of blocks that are discarded
+    // to avoid high memory consumption
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
         if self.discarded_index.len() <= self.config.max_discarded_blocks {
             return Ok(());
@@ -328,6 +332,14 @@ impl ConsensusState {
         Ok(())
     }
 
+    /// Clear the cache of blocks indexed by slot.
+    /// Slot are not saved anymore, when the block in the same thread with a equal or greater period is finalized.
+    fn prune_nonfinal_blocks_per_slot(&mut self) {
+        self.nonfinal_active_blocks_per_slot
+            .retain(|s, _| s.period > self.latest_final_blocks_periods[s.thread as usize].1);
+    }
+
+    /// Clear all the caches and blocks waiting to be processed to avoid too much memory usage.
     pub fn prune(&mut self) -> Result<(), ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
@@ -341,6 +353,9 @@ impl ConsensusState {
 
         // Step 4: prune discarded
         self.prune_discarded()?;
+
+        // Step 5: prune nonfinal blocks per slot
+        self.prune_nonfinal_blocks_per_slot();
 
         let after = self.max_cliques.len();
         if before != after {

@@ -37,10 +37,13 @@ impl ConsensusState {
             .collect();
 
         massa_trace!("consensus.block_graph.slot_tick", {});
+
         // process those elements
         self.rec_process(to_process, Some(current_slot))?;
 
+        // Update the stats
         self.stats_tick()?;
+
         // take care of block db changes
         self.block_db_changed()?;
 
