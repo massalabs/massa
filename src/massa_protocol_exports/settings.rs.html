@@ -56,6 +56,8 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_time::MassaTime;
@@ -101,6 +103,8 @@
     </span><span class="kw">pub </span>max_operations_per_message: u64,
     <span class="doccomment">/// Maximum size in bytes of all serialized operations size in a block
     </span><span class="kw">pub </span>max_serialized_operations_size_per_block: usize,
+    <span class="doccomment">/// Maximum operations in a block
+    </span><span class="kw">pub </span>max_operations_per_block: u32,
     <span class="doccomment">/// Controller channel size
     </span><span class="kw">pub </span>controller_channel_size: usize,
     <span class="doccomment">/// Event channel size

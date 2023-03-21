@@ -902,6 +902,8 @@
 <a href="#902" id="902">902</a>
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1360,6 +1362,7 @@
         operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE <span class="kw">as </span>usize,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
@@ -1396,6 +1399,7 @@
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE <span class="kw">as </span>u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
     };
     <span class="kw">let </span>factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
