@@ -353,7 +353,6 @@ impl ProtocolWorker {
 
         // Check operation_list against expected operations hash from header.
         if header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
-
             if operation_ids.len() > self.config.max_operations_per_block as usize {
                 warn!("Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max operations per block constant.", from_node_id, block_id);
                 let _ = self.ban_node(&from_node_id).await;
@@ -377,7 +376,6 @@ impl ProtocolWorker {
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
             }
-
 
             // Update ask block
             let mut set = PreHashSet::<BlockId>::with_capacity(1);
