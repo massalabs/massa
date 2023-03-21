@@ -223,11 +223,13 @@ impl BlockFactoryWorker {
         .expect("error while producing block header");
 
         // create block
+        let block_ = Block {
+            header,
+            operations: op_ids.into_iter().collect()
+        };
+
         let block = Block::new_verifiable(
-            Block {
-                header,
-                operations: op_ids.into_iter().collect(),
-            },
+            block_,
             BlockSerializer::new(), // TODO reuse self.block_serializer
             block_producer_keypair,
         )
