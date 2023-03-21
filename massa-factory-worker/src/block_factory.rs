@@ -195,6 +195,12 @@ impl BlockFactoryWorker {
 
         // gather operations and compute global operations hash
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
+
+        if op_ids.len() > usize::from(self.cfg.max_operations_per_block) {
+            warn!("Too many operations returned");
+            return;
+        }
+
         block_storage.extend(op_storage);
         let global_operations_hash = Hash::compute_from(
             &op_ids

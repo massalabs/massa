@@ -492,6 +492,7 @@ async fn launch(
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
