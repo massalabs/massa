@@ -2579,6 +2579,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_xoshiro",
  "schnellru",
+ "serde",
  "serde_json",
  "serial_test 0.10.0",
  "sha2 0.10.6",

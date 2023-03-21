@@ -6,19 +6,36 @@ use massa_models::slot::Slot;
 use massa_models::timeslots;
 use massa_models::vesting_range::VestingRange;
 use massa_time::MassaTime;
+use serde::{Deserialize, Serialize};
+use serde_json::{Deserializer, Value};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Debug, Eq, PartialEq)]
-struct VestingInfo {
-    min_balance: Amount,
-    max_rolls: u64,
+pub struct VestingInfo {
+    pub(crate) min_balance: Amount,
+    pub(crate) max_rolls: u64,
 }
 
 #[derive(Debug)]
-struct VestingManager {
-    vesting_registry: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>>,
+pub struct VestingManager {
+    pub(crate) vesting_registry: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>>,
     thread_count: u8,
     t0: MassaTime,
     genesis_timestamp: MassaTime,
+}
+
+/// Used for Deserialize
+#[derive(Clone, Copy, Deserialize, Serialize, Debug)]
+struct TempFileVestingRange {
+    /// timestamp to get the start slot
+    pub timestamp: MassaTime,
+
+    /// minimal balance for specific range
+    pub min_balance: Amount,
+
+    /// max rolls for specific range
+    pub max_rolls: u64,
 }
 
 impl VestingManager {
@@ -26,10 +43,10 @@ impl VestingManager {
         thread_count: u8,
         t0: MassaTime,
         genesis_timestamp: MassaTime,
+        file_path: PathBuf,
     ) -> Result<Self, ExecutionError> {
-        // todo init with file
         Ok(VestingManager {
-            vesting_registry: Default::default(),
+            vesting_registry: VestingManager::load_vesting_from_file(file_path)?,
             thread_count,
             t0,
             genesis_timestamp,
@@ -79,194 +96,42 @@ impl VestingManager {
     }
 
     /// Initialize the hashmap of addresses from the vesting file
-    fn init_vesting_registry(
-        config: &ExecutionConfig,
-    ) -> Result<PreHashMap<Address, Vec<VestingRange>>, ExecutionError> {
-        // todo rework
-        let mut hashmap: PreHashMap<Address, Vec<VestingRange>> = serde_json::from_str(
-            &std::fs::read_to_string(&config.initial_vesting_path).map_err(|err| {
+    fn load_vesting_from_file(
+        path: PathBuf,
+    ) -> Result<PreHashMap<Address, Vec<(MassaTime, VestingInfo)>>, ExecutionError> {
+        let mut map: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>> = PreHashMap::default();
+        let data_load: PreHashMap<Address, Vec<TempFileVestingRange>> =
+            serde_json::from_str(&std::fs::read_to_string(path).map_err(|err| {
                 ExecutionError::InitVestingError(format!(
                     "error loading initial vesting file  {}",
                     err
                 ))
-            })?,
-        )
-        .map_err(|err| {
-            ExecutionError::InitVestingError(format!(
-                "error on deserialize initial vesting file  {}",
-                err
-            ))
-        })?;
-
-        let get_slot_at_timestamp = |config: &ExecutionConfig, timestamp: MassaTime| {
-            timeslots::get_latest_block_slot_at_timestamp(
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-                timestamp,
-            )
-            .map_err(|e| {
+            })?)
+            .map_err(|err| {
                 ExecutionError::InitVestingError(format!(
-                    "can no get the slot at timestamp {} : {}",
-                    timestamp, e
+                    "error on deserialize initial vesting file  {}",
+                    err
                 ))
-            })
-        };
+            })?;
 
-        for v in hashmap.values_mut() {
-            if v.len().eq(&1) {
-                return Err(ExecutionError::InitVestingError(
-                    "vesting file should have more than one element".to_string(),
-                ));
-            } else {
-                *v = v
-                    .windows(2)
-                    .map(|elements| {
-                        let (mut prev, next) = (elements[0], elements[1]);
+        for (k, v) in data_load.into_iter() {
+            let mut vec: Vec<(MassaTime, VestingInfo)> = v
+                .into_iter()
+                .map(|value| {
+                    (
+                        value.timestamp,
+                        VestingInfo {
+                            min_balance: value.min_balance,
+                            max_rolls: value.max_rolls,
+                        },
+                    )
+                })
+                .collect();
 
-                        // retrieve the start_slot
-                        if prev.timestamp.eq(&MassaTime::from(0)) {
-                            // first range with timestamp = 0
-                            prev.start_slot = Slot::min();
-                        } else if let Some(slot) = get_slot_at_timestamp(config, prev.timestamp)? {
-                            prev.start_slot = slot;
-                        }
-
-                        // retrieve the end_slot
-                        if let Some(next_range_slot) =
-                            get_slot_at_timestamp(config, next.timestamp)?
-                        {
-                            prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)?;
-                        }
-
-                        Ok(prev)
-                    })
-                    // we don't need range with StartSlot(0,0) && EndSlot(0,0)
-                    // this can happen when the timestamp is passed
-                    .filter(|a| {
-                        !(a.as_ref().unwrap().end_slot == Slot::min()
-                            && a.as_ref().unwrap().start_slot == Slot::min())
-                    })
-                    .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
-            }
-        }
-
-        Ok(hashmap)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    // todo move to tests module
-    use crate::vesting_manager::{VestingInfo, VestingManager};
-    use massa_execution_exports::ExecutionConfig;
-    use massa_models::address::Address;
-    use massa_models::amount::Amount;
-    use massa_models::prehash::PreHashMap;
-    use massa_models::vesting_range::VestingRange;
-    use massa_time::MassaTime;
-    use std::str::FromStr;
-
-    fn mock_manager(with_data: bool) -> VestingManager {
-        const PAST_TIMESTAMP: u64 = 1675356692000; // 02/02/2023 17h51
-        const SEC_TIMESTAMP: u64 = 1677775892000; // 02/03/2023 17h51;
-        const FUTURE_TIMESTAMP: u64 = 1731257385000; // 10/11/2024 17h49;
-
-        let cfg = ExecutionConfig::default();
-
-        let mut manager =
-            VestingManager::new(cfg.thread_count, cfg.t0, cfg.genesis_timestamp).unwrap();
-
-        let map = if with_data {
-            let addr =
-                Address::from_str("AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D").unwrap();
-            let mut map: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>> = PreHashMap::default();
-            let mut vec = vec![
-                (
-                    MassaTime::from(PAST_TIMESTAMP),
-                    VestingInfo {
-                        min_balance: Amount::from_str("150000").unwrap(),
-                        max_rolls: 10,
-                    },
-                ),
-                (
-                    MassaTime::from(SEC_TIMESTAMP),
-                    VestingInfo {
-                        min_balance: Amount::from_str("100000").unwrap(),
-                        max_rolls: 15,
-                    },
-                ),
-                (
-                    MassaTime::from(FUTURE_TIMESTAMP),
-                    VestingInfo {
-                        min_balance: Amount::from_str("80000").unwrap(),
-                        max_rolls: 20,
-                    },
-                ),
-            ];
-
-            // force ordering vec by timestamp
             vec.sort_by(|a, b| a.0.cmp(&b.0));
-            map.insert(addr, vec);
-            map
-        } else {
-            PreHashMap::default()
-        };
-
-        manager.vesting_registry = map;
-        manager
-    }
-
-    #[test]
-    fn test_get_addr_vesting_at_time() {
-        let manager = mock_manager(true);
-
-        let addr =
-            Address::from_str("AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D").unwrap();
-
-        {
-            // addr not vested
-            let addr2 =
-                Address::from_str("AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs").unwrap();
-            let timestamp = &MassaTime::from(1678193291000); // 07/03/2023 13h48
-            let opt = manager.get_addr_vesting_at_time(&addr2, timestamp);
-            assert!(opt.is_none());
+            map.insert(k, vec);
         }
 
-        {
-            let timestamp = &MassaTime::from(1677675988000); // 01/03/2023 14h06
-            let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
-            assert_eq!(
-                result.1,
-                VestingInfo {
-                    min_balance: Amount::from_str("150000").unwrap(),
-                    max_rolls: 10,
-                }
-            )
-        }
-
-        {
-            let timestamp = &MassaTime::from(1678193291000); // 07/03/2023 13h48
-            let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
-            assert_eq!(
-                result.1,
-                VestingInfo {
-                    min_balance: Amount::from_str("100000").unwrap(),
-                    max_rolls: 15,
-                }
-            );
-        }
-
-        {
-            let timestamp = &MassaTime::from(1734786585000); // 21/12/2024 14h09
-            let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
-            assert_eq!(
-                result.1,
-                VestingInfo {
-                    min_balance: Amount::from_str("80000").unwrap(),
-                    max_rolls: 20,
-                }
-            )
-        }
+        Ok(map)
     }
 }
