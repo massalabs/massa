@@ -67,9 +67,10 @@ impl PoSFinalState {
     /// Inspired by mem::take()
     /// This function reinitialize in place the given object.
     /// It reuses what it can from the given reference.
-    /// The implementation ensure that all fields are tracked.
     pub fn renew(&mut self) {
-      let obj =  Self {
+        // The implementation ensure that all fields are tracked.
+        // Creating an instance of Self forces to initialize all members
+        let obj =  Self {
             config: std::mem::take(&mut self.config),
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::default(),
