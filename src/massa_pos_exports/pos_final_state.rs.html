@@ -483,17 +483,6 @@
 <a href="#483" id="483">483</a>
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -560,23 +549,12 @@
         })
     }
 
-    <span class="doccomment">/// Inspired by mem::take()
-    /// This function reinitialize in place the given object.
-    /// It reuses what it can from the given reference.
-    </span><span class="kw">pub fn </span>renew(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// The implementation ensure that all fields are tracked.
-        // Creating an instance of Self forces to initialize all members
-        </span><span class="kw">let </span>obj = <span class="self">Self </span>{
-            config: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.config),
-            cycle_history: Default::default(),
-            deferred_credits: DeferredCredits::default(),
-            selector: <span class="self">self</span>.selector.clone(),
-            initial_rolls: <span class="self">self</span>.initial_rolls.clone(),
-            initial_seeds: <span class="self">self</span>.initial_seeds.clone(),
-            initial_ledger_hash: <span class="self">self</span>.initial_ledger_hash,
-        };
-
-        <span class="kw-2">*</span><span class="self">self </span>= obj;
+    <span class="doccomment">/// Reset the state of the PoS final state
+    ///
+    /// USED ONLY FOR BOOTSTRAP
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.cycle_history.clear();
+        <span class="self">self</span>.deferred_credits = DeferredCredits::default();
     }
 
     <span class="doccomment">/// Create the initial cycle based off the initial rolls.
