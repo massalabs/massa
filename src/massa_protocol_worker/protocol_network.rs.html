@@ -589,8 +589,6 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Worker implementation for the network events
 //!
 //! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -946,7 +944,6 @@
 
         <span class="comment">// Check operation_list against expected operations hash from header.
         </span><span class="kw">if </span>header.content.operation_merkle_root == Hash::compute_from(<span class="kw-2">&amp;</span>total_hash) {
-
             <span class="kw">if </span>operation_ids.len() &gt; <span class="self">self</span>.config.max_operations_per_block <span class="kw">as </span>usize {
                 <span class="macro">warn!</span>(<span class="string">&quot;Node id {} sent us a operation list for block id {} but the operations we already have in our records exceed max operations per block constant.&quot;</span>, from_node_id, block_id);
                 <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
@@ -970,7 +967,6 @@
                 <span class="kw">let _ </span>= <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>from_node_id).<span class="kw">await</span>;
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
-
 
             <span class="comment">// Update ask block
             </span><span class="kw">let </span><span class="kw-2">mut </span>set = PreHashSet::&lt;BlockId&gt;::with_capacity(<span class="number">1</span>);
