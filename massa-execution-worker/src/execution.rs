@@ -13,6 +13,7 @@ use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
+use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
@@ -78,6 +79,8 @@ pub(crate) struct ExecutionState {
     module_cache: Arc<RwLock<ModuleCache>>,
     // Map of vesting addresses
     vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
+    // Vesting manager
+    vesting_manager: Arc<VestingManager>,
 }
 
 impl ExecutionState {
@@ -104,6 +107,16 @@ impl ExecutionState {
                 panic!("{}", e);
             }
         };
+
+        let vesting_manager = Arc::new(
+            VestingManager::new(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                config.initial_vesting_path.clone(),
+            )
+            .unwrap(),
+        );
 
         // Initialize the SC module cache
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(
@@ -142,6 +155,7 @@ impl ExecutionState {
             module_cache,
             config,
             vesting_registry,
+            vesting_manager,
         }
     }
 
