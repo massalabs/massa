@@ -433,7 +433,7 @@ impl ExecutionState {
         // control vesting max_rolls for buyer address
         if let Some(vesting) = self
             .vesting_manager
-            .get_addr_vesting_at_slot(&buyer_addr, current_slot.clone())?
+            .get_addr_vesting_at_slot(&buyer_addr, current_slot)?
         {
             let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
             // (candidate_rolls + amount to buy)

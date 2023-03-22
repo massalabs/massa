@@ -68,10 +68,7 @@ impl InterfaceImpl {
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
-        use crate::{
-            module_cache::ModuleCache,
-            vesting_manager::{self, VestingManager},
-        };
+        use crate::module_cache::ModuleCache;
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
         use massa_sc_runtime::GasCosts;
         use parking_lot::RwLock;
