@@ -42,7 +42,8 @@ impl ConsensusState {
     pub fn stats_tick(&mut self) -> Result<(), ConsensusError> {
         // check if there are any final blocks is coming from protocol
         // if none => we are probably desync
-        #[cfg(not(feature = "sandbox"))]
+        // TODO: Reenable desync detection
+        /*#[cfg(not(feature = "sandbox"))]
         {
             let now = MassaTime::now()?;
             if now
@@ -67,7 +68,7 @@ impl ConsensusState {
                     .controller_event_tx
                     .send(ConsensusEvent::NeedSync);
             }
-        }
+        }*/
         // prune stats
         self.prune_stats()?;
         Ok(())

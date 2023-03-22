@@ -3,7 +3,7 @@ use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
+use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version, slot::Slot};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -86,6 +86,8 @@ async fn stream_final_state_and_consensus(
                     write_final_state
                         .pos_state
                         .set_initial_ledger_hash(initial_ledger_hash);
+                    
+                    write_final_state.pos_state.initial_cycle = Slot::new(last_start_period, 0).get_cycle(cfg.periods_per_cycle);
 
                     let last_credits_step = write_final_state
                         .pos_state
