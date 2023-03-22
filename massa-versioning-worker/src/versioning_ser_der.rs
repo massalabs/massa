@@ -23,7 +23,7 @@ use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
 
 /// Ser / Der
 
-const MIP_INFO_NAME_LEN_MAX: u32 = 255;
+const MIP_INFO_NAME_MAX_LEN: u32 = 255;
 const COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::<ComponentState>() as u32;
 const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::<ComponentStateTypeId>() as u32;
 const MIP_STORE_MAX_ENTRIES: u32 = 4096;
@@ -53,7 +53,6 @@ impl Default for MipInfoSerializer {
 
 impl Serializer<MipInfo> for MipInfoSerializer {
     fn serialize(&self, value: &MipInfo, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        // TODO: StringSerializer
         // name
         let name_len_ = value.name.len();
         if name_len_ > MIP_INFO_NAME_LEN_MAX as usize {
@@ -102,7 +101,7 @@ impl MipInfoDeserializer {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
             len_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MIP_INFO_NAME_LEN_MAX),
+                Excluded(MIP_INFO_NAME_MAX_LEN),
             ),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(0.into()),
@@ -128,6 +127,7 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
             "Failed MipInfo deserialization",
             tuple((
                 context("Failed name deserialization", |input| {
+                    // Note: this is bounded to MIP_INFO_NAME_MAX_LEN
                     let (input_, len_) = self.len_deserializer.deserialize(input)?;
                     // Safe to unwrap as it returns Result<usize, Infallible>
                     let len = usize::try_from(len_).unwrap();
@@ -331,7 +331,6 @@ impl Serializer<Advance> for AdvanceSerializer {
 
 /// A Deserializer for `Advance`
 pub struct AdvanceDeserializer {
-    // state_deserializer: U32VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
     time_deserializer: MassaTimeDeserializer,
 }
