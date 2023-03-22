@@ -1,6 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
+use std::ops::Bound::{Excluded, Included};
+
+use nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult, Parser,
+};
 use thiserror::Error;
 
 use crate::block_header::{
@@ -9,13 +16,18 @@ use crate::block_header::{
 use crate::endorsement::{
     Endorsement, EndorsementDenunciationData, EndorsementSerializer, SecureShareEndorsement,
 };
-use crate::slot::Slot;
+use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
-use massa_hash::Hash;
-use massa_serialization::{SerializeError, Serializer};
-use massa_signature::{MassaSignatureError, PublicKey, Signature};
+use massa_hash::{Hash, HashDeserializer, HashSerializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
+use massa_signature::{
+    MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
+};
 
 #[allow(dead_code)]
+#[derive(Debug, PartialEq)]
 struct EndorsementDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -358,16 +370,138 @@ pub enum DenunciationError {
     Serialization(#[from] SerializeError),
 }
 
+// Serialization / Deserialization
+
+/// Serializer for `EndorsementDenunciation`
+pub struct EndorsementDenunciationSerializer {
+    slot_serializer: SlotSerializer,
+    u32_serializer: U32VarIntSerializer,
+    hash_serializer: HashSerializer,
+}
+
+impl EndorsementDenunciationSerializer {
+    /// Creates a new `EndorsementDenunciationSerializer`
+    pub const fn new() -> Self {
+        Self {
+            slot_serializer: SlotSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
+            hash_serializer: HashSerializer::new(),
+        }
+    }
+}
+
+impl Default for EndorsementDenunciationSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<EndorsementDenunciation> for EndorsementDenunciationSerializer {
+    fn serialize(
+        &self,
+        value: &EndorsementDenunciation,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        buffer.extend(value.public_key.to_bytes());
+        self.slot_serializer.serialize(&value.slot, buffer)?;
+        self.u32_serializer.serialize(&value.index, buffer)?;
+        self.hash_serializer.serialize(&value.hash_1, buffer)?;
+        self.hash_serializer.serialize(&value.hash_2, buffer)?;
+        buffer.extend(value.signature_1.to_bytes());
+        buffer.extend(value.signature_2.to_bytes());
+        Ok(())
+    }
+}
+
+/// Deserializer for `EndorsementDenunciation`
+pub struct EndorsementDenunciationDeserializer {
+    slot_deserializer: SlotDeserializer,
+    index_deserializer: U32VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
+    pubkey_deserializer: PublicKeyDeserializer,
+    signature_deserializer: SignatureDeserializer,
+}
+
+impl EndorsementDenunciationDeserializer {
+    /// Creates a new `EndorsementDeserializer`
+    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+        EndorsementDenunciationDeserializer {
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Excluded(thread_count)),
+            ),
+            index_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(endorsement_count),
+            ),
+            hash_deserializer: HashDeserializer::new(),
+            pubkey_deserializer: PublicKeyDeserializer::new(),
+            signature_deserializer: SignatureDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<EndorsementDenunciation> for EndorsementDenunciationDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], EndorsementDenunciation, E> {
+        context(
+            "Failed Endorsement Denunciation deserialization",
+            tuple((
+                context("Failed public key deserialization", |input| {
+                    self.pubkey_deserializer.deserialize(input)
+                }),
+                context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed slot deserialization", |input| {
+                    self.index_deserializer.deserialize(input)
+                }),
+                context("Failed hash 1 deserialization", |input| {
+                    self.hash_deserializer.deserialize(input)
+                }),
+                context("Failed hash 2 deserialization", |input| {
+                    self.hash_deserializer.deserialize(input)
+                }),
+                context("Failed signature 1 deserialization", |input| {
+                    self.signature_deserializer.deserialize(input)
+                }),
+                context("Failed signature 2 deserialization", |input| {
+                    self.signature_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(
+            |(public_key, slot, index, hash_1, hash_2, signature_1, signature_2)| {
+                EndorsementDenunciation {
+                    public_key,
+                    slot,
+                    index,
+                    hash_1,
+                    hash_2,
+                    signature_1,
+                    signature_2,
+                }
+            },
+        )
+        .parse(buffer)
+    }
+}
+
+// End Ser / Der
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use massa_serialization::DeserializeError;
 
     use crate::block_id::BlockId;
     use crate::endorsement::{
         Endorsement, EndorsementSerializer, EndorsementSerializerLW, SecureShareEndorsement,
     };
 
-    use crate::config::THREAD_COUNT;
+    use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     use crate::secure_share::{Id, SecureShareContent};
     use massa_signature::KeyPair;
 
@@ -640,5 +774,32 @@ mod tests {
         // An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
         // This has to be detected if Denunciation are send via the network
         assert_eq!(de_forged_2.is_valid().unwrap(), false);
+    }
+
+    // SER / DER
+    #[test]
+    fn test_endorsement_denunciation_ser_der() {
+        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+
+        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+        let mut buffer = Vec::new();
+        let de_ser = EndorsementDenunciationSerializer::new();
+
+        match denunciation {
+            Denunciation::Endorsement(de) => {
+                de_ser.serialize(&de, &mut buffer).unwrap();
+                let de_der =
+                    EndorsementDenunciationDeserializer::new(THREAD_COUNT, ENDORSEMENT_COUNT);
+
+                let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+                assert_eq!(rem.is_empty(), true);
+                assert_eq!(de, de_der_res);
+            }
+            Denunciation::BlockHeader(_) => {
+                unimplemented!()
+            }
+        }
     }
 }
