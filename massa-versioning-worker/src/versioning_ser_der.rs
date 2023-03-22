@@ -618,9 +618,7 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
                 }),
             ),
         )
-        .map(|items| MipStoreRaw {
-            0: items.into_iter().collect(),
-        })
+        .map(|items| MipStoreRaw(items.into_iter().collect()))
         .parse(buffer)
     }
 }
