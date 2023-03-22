@@ -13,6 +13,7 @@ impl Default for FactoryConfig {
             initial_delay: MassaTime::from(0),
             max_block_size: MAX_BLOCK_SIZE as u64,
             max_block_gas: MAX_GAS_PER_BLOCK,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         }
     }
 }

@@ -40,7 +40,7 @@ use massa_time::MassaTime;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -435,8 +435,8 @@ impl ExecutionState {
             let max_rolls = rolls.1.saturating_add(*roll_count);
             if max_rolls > vesting_range.max_rolls {
                 return Err(ExecutionError::VestingError(format!(
-                    "vesting_max_rolls={} with value max_rolls={} ",
-                    vesting_range.max_rolls, max_rolls
+                    "trying to get to a total of {} rolls but only {} are allowed at that time by the vesting scheme",
+                    max_rolls, vesting_range.max_rolls
                 )));
             }
         }
@@ -1458,7 +1458,7 @@ impl ExecutionState {
         for v in hashmap.values_mut() {
             if v.len().eq(&1) {
                 return Err(ExecutionError::InitVestingError(
-                    "vesting file should has more one element".to_string(),
+                    "vesting file should have more than one element".to_string(),
                 ));
             } else {
                 *v = v
@@ -1485,9 +1485,17 @@ impl ExecutionState {
                     })
                     // we don't need range with StartSlot(0,0) && EndSlot(0,0)
                     // this can happen when the timestamp is passed
-                    .filter(|a| {
-                        !(a.as_ref().unwrap().end_slot == Slot::min()
-                            && a.as_ref().unwrap().start_slot == Slot::min())
+                    .filter(|a| match a.as_ref() {
+                        Ok(vesting) => {
+                            !(vesting.end_slot == Slot::min() && vesting.start_slot == Slot::min())
+                        }
+                        Err(e) => {
+                            error!(
+                                "unable to retrieve reference for vesting range with error : {}",
+                                e
+                            );
+                            false
+                        }
                     })
                     .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
             }

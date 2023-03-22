@@ -371,10 +371,16 @@ impl Deserializer<bool> for BoolDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], bool, E> {
         context("Failed bool deserialization", |input: &'a [u8]| {
-            Ok((&buffer[1..], {
-                match buffer.first() {
-                    Some(1) => Ok(true),
-                    Some(0) => Ok(false),
+            let Some((first, rest)) = input.split_first() else {
+                return Err(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    nom::error::ErrorKind::Fail,
+                )));
+            };
+            Ok((rest, {
+                match first {
+                    1 => Ok(true),
+                    0 => Ok(false),
                     _ => Err(nom::Err::Error(ParseError::from_error_kind(
                         input,
                         nom::error::ErrorKind::Fail,
