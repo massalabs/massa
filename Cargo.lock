@@ -3000,6 +3000,7 @@ dependencies = [
  "massa_models",
  "massa_serialization 0.1.0",
  "massa_time",
+ "more-asserts 0.3.1",
  "nom",
  "num_enum",
  "parking_lot",

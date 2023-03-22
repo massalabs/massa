@@ -23,11 +23,11 @@ use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
 
 /// Ser / Der
 
-const VERSIONING_INFO_NAME_LEN_MAX: u32 = 255;
+const MIP_INFO_NAME_LEN_MAX: u32 = 255;
 const COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::<ComponentState>() as u32;
 const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::<ComponentStateTypeId>() as u32;
-// TODO: add size info?
-const MIP_STORE_ENTRIES_MAX: u32 = 4096;
+const MIP_STORE_MAX_ENTRIES: u32 = 4096;
+const MIP_STORE_MAX_SIZE: usize = 2097152;
 
 /// Serializer for `MipInfo`
 pub struct MipInfoSerializer {
@@ -56,10 +56,10 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         // TODO: StringSerializer
         // name
         let name_len_ = value.name.len();
-        if name_len_ > VERSIONING_INFO_NAME_LEN_MAX as usize {
+        if name_len_ > MIP_INFO_NAME_LEN_MAX as usize {
             return Err(SerializeError::StringTooBig(format!(
                 "MIP info name len is {}, max: {}",
-                name_len_, VERSIONING_INFO_NAME_LEN_MAX
+                name_len_, MIP_INFO_NAME_LEN_MAX
             )));
         }
         let name_len = u32::try_from(name_len_).map_err(|_| {
@@ -102,7 +102,7 @@ impl MipInfoDeserializer {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
             len_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(VERSIONING_INFO_NAME_LEN_MAX),
+                Excluded(MIP_INFO_NAME_LEN_MAX),
             ),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(0.into()),
@@ -558,10 +558,10 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
         let entry_count = u32::try_from(entry_count_).map_err(|e| {
             SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
         })?;
-        if entry_count > MIP_STORE_ENTRIES_MAX {
+        if entry_count > MIP_STORE_MAX_ENTRIES {
             return Err(SerializeError::GeneralError(format!(
                 "Too many entries in VersioningStoreRaw, max: {}",
-                MIP_STORE_ENTRIES_MAX
+                MIP_STORE_MAX_ENTRIES
             )));
         }
         self.u32_serializer.serialize(&entry_count, buffer)?;
@@ -586,7 +586,7 @@ impl MipStoreRawDeserializer {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MIP_STORE_ENTRIES_MAX),
+                Included(MIP_STORE_MAX_ENTRIES),
             ),
             info_deserializer: MipInfoDeserializer::new(),
             state_deserializer: MipStateDeserializer::new(),
@@ -606,10 +606,11 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], MipStoreRaw, E> {
         context(
-            "Failed VersioningStoreRaw len der",
+            "Failed MipStoreRaw der",
             length_count(
                 context("Failed len der", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    let (rem, count) = self.u32_deserializer.deserialize(input)?;
+                    IResult::Ok((rem, count))
                 }),
                 context("Failed items der", |input| {
                     let (rem, vi) = self.info_deserializer.deserialize(input)?;
@@ -628,8 +629,10 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::mem::{size_of, size_of_val};
 
     use chrono::{NaiveDate, NaiveDateTime};
+    use more_asserts::assert_lt;
     use std::str::FromStr;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
@@ -785,6 +788,66 @@ mod test {
         let mut buf = Vec::new();
         let store_raw_ser = MipStoreRawSerializer::new();
         store_raw_ser.serialize(&store_raw, &mut buf).unwrap();
+
+        let store_raw_der = MipStoreRawDeserializer::new();
+        let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(store_raw, store_raw_der_res);
+    }
+
+    #[test]
+    fn mip_store_raw_max_size() {
+        let mut mi_base = MipInfo {
+            name: "A".repeat(254),
+            version: 0,
+            component: MipComponent::Address,
+            component_version: 0,
+            start: MassaTime::from(0),
+            timeout: MassaTime::from(2),
+        };
+
+        let mi_base_size = size_of_val(&mi_base.name[..])
+            + size_of_val(&mi_base.version)
+            + size_of_val(&mi_base.component)
+            + size_of_val(&mi_base.component_version)
+            + size_of_val(&mi_base.start)
+            + size_of_val(&mi_base.timeout);
+
+        let mut all_state_size = 0;
+
+        let store_raw_: Vec<(MipInfo, MipState)> = (0..MIP_STORE_MAX_ENTRIES)
+            .map(|_i| {
+                mi_base.version += 1;
+                mi_base.component_version += 1;
+                mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(1));
+                mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(2));
+
+                let state = advance_state_until(ComponentState::active(), &mi_base);
+
+                all_state_size += size_of_val(&state.inner);
+                all_state_size += state.history.len() * (size_of::<Advance>() + size_of::<u32>());
+
+                (mi_base.clone(), state)
+            })
+            .collect();
+
+        // Cannot use update_with ou try_from here as the names are not uniques
+        let store_raw = MipStoreRaw {
+            0: BTreeMap::from_iter(store_raw_.into_iter()),
+        };
+        assert_eq!(store_raw.0.len(), MIP_STORE_MAX_ENTRIES as usize);
+
+        let store_raw_size = (store_raw.0.len() * mi_base_size) + all_state_size;
+        assert_lt!(store_raw_size, MIP_STORE_MAX_SIZE);
+
+        // Now check SER / DER with this huge store
+        let mut buf = Vec::new();
+        let store_raw_ser = MipStoreRawSerializer::new();
+
+        store_raw_ser
+            .serialize(&store_raw, &mut buf)
+            .expect("Unable to serialize");
 
         let store_raw_der = MipStoreRawDeserializer::new();
         let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
