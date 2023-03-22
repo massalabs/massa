@@ -9,7 +9,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_consensus_worker":["",[["state",[],["graph.rs","mod.rs","process.rs","process_commands.rs","prune.rs","stats.rs","tick.rs","verifications.rs"]],["worker",[],["init.rs","main_loop.rs","mod.rs"]]],["commands.rs","controller.rs","lib.rs","manager.rs"]],\
 "massa_executed_ops":["",[],["config.rs","executed_ops.rs","lib.rs","ops_changes.rs"]],\
 "massa_execution_exports":["",[],["controller_traits.rs","error.rs","event_store.rs","lib.rs","settings.rs","types.rs"]],\
-"massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","module_cache.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","vesting_manager.rs","worker.rs"]],\
+"massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","module_cache.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","worker.rs"]],\
 "massa_factory_exports":["",[],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]],\
 "massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
 "massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]],\
