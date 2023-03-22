@@ -1,15 +1,13 @@
-use massa_execution_exports::{ExecutionConfig, ExecutionError};
+use massa_execution_exports::ExecutionError;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::prehash::PreHashMap;
 use massa_models::slot::Slot;
 use massa_models::timeslots;
-use massa_models::vesting_range::VestingRange;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use serde_json::{Deserializer, Value};
-use std::collections::HashMap;
 use std::path::PathBuf;
+use tracing::error;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct VestingInfo {
@@ -17,7 +15,6 @@ pub struct VestingInfo {
     pub(crate) max_rolls: u64,
 }
 
-#[derive(Debug)]
 pub struct VestingManager {
     pub(crate) vesting_registry: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>>,
     thread_count: u8,
@@ -27,14 +24,14 @@ pub struct VestingManager {
 
 /// Used for Deserialize
 #[derive(Clone, Copy, Deserialize, Serialize, Debug)]
-struct TempFileVestingRange {
-    /// timestamp to get the start slot
+pub(crate) struct TempFileVestingRange {
+    /// start timestamp
     pub timestamp: MassaTime,
 
-    /// minimal balance for specific range
+    /// minimal balance
     pub min_balance: Amount,
 
-    /// max rolls for specific range
+    /// max rolls
     pub max_rolls: u64,
 }
 
@@ -45,8 +42,16 @@ impl VestingManager {
         genesis_timestamp: MassaTime,
         file_path: PathBuf,
     ) -> Result<Self, ExecutionError> {
+        let vesting = match VestingManager::load_vesting_from_file(file_path) {
+            Ok(data) => data,
+            Err(e) => {
+                error!("error on vesting file load : {}", e);
+                PreHashMap::default()
+            }
+        };
+
         Ok(VestingManager {
-            vesting_registry: VestingManager::load_vesting_from_file(file_path)?,
+            vesting_registry: vesting,
             thread_count,
             t0,
             genesis_timestamp,

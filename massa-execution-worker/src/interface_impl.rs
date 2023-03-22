@@ -68,7 +68,10 @@ impl InterfaceImpl {
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
-        use crate::module_cache::ModuleCache;
+        use crate::{
+            module_cache::ModuleCache,
+            vesting_manager::{self, VestingManager},
+        };
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
         use massa_sc_runtime::GasCosts;
         use parking_lot::RwLock;
@@ -76,8 +79,14 @@ impl InterfaceImpl {
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
-        let vesting_registry = Arc::new(
-            crate::execution::ExecutionState::init_vesting_registry(&config).unwrap_or_default(),
+        let vesting_manager = Arc::new(
+            crate::vesting_manager::VestingManager::new(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                config.initial_vesting_path.clone(),
+            )
+            .unwrap(),
         );
 
         let mut execution_context = ExecutionContext::new(
@@ -85,7 +94,7 @@ impl InterfaceImpl {
             final_state,
             Default::default(),
             module_cache,
-            vesting_registry,
+            vesting_manager,
         );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,

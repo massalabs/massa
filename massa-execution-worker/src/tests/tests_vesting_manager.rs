@@ -1,62 +1,26 @@
 #[cfg(test)]
 mod test {
+    use crate::tests::mock::get_initials_vesting;
     // todo move to tests module
     use crate::vesting_manager::{VestingInfo, VestingManager};
-    use massa_execution_exports::ExecutionConfig;
     use massa_models::address::Address;
     use massa_models::amount::Amount;
-    use massa_models::prehash::PreHashMap;
-    use massa_models::vesting_range::VestingRange;
+    use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
     use massa_time::MassaTime;
+    use std::path::PathBuf;
     use std::str::FromStr;
 
     fn mock_manager(with_data: bool) -> VestingManager {
-        const PAST_TIMESTAMP: u64 = 1675356692000; // 02/02/2023 17h51
-        const SEC_TIMESTAMP: u64 = 1677775892000; // 02/03/2023 17h51;
-        const FUTURE_TIMESTAMP: u64 = 1731257385000; // 10/11/2024 17h49;
+        let file = get_initials_vesting(with_data);
 
-        let cfg = ExecutionConfig::default();
+        let manager = VestingManager::new(
+            THREAD_COUNT,
+            T0,
+            *GENESIS_TIMESTAMP,
+            file.path().to_path_buf(),
+        )
+        .unwrap();
 
-        let mut manager =
-            VestingManager::new(cfg.thread_count, cfg.t0, cfg.genesis_timestamp).unwrap();
-
-        let map = if with_data {
-            let addr =
-                Address::from_str("AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D").unwrap();
-            let mut map: PreHashMap<Address, Vec<(MassaTime, VestingInfo)>> = PreHashMap::default();
-            let mut vec = vec![
-                (
-                    MassaTime::from(PAST_TIMESTAMP),
-                    VestingInfo {
-                        min_balance: Amount::from_str("150000").unwrap(),
-                        max_rolls: 10,
-                    },
-                ),
-                (
-                    MassaTime::from(SEC_TIMESTAMP),
-                    VestingInfo {
-                        min_balance: Amount::from_str("100000").unwrap(),
-                        max_rolls: 15,
-                    },
-                ),
-                (
-                    MassaTime::from(FUTURE_TIMESTAMP),
-                    VestingInfo {
-                        min_balance: Amount::from_str("80000").unwrap(),
-                        max_rolls: 20,
-                    },
-                ),
-            ];
-
-            // force ordering vec by timestamp
-            vec.sort_by(|a, b| a.0.cmp(&b.0));
-            map.insert(addr, vec);
-            map
-        } else {
-            PreHashMap::default()
-        };
-
-        manager.vesting_registry = map;
         manager
     }
 
@@ -64,8 +28,11 @@ mod test {
     fn test_get_addr_vesting_at_time() {
         let manager = mock_manager(true);
 
-        let addr =
-            Address::from_str("AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D").unwrap();
+        let keypair_0 = massa_signature::KeyPair::from_str(
+            "S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ",
+        )
+        .unwrap();
+        let addr = Address::from_public_key(&keypair_0.get_public_key());
 
         {
             // addr not vested
@@ -83,7 +50,7 @@ mod test {
                 result.1,
                 VestingInfo {
                     min_balance: Amount::from_str("150000").unwrap(),
-                    max_rolls: 10,
+                    max_rolls: 30,
                 }
             )
         }
@@ -95,7 +62,7 @@ mod test {
                 result.1,
                 VestingInfo {
                     min_balance: Amount::from_str("100000").unwrap(),
-                    max_rolls: 15,
+                    max_rolls: 50,
                 }
             );
         }
@@ -107,9 +74,15 @@ mod test {
                 result.1,
                 VestingInfo {
                     min_balance: Amount::from_str("80000").unwrap(),
-                    max_rolls: 20,
+                    max_rolls: 80,
                 }
             )
         }
+    }
+
+    #[test]
+    fn test_load_initial_file() {
+        let manager =
+            VestingManager::new(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, PathBuf::new()).unwrap();
     }
 }
