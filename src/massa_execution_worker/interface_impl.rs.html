@@ -786,6 +786,12 @@
 <a href="#786" id="786">786</a>
 <a href="#787" id="787">787</a>
 <a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -864,8 +870,14 @@
         <span class="kw">let </span>config = ExecutionConfig::default();
         <span class="kw">let </span>(final_state, _tempfile, _tempdir) = <span class="kw">super</span>::tests::get_sample_state().unwrap();
         <span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), <span class="number">1000</span>)));
-        <span class="kw">let </span>vesting_registry = Arc::new(
-            <span class="kw">crate</span>::execution::ExecutionState::init_vesting_registry(<span class="kw-2">&amp;</span>config).unwrap_or_default(),
+        <span class="kw">let </span>vesting_manager = Arc::new(
+            <span class="kw">crate</span>::vesting_manager::VestingManager::new(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                config.initial_vesting_path.clone(),
+            )
+            .unwrap(),
         );
 
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::new(
@@ -873,7 +885,7 @@
             final_state,
             Default::default(),
             module_cache,
-            vesting_registry,
+            vesting_manager,
         );
         execution_context.stack = <span class="macro">vec!</span>[ExecutionStackElement {
             address: sender_addr,
