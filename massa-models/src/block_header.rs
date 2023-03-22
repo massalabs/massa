@@ -216,7 +216,11 @@ pub struct BlockHeaderDeserializer {
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializer`
     /// If last_start_period is Some(lsp), then the deserializer will check for valid (non)-genesis blocks
-    pub const fn new(thread_count: u8, endorsement_count: u32, last_start_period: Option<u64>) -> Self {
+    pub const fn new(
+        thread_count: u8,
+        endorsement_count: u32,
+        last_start_period: Option<u64>,
+    ) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -336,7 +340,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                         )));
                     }
                 }
-                
+
                 let (rest, merkle) = context("Failed operation_merkle_root", |input| {
                     self.hash_deserializer.deserialize(input)
                 })

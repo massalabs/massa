@@ -39,20 +39,11 @@ pub const CHANNEL_SIZE: usize = 1024;
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
-        let mut last_start_period = 0;
-        let mut parse_next = false;
-        for args in std::env::args() {
-            if parse_next {
-                last_start_period = u64::from_str(&args).unwrap_or_default();
-                break;
-            }
-            parse_next = args == *"--restart-from-snapshot-at-period";
-        }
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
                 .saturating_sub(
-                    T0.checked_mul(last_start_period).unwrap()
+                    T0.checked_mul(get_period_from_args()).unwrap()
                 )
                 .saturating_add(MassaTime::from_millis(1000 * 10)
 
@@ -84,6 +75,20 @@ lazy_static::lazy_static! {
         .unwrap()
     };
 
+}
+
+/// Helper function to parse args for lazy_static evaluations
+pub fn get_period_from_args() -> u64 {
+    let mut last_start_period = 0;
+    let mut parse_next = false;
+    for args in std::env::args() {
+        if parse_next {
+            last_start_period = u64::from_str(&args).unwrap_or_default();
+            break;
+        }
+        parse_next = args == *"--restart-from-snapshot-at-period";
+    }
+    last_start_period
 }
 
 /// Price of a roll in the network
