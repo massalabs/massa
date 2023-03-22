@@ -90,7 +90,6 @@ impl BSEstablisher for DefaultEstablisher {
         if addr.is_ipv6() {
             socket.set_only_v6(false)?;
         }
-        socket.set_nonblocking(true)?;
         socket.bind(&addr.into())?;
 
         // Number of connections to queue, set to the hardcoded value used by tokio
