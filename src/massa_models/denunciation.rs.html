@@ -803,6 +803,7 @@
 <a href="#803" id="803">803</a>
 <a href="#804" id="804">804</a>
 <a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">/// An overview of what is a Denunciation and what it is used for can be found here
 /// https://github.com/massalabs/massa/discussions/3113
@@ -1007,8 +1008,7 @@
         }
     }
 
-    <span class="doccomment">/// Check if Denunciation is valid
-    /// Should be used if received from the network (prevent against invalid or attacker crafted denunciation)
+    <span class="comment">// TODO: move this for test only
     </span><span class="kw">fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DenunciationError&gt; {
         <span class="kw">let </span>(signature_1, signature_2, hash_1, hash_2, public_key) = <span class="kw">match </span><span class="self">self </span>{
             Denunciation::Endorsement(de) =&gt; {
@@ -1084,6 +1084,7 @@
         }
 
         <span class="comment">// Check sig of s_e1 with s_e1.public_key, s_e1.slot, s_e1.index
+        // TODO: move this for unit tests only
         </span><span class="kw">let </span>s_e1_hash_content = EndorsementDenunciation::compute_content_hash(<span class="kw-2">&amp;</span>s_e1.content)<span class="question-mark">?</span>;
         <span class="kw">let </span>s_e1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
             <span class="kw-2">&amp;</span>s_e1.content_creator_pub_key,
@@ -1124,9 +1125,10 @@
     <span class="kw">fn </span>try_from((s_bh1, s_bh2): (<span class="kw-2">&amp;</span>SecuredHeader, <span class="kw-2">&amp;</span>SecuredHeader)) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="comment">// Cannot use the same block header twice
         // In order to create a Denunciation, there should be the same slot, index &amp; public key
+        // TODO: move this to unit test only
         </span><span class="kw">if </span>s_bh1.content.slot != s_bh2.content.slot
             || s_bh1.content_creator_pub_key != s_bh2.content_creator_pub_key
-            || s_bh1.id == s_bh2.id
+            || s_bh1.serialized_data == s_bh2.serialized_data
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput);
         }
