@@ -228,7 +228,7 @@ impl Failed {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
     pub(crate) inner: ComponentState,
-    history: BTreeMap<Advance, ComponentStateTypeId>,
+    pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
 }
 
 impl MipState {
@@ -462,7 +462,7 @@ impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStore {
 }
 
 /// Store of all versioning info
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct MipStoreRaw(pub(crate) BTreeMap<MipInfo, MipState>);
 
 impl MipStoreRaw {

@@ -1,15 +1,18 @@
+use std::collections::BTreeMap;
 use std::mem;
 use std::ops::Bound::{Excluded, Included};
 
 use nom::{
     error::context,
     error::{ContextError, ParseError},
+    multi::length_count,
     sequence::tuple,
     IResult, Parser,
 };
 
 use crate::versioning::{
-    Advance, ComponentState, ComponentStateTypeId, MipComponent, MipInfo, Started,
+    Advance, ComponentState, ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStoreRaw,
+    Started,
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -22,7 +25,9 @@ use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
 
 const VERSIONING_INFO_NAME_LEN_MAX: u32 = 255;
 const COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::<ComponentState>() as u32;
-// const VERSIONING_STORE_ENTRIES_MAX: u32 = 2048;
+const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::<ComponentStateTypeId>() as u32;
+// TODO: add size info?
+const MIP_STORE_ENTRIES_MAX: u32 = 4096;
 
 /// Serializer for `MipInfo`
 pub struct MipInfoSerializer {
@@ -324,7 +329,7 @@ impl Serializer<Advance> for AdvanceSerializer {
     }
 }
 
-/// A Deserializer for ComponentState`
+/// A Deserializer for `Advance`
 pub struct AdvanceDeserializer {
     // state_deserializer: U32VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
@@ -332,7 +337,7 @@ pub struct AdvanceDeserializer {
 }
 
 impl AdvanceDeserializer {
-    /// Creates a new `Deserializer`
+    /// Creates a new `AdvanceDeserializer`
     pub fn new() -> Self {
         Self {
             amount_deserializer: AmountDeserializer::new(
@@ -389,7 +394,238 @@ impl Deserializer<Advance> for AdvanceDeserializer {
 
 // MipState
 
+/// Serializer for `MipState`
+pub struct MipStateSerializer {
+    state_serializer: ComponentStateSerializer,
+    advance_serializer: AdvanceSerializer,
+    u32_serializer: U32VarIntSerializer,
+}
+
+impl MipStateSerializer {
+    /// Creates a new `MipStateSerializer`
+    pub fn new() -> Self {
+        Self {
+            state_serializer: Default::default(),
+            advance_serializer: Default::default(),
+            u32_serializer: U32VarIntSerializer::default(),
+        }
+    }
+}
+
+impl Default for MipStateSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<MipState> for MipStateSerializer {
+    fn serialize(&self, value: &MipState, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.state_serializer.serialize(&value.inner, buffer)?;
+        // history len
+        self.u32_serializer.serialize(
+            &value.history.len().try_into().map_err(|err| {
+                SerializeError::GeneralError(format!("too many history: {}", err))
+            })?,
+            buffer,
+        )?;
+        for (advance, state_id) in value.history.iter() {
+            self.advance_serializer.serialize(advance, buffer)?;
+            self.u32_serializer
+                .serialize(&u32::from(state_id.clone()), buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// A Deserializer for `MipState`
+pub struct MipStateDeserializer {
+    state_deserializer: ComponentStateDeserializer,
+    advance_deserializer: AdvanceDeserializer,
+    state_id_deserializer: U32VarIntDeserializer,
+    u32_deserializer: U32VarIntDeserializer,
+}
+
+impl MipStateDeserializer {
+    /// Creates a new `MipStateDeserializer`
+    pub fn new() -> Self {
+        Self {
+            state_deserializer: ComponentStateDeserializer::new(),
+            advance_deserializer: AdvanceDeserializer::new(),
+            state_id_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(COMPONENT_STATE_ID_VARIANT_COUNT),
+            ),
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
+        }
+    }
+}
+
+impl Default for MipStateDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<MipState> for MipStateDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], MipState, E> {
+        // Der component state
+        let (rem, component_state) = context("Failed component state deserialization", |input| {
+            self.state_deserializer.deserialize(input)
+        })
+        .parse(buffer)?;
+
+        // Der history
+        let (rem2, history) = context(
+            "Failed Vec<OperationId> deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed deserialization",
+                    tuple((
+                        context("Failed advance deserialization", |input| {
+                            self.advance_deserializer.deserialize(input)
+                        }),
+                        context("Failed state id deserialization", |input| {
+                            let (res, state_id_) = self.state_id_deserializer.deserialize(input)?;
+
+                            let state_id =
+                                ComponentStateTypeId::try_from(state_id_).map_err(|_e| {
+                                    nom::Err::Error(ParseError::from_error_kind(
+                                        buffer,
+                                        nom::error::ErrorKind::Fail,
+                                    ))
+                                })?;
+
+                            IResult::Ok((res, state_id))
+                        }),
+                    )),
+                ),
+            ),
+        )
+        .map(|items| {
+            items
+                .into_iter()
+                .collect::<BTreeMap<Advance, ComponentStateTypeId>>()
+        })
+        .parse(rem)?;
+
+        IResult::Ok((
+            rem2,
+            MipState {
+                inner: component_state,
+                history,
+            },
+        ))
+    }
+}
+
 // End MipState
+
+// MipStoreRaw
+
+/// Serializer for `VersioningStoreRaw`
+pub struct MipStoreRawSerializer {
+    u32_serializer: U32VarIntSerializer,
+    info_serializer: MipInfoSerializer,
+    state_serializer: MipStateSerializer,
+}
+
+impl MipStoreRawSerializer {
+    /// Creates a new `Serializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+            info_serializer: MipInfoSerializer::new(),
+            state_serializer: MipStateSerializer::new(),
+        }
+    }
+}
+
+impl Default for MipStoreRawSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
+    fn serialize(&self, value: &MipStoreRaw, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        let entry_count_ = value.0.len();
+        let entry_count = u32::try_from(entry_count_).map_err(|e| {
+            SerializeError::GeneralError(format!("Could not convert to u32: {}", e))
+        })?;
+        if entry_count > MIP_STORE_ENTRIES_MAX {
+            return Err(SerializeError::GeneralError(format!(
+                "Too many entries in VersioningStoreRaw, max: {}",
+                MIP_STORE_ENTRIES_MAX
+            )));
+        }
+        self.u32_serializer.serialize(&entry_count, buffer)?;
+        for (key, value) in value.0.iter() {
+            self.info_serializer.serialize(key, buffer)?;
+            self.state_serializer.serialize(value, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// A Deserializer for `VersioningStoreRaw
+pub struct MipStoreRawDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    info_deserializer: MipInfoDeserializer,
+    state_deserializer: MipStateDeserializer,
+}
+
+impl MipStoreRawDeserializer {
+    /// Creates a new ``
+    pub fn new() -> Self {
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(MIP_STORE_ENTRIES_MAX),
+            ),
+            info_deserializer: MipInfoDeserializer::new(),
+            state_deserializer: MipStateDeserializer::new(),
+        }
+    }
+}
+
+impl Default for MipStoreRawDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], MipStoreRaw, E> {
+        context(
+            "Failed VersioningStoreRaw len der",
+            length_count(
+                context("Failed len der", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+                context("Failed items der", |input| {
+                    let (rem, vi) = self.info_deserializer.deserialize(input)?;
+                    let (rem2, vs) = self.state_deserializer.deserialize(rem)?;
+                    IResult::Ok((rem2, (vi, vs)))
+                }),
+            ),
+        )
+        .map(|items| MipStoreRaw {
+            0: items.into_iter().collect(),
+        })
+        .parse(buffer)
+    }
+}
+
+// End MipStoreRaw
 
 #[cfg(test)]
 mod test {
@@ -398,6 +634,7 @@ mod test {
     use chrono::{NaiveDate, NaiveDateTime};
     use std::str::FromStr;
 
+    use crate::test_helpers::versioning_helpers::advance_state_until;
     use massa_serialization::DeserializeError;
     use massa_time::MassaTime;
 
@@ -484,5 +721,77 @@ mod test {
 
         assert!(rem.is_empty());
         assert_eq!(adv, adv_der);
+    }
+
+    #[test]
+    fn test_mip_state_ser_der() {
+        let state_1 = MipState::new(MassaTime::from(100));
+
+        let mut buf = Vec::new();
+        let state_ser = MipStateSerializer::new();
+        state_ser.serialize(&state_1, &mut buf).unwrap();
+
+        let state_der = MipStateDeserializer::new();
+
+        let (rem, state_der_res) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(state_1, state_der_res);
+        buf.clear();
+
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            component: MipComponent::Address,
+            component_version: 1,
+            start: MassaTime::from(2),
+            timeout: MassaTime::from(5),
+        };
+
+        let state_2 = advance_state_until(ComponentState::locked_in(), &mi_1);
+        state_ser.serialize(&state_2, &mut buf).unwrap();
+        let (rem, state_der_res) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(state_2, state_der_res);
+    }
+
+    #[test]
+    fn test_mip_store_raw_ser_der() {
+        let mi_2 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            component: MipComponent::Address,
+            component_version: 1,
+            start: MassaTime::from(2),
+            timeout: MassaTime::from(5),
+        };
+
+        let mi_3 = MipInfo {
+            name: "MIP-0003".to_string(),
+            version: 3,
+            component: MipComponent::Block,
+            component_version: 1,
+            start: MassaTime::from(12),
+            timeout: MassaTime::from(17),
+        };
+
+        let state_2 = advance_state_until(ComponentState::active(), &mi_2);
+        let state_3 = advance_state_until(
+            ComponentState::started(Amount::from_str("42.4242").unwrap()),
+            &mi_3,
+        );
+
+        let store_raw = MipStoreRaw::try_from([(mi_2, state_2), (mi_3, state_3)]).unwrap();
+
+        let mut buf = Vec::new();
+        let store_raw_ser = MipStoreRawSerializer::new();
+        store_raw_ser.serialize(&store_raw, &mut buf).unwrap();
+
+        let store_raw_der = MipStoreRawDeserializer::new();
+        let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(store_raw, store_raw_der_res);
     }
 }
