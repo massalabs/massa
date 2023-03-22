@@ -603,16 +603,6 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_hash::HashDeserializer;
@@ -870,7 +860,6 @@
     id_deserializer: U32VarIntDeserializer,
     ask_block_number_deserializer: U32VarIntDeserializer,
     peer_list_length_deserializer: U32VarIntDeserializer,
-    operation_replies_deserializer: OperationsDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
     block_header_deserializer: SecureShareDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
@@ -912,17 +901,8 @@
                 Included(<span class="number">0</span>),
                 Included(max_advertise_length),
             ),
-            operation_replies_deserializer: OperationsDeserializer::new(
-                max_operations_per_block,
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
-                max_op_datastore_entry_count,
-                max_op_datastore_key_length,
-                max_op_datastore_value_length,
-            ),
             operations_deserializer: OperationsDeserializer::new(
-                max_operations_per_message,
+                max_operations_per_block,
                 max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
@@ -1089,7 +1069,7 @@
                                                 (rest, BlockInfoReply::Info(operation_ids))
                                             }),
                                         BlockInfoType::Operations =&gt; <span class="self">self
-                                            </span>.operation_replies_deserializer
+                                            </span>.operations_deserializer
                                             .deserialize(rest)
                                             .map(|(rest, operations)| {
                                                 (rest, BlockInfoReply::Operations(operations))

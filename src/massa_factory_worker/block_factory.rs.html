@@ -262,14 +262,6 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
@@ -467,12 +459,6 @@
 
         <span class="comment">// gather operations and compute global operations hash
         </span><span class="kw">let </span>(op_ids, op_storage) = <span class="self">self</span>.channels.pool.get_block_operations(<span class="kw-2">&amp;</span>slot);
-
-        <span class="kw">if </span>op_ids.len() &gt; <span class="self">self</span>.cfg.max_operations_per_block <span class="kw">as </span>usize {
-            <span class="macro">warn!</span>(<span class="string">&quot;Too many operations returned&quot;</span>);
-            <span class="kw">return</span>;
-        }
-
         block_storage.extend(op_storage);
         <span class="kw">let </span>global_operations_hash = Hash::compute_from(
             <span class="kw-2">&amp;</span>op_ids
@@ -495,13 +481,11 @@
         .expect(<span class="string">&quot;error while producing block header&quot;</span>);
 
         <span class="comment">// create block
-        </span><span class="kw">let </span>block_ = Block {
-            header,
-            operations: op_ids.into_iter().collect(),
-        };
-
-        <span class="kw">let </span>block = Block::new_verifiable(
-            block_,
+        </span><span class="kw">let </span>block = Block::new_verifiable(
+            Block {
+                header,
+                operations: op_ids.into_iter().collect(),
+            },
             BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
             </span>block_producer_keypair,
         )
