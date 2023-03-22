@@ -19,6 +19,7 @@ use std::net::IpAddr;
 use std::str;
 
 #[macro_export]
+/// Display the MASSA logo on the CLI with fancy colors
 macro_rules! massa_fancy_ascii_art_logo {
     () => {
         println!(
