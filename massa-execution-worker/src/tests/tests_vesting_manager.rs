@@ -82,7 +82,24 @@ mod test {
 
     #[test]
     fn test_load_initial_file() {
-        let manager =
-            VestingManager::new(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, PathBuf::new()).unwrap();
+        {
+            // Whitout file, error is returned
+            let result = VestingManager::new(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, PathBuf::new());
+            assert!(result.is_err());
+            let err = result.err().unwrap();
+            assert!(err.to_string().contains("No such file"));
+        }
+
+        {
+            // mock file
+            let file = get_initials_vesting(false);
+            let result = VestingManager::new(
+                THREAD_COUNT,
+                T0,
+                *GENESIS_TIMESTAMP,
+                file.path().to_path_buf(),
+            );
+            assert!(result.is_ok());
+        }
     }
 }

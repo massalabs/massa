@@ -7,7 +7,6 @@ use massa_models::timeslots;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tracing::error;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct VestingInfo {
@@ -42,14 +41,7 @@ impl VestingManager {
         genesis_timestamp: MassaTime,
         file_path: PathBuf,
     ) -> Result<Self, ExecutionError> {
-        let vesting = match VestingManager::load_vesting_from_file(file_path) {
-            Ok(data) => data,
-            Err(e) => {
-                error!("error on vesting file load : {}", e);
-                PreHashMap::default()
-            }
-        };
-
+        let vesting = VestingManager::load_vesting_from_file(file_path)?;
         Ok(VestingManager {
             vesting_registry: vesting,
             thread_count,
