@@ -18,9 +18,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use structopt::StructOpt;
 
 mod cmds;
+mod display;
 mod repl;
 mod settings;
-mod display;
 
 #[cfg(test)]
 pub mod tests;

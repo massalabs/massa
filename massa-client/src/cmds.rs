@@ -338,7 +338,7 @@ pub enum ListOperation {
 /// Used to have a shinny json output
 /// TODO re-factor me
 #[derive(Debug, Serialize)]
-pub (crate) struct ExtendedWalletEntry {
+pub(crate) struct ExtendedWalletEntry {
     /// the keypair
     pub keypair: KeyPair,
     /// address and balance information
@@ -362,7 +362,7 @@ impl Display for ExtendedWalletEntry {
 /// Aggregation of the local, with some useful information as the balance, etc
 /// to be printed by the client.
 #[derive(Debug, Serialize)]
-pub struct ExtendedWallet(pub (crate) PreHashMap<Address, ExtendedWalletEntry>);
+pub struct ExtendedWallet(pub(crate) PreHashMap<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     /// Reorganize everything into an extended wallet

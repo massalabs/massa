@@ -11,12 +11,12 @@ use massa_api_exports::{
 use massa_models::composite::PubkeySig;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
-use massa_models::{address::Address, operation::OperationId, config::CompactConfig};
 use massa_models::stats::{ConsensusStats, ExecutionStats, NetworkStats};
+use massa_models::{address::Address, config::CompactConfig, operation::OperationId};
 use massa_signature::{KeyPair, PublicKey};
 use massa_wallet::Wallet;
-use std::str;
 use std::net::IpAddr;
+use std::str;
 
 #[macro_export]
 macro_rules! massa_fancy_ascii_art_logo {
@@ -128,9 +128,13 @@ impl Output for ExtendedWallet {
         for entry in self.0.values() {
             if entry.show_keys {
                 println!("Secret key: {}", Style::Secret.style(&entry.keypair));
-                println!("Public key: {}", Style::Wallet.style(entry.keypair.get_public_key()));
+                println!(
+                    "Public key: {}",
+                    Style::Wallet.style(entry.keypair.get_public_key())
+                );
             }
-            println!("Address: {} (thread {}):",
+            println!(
+                "Address: {} (thread {}):",
                 Style::Wallet.style(entry.address_info.address),
                 Style::Protocol.style(entry.address_info.thread),
             );
@@ -205,7 +209,10 @@ impl Output for NodeStatus {
     fn pretty_print(&self) {
         println!("Node's ID: {}", Style::Id.style(self.node_id));
         if self.node_ip.is_some() {
-            println!("Node's IP: {}", Style::Protocol.style(self.node_ip.unwrap()));
+            println!(
+                "Node's IP: {}",
+                Style::Protocol.style(self.node_ip.unwrap())
+            );
         } else {
             println!("{}", Style::Unknown.style("No routable IP set"));
         }
@@ -216,9 +223,15 @@ impl Output for NodeStatus {
         println!();
 
         println!("Current time: {}", self.current_time.to_utc_string());
-        println!("Current cycle: {}", Style::Protocol.style(self.current_cycle));
+        println!(
+            "Current cycle: {}",
+            Style::Protocol.style(self.current_cycle)
+        );
         if self.last_slot.is_some() {
-            println!("Last slot: {}", Style::Protocol.style(self.last_slot.unwrap()));
+            println!(
+                "Last slot: {}",
+                Style::Protocol.style(self.last_slot.unwrap())
+            );
         }
         println!("Next slot: {}", Style::Protocol.style(self.next_slot));
         println!();
@@ -226,8 +239,14 @@ impl Output for NodeStatus {
         self.consensus_stats.pretty_print();
 
         println!("Pool stats:");
-        println!("\tOperations count: {}", Style::Protocol.style(self.pool_stats.0));
-        println!("\tEndorsements count: {}", Style::Protocol.style(self.pool_stats.1));
+        println!(
+            "\tOperations count: {}",
+            Style::Protocol.style(self.pool_stats.0)
+        );
+        println!(
+            "\tEndorsements count: {}",
+            Style::Protocol.style(self.pool_stats.1)
+        );
         println!();
 
         self.network_stats.pretty_print();
@@ -266,18 +285,36 @@ impl Output for ExecutionStats {
             "\tFinal executed operation count: {}",
             Style::Protocol.style(self.final_executed_operations_count)
         );
-        println!("\tActive cursor: {}", Style::Protocol.style(self.active_cursor));
+        println!(
+            "\tActive cursor: {}",
+            Style::Protocol.style(self.active_cursor)
+        );
     }
 }
 
 impl Output for NetworkStats {
     fn pretty_print(&self) {
         println!("Network stats:");
-        println!("\tIn connections: {}", Style::Protocol.style(self.in_connection_count));
-        println!("\tOut connections: {}", Style::Protocol.style(self.out_connection_count));
-        println!("\tKnown peers: {}", Style::Protocol.style(self.known_peer_count));
-        println!("\tBanned peers: {}", Style::Bad.style(self.banned_peer_count));
-        println!("\tActive nodes: {}", Style::Good.style(self.active_node_count));
+        println!(
+            "\tIn connections: {}",
+            Style::Protocol.style(self.in_connection_count)
+        );
+        println!(
+            "\tOut connections: {}",
+            Style::Protocol.style(self.out_connection_count)
+        );
+        println!(
+            "\tKnown peers: {}",
+            Style::Protocol.style(self.known_peer_count)
+        );
+        println!(
+            "\tBanned peers: {}",
+            Style::Bad.style(self.banned_peer_count)
+        );
+        println!(
+            "\tActive nodes: {}",
+            Style::Good.style(self.active_node_count)
+        );
     }
 }
 
@@ -291,17 +328,30 @@ impl Output for CompactConfig {
         if let Some(end) = self.end_timestamp {
             println!("\tEnd time: {}", Style::Time.style(end.to_utc_string()));
         }
-        println!("\tThread count: {}", Style::Protocol.style(self.thread_count));
+        println!(
+            "\tThread count: {}",
+            Style::Protocol.style(self.thread_count)
+        );
         println!("\tt0: {}", Style::Time.style(self.t0));
         println!("\tdelta_f0: {}", Style::Protocol.style(self.delta_f0));
-        println!("\tOperation validity periods: {}",
+        println!(
+            "\tOperation validity periods: {}",
             Style::Protocol.style(self.operation_validity_periods)
         );
-        println!("\tPeriods per cycle: {}", Style::Protocol.style(self.periods_per_cycle));
+        println!(
+            "\tPeriods per cycle: {}",
+            Style::Protocol.style(self.periods_per_cycle)
+        );
         println!("\tBlock reward: {}", Style::Coins.style(self.block_reward));
-        println!("\tPeriods per cycle: {}", Style::Protocol.style(self.periods_per_cycle));
+        println!(
+            "\tPeriods per cycle: {}",
+            Style::Protocol.style(self.periods_per_cycle)
+        );
         println!("\tRoll price: {}", Style::Coins.style(self.roll_price));
-        println!("\tMax block size (in bytes): {}", Style::Block.style(self.max_block_size));
+        println!(
+            "\tMax block size (in bytes): {}",
+            Style::Block.style(self.max_block_size)
+        );
     }
 }
 
@@ -316,9 +366,18 @@ impl Output for ConsensusStats {
             "\tEnd stats timespan time: {}",
             Style::Time.style(self.end_timespan.to_utc_string())
         );
-        println!("\tFinal block count: {}", Style::Block.style(self.final_block_count));
-        println!("\tStale block count: {}", Style::Block.style(self.stale_block_count));
-        println!("\tClique count: {}", Style::Protocol.style(self.clique_count));
+        println!(
+            "\tFinal block count: {}",
+            Style::Block.style(self.final_block_count)
+        );
+        println!(
+            "\tStale block count: {}",
+            Style::Block.style(self.stale_block_count)
+        );
+        println!(
+            "\tClique count: {}",
+            Style::Protocol.style(self.clique_count)
+        );
     }
 }
 
@@ -342,7 +401,8 @@ impl Output for Vec<AddressInfo> {
     fn pretty_print(&self) {
         for info in self {
             println!("{}", Style::Separator.style("========"));
-            println!("Address {} (thread {}):",
+            println!(
+                "Address {} (thread {}):",
                 Style::Wallet.style(info.address),
                 Style::Protocol.style(info.thread),
             );
@@ -431,19 +491,25 @@ impl Output for Vec<OperationInfo> {
                 print!(", {}", Style::Pending.style("in pool"));
             }
             if let Some(f) = info.is_operation_final {
-                print!(", operation is {}", if f {
-                    Style::Finished.style("final")
-                } else {
-                    Style::Pending.style("not final")
-                });
+                print!(
+                    ", operation is {}",
+                    if f {
+                        Style::Finished.style("final")
+                    } else {
+                        Style::Pending.style("not final")
+                    }
+                );
             } else {
                 print!(", finality {}", Style::Unknown.style("unknown"));
             }
-            println!(", {}", match info.op_exec_status {
-                Some(true) => Style::Good.style("success"),
-                Some(false) => Style::Bad.style("failed"),
-                None => Style::Unknown.style("unknown status"),
-            });
+            println!(
+                ", {}",
+                match info.op_exec_status {
+                    Some(true) => Style::Good.style("success"),
+                    Some(false) => Style::Bad.style("failed"),
+                    None => Style::Unknown.style("unknown status"),
+                }
+            );
             if info.in_blocks.is_empty() {
                 println!("{}", Style::Block.style("Not in any blocks"));
             } else {
@@ -452,14 +518,27 @@ impl Output for Vec<OperationInfo> {
                     println!("\t- {}", Style::Block.style(bid));
                 }
             }
-            println!("Signature: {}", Style::Signature.style(info.operation.signature));
-            println!("Creator pubkey: {}",
-                Style::Wallet.style(info.operation.content_creator_pub_key));
-            println!("Creator address: {}",
-                Style::Wallet.style(info.operation.content_creator_address));
+            println!(
+                "Signature: {}",
+                Style::Signature.style(info.operation.signature)
+            );
+            println!(
+                "Creator pubkey: {}",
+                Style::Wallet.style(info.operation.content_creator_pub_key)
+            );
+            println!(
+                "Creator address: {}",
+                Style::Wallet.style(info.operation.content_creator_address)
+            );
             println!("Fee: {}", Style::Coins.style(info.operation.content.fee));
-            println!("Expire period: {}", Style::Pending.style(info.operation.content.expire_period));
-            println!("Operation type: {}", Style::Id.style(&info.operation.content.op));
+            println!(
+                "Expire period: {}",
+                Style::Pending.style(info.operation.content.expire_period)
+            );
+            println!(
+                "Operation type: {}",
+                Style::Id.style(&info.operation.content.op)
+            );
         }
     }
 }

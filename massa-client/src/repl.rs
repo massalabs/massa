@@ -2,17 +2,17 @@
 
 use crate::ask_password;
 use crate::cmds::Command;
-use crate::settings::SETTINGS;
 use crate::massa_fancy_ascii_art_logo;
-use massa_sdk::Client;
-use massa_wallet::Wallet;
+use crate::settings::SETTINGS;
 use anyhow::Result;
 use console::style;
+use massa_sdk::Client;
+use massa_wallet::Wallet;
+use rustyline::completion::{Completer, FilenameCompleter, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::validate::MatchingBracketValidator;
 use rustyline::{CompletionType, Config, Editor};
 use rustyline_derive::{Completer, Helper, Highlighter, Hinter, Validator};
-use rustyline::completion::{Completer, FilenameCompleter, Pair};
 use std::env;
 use std::path::Path;
 use strum::IntoEnumIterator;
