@@ -50,5 +50,5 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
     advance_msg.now = timeout.saturating_add(MassaTime::from(1));
     state.on_advance(&advance_msg);
     // Active
-    return state;
+    state
 }

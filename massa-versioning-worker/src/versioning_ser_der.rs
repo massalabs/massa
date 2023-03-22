@@ -27,6 +27,7 @@ const MIP_INFO_NAME_MAX_LEN: u32 = 255;
 const COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::<ComponentState>() as u32;
 const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::<ComponentStateTypeId>() as u32;
 const MIP_STORE_MAX_ENTRIES: u32 = 4096;
+#[allow(dead_code)]
 const MIP_STORE_MAX_SIZE: usize = 2097152;
 
 /// Serializer for `MipInfo`
@@ -55,10 +56,10 @@ impl Serializer<MipInfo> for MipInfoSerializer {
     fn serialize(&self, value: &MipInfo, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         // name
         let name_len_ = value.name.len();
-        if name_len_ > MIP_INFO_NAME_LEN_MAX as usize {
+        if name_len_ > MIP_INFO_NAME_MAX_LEN as usize {
             return Err(SerializeError::StringTooBig(format!(
                 "MIP info name len is {}, max: {}",
-                name_len_, MIP_INFO_NAME_LEN_MAX
+                name_len_, MIP_INFO_NAME_MAX_LEN
             )));
         }
         let name_len = u32::try_from(name_len_).map_err(|_| {
