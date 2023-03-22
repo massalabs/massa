@@ -520,11 +520,11 @@
         <span class="kw">let </span>period = cycle
             .checked_mul(periods_per_cycle)
             .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?
-            </span>.checked_add(periods_per_cycle.saturating_sub(<span class="number">1</span>))
+            </span>.checked_add(periods_per_cycle - <span class="number">1</span>)
             .ok_or(ModelsError::PeriodOverflowError)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Slot {
             period,
-            thread: thread_count.saturating_sub(<span class="number">1</span>),
+            thread: thread_count - <span class="number">1</span>,
         })
     }
 
@@ -548,7 +548,7 @@
     </span><span class="kw">pub const fn </span>max(thread_count: u8) -&gt; Slot {
         Slot {
             period: u64::MAX,
-            thread: thread_count.saturating_sub(<span class="number">1</span>),
+            thread: thread_count,
         }
     }
 
@@ -564,8 +564,8 @@
 
     <span class="doccomment">/// check if the slot is last in the cycle
     </span><span class="kw">pub fn </span>is_last_of_cycle(<span class="kw-2">&amp;</span><span class="self">self</span>, periods_per_cycle: u64, thread_count: u8) -&gt; bool {
-        <span class="self">self</span>.period % periods_per_cycle == (periods_per_cycle.saturating_sub(<span class="number">1</span>))
-            &amp;&amp; <span class="self">self</span>.thread == (thread_count.saturating_sub(<span class="number">1</span>))
+        <span class="self">self</span>.period % periods_per_cycle == (periods_per_cycle - <span class="number">1</span>)
+            &amp;&amp; <span class="self">self</span>.thread == (thread_count - <span class="number">1</span>)
     }
 
     <span class="doccomment">/// check if the slot is first in the cycle
