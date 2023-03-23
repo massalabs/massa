@@ -16,7 +16,6 @@ tracing = "0.1"
 serde_json = "1.0"
 num = { version = "0.4", features = ["serde"] }
 schnellru = "0.2.0"
-serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.10.6"
 # use with gas_calibration feature
 tempfile = { version = "3.3", optional = true }

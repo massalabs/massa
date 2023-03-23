@@ -3,6 +3,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
+use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
 use massa_models::{
     address::Address,
@@ -27,8 +28,6 @@ use std::{
     sync::Arc,
 };
 use tempfile::{NamedTempFile, TempDir};
-
-use crate::vesting_manager::TempFileVestingRange;
 
 fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let file = NamedTempFile::new().unwrap();

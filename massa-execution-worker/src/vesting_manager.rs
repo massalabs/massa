@@ -1,11 +1,11 @@
 use massa_execution_exports::ExecutionError;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
+use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
 use massa_models::slot::Slot;
 use massa_models::timeslots;
 use massa_time::MassaTime;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::context::ExecutionContext;
@@ -217,17 +217,4 @@ impl VestingManager {
 
         Ok(map)
     }
-}
-
-/// Used for Deserialize
-#[derive(Clone, Copy, Deserialize, Serialize, Debug)]
-pub(crate) struct TempFileVestingRange {
-    /// start timestamp
-    pub timestamp: MassaTime,
-
-    /// minimal balance
-    pub min_balance: Amount,
-
-    /// max rolls
-    pub max_rolls: u64,
 }
