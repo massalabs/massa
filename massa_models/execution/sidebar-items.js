@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["EventFilter"]};
+window.SIDEBAR_ITEMS = {"struct":["EventFilter","TempFileVestingRange"]};

@@ -1161,11 +1161,11 @@
 <span class="macro">machine!</span>(
     <span class="doccomment">/// State machine for a Versioning component that tracks the deployment state
     </span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ComponentState {
+    </span><span class="kw">enum </span>ComponentState {
         <span class="doccomment">/// Initial state
         </span>Defined,
         <span class="doccomment">/// Past start, can only go to LockedIn after the threshold is above a given value
-        </span>Started { <span class="kw">pub</span>(<span class="kw">crate</span>) threshold: Amount },
+        </span>Started { threshold: Amount },
         <span class="doccomment">/// Wait for some time before going to active (to let user the time to upgrade)
         </span>LockedIn,
         <span class="doccomment">/// After LockedIn, deployment is considered successful
@@ -1309,7 +1309,7 @@
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>MipState {
     <span class="kw">pub</span>(<span class="kw">crate</span>) inner: ComponentState,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) history: BTreeMap&lt;Advance, ComponentStateTypeId&gt;,
+    history: BTreeMap&lt;Advance, ComponentStateTypeId&gt;,
 }
 
 <span class="kw">impl </span>MipState {
@@ -1543,7 +1543,7 @@
 }
 
 <span class="doccomment">/// Store of all versioning info
-</span><span class="attr">#[derive(Debug, Clone, Default, PartialEq)]
+</span><span class="attr">#[derive(Debug, Clone, Default)]
 </span><span class="kw">pub struct </span>MipStoreRaw(<span class="kw">pub</span>(<span class="kw">crate</span>) BTreeMap&lt;MipInfo, MipState&gt;);
 
 <span class="kw">impl </span>MipStoreRaw {
