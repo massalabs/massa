@@ -8,6 +8,7 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use thiserror::Error;
 
 use crate::block_header::{
@@ -69,6 +70,7 @@ impl EndorsementDenunciation {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, PartialEq)]
 struct BlockHeaderDenunciation {
     public_key: PublicKey,
     slot: Slot,
@@ -115,6 +117,7 @@ impl BlockHeaderDenunciation {
     }
 }
 
+#[derive(Debug, PartialEq)]
 enum Denunciation {
     Endorsement(EndorsementDenunciation),
     BlockHeader(BlockHeaderDenunciation),
@@ -358,6 +361,23 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
     }
 }
 
+#[allow(missing_docs)]
+#[derive(IntoPrimitive, Debug, TryFromPrimitive)]
+#[repr(u32)]
+pub enum DenunciationTypeId {
+    Endorsement = 0,
+    BlockHeader = 1,
+}
+
+impl From<&Denunciation> for DenunciationTypeId {
+    fn from(value: &Denunciation) -> Self {
+        match value {
+            Denunciation::Endorsement(_) => DenunciationTypeId::Endorsement,
+            Denunciation::BlockHeader(_) => DenunciationTypeId::BlockHeader,
+        }
+    }
+}
+
 /// Denunciation error
 #[allow(missing_docs)]
 #[derive(Error, Debug)]
@@ -486,6 +506,209 @@ impl Deserializer<EndorsementDenunciation> for EndorsementDenunciationDeserializ
             },
         )
         .parse(buffer)
+    }
+}
+
+/// Serializer for `BlockHeaderDenunciation`
+pub struct BlockHeaderDenunciationSerializer {
+    slot_serializer: SlotSerializer,
+    hash_serializer: HashSerializer,
+}
+
+impl BlockHeaderDenunciationSerializer {
+    /// Creates a new `BlockHeaderDenunciationSerializer`
+    pub const fn new() -> Self {
+        Self {
+            slot_serializer: SlotSerializer::new(),
+            hash_serializer: HashSerializer::new(),
+        }
+    }
+}
+
+impl Default for BlockHeaderDenunciationSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<BlockHeaderDenunciation> for BlockHeaderDenunciationSerializer {
+    fn serialize(
+        &self,
+        value: &BlockHeaderDenunciation,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        buffer.extend(value.public_key.to_bytes());
+        self.slot_serializer.serialize(&value.slot, buffer)?;
+        self.hash_serializer.serialize(&value.hash_1, buffer)?;
+        self.hash_serializer.serialize(&value.hash_2, buffer)?;
+        buffer.extend(value.signature_1.to_bytes());
+        buffer.extend(value.signature_2.to_bytes());
+        Ok(())
+    }
+}
+
+/// Deserializer for `BlockHeaderDenunciation`
+pub struct BlockHeaderDenunciationDeserializer {
+    slot_deserializer: SlotDeserializer,
+    hash_deserializer: HashDeserializer,
+    pubkey_deserializer: PublicKeyDeserializer,
+    signature_deserializer: SignatureDeserializer,
+}
+
+impl BlockHeaderDenunciationDeserializer {
+    /// Creates a new `BlockHeaderDenunciationDeserializer`
+    pub const fn new(thread_count: u8) -> Self {
+        Self {
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Excluded(thread_count)),
+            ),
+            hash_deserializer: HashDeserializer::new(),
+            pubkey_deserializer: PublicKeyDeserializer::new(),
+            signature_deserializer: SignatureDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<BlockHeaderDenunciation> for BlockHeaderDenunciationDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BlockHeaderDenunciation, E> {
+        context(
+            "Failed BlockHeader Denunciation deserialization",
+            tuple((
+                context("Failed public key deserialization", |input| {
+                    self.pubkey_deserializer.deserialize(input)
+                }),
+                context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed hash 1 deserialization", |input| {
+                    self.hash_deserializer.deserialize(input)
+                }),
+                context("Failed hash 2 deserialization", |input| {
+                    self.hash_deserializer.deserialize(input)
+                }),
+                context("Failed signature 1 deserialization", |input| {
+                    self.signature_deserializer.deserialize(input)
+                }),
+                context("Failed signature 2 deserialization", |input| {
+                    self.signature_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(
+            |(public_key, slot, hash_1, hash_2, signature_1, signature_2)| {
+                BlockHeaderDenunciation {
+                    public_key,
+                    slot,
+                    hash_1,
+                    hash_2,
+                    signature_1,
+                    signature_2,
+                }
+            },
+        )
+        .parse(buffer)
+    }
+}
+
+/// Serializer for `Denunciation`
+pub struct DenunciationSerializer {
+    endo_de_serializer: EndorsementDenunciationSerializer,
+    blkh_de_serializer: BlockHeaderDenunciationSerializer,
+    type_id_serializer: U32VarIntSerializer,
+}
+
+impl DenunciationSerializer {
+    /// Creates a new `BlockHeaderDenunciationSerializer`
+    pub const fn new() -> Self {
+        Self {
+            endo_de_serializer: EndorsementDenunciationSerializer::new(),
+            blkh_de_serializer: BlockHeaderDenunciationSerializer::new(),
+            type_id_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for DenunciationSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<Denunciation> for DenunciationSerializer {
+    fn serialize(&self, value: &Denunciation, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        let de_type_id = DenunciationTypeId::from(value);
+        self.type_id_serializer
+            .serialize(&u32::from(de_type_id), buffer)?;
+        match value {
+            Denunciation::Endorsement(de) => {
+                self.endo_de_serializer.serialize(de, buffer)?;
+            }
+            Denunciation::BlockHeader(de) => {
+                self.blkh_de_serializer.serialize(de, buffer)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+const DENUNCIATION_TYPE_ID_VARIANT_COUNT: u32 =
+    std::mem::variant_count::<DenunciationTypeId>() as u32;
+
+/// Deserializer for `Denunciation`
+pub struct DenunciationDeserializer {
+    endo_de_deserializer: EndorsementDenunciationDeserializer,
+    blkh_de_deserializer: BlockHeaderDenunciationDeserializer,
+    type_id_deserializer: U32VarIntDeserializer,
+}
+
+impl DenunciationDeserializer {
+    /// Creates a new `DenunciationDeserializer`
+    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+        Self {
+            endo_de_deserializer: EndorsementDenunciationDeserializer::new(
+                thread_count,
+                endorsement_count,
+            ),
+            blkh_de_deserializer: BlockHeaderDenunciationDeserializer::new(thread_count),
+            type_id_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(DENUNCIATION_TYPE_ID_VARIANT_COUNT),
+            ),
+        }
+    }
+}
+
+impl Deserializer<Denunciation> for DenunciationDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Denunciation, E> {
+        let (rem, de_type_id_) = context("Failed Denunciation type id deserialization", |input| {
+            self.type_id_deserializer.deserialize(input)
+        })
+        .parse(buffer)?;
+
+        let de_type_id = DenunciationTypeId::try_from(de_type_id_).map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))
+        })?;
+
+        match de_type_id {
+            DenunciationTypeId::Endorsement => {
+                let (rem2, endo_de) = self.endo_de_deserializer.deserialize(rem)?;
+                IResult::Ok((rem2, Denunciation::Endorsement(endo_de)))
+            }
+            DenunciationTypeId::BlockHeader => {
+                let (rem2, blkh_de) = self.blkh_de_deserializer.deserialize(rem)?;
+                IResult::Ok((rem2, Denunciation::BlockHeader(blkh_de)))
+            }
+        }
     }
 }
 
@@ -801,5 +1024,55 @@ mod tests {
                 unimplemented!()
             }
         }
+    }
+
+    #[test]
+    fn test_block_header_denunciation_ser_der() {
+        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+
+        let mut buffer = Vec::new();
+        let de_ser = BlockHeaderDenunciationSerializer::new();
+
+        match denunciation {
+            Denunciation::Endorsement(_) => {
+                unimplemented!()
+            }
+            Denunciation::BlockHeader(de) => {
+                de_ser.serialize(&de, &mut buffer).unwrap();
+                let de_der = BlockHeaderDenunciationDeserializer::new(THREAD_COUNT);
+
+                let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+                assert_eq!(rem.is_empty(), true);
+                assert_eq!(de, de_der_res);
+            }
+        }
+    }
+
+    #[test]
+    fn test_denunciation_ser_der() {
+        let (_, _, s_block_header_1, s_block_header_2, _) = gen_block_headers_for_denunciation();
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+
+        let mut buffer = Vec::new();
+        let de_ser = DenunciationSerializer::new();
+
+        de_ser.serialize(&denunciation, &mut buffer).unwrap();
+        let de_der = DenunciationDeserializer::new(THREAD_COUNT, ENDORSEMENT_COUNT);
+
+        let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert_eq!(rem.is_empty(), true);
+        assert_eq!(denunciation, de_der_res);
+
+        let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation();
+        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+        buffer.clear();
+
+        de_ser.serialize(&denunciation, &mut buffer).unwrap();
+        let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
+        assert_eq!(rem.is_empty(), true);
+        assert_eq!(denunciation, de_der_res);
     }
 }
