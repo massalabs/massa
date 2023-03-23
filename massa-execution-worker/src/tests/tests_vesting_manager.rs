@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod test {
     use crate::tests::mock::get_initials_vesting;
-    // todo move to tests module
     use crate::vesting_manager::{VestingInfo, VestingManager};
     use massa_models::address::Address;
     use massa_models::amount::Amount;
