@@ -264,6 +264,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
+            activation_delay: MassaTime::from(2),
         };
         let vs_1 = MipState::new(MassaTime::from(10));
 
@@ -274,6 +275,7 @@ mod test {
             component_version: 2,
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 
@@ -345,6 +347,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
+            activation_delay: MassaTime::from(2),
         };
         let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
 
@@ -355,6 +358,7 @@ mod test {
             component_version: 2,
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 

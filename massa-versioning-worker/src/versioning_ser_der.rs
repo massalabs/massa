@@ -84,6 +84,9 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         self.time_serializer.serialize(&value.start, buffer)?;
         // timeout
         self.time_serializer.serialize(&value.timeout, buffer)?;
+        // activation delay
+        self.time_serializer
+            .serialize(&value.activation_delay, buffer)?;
         Ok(())
     }
 }
@@ -163,16 +166,22 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
                 context("Failed timeout deserialization", |input| {
                     self.time_deserializer.deserialize(input)
                 }),
+                context("Failed activation delay deserialization", |input| {
+                    self.time_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(
-            |(name, version, component, component_version, start, timeout)| MipInfo {
-                name,
-                version,
-                component,
-                component_version,
-                start,
-                timeout,
+            |(name, version, component, component_version, start, timeout, activation_delay)| {
+                MipInfo {
+                    name,
+                    version,
+                    component,
+                    component_version,
+                    start,
+                    timeout,
+                    activation_delay,
+                }
             },
         )
         .parse(buffer)
@@ -234,6 +243,7 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
 pub struct ComponentStateDeserializer {
     state_deserializer: U32VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
+    time_deserializer: MassaTimeDeserializer,
 }
 
 impl ComponentStateDeserializer {
@@ -248,6 +258,10 @@ impl ComponentStateDeserializer {
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             ),
+            time_deserializer: MassaTimeDeserializer::new((
+                Included(0.into()),
+                Included(u64::MAX.into()),
+            )),
         }
     }
 }
@@ -283,7 +297,13 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
                 .parse(rem)?;
                 (rem2, ComponentState::started(threshold))
             }
-            ComponentStateTypeId::LockedIn => (rem, ComponentState::locked_in()),
+            ComponentStateTypeId::LockedIn => {
+                let (rem2, at) = context("Failed delay value der", |input| {
+                    self.time_deserializer.deserialize(input)
+                })
+                .parse(rem)?;
+                (rem2, ComponentState::locked_in(at))
+            } // (rem, ComponentState::locked_in()),
             ComponentStateTypeId::Active => (rem, ComponentState::active()),
             ComponentStateTypeId::Failed => (rem, ComponentState::failed()),
             _ => (rem, ComponentState::Error),
@@ -378,14 +398,20 @@ impl Deserializer<Advance> for AdvanceDeserializer {
                 context("Failed now deserialization", |input| {
                     self.time_deserializer.deserialize(input)
                 }),
+                context("Failed activation delay deserialization", |input| {
+                    self.time_deserializer.deserialize(input)
+                }),
             )),
         )
-        .map(|(start_timestamp, timeout, threshold, now)| Advance {
-            start_timestamp,
-            timeout,
-            threshold,
-            now,
-        })
+        .map(
+            |(start_timestamp, timeout, threshold, now, activation_delay)| Advance {
+                start_timestamp,
+                timeout,
+                threshold,
+                now,
+                activation_delay,
+            },
+        )
         .parse(buffer)
     }
 }
@@ -648,6 +674,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(2),
         };
 
         let mut buf = Vec::new();
@@ -710,6 +737,7 @@ mod test {
             timeout: MassaTime::from(timeout.timestamp() as u64),
             threshold: Default::default(),
             now: MassaTime::from(now.timestamp() as u64),
+            activation_delay: MassaTime::from(20),
         };
 
         let mut buf = Vec::new();
@@ -747,9 +775,10 @@ mod test {
             component_version: 1,
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(2),
         };
 
-        let state_2 = advance_state_until(ComponentState::locked_in(), &mi_1);
+        let state_2 = advance_state_until(ComponentState::locked_in(MassaTime::from(3)), &mi_1);
         state_ser.serialize(&state_2, &mut buf).unwrap();
         let (rem, state_der_res) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
 
@@ -766,6 +795,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(2),
         };
 
         let mi_3 = MipInfo {
@@ -775,6 +805,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(12),
             timeout: MassaTime::from(17),
+            activation_delay: MassaTime::from(2),
         };
 
         let state_2 = advance_state_until(ComponentState::active(), &mi_2);
@@ -805,6 +836,7 @@ mod test {
             component_version: 0,
             start: MassaTime::from(0),
             timeout: MassaTime::from(2),
+            activation_delay: MassaTime::from(2),
         };
 
         let mi_base_size = size_of_val(&mi_base.name[..])
