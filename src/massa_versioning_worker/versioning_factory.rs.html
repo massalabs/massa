@@ -407,10 +407,6 @@
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::iter;
@@ -677,7 +673,6 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">15</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_1 = MipState::new(MassaTime::from(<span class="number">10</span>));
 
@@ -688,7 +683,6 @@
             component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">25</span>),
             timeout: MassaTime::from(<span class="number">28</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
@@ -760,7 +754,6 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">15</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_1 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>vi_1);
 
@@ -771,7 +764,6 @@
             component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">25</span>),
             timeout: MassaTime::from(<span class="number">28</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
