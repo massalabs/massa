@@ -92,7 +92,7 @@ impl VestingManager {
         // For the case of user sending coins to itself :
         // That implies spending the coins first, then receiving them.
         // So the spending part can fail in the case of vesting
-        if let Some(vesting) = self.get_addr_vesting_at_slot(addr, context.slot)? {
+        if let Some(vesting) = self.get_addr_vesting_at_slot(addr, context.slot)? && (amount != Amount::zero()){
             let new_balance = context
             .get_balance(addr)
             .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", addr)))?
