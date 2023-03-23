@@ -104,6 +104,7 @@ impl ExecutionState {
             config.initial_vesting_path.clone(),
         ) {
             Ok(manager) => Arc::new(manager),
+            // panic if VestingManager can't load initial vesting file
             Err(e) => panic!("{}", e),
         };
 
