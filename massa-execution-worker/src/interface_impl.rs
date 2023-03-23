@@ -69,10 +69,12 @@ impl InterfaceImpl {
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
         use crate::module_cache::ModuleCache;
+        use crate::tests::mock::get_initials_vesting;
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
         use massa_sc_runtime::GasCosts;
         use parking_lot::RwLock;
 
+        let vesting_file = get_initials_vesting(false);
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state().unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(GasCosts::default(), 1000)));
@@ -81,7 +83,7 @@ impl InterfaceImpl {
                 config.thread_count,
                 config.t0,
                 config.genesis_timestamp,
-                config.initial_vesting_path.clone(),
+                vesting_file.path().to_path_buf(),
             )
             .unwrap(),
         );

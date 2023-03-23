@@ -6,7 +6,7 @@
     feature = "benchmarking",
     feature = "testing"
 ))]
-mod mock;
+pub mod mock;
 
 #[cfg(all(not(feature = "gas_calibration"), not(feature = "benchmarking")))]
 mod scenarios_mandatories;
