@@ -82,6 +82,8 @@ impl InterfaceImpl {
                 config.thread_count,
                 config.t0,
                 config.genesis_timestamp,
+                config.periods_per_cycle,
+                config.roll_price,
                 vesting_file.path().to_path_buf(),
             )
             .unwrap(),

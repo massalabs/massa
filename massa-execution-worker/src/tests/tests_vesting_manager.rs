@@ -4,7 +4,9 @@ mod test {
     use crate::vesting_manager::{VestingInfo, VestingManager};
     use massa_models::address::Address;
     use massa_models::amount::Amount;
-    use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
+    use massa_models::config::{
+        GENESIS_TIMESTAMP, PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT,
+    };
     use massa_time::MassaTime;
     use std::path::PathBuf;
     use std::str::FromStr;
@@ -16,6 +18,8 @@ mod test {
             THREAD_COUNT,
             T0,
             *GENESIS_TIMESTAMP,
+            PERIODS_PER_CYCLE,
+            ROLL_PRICE,
             file.path().to_path_buf(),
         )
         .unwrap();
@@ -83,7 +87,14 @@ mod test {
     fn test_load_initial_file() {
         {
             // Whitout file, error is returned
-            let result = VestingManager::new(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, PathBuf::new());
+            let result = VestingManager::new(
+                THREAD_COUNT,
+                T0,
+                *GENESIS_TIMESTAMP,
+                PERIODS_PER_CYCLE,
+                ROLL_PRICE,
+                PathBuf::new(),
+            );
             assert!(result.is_err());
             let err = result.err().unwrap();
             assert!(err.to_string().contains("No such file"));
@@ -96,6 +107,8 @@ mod test {
                 THREAD_COUNT,
                 T0,
                 *GENESIS_TIMESTAMP,
+                PERIODS_PER_CYCLE,
+                ROLL_PRICE,
                 file.path().to_path_buf(),
             );
             assert!(result.is_ok());

@@ -101,6 +101,8 @@ impl ExecutionState {
             config.thread_count,
             config.t0,
             config.genesis_timestamp,
+            config.periods_per_cycle,
+            config.roll_price,
             config.initial_vesting_path.clone(),
         ) {
             Ok(manager) => Arc::new(manager),
@@ -418,7 +420,8 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
-    /// * `sender_addr`: address of the sender
+    /// * `buyer_addr`: address of the buyer
+    /// * `current_slot` : current slot
     pub fn execute_roll_buy_op(
         &self,
         operation: &OperationType,
@@ -432,20 +435,12 @@ impl ExecutionState {
         };
 
         // control vesting max_rolls for buyer address
-        if let Some(vesting) = self
-            .vesting_manager
-            .get_addr_vesting_at_slot(&buyer_addr, current_slot)?
-        {
-            let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
-            // (candidate_rolls + amount to buy)
-            let max_rolls = rolls.1.saturating_add(*roll_count);
-            if max_rolls > vesting.1.max_rolls {
-                return Err(ExecutionError::VestingError(format!(
-                    "trying to get to a total of {} rolls but only {} are allowed at that time by the vesting scheme",
-                    max_rolls, vesting.1.max_rolls
-                )));
-            }
-        }
+        self.vesting_manager.check_vesting_rolls_buy(
+            self.get_final_and_candidate_rolls(&buyer_addr),
+            &buyer_addr,
+            current_slot,
+            *roll_count,
+        )?;
 
         // acquire write access to the context
         let mut context = context_guard!(self);

@@ -495,6 +495,16 @@ impl ExecutionContext {
         self.speculative_ledger.get_balance(address)
     }
 
+    /// Get deferred credits of an address starting from a given slot
+    pub fn get_address_deferred_credits(
+        &self,
+        address: &Address,
+        min_slot: Slot,
+    ) -> BTreeMap<Slot, Amount> {
+        self.speculative_roll_state
+            .get_address_deferred_credits(address, min_slot)
+    }
+
     /// Sets a datastore entry for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     /// The datastore entry is created if it is absent for that address.
@@ -614,50 +624,8 @@ impl ExecutionContext {
             }
 
             // control vesting min_balance for sender address
-            if let Some(vesting) = self
-                .vesting_manager
-                .get_addr_vesting_at_slot(from_addr, self.slot)?
-            {
-                let new_balance = self
-                .get_balance(from_addr)
-                .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
-                .checked_sub(amount)
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
-                        .get_balance(from_addr).unwrap_or_default()))
-                })?;
-
-                let vec = self.get_address_cycle_infos(from_addr, self.config.periods_per_cycle);
-                let Some(exec_info) = vec.last() else {
-                return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", from_addr)));
-            };
-
-                let rolls_value = exec_info
-                    .active_rolls
-                    .map(|rolls| self.config.roll_price.saturating_mul_u64(rolls))
-                    .unwrap_or(Amount::zero());
-
-                let deferred_map = self
-                    .speculative_roll_state
-                    .get_address_deferred_credits(from_addr, self.slot);
-                let deferred_credits = if deferred_map.is_empty() {
-                    Amount::zero()
-                } else {
-                    Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
-                };
-
-                // min_balance = (rolls * roll_price) + balance + deferred_credits
-                let min_balance = new_balance
-                    .saturating_add(rolls_value)
-                    .saturating_add(deferred_credits);
-
-                if min_balance < vesting.1.min_balance {
-                    return Err(ExecutionError::VestingError(format!(
-                        "vesting_min_balance={} with value min_balance={} ",
-                        vesting.1.min_balance, min_balance
-                    )));
-                }
-            }
+            self.vesting_manager
+                .check_vesting_transfer_coins(self, from_addr, amount)?;
         }
 
         // do the transfer
