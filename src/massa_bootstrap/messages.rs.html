@@ -836,51 +836,6 @@
 <a href="#836" id="836">836</a>
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
-<a href="#881" id="881">881</a>
-<a href="#882" id="882">882</a>
-<a href="#883" id="883">883</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -893,9 +848,7 @@
 };
 <span class="kw">use </span>massa_executed_ops::{ExecutedOpsDeserializer, ExecutedOpsSerializer};
 <span class="kw">use </span>massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
-<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, KeyDeserializer, KeySerializer};
-<span class="kw">use </span>massa_models::address::{Address, AddressSerializer};
 <span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
@@ -910,7 +863,7 @@
 <span class="kw">use </span>massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 <span class="kw">use </span>massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer, RollsDeserializer,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer,
 };
 <span class="kw">use </span>massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
@@ -966,12 +919,6 @@
         </span>consensus_part: BootstrapableGraph,
         <span class="doccomment">/// Outdated block ids in the current consensus graph bootstrap
         </span>consensus_outdated_ids: PreHashSet&lt;BlockId&gt;,
-        <span class="doccomment">/// Last start period
-        </span>last_start_period: u64,
-        <span class="doccomment">/// Initial rolls to use (from genesis or from snapshot)
-        </span>initial_rolls: BTreeMap&lt;Address, u64&gt;,
-        <span class="doccomment">/// Initial ledger hash to use (from genesis or from snapshot)
-        </span>initial_ledger_hash: Hash,
     },
     <span class="doccomment">/// Message sent when the final state and consensus bootstrap are finished
     </span>BootstrapFinished,
@@ -1011,8 +958,6 @@
     opt_pos_cycle_serializer: OptionSerializer&lt;CycleInfo, CycleInfoSerializer&gt;,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
-    address_serializer: AddressSerializer,
-    hash_serializer: HashSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>BootstrapServerMessageSerializer {
@@ -1039,8 +984,6 @@
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
-            address_serializer: AddressSerializer::new(),
-            hash_serializer: HashSerializer::new(),
         }
     }
 }
@@ -1092,9 +1035,6 @@
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
-                last_start_period,
-                initial_rolls,
-                initial_ledger_hash,
             } =&gt; {
                 <span class="comment">// message type
                 </span><span class="self">self</span>.u32_serializer
@@ -1129,15 +1069,6 @@
                 <span class="comment">// consensus outdated ids
                 </span><span class="self">self</span>.block_id_set_serializer
                     .serialize(consensus_outdated_ids, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.u64_serializer.serialize(last_start_period, buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.u64_serializer
-                    .serialize(<span class="kw-2">&amp;</span>(initial_rolls.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                <span class="kw">for </span>(addr, count) <span class="kw">in </span>initial_rolls {
-                    <span class="self">self</span>.address_serializer.serialize(addr, buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.u64_serializer.serialize(count, buffer)<span class="question-mark">?</span>;
-                }
-                <span class="self">self</span>.hash_serializer
-                    .serialize(initial_ledger_hash, buffer)<span class="question-mark">?</span>;
             }
             BootstrapServerMessage::BootstrapFinished =&gt; {
                 <span class="self">self</span>.u32_serializer
@@ -1180,9 +1111,6 @@
     opt_pos_cycle_deserializer: OptionDeserializer&lt;CycleInfo, CycleInfoDeserializer&gt;,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
-    period_deserializer: U64VarIntDeserializer,
-    rolls_deserializer: RollsDeserializer,
-    hash_deserializer: HashDeserializer,
 }
 
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
@@ -1254,9 +1182,6 @@
                 args.max_executed_ops_length,
                 args.max_operations_per_block <span class="kw">as </span>u64,
             ),
-            period_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            rolls_deserializer: RollsDeserializer::new(args.max_rolls_length),
-            hash_deserializer: HashDeserializer::new(),
         }
     }
 }
@@ -1377,15 +1302,6 @@
                     context(<span class="string">&quot;Failed consensus_outdated_ids deserialization&quot;</span>, |input| {
                         <span class="self">self</span>.block_id_set_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed last_start_period deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.period_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">&quot;Failed initial_rolls deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.rolls_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">&quot;Failed initial_ledger_hash deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.hash_deserializer.deserialize(input)
-                    }),
                 ))
                 .map(
                     |(
@@ -1398,9 +1314,6 @@
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
-                        last_start_period,
-                        initial_rolls,
-                        initial_ledger_hash,
                     )| {
                         BootstrapServerMessage::BootstrapPart {
                             slot,
@@ -1412,9 +1325,6 @@
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
-                            last_start_period,
-                            initial_rolls: initial_rolls.into_iter().collect(),
-                            initial_ledger_hash,
                         }
                     },
                 )
