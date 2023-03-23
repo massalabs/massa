@@ -23,7 +23,6 @@ use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::Included;
-use tracing::info;
 
 use crate::PoSChanges;
 
@@ -165,10 +164,6 @@ impl CycleInfo {
         periods_per_cycle: u64,
         thread_count: u8,
     ) -> bool {
-        if !changes.roll_changes.is_empty() {
-            info!("CYCLE INFO ROLL CHANGES : {:?}", changes.roll_changes);
-        }
-
         let hash_computer = CycleInfoHashComputer::new();
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
         let mut hash_concat: Vec<u8> = Vec::new();

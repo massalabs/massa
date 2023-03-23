@@ -12,7 +12,7 @@ use std::{
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
-use tracing::{debug, info};
+use tracing::debug;
 
 #[derive(Clone)]
 /// Final state of PoS
@@ -78,7 +78,7 @@ impl PoSFinalState {
     pub fn from_snapshot(
         config: PoSConfig,
         cycle_history: VecDeque<CycleInfo>,
-        mut deferred_credits: DeferredCredits,
+        deferred_credits: DeferredCredits,
         initial_seed_string: &str,
         initial_rolls_in_snapshot: BTreeMap<Address, u64>,
         selector: Box<dyn SelectorController>,
@@ -89,12 +89,40 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
+        Ok(Self {
+            config: config.clone(),
+            cycle_history,
+            deferred_credits,
+            selector,
+            initial_rolls: initial_rolls_in_snapshot,
+            initial_seeds,
+            initial_ledger_hash,
+            initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
+            last_start_period: end_slot.period,
+        })
+    }
+
+    /// Handles the deferred credits that were due during a downtime
+    pub fn update_deferred_credits_after_restart(
+        &mut self,
+        from_slot: Slot,
+        end_slot: Slot,
+    ) -> Result<(), PosError> {
+        let mut deferred_credits = self.deferred_credits.clone();
+
         let mut updated_deferred_credits = DeferredCredits::default();
-        let next_slot = end_slot.get_next_slot(config.thread_count).map_err(|_| {
-            PosError::OverflowError(String::from("Cannot get next slot after genesis"))
-        })?;
+        let next_slot = end_slot
+            .get_next_slot(self.config.thread_count)
+            .map_err(|_| {
+                PosError::OverflowError(String::from("Cannot get next slot after genesis"))
+            })?;
 
         for (slot, map) in deferred_credits.credits.clone() {
+            // Deferred credit was already credited
+            if slot <= from_slot {
+                continue;
+            }
+            // Deferred credit is not due yet
             if slot > end_slot {
                 break;
             }
@@ -116,17 +144,9 @@ impl PoSFinalState {
 
         updated_deferred_credits.final_nested_extend(deferred_credits);
 
-        Ok(Self {
-            config: config.clone(),
-            cycle_history,
-            deferred_credits: updated_deferred_credits,
-            selector,
-            initial_rolls: initial_rolls_in_snapshot,
-            initial_seeds,
-            initial_ledger_hash,
-            initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
-            last_start_period: end_slot.period,
-        })
+        self.deferred_credits = updated_deferred_credits;
+
+        Ok(())
     }
 
     /// Reset the state of the PoS final state
@@ -204,16 +224,6 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
-        info!("COMPUTE INITIAL DRAWS WITH FOLLOWING DATA: ");
-        info!("self.config : {:?}", self.config);
-        info!("self.cycle_history : {:?}", self.cycle_history);
-        info!("self.deferred_credits : {:?}", self.deferred_credits);
-        info!("self.initial_cycle : {:?}", self.initial_cycle);
-        info!("self.initial_rolls : {:?}", self.initial_rolls);
-        info!("self.initial_seeds : {:?}", self.initial_seeds);
-        info!("self.initial_ledger_hash : {:?}", self.initial_ledger_hash);
-        info!("self.last_start_period : {:?}", self.last_start_period);
-
         // if cycle_history starts at a cycle that is strictly higher than initial_cycle, do not feed cycles initial_cycle, initial_cycle+1 to selector
         let history_starts_late = self
             .cycle_history

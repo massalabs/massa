@@ -26,9 +26,6 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 
-[dev-dependencies]
-massa_pos_worker = { path = "../massa-pos-worker" }
-
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = ["massa_models/testing"]

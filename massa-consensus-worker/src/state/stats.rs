@@ -4,12 +4,11 @@ use massa_models::stats::ConsensusStats;
 use massa_time::MassaTime;
 use std::cmp::max;
 
-/*#[cfg(not(feature = "sandbox"))]
+#[cfg(not(feature = "sandbox"))]
 use tracing::log::warn;
 
 #[cfg(not(feature = "sandbox"))]
 use massa_consensus_exports::events::ConsensusEvent;
-*/
 
 impl ConsensusState {
     /// Calculate and return stats about consensus
@@ -43,8 +42,7 @@ impl ConsensusState {
     pub fn stats_tick(&mut self) -> Result<(), ConsensusError> {
         // check if there are any final blocks is coming from protocol
         // if none => we are probably desync
-        // TODO: Reenable desync detection
-        /*#[cfg(not(feature = "sandbox"))]
+        #[cfg(not(feature = "sandbox"))]
         {
             let now = MassaTime::now()?;
             if now
@@ -69,7 +67,7 @@ impl ConsensusState {
                     .controller_event_tx
                     .send(ConsensusEvent::NeedSync);
             }
-        }*/
+        }
         // prune stats
         self.prune_stats()?;
         Ok(())

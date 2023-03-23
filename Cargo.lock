@@ -2831,7 +2831,6 @@ dependencies = [
  "massa_hash 0.1.0",
  "massa_ledger_exports",
  "massa_models",
- "massa_pos_worker",
  "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",

@@ -312,21 +312,6 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-    let final_hash = final_state.read().final_state_hash;
-    let cycle_history = final_state.read().pos_state.cycle_history.clone();
-    let initial_cycle = final_state.read().pos_state.initial_cycle;
-    let initial_rolls = final_state.read().pos_state.initial_rolls.clone();
-    let initial_seeds = final_state.read().pos_state.initial_seeds.clone();
-
-    info!(
-        "final_hash: {},\n
-    cycle_history: {:?},\n
-    initial_cycle: {},\n
-    initial_rolls: {:?},\n
-    initial_seeds: {:?},\n",
-        final_hash, cycle_history, initial_cycle, initial_rolls, initial_seeds,
-    );
-
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()

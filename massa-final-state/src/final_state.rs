@@ -274,14 +274,24 @@ impl FinalState {
 
         final_state.compute_state_hash_at_slot(latest_consistent_slot);
 
-        // Check the hash
-
+        // Check the hash to see if we correctly recovered the snapshot
         match final_state.final_state_hash == final_state_hash_from_snapshot {
             true => {
+                // Reset the cycle_history and populate it with new cycle
                 final_state.pos_state.cycle_history = Vec::new().into();
                 final_state
                     .pos_state
                     .create_new_cycle_for_snapshot(latest_consistent_cycle_info, end_slot);
+
+                // The deferred credits that happen before the restart have to be set to the next slot
+                final_state
+                    .pos_state
+                    .update_deferred_credits_after_restart(latest_consistent_slot, end_slot)
+                    .map_err(|_| {
+                        FinalStateError::SnapshotError(String::from(
+                            "Could not update the deferred credits for snapshot",
+                        ))
+                    })?;
 
                 final_state.slot = end_slot;
 
