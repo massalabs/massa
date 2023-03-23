@@ -617,7 +617,10 @@ async fn launch(
             tokio::time::timeout(Duration::from_secs(3), grpc_api.serve(&grpc_config)).await
         {
             match result {
-                Ok(stop) => Some(stop),
+                Ok(stop) => {
+                    info!("gRPC server listening on: {}", grpc_config.bind);
+                    Some(stop)
+                }
                 Err(e) => {
                     error!("{}", e);
                     None
@@ -642,6 +645,10 @@ async fn launch(
         .serve(&SETTINGS.api.bind_private, &api_config)
         .await
         .expect("failed to start PRIVATE API");
+    info!(
+        "PRIVATE JsonRPC server listening on: {}",
+        api_config.bind_private
+    );
 
     // spawn public API
     let api_public = API::<Public>::new(
@@ -661,6 +668,10 @@ async fn launch(
         .serve(&SETTINGS.api.bind_public, &api_config)
         .await
         .expect("failed to start PUBLIC API");
+    info!(
+        "PUBLIC JsonRPC server listening on: {}",
+        api_config.bind_public
+    );
 
     #[cfg(feature = "deadlock_detection")]
     {
