@@ -682,7 +682,11 @@ mod tests {
             initial_ledger_hash,
             end_slot,
         );
-        let pos_final_state = pos_final_state_res.unwrap();
+        let mut pos_final_state = pos_final_state_res.unwrap();
+
+        assert!(pos_final_state
+            .update_deferred_credits_after_restart(Slot::new(0, 0), end_slot)
+            .is_ok());
 
         assert!(pos_final_state
             .deferred_credits

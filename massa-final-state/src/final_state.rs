@@ -351,25 +351,6 @@ impl FinalState {
         // 6. compute and save final state hash
         self.final_state_hash = Hash::compute_from(&hash_concat);
 
-        /*info!("ledger_hash hash at slot {}: {}", slot, ledger_hash);
-        info!("async_pool hash at slot {}: {}", slot, self.async_pool.hash);
-        info!(
-            "deferred_credit hash at slot {}: {}",
-            slot, self.pos_state.deferred_credits.hash
-        );
-        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
-            as usize;
-        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
-            info!(
-                "cycle_global_hash hash at slot {}: {}",
-                slot, cycle_info.cycle_global_hash
-            );
-        }
-        info!(
-            "executed_ops hash at slot {}: {}",
-            slot, self.executed_ops.hash
-        );*/
-
         info!(
             "final_state hash at slot {}: {}",
             slot, self.final_state_hash
@@ -388,12 +369,6 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        if slot.period % 10 == 0 {
-            info!(
-                "Slot {}: pos_state initial_cycle: {}",
-                slot, self.pos_state.initial_cycle
-            );
-        }
         // check slot consistency
         let next_slot = self
             .slot
@@ -448,18 +423,6 @@ impl FinalState {
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, self.final_state_hash);
-
-        info!(
-            "cycle_history at slot {}: {}",
-            slot,
-            self.pos_state.cycle_history.len()
-        );
-        for cycle_info in self.pos_state.cycle_history.clone() {
-            info!(
-                "cycle_info at slot {}: [cycle: {}, complete: {}, roll_counts: {:?}]",
-                slot, cycle_info.cycle, cycle_info.complete, cycle_info.roll_counts
-            );
-        }
 
         if cfg!(feature = "create_snapshot") {
             match self.dump_final_state(true) {
