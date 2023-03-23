@@ -78,7 +78,7 @@ impl PoSFinalState {
     pub fn from_snapshot(
         config: PoSConfig,
         cycle_history: VecDeque<CycleInfo>,
-        deferred_credits: DeferredCredits,
+        mut deferred_credits: DeferredCredits,
         initial_seed_string: &str,
         initial_rolls_in_snapshot: BTreeMap<Address, u64>,
         selector: Box<dyn SelectorController>,
@@ -89,10 +89,37 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
+        let mut updated_deferred_credits = DeferredCredits::default();
+        let next_slot = end_slot.get_next_slot(config.thread_count).map_err(|_| {
+            PosError::OverflowError(String::from("Cannot get next slot after genesis"))
+        })?;
+
+        for (slot, map) in deferred_credits.credits.clone() {
+            if slot > end_slot {
+                break;
+            }
+
+            for (addr, amount) in map.into_iter() {
+                let prev_amount_at_next_slot = deferred_credits
+                    .get_address_deferred_credit_for_slot(&addr, &next_slot)
+                    .unwrap_or(Amount::zero());
+                deferred_credits.insert(addr, slot, Amount::zero());
+                deferred_credits.insert(
+                    addr,
+                    next_slot,
+                    prev_amount_at_next_slot.saturating_add(amount),
+                );
+            }
+        }
+
+        deferred_credits.remove_zeros();
+
+        updated_deferred_credits.final_nested_extend(deferred_credits);
+
         Ok(Self {
             config: config.clone(),
             cycle_history,
-            deferred_credits,
+            deferred_credits: updated_deferred_credits,
             selector,
             initial_rolls: initial_rolls_in_snapshot,
             initial_seeds,
@@ -177,7 +204,6 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
-
         info!("COMPUTE INITIAL DRAWS WITH FOLLOWING DATA: ");
         info!("self.config : {:?}", self.config);
         info!("self.cycle_history : {:?}", self.cycle_history);
@@ -591,5 +617,89 @@ impl PoSFinalState {
     /// Used to set the initial ledger hash after bootstrapping
     pub fn set_initial_ledger_hash(&mut self, initial_ledger_hash: Hash) {
         self.initial_ledger_hash = initial_ledger_hash
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_models::config::{
+        DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT,
+    };
+    use massa_signature::KeyPair;
+
+    #[test]
+    fn test_deferred_credits() {
+        use crate::test_exports::MockSelectorController;
+
+        let pos_config = PoSConfig {
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            thread_count: THREAD_COUNT,
+            cycle_history_length: POS_SAVED_CYCLES,
+            credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
+        };
+
+        let (selector, _recv) = MockSelectorController::new_with_receiver();
+
+        let cycle_history = VecDeque::new();
+        let mut deferred_credits = DeferredCredits::default();
+
+        let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
+
+        let slot1 = Slot::new(40, 2);
+        let slot2 = Slot::new(41, 2);
+        let slot3 = Slot::new(46, 3);
+        let amount1 = Amount::from_mantissa_scale(10, 0);
+        let amount2 = Amount::from_mantissa_scale(13, 0);
+        let amount3 = Amount::from_mantissa_scale(4, 0);
+
+        deferred_credits.insert(addr, slot1, amount1);
+        deferred_credits.insert(addr, slot2, amount2);
+        deferred_credits.insert(addr, slot3, amount3);
+
+        let initial_seed_string = "";
+        let initial_rolls_in_snapshot = BTreeMap::new();
+        let initial_ledger_hash = Hash::compute_from(b"data");
+        let end_slot = Slot::new(45, 31);
+
+        let pos_final_state_res = PoSFinalState::from_snapshot(
+            pos_config.clone(),
+            cycle_history,
+            deferred_credits,
+            initial_seed_string,
+            initial_rolls_in_snapshot,
+            selector,
+            initial_ledger_hash,
+            end_slot,
+        );
+        let pos_final_state = pos_final_state_res.unwrap();
+
+        assert!(pos_final_state
+            .deferred_credits
+            .get_address_deferred_credit_for_slot(&addr, &slot1)
+            .is_none());
+        assert!(pos_final_state
+            .deferred_credits
+            .get_address_deferred_credit_for_slot(&addr, &slot2)
+            .is_none());
+        assert_eq!(
+            pos_final_state
+                .deferred_credits
+                .get_address_deferred_credit_for_slot(
+                    &addr,
+                    &end_slot
+                        .get_next_slot(pos_config.thread_count)
+                        .expect("Error getting next slot")
+                )
+                .expect("Should have deferred credits"),
+            amount1.saturating_add(amount2)
+        );
+        assert_eq!(
+            pos_final_state
+                .deferred_credits
+                .get_address_deferred_credit_for_slot(&addr, &slot3)
+                .expect("Should have deferred credits"),
+            amount3
+        );
     }
 }
