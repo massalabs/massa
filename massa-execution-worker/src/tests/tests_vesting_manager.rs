@@ -97,7 +97,9 @@ mod test {
             );
             assert!(result.is_err());
             let err = result.err().unwrap();
-            assert!(err.to_string().contains("No such file"));
+            assert!(err
+                .to_string()
+                .contains("error loading initial vesting file"));
         }
 
         {
