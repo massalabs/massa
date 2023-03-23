@@ -393,7 +393,7 @@ pub enum DenunciationError {
 // Serialization / Deserialization
 
 /// Serializer for `EndorsementDenunciation`
-pub struct EndorsementDenunciationSerializer {
+struct EndorsementDenunciationSerializer {
     slot_serializer: SlotSerializer,
     u32_serializer: U32VarIntSerializer,
     hash_serializer: HashSerializer,
@@ -401,7 +401,7 @@ pub struct EndorsementDenunciationSerializer {
 
 impl EndorsementDenunciationSerializer {
     /// Creates a new `EndorsementDenunciationSerializer`
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
@@ -434,7 +434,7 @@ impl Serializer<EndorsementDenunciation> for EndorsementDenunciationSerializer {
 }
 
 /// Deserializer for `EndorsementDenunciation`
-pub struct EndorsementDenunciationDeserializer {
+struct EndorsementDenunciationDeserializer {
     slot_deserializer: SlotDeserializer,
     index_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
@@ -444,7 +444,7 @@ pub struct EndorsementDenunciationDeserializer {
 
 impl EndorsementDenunciationDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
+    const fn new(thread_count: u8, endorsement_count: u32) -> Self {
         EndorsementDenunciationDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -510,14 +510,14 @@ impl Deserializer<EndorsementDenunciation> for EndorsementDenunciationDeserializ
 }
 
 /// Serializer for `BlockHeaderDenunciation`
-pub struct BlockHeaderDenunciationSerializer {
+struct BlockHeaderDenunciationSerializer {
     slot_serializer: SlotSerializer,
     hash_serializer: HashSerializer,
 }
 
 impl BlockHeaderDenunciationSerializer {
     /// Creates a new `BlockHeaderDenunciationSerializer`
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),
             hash_serializer: HashSerializer::new(),
@@ -548,7 +548,7 @@ impl Serializer<BlockHeaderDenunciation> for BlockHeaderDenunciationSerializer {
 }
 
 /// Deserializer for `BlockHeaderDenunciation`
-pub struct BlockHeaderDenunciationDeserializer {
+struct BlockHeaderDenunciationDeserializer {
     slot_deserializer: SlotDeserializer,
     hash_deserializer: HashDeserializer,
     pubkey_deserializer: PublicKeyDeserializer,
