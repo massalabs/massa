@@ -1072,13 +1072,6 @@
 <a href="#1072" id="1072">1072</a>
 <a href="#1073" id="1073">1073</a>
 <a href="#1074" id="1074">1074</a>
-<a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
@@ -1115,10 +1108,19 @@
     </span><span class="kw">pub </span>component: MipComponent,
     <span class="doccomment">/// Component version
     </span><span class="kw">pub </span>component_version: u32,
+
     <span class="doccomment">/// a timestamp at which the version gains its meaning (e.g. accepted in block header)
+    </span><span class="comment">// pub start: MassaTime,
+    </span><span class="doccomment">/// a timestamp at which the deployment is considered active or failed (timeout &gt; start)
+    </span><span class="comment">// pub timeout: MassaTime,
+
+    </span><span class="doccomment">/// a timestamp at which the version gains its meaning (e.g. announced in block header)
     </span><span class="kw">pub </span>start: MassaTime,
-    <span class="doccomment">/// a timestamp at which the deployment is considered active or failed (timeout &gt; start)
+    <span class="comment">// TODO: rename to start_timeout?
+    </span><span class="doccomment">/// a timestamp at the which the deployment is considered failed
     </span><span class="kw">pub </span>timeout: MassaTime,
+    <span class="doccomment">/// Once deployment has been locked, wait for this duration before deployment is considered active
+    </span><span class="kw">pub </span>activation_delay: MassaTime,
 }
 
 <span class="comment">// Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -1142,6 +1144,7 @@
             &amp;&amp; <span class="self">self</span>.component == other.component
             &amp;&amp; <span class="self">self</span>.start == other.start
             &amp;&amp; <span class="self">self</span>.timeout == other.timeout
+            &amp;&amp; <span class="self">self</span>.activation_delay == other.activation_delay
     }
 }
 
@@ -1167,8 +1170,8 @@
         <span class="doccomment">/// Past start, can only go to LockedIn after the threshold is above a given value
         </span>Started { <span class="kw">pub</span>(<span class="kw">crate</span>) threshold: Amount },
         <span class="doccomment">/// Wait for some time before going to active (to let user the time to upgrade)
-        </span>LockedIn,
-        <span class="doccomment">/// After LockedIn, deployment is considered successful
+        </span>LockedIn { at: MassaTime },
+        <span class="doccomment">/// After LockedIn, deployment is considered successful (after activation delay)
         </span>Active,
         <span class="doccomment">/// Past the timeout, if LockedIn is not reach
         </span>Failed,
@@ -1217,6 +1220,8 @@
     </span><span class="kw">pub </span>threshold: Amount,
     <span class="doccomment">/// Current time (timestamp)
     </span><span class="kw">pub </span>now: MassaTime,
+    <span class="doccomment">/// TODO
+    </span><span class="kw">pub </span>activation_delay: MassaTime,
 }
 
 <span class="comment">// Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -1258,8 +1263,10 @@
     <span class="doccomment">/// Update state from state Defined
     </span><span class="kw">pub fn </span>on_advance(<span class="self">self</span>, input: Advance) -&gt; ComponentState {
         <span class="kw">match </span>input.now {
-            n <span class="kw">if </span>n &gt; input.timeout =&gt; ComponentState::failed(),
-            n <span class="kw">if </span>n &gt; input.start_timestamp =&gt; ComponentState::started(Amount::zero()),
+            <span class="comment">// TODO: &gt;= ?
+            </span>n <span class="kw">if </span>n &gt; input.timeout =&gt; ComponentState::failed(),
+            <span class="comment">// TODO: &gt;= ?
+            </span>n <span class="kw">if </span>n &gt; input.start_timestamp =&gt; ComponentState::started(Amount::zero()),
             <span class="kw">_ </span>=&gt; ComponentState::Defined(Defined {}),
         }
     }
@@ -1273,7 +1280,7 @@
         }
 
         <span class="kw">if </span>input.threshold &gt;= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
-            ComponentState::locked_in()
+            ComponentState::locked_in(input.now)
         } <span class="kw">else </span>{
             ComponentState::started(input.threshold)
         }
@@ -1283,10 +1290,10 @@
 <span class="kw">impl </span>LockedIn {
     <span class="doccomment">/// Update state from state LockedIn ...
     </span><span class="kw">pub fn </span>on_advance(<span class="self">self</span>, input: Advance) -&gt; ComponentState {
-        <span class="kw">if </span>input.now &gt; input.timeout {
+        <span class="kw">if </span>input.now &gt; <span class="self">self</span>.at.saturating_add(input.activation_delay) {
             ComponentState::active()
         } <span class="kw">else </span>{
-            ComponentState::locked_in()
+            ComponentState::locked_in(<span class="self">self</span>.at)
         }
     }
 }
@@ -1324,6 +1331,7 @@
             timeout: MassaTime::from(<span class="number">0</span>),
             threshold: Default::default(),
             now: defined,
+            activation_delay: MassaTime::from(<span class="number">0</span>),
         };
 
         <span class="kw">let </span>history = BTreeMap::from([(advance, state_id)]);
@@ -1370,7 +1378,9 @@
     ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
     </span><span class="kw">pub fn </span>is_coherent_with(<span class="kw-2">&amp;</span><span class="self">self</span>, versioning_info: <span class="kw-2">&amp;</span>MipInfo) -&gt; bool {
-        <span class="comment">// Always return false for state Error or if history is empty
+        <span class="comment">// TODO: rename versioning_info -&gt; mip_info
+
+        // Always return false for state Error or if history is empty
         </span><span class="kw">if </span><span class="macro">matches!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.inner, <span class="kw-2">&amp;</span>ComponentState::Error) || <span class="self">self</span>.history.is_empty() {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
@@ -1390,6 +1400,7 @@
             timeout: versioning_info.timeout,
             threshold: Amount::zero(),
             now: initial_ts.now,
+            activation_delay: versioning_info.activation_delay,
         };
 
         <span class="kw">for </span>(adv, _state) <span class="kw">in </span><span class="self">self</span>.history.iter().skip(<span class="number">1</span>) {
@@ -1402,6 +1413,7 @@
     </span>}
 
     <span class="doccomment">/// Query state at given timestamp
+    /// TODO: add doc for start &amp; timeout parameter? why do we need them?
     </span><span class="kw">pub fn </span>state_at(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ts: MassaTime,
@@ -1464,6 +1476,7 @@
                         timeout,
                         threshold: adv.threshold,
                         now: ts,
+                        activation_delay: adv.activation_delay,
                     };
                     <span class="comment">// Return the resulting state after advance
                     </span><span class="kw">let </span>state = <span class="self">self</span>.inner.on_advance(msg);
@@ -1676,14 +1689,22 @@
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
     <span class="kw">use </span>chrono::{Days, NaiveDate, NaiveDateTime};
 
-    <span class="comment">// use crate::test_helpers::versioning_helpers::advance_state_until;
-
-    // use massa_serialization::DeserializeError;
-
-    // Only for unit tests
+    <span class="comment">// Only for unit tests
     </span><span class="kw">impl </span>PartialEq&lt;ComponentState&gt; <span class="kw">for </span>MipState {
         <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ComponentState) -&gt; bool {
             <span class="self">self</span>.inner == <span class="kw-2">*</span>other
+        }
+    }
+
+    <span class="kw">impl </span>From&lt;(<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Amount, <span class="kw-2">&amp;</span>MassaTime)&gt; <span class="kw">for </span>Advance {
+        <span class="kw">fn </span>from((mip_info, threshold, now): (<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Amount, <span class="kw-2">&amp;</span>MassaTime)) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                start_timestamp: mip_info.start,
+                timeout: mip_info.timeout,
+                threshold: <span class="kw-2">*</span>threshold,
+                now: <span class="kw-2">*</span>now,
+                activation_delay: mip_info.activation_delay,
+            }
         }
     }
 
@@ -1711,6 +1732,7 @@
                 component_version: <span class="number">1</span>,
                 start: MassaTime::from(start.timestamp() <span class="kw">as </span>u64),
                 timeout: MassaTime::from(timeout.timestamp() <span class="kw">as </span>u64),
+                activation_delay: MassaTime::from(<span class="number">20</span>),
             },
         );
     }
@@ -1718,22 +1740,17 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_state_advance_from_defined() {
         <span class="comment">// Test Versioning state transition (from state: Defined)
-        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, vi) = get_a_version_info();
+        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = Default::default();
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
-        <span class="kw">let </span>now = vi.start;
-        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        <span class="kw">let </span>now = mi.start;
+        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
-        <span class="kw">let </span>now = vi.start.saturating_add(MassaTime::from(<span class="number">5</span>));
+        <span class="kw">let </span>now = mi.start.saturating_add(MassaTime::from(<span class="number">5</span>));
         advance_msg.now = now;
         state = state.on_advance(advance_msg);
 
@@ -1749,42 +1766,34 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_state_advance_from_started() {
         <span class="comment">// Test Versioning state transition (from state: Started)
-        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, vi) = get_a_version_info();
+        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = ComponentState::started(Default::default());
 
-        <span class="kw">let </span>now = vi.start;
+        <span class="kw">let </span>now = mi.start;
         <span class="kw">let </span>threshold_too_low = Amount::from_str(<span class="string">&quot;74.9&quot;</span>).unwrap();
         <span class="kw">let </span>threshold_ok = Amount::from_str(<span class="string">&quot;82.42&quot;</span>).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: threshold_too_low,
-            now,
-        };
+        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>threshold_too_low, <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
         <span class="macro">assert_eq!</span>(state, ComponentState::started(threshold_too_low));
         advance_msg.threshold = threshold_ok;
         state = state.on_advance(advance_msg);
-        <span class="macro">assert_eq!</span>(state, ComponentState::locked_in());
+        <span class="macro">assert_eq!</span>(state, ComponentState::locked_in(now));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_state_advance_from_locked_in() {
         <span class="comment">// Test Versioning state transition (from state: LockedIn)
-        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, vi) = get_a_version_info();
-        <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = ComponentState::locked_in();
+        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
 
-        <span class="kw">let </span>now = vi.start;
-        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        <span class="kw">let </span>locked_in_at = mi.start.saturating_add(MassaTime::from(<span class="number">1</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = ComponentState::locked_in(locked_in_at);
+
+        <span class="kw">let </span>now = mi.start;
+        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
-        <span class="macro">assert_eq!</span>(state, ComponentState::locked_in());
+        <span class="macro">assert_eq!</span>(state, ComponentState::locked_in(locked_in_at));
 
         advance_msg.now = advance_msg.timeout.saturating_add(MassaTime::from(<span class="number">1</span>));
         state = state.on_advance(advance_msg);
@@ -1794,15 +1803,10 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_state_advance_from_active() {
         <span class="comment">// Test Versioning state transition (from state: Active)
-        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, vi) = get_a_version_info();
+        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::active();
-        <span class="kw">let </span>now = vi.start;
-        <span class="kw">let </span>advance = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        <span class="kw">let </span>now = mi.start;
+        <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance);
         <span class="macro">assert_eq!</span>(state, ComponentState::active());
@@ -1811,16 +1815,10 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_state_advance_from_failed() {
         <span class="comment">// Test Versioning state transition (from state: Failed)
-        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, vi) = get_a_version_info();
+        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::failed();
-        <span class="kw">let </span>now = vi.start;
-        <span class="kw">let </span>advance = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
-
+        <span class="kw">let </span>now = mi.start;
+        <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
         state = state.on_advance(advance);
         <span class="macro">assert_eq!</span>(state, ComponentState::failed());
     }
@@ -1828,17 +1826,12 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_state_advance_to_failed() {
         <span class="comment">// Test Versioning state transition (to state: Failed)
-        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, vi) = get_a_version_info();
-        <span class="kw">let </span>now = vi.start.saturating_add(MassaTime::from(<span class="number">1</span>));
-        <span class="kw">let </span>advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.start,
-            threshold: Amount::zero(),
-            now,
-        };
+        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
+        <span class="kw">let </span>now = mi.timeout.saturating_add(MassaTime::from(<span class="number">1</span>));
+        <span class="kw">let </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
-        <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = Default::default();
-        state = state.on_advance(advance_msg.clone());
+        <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = Default::default(); <span class="comment">// Defined
+        </span>state = state.on_advance(advance_msg.clone());
         <span class="macro">assert_eq!</span>(state, ComponentState::Failed(Failed {}));
 
         <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::started(Default::default());
@@ -1850,19 +1843,14 @@
     </span><span class="kw">fn </span>test_state_with_history() {
         <span class="comment">// Test MipStateHistory::state_at() function
 
-        </span><span class="kw">let </span>(start, <span class="kw">_</span>, vi) = get_a_version_info();
+        </span><span class="kw">let </span>(start, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span>now_0 = MassaTime::from(start.timestamp() <span class="kw">as </span>u64);
         <span class="kw">let </span><span class="kw-2">mut </span>state = MipState::new(now_0);
 
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
-        <span class="kw">let </span>now = vi.start.saturating_add(MassaTime::from(<span class="number">15</span>));
-        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        <span class="kw">let </span>now = mi.start.saturating_add(MassaTime::from(<span class="number">15</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         <span class="comment">// Move from Defined -&gt; Started
         </span>state.on_advance(<span class="kw-2">&amp;</span>advance_msg);
@@ -1883,30 +1871,30 @@
 
         // Before Defined
         </span><span class="kw">let </span>state_id_ = state.state_at(
-            vi.start.saturating_sub(MassaTime::from(<span class="number">5</span>)),
-            vi.start,
-            vi.timeout,
+            mi.start.saturating_sub(MassaTime::from(<span class="number">5</span>)),
+            mi.start,
+            mi.timeout,
         );
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
             state_id_,
             <span class="prelude-val">Err</span>(StateAtError::BeforeInitialState(<span class="kw">_</span>, <span class="kw">_</span>))
         ));
         <span class="comment">// After Defined timestamp
-        </span><span class="kw">let </span>state_id = state.state_at(vi.start, vi.start, vi.timeout).unwrap();
+        </span><span class="kw">let </span>state_id = state.state_at(mi.start, mi.start, mi.timeout).unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Defined);
         <span class="comment">// At Started timestamp
-        </span><span class="kw">let </span>state_id = state.state_at(now, vi.start, vi.timeout).unwrap();
+        </span><span class="kw">let </span>state_id = state.state_at(now, mi.start, mi.timeout).unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Started);
 
         <span class="comment">// After Started timestamp but before timeout timestamp
         </span><span class="kw">let </span>after_started_ts = now.saturating_add(MassaTime::from(<span class="number">15</span>));
-        <span class="kw">let </span>state_id_ = state.state_at(after_started_ts, vi.start, vi.timeout);
+        <span class="kw">let </span>state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout);
         <span class="macro">assert_eq!</span>(state_id_, <span class="prelude-val">Err</span>(StateAtError::Unpredictable));
 
         <span class="comment">// After Started timestamp and after timeout timestamp
-        </span><span class="kw">let </span>after_timeout_ts = vi.timeout.saturating_add(MassaTime::from(<span class="number">15</span>));
+        </span><span class="kw">let </span>after_timeout_ts = mi.timeout.saturating_add(MassaTime::from(<span class="number">15</span>));
         <span class="kw">let </span>state_id = state
-            .state_at(after_timeout_ts, vi.start, vi.timeout)
+            .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Failed);
 
@@ -1915,18 +1903,18 @@
         advance_msg.threshold = threshold.saturating_add(Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap());
         advance_msg.now = now.saturating_add(MassaTime::from(<span class="number">1</span>));
         state.on_advance(<span class="kw-2">&amp;</span>advance_msg);
-        <span class="macro">assert_eq!</span>(state, ComponentState::locked_in());
+        <span class="macro">assert_eq!</span>(state, ComponentState::locked_in(advance_msg.now));
 
         <span class="comment">// Query with timestamp
         // After LockedIn timestamp and before timeout timestamp
         </span><span class="kw">let </span>after_locked_in_ts = now.saturating_add(MassaTime::from(<span class="number">10</span>));
         <span class="kw">let </span>state_id = state
-            .state_at(after_locked_in_ts, vi.start, vi.timeout)
+            .state_at(after_locked_in_ts, mi.start, mi.timeout)
             .unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::LockedIn);
         <span class="comment">// After LockedIn timestamp and after timeout timestamp
         </span><span class="kw">let </span>state_id = state
-            .state_at(after_timeout_ts, vi.start, vi.timeout)
+            .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Active);
     }
@@ -1935,13 +1923,13 @@
     </span><span class="kw">fn </span>test_versioning_store_announce_current() {
         <span class="comment">// Test VersioningInfo::get_version_to_announce() &amp; ::get_version_current()
 
-        </span><span class="kw">let </span>(_start, timeout, vi) = get_a_version_info();
+        </span><span class="kw">let </span>(_start, timeout, mi) = get_a_version_info();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>vi_2 = vi.clone();
-        vi_2.version += <span class="number">1</span>;
-        vi_2.start =
+        <span class="kw">let </span><span class="kw-2">mut </span>mi_2 = mi.clone();
+        mi_2.version += <span class="number">1</span>;
+        mi_2.start =
             MassaTime::from(timeout.checked_add_days(Days::new(<span class="number">2</span>)).unwrap().timestamp() <span class="kw">as </span>u64);
-        vi_2.timeout =
+        mi_2.timeout =
             MassaTime::from(timeout.checked_add_days(Days::new(<span class="number">5</span>)).unwrap().timestamp() <span class="kw">as </span>u64);
 
         <span class="comment">// Can only build such object in test - history is empty :-/
@@ -1955,12 +1943,12 @@
         };
 
         <span class="comment">// TODO: Have VersioningStore::from ?
-        </span><span class="kw">let </span>vs_raw = MipStoreRaw(BTreeMap::from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]));
+        </span><span class="kw">let </span>vs_raw = MipStoreRaw(BTreeMap::from([(mi.clone(), vs_1), (mi_2.clone(), vs_2)]));
         <span class="comment">// let vs_raw = MipStoreRaw::try_from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]).unwrap();
         </span><span class="kw">let </span>vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
-        <span class="macro">assert_eq!</span>(vs.get_network_version_current(), vi.version);
-        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), vi_2.version);
+        <span class="macro">assert_eq!</span>(vs.get_network_version_current(), mi.version);
+        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), mi_2.version);
 
         <span class="comment">// Test also an empty versioning store
         </span><span class="kw">let </span>vs_raw = MipStoreRaw(Default::default());
@@ -1985,6 +1973,7 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="comment">// Another versioning info (from an attacker) for testing
         </span><span class="kw">let </span>vi_2 = MipInfo {
@@ -1994,6 +1983,7 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">7</span>),
             timeout: MassaTime::from(<span class="number">10</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>vsh = MipState {
@@ -2018,12 +2008,8 @@
 
         // Advance to Started
         </span><span class="kw">let </span>now = MassaTime::from(<span class="number">3</span>);
-        vsh.on_advance(<span class="kw-2">&amp;</span>Advance {
-            start_timestamp: vi_1.start,
-            timeout: vi_1.timeout,
-            threshold: Amount::zero(),
-            now,
-        });
+        <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
+        vsh.on_advance(<span class="kw-2">&amp;</span>adv);
 
         <span class="comment">// At state Started at time now -&gt; true
         </span><span class="macro">assert_eq!</span>(vsh.inner, ComponentState::started(Amount::zero()));
@@ -2033,15 +2019,11 @@
 
         <span class="comment">// Advance to LockedIn
         </span><span class="kw">let </span>now = MassaTime::from(<span class="number">4</span>);
-        vsh.on_advance(<span class="kw-2">&amp;</span>Advance {
-            start_timestamp: vi_1.start,
-            timeout: vi_1.timeout,
-            threshold: VERSIONING_THRESHOLD_TRANSITION_ACCEPTED,
-            now,
-        });
+        <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED, <span class="kw-2">&amp;</span>now));
+        vsh.on_advance(<span class="kw-2">&amp;</span>adv);
 
         <span class="comment">// At state LockedIn at time now -&gt; true
-        </span><span class="macro">assert_eq!</span>(vsh.inner, ComponentState::locked_in());
+        </span><span class="macro">assert_eq!</span>(vsh.inner, ComponentState::locked_in(now));
         <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">true</span>);
         <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="bool-val">true</span>);
 
@@ -2058,6 +2040,7 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>vs_1 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>vi_1);
@@ -2070,6 +2053,7 @@
             component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2);
         <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw(BTreeMap::from([
@@ -2077,8 +2061,8 @@
             (vi_2.clone(), vs_2.clone()),
         ]));
 
-        <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::locked_in(), <span class="kw-2">&amp;</span>vi_2);
-        <span class="macro">assert_eq!</span>(vs_2_2, ComponentState::locked_in());
+        <span class="kw">let </span>vs_2_2 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>vi_2);
+        <span class="macro">assert_eq!</span>(vs_2_2, ComponentState::active());
 
         <span class="kw">let </span>vs_raw_2 =
             MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
@@ -2086,7 +2070,7 @@
 
         vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2).unwrap();
 
-        <span class="comment">// Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to &quot;LockedIn&quot;
+        <span class="comment">// Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to &quot;Active&quot;
         </span><span class="macro">assert_eq!</span>(vs_raw_1.<span class="number">0</span>.get(<span class="kw-2">&amp;</span>vi_1).unwrap().inner, vs_1.inner);
         <span class="macro">assert_eq!</span>(vs_raw_1.<span class="number">0</span>.get(<span class="kw-2">&amp;</span>vi_2).unwrap().inner, vs_2_2.inner);
     }
@@ -2104,6 +2088,7 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_1 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>vi_1);
         <span class="macro">assert_eq!</span>(vs_1, ComponentState::active());
@@ -2115,6 +2100,7 @@
             component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">17</span>),
             timeout: MassaTime::from(<span class="number">27</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>vi_2);
         <span class="macro">assert_eq!</span>(vs_2, ComponentState::defined());
