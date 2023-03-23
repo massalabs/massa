@@ -582,6 +582,23 @@ async fn launch(
             send_compressed: SETTINGS.grpc.send_compressed.clone(),
             max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
             max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
+            concurrency_limit_per_connection: SETTINGS.grpc.concurrency_limit_per_connection,
+            timeout: SETTINGS.grpc.timeout.to_duration(),
+            initial_stream_window_size: SETTINGS.grpc.initial_stream_window_size,
+            initial_connection_window_size: SETTINGS.grpc.initial_connection_window_size,
+            max_concurrent_streams: SETTINGS.grpc.max_concurrent_streams,
+            tcp_keepalive: SETTINGS.grpc.tcp_keepalive.map(|t| t.to_duration()),
+            tcp_nodelay: SETTINGS.grpc.tcp_nodelay,
+            http2_keepalive_interval: SETTINGS
+                .grpc
+                .http2_keepalive_interval
+                .map(|t| t.to_duration()),
+            http2_keepalive_timeout: SETTINGS
+                .grpc
+                .http2_keepalive_timeout
+                .map(|t| t.to_duration()),
+            http2_adaptive_window: SETTINGS.grpc.http2_adaptive_window,
+            max_frame_size: SETTINGS.grpc.max_frame_size,
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,

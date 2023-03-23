@@ -8,7 +8,7 @@
     # max number of future periods considered during requests
     draw_lookahead_period_count = 10
     # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed. Bind to "[::1]:port" if you want to access the node from IPv6.
-    bind_private = "127.0.0.1:33034"
+    bind_private = "0.0.0.0:33034"
     # port on which the node API listens for public requests. Can be exposed to the Internet. Bind to "[::]:port" if you want to access the node from IPv6.
     bind_public = "0.0.0.0:33035"
     # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet. Bind to "[::]:port" if you want to access the node from IPv6.
@@ -57,6 +57,16 @@
     max_encoding_message_size = 4194304
     # limits the maximum size of streaming channel
     max_channel_size = 128
+    # set a timeout on for all request handlers in seconds. Defaults to 60s
+    timeout = 60
+    # sets the maximum frame size to use for HTTP2. Defaults to 4MB
+    max_frame_size = 4194304
+    # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+    concurrency_limit_per_connection = 32
+    # sets the [`SETTINGS_MAX_CONCURRENT_STREAMS`][spec] option for HTTP2 connections
+    max_concurrent_streams = 1024
+    # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+    tcp_nodelay = true
     # max number of future periods considered during requests
     draw_lookahead_period_count = 10
 

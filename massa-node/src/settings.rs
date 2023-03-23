@@ -251,6 +251,28 @@ pub struct GrpcSettings {
     pub max_encoding_message_size: usize,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
+    /// set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+    pub concurrency_limit_per_connection: usize,
+    /// set a timeout on for all request handlers
+    pub timeout: MassaTime,
+    /// sets the [`SETTINGS_INITIAL_WINDOW_SIZE`][spec] option for HTTP2 stream-level flow control. Default is 65,535
+    pub initial_stream_window_size: Option<u32>,
+    /// sets the max connection-level flow control for HTTP2. Default is 65,535
+    pub initial_connection_window_size: Option<u32>,
+    /// sets the [`SETTINGS_MAX_CONCURRENT_STREAMS`][spec] option for HTTP2 connections. Default is no limit (`None`)
+    pub max_concurrent_streams: Option<u32>,
+    /// set whether TCP keepalive messages are enabled on accepted connections
+    pub tcp_keepalive: Option<MassaTime>,
+    /// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+    pub tcp_nodelay: bool,
+    /// set whether HTTP2 Ping frames are enabled on accepted connections. Default is no HTTP2 keepalive (`None`)
+    pub http2_keepalive_interval: Option<MassaTime>,
+    /// sets a timeout for receiving an acknowledgement of the keepalive ping. Default is 20 seconds
+    pub http2_keepalive_timeout: Option<MassaTime>,
+    /// sets whether to use an adaptive flow control. Defaults to false
+    pub http2_adaptive_window: Option<bool>,
+    /// sets the maximum frame size to use for HTTP2. If not set, will default from underlying transport
+    pub max_frame_size: Option<u32>,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
 }

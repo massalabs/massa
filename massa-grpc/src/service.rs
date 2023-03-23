@@ -59,8 +59,21 @@ impl MassaGrpcService {
 
         let (shutdown_send, shutdown_recv) = oneshot::channel::<()>();
 
+        let mut server_builder = tonic::transport::Server::builder()
+            .concurrency_limit_per_connection(config.concurrency_limit_per_connection)
+            .timeout(config.timeout)
+            .initial_stream_window_size(config.initial_stream_window_size)
+            .initial_connection_window_size(config.initial_connection_window_size)
+            .max_concurrent_streams(config.max_concurrent_streams)
+            .tcp_keepalive(config.tcp_keepalive)
+            .tcp_nodelay(config.tcp_nodelay)
+            .http2_keepalive_interval(config.http2_keepalive_interval)
+            .http2_keepalive_timeout(config.http2_keepalive_timeout)
+            .http2_adaptive_window(config.http2_adaptive_window)
+            .max_frame_size(config.max_frame_size);
+
         if config.accept_http1 {
-            let mut router_with_http1 = tonic::transport::Server::builder()
+            let mut router_with_http1 = server_builder
                 .accept_http1(true)
                 .layer(GrpcWebLayer::new())
                 .add_service(svc);
@@ -73,7 +86,7 @@ impl MassaGrpcService {
                 router_with_http1 = router_with_http1.add_service(reflection_service);
             }
 
-            //  // todo get config runtime
+            //  // TODO get config runtime
             //  match self.cfg.tokio_runtime.take() {
             //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
             //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
@@ -83,7 +96,7 @@ impl MassaGrpcService {
                 router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
             );
         } else {
-            let mut router = tonic::transport::Server::builder().add_service(svc);
+            let mut router = server_builder.add_service(svc);
 
             if config.enable_reflection {
                 let reflection_service = tonic_reflection::server::Builder::configure()
@@ -93,7 +106,7 @@ impl MassaGrpcService {
                 router = router.add_service(reflection_service);
             }
 
-            //  // todo get config runtime
+            //  // TODO get config runtime
             //  match self.cfg.tokio_runtime.take() {
             //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
             //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
