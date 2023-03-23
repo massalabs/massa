@@ -140,7 +140,6 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         initial_seed_string: INITIAL_DRAW_SEED.into(),
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
-        final_state_path: SETTINGS.snapshot.final_state_path.clone(),
     };
 
     // Remove current disk ledger if there is one

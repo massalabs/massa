@@ -102,7 +102,6 @@ async fn test_bootstrap_server() {
         initial_rolls_path: "".into(),
         thread_count,
         periods_per_cycle,
-        final_state_path: "".into(),
     };
 
     // setup selector local config

@@ -121,7 +121,6 @@ pub fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, Tem
         initial_rolls_path: rolls_file.path().to_path_buf(),
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
-        final_state_path: "".into(),
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");

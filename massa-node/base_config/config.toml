@@ -66,11 +66,7 @@
     disk_ledger_path = "storage/ledger/rocks_db"
     # length of the changes history. Higher values allow bootstrapping nodes with slower connections
     final_history_length = 100
-    
-[snapshot]
-    # Path to save/load the final state
-    final_state_path = "storage/final_state"
-    
+
 [consensus]
     # max number of previously discarded blocks kept in RAM
     max_discarded_blocks = 100

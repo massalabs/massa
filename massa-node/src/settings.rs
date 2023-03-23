@@ -22,11 +22,6 @@ pub struct LoggingSettings {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct SnapshotSettings {
-    pub final_state_path: PathBuf,
-}
-
-#[derive(Clone, Debug, Deserialize)]
 pub struct ExecutionSettings {
     pub max_final_events: usize,
     pub readonly_queue_length: usize,
@@ -158,7 +153,6 @@ pub struct Settings {
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
-    pub snapshot: SnapshotSettings,
 }
 
 /// Consensus configuration
