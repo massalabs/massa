@@ -242,7 +242,7 @@ impl ComponentStateDeserializer {
         Self {
             state_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(COMPONENT_STATE_VARIANT_COUNT + 1),
+                Excluded(COMPONENT_STATE_VARIANT_COUNT),
             ),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
