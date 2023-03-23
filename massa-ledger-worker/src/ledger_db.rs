@@ -420,10 +420,7 @@ impl LedgerDB {
     }
 
     pub fn set_final_state(&mut self, data: &[u8]) -> Result<(), ModelsError> {
-        info!("SETTING FINAL STATE IN LEDGER: LEN {}", data.len());
-
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
-
         let mut batch = WriteBatch::default();
         batch.put_cf(handle, LEDGER_FINAL_STATE_KEY, data);
 
@@ -433,39 +430,16 @@ impl LedgerDB {
     }
 
     pub fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
-        info!("GETTING FINAL STATE IN LEDGER");
-
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
         let opt = ReadOptions::default();
-        //let ser = VecU8Serializer::new();
         let mut final_state = Vec::new();
 
         let db_iterator = self.db.iterator_cf_opt(handle, opt, IteratorMode::Start);
 
-        info!("ITERATING FINAL STATE");
-
         // Iterates over the whole database
-        for (key, entry) in db_iterator.flatten() {
-            // We deserialize and re-serialize the key to change the key format from the
-            // database one to a format we can use outside of the ledger.
-            info!(
-                "NEW ITERATION, with Key: {:?}, value length: {}",
-                key,
-                entry.len()
-            );
-
-            /*let (_, key) = self.key_deserializer_db.deserialize(&key)?;
-            self.key_serializer.serialize(&key, &mut final_state)?;*/
-
-            //ser.serialize(&entry.to_vec(), &mut final_state)?;
-
+        for (_key, entry) in db_iterator.flatten() {
             final_state.extend_from_slice(&entry);
         }
-
-        info!("END ITERATING");
-
-        info!("Final_state length: {}", final_state.len());
-        info!("final_state: {:?}", final_state);
 
         Ok(final_state)
     }

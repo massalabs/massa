@@ -4,11 +4,12 @@ use massa_models::stats::ConsensusStats;
 use massa_time::MassaTime;
 use std::cmp::max;
 
-#[cfg(not(feature = "sandbox"))]
+/*#[cfg(not(feature = "sandbox"))]
 use tracing::log::warn;
 
 #[cfg(not(feature = "sandbox"))]
 use massa_consensus_exports::events::ConsensusEvent;
+*/
 
 impl ConsensusState {
     /// Calculate and return stats about consensus
