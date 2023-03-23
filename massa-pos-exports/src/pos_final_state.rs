@@ -12,7 +12,7 @@ use std::{
     ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 #[derive(Clone)]
 /// Final state of PoS
@@ -177,6 +177,17 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
+
+        info!("COMPUTE INITIAL DRAWS WITH FOLLOWING DATA: ");
+        info!("self.config : {:?}", self.config);
+        info!("self.cycle_history : {:?}", self.cycle_history);
+        info!("self.deferred_credits : {:?}", self.deferred_credits);
+        info!("self.initial_cycle : {:?}", self.initial_cycle);
+        info!("self.initial_rolls : {:?}", self.initial_rolls);
+        info!("self.initial_seeds : {:?}", self.initial_seeds);
+        info!("self.initial_ledger_hash : {:?}", self.initial_ledger_hash);
+        info!("self.last_start_period : {:?}", self.last_start_period);
+
         // if cycle_history starts at a cycle that is strictly higher than initial_cycle, do not feed cycles initial_cycle, initial_cycle+1 to selector
         let history_starts_late = self
             .cycle_history

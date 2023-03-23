@@ -78,6 +78,8 @@ async fn stream_final_state_and_consensus(
                     write_final_state.set_last_start_period(last_start_period);
                     write_final_state.pos_state.initial_cycle =
                         Slot::new(last_start_period, 0).get_cycle(cfg.periods_per_cycle);
+                    write_final_state.pos_state.last_start_period = last_start_period;
+
                     write_final_state.pos_state.set_initial_rolls(initial_rolls);
                     write_final_state
                         .pos_state

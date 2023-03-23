@@ -6,7 +6,7 @@ use rand::{distributions::Distribution, SeedableRng};
 use rand_distr::WeightedAliasIndex;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, HashMap};
-use tracing::debug;
+use tracing::{debug, info};
 
 /// Draws block and creators for a given cycle.
 ///
@@ -30,6 +30,14 @@ pub(crate) fn perform_draws(
     lookback_seed: Hash,
     last_start_period: u64,
 ) -> PosResult<CycleDraws> {
+
+    info!("   PERFORM DRAWS WITH INPUTS: ");
+    info!("   cfg : {:?}", cfg);
+    info!("   cycle : {:?}", cycle);
+    info!("   lookback_rolls : {:?}", lookback_rolls);
+    info!("   lookback_seed : {:?}", lookback_seed);
+    info!("   last_start_period : {:?}", last_start_period);
+    
     // get seeded RNG
     let mut rng = Xoshiro256PlusPlus::from_seed(*lookback_seed.to_bytes());
 
