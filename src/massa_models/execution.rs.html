@@ -29,26 +29,9 @@
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
 <a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
-<a href="#42" id="42">42</a>
-<a href="#43" id="43">43</a>
-<a href="#44" id="44">44</a>
-<a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::amount::Amount;
-<span class="kw">use crate</span>::{address::Address, operation::OperationId, slot::Slot};
-<span class="kw">use </span>massa_time::MassaTime;
+</span><span class="kw">use crate</span>::{address::Address, operation::OperationId, slot::Slot};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// filter used when retrieving SC output events
@@ -76,19 +59,6 @@
     /// Some(false) means events coming from a succeeded sc execution
     /// None means both
     </span><span class="kw">pub </span>is_error: <span class="prelude-ty">Option</span>&lt;bool&gt;,
-}
-
-<span class="doccomment">/// Used for Deserialize
-</span><span class="attr">#[derive(Clone, Copy, Deserialize, Serialize, Debug)]
-</span><span class="kw">pub struct </span>TempFileVestingRange {
-    <span class="doccomment">/// start timestamp
-    </span><span class="kw">pub </span>timestamp: MassaTime,
-
-    <span class="doccomment">/// minimal balance
-    </span><span class="kw">pub </span>min_balance: Amount,
-
-    <span class="doccomment">/// max rolls
-    </span><span class="kw">pub </span>max_rolls: u64,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
