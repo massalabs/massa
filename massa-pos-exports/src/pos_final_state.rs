@@ -327,7 +327,7 @@ impl PoSFinalState {
         // get roll lookback
         let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
-            Some(c) if c.checked_sub(self.initial_cycle).is_some() => {
+            Some(c) if c >= self.initial_cycle => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -350,7 +350,7 @@ impl PoSFinalState {
         // get seed lookback
         let lookback_seed = match draw_cycle.checked_sub(2) {
             // looking back in history
-            Some(c) if c.checked_sub(self.initial_cycle).is_some() => {
+            Some(c) if c >= self.initial_cycle => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -403,7 +403,7 @@ impl PoSFinalState {
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
         match cycle.checked_sub(3) {
-            Some(lookback_cycle) if lookback_cycle.checked_sub(self.initial_cycle).is_some() => {
+            Some(lookback_cycle) if lookback_cycle >= self.initial_cycle => {
                 let lookback_index = match self.get_cycle_index(lookback_cycle) {
                     Some(idx) => idx,
                     None => return None,

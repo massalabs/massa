@@ -165,7 +165,9 @@ impl CycleInfo {
         periods_per_cycle: u64,
         thread_count: u8,
     ) -> bool {
-        info!("CYCLE INFO CHANGES : {:?}", changes);
+        if !changes.roll_changes.is_empty() {
+            info!("CYCLE INFO ROLL CHANGES : {:?}", changes.roll_changes);
+        }
 
         let hash_computer = CycleInfoHashComputer::new();
         let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);

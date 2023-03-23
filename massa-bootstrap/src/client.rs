@@ -75,21 +75,20 @@ async fn stream_final_state_and_consensus(
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
+                    write_final_state.set_last_start_period(last_start_period);
+                    write_final_state.pos_state.initial_cycle =
+                        Slot::new(last_start_period, 0).get_cycle(cfg.periods_per_cycle);
+                    write_final_state.pos_state.set_initial_rolls(initial_rolls);
+                    write_final_state
+                        .pos_state
+                        .set_initial_ledger_hash(initial_ledger_hash);
+
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
                     let last_pool_step =
                         write_final_state.async_pool.set_pool_part(async_pool_part);
                     let last_cycle_step = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part);
-                    write_final_state.set_last_start_period(last_start_period);
-                    write_final_state.pos_state.set_initial_rolls(initial_rolls);
-                    write_final_state
-                        .pos_state
-                        .set_initial_ledger_hash(initial_ledger_hash);
-
-                    write_final_state.pos_state.initial_cycle =
-                        Slot::new(last_start_period, 0).get_cycle(cfg.periods_per_cycle);
-
                     let last_credits_step = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part);
