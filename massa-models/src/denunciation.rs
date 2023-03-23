@@ -190,7 +190,8 @@ impl Denunciation {
         }
     }
 
-    // TODO: move this for test only
+    /// Check if Denunciation is valid
+    /// Should be used if received from the network (prevent against invalid or attacker crafted denunciation)
     fn is_valid(&self) -> Result<bool, DenunciationError> {
         let (signature_1, signature_2, hash_1, hash_2, public_key) = match self {
             Denunciation::Endorsement(de) => {
@@ -266,7 +267,6 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
         }
 
         // Check sig of s_e1 with s_e1.public_key, s_e1.slot, s_e1.index
-        // TODO: move this for unit tests only
         let s_e1_hash_content = EndorsementDenunciation::compute_content_hash(&s_e1.content)?;
         let s_e1_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
             &s_e1.content_creator_pub_key,
@@ -307,10 +307,9 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
     fn try_from((s_bh1, s_bh2): (&SecuredHeader, &SecuredHeader)) -> Result<Self, Self::Error> {
         // Cannot use the same block header twice
         // In order to create a Denunciation, there should be the same slot, index & public key
-        // TODO: move this to unit test only
         if s_bh1.content.slot != s_bh2.content.slot
             || s_bh1.content_creator_pub_key != s_bh2.content_creator_pub_key
-            || s_bh1.serialized_data == s_bh2.serialized_data
+            || s_bh1.id == s_bh2.id
         {
             return Err(DenunciationError::InvalidInput);
         }
