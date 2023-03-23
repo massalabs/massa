@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DenunciationError","DenunciationTypeId"],"struct":["DenunciationDeserializer","DenunciationSerializer"]};
+window.SIDEBAR_ITEMS = {"enum":["DenunciationError"]};

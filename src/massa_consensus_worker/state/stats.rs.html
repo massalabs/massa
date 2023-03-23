@@ -95,19 +95,27 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 <span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
 <span class="kw">use </span>massa_models::stats::ConsensusStats;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::cmp::max;
 
-<span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
-</span><span class="kw">use </span>tracing::log::warn;
+<span class="comment">/*#[cfg(not(feature = &quot;sandbox&quot;))]
+use tracing::log::warn;
 
-<span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
-</span><span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
+#[cfg(not(feature = &quot;sandbox&quot;))]
+use massa_consensus_exports::events::ConsensusEvent;
+*/
 
-<span class="kw">impl </span>ConsensusState {
+</span><span class="kw">impl </span>ConsensusState {
     <span class="doccomment">/// Calculate and return stats about consensus
     </span><span class="kw">pub fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConsensusStats, ConsensusError&gt; {
         <span class="kw">let </span>timespan_end = max(<span class="self">self</span>.launch_time, MassaTime::now()<span class="question-mark">?</span>);
@@ -139,28 +147,34 @@
     </span><span class="kw">pub fn </span>stats_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="comment">// check if there are any final blocks is coming from protocol
         // if none =&gt; we are probably desync
-        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
-        </span>{
-            <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
-            <span class="kw">if </span>now
-                &gt; max(<span class="self">self</span>.config.genesis_timestamp, <span class="self">self</span>.launch_time)
-                    .saturating_add(<span class="self">self</span>.stats_desync_detection_timespan)
-                &amp;&amp; !<span class="self">self
-                    </span>.final_block_stats
+        // TODO: Reenable desync detection
+        /*#[cfg(not(feature = &quot;sandbox&quot;))]
+        {
+            let now = MassaTime::now()?;
+            if now
+                &gt; max(
+                    self.config
+                        .genesis_timestamp
+                        .checked_add(self.config.t0.checked_mul(self.config.last_start_period)?)?,
+                    self.launch_time,
+                )
+                .saturating_add(self.stats_desync_detection_timespan)
+                &amp;&amp; !self
+                    .final_block_stats
                     .iter()
-                    .any(|(time, <span class="kw">_</span>, is_from_protocol)| {
-                        time &gt; <span class="kw-2">&amp;</span>now.saturating_sub(<span class="self">self</span>.stats_desync_detection_timespan)
-                            &amp;&amp; <span class="kw-2">*</span>is_from_protocol
+                    .any(|(time, _, is_from_protocol)| {
+                        time &gt; &amp;now.saturating_sub(self.stats_desync_detection_timespan)
+                            &amp;&amp; *is_from_protocol
                     })
             {
-                <span class="macro">warn!</span>(<span class="string">&quot;desynchronization detected because the recent final block history is empty or contains only blocks produced by this node&quot;</span>);
-                <span class="kw">let _ </span>= <span class="self">self
-                    </span>.channels
+                warn!(&quot;desynchronization detected because the recent final block history is empty or contains only blocks produced by this node&quot;);
+                let _ = self
+                    .channels
                     .controller_event_tx
                     .send(ConsensusEvent::NeedSync);
             }
-        }
-        <span class="comment">// prune stats
+        }*/
+        // prune stats
         </span><span class="self">self</span>.prune_stats()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
