@@ -518,32 +518,12 @@
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
+<span class="kw">use </span>massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -610,9 +590,6 @@
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    last_start_period,
-                    initial_rolls,
-                    initial_ledger_hash,
                 } =&gt; {
                     <span class="comment">// Set final state
                     </span><span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
@@ -622,15 +599,6 @@
                     <span class="kw">let </span>last_cycle_step = write_final_state
                         .pos_state
                         .set_cycle_history_part(pos_cycle_part);
-                    write_final_state.set_last_start_period(last_start_period);
-                    write_final_state.pos_state.set_initial_rolls(initial_rolls);
-                    write_final_state
-                        .pos_state
-                        .set_initial_ledger_hash(initial_ledger_hash);
-
-                    write_final_state.pos_state.initial_cycle =
-                        Slot::new(last_start_period, <span class="number">0</span>).get_cycle(cfg.periods_per_cycle);
-
                     <span class="kw">let </span>last_credits_step = write_final_state
                         .pos_state
                         .set_deferred_credits_part(pos_credits_part);
@@ -974,18 +942,15 @@
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
     <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     <span class="comment">// if we are before genesis, do not bootstrap
-    // if we are after genesis, but we restart from a snapshot, also do not bootstrap!
     </span><span class="kw">if </span>now &lt; genesis_timestamp {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="comment">// init final state
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
-
             <span class="comment">// load ledger from initial ledger file
             </span>final_state_guard
                 .ledger
@@ -993,14 +958,9 @@
                 .map_err(|err| {
                     BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;could not load initial ledger: {}&quot;</span>, err))
                 })<span class="question-mark">?</span>;
-
             <span class="comment">// create the initial cycle of PoS cycle_history
             </span>final_state_guard.pos_state.create_initial_cycle();
         }
-        <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
-    }
-    <span class="kw">if </span>restart_from_snapshot_at_period.is_some() {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
 
