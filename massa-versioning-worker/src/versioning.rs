@@ -80,11 +80,11 @@ impl Hash for MipInfo {
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
     #[derive(Clone, Copy, Debug, PartialEq)]
-    enum ComponentState {
+    pub(crate) enum ComponentState {
         /// Initial state
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
-        Started { threshold: Amount },
+        Started { pub(crate) threshold: Amount },
         /// Wait for some time before going to active (to let user the time to upgrade)
         LockedIn,
         /// After LockedIn, deployment is considered successful
@@ -228,7 +228,7 @@ impl Failed {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
     pub(crate) inner: ComponentState,
-    history: BTreeMap<Advance, ComponentStateTypeId>,
+    pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
 }
 
 impl MipState {
@@ -462,7 +462,7 @@ impl<const N: usize> TryFrom<[(MipInfo, MipState); N]> for MipStore {
 }
 
 /// Store of all versioning info
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct MipStoreRaw(pub(crate) BTreeMap<MipInfo, MipState>);
 
 impl MipStoreRaw {

@@ -1,3 +1,4 @@
+#![feature(variant_count)]
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! # General description
@@ -36,7 +37,7 @@
 //! A Factory trait is there to ease the development of factory for Versioned component (e.g. address, block)
 //!
 //! All factories should query MIPStore in order to create a component with correct version; default implementation
-//! are provided by the trait to avoid re writing theses query functions.
+//! are provided by the trait to avoid re writing these query functions.
 //!
 //! Unit tests in versioning_factory.rs shows a basic but realistic implementation of a AddressFactory (impl the Factory trait)
 

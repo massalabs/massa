@@ -19,6 +19,7 @@ massa_serialization = { path = "../massa-serialization" }
 
 [dev-dependencies]
 chrono = "0.4"
+more-asserts = "0.3"
 
 [features]
 testing = []
