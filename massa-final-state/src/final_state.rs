@@ -119,7 +119,7 @@ impl FinalState {
         selector: Box<dyn SelectorController>,
         last_start_period: u64,
     ) -> Result<Self, FinalStateError> {
-        debug!("Restarting from snapshot");
+        info!("Restarting from snapshot");
 
         // We recover the final_state from the RocksDB instance
         let final_state_data = ledger
