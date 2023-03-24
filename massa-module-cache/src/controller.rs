@@ -1,21 +1,21 @@
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
-use massa_sc_runtime::{GasCosts, RuntimeModule};
+use massa_sc_runtime::RuntimeModule;
 use schnellru::{ByLength, LruMap};
 
-use crate::{error::CacheError, hd_cache::HDCache, lru_cache::LRUCache, types::ModuleInfo};
+use crate::{
+    config::CacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
+    types::ModuleInfo,
+};
 
 /// `LruMap` specialization for `PreHashed` keys
 pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
 
 /// Cache controller of compiled runtime modules
 pub struct ModuleCache {
-    /// Gas costs used to:
-    /// * setup `massa-sc-runtime` metering on compilation
-    /// * TODO: debit compilation costs
-    gas_costs: GasCosts,
-    /// Default gas for compilation
-    compilation_gas: u64,
+    /// Cache config.
+    /// See `CacheConfig` documentation for more information.
+    cfg: CacheConfig,
     /// RAM stored LRU cache.
     /// See `LRUCache` documentation for more information.
     lru_cache: LRUCache,
@@ -25,12 +25,15 @@ pub struct ModuleCache {
 }
 
 impl ModuleCache {
-    pub fn new(gas_costs: GasCosts, lru_cache_size: u32, compilation_gas: u64) -> Self {
+    pub fn new(cfg: CacheConfig) -> Self {
         Self {
-            gas_costs,
-            compilation_gas,
-            lru_cache: LRUCache::new(lru_cache_size),
-            hd_cache: HDCache::new("hd_cache_path".into(), 1000, 10),
+            lru_cache: LRUCache::new(cfg.lru_cache_size),
+            hd_cache: HDCache::new(
+                cfg.hd_cache_path.clone(),
+                cfg.hd_cache_size,
+                cfg.snip_amount,
+            ),
+            cfg,
         }
     }
 
@@ -39,7 +42,7 @@ impl ModuleCache {
         let hash = Hash::compute_from(bytecode);
         if let Some(hd_module_info) =
             self.hd_cache
-                .get(hash, self.compilation_gas, self.gas_costs.clone())?
+                .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())?
         {
             self.lru_cache.insert(hash, hd_module_info);
         } else {
@@ -48,8 +51,8 @@ impl ModuleCache {
             } else {
                 let new_module = RuntimeModule::new(
                     bytecode,
-                    self.compilation_gas,
-                    self.gas_costs.clone(),
+                    self.cfg.compilation_gas,
+                    self.cfg.gas_costs.clone(),
                     true,
                 )?;
                 let new_module_info = ModuleInfo::Module(new_module);
@@ -67,6 +70,7 @@ impl ModuleCache {
         self.hd_cache.set_init_cost(hash, init_cost);
     }
 
+    /// Set a cached module as invalid
     pub fn set_invalid(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_invalid(hash);
@@ -81,15 +85,15 @@ impl ModuleCache {
         } else {
             if let Some(hd_module_info) =
                 self.hd_cache
-                    .get(hash, self.compilation_gas, self.gas_costs.clone())?
+                    .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())?
             {
                 self.lru_cache.insert(hash, hd_module_info.clone());
                 Ok(hd_module_info)
             } else {
                 match RuntimeModule::new(
                     bytecode,
-                    self.compilation_gas,
-                    self.gas_costs.clone(),
+                    self.cfg.compilation_gas,
+                    self.cfg.gas_costs.clone(),
                     true,
                 ) {
                     Ok(module) => {
@@ -138,7 +142,7 @@ impl ModuleCache {
         Ok(RuntimeModule::new(
             bytecode,
             limit,
-            self.gas_costs.clone(),
+            self.cfg.gas_costs.clone(),
             true,
         )?)
     }

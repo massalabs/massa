@@ -2763,6 +2763,7 @@ dependencies = [
  "rocksdb",
  "schnellru",
  "serial_test 1.0.0",
+ "tempfile",
  "thiserror",
  "tracing",
 ]

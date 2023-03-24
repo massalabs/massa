@@ -33,15 +33,16 @@ macro_rules! metadata_key {
 }
 
 pub(crate) struct HDCache {
+    /// RocksDB database
     db: DB,
     /// How many entries are in the db. Count is initialized at creation time by iterating
     /// over all the entries in the db then it is maintained in memory
     entry_count: usize,
     /// Maximum number of entries we want to keep in the db.
-    /// When this maximum is reached `amount_to_snip` entries are removed
+    /// When this maximum is reached `snip_amount` entries are removed
     max_entry_count: usize,
     /// How many entries are removed when `entry_count` reaches `max_entry_count`
-    amount_to_snip: usize,
+    snip_amount: usize,
     /// Module metadata serializer
     meta_ser: ModuleMetadataSerializer,
     /// Module metadata deserializer
@@ -55,7 +56,7 @@ impl HDCache {
     /// * path: where to store the db
     /// * max_entry_count: maximum number of entries we want to keep in the db
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
-    pub fn new(path: PathBuf, max_entry_count: usize, amount_to_remove: usize) -> Self {
+    pub fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
         let db = DB::open_default(path).expect(OPEN_ERROR);
         let entry_count = db.iterator(IteratorMode::Start).count();
 
@@ -63,7 +64,7 @@ impl HDCache {
             db,
             entry_count,
             max_entry_count,
-            amount_to_snip: amount_to_remove,
+            snip_amount,
             meta_ser: ModuleMetadataSerializer::new(),
             meta_deser: ModuleMetadataDeserializer::new(),
         }
@@ -185,7 +186,7 @@ impl HDCache {
         // prepare key for removal
         let mut snipped_entries_count = 0usize;
         loop {
-            if !(iter.valid() && snipped_entries_count < self.amount_to_snip) {
+            if !(iter.valid() && snipped_entries_count < self.snip_amount) {
                 break;
             }
             // thanks to if above we can safely unwrap
@@ -275,7 +276,7 @@ mod tests {
         cache.insert(key, module.clone()).unwrap();
         assert_eq!(
             cache.entry_count,
-            cache.max_entry_count - cache.amount_to_snip + 1
+            cache.max_entry_count - cache.snip_amount + 1
         );
         dbg!(cache.entry_count);
     }
