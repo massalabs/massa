@@ -32,6 +32,7 @@ use massa_models::{
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};
+use massa_module_cache::config::ModuleCacheConfig;
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response};
@@ -106,11 +107,14 @@ impl ExecutionState {
         };
 
         // Initialize the SC module cache
-        let module_cache = Arc::new(RwLock::new(ModuleCache::new(
-            config.gas_costs.clone(),
-            config.max_module_cache_size,
-            config.max_gas_per_block,
-        )));
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: "hd_cache",
+            gas_costs: config.gas_costs.clone(),
+            compilation_gas: config.max_gas_per_block,
+            lru_cache_size: config.max_module_cache_size,
+            hd_cache_size: 1000,
+            snip_amount: 10,
+        })));
 
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(

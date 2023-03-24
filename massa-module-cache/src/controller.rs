@@ -4,7 +4,7 @@ use massa_sc_runtime::RuntimeModule;
 use schnellru::{ByLength, LruMap};
 
 use crate::{
-    config::CacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
+    config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
     types::ModuleInfo,
 };
 
@@ -15,7 +15,7 @@ pub type PreHashLruMap<K, V> = LruMap<K, V, ByLength, BuildHashMapper<K>>;
 pub struct ModuleCache {
     /// Cache config.
     /// See `CacheConfig` documentation for more information.
-    cfg: CacheConfig,
+    cfg: ModuleCacheConfig,
     /// RAM stored LRU cache.
     /// See `LRUCache` documentation for more information.
     lru_cache: LRUCache,
@@ -25,7 +25,7 @@ pub struct ModuleCache {
 }
 
 impl ModuleCache {
-    pub fn new(cfg: CacheConfig) -> Self {
+    pub fn new(cfg: ModuleCacheConfig) -> Self {
         Self {
             lru_cache: LRUCache::new(cfg.lru_cache_size),
             hd_cache: HDCache::new(
