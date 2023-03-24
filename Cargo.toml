@@ -37,6 +37,8 @@ members = [
   "massa-final-state",
   "massa-pos-exports",
   "massa-pos-worker",
+  "massa-versioning-worker",
+  "massa-versioning-exports",
 ]
 resolver = "2"
 

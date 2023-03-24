@@ -17,9 +17,10 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
+    establisher::{BSConnector, BSEstablisher},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
-    BootstrapConfig, Establisher, GlobalBootstrapState,
+    BootstrapConfig, GlobalBootstrapState,
 };
 
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
@@ -371,16 +372,14 @@ async fn send_client_message(
 }
 
 async fn connect_to_server(
-    establisher: &mut Establisher,
+    establisher: &mut impl BSEstablisher,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     // connect
-    let mut connector = establisher
-        .get_connector(bootstrap_config.connect_timeout)
-        .await?; // cancellable
-    let socket = connector.connect(*addr).await?; // cancellable
+    let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
+    let socket = connector.connect(*addr).await?;
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,
@@ -419,7 +418,7 @@ fn filter_bootstrap_list(
 pub async fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
-    mut establisher: Establisher,
+    mut establisher: impl BSEstablisher,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,

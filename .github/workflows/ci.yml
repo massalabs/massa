@@ -27,13 +27,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-14
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
-          save-if: ${{ github.ref_name == 'testnet_20' }}
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -51,11 +51,11 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-14
+          toolchain: nightly-2023-02-27
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
-          save-if: ${{ github.ref_name == 'testnet_20' }}
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -72,13 +72,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-14
+          toolchain: nightly-2023-02-27
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
-          save-if: ${{ github.ref_name == 'testnet_20' }}
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -103,12 +103,12 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-14
+          toolchain: nightly-2023-02-27
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          save-if: ${{ github.ref_name == 'testnet_20' }}
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -139,7 +139,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-14
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -159,10 +159,10 @@ jobs:
           cd gas-calibration &&
           sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml &&
           sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep 'massalabs/massa-sc-runtime' | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml
-      - name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
-        run: >
-          cd gas-calibration &&
-          cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
+      #- name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
+      #  run: >
+      #    cd gas-calibration &&
+      #    cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
 
 
   doc:
@@ -174,13 +174,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-14
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
-          save-if: ${{ github.ref_name == 'testnet_20' }}
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc

@@ -243,10 +243,10 @@ impl ExecutionState {
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
-            return Err(ExecutionError::IncludeOperationError(format!(
-                "could not spend fees: {}",
-                err
-            )));
+            let error = format!("could not spend fees: {}", err);
+            let event = context.event_create(error.clone(), true);
+            context.event_emit(event);
+            return Err(ExecutionError::IncludeOperationError(error));
         }
 
         // from here, fees transferred. Op will be executed just after in the context of a snapshot.
@@ -440,8 +440,8 @@ impl ExecutionState {
             let max_rolls = rolls.1.saturating_add(*roll_count);
             if max_rolls > vesting_range.max_rolls {
                 return Err(ExecutionError::VestingError(format!(
-                    "vesting_max_rolls={} with value max_rolls={} ",
-                    vesting_range.max_rolls, max_rolls
+                    "trying to get to a total of {} rolls but only {} are allowed at that time by the vesting scheme",
+                    max_rolls, vesting_range.max_rolls
                 )));
             }
         }
@@ -1439,24 +1439,24 @@ impl ExecutionState {
         })?;
 
         let get_slot_at_timestamp = |config: &ExecutionConfig, timestamp: MassaTime| {
-            match massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            massa_models::timeslots::get_latest_block_slot_at_timestamp(
                 config.thread_count,
                 config.t0,
                 config.genesis_timestamp,
                 timestamp,
-            ) {
-                Ok(opts) => Ok(opts.unwrap()),
-                Err(_) => Err(ExecutionError::InitVestingError(format!(
-                    "can no get the slot at timestamp : {}",
-                    timestamp
-                ))),
-            }
+            )
+            .map_err(|e| {
+                ExecutionError::InitVestingError(format!(
+                    "can no get the slot at timestamp {} : {}",
+                    timestamp, e
+                ))
+            })
         };
 
         for v in hashmap.values_mut() {
             if v.len().eq(&1) {
                 return Err(ExecutionError::InitVestingError(
-                    "vesting file should has more one element".to_string(),
+                    "vesting file should have more than one element".to_string(),
                 ));
             } else {
                 *v = v
@@ -1468,15 +1468,24 @@ impl ExecutionState {
                         if prev.timestamp.eq(&MassaTime::from(0)) {
                             // first range with timestamp = 0
                             prev.start_slot = Slot::min();
-                        } else {
-                            prev.start_slot = get_slot_at_timestamp(config, prev.timestamp)?;
+                        } else if let Some(slot) = get_slot_at_timestamp(config, prev.timestamp)? {
+                            prev.start_slot = slot;
                         }
 
                         // retrieve the end_slot
-                        let next_range_slot = get_slot_at_timestamp(config, next.timestamp)?;
-                        prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)?;
+                        if let Some(next_range_slot) =
+                            get_slot_at_timestamp(config, next.timestamp)?
+                        {
+                            prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)?;
+                        }
 
                         Ok(prev)
+                    })
+                    // we don't need range with StartSlot(0,0) && EndSlot(0,0)
+                    // this can happen when the timestamp is passed
+                    .filter(|a| {
+                        !(a.as_ref().unwrap().end_slot == Slot::min()
+                            && a.as_ref().unwrap().start_slot == Slot::min())
                     })
                     .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
             }

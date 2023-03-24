@@ -174,26 +174,31 @@ pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
     let mut map = PreHashMap::default();
 
     if with_value {
+        const PAST_TIMESTAMP: u64 = 1675356692000; // 02/02/2023 17h51
+        const SEC_TIMESTAMP: u64 = 1677775892000; // 02/03/2023 17h51;
+        const FUTURE_TIMESTAMP: u64 = 1731257385000; // 10/11/2024 17h49;
+
+        // this range has past timestamp so she doesn't appear in vesting HashMap
         let vesting1 = VestingRange {
             start_slot: Slot::min(),
             end_slot: Slot::min(),
-            timestamp: MassaTime::from(0),
-            min_balance: Amount::from_str("200000").unwrap(),
-            max_rolls: 150,
+            timestamp: MassaTime::from(PAST_TIMESTAMP),
+            min_balance: Amount::from_str("150000").unwrap(),
+            max_rolls: 170,
         };
 
         let vesting2 = VestingRange {
             start_slot: Slot::min(),
             end_slot: Slot::min(),
-            timestamp: MassaTime::from(1678457600000),
-            min_balance: Amount::from_str("150000").unwrap(),
-            max_rolls: 130,
+            timestamp: MassaTime::from_millis(SEC_TIMESTAMP),
+            min_balance: Amount::from_str("100000").unwrap(),
+            max_rolls: 150,
         };
 
         let vesting3 = VestingRange {
             start_slot: Slot::min(),
             end_slot: Slot::min(),
-            timestamp: MassaTime::from(1679321600000),
+            timestamp: MassaTime::from_millis(FUTURE_TIMESTAMP),
             min_balance: Amount::from_str("80000").unwrap(),
             max_rolls: 80,
         };

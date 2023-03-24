@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 schnellru = "0.2.0"
-rocksdb = "0.19"
+rocksdb = "0.20"
 serial_test = "1.0.0"
 rand = "0.8.5"
 num_enum = "0.5"
