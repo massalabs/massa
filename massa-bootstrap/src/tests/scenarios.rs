@@ -7,13 +7,10 @@ use super::{
         get_random_ledger_changes, wait_network_command,
     },
 };
-use crate::BootstrapConfig;
-use crate::{
-    establisher::Duplex,
-    tests::tools::{
-        get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
-    },
+use crate::tests::tools::{
+    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
+use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
@@ -56,7 +53,7 @@ use std::{
     time::Duration,
 };
 use tempfile::TempDir;
-use tokio::sync::mpsc;
+use tokio::{net::TcpStream, sync::mpsc};
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -156,7 +153,7 @@ async fn test_bootstrap_server() {
 
     // start bootstrap server
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
-    let bootstrap_manager = start_bootstrap_server(
+    let bootstrap_manager = start_bootstrap_server::<TcpStream>(
         consensus_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state_server.clone(),
@@ -213,11 +210,11 @@ async fn test_bootstrap_server() {
 
     // launch bridge
     bootstrap_rw.set_nonblocking(true).unwrap();
-    let bootstrap_rw = Duplex::from_std(bootstrap_rw).unwrap();
+    let bootstrap_rw = TcpStream::from_std(bootstrap_rw).unwrap();
     let bridge = tokio::spawn(async move {
         let remote_rw = remote_rw.join().unwrap();
         remote_rw.set_nonblocking(true).unwrap();
-        let remote_rw = Duplex::from_std(remote_rw).unwrap();
+        let remote_rw = TcpStream::from_std(remote_rw).unwrap();
         bridge_mock_streams(remote_rw, bootstrap_rw).await;
     });
 

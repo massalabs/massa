@@ -60,8 +60,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
 // Use loop-back address. use port 0 to auto-assign a port
@@ -465,7 +463,7 @@ pub fn get_peers() -> BootstrapPeers {
     ])
 }
 
-pub async fn bridge_mock_streams(mut side1: Duplex, mut side2: Duplex) {
+pub async fn bridge_mock_streams<D: Duplex>(mut side1: D, mut side2: D) {
     let mut buf1 = vec![0u8; 1024];
     let mut buf2 = vec![0u8; 1024];
     loop {

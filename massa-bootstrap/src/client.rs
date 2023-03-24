@@ -26,9 +26,9 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_final_state_and_consensus(
+async fn stream_final_state_and_consensus<D: Duplex>(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
@@ -194,9 +194,9 @@ async fn stream_final_state_and_consensus(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-async fn bootstrap_from_server(
+async fn bootstrap_from_server<D: Duplex>(
     cfg: &BootstrapConfig,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
@@ -352,9 +352,9 @@ async fn bootstrap_from_server(
     Ok(())
 }
 
-async fn send_client_message(
+async fn send_client_message<D: Duplex>(
     message_to_send: &BootstrapClientMessage,
-    client: &mut BootstrapClientBinder,
+    client: &mut BootstrapClientBinder<D>,
     write_timeout: Duration,
     read_timeout: Duration,
     error: &str,
@@ -376,7 +376,7 @@ fn connect_to_server(
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
-) -> Result<BootstrapClientBinder, Box<BootstrapError>> {
+) -> Result<BootstrapClientBinder<tokio::net::TcpStream>, Box<BootstrapError>> {
     // connect
     let mut connector = establisher
         .get_connector(bootstrap_config.connect_timeout)
@@ -385,7 +385,7 @@ fn connect_to_server(
     socket.set_nonblocking(true).unwrap();
     Ok(BootstrapClientBinder::new(
         // this from_std will panic if this method doesn't exist within an async runtime...
-        Duplex::from_std(socket).unwrap(),
+        tokio::net::TcpStream::from_std(socket).unwrap(),
         *pub_key,
         bootstrap_config.into(),
     ))

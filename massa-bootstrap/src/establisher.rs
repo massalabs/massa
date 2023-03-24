@@ -6,7 +6,13 @@ use std::{
 };
 
 /// duplex connection
-pub type Duplex = tokio::net::TcpStream;
+pub trait Duplex:
+// static because need to send between threads :(
+    'static  + Send + Sync + tokio::io::AsyncReadExt + tokio::io::AsyncWriteExt + std::marker::Unpin
+{
+}
+
+impl Duplex for tokio::net::TcpStream {}
 
 /// Specifies a common interface that can be used by standard, or mockers
 pub trait BSListener {
