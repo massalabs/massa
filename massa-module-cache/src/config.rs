@@ -6,7 +6,7 @@ pub struct ModuleCacheConfig {
     pub hd_cache_path: PathBuf,
     /// Gas costs used to:
     /// * setup `massa-sc-runtime` metering on compilation
-    /// * IMPORTANT TODO: debit compilation costs
+    /// * CACHE TODO: debit compilation costs
     pub gas_costs: GasCosts,
     /// Default gas for compilation
     pub compilation_gas: u64,

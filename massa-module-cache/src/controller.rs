@@ -1,3 +1,9 @@
+// MONDAY TODO LIST:
+// 1. fix remaining cache todos
+// 2. pay for compilation
+// 3. add an execution test for cache gas behaviour
+// 4. run high end tests on labnet
+
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::RuntimeModule;

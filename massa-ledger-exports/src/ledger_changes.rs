@@ -532,7 +532,7 @@ impl LedgerChanges {
         for (_addr, change) in self.0.iter() {
             match change {
                 SetUpdateOrDelete::Set(LedgerEntry { bytecode, .. }) => {
-                    // IMPORTANT TODO: check why the len check is needed
+                    // CACHE TODO: check why the len check is needed
                     if bytecode.0.len() > 0 {
                         v.push(bytecode.clone())
                     }
