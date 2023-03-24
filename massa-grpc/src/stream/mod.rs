@@ -1,7 +1,9 @@
 /// stream new blocks
 pub mod new_blocks;
-/// stream new blocks headers
+/// stream new blocks with operations content
 pub mod new_blocks_headers;
+/// stream new blocks headers
+pub mod new_filled_blocks;
 /// subscribe new operations
 pub mod new_operations;
 /// send_blocks streaming

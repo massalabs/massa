@@ -27,6 +27,16 @@ message OperationInfo {
 }
 
 // message struct
+message Operation {
+    // the fee they have decided for this operation
+    fixed64 fee = 1;
+    // after `expire_period` slot the operation won't be included in a block
+    fixed64 expire_period = 2;
+    // the type specific operation part
+    OperationType op = 3;
+}
+
+// message struct
 message Roll {
     // int64 field
     fixed64 roll_count = 1;
@@ -62,8 +72,8 @@ enum OperationStreamFilterType {
 
 // message struct
 message Transaction {
-    // string field
-    string amount = 1;
+    // fixed64 field
+    fixed64 amount = 1;
     // string field
     string recipient_address = 2;
 }
@@ -117,7 +127,7 @@ message OperationInput {
 // message struct
 message SecureShareOperation {
     // object field
-    OperationType content = 1;
+    Operation content = 1;
     // string field
     string signature = 2;
     // string field

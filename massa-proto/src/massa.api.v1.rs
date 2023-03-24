@@ -158,6 +158,20 @@ pub struct OperationInfo {
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Operation {
+    /// the fee they have decided for this operation
+    #[prost(fixed64, tag = "1")]
+    pub fee: u64,
+    /// after `expire_period` slot the operation won't be included in a block
+    #[prost(fixed64, tag = "2")]
+    pub expire_period: u64,
+    /// the type specific operation part
+    #[prost(message, optional, tag = "3")]
+    pub op: ::core::option::Option<OperationType>,
+}
+/// message struct
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Roll {
     /// int64 field
     #[prost(fixed64, tag = "1")]
@@ -195,9 +209,9 @@ pub struct OperationType {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Transaction {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub amount: ::prost::alloc::string::String,
+    /// fixed64 field
+    #[prost(fixed64, tag = "1")]
+    pub amount: u64,
     /// string field
     #[prost(string, tag = "2")]
     pub recipient_address: ::prost::alloc::string::String,
@@ -272,7 +286,7 @@ pub struct OperationInput {
 pub struct SecureShareOperation {
     /// object field
     #[prost(message, optional, tag = "1")]
-    pub content: ::core::option::Option<OperationType>,
+    pub content: ::core::option::Option<Operation>,
     /// string field
     #[prost(string, tag = "2")]
     pub signature: ::prost::alloc::string::String,
@@ -387,7 +401,18 @@ pub struct FilledBlock {
     pub header: ::core::option::Option<SecureShareBlockHeader>,
     /// object field
     #[prost(message, repeated, tag = "2")]
-    pub operations: ::prost::alloc::vec::Vec<OperationInfo>,
+    pub operations: ::prost::alloc::vec::Vec<FilledOperationTuple>,
+}
+/// Filled Operation Tuple
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FilledOperationTuple {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub operation_id: ::prost::alloc::string::String,
+    /// object64 value
+    #[prost(message, optional, tag = "2")]
+    pub operation: ::core::option::Option<SecureShareOperation>,
 }
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -474,6 +499,25 @@ pub struct NewBlocksHeadersStreamResponse {
     /// object value
     #[prost(message, optional, tag = "2")]
     pub block_header: ::core::option::Option<SecureShareBlockHeader>,
+}
+/// NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewFilledBlocksStreamRequest {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// NewFilledBlocksStreamResponse holds response from NewFilledBlocksStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewFilledBlocksStreamResponse {
+    /// string value
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// object value
+    #[prost(message, optional, tag = "2")]
+    pub block: ::core::option::Option<FilledBlock>,
 }
 /// NewOperationsStreamRequest holds request for NewOperationsStream
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1189,6 +1233,33 @@ pub mod grpc_client {
             );
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
+        /// NewFilledBlocks
+        pub async fn new_filled_blocks(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::NewFilledBlocksStreamRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::NewFilledBlocksStreamResponse>,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/NewFilledBlocks",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
         /// NewOperations
         pub async fn new_operations(
             &mut self,
@@ -1359,6 +1430,25 @@ pub mod grpc_server {
             >,
         ) -> std::result::Result<
             tonic::Response<Self::NewBlocksHeadersStream>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the NewFilledBlocks method.
+        type NewFilledBlocksStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::NewFilledBlocksStreamResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// NewFilledBlocks
+        async fn new_filled_blocks(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::NewFilledBlocksStreamRequest>,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<Self::NewFilledBlocksStream>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewOperations method.
@@ -2011,6 +2101,56 @@ pub mod grpc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = NewBlocksHeadersSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/NewFilledBlocks" => {
+                    #[allow(non_camel_case_types)]
+                    struct NewFilledBlocksSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::StreamingService<
+                        super::NewFilledBlocksStreamRequest,
+                    > for NewFilledBlocksSvc<T> {
+                        type Response = super::NewFilledBlocksStreamResponse;
+                        type ResponseStream = T::NewFilledBlocksStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::NewFilledBlocksStreamRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).new_filled_blocks(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = NewFilledBlocksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

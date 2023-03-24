@@ -41,13 +41,13 @@ pub(crate) async fn new_operations(
                             Ok(ope) => {
                                 let operation = ope as SecureShareOperation;
 
-                                let ope_type = match operation.content.op {
+                                match operation.clone().content.op {
                                     OperationType::Transaction{recipient_address,amount} => {
                                         if is_filtered(&filter, OperationStreamFilterType::Transaction) {
                                             continue
                                         }
                                         grpc::OperationType{
-                                            transaction: Some(grpc::Transaction {amount: amount.to_string(), recipient_address: recipient_address.to_string()}),
+                                            transaction: Some(grpc::Transaction {amount: amount.to_raw(), recipient_address: recipient_address.to_string()}),
                                             ..Default::default()
                                         }
                                     },
@@ -107,7 +107,7 @@ pub(crate) async fn new_operations(
                                 };
 
                                 let ret = grpc::SecureShareOperation {
-                                    content: Some(ope_type),
+                                    content: Some(operation.content.into()),
                                     signature: operation.signature.to_string(),
                                     content_creator_pub_key: operation.content_creator_pub_key.to_string(),
                                     content_creator_address: operation.content_creator_address.to_string(),

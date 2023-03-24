@@ -81,6 +81,9 @@ service Grpc {
     // NewBlocksHeaders
     rpc NewBlocksHeaders (stream NewBlocksHeadersStreamRequest) returns (stream NewBlocksHeadersStreamResponse) {}
     
+    // NewFilledBlocks
+    rpc NewFilledBlocks (stream NewFilledBlocksStreamRequest) returns (stream NewFilledBlocksStreamResponse) {}
+
     // NewOperations
     rpc NewOperations (stream NewOperationsStreamRequest) returns (stream NewOperationsStreamResponse) {}
 }
@@ -111,6 +114,20 @@ message NewBlocksHeadersStreamResponse {
     string id = 1;
     // object value
     SecureShareBlockHeader block_header = 2;
+}
+
+// NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
+message NewFilledBlocksStreamRequest {
+    // string value
+    string id = 1;
+}
+
+// NewFilledBlocksStreamResponse holds response from NewFilledBlocksStream
+message NewFilledBlocksStreamResponse {
+    // string value
+    string id = 1;
+    // object value
+    FilledBlock block = 2;
 }
 
 // NewOperationsStreamRequest holds request for NewOperationsStream

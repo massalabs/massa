@@ -61,7 +61,15 @@ message FilledBlock {
     // object field
     SecureShareBlockHeader header = 1;
     // object field
-    repeated OperationInfo operations = 2;
+    repeated FilledOperationTuple operations = 2;
+}
+
+// Filled Operation Tuple
+message FilledOperationTuple {
+    // string value
+    string operationId = 1;
+    // object64 value
+    SecureShareOperation operation = 2;
 }
 
 // message struct
