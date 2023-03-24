@@ -710,15 +710,9 @@
 <a href="#710" id="710">710</a>
 <a href="#711" id="711">711</a>
 <a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    CycleInfo, InitialState, PoSChanges, PosError, PosResult, ProductionStats, SelectorController,
+};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
 <span class="kw">use </span>massa_hash::Hash;
@@ -745,16 +739,8 @@
     </span><span class="kw">pub </span>deferred_credits: DeferredCredits,
     <span class="doccomment">/// selector controller
     </span><span class="kw">pub </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-    <span class="doccomment">/// initial rolls, used for negative cycle look back
-    </span><span class="kw">pub </span>initial_rolls: BTreeMap&lt;Address, u64&gt;,
-    <span class="doccomment">/// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
-    </span><span class="kw">pub </span>initial_seeds: Vec&lt;Hash&gt;,
-    <span class="doccomment">/// initial state hash
-    </span><span class="kw">pub </span>initial_ledger_hash: Hash,
-    <span class="doccomment">/// initial cycle
-    </span><span class="kw">pub </span>initial_cycle: u64,
-    <span class="doccomment">/// last start period
-    </span><span class="kw">pub </span>last_start_period: u64,
+    <span class="doccomment">/// initial state, used for lookback before genesis
+    </span><span class="kw">pub </span>initial_state: InitialState,
 }
 
 <span class="kw">impl </span>PoSFinalState {
@@ -780,16 +766,20 @@
 
         <span class="kw">let </span>end_slot = Slot::new(<span class="number">0</span>, config.thread_count.saturating_sub(<span class="number">1</span>));
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            config: config.clone(),
-            cycle_history: Default::default(),
-            deferred_credits: DeferredCredits::default(),
-            selector,
+        <span class="kw">let </span>initial_state = InitialState {
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
             initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
             last_start_period: end_slot.period,
+        };
+
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            config,
+            cycle_history: Default::default(),
+            deferred_credits: DeferredCredits::default(),
+            selector,
+            initial_state,
         })
     }
 
@@ -809,16 +799,20 @@
         </span><span class="kw">let </span>init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            config: config.clone(),
-            cycle_history,
-            deferred_credits,
-            selector,
+        <span class="kw">let </span>initial_state = InitialState {
             initial_rolls: initial_rolls_in_snapshot,
             initial_seeds,
             initial_ledger_hash,
             initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
             last_start_period: end_slot.period,
+        };
+
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            config,
+            cycle_history,
+            deferred_credits,
+            selector,
+            initial_state,
         })
     }
 
@@ -895,7 +889,7 @@
         <span class="self">self</span>.cycle_history.push_back(CycleInfo::new_with_hash(
             <span class="number">0</span>,
             <span class="bool-val">false</span>,
-            <span class="self">self</span>.initial_rolls.clone(),
+            <span class="self">self</span>.initial_state.initial_rolls.clone(),
             rng_seed,
             PreHashMap::default(),
         ));
@@ -936,7 +930,7 @@
         <span class="self">self</span>.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             <span class="bool-val">false</span>,
-            <span class="self">self</span>.initial_rolls.clone(),
+            <span class="self">self</span>.initial_state.initial_rolls.clone(),
             rng_seed,
             latest_consistent_cycle_info.production_stats.clone(),
         ));
@@ -949,14 +943,16 @@
         </span><span class="kw">let </span>history_starts_late = <span class="self">self
             </span>.cycle_history
             .front()
-            .map(|c_info| c_info.cycle &gt; <span class="self">self</span>.initial_cycle)
+            .map(|c_info| c_info.cycle &gt; <span class="self">self</span>.initial_state.initial_cycle)
             .unwrap_or(<span class="bool-val">false</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>max_cycle = <span class="prelude-val">None</span>;
 
         <span class="comment">// feed cycles initial_cycle, initial_cycle+1 to selector if necessary
         </span><span class="kw">if </span>!history_starts_late {
-            <span class="kw">for </span>draw_cycle <span class="kw">in </span><span class="self">self</span>.initial_cycle..=<span class="self">self</span>.initial_cycle + <span class="number">1 </span>{
+            <span class="kw">for </span>draw_cycle <span class="kw">in
+                </span><span class="self">self</span>.initial_state.initial_cycle..=<span class="self">self</span>.initial_state.initial_cycle + <span class="number">1
+            </span>{
                 <span class="self">self</span>.feed_selector(draw_cycle)<span class="question-mark">?</span>;
                 max_cycle = <span class="prelude-val">Some</span>(draw_cycle);
             }
@@ -1095,7 +1091,7 @@
         <span class="comment">// get roll lookback
         </span><span class="kw">let </span>(lookback_rolls, lookback_state_hash) = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">3</span>) {
             <span class="comment">// looking back in history
-            </span><span class="prelude-val">Some</span>(c) <span class="kw">if </span>c &gt;= <span class="self">self</span>.initial_cycle =&gt; {
+            </span><span class="prelude-val">Some</span>(c) <span class="kw">if </span>c &gt;= <span class="self">self</span>.initial_state.initial_cycle =&gt; {
                 <span class="kw">let </span>index = <span class="self">self
                     </span>.get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))<span class="question-mark">?</span>;
@@ -1112,13 +1108,16 @@
                 (cycle_info.roll_counts.clone(), state_hash)
             }
             <span class="comment">// looking back to negative cycles
-            </span><span class="kw">_ </span>=&gt; (<span class="self">self</span>.initial_rolls.clone(), <span class="self">self</span>.initial_ledger_hash),
+            </span><span class="kw">_ </span>=&gt; (
+                <span class="self">self</span>.initial_state.initial_rolls.clone(),
+                <span class="self">self</span>.initial_state.initial_ledger_hash,
+            ),
         };
 
         <span class="comment">// get seed lookback
         </span><span class="kw">let </span>lookback_seed = <span class="kw">match </span>draw_cycle.checked_sub(<span class="number">2</span>) {
             <span class="comment">// looking back in history
-            </span><span class="prelude-val">Some</span>(c) <span class="kw">if </span>c &gt;= <span class="self">self</span>.initial_cycle =&gt; {
+            </span><span class="prelude-val">Some</span>(c) <span class="kw">if </span>c &gt;= <span class="self">self</span>.initial_state.initial_cycle =&gt; {
                 <span class="kw">let </span>index = <span class="self">self
                     </span>.get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))<span class="question-mark">?</span>;
@@ -1135,8 +1134,8 @@
             }
             <span class="comment">// looking back to negative cycles
             </span><span class="kw">_ </span>=&gt; {
-                <span class="self">self</span>.initial_seeds[draw_cycle
-                    .checked_sub(<span class="self">self</span>.initial_cycle)
+                <span class="self">self</span>.initial_state.initial_seeds[draw_cycle
+                    .checked_sub(<span class="self">self</span>.initial_state.initial_cycle)
                     .unwrap_or_default() <span class="kw">as </span>usize]
             }
         };
@@ -1146,7 +1145,7 @@
             draw_cycle,
             lookback_rolls,
             lookback_seed,
-            <span class="self">self</span>.last_start_period,
+            <span class="self">self</span>.initial_state.last_start_period,
         )
     }
 
@@ -1171,7 +1170,7 @@
     <span class="doccomment">/// Retrieves the amount of rolls a given address has at a given cycle
     </span><span class="kw">pub fn </span>get_address_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
         <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
-            <span class="prelude-val">Some</span>(lookback_cycle) <span class="kw">if </span>lookback_cycle &gt;= <span class="self">self</span>.initial_cycle =&gt; {
+            <span class="prelude-val">Some</span>(lookback_cycle) <span class="kw">if </span>lookback_cycle &gt;= <span class="self">self</span>.initial_state.initial_cycle =&gt; {
                 <span class="kw">let </span>lookback_index = <span class="kw">match </span><span class="self">self</span>.get_cycle_index(lookback_cycle) {
                     <span class="prelude-val">Some</span>(idx) =&gt; idx,
                     <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
@@ -1182,7 +1181,7 @@
                     .get(addr)
                     .cloned()
             }
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.initial_rolls.get(addr).cloned(),
+            <span class="kw">_ </span>=&gt; <span class="self">self</span>.initial_state.initial_rolls.get(addr).cloned(),
         }
     }
 
@@ -1333,21 +1332,6 @@
         } <span class="kw">else </span>{
             StreamingStep::Finished(<span class="prelude-val">None</span>)
         }
-    }
-
-    <span class="doccomment">/// Used to set the initial rolls after bootstrapping
-    </span><span class="kw">pub fn </span>set_initial_rolls(<span class="kw-2">&amp;mut </span><span class="self">self</span>, initial_rolls: BTreeMap&lt;Address, u64&gt;) {
-        <span class="self">self</span>.initial_rolls = initial_rolls;
-    }
-
-    <span class="doccomment">/// Used to set the initial cycle after bootstrapping
-    </span><span class="kw">pub fn </span>set_initial_cycle(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64) {
-        <span class="self">self</span>.initial_cycle = cycle;
-    }
-
-    <span class="doccomment">/// Used to set the initial ledger hash after bootstrapping
-    </span><span class="kw">pub fn </span>set_initial_ledger_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, initial_ledger_hash: Hash) {
-        <span class="self">self</span>.initial_ledger_hash = initial_ledger_hash
     }
 }
 

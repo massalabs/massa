@@ -834,9 +834,9 @@
                 ))
                 .parse(input)<span class="question-mark">?</span>;
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = <span class="self">self</span>.last_start_period {
-                    <span class="comment">// validate the parent/slot invariats before moving on to other fields
-                    </span><span class="kw">if </span>slot.period == last_start_period &amp;&amp; !parents.is_empty() {
+                <span class="comment">// validate the parent/slot invariants before moving on to other fields
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = <span class="self">self</span>.last_start_period {
+                    <span class="kw">if </span>slot.period == last_start_period &amp;&amp; !parents.is_empty() {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                             rest,
                             <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,

@@ -383,6 +383,8 @@
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -450,7 +452,9 @@
         <span class="kw">for </span>(<span class="kw">_</span>, op_ids) <span class="kw">in </span>sorted_ops.clone() {
             <span class="kw">for </span>op_id <span class="kw">in </span>op_ids {
                 <span class="kw">if </span>ops.insert(op_id) {
-                    hash ^= <span class="kw-2">*</span>op_id.get_hash();
+                    <span class="comment">// This let&#39;s us compute the accumulated hash of all op_ids in the struct.
+                    // We XOR the hash to allow reversibility if we remove an op_id.
+                    </span>hash ^= <span class="kw-2">*</span>op_id.get_hash();
                 }
             }
         }
