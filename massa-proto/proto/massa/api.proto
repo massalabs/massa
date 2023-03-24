@@ -75,84 +75,116 @@ service Grpc {
     // Subscribe GetTransactionsThroughput
     rpc SubscribeTransactionsThroughput (stream GetTransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 
-    rpc NewOperations (stream NewOperationsStreamRequest) returns (stream NewOperationsStreamResponse) {}
-
+    // NewBlocks
     rpc NewBlocks (stream NewBlocksStreamRequest) returns (stream NewBlocksStreamResponse) {}
+
+    // NewBlocksHeaders
+    rpc NewBlocksHeaders (stream NewBlocksHeadersStreamRequest) returns (stream NewBlocksHeadersStreamResponse) {}
+    
+    // NewOperations
+    rpc NewOperations (stream NewOperationsStreamRequest) returns (stream NewOperationsStreamResponse) {}
 }
 
+// NewBlocksStreamRequest holds request for NewBlocksStream
 message NewBlocksStreamRequest {
-    // id
+    // string value
     string id = 1;
 }
-message NewBlocksStreamResponse {
-    string id = 1;
 
+// NewBlocksStreamResponse holds response from NewBlocksStream
+message NewBlocksStreamResponse {
+    // string value
+    string id = 1;
+    // object value
     Block block = 2;
 }
 
-message NewOperationsStreamRequest {
-    // id
+// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
+message NewBlocksHeadersStreamRequest {
+    // string value
     string id = 1;
+}
 
+// NewBlocksHeadersStreamResponse holds response from NewBlocksHeadersStream
+message NewBlocksHeadersStreamResponse {
+    // string value
+    string id = 1;
+    // object value
+    SecureShareBlockHeader block_header = 2;
+}
+
+// NewOperationsStreamRequest holds request for NewOperationsStream
+message NewOperationsStreamRequest {
+    // string value
+    string id = 1;
+    // object value
     repeated OperationStreamFilterType filter = 2;
 }
 
+// NewOperationsStreamResponse holds response from NewOperationsStream
 message NewOperationsStreamResponse {
+    // string value
     string id = 1;
-
+    // object value
     SecureShareOperation operation = 2;
 }
 
+// GetBlocksBySlotRequest holds request for GetBlocksBySlot
 message GetBlocksBySlotRequest {
-    // id
+    // string value
     string id = 1;
-
     // slots
     repeated Slot slots = 2;
 }
 
+// GetBlocksBySlotResponse holds response from GetBlocksBySlot
 message GetBlocksBySlotResponse {
-    // request id
+    // string value
     string id = 1;
-
     // blocks
     repeated Block blocks = 2;
 }
 
 message GetTransactionsThroughputRequest {
-    //id
+    // string value
     string id = 1;
 }
 
+// GetTransactionsThroughputStreamRequest holds request for GetTransactionsThroughputStream
 message GetTransactionsThroughputStreamRequest {
-    //id
+    // string value
     string id = 1;
-
     // optional timer interval in sec
     optional fixed64 interval = 2;
 }
 
+// GetTransactionsThroughputResponse holds response from GetTransactionsThroughput
 message GetTransactionsThroughputResponse {
-    //id
+    // string value
     string id = 1;
     // tx/s
     fixed32 tx_s = 2;
 }
 
+// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
 message GetNextBlockBestParentsRequest {
-    // id
+    // string value
     string id = 1;
 }
 
+// GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents
 message GetNextBlockBestParentsResponse {
-    // id
+    // string value
     string id = 1;
     // best parents
     repeated BestParentTuple data = 2;
 }
 
+// Best Parent Tuple
 message BestParentTuple {
+    // string value
     string blockId = 1;
+    // fixed64 value
     fixed64 period = 2;
 }
 
@@ -160,7 +192,7 @@ message BestParentTuple {
 message GetDatastoreEntriesRequest {
     // string value
     string id = 1;
-    // string value
+    // object value
     repeated DatastoreEntriesQuery queries = 2;
 }
 

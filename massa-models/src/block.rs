@@ -206,7 +206,7 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
-///
+/// Block deserializer arguments
 pub struct BlockDeserializerArgs {
     ///
     pub thread_count: u8,

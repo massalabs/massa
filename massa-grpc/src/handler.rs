@@ -5,7 +5,7 @@ use massa_proto::massa::api::v1::{
     self as grpc, GetBlocksBySlotRequest, GetBlocksBySlotResponse, GetNextBlockBestParentsRequest,
     GetNextBlockBestParentsResponse, GetTransactionsThroughputRequest,
     GetTransactionsThroughputResponse, GetTransactionsThroughputStreamRequest,
-    NewBlocksStreamRequest, NewOperationsStreamRequest,
+    NewBlocksHeadersStreamRequest, NewBlocksStreamRequest, NewOperationsStreamRequest,
 };
 
 use crate::api::{
@@ -14,6 +14,7 @@ use crate::api::{
 };
 use crate::service::MassaGrpcService;
 use crate::stream::new_blocks::{new_blocks, NewBlocksStream};
+use crate::stream::new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStream};
 use crate::stream::new_operations::{new_operations, NewOperationsStream};
 use crate::stream::subscribe_tx_throughput::{
     subscribe_transactions_throughput, SubscribeTransactionsThroughputStream,
@@ -165,6 +166,19 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         request: Request<Streaming<NewBlocksStreamRequest>>,
     ) -> Result<Response<Self::NewBlocksStream>, Status> {
         match new_blocks(self, request).await {
+            Ok(res) => Ok(Response::new(res)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    type NewBlocksHeadersStream = NewBlocksHeadersStream;
+
+    /// Handler for subscribe new blocks headers
+    async fn new_blocks_headers(
+        &self,
+        request: Request<Streaming<NewBlocksHeadersStreamRequest>>,
+    ) -> Result<Response<Self::NewBlocksHeadersStream>, Status> {
+        match new_blocks_headers(self, request).await {
             Ok(res) => Ok(Response::new(res)),
             Err(e) => Err(e.into()),
         }

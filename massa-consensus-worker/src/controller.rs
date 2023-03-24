@@ -274,10 +274,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if self.broadcast_enabled {
-            let _ = self
-                .channels
-                .block_header_sender
-                .send(header.clone().content);
+            let _ = self.channels.block_header_sender.send(header.clone());
         }
         if let Err(err) = self
             .command_sender

@@ -1,9 +1,10 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
-use massa_models::block::SecureShareBlock;
-use massa_proto::massa::api::v1::{self as grpc};
-use massa_proto::massa::api::v1::{NewBlocksStreamRequest, NewBlocksStreamResponse};
+use massa_models::block_header::BlockHeader;
+use massa_models::block_id::BlockId;
+use massa_models::secure_share::SecureShare;
+use massa_proto::massa::api::v1::{NewBlocksHeadersStreamRequest, NewBlocksHeadersStreamResponse};
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -11,22 +12,22 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
-/// type declaration for NewBlocksStream
-pub type NewBlocksStream = Pin<
+/// type declaration for NewBlocksHeadersStream
+pub type NewBlocksHeadersStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<NewBlocksStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<NewBlocksHeadersStreamResponse, tonic::Status>>
             + Send
             + 'static,
     >,
 >;
 
-pub(crate) async fn new_blocks(
+pub(crate) async fn new_blocks_headers(
     grpc: &MassaGrpcService,
-    request: Request<Streaming<NewBlocksStreamRequest>>,
-) -> Result<NewBlocksStream, GrpcError> {
+    request: Request<Streaming<NewBlocksHeadersStreamRequest>>,
+) -> Result<NewBlocksHeadersStream, GrpcError> {
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     let mut in_stream = request.into_inner();
-    let mut subscriber = grpc.consensus_channels.block_sender.subscribe();
+    let mut subscriber = grpc.consensus_channels.block_header_sender.subscribe();
 
     tokio::spawn(async move {
         let mut request_id = String::new();
@@ -34,23 +35,17 @@ pub(crate) async fn new_blocks(
             select! {
                  event = subscriber.recv() => {
                     match event {
-                        Ok(share_block) => {
-                            let massa_block = share_block as SecureShareBlock;
-                            let header = massa_block.content.header.into();
-                            let operations = massa_block.content.operations.into_iter().map(|operation| operation.to_string()).collect();
-
-                            if let Err(e) = tx.send(Ok(NewBlocksStreamResponse {
+                        Ok(share_block_header) => {
+                            let massa_block_header = share_block_header as SecureShare<BlockHeader, BlockId>;
+                            if let Err(e) = tx.send(Ok(NewBlocksHeadersStreamResponse {
                                     id: request_id.clone(),
-                                    block: Some(grpc::Block {
-                                        header: Some(header),
-                                        operations
-                                    })
+                                    block_header: Some(massa_block_header.into())
                             })).await {
-                                error!("failed to send new block : {}", e);
+                                error!("failed to send new block header : {}", e);
                                 break;
                             }
                         },
-                        Err(e) => {error!("error on receive new block : {}", e)}
+                        Err(e) => {error!("error on receive new block header : {}", e)}
                     }
                 },
                 res = in_stream.next() => {
@@ -69,7 +64,7 @@ pub(crate) async fn new_blocks(
                                     }
                                     error!("{}", err);
                                     if let Err(e) = tx.send(Err(err)).await {
-                                        error!("failed to send back new_blocks error response: {}", e);
+                                        error!("failed to send back new_blocks_headers error response: {}", e);
                                         break;
                                     }
                                 }
@@ -86,5 +81,5 @@ pub(crate) async fn new_blocks(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as NewBlocksStream)
+    Ok(Box::pin(out_stream) as NewBlocksHeadersStream)
 }

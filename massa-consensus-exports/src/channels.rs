@@ -1,6 +1,10 @@
 use massa_execution_exports::ExecutionController;
-use massa_models::block::{FilledBlock, SecureShareBlock};
-use massa_models::block_header::BlockHeader;
+use massa_models::{
+    block::{FilledBlock, SecureShareBlock},
+    block_header::BlockHeader,
+    block_id::BlockId,
+    secure_share::SecureShare,
+};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
@@ -18,6 +22,6 @@ pub struct ConsensusChannels {
     pub controller_event_tx: crossbeam_channel::Sender<ConsensusEvent>,
     pub protocol_command_sender: ProtocolCommandSender,
     pub block_sender: tokio::sync::broadcast::Sender<SecureShareBlock>,
-    pub block_header_sender: tokio::sync::broadcast::Sender<BlockHeader>,
+    pub block_header_sender: tokio::sync::broadcast::Sender<SecureShare<BlockHeader, BlockId>>,
     pub filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,
 }
