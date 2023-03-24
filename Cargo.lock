@@ -2545,6 +2545,7 @@ dependencies = [
  "massa_time",
  "num",
  "parking_lot",
+ "tempfile",
  "thiserror",
 ]
 
