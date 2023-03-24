@@ -858,7 +858,7 @@
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         last_start_period: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
 
         <span class="comment">// We recover the final_state from the RocksDB instance
         </span><span class="kw">let </span>final_state_data = ledger
