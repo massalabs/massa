@@ -313,8 +313,8 @@
         }
 
         <span class="comment">// prevent triggering on period-zero slots
-        </span><span class="kw">if </span>next_slot.period &lt;= <span class="self">self</span>.cfg.last_start_period {
-            next_slot = Slot::new(<span class="self">self</span>.cfg.last_start_period + <span class="number">1</span>, <span class="number">0</span>);
+        </span><span class="kw">if </span>next_slot.period == <span class="number">0 </span>{
+            next_slot = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         }
 
         <span class="comment">// get the timestamp of the target slot

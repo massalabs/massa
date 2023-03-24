@@ -988,7 +988,7 @@
     /// A `massa-sc-runtime` compiled module
     </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>module = context.module_cache.write().get_module(bytecode, limit)<span class="question-mark">?</span>;
+        <span class="kw">let </span>module = context.module_cache.write().load_module(bytecode, limit)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(module)
     }
 

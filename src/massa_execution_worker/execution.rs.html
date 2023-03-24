@@ -1505,13 +1505,6 @@
 <a href="#1505" id="1505">1505</a>
 <a href="#1506" id="1506">1506</a>
 <a href="#1507" id="1507">1507</a>
-<a href="#1508" id="1508">1508</a>
-<a href="#1509" id="1509">1509</a>
-<a href="#1510" id="1510">1510</a>
-<a href="#1511" id="1511">1511</a>
-<a href="#1512" id="1512">1512</a>
-<a href="#1513" id="1513">1513</a>
-<a href="#1514" id="1514">1514</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1525,7 +1518,6 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
 <span class="kw">use </span><span class="kw">crate</span>::context::{ExecutionContext, ExecutionContextSnapshot};
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
-<span class="kw">use </span><span class="kw">crate</span>::module_cache::ModuleCache;
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
@@ -1547,8 +1539,10 @@
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 <span class="kw">use </span>massa_models::{amount::Amount, slot::Slot};
+<span class="kw">use </span>massa_module_cache::config::ModuleCacheConfig;
+<span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_sc_runtime::{Interface, Response, RuntimeModule};
+<span class="kw">use </span>massa_sc_runtime::{Interface, Response};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
@@ -1620,10 +1614,14 @@
         };
 
         <span class="comment">// Initialize the SC module cache
-        </span><span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(
-            config.gas_costs.clone(),
-            config.max_module_cache_size,
-        )));
+        </span><span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: config.hd_cache_path.clone(),
+            gas_costs: config.gas_costs.clone(),
+            compilation_gas: config.max_gas_per_block,
+            lru_cache_size: config.lru_cache_size,
+            hd_cache_size: config.hd_cache_size,
+            snip_amount: config.snip_amount,
+        })));
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
         </span><span class="kw">let </span>execution_context = Arc::new(Mutex::new(ExecutionContext::new(
@@ -2077,13 +2075,10 @@
         };
 
         <span class="comment">// run the VM on the bytecode contained in the operation
-        </span><span class="kw">let </span>module = RuntimeModule::new(bytecode, <span class="kw-2">*</span>max_gas, <span class="self">self</span>.config.gas_costs.clone())
-            .map_err(|err| {
-                ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;compilation error in execute_executesc_op: {}&quot;</span>,
-                    err
-                ))
-            })<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>module = <span class="self">self
+            </span>.module_cache
+            .read()
+            .load_tmp_module(bytecode, <span class="kw-2">*</span>max_gas)<span class="question-mark">?</span>;
         <span class="kw">match </span>massa_sc_runtime::run_main(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
@@ -2178,10 +2173,10 @@
 
         <span class="comment">// Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().get_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().load_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
         <span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module.clone(),
+            module,
             target_func,
             param,
             max_gas,
@@ -2190,7 +2185,7 @@
             <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .save_module(<span class="kw-2">&amp;</span>bytecode, module, init_cost);
+                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="prelude-val">Err</span>(err) =&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
@@ -2213,7 +2208,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// prepare execution context
         </span><span class="kw">let </span>context_snapshot;
-        <span class="kw">let </span>bytecode: Bytecode = {
+        <span class="kw">let </span>bytecode = {
             <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -2265,15 +2260,15 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(err);
             }
 
-            bytecode
-        };
+            bytecode.<span class="number">0
+        </span>};
 
         <span class="comment">// Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .write()
-            .get_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, message.max_gas)<span class="question-mark">?</span>;
+            .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
         <span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module.clone(),
@@ -2285,7 +2280,7 @@
             <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, module, init_cost);
+                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="prelude-val">Err</span>(err) =&gt; {
@@ -2649,14 +2644,10 @@
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
                 <span class="comment">// run the bytecode&#39;s main function
-                </span><span class="kw">let </span>module =
-                    RuntimeModule::new(<span class="kw-2">&amp;</span>bytecode, req.max_gas, <span class="self">self</span>.config.gas_costs.clone())
-                        .map_err(|err| {
-                            ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                                <span class="string">&quot;compilation error in execute_readonly_request: {}&quot;</span>,
-                                err
-                            ))
-                        })<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>module = <span class="self">self
+                    </span>.module_cache
+                    .read()
+                    .load_tmp_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
                 massa_sc_runtime::run_main(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     module,
@@ -2689,7 +2680,7 @@
                 </span><span class="kw">let </span>module = <span class="self">self
                     </span>.module_cache
                     .write()
-                    .get_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
+                    .load_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
                 <span class="kw">let </span>response = massa_sc_runtime::run_function(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     module.clone(),
@@ -2706,7 +2697,7 @@
                 })<span class="question-mark">?</span>;
                 <span class="self">self</span>.module_cache
                     .write()
-                    .save_module(<span class="kw-2">&amp;</span>bytecode, module, response.init_cost);
+                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, response.init_cost);
                 response
             }
         };
@@ -2820,23 +2811,18 @@
     ///
     /// By default it returns an empty map.
     </span><span class="kw">pub fn </span>get_cycle_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
+        <span class="kw">let </span>lookback_cycle = cycle.checked_sub(<span class="number">3</span>);
         <span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
-
-        <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
-            <span class="prelude-val">Some</span>(lookback_cycle)
-                <span class="kw">if </span>lookback_cycle &gt;= final_state.pos_state.initial_state.initial_cycle =&gt;
-            {
-                <span class="kw">let </span>lookback_cycle_index =
-                    <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
-                        <span class="prelude-val">Some</span>(v) =&gt; v,
-                        <span class="prelude-val">None </span>=&gt; Default::default(),
-                    };
-                <span class="comment">// get rolls
-                </span>final_state.pos_state.cycle_history[lookback_cycle_index]
-                    .roll_counts
-                    .clone()
-            }
-            <span class="kw">_ </span>=&gt; final_state.pos_state.initial_state.initial_rolls.clone(),
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(lookback_cycle) = lookback_cycle {
+            <span class="kw">let </span>lookback_cycle_index = <span class="kw">match </span>final_state.pos_state.get_cycle_index(lookback_cycle) {
+                <span class="prelude-val">Some</span>(v) =&gt; v,
+                <span class="prelude-val">None </span>=&gt; Default::default(),
+            };
+            final_state.pos_state.cycle_history[lookback_cycle_index]
+                .roll_counts
+                .clone()
+        } <span class="kw">else </span>{
+            final_state.pos_state.initial_rolls.clone()
         }
     }
 
