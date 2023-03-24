@@ -539,6 +539,8 @@
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -615,7 +617,9 @@
                     initial_rolls,
                     initial_ledger_hash,
                 } =&gt; {
-                    <span class="comment">// Set final state
+                    <span class="comment">// TODO / OPTIM: Only set the last_start_period, initial_rolls and initial_ledger_hash once at the beginning, not for all parts
+
+                    // Set final state
                     </span><span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.set_last_start_period(last_start_period);
                     write_final_state.pos_state.initial_cycle =

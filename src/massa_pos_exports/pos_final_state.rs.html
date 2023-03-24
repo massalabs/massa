@@ -717,6 +717,7 @@
 <a href="#717" id="717">717</a>
 <a href="#718" id="718">718</a>
 <a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
@@ -901,6 +902,7 @@
     }
 
     <span class="doccomment">/// Create a new empty cycle based off the initial rolls.
+    /// Completes the rng_seed to start at the given period.
     ///
     </span><span class="kw">pub fn </span>create_new_cycle_for_snapshot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,

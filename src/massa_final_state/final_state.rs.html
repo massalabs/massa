@@ -728,6 +728,15 @@
 <a href="#728" id="728">728</a>
 <a href="#729" id="729">729</a>
 <a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -740,10 +749,7 @@
     AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer, AsyncPoolSerializer, Change,
 };
 <span class="kw">use </span>massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-<span class="kw">use </span>massa_hash::{
-    Hash, HashDeserializer, HashSerializer,
-    <span class="comment">/*HashDeserializer, HashSerializer,*/ </span>HASH_SIZE_BYTES,
-};
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -753,10 +759,7 @@
     CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSFinalState, SelectorController,
 };
-<span class="kw">use </span>massa_serialization::{
-    DeserializeError, <span class="comment">/*U64VarIntSerializer,*/
-    /*DeserializeError,*/ </span>Deserializer, <span class="comment">/*SerializeError,*/ </span>Serializer,
-};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 <span class="kw">use </span>tracing::{debug, info};
@@ -799,6 +802,9 @@
     ///
     /// # Arguments
     /// * `config`: the configuration of the execution state
+    /// * `ledger`: a handle to the ledger
+    /// * `selector`: a handle to the POS selector
+    /// * `last_start_period`: at what period we should attach the final_state
     </span><span class="kw">pub fn </span>new(
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
@@ -854,7 +860,8 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
 
-        <span class="kw">let </span>final_state_data = ledger
+        <span class="comment">// We recover the final_state from the RocksDB instance
+        </span><span class="kw">let </span>final_state_data = ledger
             .get_final_state()
             .expect(<span class="string">&quot;Cannot retrieve ledger final_state data&quot;</span>);
 
@@ -977,7 +984,10 @@
                 ))
             })<span class="question-mark">?</span>;
 
-        <span class="macro">debug!</span>(<span class="string">&quot;Latest consistent slot found: {}&quot;</span>, latest_consistent_slot);
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;Latest consistent slot found in snapshot data: {}&quot;</span>,
+            latest_consistent_slot
+        );
 
         <span class="kw">let </span>hash_deser = HashDeserializer::new();
 
@@ -1013,7 +1023,7 @@
                     .pos_state
                     .create_new_cycle_for_snapshot(latest_consistent_cycle_info, end_slot);
 
-                <span class="comment">// The deferred credits that happen before the restart have to be set to the next slot
+                <span class="comment">// The deferred credits that happen during the downtime have to be set to the next slot to be executed
                 </span>final_state
                     .pos_state
                     .update_deferred_credits_after_restart(latest_consistent_slot, end_slot)
@@ -1025,7 +1035,8 @@
 
                 final_state.slot = end_slot;
 
-                final_state.compute_state_hash_at_slot(final_state.slot);
+                <span class="comment">// Recompute the hash with the updated data and feed it to POS_state.
+                </span>final_state.compute_state_hash_at_slot(final_state.slot);
 
                 <span class="comment">// feed final_state_hash to the last cycle
                 </span><span class="kw">let </span>cycle = final_state.slot.get_cycle(config.periods_per_cycle);
@@ -1045,10 +1056,7 @@
     ///
     /// USED ONLY FOR BOOTSTRAP
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.slot = Slot::new(
-            <span class="self">self</span>.last_start_period,
-            <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>),
-        );
+        <span class="self">self</span>.slot = Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>));
         <span class="self">self</span>.ledger.reset();
         <span class="self">self</span>.async_pool.reset();
         <span class="self">self</span>.pos_state.reset();
@@ -1166,7 +1174,17 @@
         }
     }
 
-    <span class="kw">fn </span>dump_final_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, commit: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
+    <span class="doccomment">/// Serialize the final_state in the ledger.
+    ///
+    /// TODO: Better handle the commit bool. We should have:
+    /// - ledger(slot)
+    /// - temp_final_state(slot)
+    /// Before the ledger apply_change
+    /// - ledger(slot+1)
+    /// - final_state(slot+1)
+    /// After the ledger apply_change
+    ///
+    </span><span class="kw">fn </span>dump_final_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, commit: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>final_state_buffer = Vec::new();
 
         <span class="kw">let </span>async_pool_serializer = AsyncPoolSerializer::new();
