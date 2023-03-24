@@ -146,9 +146,13 @@ impl HDCache {
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
-        // TODO: make sure of the missing object behaviour here
-        if let (Some(Ok((_, ser_module))), Some(Ok((_, ser_metadata)))) =
-            (iterator.next(), iterator.next())
+
+        if let (
+            Some(Ok((key_1, ser_module))),
+            Some(Ok((key_2, ser_metadata))),
+        ) = (iterator.next(), iterator.next())
+            && *key_1 == module_key!(hash)
+            && *key_2 == metadata_key!(hash)
         {
             let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs)?;
             let (_, metadata) = self
