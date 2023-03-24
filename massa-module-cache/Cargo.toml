@@ -14,7 +14,6 @@ displaydoc = "0.2"
 thiserror = "1.0"
 anyhow = "1.0"
 tracing = "0.1"
-tempfile = "3.3"
 # massa
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
@@ -22,6 +21,9 @@ massa_serialization = { path = "../massa-serialization" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "caching-followup", features = [
     "testing",
 ] }
+
+[dev-dependencies]
+tempfile = "3.3"
 
 [features]
 testing = []

@@ -54,10 +54,16 @@
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
     wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
-    # max number of compiled modules in the cache
-    max_module_cache_size = 1000
     # path to the initial vesting file
     initial_vesting_path = "base_config/initial_vesting.json"
+    # path to the hard drive cache storage
+    hd_cache_path = "storage/cache/rocks_db"
+    # maximum number of entries we want to keep in the LRU cache
+    lru_cache_size = 1000
+    # maximum number of entries we want to keep in the HD cache
+    hd_cache_size = 10_000
+    # amount of entries removed when `hd_cache_size` is reached
+    snip_amount = 10
 
 [ledger]
     # path to the initial ledger

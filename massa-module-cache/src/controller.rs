@@ -2,7 +2,6 @@ use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::RuntimeModule;
 use schnellru::{ByLength, LruMap};
-use tempfile::TempDir;
 
 use crate::{
     config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
@@ -27,15 +26,13 @@ pub struct ModuleCache {
 
 impl ModuleCache {
     pub fn new(cfg: ModuleCacheConfig) -> Self {
-        let path = if cfg!(test) {
-            TempDir::new().unwrap().path().to_path_buf()
-        } else {
-            cfg.hd_cache_path.clone()
-        };
-
         Self {
             lru_cache: LRUCache::new(cfg.lru_cache_size),
-            hd_cache: HDCache::new(path, cfg.hd_cache_size, cfg.snip_amount),
+            hd_cache: HDCache::new(
+                cfg.hd_cache_path.clone(),
+                cfg.hd_cache_size,
+                cfg.snip_amount,
+            ),
             cfg,
         }
     }

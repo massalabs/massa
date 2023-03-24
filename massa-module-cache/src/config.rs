@@ -2,7 +2,7 @@ use massa_sc_runtime::GasCosts;
 use std::path::PathBuf;
 
 pub struct ModuleCacheConfig {
-    /// Path of the hard drive cache storage
+    /// Path to the hard drive cache storage
     pub hd_cache_path: PathBuf,
     /// Gas costs used to:
     /// * setup `massa-sc-runtime` metering on compilation
