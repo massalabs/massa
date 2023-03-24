@@ -83,7 +83,7 @@ pub struct Endorsement {
     #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
     /// string field
-    #[prost(uint32, tag = "2")]
+    #[prost(fixed32, tag = "2")]
     pub index: u32,
     /// string field
     #[prost(string, tag = "3")]
@@ -100,7 +100,7 @@ pub struct EndorsementContent {
     #[prost(message, optional, tag = "2")]
     pub slot: ::core::option::Option<Slot>,
     /// float field
-    #[prost(uint32, tag = "3")]
+    #[prost(fixed32, tag = "3")]
     pub index: u32,
     /// string field
     #[prost(string, tag = "4")]
@@ -160,7 +160,7 @@ pub struct OperationInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Roll {
     /// int64 field
-    #[prost(uint64, tag = "1")]
+    #[prost(fixed64, tag = "1")]
     pub roll_count: u64,
 }
 /// message struct
@@ -216,10 +216,10 @@ pub struct CallSc {
     #[prost(bytes = "vec", tag = "3")]
     pub param: ::prost::alloc::vec::Vec<u8>,
     /// float field
-    #[prost(uint64, tag = "4")]
+    #[prost(fixed64, tag = "4")]
     pub max_gas: u64,
-    /// uint64 field
-    #[prost(uint64, tag = "5")]
+    /// fixed64 field
+    #[prost(fixed64, tag = "5")]
     pub coins: u64,
 }
 /// message struct
@@ -229,8 +229,8 @@ pub struct ExecuteSc {
     /// data field
     #[prost(bytes = "vec", tag = "1")]
     pub data: ::prost::alloc::vec::Vec<u8>,
-    /// uint64 field
-    #[prost(uint64, tag = "2")]
+    /// fixed64 field
+    #[prost(fixed64, tag = "2")]
     pub max_gas: u64,
     /// datastore
     #[prost(message, repeated, tag = "3")]
@@ -241,7 +241,7 @@ pub struct ExecuteSc {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollBuy {
     /// float field
-    #[prost(uint64, tag = "1")]
+    #[prost(fixed64, tag = "1")]
     pub roll_count: u64,
 }
 /// message struct
@@ -249,7 +249,7 @@ pub struct RollBuy {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollSell {
     /// float field
-    #[prost(uint64, tag = "1")]
+    #[prost(fixed64, tag = "1")]
     pub roll_count: u64,
 }
 /// message struct
@@ -503,7 +503,7 @@ pub struct GetTransactionsThroughputStreamRequest {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// optional timer interval in sec
-    #[prost(uint64, optional, tag = "2")]
+    #[prost(fixed64, optional, tag = "2")]
     pub interval: ::core::option::Option<u64>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -513,7 +513,7 @@ pub struct GetTransactionsThroughputResponse {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// tx/s
-    #[prost(uint32, tag = "2")]
+    #[prost(fixed32, tag = "2")]
     pub tx_s: u32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -538,7 +538,7 @@ pub struct GetNextBlockBestParentsResponse {
 pub struct BestParentTuple {
     #[prost(string, tag = "1")]
     pub block_id: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "2")]
+    #[prost(fixed64, tag = "2")]
     pub period: u64,
 }
 /// GetDatastoreEntriesRequest holds request from GetDatastoreEntries

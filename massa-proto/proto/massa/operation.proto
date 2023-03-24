@@ -29,7 +29,7 @@ message OperationInfo {
 // message struct
 message Roll {
     // int64 field
-    uint64 roll_count = 1;
+    fixed64 roll_count = 1;
 }
 
 // message struct
@@ -77,17 +77,17 @@ message CallSC {
     // byte vec
     bytes param = 3;
     // float field
-    uint64 max_gas = 4;
-    // uint64 field
-    uint64 coins = 5;
+    fixed64 max_gas = 4;
+    // fixed64 field
+    fixed64 coins = 5;
 }
 
 // message struct
 message ExecuteSC {
     // data field
     bytes data = 1;
-    // uint64 field
-    uint64 max_gas = 2;
+    // fixed64 field
+    fixed64 max_gas = 2;
     // datastore
     repeated BytesMapFieldEntry datastore = 3;
 }
@@ -95,13 +95,13 @@ message ExecuteSC {
 // message struct
 message RollBuy {
     // float field
-    uint64 roll_count = 1;
+    fixed64 roll_count = 1;
 }
 
 // message struct
 message RollSell {
     // float field
-    uint64 roll_count = 1;
+    fixed64 roll_count = 1;
 }
 
 // message struct

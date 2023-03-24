@@ -32,7 +32,7 @@ message Endorsement {
     // object field
     Slot slot = 1;
     // string field
-    uint32 index = 2;
+    fixed32 index = 2;
     // string field
     string endorsed_block = 3;
 }
@@ -44,7 +44,7 @@ message EndorsementContent {
     // object field
     Slot slot = 2;
     // float field
-    uint32 index = 3;
+    fixed32 index = 3;
     // string field
     string endorsed_block = 4;
 }
