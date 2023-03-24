@@ -527,13 +527,20 @@ impl LedgerChanges {
     }
 
     /// Retrieves all the bytcode updates contained in the current changes
-    pub fn get_byetcode_updates(&self) -> Vec<Bytecode> {
+    pub fn get_bytecode_updates(&self) -> Vec<Bytecode> {
         let mut v = Vec::new();
         for (_addr, change) in self.0.iter() {
             match change {
-                SetUpdateOrDelete::Set(entry) => v.push(entry.bytecode.clone()),
+                SetUpdateOrDelete::Set(LedgerEntry { bytecode, .. }) => {
+                    // IMPORTANT TODO: check why the len check is needed
+                    if bytecode.0.len() > 0 {
+                        v.push(bytecode.clone())
+                    }
+                }
                 SetUpdateOrDelete::Update(entry_update) => {
-                    if let SetOrKeep::Set(bytecode) = entry_update.bytecode.clone() {
+                    if let SetOrKeep::Set(bytecode) =
+                        entry_update.bytecode.clone() && bytecode.0.len() > 0
+                    {
                         v.push(bytecode);
                     }
                 }
