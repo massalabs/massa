@@ -206,12 +206,8 @@ mod tests {
     use super::*;
     use massa_hash::Hash;
     use massa_sc_runtime::{GasCosts, RuntimeModule};
-
-    use std::path::PathBuf;
-
     use serial_test::serial;
-
-    const TEST_DB_PATH: &str = "test_db";
+    use tempfile::TempDir;
 
     fn make_default_module_info() -> ModuleInfo {
         let bytecode: Vec<u8> = vec![
@@ -227,9 +223,8 @@ mod tests {
     }
 
     fn setup() -> HDCache {
-        let _ = std::fs::remove_dir_all(TEST_DB_PATH);
-
-        let path = PathBuf::from(TEST_DB_PATH);
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().to_path_buf();
         HDCache::new(path, 1000, 10)
     }
 
@@ -241,15 +236,19 @@ mod tests {
         let module = make_default_module_info();
 
         let limit = 1;
+        let init_cost = 100;
         let gas_costs = GasCosts::default();
 
-        cache
-            .insert(hash, module.clone())
-            .expect("insert should succeed");
+        cache.insert(hash, module.clone()).unwrap();
+        let cached_module_v1 = cache.get(hash, limit, gas_costs.clone()).unwrap();
+        assert!(matches!(cached_module_v1, Some(ModuleInfo::Module(_))));
 
-        let _cached_module = cache
-            .get(hash, limit, gas_costs)
-            .expect("get should succeed in test");
+        cache.set_init_cost(hash, init_cost);
+        let cached_module_v2 = cache.get(hash, limit, gas_costs).unwrap();
+        assert!(matches!(
+            cached_module_v2,
+            Some(ModuleInfo::ModuleAndDelta(_))
+        ));
     }
 
     #[test]
@@ -261,40 +260,17 @@ mod tests {
         // fill the db: add cache.max_entry_count entries
         for count in 0..cache.max_entry_count {
             let key = Hash::compute_from(count.to_string().as_bytes());
-            cache
-                .insert(key, module.clone())
-                .expect("insert should succeed");
+            cache.insert(key, module.clone()).unwrap();
         }
         assert_eq!(cache.entry_count, cache.max_entry_count);
 
         // insert one more entry
         let key = Hash::compute_from(cache.max_entry_count.to_string().as_bytes());
-        cache
-            .insert(key, module.clone())
-            .expect("insert should succeed");
+        cache.insert(key, module.clone()).unwrap();
         assert_eq!(
             cache.entry_count,
             cache.max_entry_count - cache.amount_to_snip + 1
         );
-
         dbg!(cache.entry_count);
-    }
-
-    #[test]
-    #[serial]
-    fn test_set_init_cost() {
-        let mut cache = setup();
-        let hash = Hash::compute_from(b"test_hash");
-        let init_cost = 100;
-        let gas_costs = GasCosts::default();
-
-        cache
-            .insert(hash, make_default_module_info())
-            .expect("insert should succeed");
-
-        cache.set_init_cost(hash, init_cost);
-
-        // let (_, cached_init_cost) = cache.get(hash, limit, gas_costs).unwrap();
-        // assert_eq!(cached_init_cost.unwrap(), init_cost);
     }
 }
