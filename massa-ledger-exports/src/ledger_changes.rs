@@ -533,13 +533,13 @@ impl LedgerChanges {
             match change {
                 SetUpdateOrDelete::Set(LedgerEntry { bytecode, .. }) => {
                     // CACHE TODO: check why the len check is needed
-                    if bytecode.0.len() > 0 {
+                    if !bytecode.0.is_empty() {
                         v.push(bytecode.clone())
                     }
                 }
                 SetUpdateOrDelete::Update(entry_update) => {
                     if let SetOrKeep::Set(bytecode) =
-                        entry_update.bytecode.clone() && bytecode.0.len() > 0
+                        entry_update.bytecode.clone() && !bytecode.0.is_empty()
                     {
                         v.push(bytecode);
                     }
