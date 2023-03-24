@@ -226,9 +226,8 @@ mod tests {
     }
 
     fn setup() -> HDCache {
-        let temp_dir = TempDir::new().unwrap();
-        let path = temp_dir.path().to_path_buf();
-        HDCache::new(path, 1000, 10)
+        let tmp_path = TempDir::new().unwrap().path().to_path_buf();
+        HDCache::new(tmp_path, 1000, 10)
     }
 
     #[test]
