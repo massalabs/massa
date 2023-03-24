@@ -71,7 +71,6 @@ async fn stream_final_state_and_consensus(
                     consensus_outdated_ids,
                     initial_state,
                 } => {
-
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
 
