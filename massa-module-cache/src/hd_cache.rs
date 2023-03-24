@@ -54,8 +54,7 @@ impl HDCache {
     /// # Arguments
     /// * path: where to store the db
     /// * max_entry_count: maximum number of entries we want to keep in the db
-    /// * amount_to_remove: how many entries are removed when `entry_count` reaches
-    ///   `max_entry_count`
+    /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, amount_to_remove: usize) -> Self {
         let db = DB::open_default(path).expect(OPEN_ERROR);
         let entry_count = db.iterator(IteratorMode::Start).count();
@@ -104,7 +103,6 @@ impl HDCache {
         self.db.write(batch).expect(CRUD_ERROR);
 
         self.entry_count = self.entry_count.saturating_add(1);
-
         Ok(())
     }
 
@@ -248,11 +246,15 @@ mod tests {
         assert!(matches!(cached_module_v1, Some(ModuleInfo::Module(_))));
 
         cache.set_init_cost(hash, init_cost);
-        let cached_module_v2 = cache.get(hash, limit, gas_costs).unwrap();
+        let cached_module_v2 = cache.get(hash, limit, gas_costs.clone()).unwrap();
         assert!(matches!(
             cached_module_v2,
             Some(ModuleInfo::ModuleAndDelta(_))
         ));
+
+        cache.set_invalid(hash);
+        let cached_module_v3 = cache.get(hash, limit, gas_costs).unwrap();
+        assert!(matches!(cached_module_v3, Some(ModuleInfo::Invalid)));
     }
 
     #[test]

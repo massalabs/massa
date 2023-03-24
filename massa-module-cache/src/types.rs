@@ -79,7 +79,7 @@ impl ModuleMetadataDeserializer {
     pub fn new() -> Self {
         Self {
             id_deser: U64VarIntDeserializer::new(
-                Included(u64::from(ModuleMetadataId::NotExecuted)),
+                Included(u64::from(ModuleMetadataId::Invalid)),
                 Included(u64::from(ModuleMetadataId::Delta)),
             ),
             delta_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -98,8 +98,8 @@ impl Deserializer<ModuleMetadata> for ModuleMetadataDeserializer {
                 .map(|id| ModuleMetadataId::try_from(id).unwrap())
                 .parse(buffer)?;
             match id {
-                ModuleMetadataId::NotExecuted => Ok((input, ModuleMetadata::NotExecuted)),
                 ModuleMetadataId::Invalid => Ok((input, ModuleMetadata::Invalid)),
+                ModuleMetadataId::NotExecuted => Ok((input, ModuleMetadata::NotExecuted)),
                 ModuleMetadataId::Delta => {
                     context("Delta", |input| self.delta_deser.deserialize(input))
                         .map(|delta| ModuleMetadata::Delta(delta))
