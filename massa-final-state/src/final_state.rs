@@ -10,10 +10,7 @@ use massa_async_pool::{
     AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer, AsyncPoolSerializer, Change,
 };
 use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-use massa_hash::{
-    Hash, HashDeserializer, HashSerializer,
-    /*HashDeserializer, HashSerializer,*/ HASH_SIZE_BYTES,
-};
+use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -23,10 +20,7 @@ use massa_pos_exports::{
     CycleHistoryDeserializer, CycleHistorySerializer, DeferredCredits, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSFinalState, SelectorController,
 };
-use massa_serialization::{
-    DeserializeError, /*U64VarIntSerializer,*/
-    /*DeserializeError,*/ Deserializer, /*SerializeError,*/ Serializer,
-};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use std::collections::VecDeque;
 use std::ops::Bound::{Excluded, Included};
 use tracing::{debug, info};
@@ -69,6 +63,9 @@ impl FinalState {
     ///
     /// # Arguments
     /// * `config`: the configuration of the execution state
+    /// * `ledger`: a handle to the ledger
+    /// * `selector`: a handle to the POS selector
+    /// * `last_start_period`: at what period we should attach the final_state
     pub fn new(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
@@ -124,6 +121,7 @@ impl FinalState {
     ) -> Result<Self, FinalStateError> {
         debug!("Restarting from snapshot");
 
+        // We recover the final_state from the RocksDB instance
         let final_state_data = ledger
             .get_final_state()
             .expect("Cannot retrieve ledger final_state data");
@@ -247,7 +245,10 @@ impl FinalState {
                 ))
             })?;
 
-        debug!("Latest consistent slot found: {}", latest_consistent_slot);
+        debug!(
+            "Latest consistent slot found in snapshot data: {}",
+            latest_consistent_slot
+        );
 
         let hash_deser = HashDeserializer::new();
 
@@ -283,7 +284,7 @@ impl FinalState {
                     .pos_state
                     .create_new_cycle_for_snapshot(latest_consistent_cycle_info, end_slot);
 
-                // The deferred credits that happen before the restart have to be set to the next slot
+                // The deferred credits that happen during the downtime have to be set to the next slot to be executed
                 final_state
                     .pos_state
                     .update_deferred_credits_after_restart(latest_consistent_slot, end_slot)
@@ -295,6 +296,7 @@ impl FinalState {
 
                 final_state.slot = end_slot;
 
+                // Recompute the hash with the updated data and feed it to POS_state.
                 final_state.compute_state_hash_at_slot(final_state.slot);
 
                 // feed final_state_hash to the last cycle
@@ -315,10 +317,7 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        self.slot = Slot::new(
-            self.last_start_period,
-            self.config.thread_count.saturating_sub(1),
-        );
+        self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
@@ -436,6 +435,16 @@ impl FinalState {
         }
     }
 
+    /// Serialize the final_state in the ledger.
+    ///
+    /// TODO: Better handle the commit bool. We should have:
+    /// - ledger(slot)
+    /// - temp_final_state(slot)
+    /// Before the ledger apply_change
+    /// - ledger(slot+1)
+    /// - final_state(slot+1)
+    /// After the ledger apply_change
+    ///
     fn dump_final_state(&mut self, commit: bool) -> Result<(), FinalStateError> {
         let mut final_state_buffer = Vec::new();
 

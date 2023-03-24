@@ -73,6 +73,8 @@ async fn stream_final_state_and_consensus(
                     initial_rolls,
                     initial_ledger_hash,
                 } => {
+                    // TODO / OPTIM: Only set the last_start_period, initial_rolls and initial_ledger_hash once at the beginning, not for all parts
+
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.set_last_start_period(last_start_period);

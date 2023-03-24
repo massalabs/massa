@@ -100,8 +100,6 @@ async fn launch(
         }
     }
 
-    info!("GENESIS_TIMESTAMP {}", *GENESIS_TIMESTAMP);
-
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -142,9 +140,8 @@ async fn launch(
         initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
     };
 
-    // Remove current disk ledger if there is one
+    // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-
     if _args.restart_from_snapshot_at_period.is_none() && SETTINGS.ledger.disk_ledger_path.exists()
     {
         info!("Removing existing ledger!");

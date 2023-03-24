@@ -182,6 +182,7 @@ impl PoSFinalState {
     }
 
     /// Create a new empty cycle based off the initial rolls.
+    /// Completes the rng_seed to start at the given period.
     ///
     pub fn create_new_cycle_for_snapshot(
         &mut self,
