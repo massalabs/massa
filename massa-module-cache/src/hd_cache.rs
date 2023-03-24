@@ -206,6 +206,7 @@ mod tests {
     use super::*;
     use massa_hash::Hash;
     use massa_sc_runtime::{GasCosts, RuntimeModule};
+    use rand::thread_rng;
     use serial_test::serial;
     use tempfile::TempDir;
 
@@ -218,7 +219,6 @@ mod tests {
             0x61, 0x64, 0x64, 0x5f, 0x6f, 0x6e, 0x65, 0x02, 0x07, 0x01, 0x00, 0x01, 0x00, 0x02,
             0x70, 0x30,
         ];
-
         ModuleInfo::Module(RuntimeModule::new(&bytecode, 10, GasCosts::default(), true).unwrap())
     }
 
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_insert_and_get_simple() {
+    fn test_basic_crud() {
         let mut cache = setup();
         let hash = Hash::compute_from(b"test_hash");
         let module = make_default_module_info();
@@ -272,5 +272,28 @@ mod tests {
             cache.max_entry_count - cache.amount_to_snip + 1
         );
         dbg!(cache.entry_count);
+    }
+
+    #[test]
+    #[serial]
+    fn test_missing_module() {
+        let mut cache = setup();
+        let module = make_default_module_info();
+
+        let limit = 1;
+        let gas_costs = GasCosts::default();
+
+        for count in 0..cache.max_entry_count {
+            let key = Hash::compute_from(count.to_string().as_bytes());
+            cache.insert(key, module.clone()).unwrap();
+        }
+
+        for _ in 0..cache.max_entry_count {
+            let mut rbytes = Vec::new();
+            thread_rng().fill_bytes(&mut rbytes);
+            let get_key = Hash::compute_from(&rbytes);
+            let cached_module = cache.get(get_key, limit, gas_costs.clone()).unwrap();
+            assert!(cached_module.is_none());
+        }
     }
 }
