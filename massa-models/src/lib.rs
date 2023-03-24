@@ -42,6 +42,8 @@ pub mod error;
 pub mod execution;
 /// ledger related structures
 pub mod ledger;
+/// mapping grpc
+pub mod mapping_grpc;
 /// node related structure
 pub mod node;
 /// operations

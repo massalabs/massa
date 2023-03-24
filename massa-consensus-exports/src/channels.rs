@@ -1,5 +1,5 @@
 use massa_execution_exports::ExecutionController;
-use massa_models::block::{Block, FilledBlock};
+use massa_models::block::{FilledBlock, SecureShareBlock};
 use massa_models::block_header::BlockHeader;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
@@ -17,7 +17,7 @@ pub struct ConsensusChannels {
     pub pool_command_sender: Box<dyn PoolController>,
     pub controller_event_tx: crossbeam_channel::Sender<ConsensusEvent>,
     pub protocol_command_sender: ProtocolCommandSender,
-    pub block_sender: tokio::sync::broadcast::Sender<Block>,
+    pub block_sender: tokio::sync::broadcast::Sender<SecureShareBlock>,
     pub block_header_sender: tokio::sync::broadcast::Sender<BlockHeader>,
     pub filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,
 }

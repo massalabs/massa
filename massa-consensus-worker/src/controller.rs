@@ -244,10 +244,8 @@ impl ConsensusController for ConsensusControllerImpl {
                         })
                         .collect();
 
-                let _block_receivers_count = self
-                    .channels
-                    .block_sender
-                    .send(verifiable_block.content.clone());
+                let _block_receivers_count =
+                    self.channels.block_sender.send(verifiable_block.clone());
                 let _filled_block_receivers_count =
                     self.channels.filled_block_sender.send(FilledBlock {
                         header: verifiable_block.content.header.clone(),

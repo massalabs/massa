@@ -76,6 +76,18 @@ service Grpc {
     rpc SubscribeTransactionsThroughput (stream GetTransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 
     rpc SubscribeNewOperations (stream SubscribeNewOperationsStreamRequest) returns (stream SubscribeNewOperationsStreamResponse) {}
+
+    rpc NewBlocks (stream NewBlocksStreamRequest) returns (stream NewBlocksStreamResponse) {}
+}
+
+message NewBlocksStreamRequest {
+    // id
+    string id = 1;
+}
+message NewBlocksStreamResponse {
+    string id = 1;
+
+    Block block = 2;
 }
 
 message SubscribeNewOperationsStreamRequest {

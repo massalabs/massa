@@ -2851,6 +2851,7 @@ dependencies = [
  "displaydoc",
  "lazy_static",
  "massa_hash 0.1.0",
+ "massa_proto",
  "massa_serialization 0.1.0",
  "massa_signature",
  "massa_time",
@@ -2985,7 +2986,6 @@ name = "massa_proto"
 version = "0.1.0"
 dependencies = [
  "glob",
- "massa_models",
  "prost",
  "prost-build",
  "prost-types",
