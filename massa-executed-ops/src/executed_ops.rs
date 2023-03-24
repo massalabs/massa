@@ -65,6 +65,8 @@ impl ExecutedOps {
         for (_, op_ids) in sorted_ops.clone() {
             for op_id in op_ids {
                 if ops.insert(op_id) {
+                    // This let's us compute the accumulated hash of all op_ids in the struct.
+                    // We XOR the hash to allow reversibility if we remove an op_id.
                     hash ^= *op_id.get_hash();
                 }
             }

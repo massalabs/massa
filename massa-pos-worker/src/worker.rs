@@ -109,18 +109,14 @@ impl SelectorThread {
     /// draws for future cycle.
     fn run(self) -> PosResult<()> {
         loop {
-            let (cycle, lookback_rolls, lookback_seed, last_start_period) =
-                match self.input_mpsc.recv() {
-                    Err(_) => break,
-                    Ok(Command::Stop) => break,
-
-                    Ok(Command::DrawInput {
-                        cycle,
-                        lookback_rolls,
-                        lookback_seed,
-                        last_start_period,
-                    }) => (cycle, lookback_rolls, lookback_seed, last_start_period),
-                };
+            let Ok(Command::DrawInput {
+                cycle,
+                lookback_rolls,
+                lookback_seed,
+                last_start_period,
+            }) = self.input_mpsc.recv() else {
+                break;
+            };
 
             // perform draws
             let draws_result = perform_draws(

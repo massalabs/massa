@@ -319,8 +319,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 ))
                 .parse(input)?;
 
+                // validate the parent/slot invariants before moving on to other fields
                 if let Some(last_start_period) = self.last_start_period {
-                    // validate the parent/slot invariats before moving on to other fields
                     if slot.period == last_start_period && !parents.is_empty() {
                         return Err(nom::Err::Failure(ContextError::add_context(
                             rest,

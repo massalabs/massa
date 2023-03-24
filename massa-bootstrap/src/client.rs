@@ -3,7 +3,7 @@ use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -69,23 +69,17 @@ async fn stream_final_state_and_consensus(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    last_start_period,
-                    initial_rolls,
-                    initial_ledger_hash,
+                    initial_state,
                 } => {
-                    // TODO / OPTIM: Only set the last_start_period, initial_rolls and initial_ledger_hash once at the beginning, not for all parts
 
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
-                    write_final_state.set_last_start_period(last_start_period);
-                    write_final_state.pos_state.initial_cycle =
-                        Slot::new(last_start_period, 0).get_cycle(cfg.periods_per_cycle);
-                    write_final_state.pos_state.last_start_period = last_start_period;
 
-                    write_final_state.pos_state.set_initial_rolls(initial_rolls);
-                    write_final_state
-                        .pos_state
-                        .set_initial_ledger_hash(initial_ledger_hash);
+                    // We only need to receive the initial_state once
+                    if let Some(initial_state) = initial_state {
+                        write_final_state.last_start_period = initial_state.last_start_period;
+                        write_final_state.pos_state.initial_state = initial_state;
+                    }
 
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
                     let last_pool_step =
@@ -153,6 +147,7 @@ async fn stream_final_state_and_consensus(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_initial_state: false,
                     };
 
                     // Logs for an easier diagnostic if needed
@@ -181,6 +176,7 @@ async fn stream_final_state_and_consensus(
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
+                        send_initial_state: true,
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
@@ -441,9 +437,15 @@ pub async fn get_state(
     restart_from_snapshot_at_period: Option<u64>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
+
+    // If we restart from a snapshot, do not bootstrap
+    if restart_from_snapshot_at_period.is_some() {
+        massa_trace!("bootstrap.lib.get_state.init_from_snapshot", {});
+        return Ok(GlobalBootstrapState::new(final_state));
+    }
+
     let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
-    // if we are after genesis, but we restart from a snapshot, also do not bootstrap!
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
@@ -463,11 +465,8 @@ pub async fn get_state(
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
-    if restart_from_snapshot_at_period.is_some() {
-        massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        return Ok(GlobalBootstrapState::new(final_state));
-    }
 
+    // If the two conditions above are not verified, we need to bootstrap
     // we filter the bootstrap list to keep only the ip addresses we are compatible with
     let mut filtered_bootstrap_list = filter_bootstrap_list(
         bootstrap_config.bootstrap_list.clone(),
@@ -498,6 +497,7 @@ pub async fn get_state(
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
+            send_initial_state: true,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
 

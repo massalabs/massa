@@ -26,8 +26,6 @@
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 mod white_black_list;
 
-use white_black_list::*;
-
 use crossbeam::channel::{tick, Select, SendError};
 use humantime::format_duration;
 use massa_async_pool::AsyncMessageId;
@@ -52,6 +50,7 @@ use std::{
 };
 use tokio::runtime::{self, Handle, Runtime};
 use tracing::{debug, error, info, warn};
+use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
@@ -558,6 +557,7 @@ pub async fn stream_bootstrap_information(
     mut last_credits_step: StreamingStep<Slot>,
     mut last_ops_step: StreamingStep<Slot>,
     mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
+    mut send_initial_state: bool,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -574,15 +574,20 @@ pub async fn stream_bootstrap_information(
         let pos_credits_part;
         let exec_ops_part;
         let final_state_changes;
-        let last_start_period;
-        let initial_rolls;
-        let initial_ledger_hash;
+        let initial_state;
 
         let mut slot_too_old = false;
 
         // Scope of the final state read
         {
             let final_state_read = final_state.read();
+
+            initial_state = if send_initial_state {
+                Some(final_state_read.pos_state.initial_state.clone())
+            } else {
+                None
+            };
+
             let (data, new_ledger_step) = final_state_read
                 .ledger
                 .get_ledger_part(last_ledger_step.clone())?;
@@ -606,10 +611,6 @@ pub async fn stream_bootstrap_information(
                 .executed_ops
                 .get_executed_ops_part(last_ops_step);
             exec_ops_part = ops_data;
-
-            last_start_period = final_state_read.last_start_period;
-            initial_rolls = final_state_read.pos_state.initial_rolls.clone();
-            initial_ledger_hash = final_state_read.pos_state.initial_ledger_hash;
 
             if let Some(slot) = last_slot && slot != final_state_read.slot {
                 if slot > final_state_read.slot {
@@ -644,6 +645,7 @@ pub async fn stream_bootstrap_information(
             last_ops_step = new_ops_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
+            send_initial_state = false;
         }
 
         if slot_too_old {
@@ -741,9 +743,7 @@ pub async fn stream_bootstrap_information(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    last_start_period,
-                    initial_rolls,
-                    initial_ledger_hash,
+                    initial_state,
                 },
             )
             .await
@@ -854,6 +854,7 @@ async fn manage_bootstrap(
                     last_credits_step,
                     last_ops_step,
                     last_consensus_step,
+                    send_initial_state,
                 } => {
                     stream_bootstrap_information(
                         server,
@@ -866,6 +867,7 @@ async fn manage_bootstrap(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_initial_state,
                         write_timeout,
                     )
                     .await?;

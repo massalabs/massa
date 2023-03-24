@@ -1,4 +1,6 @@
-use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
+use crate::{
+    CycleInfo, InitialState, PoSChanges, PosError, PosResult, ProductionStats, SelectorController,
+};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
@@ -25,16 +27,8 @@ pub struct PoSFinalState {
     pub deferred_credits: DeferredCredits,
     /// selector controller
     pub selector: Box<dyn SelectorController>,
-    /// initial rolls, used for negative cycle look back
-    pub initial_rolls: BTreeMap<Address, u64>,
-    /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
-    pub initial_seeds: Vec<Hash>,
-    /// initial state hash
-    pub initial_ledger_hash: Hash,
-    /// initial cycle
-    pub initial_cycle: u64,
-    /// last start period
-    pub last_start_period: u64,
+    /// initial state, used for lookback before genesis
+    pub initial_state: InitialState,
 }
 
 impl PoSFinalState {
@@ -60,16 +54,20 @@ impl PoSFinalState {
 
         let end_slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
-        Ok(Self {
-            config: config.clone(),
-            cycle_history: Default::default(),
-            deferred_credits: DeferredCredits::default(),
-            selector,
+        let initial_state = InitialState {
             initial_rolls,
             initial_seeds,
             initial_ledger_hash,
             initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
             last_start_period: end_slot.period,
+        };
+
+        Ok(Self {
+            config,
+            cycle_history: Default::default(),
+            deferred_credits: DeferredCredits::default(),
+            selector,
+            initial_state,
         })
     }
 
@@ -89,16 +87,20 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        Ok(Self {
-            config: config.clone(),
-            cycle_history,
-            deferred_credits,
-            selector,
+        let initial_state = InitialState {
             initial_rolls: initial_rolls_in_snapshot,
             initial_seeds,
             initial_ledger_hash,
             initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
             last_start_period: end_slot.period,
+        };
+
+        Ok(Self {
+            config,
+            cycle_history,
+            deferred_credits,
+            selector,
+            initial_state,
         })
     }
 
@@ -175,7 +177,7 @@ impl PoSFinalState {
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             0,
             false,
-            self.initial_rolls.clone(),
+            self.initial_state.initial_rolls.clone(),
             rng_seed,
             PreHashMap::default(),
         ));
@@ -216,7 +218,7 @@ impl PoSFinalState {
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             false,
-            self.initial_rolls.clone(),
+            self.initial_state.initial_rolls.clone(),
             rng_seed,
             latest_consistent_cycle_info.production_stats.clone(),
         ));
@@ -229,14 +231,16 @@ impl PoSFinalState {
         let history_starts_late = self
             .cycle_history
             .front()
-            .map(|c_info| c_info.cycle > self.initial_cycle)
+            .map(|c_info| c_info.cycle > self.initial_state.initial_cycle)
             .unwrap_or(false);
 
         let mut max_cycle = None;
 
         // feed cycles initial_cycle, initial_cycle+1 to selector if necessary
         if !history_starts_late {
-            for draw_cycle in self.initial_cycle..=self.initial_cycle + 1 {
+            for draw_cycle in
+                self.initial_state.initial_cycle..=self.initial_state.initial_cycle + 1
+            {
                 self.feed_selector(draw_cycle)?;
                 max_cycle = Some(draw_cycle);
             }
@@ -375,7 +379,7 @@ impl PoSFinalState {
         // get roll lookback
         let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
-            Some(c) if c >= self.initial_cycle => {
+            Some(c) if c >= self.initial_state.initial_cycle => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -392,13 +396,16 @@ impl PoSFinalState {
                 (cycle_info.roll_counts.clone(), state_hash)
             }
             // looking back to negative cycles
-            _ => (self.initial_rolls.clone(), self.initial_ledger_hash),
+            _ => (
+                self.initial_state.initial_rolls.clone(),
+                self.initial_state.initial_ledger_hash,
+            ),
         };
 
         // get seed lookback
         let lookback_seed = match draw_cycle.checked_sub(2) {
             // looking back in history
-            Some(c) if c >= self.initial_cycle => {
+            Some(c) if c >= self.initial_state.initial_cycle => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -415,8 +422,8 @@ impl PoSFinalState {
             }
             // looking back to negative cycles
             _ => {
-                self.initial_seeds[draw_cycle
-                    .checked_sub(self.initial_cycle)
+                self.initial_state.initial_seeds[draw_cycle
+                    .checked_sub(self.initial_state.initial_cycle)
                     .unwrap_or_default() as usize]
             }
         };
@@ -426,7 +433,7 @@ impl PoSFinalState {
             draw_cycle,
             lookback_rolls,
             lookback_seed,
-            self.last_start_period,
+            self.initial_state.last_start_period,
         )
     }
 
@@ -451,7 +458,7 @@ impl PoSFinalState {
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
         match cycle.checked_sub(3) {
-            Some(lookback_cycle) if lookback_cycle >= self.initial_cycle => {
+            Some(lookback_cycle) if lookback_cycle >= self.initial_state.initial_cycle => {
                 let lookback_index = match self.get_cycle_index(lookback_cycle) {
                     Some(idx) => idx,
                     None => return None,
@@ -462,7 +469,7 @@ impl PoSFinalState {
                     .get(addr)
                     .cloned()
             }
-            _ => self.initial_rolls.get(addr).cloned(),
+            _ => self.initial_state.initial_rolls.get(addr).cloned(),
         }
     }
 
@@ -613,21 +620,6 @@ impl PoSFinalState {
         } else {
             StreamingStep::Finished(None)
         }
-    }
-
-    /// Used to set the initial rolls after bootstrapping
-    pub fn set_initial_rolls(&mut self, initial_rolls: BTreeMap<Address, u64>) {
-        self.initial_rolls = initial_rolls;
-    }
-
-    /// Used to set the initial cycle after bootstrapping
-    pub fn set_initial_cycle(&mut self, cycle: u64) {
-        self.initial_cycle = cycle;
-    }
-
-    /// Used to set the initial ledger hash after bootstrapping
-    pub fn set_initial_ledger_hash(&mut self, initial_ledger_hash: Hash) {
-        self.initial_ledger_hash = initial_ledger_hash
     }
 }
 
