@@ -5,7 +5,7 @@ use massa_proto::massa::api::v1::{
     self as grpc, GetBlocksBySlotRequest, GetBlocksBySlotResponse, GetNextBlockBestParentsRequest,
     GetNextBlockBestParentsResponse, GetTransactionsThroughputRequest,
     GetTransactionsThroughputResponse, GetTransactionsThroughputStreamRequest,
-    NewBlocksStreamRequest, SubscribeNewOperationsStreamRequest,
+    NewBlocksStreamRequest, NewOperationsStreamRequest,
 };
 
 use crate::api::{
@@ -14,9 +14,7 @@ use crate::api::{
 };
 use crate::service::MassaGrpcService;
 use crate::stream::new_blocks::{new_blocks, NewBlocksStream};
-use crate::stream::subscribe_new_operations::{
-    subscribe_new_operations, SubscribeNewOperationsStream,
-};
+use crate::stream::new_operations::{new_operations, NewOperationsStream};
 use crate::stream::subscribe_tx_throughput::{
     subscribe_transactions_throughput, SubscribeTransactionsThroughputStream,
 };
@@ -40,17 +38,6 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
-    /// Handler for get version
-    async fn get_version(
-        &self,
-        request: tonic::Request<grpc::GetVersionRequest>,
-    ) -> Result<tonic::Response<grpc::GetVersionResponse>, tonic::Status> {
-        match get_version(self, request) {
-            Ok(response) => Ok(tonic::Response::new(response)),
-            Err(e) => Err(e.into()),
-        }
-    }
-
     /// Handler for get selector draws
     async fn get_selector_draws(
         &self,
@@ -62,13 +49,13 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
-    /// Handler for get_next_block_best_parents
-    async fn get_next_block_best_parents(
+    /// Handler for get version
+    async fn get_version(
         &self,
-        request: Request<GetNextBlockBestParentsRequest>,
-    ) -> Result<Response<GetNextBlockBestParentsResponse>, Status> {
-        match get_next_block_best_parents(self, request) {
-            Ok(response) => Ok(Response::new(response)),
+        request: tonic::Request<grpc::GetVersionRequest>,
+    ) -> Result<tonic::Response<grpc::GetVersionResponse>, tonic::Status> {
+        match get_version(self, request) {
+            Ok(response) => Ok(tonic::Response::new(response)),
             Err(e) => Err(e.into()),
         }
     }
@@ -78,6 +65,17 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         request: Request<GetTransactionsThroughputRequest>,
     ) -> Result<Response<GetTransactionsThroughputResponse>, Status> {
         match get_transactions_throughput(self, request) {
+            Ok(response) => Ok(Response::new(response)),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Handler for get_next_block_best_parents
+    async fn get_next_block_best_parents(
+        &self,
+        request: Request<GetNextBlockBestParentsRequest>,
+    ) -> Result<Response<GetNextBlockBestParentsResponse>, Status> {
+        match get_next_block_best_parents(self, request) {
             Ok(response) => Ok(Response::new(response)),
             Err(e) => Err(e.into()),
         }
@@ -100,12 +98,6 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
 
     type SendBlocksStream = SendBlocksStream;
-    type SendEndorsementsStream = SendEndorsementsStream;
-    type SendOperationsStream = SendOperationsStream;
-    type SubscribeTransactionsThroughputStream = SubscribeTransactionsThroughputStream;
-    type SubscribeNewOperationsStream = SubscribeNewOperationsStream;
-    type NewBlocksStream = NewBlocksStream;
-
     /// Handler for send_blocks_stream
     async fn send_blocks(
         &self,
@@ -116,7 +108,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
             Err(e) => Err(e.into()),
         }
     }
-
+    type SendEndorsementsStream = SendEndorsementsStream;
     /// Handler for send_endorsements
     async fn send_endorsements(
         &self,
@@ -127,7 +119,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
             Err(e) => Err(e.into()),
         }
     }
-
+    type SendOperationsStream = SendOperationsStream;
     /// Handler for send_operations
     async fn send_operations(
         &self,
@@ -138,6 +130,8 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
             Err(e) => Err(e.into()),
         }
     }
+
+    type SubscribeTransactionsThroughputStream = SubscribeTransactionsThroughputStream;
 
     /// Handler for subscribe on transactions throughput
     async fn subscribe_transactions_throughput(
@@ -150,16 +144,20 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
         }
     }
 
+    type NewOperationsStream = NewOperationsStream;
+
     /// Handler for subscribe new operations stream
-    async fn subscribe_new_operations(
+    async fn new_operations(
         &self,
-        request: Request<Streaming<SubscribeNewOperationsStreamRequest>>,
-    ) -> Result<Response<Self::SubscribeNewOperationsStream>, Status> {
-        match subscribe_new_operations(self, request).await {
+        request: Request<Streaming<NewOperationsStreamRequest>>,
+    ) -> Result<Response<Self::NewOperationsStream>, Status> {
+        match new_operations(self, request).await {
             Ok(res) => Ok(Response::new(res)),
             Err(e) => Err(e.into()),
         }
     }
+
+    type NewBlocksStream = NewBlocksStream;
 
     /// Handler for subscribe new blocks
     async fn new_blocks(

@@ -8,7 +8,7 @@ pub mod send_operations;
 pub mod subscribe_tx_throughput;
 
 /// subscribe new operations
-pub mod subscribe_new_operations;
+pub mod new_operations;
 
 /// stream new blocks
 pub mod new_blocks;

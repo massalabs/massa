@@ -75,7 +75,7 @@ service Grpc {
     // Subscribe GetTransactionsThroughput
     rpc SubscribeTransactionsThroughput (stream GetTransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 
-    rpc SubscribeNewOperations (stream SubscribeNewOperationsStreamRequest) returns (stream SubscribeNewOperationsStreamResponse) {}
+    rpc NewOperations (stream NewOperationsStreamRequest) returns (stream NewOperationsStreamResponse) {}
 
     rpc NewBlocks (stream NewBlocksStreamRequest) returns (stream NewBlocksStreamResponse) {}
 }
@@ -90,14 +90,14 @@ message NewBlocksStreamResponse {
     Block block = 2;
 }
 
-message SubscribeNewOperationsStreamRequest {
+message NewOperationsStreamRequest {
     // id
     string id = 1;
 
     repeated OperationStreamFilterType filter = 2;
 }
 
-message SubscribeNewOperationsStreamResponse {
+message NewOperationsStreamResponse {
     string id = 1;
 
     SecureShareOperation operation = 2;

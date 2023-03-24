@@ -454,7 +454,7 @@ pub struct NewBlocksStreamResponse {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SubscribeNewOperationsStreamRequest {
+pub struct NewOperationsStreamRequest {
     /// id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -463,7 +463,7 @@ pub struct SubscribeNewOperationsStreamRequest {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SubscribeNewOperationsStreamResponse {
+pub struct NewOperationsStreamResponse {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
@@ -1100,15 +1100,13 @@ pub mod grpc_client {
             );
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
-        pub async fn subscribe_new_operations(
+        pub async fn new_operations(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
-                Message = super::SubscribeNewOperationsStreamRequest,
+                Message = super::NewOperationsStreamRequest,
             >,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<super::SubscribeNewOperationsStreamResponse>,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::NewOperationsStreamResponse>>,
             tonic::Status,
         > {
             self.inner
@@ -1122,7 +1120,7 @@ pub mod grpc_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/SubscribeNewOperations",
+                "/massa.api.v1.Grpc/NewOperations",
             );
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
@@ -1267,22 +1265,20 @@ pub mod grpc_server {
             tonic::Response<Self::SubscribeTransactionsThroughputStream>,
             tonic::Status,
         >;
-        /// Server streaming response type for the SubscribeNewOperations method.
-        type SubscribeNewOperationsStream: futures_core::Stream<
+        /// Server streaming response type for the NewOperations method.
+        type NewOperationsStream: futures_core::Stream<
                 Item = std::result::Result<
-                    super::SubscribeNewOperationsStreamResponse,
+                    super::NewOperationsStreamResponse,
                     tonic::Status,
                 >,
             >
             + Send
             + 'static;
-        async fn subscribe_new_operations(
+        async fn new_operations(
             &self,
-            request: tonic::Request<
-                tonic::Streaming<super::SubscribeNewOperationsStreamRequest>,
-            >,
+            request: tonic::Request<tonic::Streaming<super::NewOperationsStreamRequest>>,
         ) -> std::result::Result<
-            tonic::Response<Self::SubscribeNewOperationsStream>,
+            tonic::Response<Self::NewOperationsStream>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewBlocks method.
@@ -1846,16 +1842,15 @@ pub mod grpc_server {
                     };
                     Box::pin(fut)
                 }
-                "/massa.api.v1.Grpc/SubscribeNewOperations" => {
+                "/massa.api.v1.Grpc/NewOperations" => {
                     #[allow(non_camel_case_types)]
-                    struct SubscribeNewOperationsSvc<T: Grpc>(pub Arc<T>);
+                    struct NewOperationsSvc<T: Grpc>(pub Arc<T>);
                     impl<
                         T: Grpc,
-                    > tonic::server::StreamingService<
-                        super::SubscribeNewOperationsStreamRequest,
-                    > for SubscribeNewOperationsSvc<T> {
-                        type Response = super::SubscribeNewOperationsStreamResponse;
-                        type ResponseStream = T::SubscribeNewOperationsStream;
+                    > tonic::server::StreamingService<super::NewOperationsStreamRequest>
+                    for NewOperationsSvc<T> {
+                        type Response = super::NewOperationsStreamResponse;
+                        type ResponseStream = T::NewOperationsStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
                             tonic::Status,
@@ -1863,12 +1858,12 @@ pub mod grpc_server {
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                tonic::Streaming<super::SubscribeNewOperationsStreamRequest>,
+                                tonic::Streaming<super::NewOperationsStreamRequest>,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).subscribe_new_operations(request).await
+                                (*inner).new_operations(request).await
                             };
                             Box::pin(fut)
                         }
@@ -1880,7 +1875,7 @@ pub mod grpc_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = SubscribeNewOperationsSvc(inner);
+                        let method = NewOperationsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

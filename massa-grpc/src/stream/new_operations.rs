@@ -3,8 +3,8 @@ use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::operation::{OperationType, SecureShareOperation};
 use massa_proto::massa::api::v1::{
-    self as grpc, BytesMapFieldEntry, OperationStreamFilterType,
-    SubscribeNewOperationsStreamRequest, SubscribeNewOperationsStreamResponse,
+    self as grpc, BytesMapFieldEntry, NewOperationsStreamRequest, NewOperationsStreamResponse,
+    OperationStreamFilterType,
 };
 use std::pin::Pin;
 use tokio::select;
@@ -13,18 +13,18 @@ use tonic::{Request, Streaming};
 use tracing::log::error;
 
 /// type declaration for StreamTransactionsThroughputStream
-pub type SubscribeNewOperationsStream = Pin<
+pub type NewOperationsStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<SubscribeNewOperationsStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<NewOperationsStreamResponse, tonic::Status>>
             + Send
             + 'static,
     >,
 >;
 
-pub(crate) async fn subscribe_new_operations(
+pub(crate) async fn new_operations(
     grpc: &MassaGrpcService,
-    request: Request<Streaming<SubscribeNewOperationsStreamRequest>>,
-) -> Result<SubscribeNewOperationsStream, GrpcError> {
+    request: Request<Streaming<NewOperationsStreamRequest>>,
+) -> Result<NewOperationsStream, GrpcError> {
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     let mut in_stream = request.into_inner();
     let mut subscriber = grpc.pool_channels.operation_sender.subscribe();
@@ -113,7 +113,7 @@ pub(crate) async fn subscribe_new_operations(
                                     content_creator_address: operation.content_creator_address.to_string(),
                                     id: operation.id.to_string()
                                 };
-                                if let Err(e) = tx.send(Ok(SubscribeNewOperationsStreamResponse {
+                                if let Err(e) = tx.send(Ok(NewOperationsStreamResponse {
                                     id: request_id.clone(),
                                     operation: Some(ret)
                                 })).await {
@@ -153,7 +153,7 @@ pub(crate) async fn subscribe_new_operations(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as SubscribeNewOperationsStream)
+    Ok(Box::pin(out_stream) as NewOperationsStream)
 }
 
 /// Return if the type of operation is filtered

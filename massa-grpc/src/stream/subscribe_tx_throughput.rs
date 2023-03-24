@@ -7,7 +7,7 @@ use tokio::{select, time};
 use tonic::codegen::futures_core;
 use tracing::log::error;
 
-const INTERVAL_TIME: u64 = 10;
+const INTERVAL_TIME: u64 = 10; // second
 
 /// type declaration for StreamTransactionsThroughputStream
 pub type SubscribeTransactionsThroughputStream = Pin<
