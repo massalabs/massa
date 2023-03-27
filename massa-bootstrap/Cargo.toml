@@ -42,6 +42,7 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
+mockall = "0.11.4"
 bitvec = { version = "1.0", features = ["serde"] }
 serial_test = "1.0"
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }

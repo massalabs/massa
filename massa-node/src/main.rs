@@ -49,7 +49,7 @@ use massa_models::config::constants::{
     T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
-use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
+use massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
@@ -508,7 +508,7 @@ async fn launch(
     // launch bootstrap server
     let addr = &bootstrap_config.listen_addr.unwrap();
     // TODO: use std::net::TcpStream
-    let bootstrap_manager = start_bootstrap_server::<TcpStream>(
+    let bootstrap_manager = start_bootstrap_server::<TcpStream, NetworkCommandSender>(
         consensus_controller.clone(),
         network_command_sender.clone(),
         final_state.clone(),

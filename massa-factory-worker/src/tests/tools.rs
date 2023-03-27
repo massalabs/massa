@@ -1,5 +1,5 @@
 use massa_consensus_exports::test_exports::{
-    ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
+    ConsensusControllerImpl, ConsensusEventReceiver, MockConsensusControllerMessage,
 };
 use parking_lot::RwLock;
 use std::{
@@ -56,7 +56,7 @@ impl TestFactory {
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
         let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
         let (consensus_controller, consensus_event_receiver) =
-            MockConsensusController::new_with_receiver();
+            ConsensusControllerImpl::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();

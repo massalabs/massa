@@ -17,7 +17,9 @@ use massa_models::{
     prehash::{CapacityAllocator, PreHashSet},
     secure_share::{Id, SecureShare},
 };
-use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
+use massa_network_exports::{
+    AskForBlocksInfo, BlockInfoReply, NetworkCommandSenderTrait, NetworkEvent,
+};
 use massa_protocol_exports::ProtocolError;
 use massa_serialization::Serializer;
 use massa_storage::Storage;
