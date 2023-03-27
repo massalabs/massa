@@ -153,6 +153,7 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
 </pre><pre class="rust"><code><span class="comment">// MONDAY TODO LIST:
 // 1. fix remaining cache todos
 // 2. pay for compilation
@@ -187,7 +188,8 @@
 }
 
 <span class="kw">impl </span>ModuleCache {
-    <span class="kw">pub fn </span>new(cfg: ModuleCacheConfig) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Creates a new `ModuleCache`
+    </span><span class="kw">pub fn </span>new(cfg: ModuleCacheConfig) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             lru_cache: LRUCache::new(cfg.lru_cache_size),
             hd_cache: HDCache::new(
