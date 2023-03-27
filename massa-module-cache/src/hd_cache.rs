@@ -233,20 +233,20 @@ mod tests {
         let init_cost = 100;
         let gas_costs = GasCosts::default();
 
-        cache.insert(hash, module.clone()).unwrap();
+        cache.insert(hash, module.clone());
         let cached_module_v1 = cache.get(hash, limit, gas_costs.clone()).unwrap();
-        assert!(matches!(cached_module_v1, Some(ModuleInfo::Module(_))));
+        assert!(matches!(cached_module_v1, ModuleInfo::Module(_)));
 
         cache.set_init_cost(hash, init_cost);
         let cached_module_v2 = cache.get(hash, limit, gas_costs.clone()).unwrap();
         assert!(matches!(
             cached_module_v2,
-            Some(ModuleInfo::ModuleAndDelta(_))
+            ModuleInfo::ModuleAndDelta(_)
         ));
 
         cache.set_invalid(hash);
         let cached_module_v3 = cache.get(hash, limit, gas_costs).unwrap();
-        assert!(matches!(cached_module_v3, Some(ModuleInfo::Invalid)));
+        assert!(matches!(cached_module_v3, ModuleInfo::Invalid));
     }
 
     #[test]
@@ -258,13 +258,13 @@ mod tests {
         // fill the db: add cache.max_entry_count entries
         for count in 0..cache.max_entry_count {
             let key = Hash::compute_from(count.to_string().as_bytes());
-            cache.insert(key, module.clone()).unwrap();
+            cache.insert(key, module.clone());
         }
         assert_eq!(cache.entry_count, cache.max_entry_count);
 
         // insert one more entry
         let key = Hash::compute_from(cache.max_entry_count.to_string().as_bytes());
-        cache.insert(key, module.clone()).unwrap();
+        cache.insert(key, module.clone());
         assert_eq!(
             cache.entry_count,
             cache.max_entry_count - cache.snip_amount + 1
@@ -283,14 +283,14 @@ mod tests {
 
         for count in 0..cache.max_entry_count {
             let key = Hash::compute_from(count.to_string().as_bytes());
-            cache.insert(key, module.clone()).unwrap();
+            cache.insert(key, module.clone());
         }
 
         for _ in 0..cache.max_entry_count {
             let mut rbytes = Vec::new();
             thread_rng().fill_bytes(&mut rbytes);
             let get_key = Hash::compute_from(&rbytes);
-            let cached_module = cache.get(get_key, limit, gas_costs.clone()).unwrap();
+            let cached_module = cache.get(get_key, limit, gas_costs.clone());
             assert!(cached_module.is_none());
         }
     }
