@@ -507,6 +507,7 @@ async fn launch(
 
     // launch bootstrap server
     let addr = &bootstrap_config.listen_addr.unwrap();
+    // TODO: use std::net::TcpStream
     let bootstrap_manager = start_bootstrap_server::<TcpStream>(
         consensus_controller.clone(),
         network_command_sender.clone(),
