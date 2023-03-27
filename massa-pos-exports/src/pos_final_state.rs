@@ -110,7 +110,7 @@ impl PoSFinalState {
         from_slot: Slot,
         end_slot: Slot,
     ) -> Result<(), PosError> {
-
+        let mut deferred_credits = self.deferred_credits.clone();
         let mut updated_deferred_credits = DeferredCredits::default();
         let next_slot = end_slot
             .get_next_slot(self.config.thread_count)
@@ -122,7 +122,7 @@ impl PoSFinalState {
         let credits_iter = credits_clone.range((Excluded(from_slot), Included(end_slot)));
 
         for (&slot, map) in credits_iter {
-            for (&addr, &amount) in map.into_iter() {
+            for (&addr, &amount) in map.iter() {
                 let prev_amount_at_next_slot = deferred_credits
                     .get_address_deferred_credit_for_slot(&addr, &next_slot)
                     .unwrap_or(Amount::zero());
