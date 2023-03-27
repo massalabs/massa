@@ -570,10 +570,10 @@ pub struct GetTransactionsThroughputRequest {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
-/// GetTransactionsThroughputStreamRequest holds request for GetTransactionsThroughputStream
+/// TransactionsThroughputStreamRequest holds request for TransactionsThroughputStream
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetTransactionsThroughputStreamRequest {
+pub struct TransactionsThroughputStreamRequest {
     /// string value
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -1155,10 +1155,10 @@ pub mod grpc_client {
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
         /// Subscribe GetTransactionsThroughput
-        pub async fn subscribe_transactions_throughput(
+        pub async fn transactions_throughput(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
-                Message = super::GetTransactionsThroughputStreamRequest,
+                Message = super::TransactionsThroughputStreamRequest,
             >,
         ) -> std::result::Result<
             tonic::Response<
@@ -1177,7 +1177,7 @@ pub mod grpc_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/SubscribeTransactionsThroughput",
+                "/massa.api.v1.Grpc/TransactionsThroughput",
             );
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
@@ -1383,8 +1383,8 @@ pub mod grpc_server {
             tonic::Response<Self::SendOperationsStream>,
             tonic::Status,
         >;
-        /// Server streaming response type for the SubscribeTransactionsThroughput method.
-        type SubscribeTransactionsThroughputStream: futures_core::Stream<
+        /// Server streaming response type for the TransactionsThroughput method.
+        type TransactionsThroughputStream: futures_core::Stream<
                 Item = std::result::Result<
                     super::GetTransactionsThroughputResponse,
                     tonic::Status,
@@ -1393,13 +1393,13 @@ pub mod grpc_server {
             + Send
             + 'static;
         /// Subscribe GetTransactionsThroughput
-        async fn subscribe_transactions_throughput(
+        async fn transactions_throughput(
             &self,
             request: tonic::Request<
-                tonic::Streaming<super::GetTransactionsThroughputStreamRequest>,
+                tonic::Streaming<super::TransactionsThroughputStreamRequest>,
             >,
         ) -> std::result::Result<
-            tonic::Response<Self::SubscribeTransactionsThroughputStream>,
+            tonic::Response<Self::TransactionsThroughputStream>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewBlocks method.
@@ -1967,16 +1967,16 @@ pub mod grpc_server {
                     };
                     Box::pin(fut)
                 }
-                "/massa.api.v1.Grpc/SubscribeTransactionsThroughput" => {
+                "/massa.api.v1.Grpc/TransactionsThroughput" => {
                     #[allow(non_camel_case_types)]
-                    struct SubscribeTransactionsThroughputSvc<T: Grpc>(pub Arc<T>);
+                    struct TransactionsThroughputSvc<T: Grpc>(pub Arc<T>);
                     impl<
                         T: Grpc,
                     > tonic::server::StreamingService<
-                        super::GetTransactionsThroughputStreamRequest,
-                    > for SubscribeTransactionsThroughputSvc<T> {
+                        super::TransactionsThroughputStreamRequest,
+                    > for TransactionsThroughputSvc<T> {
                         type Response = super::GetTransactionsThroughputResponse;
-                        type ResponseStream = T::SubscribeTransactionsThroughputStream;
+                        type ResponseStream = T::TransactionsThroughputStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
                             tonic::Status,
@@ -1984,14 +1984,12 @@ pub mod grpc_server {
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                tonic::Streaming<
-                                    super::GetTransactionsThroughputStreamRequest,
-                                >,
+                                tonic::Streaming<super::TransactionsThroughputStreamRequest>,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).subscribe_transactions_throughput(request).await
+                                (*inner).transactions_throughput(request).await
                             };
                             Box::pin(fut)
                         }
@@ -2003,7 +2001,7 @@ pub mod grpc_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = SubscribeTransactionsThroughputSvc(inner);
+                        let method = TransactionsThroughputSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

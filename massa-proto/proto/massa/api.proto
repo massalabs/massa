@@ -73,14 +73,14 @@ service Grpc {
     rpc SendOperations (stream SendOperationsRequest) returns (stream SendOperationsResponse) {}
 
     // Subscribe GetTransactionsThroughput
-    rpc SubscribeTransactionsThroughput (stream GetTransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
+    rpc TransactionsThroughput (stream TransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 
     // NewBlocks
     rpc NewBlocks (stream NewBlocksStreamRequest) returns (stream NewBlocksStreamResponse) {}
 
     // NewBlocksHeaders
     rpc NewBlocksHeaders (stream NewBlocksHeadersStreamRequest) returns (stream NewBlocksHeadersStreamResponse) {}
-    
+
     // NewFilledBlocks
     rpc NewFilledBlocks (stream NewFilledBlocksStreamRequest) returns (stream NewFilledBlocksStreamResponse) {}
 
@@ -167,8 +167,8 @@ message GetTransactionsThroughputRequest {
     string id = 1;
 }
 
-// GetTransactionsThroughputStreamRequest holds request for GetTransactionsThroughputStream
-message GetTransactionsThroughputStreamRequest {
+// TransactionsThroughputStreamRequest holds request for TransactionsThroughputStream
+message TransactionsThroughputStreamRequest {
     // string value
     string id = 1;
     // optional timer interval in sec

@@ -13,4 +13,4 @@ pub mod send_endorsements;
 /// send operations
 pub mod send_operations;
 /// subscribe tx througput
-pub mod subscribe_tx_throughput;
+pub mod tx_throughput;
