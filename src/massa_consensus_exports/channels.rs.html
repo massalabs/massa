@@ -21,17 +21,9 @@
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionController;
-<span class="kw">use </span>massa_models::{
-    block::{FilledBlock, SecureShareBlock},
-    block_header::BlockHeader,
-    block_id::BlockId,
-    secure_share::SecureShare,
-};
+<span class="kw">use </span>massa_models::block::{Block, FilledBlock};
+<span class="kw">use </span>massa_models::block_header::BlockHeader;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
@@ -48,8 +40,8 @@
     <span class="kw">pub </span>pool_command_sender: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     <span class="kw">pub </span>controller_event_tx: crossbeam_channel::Sender&lt;ConsensusEvent&gt;,
     <span class="kw">pub </span>protocol_command_sender: ProtocolCommandSender,
-    <span class="kw">pub </span>block_sender: tokio::sync::broadcast::Sender&lt;SecureShareBlock&gt;,
-    <span class="kw">pub </span>block_header_sender: tokio::sync::broadcast::Sender&lt;SecureShare&lt;BlockHeader, BlockId&gt;&gt;,
+    <span class="kw">pub </span>block_sender: tokio::sync::broadcast::Sender&lt;Block&gt;,
+    <span class="kw">pub </span>block_header_sender: tokio::sync::broadcast::Sender&lt;BlockHeader&gt;,
     <span class="kw">pub </span>filled_block_sender: tokio::sync::broadcast::Sender&lt;FilledBlock&gt;,
 }
 </code></pre></div>
