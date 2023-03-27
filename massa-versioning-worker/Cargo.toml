@@ -24,7 +24,6 @@ massa_versioning_exports = { path = "../massa-versioning-exports" }
 [dev-dependencies]
 chrono = "0.4"
 more-asserts = "0.3"
-tokio = { version = "1.23", features = ["full"] }
 
 [features]
 testing = []
