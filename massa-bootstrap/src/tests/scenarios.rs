@@ -4,11 +4,12 @@ use super::{
     mock_establisher,
     tools::{
         bridge_mock_streams, get_boot_state, get_peers, get_random_final_state_bootstrap,
-        get_random_ledger_changes, wait_network_command,
+        get_random_ledger_changes,
     },
 };
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
+    wait_network_command,
 };
 use crate::BootstrapConfig;
 use crate::{
@@ -37,7 +38,7 @@ use massa_models::{
     },
     prehash::PreHashSet,
 };
-use massa_network_exports::{NetworkCommand, NetworkCommandSender};
+use massa_network_exports::{MockNetworkCommandSender, NetworkCommand};
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
 };
@@ -53,7 +54,7 @@ use std::{
     time::Duration,
 };
 use tempfile::TempDir;
-use tokio::{net::TcpStream, sync::mpsc};
+use tokio::net::TcpStream;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -73,7 +74,6 @@ async fn test_bootstrap_server() {
 
     let (consensus_controller, mut consensus_event_receiver) =
         MockConsensusController::new_with_receiver();
-    let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
 
     // setup final state local config
     let temp_dir = TempDir::new().unwrap();
@@ -151,11 +151,20 @@ async fn test_bootstrap_server() {
     let final_state_client_clone = final_state_client.clone();
     let final_state_server_clone = final_state_server.clone();
 
-    // start bootstrap server
+    // Setup bootstrap mock-duplex
     let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
-    let bootstrap_manager = start_bootstrap_server::<TcpStream>(
+    // Setup network command mock-story: hard-code the result of getting bootstrap peers
+    let mut mocked1 = MockNetworkCommandSender::new();
+    let mut mocked2 = MockNetworkCommandSender::new();
+    mocked2
+        .expect_get_bootstrap_peers()
+        .times(1)
+        .returning(|| Ok(get_peers()));
+
+    mocked1.expect_clone().return_once(move || mocked2);
+    let bootstrap_manager = start_bootstrap_server::<TcpStream, MockNetworkCommandSender>(
         consensus_controller,
-        NetworkCommandSender(network_cmd_tx),
+        mocked1,
         final_state_server.clone(),
         bootstrap_config.clone(),
         mock_bs_listener
@@ -215,26 +224,6 @@ async fn test_bootstrap_server() {
         let remote_bridge = TcpStream::from_std(remote_bridge).unwrap();
         bridge_mock_streams(remote_bridge, bootstrap_bridge).await;
     });
-
-    // intercept peers being asked
-    // TODO: This would ideally be mocked such that the bootstrap server takes an impl of the network controller.
-    // and the impl is mocked such that it will just return the sent peers
-    let wait_peers = async move || {
-        // wait for bootstrap to ask network for peers, send them
-        let response =
-            match wait_network_command(&mut network_cmd_rx, 20_000.into(), |cmd| match cmd {
-                NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
-                _ => None,
-            })
-            .await
-            {
-                Some(resp) => resp,
-                None => panic!("timeout waiting for get peers command"),
-            };
-        let sent_peers = get_peers();
-        response.send(sent_peers.clone()).unwrap();
-        sent_peers
-    };
 
     // intercept consensus parts being asked
     let sent_graph = get_boot_state();
@@ -301,9 +290,6 @@ async fn test_bootstrap_server() {
         }
     });
 
-    // wait for peers and graph
-    let sent_peers = wait_peers().await;
-
     // wait for get_state
     let bootstrap_res = get_state_h
         .await
@@ -349,7 +335,7 @@ async fn test_bootstrap_server() {
 
     // check peers
     assert_eq!(
-        sent_peers.0,
+        get_peers().0,
         bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );

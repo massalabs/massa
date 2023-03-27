@@ -39,7 +39,7 @@ use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
 };
-use massa_network_exports::{NetworkCommandSender, NetworkCommandSenderTrait};
+use massa_network_exports::NetworkCommandSenderTrait;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -102,9 +102,9 @@ impl<D: Duplex> BootstrapManager<D> {
 }
 
 /// See module level documentation for details
-pub fn start_bootstrap_server<D: Duplex>(
+pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
     listener: impl BSListener + Send + 'static,
@@ -145,7 +145,7 @@ pub fn start_bootstrap_server<D: Duplex>(
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = BootstrapServer::<D>::run_updater(
+            let res = BootstrapServer::<D, C>::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -166,7 +166,7 @@ pub fn start_bootstrap_server<D: Duplex>(
         // GAT lifetime is likely to remedy this, however.
         .spawn(move || {
             let res = listen_rt_handle
-                .block_on(BootstrapServer::<D>::run_listener(listener, listener_tx));
+                .block_on(BootstrapServer::<D, C>::run_listener(listener, listener_tx));
             res
         })
         // the non-builder spawn doesn't return a Result, and documentation states that
@@ -205,9 +205,9 @@ pub fn start_bootstrap_server<D: Duplex>(
     }))
 }
 
-struct BootstrapServer<'a, D: Duplex> {
+struct BootstrapServer<'a, D: Duplex, C: NetworkCommandSenderTrait> {
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    network_command_sender: C,
     final_state: Arc<RwLock<FinalState>>,
     listener_rx: crossbeam::channel::Receiver<BsConn<D>>,
     listen_stopper_rx: crossbeam::channel::Receiver<()>,
@@ -219,7 +219,7 @@ struct BootstrapServer<'a, D: Duplex> {
     bs_server_runtime: Runtime,
 }
 
-impl<D: Duplex> BootstrapServer<'_, D> {
+impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -332,7 +332,7 @@ impl<D: Duplex> BootstrapServer<'_, D> {
                 }
 
                 // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::<D>::greedy_client_check(
+                if let Err(msg) = BootstrapServer::<D, C>::greedy_client_check(
                     &mut self.ip_hist_map,
                     remote_addr,
                     now,
@@ -486,7 +486,7 @@ impl<D: Duplex> BootstrapServer<'_, D> {
 /// The arc_counter variable is used as a proxy to keep track the number of active bootstrap
 /// sessions.
 #[allow(clippy::too_many_arguments)]
-fn run_bootstrap_session<D: Duplex>(
+fn run_bootstrap_session<D: Duplex, C: NetworkCommandSenderTrait>(
     mut server: BootstrapServerBinder<D>,
     arc_counter: Arc<()>,
     config: BootstrapConfig,
@@ -494,7 +494,7 @@ fn run_bootstrap_session<D: Duplex>(
     data_execution: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    network_command_sender: C,
     bs_loop_rt_handle: Handle,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
@@ -753,13 +753,13 @@ pub async fn stream_bootstrap_information<D: Duplex>(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn manage_bootstrap<D: Duplex>(
+async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder<D>,
     final_state: Arc<RwLock<FinalState>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
-    network_command_sender: NetworkCommandSender,
+    network_command_sender: C,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
