@@ -72,6 +72,7 @@ type BsConn<D> = (D, SocketAddr);
 pub struct BootstrapManager<D: Duplex> {
     update_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     // need to preserve the listener handle up to here to prevent it being destroyed
+    #[allow(clippy::type_complexity)]
     _listen_handle: thread::JoinHandle<Result<Result<(), BsConn<D>>, Box<BootstrapError>>>,
     main_handle: thread::JoinHandle<Result<(), Box<BootstrapError>>>,
     listen_stopper_tx: crossbeam::channel::Sender<()>,

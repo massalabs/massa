@@ -54,7 +54,7 @@ use massa_models::{
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
-use massa_network_exports::{NetworkCommandSender, NetworkConfig};
+use massa_network_exports::{NetworkCommandSender, NetworkCommandSenderTrait, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;

@@ -9,7 +9,6 @@ use super::{
 };
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
-    wait_network_command,
 };
 use crate::BootstrapConfig;
 use crate::{
@@ -18,8 +17,7 @@ use crate::{
 };
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
-    bootstrapable_graph::BootstrapableGraph,
-    test_exports::{MockConsensusController, MockConsensusControllerMessage},
+    bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
 };
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{
@@ -38,7 +36,7 @@ use massa_models::{
     },
     prehash::PreHashSet,
 };
-use massa_network_exports::{MockNetworkCommandSender, NetworkCommand};
+use massa_network_exports::MockNetworkCommandSender;
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
 };
@@ -71,9 +69,6 @@ async fn test_bootstrap_server() {
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate().get_public_key());
-
-    let (consensus_controller, mut consensus_event_receiver) =
-        MockConsensusController::new_with_receiver();
 
     // setup final state local config
     let temp_dir = TempDir::new().unwrap();
@@ -162,8 +157,42 @@ async fn test_bootstrap_server() {
         .returning(|| Ok(get_peers()));
 
     mocked1.expect_clone().return_once(move || mocked2);
+    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    let mut seq = mockall::Sequence::new();
+
+    let sent_graph = get_boot_state();
+    let sent_graph_clone = sent_graph.clone();
+    stream_mock3
+        .expect_get_bootstrap_part()
+        .times(10)
+        .in_sequence(&mut seq)
+        .returning(move |_, slot| {
+            if StreamingStep::Ongoing(Slot::new(1, 1)) == slot {
+                Ok((
+                    sent_graph_clone.clone(),
+                    PreHashSet::default(),
+                    StreamingStep::Started,
+                ))
+            } else {
+                Ok((
+                    BootstrapableGraph {
+                        final_blocks: vec![],
+                    },
+                    PreHashSet::default(),
+                    StreamingStep::Finished(None),
+                ))
+            }
+        });
+    stream_mock2
+        .expect_clone_box()
+        .return_once(move || stream_mock3);
+    stream_mock1
+        .expect_clone_box()
+        .return_once(move || stream_mock2);
     let bootstrap_manager = start_bootstrap_server::<TcpStream, MockNetworkCommandSender>(
-        consensus_controller,
+        stream_mock1,
         mocked1,
         final_state_server.clone(),
         bootstrap_config.clone(),
@@ -227,48 +256,6 @@ async fn test_bootstrap_server() {
         remote_bridge.set_nonblocking(true).unwrap();
         let remote_bridge = TcpStream::from_std(remote_bridge).unwrap();
         bridge_mock_streams(remote_bridge, bootstrap_bridge).await;
-    });
-
-    // intercept consensus parts being asked
-    let sent_graph = get_boot_state();
-    let sent_graph_clone = sent_graph.clone();
-    std::thread::spawn(move || loop {
-        consensus_event_receiver.wait_command(MassaTime::from_millis(20_000), |cmd| match &cmd {
-            MockConsensusControllerMessage::GetBootstrapableGraph {
-                execution_cursor,
-                response_tx,
-                ..
-            } => {
-                // send the consensus blocks at the 4th slot (1 for startup + 3 for safety)
-                // give an empty answer for any other call
-                if execution_cursor
-                    == &StreamingStep::Ongoing(Slot {
-                        period: 1,
-                        thread: 1,
-                    })
-                {
-                    response_tx
-                        .send(Ok((
-                            sent_graph_clone.clone(),
-                            PreHashSet::default(),
-                            StreamingStep::Started,
-                        )))
-                        .unwrap();
-                } else {
-                    response_tx
-                        .send(Ok((
-                            BootstrapableGraph {
-                                final_blocks: Vec::new(),
-                            },
-                            PreHashSet::default(),
-                            StreamingStep::Finished(None),
-                        )))
-                        .unwrap();
-                }
-                Some(())
-            }
-            _ => None,
-        });
     });
 
     // launch the modifier thread

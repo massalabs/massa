@@ -88,15 +88,62 @@ pub enum MockConsensusControllerMessage {
 /// For messages with a `response_tx` field, the mock will await a response through their `response_tx` channel
 /// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
-pub struct MockConsensusController(Arc<Mutex<mpsc::Sender<MockConsensusControllerMessage>>>);
+pub struct ConsensusControllerImpl(Arc<Mutex<mpsc::Sender<MockConsensusControllerMessage>>>);
 
-impl MockConsensusController {
+mockall::mock! {
+    pub ConsensusControllerImpl {}
+    impl Clone for ConsensusControllerImpl {
+        fn clone(&self) -> Self;
+    }
+    impl ConsensusController for ConsensusControllerImpl {
+        fn get_block_graph_status(
+            &self,
+            start_slot: Option<Slot>,
+            end_slot: Option<Slot>,
+        ) -> Result<BlockGraphExport, ConsensusError>;
+
+        fn get_block_statuses(&self, ids: &[BlockId]) -> Vec<BlockGraphStatus>;
+
+        fn get_cliques(&self) -> Vec<Clique>;
+
+        fn get_bootstrap_part(
+            &self,
+            cursor: StreamingStep<PreHashSet<BlockId>>,
+            execution_cursor: StreamingStep<Slot>,
+        ) -> Result<
+            (
+                BootstrapableGraph,
+                PreHashSet<BlockId>,
+                StreamingStep<PreHashSet<BlockId>>,
+            ),
+            ConsensusError,
+        >;
+
+        fn get_stats(&self) -> Result<ConsensusStats, ConsensusError>;
+
+        fn get_best_parents(&self) -> Vec<(BlockId, u64)>;
+
+        fn get_blockclique_block_at_slot(&self, slot: Slot) -> Option<BlockId>;
+
+        fn get_latest_blockclique_block_at_slot(&self, slot: Slot) -> BlockId;
+
+        fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool);
+
+        fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>);
+
+        fn mark_invalid_block(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>);
+
+        fn clone_box(&self) -> Box<dyn ConsensusController>;
+    }
+}
+
+impl ConsensusControllerImpl {
     /// Create a new pair (mock graph controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
     pub fn new_with_receiver() -> (Box<dyn ConsensusController>, ConsensusEventReceiver) {
         let (tx, rx) = mpsc::channel();
         (
-            Box::new(MockConsensusController(Arc::new(Mutex::new(tx)))),
+            Box::new(ConsensusControllerImpl(Arc::new(Mutex::new(tx)))),
             ConsensusEventReceiver(rx),
         )
     }
@@ -120,7 +167,7 @@ impl ConsensusEventReceiver {
 /// If the message contains a `response_tx`,
 /// a response from that channel is read and returned as return value.
 /// See the documentation of `ConsensusController` for details on each function.
-impl ConsensusController for MockConsensusController {
+impl ConsensusController for ConsensusControllerImpl {
     fn get_block_graph_status(
         &self,
         start_slot: Option<Slot>,

@@ -339,27 +339,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     }
 }
 
-pub async fn wait_network_command<F, T>(
-    network_command_receiver: &mut Receiver<NetworkCommand>,
-    timeout: MassaTime,
-    filter_map: F,
-) -> Option<T>
-where
-    F: Fn(NetworkCommand) -> Option<T>,
-{
-    let timer = sleep(timeout.into());
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            cmd = network_command_receiver.recv() => match cmd {
-                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
-                _ => panic!("network event channel died")
-            },
-            _ = &mut timer => return None
-        }
-    }
-}
-
 /// asserts that two `BootstrapableGraph` are equal
 pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
     assert_eq!(

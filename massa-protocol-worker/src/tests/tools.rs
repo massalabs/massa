@@ -1,6 +1,6 @@
 use crate::start_protocol_controller;
 use futures::Future;
-use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
+use massa_consensus_exports::test_exports::{ConsensusControllerImpl, ConsensusEventReceiver};
 use massa_models::{
     block::SecureShareBlock, block_id::BlockId, node::NodeId, operation::SecureShareOperation,
     prehash::PreHashSet,
@@ -38,7 +38,7 @@ where
 
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
-        MockConsensusController::new_with_receiver();
+        ConsensusControllerImpl::new_with_receiver();
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel(protocol_config.controller_channel_size);
@@ -107,7 +107,7 @@ where
         MockNetworkController::new();
     let (pool_controller, mock_pool_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, mock_consensus_receiver) =
-        MockConsensusController::new_with_receiver();
+        ConsensusControllerImpl::new_with_receiver();
     let storage = Storage::create_root();
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
