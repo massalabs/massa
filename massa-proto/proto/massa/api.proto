@@ -194,11 +194,11 @@ message GetNextBlockBestParentsResponse {
     // string value
     string id = 1;
     // best parents
-    repeated BestParentTuple data = 2;
+    repeated Parents data = 2;
 }
 
 // Best Parent Tuple
-message BestParentTuple {
+message Parents {
     // string value
     string blockId = 1;
     // fixed64 value

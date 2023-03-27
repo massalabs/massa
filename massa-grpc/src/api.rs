@@ -5,10 +5,10 @@ use massa_models::address::Address;
 use massa_models::slot::Slot;
 use massa_models::timeslots;
 use massa_proto::massa::api::v1::{
-    self as grpc, BestParentTuple, Block, GetBlocksBySlotRequest, GetBlocksBySlotResponse,
+    self as grpc, Block, GetBlocksBySlotRequest, GetBlocksBySlotResponse,
     GetDatastoreEntriesResponse, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
     GetSelectorDrawsResponse, GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
-    GetVersionResponse,
+    GetVersionResponse, Parents,
 };
 use std::str::FromStr;
 use tonic::Request;
@@ -132,7 +132,7 @@ pub(crate) fn get_next_block_best_parents(
         .consensus_controller
         .get_best_parents()
         .into_iter()
-        .map(|p| BestParentTuple {
+        .map(|p| Parents {
             block_id: p.0.to_string(),
             period: p.1,
         })
