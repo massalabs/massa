@@ -84,7 +84,6 @@ mod test {
 
     use crate::versioning::{ComponentState, MipComponent, MipInfo, MipState, MipStoreRaw};
 
-
     // test only
     impl MipStoreRaw {
         /// A helper function to query MipStoreRaw
@@ -157,13 +156,19 @@ mod test {
         vm.new_block(0);
 
         // The MIP-0001 has Started, we start announcing it.
-        assert_eq!(vs.get_state_for(&vi).inner, ComponentState::started(Amount::zero()));
+        assert_eq!(
+            vs.get_state_for(&vi).inner,
+            ComponentState::started(Amount::zero())
+        );
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 1);
 
         tokio::time::sleep(Duration::from_millis(1)).await;
         vm.new_block(1);
-        assert_eq!(vs.get_state_for(&vi).inner, ComponentState::started(Amount::from_str("20.0").unwrap()));
+        assert_eq!(
+            vs.get_state_for(&vi).inner,
+            ComponentState::started(Amount::from_str("20.0").unwrap())
+        );
         tokio::time::sleep(Duration::from_millis(1)).await;
         vm.new_block(1);
         tokio::time::sleep(Duration::from_millis(1)).await;

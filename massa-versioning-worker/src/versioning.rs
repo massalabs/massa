@@ -479,8 +479,8 @@ impl MipStoreRaw {
 
         let mut component_versions: HashMap<MipComponent, u32> = Default::default();
         for i in self.0.iter() {
-            for component in i.0.components.clone().into_iter() {
-                component_versions.insert(component.0, component.1);
+            for component in i.0.components.iter() {
+                component_versions.insert(component.0.clone(), *component.1);
             }
         }
         let mut names: BTreeSet<String> = self.0.iter().map(|i| i.0.name.clone()).collect();
@@ -545,8 +545,8 @@ impl MipStoreRaw {
                         to_add.insert(v_info.clone(), v_state.clone());
                         names.insert(v_info.name.clone());
 
-                        for component in v_info.components.clone().into_iter() {
-                            component_versions.insert(component.0, component.1);
+                        for component in v_info.components.iter() {
+                            component_versions.insert(component.0.clone(), *component.1);
                         }
                     } else {
                         // Something is wrong (time range not ok? / version not incr? / names?
