@@ -105,7 +105,6 @@ pub(crate) async fn send_blocks(
                                             format!("failed to propagate block: {}", e),
                                         )
                                         .await;
-                                        // continue ?
                                         continue;
                                     };
 

@@ -33,3 +33,7 @@ massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_serialization = { path = "../massa-serialization" }
 massa_proto = { path = "../massa-proto" }
+
+[dev-dependencies]
+crossbeam = "0.8.2"
+massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
