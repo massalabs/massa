@@ -58,7 +58,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     error::BootstrapError,
-    establisher::{BSEstablisher, BSListener, Duplex},
+    establisher::{BSListener, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapConfig,
@@ -106,14 +106,11 @@ pub fn start_bootstrap_server<D: Duplex>(
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
-    mut establisher: impl BSEstablisher,
+    listener: impl BSListener + Send + 'static,
     keypair: KeyPair,
     version: Version,
 ) -> Result<Option<BootstrapManager<TcpStream>>, Box<BootstrapError>> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
-    let Some(listen_addr) = config.listen_addr else {
-        return Ok(None);
-    };
 
     // TODO(low prio): See if a zero capacity channel model can work
     let (listen_stopper_tx, listen_stopper_rx) = crossbeam::channel::bounded::<()>(1);
@@ -133,10 +130,6 @@ pub fn start_bootstrap_server<D: Duplex>(
         .build() else {
         return Err(Box::new(BootstrapError::GeneralError("Failed to creato bootstrap async runtime".to_string())));
     };
-
-    let listener = establisher
-        .get_listener(listen_addr)
-        .map_err(BootstrapError::IoError)?;
 
     // This is the primary interface between the async-listener, and the "sync" worker
     let (listener_tx, listener_rx) =

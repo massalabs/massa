@@ -118,7 +118,7 @@ impl BSEstablisher for MockEstablisher {
     type Listener = MockListener;
     type Connector = MockConnector;
 
-    fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
+    fn get_listener(&mut self, _addr: &SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self
                 .connection_listener_rx

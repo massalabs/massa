@@ -7,13 +7,16 @@ use super::{
         get_random_ledger_changes, wait_network_command,
     },
 };
-use crate::tests::tools::{
-    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
-};
 use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
+};
+use crate::{
+    tests::tools::{
+        get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
+    },
+    BSEstablisher,
 };
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
@@ -152,13 +155,15 @@ async fn test_bootstrap_server() {
     let final_state_server_clone = final_state_server.clone();
 
     // start bootstrap server
-    let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
+    let (mut bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server::<TcpStream>(
         consensus_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state_server.clone(),
         bootstrap_config.clone(),
-        bootstrap_establisher,
+        bootstrap_establisher
+            .get_listener(&bootstrap_config.listen_addr.unwrap())
+            .unwrap(),
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
     )

@@ -11,7 +11,9 @@ use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
-use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
+use massa_bootstrap::{
+    get_state, start_bootstrap_server, BSEstablisher, BootstrapConfig, BootstrapManager,
+};
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
@@ -68,6 +70,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
+use tokio::net::TcpStream;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
@@ -80,7 +83,7 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
-    Option<BootstrapManager>,
+    Option<BootstrapManager<TcpStream>>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
@@ -503,12 +506,15 @@ async fn launch(
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     // launch bootstrap server
-    let bootstrap_manager = start_bootstrap_server(
+    let addr = &bootstrap_config.listen_addr.unwrap();
+    let bootstrap_manager = start_bootstrap_server::<TcpStream>(
         consensus_controller.clone(),
         network_command_sender.clone(),
         final_state.clone(),
         bootstrap_config,
-        massa_bootstrap::DefaultEstablisher::new(),
+        massa_bootstrap::DefaultEstablisher::new()
+            .get_listener(addr)
+            .unwrap(),
         private_key,
         *VERSION,
     )
@@ -641,7 +647,7 @@ async fn launch(
 }
 
 struct Managers {
-    bootstrap_manager: Option<BootstrapManager>,
+    bootstrap_manager: Option<BootstrapManager<TcpStream>>,
     consensus_manager: Box<dyn ConsensusManager>,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,

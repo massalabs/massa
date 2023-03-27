@@ -30,9 +30,9 @@ pub trait BSEstablisher {
     // lifetime can be thrown away.
     // TODO: use super-advanced lifetime/GAT/other shenanigans to
     // make the listener compatable with being moved into a thread
-    type Listener: BSListener + Send + 'static;
+    type Listener: BSListener;
     type Connector: BSConnector;
-    fn get_listener(&mut self, addr: SocketAddr) -> io::Result<Self::Listener>;
+    fn get_listener(&mut self, addr: &SocketAddr) -> io::Result<Self::Listener>;
     fn get_connector(&mut self, timeout_duration: MassaTime) -> io::Result<Self::Connector>;
 }
 
@@ -82,7 +82,7 @@ impl BSEstablisher for DefaultEstablisher {
     ///
     /// # Argument
     /// * `addr`: `SocketAddr` we want to bind to.
-    fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
+    fn get_listener(&mut self, addr: &SocketAddr) -> io::Result<DefaultListener> {
         // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
         // This is needed to get the same behavior on all OS
         // However, if IPv6 is disabled system-wide, you may need to bind to an IPv4 address instead.
@@ -96,7 +96,7 @@ impl BSEstablisher for DefaultEstablisher {
         if addr.is_ipv6() {
             socket.set_only_v6(false)?;
         }
-        socket.bind(&addr.into())?;
+        socket.bind(&(*addr).into())?;
 
         // Number of connections to queue, set to the hardcoded value used by tokio
         socket.listen(1024)?;
