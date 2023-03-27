@@ -1145,6 +1145,7 @@ impl ExecutionState {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
                 // set the execution context
                 *context_guard!(self) = execution_context;
+
                 // load the tmp module
                 let module = self
                     .module_cache
@@ -1175,7 +1176,7 @@ impl ExecutionState {
                     .unwrap_or_default()
                     .0;
 
-                // set the execution context for execution
+                // set the execution context
                 *context_guard!(self) = execution_context;
 
                 // load and execute the compiled module

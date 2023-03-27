@@ -48,5 +48,5 @@
   "assembly_script_unsafe_random": 143,
   "launch": 7064,
   "sp_compilation_cost": 10000,
-  "cl_compilation_cost": 90000
+  "cl_compilation_cost": 100000
 }

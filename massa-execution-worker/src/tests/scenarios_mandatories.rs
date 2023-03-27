@@ -391,6 +391,15 @@ mod tests {
             coins_sent.to_raw()
         )));
 
+        // HERE
+        // let a = sample_state
+        //     .read()
+        //     .ledger
+        //     .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+        //     .unwrap();
+        // dbg!(a);
+        // panic!();
+
         // stop the execution controller
         manager.stop();
     }
@@ -663,7 +672,7 @@ mod tests {
         assert!(events.len() == 8, "8 events were expected");
         assert_eq!(
             Amount::from_raw(events[1].data.parse().unwrap()),
-            Amount::from_str("299990").unwrap() // start (300_000) - fee (1000)
+            Amount::from_str("289_990").unwrap() // start (300_000) - fee (10) - compilation cost (10_000)
         );
         assert_eq!(events[1].context.call_stack.len(), 1);
         assert_eq!(
@@ -672,10 +681,11 @@ mod tests {
         );
         assert_eq!(events[2].data, "one local execution completed");
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
+        dbg!(amount);
         assert!(
-            // start (299_000) - fee (1000) - storage cost
-            Amount::from_str("299_979").unwrap() < amount
-                && amount < Amount::from_str("299_980").unwrap()
+            // start (289_990) - fee (10) - compilation cost (10_000) - storage cost
+            Amount::from_str("279_979").unwrap() < amount
+                && amount < Amount::from_str("279_980").unwrap()
         );
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
@@ -1671,6 +1681,11 @@ mod tests {
                         .ledger_cost_per_byte
                         .saturating_mul_u64(value_len)
                 )
+                // Compilation cost
+                .saturating_sub(Amount::from_mantissa_scale(
+                    exec_cfg.gas_costs.sp_compilation_cost,
+                    0
+                ))
         );
 
         // stop the execution controller
