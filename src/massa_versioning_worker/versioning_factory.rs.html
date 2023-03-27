@@ -432,7 +432,7 @@
     </span>OnCreate(String, String),
 }
 
-<span class="attr">#[derive(Clone)]
+<span class="attr">#[derive(Clone, Debug)]
 </span><span class="doccomment">/// Strategy to use when creating a new object from a factory
 </span><span class="kw">pub enum </span>FactoryStrategy {
     <span class="doccomment">/// use get_latest_version (see Factory trait)
@@ -793,7 +793,7 @@
         </span><span class="kw">let </span>st_1 = FactoryStrategy::At(MassaTime::from(<span class="number">8</span>)); <span class="comment">// vi_1 not yet defined
         </span><span class="kw">let </span>ts_1_2 = MassaTime::from(<span class="number">13</span>);
         <span class="kw">let </span>st_1_2 = FactoryStrategy::At(ts_1_2); <span class="comment">// vi_1 is started (after vi_1.start)
-        </span><span class="kw">let </span>st_2 = FactoryStrategy::At(MassaTime::from(<span class="number">16</span>)); <span class="comment">// vi_1 is active (after vi_1.timeout)
+        </span><span class="kw">let </span>st_2 = FactoryStrategy::At(MassaTime::from(<span class="number">18</span>)); <span class="comment">// vi_1 is active (after start + activation delay)
         </span><span class="kw">let </span>st_3 = FactoryStrategy::At(MassaTime::from(<span class="number">27</span>)); <span class="comment">// vi_2 is started or locked_in
         </span><span class="kw">let </span>st_4 = FactoryStrategy::At(MassaTime::from(<span class="number">30</span>)); <span class="comment">// vi_2 is active (after vi_2.timeout)
 
