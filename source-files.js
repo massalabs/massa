@@ -23,7 +23,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_node":["",[],["main.rs","settings.rs"]],\
 "massa_pool_exports":["",[],["channels.rs","config.rs","controller_traits.rs","lib.rs"]],\
 "massa_pool_worker":["",[],["controller_impl.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","types.rs","worker.rs"]],\
-"massa_pos_exports":["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]],\
+"massa_pos_exports":["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","initial_state.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]],\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_protocol_exports":["",[["tests",[],["mock_network_controller.rs","mod.rs","tools.rs"]]],["channels.rs","error.rs","lib.rs","protocol_controller.rs","settings.rs"]],\
 "massa_protocol_worker":["",[],["cache.rs","checked_operations.rs","lib.rs","node_info.rs","protocol_network.rs","protocol_worker.rs","sig_verifier.rs","worker_operations_impl.rs"]],\
@@ -32,8 +32,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
 "massa_storage":["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]],\
 "massa_time":["",[],["error.rs","lib.rs"]],\
-"massa_versioning_exports":["",[],["channels.rs","error.rs","lib.rs","settings.rs","versioning_controller.rs"]],\
-"massa_versioning_worker":["",[],["lib.rs","versioning.rs","versioning_factory.rs","versioning_middleware.rs","versioning_ser_der.rs","versioning_worker.rs"]],\
+"massa_versioning_worker":["",[],["lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
 "massa_wallet":["",[],["error.rs","lib.rs"]]\
 }');
 createSourceSidebar();
