@@ -8,6 +8,7 @@ use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::RuntimeModule;
 use schnellru::{ByLength, LruMap};
+use tracing::warn;
 
 use crate::{
     config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
@@ -43,30 +44,39 @@ impl ModuleCache {
         }
     }
 
+    /// Internal function to compile and build `ModuleInfo`
+    fn compile(&mut self, bytecode: &[u8]) -> ModuleInfo {
+        match RuntimeModule::new(
+            bytecode,
+            self.cfg.compilation_gas,
+            self.cfg.gas_costs.clone(),
+            true,
+        ) {
+            Ok(module) => ModuleInfo::Module(module),
+            Err(e) => {
+                warn!("module compilation failed with: {}", e);
+                ModuleInfo::Invalid
+            }
+        }
+    }
+
     /// Save a new or an already existing module in the cache
-    pub fn save_module(&mut self, bytecode: &[u8]) -> Result<(), CacheError> {
+    pub fn save_module(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
         if let Some(hd_module_info) =
             self.hd_cache
-                .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())?
+                .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
         {
             self.lru_cache.insert(hash, hd_module_info);
         } else {
             if let Some(lru_module_info) = self.lru_cache.get(hash) {
-                self.hd_cache.insert(hash, lru_module_info)?;
+                self.hd_cache.insert(hash, lru_module_info);
             } else {
-                let new_module = RuntimeModule::new(
-                    bytecode,
-                    self.cfg.compilation_gas,
-                    self.cfg.gas_costs.clone(),
-                    true,
-                )?;
-                let new_module_info = ModuleInfo::Module(new_module);
-                self.hd_cache.insert(hash, new_module_info.clone())?;
-                self.lru_cache.insert(hash, new_module_info);
+                let module_info = self.compile(bytecode);
+                self.hd_cache.insert(hash, module_info.clone());
+                self.lru_cache.insert(hash, module_info);
             }
         }
-        Ok(())
     }
 
     /// Set the initialization cost of a cached module
@@ -84,32 +94,22 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution
-    fn load_module_info(&mut self, bytecode: &[u8]) -> Result<ModuleInfo, CacheError> {
+    fn load_module_info(&mut self, bytecode: &[u8]) -> ModuleInfo {
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
-            Ok(lru_module_info)
+            lru_module_info
         } else {
             if let Some(hd_module_info) =
                 self.hd_cache
-                    .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())?
+                    .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
             {
                 self.lru_cache.insert(hash, hd_module_info.clone());
-                Ok(hd_module_info)
+                hd_module_info
             } else {
-                match RuntimeModule::new(
-                    bytecode,
-                    self.cfg.compilation_gas,
-                    self.cfg.gas_costs.clone(),
-                    true,
-                ) {
-                    Ok(module) => {
-                        let module_info = ModuleInfo::Module(module);
-                        self.hd_cache.insert(hash, module_info.clone())?;
-                        self.lru_cache.insert(hash, module_info.clone());
-                        Ok(module_info)
-                    }
-                    Err(e) => Err(CacheError::from(e)),
-                }
+                let module_info = self.compile(bytecode);
+                self.hd_cache.insert(hash, module_info.clone());
+                self.lru_cache.insert(hash, module_info.clone());
+                module_info
             }
         }
     }
@@ -120,7 +120,7 @@ impl ModuleCache {
         bytecode: &[u8],
         execution_gas: u64,
     ) -> Result<RuntimeModule, CacheError> {
-        let module_info = self.load_module_info(&bytecode)?;
+        let module_info = self.load_module_info(&bytecode);
         let module = match module_info {
             ModuleInfo::Invalid => {
                 return Err(CacheError::LoadError("Loading invalid module".to_string()));

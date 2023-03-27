@@ -336,7 +336,6 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
-        max_module_cache_size: SETTINGS.execution.max_module_cache_size,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
         initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
@@ -345,6 +344,10 @@ async fn launch(
             SETTINGS.execution.wasm_gas_costs_file.clone(),
         )
         .expect("Failed to load gas costs"),
+        hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
+        lru_cache_size: SETTINGS.execution.lru_cache_size,
+        hd_cache_size: SETTINGS.execution.hd_cache_size,
+        snip_amount: SETTINGS.execution.snip_amount,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,

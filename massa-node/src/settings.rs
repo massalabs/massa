@@ -32,6 +32,10 @@ pub struct ExecutionSettings {
     pub wasm_gas_costs_file: PathBuf,
     pub max_module_cache_size: u32,
     pub initial_vesting_path: PathBuf,
+    pub hd_cache_path: PathBuf,
+    pub lru_cache_size: u32,
+    pub hd_cache_size: usize,
+    pub snip_amount: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]

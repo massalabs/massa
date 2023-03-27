@@ -1,6 +1,5 @@
-use crate::{
-    error::CacheError,
-    types::{ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer},
+use crate::types::{
+    ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
 use massa_hash::Hash;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
@@ -11,8 +10,10 @@ use std::path::PathBuf;
 
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
-const MD_SER_ERROR: &str = "critical: metadata serialization failed";
-const MD_DESER_ERROR: &str = "critical: metadata deserialization failed";
+const DATA_SER_ERROR: &str = "critical: metadata serialization failed";
+const DATA_DESER_ERROR: &str = "critical: metadata deserialization failed";
+const MOD_SER_ERROR: &str = "critical: module serialization failed";
+const MOD_DESER_ERROR: &str = "critical: module deserialization failed";
 const MODULE_IDENT: u8 = 0u8;
 const DATA_IDENT: u8 = 1u8;
 
@@ -71,7 +72,7 @@ impl HDCache {
     }
 
     /// Insert a new module in the cache
-    pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) -> Result<(), CacheError> {
+    pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) {
         if self.entry_count >= self.max_entry_count {
             self.snip();
         }
@@ -81,20 +82,20 @@ impl HDCache {
             ModuleInfo::Invalid => {
                 self.meta_ser
                     .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
-                    .expect(MD_SER_ERROR);
+                    .expect(DATA_SER_ERROR);
                 Vec::new()
             }
             ModuleInfo::Module(module) => {
                 self.meta_ser
                     .serialize(&ModuleMetadata::NotExecuted, &mut ser_metadata)
-                    .expect(MD_SER_ERROR);
-                module.serialize()?
+                    .expect(DATA_SER_ERROR);
+                module.serialize().expect(MOD_SER_ERROR)
             }
             ModuleInfo::ModuleAndDelta((module, delta)) => {
                 self.meta_ser
                     .serialize(&ModuleMetadata::Delta(delta), &mut ser_metadata)
-                    .expect(MD_SER_ERROR);
-                module.serialize()?
+                    .expect(DATA_SER_ERROR);
+                module.serialize().expect(MOD_SER_ERROR)
             }
         };
 
@@ -104,7 +105,6 @@ impl HDCache {
         self.db.write(batch).expect(CRUD_ERROR);
 
         self.entry_count = self.entry_count.saturating_add(1);
-        Ok(())
     }
 
     /// Sets the initialization cost of a given module separately
@@ -118,7 +118,7 @@ impl HDCache {
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Delta(init_cost), &mut ser_metadata)
-            .expect(MD_SER_ERROR);
+            .expect(DATA_SER_ERROR);
         self.db
             .put(metadata_key!(hash), ser_metadata)
             .expect(CRUD_ERROR);
@@ -129,19 +129,14 @@ impl HDCache {
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
-            .expect(MD_SER_ERROR);
+            .expect(DATA_SER_ERROR);
         self.db
             .put(metadata_key!(hash), ser_metadata)
             .expect(CRUD_ERROR);
     }
 
     /// Retrieve a module
-    pub fn get(
-        &self,
-        hash: Hash,
-        limit: u64,
-        gas_costs: GasCosts,
-    ) -> Result<Option<ModuleInfo>, CacheError> {
+    pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
@@ -153,53 +148,50 @@ impl HDCache {
             && *key_1 == module_key!(hash)
             && *key_2 == metadata_key!(hash)
         {
-            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs)?;
+            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs).expect(MOD_DESER_ERROR);
             let (_, metadata) = self
                 .meta_deser
                 .deserialize::<DeserializeError>(&ser_metadata)
-                .expect(MD_DESER_ERROR);
+                .expect(DATA_DESER_ERROR);
             let result = match metadata {
                 ModuleMetadata::Invalid => ModuleInfo::Invalid,
                 ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
                 ModuleMetadata::Delta(delta) => ModuleInfo::ModuleAndDelta((module, delta)),
             };
-            Ok(Some(result))
+            Some(result)
         } else {
-            Ok(None)
+            None
         }
     }
 
-    /// Try to remove as much as self.amount_to_snip entries from the db.
-    /// Remove at least one entry
+    /// Try to remove as much as self.amount_to_snip entries from the db
     fn snip(&mut self) {
-        let mut rbytes = Vec::new();
-        rand::thread_rng().fill_bytes(&mut rbytes);
-
-        // generate a key from the random number
-        let key = *Hash::compute_from(&rbytes).to_bytes();
-
         let mut iter = self.db.raw_iterator();
-        iter.seek_for_prev(key);
-
         let mut batch = WriteBatch::default();
+        let mut snipped_entries_count: usize = 0;
 
-        // prepare key for removal
-        let mut snipped_entries_count = 0usize;
-        loop {
-            if !(iter.valid() && snipped_entries_count < self.snip_amount) {
-                break;
+        while snipped_entries_count < self.snip_amount {
+            // generate a random key
+            let mut rbytes = Vec::new();
+            rand::thread_rng().fill_bytes(&mut rbytes);
+            let key = *Hash::compute_from(&rbytes).to_bytes();
+
+            // take the upper existing key
+            iter.seek_for_prev(key);
+
+            // check iterator validity
+            if !iter.valid() {
+                continue;
             }
-            // thanks to if above we can safely unwrap
+
+            // unwrap justified by above conditional statement
             let key = iter.key().unwrap();
-
             batch.delete(key);
-
-            iter.next();
             snipped_entries_count += 1;
         }
 
+        // delete the key and reduce entry_count
         self.db.write(batch).expect(CRUD_ERROR);
-
         self.entry_count -= snipped_entries_count;
     }
 }
