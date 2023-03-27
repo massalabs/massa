@@ -12,16 +12,16 @@ option php_namespace = "Massa\\Api\\V1";
 
 // When an address is drawn to create an endorsement it is selected for a specific index
 message IndexedSlot {
-    // slot
+    // Slot
     Slot slot = 1;
-    // endorsement index in the slot
+    // Endorsement index in the slot
     fixed64 index = 2;
 }
 
-// a point in time where a block is expected
+// A point in time where a block is expected
 message Slot {
-    // period
+    // Period
     fixed64 period = 1;
-    // thread
+    // Thread
     fixed32 thread = 2;
 }

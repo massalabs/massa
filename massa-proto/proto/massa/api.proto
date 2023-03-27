@@ -2,13 +2,14 @@ syntax = "proto3";
 
 package massa.api.v1;
 
+import "block.proto";
 import "common.proto";
+import "endorsement.proto";
+import "operation.proto";
 import "slot.proto";
 
 import "google/api/annotations.proto";
 import "google/rpc/status.proto";
-import "block.proto";
-import "operation.proto";
 
 option cc_enable_arenas = true;
 option csharp_namespace = "Massa.Api.V1";
@@ -20,12 +21,23 @@ option php_namespace = "Massa\\Api\\V1";
 
 // Massa gRPC service
 service Grpc {
+
+    // GetBlocksBySlot
+    rpc GetBlocksBySlot (GetBlocksBySlotRequest) returns (GetBlocksBySlotResponse) {
+        option (google.api.http) = {get: "/v1/get_blocks_by_slots"};
+    }
+
     // GetDatastoreEntries
     rpc GetDatastoreEntries (GetDatastoreEntriesRequest) returns (GetDatastoreEntriesResponse) {
         option (google.api.http) = {
             post: "/v1/get_datastore_entries"
             body: "*"
         };
+    }
+
+    // GetNextBlockBestParents
+    rpc GetNextBlockBestParents (GetNextBlockBestParentsRequest) returns (GetNextBlockBestParentsResponse) {
+        option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
     }
 
     // GetSelectorDraws
@@ -36,44 +48,21 @@ service Grpc {
         };
     }
 
+    // GetTransactionsThroughput
+    rpc GetTransactionsThroughput (GetTransactionsThroughputRequest) returns (GetTransactionsThroughputResponse) {
+        option (google.api.http) = {get: "/v1/transaction_throughput"};
+    }
+
     // GetVersion
     rpc GetVersion (GetVersionRequest) returns (GetVersionResponse) {
         option (google.api.http) = {get: "/v1/version"};
     }
-
-    // GetTransactionsThroughput
-    rpc GetTransactionsThroughput (GetTransactionsThroughputRequest) returns (GetTransactionsThroughputResponse) {
-        option (google.api.http) = {get: "/v1/tx"};
-    }
-
-    // GetNextBlockBestParents
-    rpc GetNextBlockBestParents (GetNextBlockBestParentsRequest) returns (GetNextBlockBestParentsResponse) {
-        option (google.api.http) = {get: "/v1/get_next_block_best_parents"};
-    }
-
-    rpc GetBlocksBySlot (GetBlocksBySlotRequest) returns (GetBlocksBySlotResponse) {
-        option (google.api.http) = {get: "/v1/get_blocks_by_slots"};
-    }
-
-
 
     // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
     // ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗████╗ ████║
     // ███████╗   ██║   ██████╔╝█████╗  ███████║██╔████╔██║
     // ╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║
     // ███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║
-
-    // SendBlocks
-    rpc SendBlocks (stream SendBlocksRequest) returns (stream SendBlocksResponse) {}
-
-    // SendEndorsements
-    rpc SendEndorsements (stream SendEndorsementsRequest) returns (stream SendEndorsementsResponse) {}
-
-    // SendOperations
-    rpc SendOperations (stream SendOperationsRequest) returns (stream SendOperationsResponse) {}
-
-    // Subscribe GetTransactionsThroughput
-    rpc TransactionsThroughput (stream TransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 
     // NewBlocks
     rpc NewBlocks (stream NewBlocksStreamRequest) returns (stream NewBlocksStreamResponse) {}
@@ -86,220 +75,224 @@ service Grpc {
 
     // NewOperations
     rpc NewOperations (stream NewOperationsStreamRequest) returns (stream NewOperationsStreamResponse) {}
-}
 
-// NewBlocksStreamRequest holds request for NewBlocksStream
-message NewBlocksStreamRequest {
-    // string value
-    string id = 1;
-}
+    // SendBlocks
+    rpc SendBlocks (stream SendBlocksStreamRequest) returns (stream SendBlocksStreamResponse) {}
 
-// NewBlocksStreamResponse holds response from NewBlocksStream
-message NewBlocksStreamResponse {
-    // string value
-    string id = 1;
-    // object value
-    Block block = 2;
-}
+    // SendEndorsements
+    rpc SendEndorsements (stream SendEndorsementsStreamRequest) returns (stream SendEndorsementsStreamResponse) {}
 
-// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
-message NewBlocksHeadersStreamRequest {
-    // string value
-    string id = 1;
-}
+    // SendOperations
+    rpc SendOperations (stream SendOperationsStreamRequest) returns (stream SendOperationsStreamResponse) {}
 
-// NewBlocksHeadersStreamResponse holds response from NewBlocksHeadersStream
-message NewBlocksHeadersStreamResponse {
-    // string value
-    string id = 1;
-    // object value
-    SecureShareBlockHeader block_header = 2;
-}
+    // TransactionsThroughput
+    rpc TransactionsThroughput (stream TransactionsThroughputStreamRequest) returns (stream GetTransactionsThroughputResponse) {}
 
-// NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
-message NewFilledBlocksStreamRequest {
-    // string value
-    string id = 1;
-}
-
-// NewFilledBlocksStreamResponse holds response from NewFilledBlocksStream
-message NewFilledBlocksStreamResponse {
-    // string value
-    string id = 1;
-    // object value
-    FilledBlock block = 2;
-}
-
-// NewOperationsStreamRequest holds request for NewOperationsStream
-message NewOperationsStreamRequest {
-    // string value
-    string id = 1;
-    // object value
-    repeated OperationStreamFilterType filter = 2;
-}
-
-// NewOperationsStreamResponse holds response from NewOperationsStream
-message NewOperationsStreamResponse {
-    // string value
-    string id = 1;
-    // object value
-    SecureShareOperation operation = 2;
 }
 
 // GetBlocksBySlotRequest holds request for GetBlocksBySlot
 message GetBlocksBySlotRequest {
-    // string value
+    // Request id
     string id = 1;
-    // slots
+    // Slots
     repeated Slot slots = 2;
 }
 
 // GetBlocksBySlotResponse holds response from GetBlocksBySlot
 message GetBlocksBySlotResponse {
-    // string value
+    // Request id
     string id = 1;
-    // blocks
+    // Blocks
     repeated Block blocks = 2;
-}
-
-message GetTransactionsThroughputRequest {
-    // string value
-    string id = 1;
-}
-
-// TransactionsThroughputStreamRequest holds request for TransactionsThroughputStream
-message TransactionsThroughputStreamRequest {
-    // string value
-    string id = 1;
-    // optional timer interval in sec
-    optional fixed64 interval = 2;
-}
-
-// GetTransactionsThroughputResponse holds response from GetTransactionsThroughput
-message GetTransactionsThroughputResponse {
-    // string value
-    string id = 1;
-    // tx/s
-    fixed32 tx_s = 2;
-}
-
-// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
-message GetNextBlockBestParentsRequest {
-    // string value
-    string id = 1;
-}
-
-// GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents
-message GetNextBlockBestParentsResponse {
-    // string value
-    string id = 1;
-    // best parents
-    repeated Parents data = 2;
-}
-
-// Best Parent Tuple
-message Parents {
-    // string value
-    string blockId = 1;
-    // fixed64 value
-    fixed64 period = 2;
 }
 
 // GetDatastoreEntriesRequest holds request from GetDatastoreEntries
 message GetDatastoreEntriesRequest {
-    // string value
+    // Request id
     string id = 1;
-    // object value
+    // Queries
     repeated DatastoreEntriesQuery queries = 2;
 }
 
 // DatastoreEntries Query
 message DatastoreEntriesQuery {
-    // object value
+    // Filter
     DatastoreEntryFilter filter = 1;
 }
 
 message DatastoreEntryFilter {
-    /// associated address of the entry
+    /// Associated address of the entry
     string address = 1;
-    // datastore key
+    // Datastore key
     bytes key = 2;
 }
 
 // GetDatastoreEntriesResponse holds response from GetDatastoreEntries
 message GetDatastoreEntriesResponse {
-    // string value
+    // Request id
     string id = 1;
-    // object value
+    // Datastore entries
     repeated BytesMapFieldEntry entries = 2;
+}
+
+// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
+message GetNextBlockBestParentsRequest {
+    // Request id
+    string id = 1;
+}
+
+// GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents
+message GetNextBlockBestParentsResponse {
+    // Request id
+    string id = 1;
+    // Best parents
+    repeated Parents parents = 2;
+}
+
+// Best Parent Tuple
+message Parents {
+    // Block id
+    string blockId = 1;
+    // Period
+    fixed64 period = 2;
 }
 
 // GetSelectorDrawsRequest holds request from GetSelectorDraws
 message GetSelectorDrawsRequest {
-    // string value
+    // Request id
     string id = 1;
-    // object value
+    // Queries
     repeated SelectorDrawsQuery queries = 2;
 }
 
 // SelectorDraws Query
 message SelectorDrawsQuery {
-    // object value
+    // Filter
     SelectorDrawsFilter filter = 1;
 }
 // SelectorDraws Filter
 message SelectorDrawsFilter {
-    // string value
+    // Address
     string address = 1;
 }
 
 // GetSelectorDrawsResponse holds response from GetSelectorDraws
 message GetSelectorDrawsResponse {
-    // string value
+    // Request id
     string id = 1;
-    // object value
+    // Selector draws
     repeated SelectorDraws selector_draws = 2;
 }
 
-// SelectorDraws
+// Selector draws
 message SelectorDraws {
-    // string value
+    // Address
     string address = 1;
-    // object value
+    // Next block draws
     repeated Slot next_block_draws = 2;
-    // object value
+    // Next endorsements draws
     repeated IndexedSlot next_endorsement_draws = 3;
+}
+
+// GetTransactionsThroughputRequest holds request for GetTransactionsThroughput
+message GetTransactionsThroughputRequest {
+    // Request id
+    string id = 1;
+}
+
+// GetTransactionsThroughputResponse holds response from GetTransactionsThroughput
+message GetTransactionsThroughputResponse {
+    // Request id
+    string id = 1;
+    // Transactions throughput
+    fixed32 throughput = 2;
 }
 
 // GetVersionRequest holds request from GetVersion
 message GetVersionRequest {
-    // string value
+    // Request id
     string id = 1;
-    // string field
-    string version = 2;
 }
 
 // GetVersionResponse holds response from GetVersion
 message GetVersionResponse {
-    // string value
+    // Request id
     string id = 1;
-    // string field
+    // Version
     string version = 2;
 }
 
-// SendBlocksRequest holds parameters to SendBlocks
-message SendBlocksRequest {
-    // string value
+// NewBlocksStreamRequest holds request for NewBlocksStream
+message NewBlocksStreamRequest {
+    // Request id
     string id = 1;
-    // object field
-    SecureSharePayload block = 2;
 }
 
-// SendBlocksResponse holds response from SendBlocks
-message SendBlocksResponse {
-    // string value
+// NewBlocksStreamResponse holds response from NewBlocksStream
+message NewBlocksStreamResponse {
+    // Request id
     string id = 1;
-    // object field
+    // Block
+    Block block = 2;
+}
+
+// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
+message NewBlocksHeadersStreamRequest {
+    // Request id
+    string id = 1;
+}
+
+// NewBlocksHeadersStreamResponse holds response from NewBlocksHeadersStream
+message NewBlocksHeadersStreamResponse {
+    // Request id
+    string id = 1;
+    // Signed block header
+    SecureShareBlockHeader block_header = 2;
+}
+
+// NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
+message NewFilledBlocksStreamRequest {
+    // Request id
+    string id = 1;
+}
+
+// NewFilledBlocksStreamResponse holds response from NewFilledBlocksStream
+message NewFilledBlocksStreamResponse {
+    // Request id
+    string id = 1;
+    // Block with operations content
+    FilledBlock filled_block = 2;
+}
+
+// NewOperationsStreamRequest holds request for NewOperationsStream
+message NewOperationsStreamRequest {
+    // Request id
+    string id = 1;
+    // Filter
+    repeated OperationStreamFilterType filter = 2;
+}
+
+// NewOperationsStreamResponse holds response from NewOperationsStream
+message NewOperationsStreamResponse {
+    // Request id
+    string id = 1;
+    // Signed operation
+    SecureShareOperation operation = 2;
+}
+
+// SendBlocksStreamRequest holds parameters to SendBlocks
+message SendBlocksStreamRequest {
+    // Request id
+    string id = 1;
+    // Signed block
+    SecureShareBlock block = 2;
+}
+
+// SendBlocksStreamResponse holds response from SendBlocks
+message SendBlocksStreamResponse {
+    // Request id
+    string id = 1;
+    // Block result or a gRPC status
     oneof result {
         BlockResult ok = 2;
         google.rpc.Status error = 3;
@@ -308,23 +301,23 @@ message SendBlocksResponse {
 
 // Holds Block response
 message BlockResult {
-    // string field
-    string id = 1;
+    // Block id
+    string block_id = 1;
 }
 
-// SendEndorsementsRequest holds parameters to SendEndorsements
-message SendEndorsementsRequest {
-    // string field
+// SendEndorsementsStreamRequest holds parameters to SendEndorsements
+message SendEndorsementsStreamRequest {
+    // Request id
     string id = 1;
-    // object field
-    repeated SecureSharePayload endorsements = 2;
+    // Signed endorsements
+    repeated SecureShareEndorsement endorsements = 2;
 }
 
-// SendEndorsementsResponse holds response from SendEndorsements
-message SendEndorsementsResponse {
-    // string field
+// SendEndorsementsStreamResponse holds response from SendEndorsements
+message SendEndorsementsStreamResponse {
+    // Request id
     string id = 1;
-    // object field
+    // Endorsement result or gRPC status
     oneof message {
         EndorsementResult result = 2;
         google.rpc.Status error = 3;
@@ -333,23 +326,23 @@ message SendEndorsementsResponse {
 
 // Holds Endorsement response
 message EndorsementResult {
-    // string field
-    repeated string ids = 1;
+    // Endorsement(s) id(s)
+    repeated string endorsements_ids = 1;
 }
 
-// SendOperationsRequest holds parameters to SendOperations
-message SendOperationsRequest {
-    // string field
+// SendOperationsStreamRequest holds parameters to SendOperations
+message SendOperationsStreamRequest {
+    // Request id
     string id = 1;
-    // object field
-    repeated SecureSharePayload operations = 2;
+    // Signed operations
+    repeated SecureShareOperation operations = 2;
 }
 
-// SendOperationsResponse holds response from SendOperations
-message SendOperationsResponse {
-    // string field
+// SendOperationsStreamResponse holds response from SendOperations
+message SendOperationsStreamResponse {
+    // Request id
     string id = 1;
-    // object field
+    // Operation result or gRPC status
     oneof message {
         OperationResult result = 2;
         google.rpc.Status error = 3;
@@ -358,6 +351,14 @@ message SendOperationsResponse {
 
 // Holds Operation response
 message OperationResult {
-    // string field
-    repeated string ids = 1;
+    // Operation(s) id(s)
+    repeated string operations_ids = 1;
+}
+
+// TransactionsThroughputStreamRequest holds request for TransactionsThroughputStream
+message TransactionsThroughputStreamRequest {
+    // Request id
+    string id = 1;
+    // Optional timer interval in sec. Defaults to 10s
+    optional fixed64 interval = 2;
 }

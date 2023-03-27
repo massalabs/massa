@@ -101,7 +101,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for send_blocks_stream
     async fn send_blocks(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendBlocksRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::SendBlocksStreamRequest>>,
     ) -> Result<tonic::Response<Self::SendBlocksStream>, tonic::Status> {
         match send_blocks(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -112,7 +112,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for send_endorsements
     async fn send_endorsements(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsStreamRequest>>,
     ) -> Result<tonic::Response<Self::SendEndorsementsStream>, tonic::Status> {
         match send_endorsements(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),
@@ -123,7 +123,7 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for send_operations
     async fn send_operations(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc::SendOperationsStreamRequest>>,
     ) -> Result<tonic::Response<Self::SendOperationsStream>, tonic::Status> {
         match send_operations(self, request).await {
             Ok(res) => Ok(tonic::Response::new(res)),

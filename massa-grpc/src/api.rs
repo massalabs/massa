@@ -139,7 +139,7 @@ pub(crate) fn get_next_block_best_parents(
         .collect();
     Ok(GetNextBlockBestParentsResponse {
         id: inner_req.id,
-        data: parents,
+        parents,
     })
 }
 
@@ -156,14 +156,14 @@ pub(crate) fn get_transactions_throughput(
         .as_secs();
 
     // checked_div
-    let tx_s = stats
+    let throughput = stats
         .final_executed_operations_count
         .checked_div(nb_sec_range as usize)
         .unwrap_or_default() as u32;
 
     Ok(GetTransactionsThroughputResponse {
         id: request.into_inner().id,
-        tx_s,
+        throughput,
     })
 }
 
@@ -213,6 +213,7 @@ pub(crate) fn get_blocks_by_slots(
                         index: endorsement.content.index,
                         endorsed_block: endorsement.content.endorsed_block.to_string(),
                     }),
+                    serialized_data: Vec::new(),
                     signature: endorsement.signature.to_string(),
                     content_creator_pub_key: endorsement.content_creator_pub_key.to_string(),
                     content_creator_address: endorsement.content_creator_address.to_string(),
@@ -241,6 +242,7 @@ pub(crate) fn get_blocks_by_slots(
             (
                 grpc::SecureShareBlockHeader {
                     content: Some(block_header),
+                    serialized_data: Vec::new(),
                     signature: header.signature.to_string(),
                     content_creator_pub_key: header.content_creator_pub_key.to_string(),
                     content_creator_address: header.content_creator_address.to_string(),

@@ -12,28 +12,14 @@ option java_package = "com.massa.api.v1";
 option objc_class_prefix = "ENDORSEMENT";
 option php_namespace = "Massa\\Api\\V1";
 
-// region Endorsement
-// message struct
-message EndorsementInfo {
-    // string field
-    string id = 1;
-    // bool field
-    bool in_pool = 2;
-    // string field
-    repeated string in_blocks = 3;
-    // bool field
-    bool is_final = 4;
-    // object field
-    Endorsement endorsement = 5;
-}
-
-// message struct
+// An endorsement, as sent in the network
 message Endorsement {
     // object field
     Slot slot = 1;
     // string field
     fixed32 index = 2;
-    // string field
+    // Hash of endorsed block
+    // This is the parent in thread `self.slot.thread` of the block in which the endorsement is included
     string endorsed_block = 3;
 }
 
@@ -59,12 +45,14 @@ message EndorsementId {
 message SecureShareEndorsement {
     // object field
     Endorsement content = 1;
-    // string field
-    string signature = 2;
-    // string field
-    string content_creator_pub_key = 3;
-    // string field
-    string content_creator_address = 4;
-    // string field
-    string id = 5;
+    // Content in sharable, deserializable form. Is used in the secure verification protocols
+    bytes serialized_data = 2;
+    // A cryptographically generated value using `serialized_data` and a public key.
+    string signature = 3;
+    // The public-key component used in the generation of the signature
+    string content_creator_pub_key = 4;
+    // Derived from the same public key used to generate the signature
+    string content_creator_address = 5;
+    // A secure hash of the data. See also [massa_hash::Hash]
+    string id = 6;
 }

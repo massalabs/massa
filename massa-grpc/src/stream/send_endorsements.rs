@@ -14,7 +14,7 @@ use tracing::log::{error, warn};
 /// type declaration for SendEndorsementsStream
 pub type SendEndorsementsStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsStreamResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -22,7 +22,7 @@ pub type SendEndorsementsStream = Pin<
 
 pub(crate) async fn send_endorsements(
     grpc: &MassaGrpcService,
-    request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsStreamRequest>>,
 ) -> Result<SendEndorsementsStream, GrpcError> {
     let mut cmd_sender = grpc.pool_command_sender.clone();
     let mut protocol_sender = grpc.protocol_command_sender.clone();
@@ -65,8 +65,8 @@ pub(crate) async fn send_endorsements(
                                 .map(|proto_endorsement| {
                                     let mut ed_serialized = Vec::new();
                                     ed_serialized.extend(proto_endorsement.signature.as_bytes());
-                                    ed_serialized.extend(proto_endorsement.creator_public_key.as_bytes());
-                                    ed_serialized.extend(proto_endorsement.serialized_content);
+                                    ed_serialized.extend(proto_endorsement.content_creator_pub_key.as_bytes());
+                                    ed_serialized.extend(proto_endorsement.serialized_data);
 
                                     let verified_op = match endorsement_deserializer.deserialize::<DeserializeError>(&ed_serialized) {
                                         Ok(tuple) => {
@@ -113,13 +113,13 @@ pub(crate) async fn send_endorsements(
                                     };
 
                                     let result = grpc::EndorsementResult {
-                                        ids: verified_eds.keys().cloned().collect(),
+                                        endorsements_ids: verified_eds.keys().cloned().collect(),
                                     };
                                     if let Err(e) = tx
-                                        .send(Ok(grpc::SendEndorsementsResponse {
+                                        .send(Ok(grpc::SendEndorsementsStreamResponse {
                                             id: req_content.id.clone(),
                                             message: Some(
-                                                grpc::send_endorsements_response::Message::Result(
+                                                grpc::send_endorsements_stream_response::Message::Result(
                                                     result,
                                                 ),
                                             ),
@@ -170,15 +170,15 @@ pub(crate) async fn send_endorsements(
 
 async fn send_endorsements_notify_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendEndorsementsResponse, tonic::Status>>,
+    sender: tokio::sync::mpsc::Sender<Result<grpc::SendEndorsementsStreamResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     if let Err(e) = sender
-        .send(Ok(grpc::SendEndorsementsResponse {
+        .send(Ok(grpc::SendEndorsementsStreamResponse {
             id,
-            message: Some(grpc::send_endorsements_response::Message::Error(
+            message: Some(grpc::send_endorsements_stream_response::Message::Error(
                 massa_proto::google::rpc::Status {
                     code: code.into(),
                     message: error,

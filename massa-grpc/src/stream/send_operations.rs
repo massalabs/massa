@@ -14,7 +14,7 @@ use tracing::log::{error, warn};
 /// type declaration for SendOperationsStream
 pub type SendOperationsStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::SendOperationsResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::SendOperationsStreamResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -22,7 +22,7 @@ pub type SendOperationsStream = Pin<
 
 pub(crate) async fn send_operations(
     grpc: &MassaGrpcService,
-    request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc::SendOperationsStreamRequest>>,
 ) -> Result<SendOperationsStream, GrpcError> {
     let mut cmd_sender = grpc.pool_command_sender.clone();
     let mut protocol_sender = grpc.protocol_command_sender.clone();
@@ -69,8 +69,8 @@ pub(crate) async fn send_operations(
                                 .map(|proto_operation| {
                                     let mut op_serialized = Vec::new();
                                     op_serialized.extend(proto_operation.signature.as_bytes());
-                                    op_serialized.extend(proto_operation.creator_public_key.as_bytes());
-                                    op_serialized.extend(proto_operation.serialized_content);
+                                    op_serialized.extend(proto_operation.content_creator_pub_key.as_bytes());
+                                    op_serialized.extend(proto_operation.serialized_data);
                                     let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
@@ -114,13 +114,13 @@ pub(crate) async fn send_operations(
                                     };
 
                                     let result = grpc::OperationResult {
-                                        ids: verified_ops.keys().cloned().collect(),
+                                        operations_ids: verified_ops.keys().cloned().collect(),
                                     };
                                     if let Err(e) = tx
-                                        .send(Ok(grpc::SendOperationsResponse {
+                                        .send(Ok(grpc::SendOperationsStreamResponse {
                                             id: req_content.id.clone(),
                                             message: Some(
-                                                grpc::send_operations_response::Message::Result(
+                                                grpc::send_operations_stream_response::Message::Result(
                                                     result,
                                                 ),
                                             ),
@@ -168,15 +168,15 @@ pub(crate) async fn send_operations(
 
 async fn send_operations_notify_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendOperationsResponse, tonic::Status>>,
+    sender: tokio::sync::mpsc::Sender<Result<grpc::SendOperationsStreamResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     if let Err(e) = sender
-        .send(Ok(grpc::SendOperationsResponse {
+        .send(Ok(grpc::SendOperationsStreamResponse {
             id,
-            message: Some(grpc::send_operations_response::Message::Error(
+            message: Some(grpc::send_operations_stream_response::Message::Error(
                 massa_proto::google::rpc::Status {
                     code: code.into(),
                     message: error,

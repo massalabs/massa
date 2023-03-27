@@ -37,7 +37,7 @@ pub(crate) async fn new_filled_blocks(
                             let massa_block = share_block as FilledBlock;
                             if let Err(e) = tx.send(Ok(NewFilledBlocksStreamResponse {
                                     id: request_id.clone(),
-                                    block: Some(massa_block.into())
+                                    filled_block: Some(massa_block.into())
                             })).await {
                                 error!("failed to send new block : {}", e);
                                 break;

@@ -1,7 +1,8 @@
 syntax = "proto3";
-import "common.proto";
 
 package massa.api.v1;
+
+import "common.proto";
 
 option cc_enable_arenas = true;
 option csharp_namespace = "Massa.Api.V1";
@@ -11,130 +12,95 @@ option java_package = "com.massa.api.v1";
 option objc_class_prefix = "OPERATION";
 option php_namespace = "Massa\\Api\\V1";
 
-// region Operation
-// message struct
-message OperationInfo {
-    // string field
-    string id = 1;
-    // string field
-    repeated string in_blocks = 2;
-    // bool field
-    bool in_pool = 3;
-    // bool field
-    bool is_final = 4;
-    // object field
-    SecureShareOperation operation = 5;
+// Operation filter type
+enum OperationStreamFilterType {
+    TRANSACTION = 0;
+    ROLL_BUY = 1;
+    ROLL_SELL = 2;
+    EXECUTE_SC = 3;
+    CALL_SC = 4;
 }
 
-// message struct
+// The operation as sent in the network
 message Operation {
-    // the fee they have decided for this operation
+    // The fee they have decided for this operation
     fixed64 fee = 1;
-    // after `expire_period` slot the operation won't be included in a block
+    // After `expire_period` slot the operation won't be included in a block
     fixed64 expire_period = 2;
-    // the type specific operation part
+    // The type specific operation part
     OperationType op = 3;
 }
 
-// message struct
-message Roll {
-    // int64 field
+// Type specific operation content
+message OperationType {
+    // Transfer coins from sender to recipient
+    Transaction transaction = 1;
+    // The sender buys `roll_count` rolls. Roll price is defined in configuration
+    RollBuy roll_buy = 2;
+    // The sender sells `roll_count` rolls. Roll price is defined in configuration
+    RollSell roll_sell = 3;
+    // Execute a smart contract
+    ExecuteSC execut_sc = 4;
+    // Calls an exported function from a stored smart contract
+    CallSC call_sc = 5;
+}
+
+// Transfer coins from sender to recipient
+message Transaction {
+    // Recipient address
+    string recipient_address = 1;
+    // Amount
+    fixed64 amount = 2;
+}
+
+// The sender buys `roll_count` rolls. Roll price is defined in configuration
+message RollBuy {
+    // Roll count
     fixed64 roll_count = 1;
 }
 
-// message struct
-message OperationId {
-    // string field
-    string value = 1;
+// The sender sells `roll_count` rolls. Roll price is defined in configuration
+message RollSell {
+    // Roll count
+    fixed64 roll_count = 1;
 }
 
-// message struct
-message OperationType {
-    // object field
-    Transaction transaction = 1;
-    // object field
-    ExecuteSC execut_sc = 2;
-    // object field
-    CallSC call_sc = 3;
-    // object field
-    RollBuy roll_buy = 4;
-    // object field
-    RollSell roll_sell = 5;
-}
-
-enum OperationStreamFilterType {
-    TRANSACTION = 0;
-    EXECUTE_SC = 1;
-    CALL_SC = 2;
-    ROLL_BUY = 3;
-    ROLL_SELL = 4;
-}
-
-// message struct
-message Transaction {
-    // fixed64 field
-    fixed64 amount = 1;
-    // string field
-    string recipient_address = 2;
-}
-
-// message struct
-message CallSC {
-    // string field
-    string target_addr = 1;
-    // string field
-    string target_func = 2;
-    // byte vec
-    bytes param = 3;
-    // float field
-    fixed64 max_gas = 4;
-    // fixed64 field
-    fixed64 coins = 5;
-}
-
-// message struct
+// Execute a smart contract
 message ExecuteSC {
-    // data field
+    // Smart contract bytecode.
     bytes data = 1;
-    // fixed64 field
+    // The maximum amount of gas that the execution of the contract is allowed to cost
     fixed64 max_gas = 2;
-    // datastore
+    // A key-value store associating a hash to arbitrary bytes
     repeated BytesMapFieldEntry datastore = 3;
 }
 
-// message struct
-message RollBuy {
-    // float field
-    fixed64 roll_count = 1;
+// Calls an exported function from a stored smart contract
+message CallSC {
+    // Target smart contract address
+    string target_addr = 1;
+    // Target function name. No function is called if empty
+    string target_func = 2;
+    // Parameter to pass to the target function
+    bytes param = 3;
+    // The maximum amount of gas that the execution of the contract is allowed to cost
+    fixed64 max_gas = 4;
+    // Extra coins that are spent from the caller's balance and transferred to the target
+    fixed64 coins = 5;
 }
 
-// message struct
-message RollSell {
-    // float field
-    fixed64 roll_count = 1;
-}
-
-// message struct
-message OperationInput {
-    // string field
-    string content_creator_pub_key = 1;
-    // string field
-    string signature = 2;
-    // string field
-    repeated string serialized_content = 3;
-}
-
-// message struct
+// Packages type Operation such that it can be securely sent and received in a trust-free network
 message SecureShareOperation {
-    // object field
+    // Operation
     Operation content = 1;
-    // string field
-    string signature = 2;
-    // string field
-    string content_creator_pub_key = 3;
-    // string field
-    string content_creator_address = 4;
-    // string field
-    string id = 5;
+    // Content in sharable, deserializable form. Is used in the secure verification protocols
+    bytes serialized_data = 2;
+    // A cryptographically generated value using `serialized_data` and a public key.
+    string signature = 3;
+    // The public-key component used in the generation of the signature
+    string content_creator_pub_key = 4;
+    // Derived from the same public key used to generate the signature
+    string content_creator_address = 5;
+    // A secure hash of the data. See also [massa_hash::Hash]
+    string id = 6;
 }
-

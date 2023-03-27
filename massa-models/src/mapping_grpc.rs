@@ -25,6 +25,7 @@ impl From<Slot> for grpc::Slot {
 
 impl From<Endorsement> for grpc::Endorsement {
     fn from(value: Endorsement) -> Self {
+        println!("slot into {}", value.slot);
         grpc::Endorsement {
             slot: Some(value.slot.into()),
             index: value.index,
@@ -37,7 +38,9 @@ impl From<SecureShareEndorsement> for grpc::SecureShareEndorsement {
     fn from(value: SecureShareEndorsement) -> Self {
         grpc::SecureShareEndorsement {
             content: Some(value.content.into()),
-            signature: value.signature.to_string(),
+            //TODO do not map serialized_data
+            serialized_data: Vec::new(),
+            signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
@@ -119,7 +122,9 @@ impl From<SecureShareOperation> for grpc::SecureShareOperation {
     fn from(value: SecureShareOperation) -> Self {
         grpc::SecureShareOperation {
             content: Some(value.content.into()),
-            signature: value.signature.to_string(),
+            //TODO do not map serialized_data
+            serialized_data: Vec::new(),
+            signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
@@ -166,11 +171,13 @@ impl From<FilledBlock> for grpc::FilledBlock {
 impl From<SecuredHeader> for grpc::SecureShareBlockHeader {
     fn from(value: SecuredHeader) -> Self {
         grpc::SecureShareBlockHeader {
-            signature: value.signature.to_string(),
+            content: Some(value.content.into()),
+            //TODO do not map serialized_data
+            serialized_data: Vec::new(),
+            signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
-            content: Some(value.content.into()),
         }
     }
 }

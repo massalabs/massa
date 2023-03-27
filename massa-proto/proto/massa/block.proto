@@ -15,93 +15,70 @@ option objc_class_prefix = "BLOCK";
 option php_namespace = "Massa\\Api\\V1";
 
 
-// region Block
-// message struct
+// Block
 message Block {
-    // object field
+    // Signed header
     SecureShareBlockHeader header = 1;
-    // object field
+    // Operations ids
     repeated string operations = 2;
 }
 
-// message struct
-message BlockInfo {
-    // string field
-    string id = 1;
-    // object field field
-    BlockInfoContent content = 2;
-}
-
-// message struct
-message BlockInfoContent {
-    // bool field
-    bool is_final = 1;
-    // bool field
-    bool is_stale = 2;
-    // bool field
-    bool is_in_blockclique = 3;
-    // object field
-    Block block = 4;
+// Filled block
+message FilledBlock {
+    // Signed header
+    SecureShareBlockHeader header = 1;
+    // Operations
+    repeated FilledOperationTuple operations = 2;
 }
 
 // message struct
 message BlockHeader {
-    // object field
+    // Slot
     Slot slot = 1;
-    // string field
+    // parents
     repeated string parents = 2;
-    // string field
+    // All operations hash
     string operation_merkle_root = 3;
-    // object field
+    // Signed endorsements
     repeated SecureShareEndorsement endorsements = 4;
-}
-
-// message struct
-message FilledBlock {
-    // object field
-    SecureShareBlockHeader header = 1;
-    // object field
-    repeated FilledOperationTuple operations = 2;
 }
 
 // Filled Operation Tuple
 message FilledOperationTuple {
-    // string value
+    // Operation id
     string operationId = 1;
-    // object64 value
+    // Signed operation
     SecureShareOperation operation = 2;
 }
 
-// message struct
-message FilledBlockInfo {
-    // string field
-    string id = 1;
-    // object field
-    FilledBlockInfoContent content = 2;
+// Packages type Block such that it can be securely sent and received in a trust-free network
+message SecureShareBlock {
+    // Block
+    Block content = 1;
+    // Content in sharable, deserializable form. Is used in the secure verification protocols
+    bytes serialized_data = 2;
+    // A cryptographically generated value using `serialized_data` and a public key.
+    string signature = 3;
+    // The public-key component used in the generation of the signature
+    string content_creator_pub_key = 4;
+    // Derived from the same public key used to generate the signature
+    string content_creator_address = 5;
+    // A secure hash of the data. See also [massa_hash::Hash]
+    string id = 6;
 }
 
-// message struct
-message FilledBlockInfoContent {
-    // bool field
-    bool is_final = 1;
-    // bool field
-    bool is_stale = 2;
-    // bool field
-    bool is_in_blockclique = 3;
-    // object field
-    FilledBlock block = 4;
-}
-
-// message struct
+// Packages type BlockHeader such that it can be securely sent and received in a trust-free network
 message SecureShareBlockHeader {
-    // object field
+    // BlockHeader
     BlockHeader content = 1;
-    // string field
-    string signature = 2;
-    // string field
-    string content_creator_pub_key = 3;
-    // string field
-    string content_creator_address = 4;
-    // string field
-    string id = 5;
+    // Content in sharable, deserializable form. Is used in the secure verification protocols
+    bytes serialized_data = 2;
+    // A cryptographically generated value using `serialized_data` and a public key.
+    string signature = 3;
+    // The public-key component used in the generation of the signature
+    string content_creator_pub_key = 4;
+    // Derived from the same public key used to generate the signature
+    string content_creator_address = 5;
+    // A secure hash of the data. See also [massa_hash::Hash]
+    string id = 6;
 }

@@ -5,7 +5,7 @@ use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareB
 use massa_models::error::ModelsError;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto::google::rpc::Status;
-use massa_proto::massa::api::v1::{self as grpc, SendBlocksResponse};
+use massa_proto::massa::api::v1::{self as grpc, SendBlocksStreamResponse};
 use massa_serialization::{DeserializeError, Deserializer};
 use std::io::ErrorKind;
 use std::pin::Pin;
@@ -17,13 +17,13 @@ use tracing::log::{error, warn};
 /// type declaration for SendBlockStream
 pub type SendBlocksStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<SendBlocksResponse, tonic::Status>> + Send + 'static,
+        dyn futures_core::Stream<Item = Result<SendBlocksStreamResponse, tonic::Status>> + Send + 'static,
     >,
 >;
 
 pub(crate) async fn send_blocks(
     grpc: &MassaGrpcService,
-    request: Request<tonic::Streaming<grpc::SendBlocksRequest>>,
+    request: Request<tonic::Streaming<grpc::SendBlocksStreamRequest>>,
 ) -> Result<SendBlocksStream, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
     let mut protocol_sender = grpc.protocol_command_sender.clone();
@@ -54,7 +54,7 @@ pub(crate) async fn send_blocks(
 
                     let _: Result<(), DeserializeError> =
                         match SecureShareDeserializer::new(BlockDeserializer::new(args))
-                            .deserialize::<DeserializeError>(&proto_block.serialized_content)
+                            .deserialize::<DeserializeError>(&proto_block.serialized_data)
                         {
                             Ok(tuple) => {
                                 let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
@@ -109,14 +109,14 @@ pub(crate) async fn send_blocks(
                                     };
 
                                     let result = grpc::BlockResult {
-                                        id: res_block.id.to_string(),
+                                        block_id: res_block.id.to_string(),
                                     };
 
                                     if let Err(e) = tx
-                                        .send(Ok(SendBlocksResponse {
+                                        .send(Ok(SendBlocksStreamResponse {
                                             id: req_content.id.clone(),
 
-                                            result: Some(grpc::send_blocks_response::Result::Ok(
+                                            result: Some(grpc::send_blocks_stream_response::Result::Ok(
                                                 result,
                                             )),
                                         }))
@@ -172,15 +172,15 @@ pub(crate) async fn send_blocks(
 
 async fn send_blocks_notify_error(
     id: String,
-    sender: Sender<Result<SendBlocksResponse, tonic::Status>>,
+    sender: Sender<Result<SendBlocksStreamResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     if let Err(e) = sender
-        .send(Ok(SendBlocksResponse {
+        .send(Ok(SendBlocksStreamResponse {
             id,
-            result: Some(grpc::send_blocks_response::Result::Error(Status {
+            result: Some(grpc::send_blocks_stream_response::Result::Error(Status {
                 code: code.into(),
                 message: error,
                 details: Vec::new(),

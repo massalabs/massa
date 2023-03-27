@@ -56,7 +56,7 @@ pub(crate) async fn transactions_throughput(
                         .to_duration()
                         .as_secs();
 
-                    let tx_s = stats
+                    let throughput = stats
                         .final_executed_operations_count
                         .checked_div(nb_sec_range as usize)
                         .unwrap_or_default() as u32;
@@ -64,11 +64,11 @@ pub(crate) async fn transactions_throughput(
                     if let Err(e) = tx
                         .send(Ok(GetTransactionsThroughputResponse {
                             id: request_id.clone(),
-                            tx_s,
+                            throughput,
                         }))
                         .await
                     {
-                        error!("failed to send back tx_s response: {}", e);
+                        error!("failed to send back throughput response: {}", e);
                         break;
                     }
                 }

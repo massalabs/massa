@@ -1,59 +1,26 @@
-/// commons
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Version {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub version: ::prost::alloc::string::String,
-}
-/// BytesMapFieldEntry
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BytesMapFieldEntry {
-    /// bytes key
-    #[prost(bytes = "vec", tag = "1")]
-    pub key: ::prost::alloc::vec::Vec<u8>,
-    /// bytes key
-    #[prost(bytes = "vec", tag = "2")]
-    pub value: ::prost::alloc::vec::Vec<u8>,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SecureSharePayload {
-    /// / The public key of the content creator
-    #[prost(string, tag = "1")]
-    pub creator_public_key: ::prost::alloc::string::String,
-    /// / The signature of the content
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// / The serialized version of the content
-    #[prost(bytes = "vec", tag = "3")]
-    pub serialized_content: ::prost::alloc::vec::Vec<u8>,
-}
 /// When an address is drawn to create an endorsement it is selected for a specific index
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexedSlot {
-    /// slot
+    /// Slot
     #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
-    /// endorsement index in the slot
+    /// Endorsement index in the slot
     #[prost(fixed64, tag = "2")]
     pub index: u64,
 }
-/// a point in time where a block is expected
+/// A point in time where a block is expected
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Slot {
-    /// period
+    /// Period
     #[prost(fixed64, tag = "1")]
     pub period: u64,
-    /// thread
+    /// Thread
     #[prost(fixed32, tag = "2")]
     pub thread: u32,
 }
+<<<<<<< testnet_21
 /// region Endorsement
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -76,6 +43,9 @@ pub struct EndorsementInfo {
     pub endorsement: ::core::option::Option<Endorsement>,
 }
 /// message struct
+=======
+/// An endorsement, as sent in the network
+>>>>>>> refactor: add complete doc and enhance
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Endorsement {
@@ -85,7 +55,12 @@ pub struct Endorsement {
     /// string field
     #[prost(fixed32, tag = "2")]
     pub index: u32,
+<<<<<<< testnet_21
     /// string field
+=======
+    /// Hash of endorsed block
+    /// This is the parent in thread `self.slot.thread` of the block in which the endorsement is included
+>>>>>>> refactor: add complete doc and enhance
     #[prost(string, tag = "3")]
     pub endorsed_block: ::prost::alloc::string::String,
 }
@@ -121,6 +96,7 @@ pub struct SecureShareEndorsement {
     /// object field
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<Endorsement>,
+<<<<<<< testnet_21
     /// string field
     #[prost(string, tag = "2")]
     pub signature: ::prost::alloc::string::String,
@@ -132,182 +108,162 @@ pub struct SecureShareEndorsement {
     pub content_creator_address: ::prost::alloc::string::String,
     /// string field
     #[prost(string, tag = "5")]
+=======
+    /// Content in sharable, deserializable form. Is used in the secure verification protocols
+    #[prost(bytes = "vec", tag = "2")]
+    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
+    /// A cryptographically generated value using `serialized_data` and a public key.
+    #[prost(string, tag = "3")]
+    pub signature: ::prost::alloc::string::String,
+    /// The public-key component used in the generation of the signature
+    #[prost(string, tag = "4")]
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// Derived from the same public key used to generate the signature
+    #[prost(string, tag = "5")]
+    pub content_creator_address: ::prost::alloc::string::String,
+    /// A secure hash of the data. See also \[massa_hash::Hash\]
+    #[prost(string, tag = "6")]
+>>>>>>> refactor: add complete doc and enhance
     pub id: ::prost::alloc::string::String,
 }
-/// region Operation
-/// message struct
+/// BytesMapFieldEntry
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OperationInfo {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, repeated, tag = "2")]
-    pub in_blocks: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// bool field
-    #[prost(bool, tag = "3")]
-    pub in_pool: bool,
-    /// bool field
-    #[prost(bool, tag = "4")]
-    pub is_final: bool,
-    /// object field
-    #[prost(message, optional, tag = "5")]
-    pub operation: ::core::option::Option<SecureShareOperation>,
+pub struct BytesMapFieldEntry {
+    /// bytes key
+    #[prost(bytes = "vec", tag = "1")]
+    pub key: ::prost::alloc::vec::Vec<u8>,
+    /// bytes key
+    #[prost(bytes = "vec", tag = "2")]
+    pub value: ::prost::alloc::vec::Vec<u8>,
 }
-/// message struct
+/// The operation as sent in the network
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Operation {
-    /// the fee they have decided for this operation
+    /// The fee they have decided for this operation
     #[prost(fixed64, tag = "1")]
     pub fee: u64,
-    /// after `expire_period` slot the operation won't be included in a block
+    /// After `expire_period` slot the operation won't be included in a block
     #[prost(fixed64, tag = "2")]
     pub expire_period: u64,
-    /// the type specific operation part
+    /// The type specific operation part
     #[prost(message, optional, tag = "3")]
     pub op: ::core::option::Option<OperationType>,
 }
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Roll {
-    /// int64 field
-    #[prost(fixed64, tag = "1")]
-    pub roll_count: u64,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OperationId {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub value: ::prost::alloc::string::String,
-}
-/// message struct
+/// Type specific operation content
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OperationType {
-    /// object field
+    /// Transfer coins from sender to recipient
     #[prost(message, optional, tag = "1")]
     pub transaction: ::core::option::Option<Transaction>,
-    /// object field
+    /// The sender buys `roll_count` rolls. Roll price is defined in configuration
     #[prost(message, optional, tag = "2")]
-    pub execut_sc: ::core::option::Option<ExecuteSc>,
-    /// object field
-    #[prost(message, optional, tag = "3")]
-    pub call_sc: ::core::option::Option<CallSc>,
-    /// object field
-    #[prost(message, optional, tag = "4")]
     pub roll_buy: ::core::option::Option<RollBuy>,
-    /// object field
-    #[prost(message, optional, tag = "5")]
+    /// The sender sells `roll_count` rolls. Roll price is defined in configuration
+    #[prost(message, optional, tag = "3")]
     pub roll_sell: ::core::option::Option<RollSell>,
+    /// Execute a smart contract
+    #[prost(message, optional, tag = "4")]
+    pub execut_sc: ::core::option::Option<ExecuteSc>,
+    /// Calls an exported function from a stored smart contract
+    #[prost(message, optional, tag = "5")]
+    pub call_sc: ::core::option::Option<CallSc>,
 }
-/// message struct
+/// Transfer coins from sender to recipient
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Transaction {
-    /// fixed64 field
-    #[prost(fixed64, tag = "1")]
-    pub amount: u64,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub recipient_address: ::prost::alloc::string::String,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CallSc {
-    /// string field
+    /// Recipient address
     #[prost(string, tag = "1")]
-    pub target_addr: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub target_func: ::prost::alloc::string::String,
-    /// byte vec
-    #[prost(bytes = "vec", tag = "3")]
-    pub param: ::prost::alloc::vec::Vec<u8>,
-    /// float field
-    #[prost(fixed64, tag = "4")]
-    pub max_gas: u64,
-    /// fixed64 field
-    #[prost(fixed64, tag = "5")]
-    pub coins: u64,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExecuteSc {
-    /// data field
-    #[prost(bytes = "vec", tag = "1")]
-    pub data: ::prost::alloc::vec::Vec<u8>,
-    /// fixed64 field
+    pub recipient_address: ::prost::alloc::string::String,
+    /// Amount
     #[prost(fixed64, tag = "2")]
-    pub max_gas: u64,
-    /// datastore
-    #[prost(message, repeated, tag = "3")]
-    pub datastore: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
+    pub amount: u64,
 }
-/// message struct
+/// The sender buys `roll_count` rolls. Roll price is defined in configuration
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollBuy {
-    /// float field
+    /// Roll count
     #[prost(fixed64, tag = "1")]
     pub roll_count: u64,
 }
-/// message struct
+/// The sender sells `roll_count` rolls. Roll price is defined in configuration
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RollSell {
-    /// float field
+    /// Roll count
     #[prost(fixed64, tag = "1")]
     pub roll_count: u64,
 }
-/// message struct
+/// Execute a smart contract
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OperationInput {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub content_creator_pub_key: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, repeated, tag = "3")]
-    pub serialized_content: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+pub struct ExecuteSc {
+    /// Smart contract bytecode.
+    #[prost(bytes = "vec", tag = "1")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    /// The maximum amount of gas that the execution of the contract is allowed to cost
+    #[prost(fixed64, tag = "2")]
+    pub max_gas: u64,
+    /// A key-value store associating a hash to arbitrary bytes
+    #[prost(message, repeated, tag = "3")]
+    pub datastore: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
 }
-/// message struct
+/// Calls an exported function from a stored smart contract
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CallSc {
+    /// Target smart contract address
+    #[prost(string, tag = "1")]
+    pub target_addr: ::prost::alloc::string::String,
+    /// Target function name. No function is called if empty
+    #[prost(string, tag = "2")]
+    pub target_func: ::prost::alloc::string::String,
+    /// Parameter to pass to the target function
+    #[prost(bytes = "vec", tag = "3")]
+    pub param: ::prost::alloc::vec::Vec<u8>,
+    /// The maximum amount of gas that the execution of the contract is allowed to cost
+    #[prost(fixed64, tag = "4")]
+    pub max_gas: u64,
+    /// Extra coins that are spent from the caller's balance and transferred to the target
+    #[prost(fixed64, tag = "5")]
+    pub coins: u64,
+}
+/// Packages type Operation such that it can be securely sent and received in a trust-free network
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SecureShareOperation {
-    /// object field
+    /// Operation
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<Operation>,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// string field
+    /// Content in sharable, deserializable form. Is used in the secure verification protocols
+    #[prost(bytes = "vec", tag = "2")]
+    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
+    /// A cryptographically generated value using `serialized_data` and a public key.
     #[prost(string, tag = "3")]
-    pub content_creator_pub_key: ::prost::alloc::string::String,
-    /// string field
+    pub signature: ::prost::alloc::string::String,
+    /// The public-key component used in the generation of the signature
     #[prost(string, tag = "4")]
-    pub content_creator_address: ::prost::alloc::string::String,
-    /// string field
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// Derived from the same public key used to generate the signature
     #[prost(string, tag = "5")]
+    pub content_creator_address: ::prost::alloc::string::String,
+    /// A secure hash of the data. See also \[massa_hash::Hash\]
+    #[prost(string, tag = "6")]
     pub id: ::prost::alloc::string::String,
 }
+/// Operation filter type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum OperationStreamFilterType {
     Transaction = 0,
-    ExecuteSc = 1,
-    CallSc = 2,
-    RollBuy = 3,
-    RollSell = 4,
+    RollBuy = 1,
+    RollSell = 2,
+    ExecuteSc = 3,
+    CallSc = 4,
 }
 impl OperationStreamFilterType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -317,238 +273,128 @@ impl OperationStreamFilterType {
     pub fn as_str_name(&self) -> &'static str {
         match self {
             OperationStreamFilterType::Transaction => "TRANSACTION",
-            OperationStreamFilterType::ExecuteSc => "EXECUTE_SC",
-            OperationStreamFilterType::CallSc => "CALL_SC",
             OperationStreamFilterType::RollBuy => "ROLL_BUY",
             OperationStreamFilterType::RollSell => "ROLL_SELL",
+            OperationStreamFilterType::ExecuteSc => "EXECUTE_SC",
+            OperationStreamFilterType::CallSc => "CALL_SC",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "TRANSACTION" => Some(Self::Transaction),
-            "EXECUTE_SC" => Some(Self::ExecuteSc),
-            "CALL_SC" => Some(Self::CallSc),
             "ROLL_BUY" => Some(Self::RollBuy),
             "ROLL_SELL" => Some(Self::RollSell),
+            "EXECUTE_SC" => Some(Self::ExecuteSc),
+            "CALL_SC" => Some(Self::CallSc),
             _ => None,
         }
     }
 }
-/// region Block
-/// message struct
+/// Block
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Block {
-    /// object field
+    /// Signed header
     #[prost(message, optional, tag = "1")]
     pub header: ::core::option::Option<SecureShareBlockHeader>,
-    /// object field
+    /// Operations ids
     #[prost(string, repeated, tag = "2")]
     pub operations: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-/// message struct
+/// Filled block
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BlockInfo {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// object field field
-    #[prost(message, optional, tag = "2")]
-    pub content: ::core::option::Option<BlockInfoContent>,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BlockInfoContent {
-    /// bool field
-    #[prost(bool, tag = "1")]
-    pub is_final: bool,
-    /// bool field
-    #[prost(bool, tag = "2")]
-    pub is_stale: bool,
-    /// bool field
-    #[prost(bool, tag = "3")]
-    pub is_in_blockclique: bool,
-    /// object field
-    #[prost(message, optional, tag = "4")]
-    pub block: ::core::option::Option<Block>,
+pub struct FilledBlock {
+    /// Signed header
+    #[prost(message, optional, tag = "1")]
+    pub header: ::core::option::Option<SecureShareBlockHeader>,
+    /// Operations
+    #[prost(message, repeated, tag = "2")]
+    pub operations: ::prost::alloc::vec::Vec<FilledOperationTuple>,
 }
 /// message struct
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockHeader {
-    /// object field
+    /// Slot
     #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
-    /// string field
+    /// parents
     #[prost(string, repeated, tag = "2")]
     pub parents: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// string field
+    /// All operations hash
     #[prost(string, tag = "3")]
     pub operation_merkle_root: ::prost::alloc::string::String,
-    /// object field
+    /// Signed endorsements
     #[prost(message, repeated, tag = "4")]
     pub endorsements: ::prost::alloc::vec::Vec<SecureShareEndorsement>,
-}
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FilledBlock {
-    /// object field
-    #[prost(message, optional, tag = "1")]
-    pub header: ::core::option::Option<SecureShareBlockHeader>,
-    /// object field
-    #[prost(message, repeated, tag = "2")]
-    pub operations: ::prost::alloc::vec::Vec<FilledOperationTuple>,
 }
 /// Filled Operation Tuple
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FilledOperationTuple {
-    /// string value
+    /// Operation id
     #[prost(string, tag = "1")]
     pub operation_id: ::prost::alloc::string::String,
-    /// object64 value
+    /// Signed operation
     #[prost(message, optional, tag = "2")]
     pub operation: ::core::option::Option<SecureShareOperation>,
 }
-/// message struct
+/// Packages type Block such that it can be securely sent and received in a trust-free network
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FilledBlockInfo {
-    /// string field
-    #[prost(string, tag = "1")]
+pub struct SecureShareBlock {
+    /// Block
+    #[prost(message, optional, tag = "1")]
+    pub content: ::core::option::Option<Block>,
+    /// Content in sharable, deserializable form. Is used in the secure verification protocols
+    #[prost(bytes = "vec", tag = "2")]
+    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
+    /// A cryptographically generated value using `serialized_data` and a public key.
+    #[prost(string, tag = "3")]
+    pub signature: ::prost::alloc::string::String,
+    /// The public-key component used in the generation of the signature
+    #[prost(string, tag = "4")]
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// Derived from the same public key used to generate the signature
+    #[prost(string, tag = "5")]
+    pub content_creator_address: ::prost::alloc::string::String,
+    /// A secure hash of the data. See also \[massa_hash::Hash\]
+    #[prost(string, tag = "6")]
     pub id: ::prost::alloc::string::String,
-    /// object field
-    #[prost(message, optional, tag = "2")]
-    pub content: ::core::option::Option<FilledBlockInfoContent>,
 }
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FilledBlockInfoContent {
-    /// bool field
-    #[prost(bool, tag = "1")]
-    pub is_final: bool,
-    /// bool field
-    #[prost(bool, tag = "2")]
-    pub is_stale: bool,
-    /// bool field
-    #[prost(bool, tag = "3")]
-    pub is_in_blockclique: bool,
-    /// object field
-    #[prost(message, optional, tag = "4")]
-    pub block: ::core::option::Option<FilledBlock>,
-}
-/// message struct
+/// Packages type BlockHeader such that it can be securely sent and received in a trust-free network
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SecureShareBlockHeader {
-    /// object field
+    /// BlockHeader
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<BlockHeader>,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// string field
+    /// Content in sharable, deserializable form. Is used in the secure verification protocols
+    #[prost(bytes = "vec", tag = "2")]
+    pub serialized_data: ::prost::alloc::vec::Vec<u8>,
+    /// A cryptographically generated value using `serialized_data` and a public key.
     #[prost(string, tag = "3")]
-    pub content_creator_pub_key: ::prost::alloc::string::String,
-    /// string field
+    pub signature: ::prost::alloc::string::String,
+    /// The public-key component used in the generation of the signature
     #[prost(string, tag = "4")]
-    pub content_creator_address: ::prost::alloc::string::String,
-    /// string field
+    pub content_creator_pub_key: ::prost::alloc::string::String,
+    /// Derived from the same public key used to generate the signature
     #[prost(string, tag = "5")]
+    pub content_creator_address: ::prost::alloc::string::String,
+    /// A secure hash of the data. See also \[massa_hash::Hash\]
+    #[prost(string, tag = "6")]
     pub id: ::prost::alloc::string::String,
-}
-/// NewBlocksStreamRequest holds request for NewBlocksStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewBlocksStreamRequest {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-}
-/// NewBlocksStreamResponse holds response from NewBlocksStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewBlocksStreamResponse {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// object value
-    #[prost(message, optional, tag = "2")]
-    pub block: ::core::option::Option<Block>,
-}
-/// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewBlocksHeadersStreamRequest {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-}
-/// NewBlocksHeadersStreamResponse holds response from NewBlocksHeadersStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewBlocksHeadersStreamResponse {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// object value
-    #[prost(message, optional, tag = "2")]
-    pub block_header: ::core::option::Option<SecureShareBlockHeader>,
-}
-/// NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewFilledBlocksStreamRequest {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-}
-/// NewFilledBlocksStreamResponse holds response from NewFilledBlocksStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewFilledBlocksStreamResponse {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// object value
-    #[prost(message, optional, tag = "2")]
-    pub block: ::core::option::Option<FilledBlock>,
-}
-/// NewOperationsStreamRequest holds request for NewOperationsStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewOperationsStreamRequest {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// object value
-    #[prost(enumeration = "OperationStreamFilterType", repeated, tag = "2")]
-    pub filter: ::prost::alloc::vec::Vec<i32>,
-}
-/// NewOperationsStreamResponse holds response from NewOperationsStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NewOperationsStreamResponse {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// object value
-    #[prost(message, optional, tag = "2")]
-    pub operation: ::core::option::Option<SecureShareOperation>,
 }
 /// GetBlocksBySlotRequest holds request for GetBlocksBySlot
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetBlocksBySlotRequest {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// slots
+    /// Slots
     #[prost(message, repeated, tag = "2")]
     pub slots: ::prost::alloc::vec::Vec<Slot>,
 }
@@ -556,80 +402,21 @@ pub struct GetBlocksBySlotRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetBlocksBySlotResponse {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// blocks
+    /// Blocks
     #[prost(message, repeated, tag = "2")]
     pub blocks: ::prost::alloc::vec::Vec<Block>,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetTransactionsThroughputRequest {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-}
-/// TransactionsThroughputStreamRequest holds request for TransactionsThroughputStream
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TransactionsThroughputStreamRequest {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// optional timer interval in sec
-    #[prost(fixed64, optional, tag = "2")]
-    pub interval: ::core::option::Option<u64>,
-}
-/// GetTransactionsThroughputResponse holds response from GetTransactionsThroughput
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetTransactionsThroughputResponse {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// tx/s
-    #[prost(fixed32, tag = "2")]
-    pub tx_s: u32,
-}
-/// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetNextBlockBestParentsRequest {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-}
-/// GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetNextBlockBestParentsResponse {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// best parents
-    #[prost(message, repeated, tag = "2")]
-    pub data: ::prost::alloc::vec::Vec<BestParentTuple>,
-}
-/// Best Parent Tuple
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BestParentTuple {
-    /// string value
-    #[prost(string, tag = "1")]
-    pub block_id: ::prost::alloc::string::String,
-    /// fixed64 value
-    #[prost(fixed64, tag = "2")]
-    pub period: u64,
 }
 /// GetDatastoreEntriesRequest holds request from GetDatastoreEntries
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDatastoreEntriesRequest {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object value
+    /// Queries
     #[prost(message, repeated, tag = "2")]
     pub queries: ::prost::alloc::vec::Vec<DatastoreEntriesQuery>,
 }
@@ -637,17 +424,17 @@ pub struct GetDatastoreEntriesRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DatastoreEntriesQuery {
-    /// object value
+    /// Filter
     #[prost(message, optional, tag = "1")]
     pub filter: ::core::option::Option<DatastoreEntryFilter>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DatastoreEntryFilter {
-    /// / associated address of the entry
+    /// / Associated address of the entry
     #[prost(string, tag = "1")]
     pub address: ::prost::alloc::string::String,
-    /// datastore key
+    /// Datastore key
     #[prost(bytes = "vec", tag = "2")]
     pub key: ::prost::alloc::vec::Vec<u8>,
 }
@@ -655,21 +442,51 @@ pub struct DatastoreEntryFilter {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDatastoreEntriesResponse {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object value
+    /// Datastore entries
     #[prost(message, repeated, tag = "2")]
     pub entries: ::prost::alloc::vec::Vec<BytesMapFieldEntry>,
+}
+/// GetNextBlockBestParentsRequest holds request for GetNextBlockBestParents
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetNextBlockBestParentsRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// GetNextBlockBestParentsResponse holds response from GetNextBlockBestParents
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetNextBlockBestParentsResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Best parents
+    #[prost(message, repeated, tag = "2")]
+    pub parents: ::prost::alloc::vec::Vec<Parents>,
+}
+/// Best Parent Tuple
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Parents {
+    /// Block id
+    #[prost(string, tag = "1")]
+    pub block_id: ::prost::alloc::string::String,
+    /// Period
+    #[prost(fixed64, tag = "2")]
+    pub period: u64,
 }
 /// GetSelectorDrawsRequest holds request from GetSelectorDraws
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSelectorDrawsRequest {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object value
+    /// Queries
     #[prost(message, repeated, tag = "2")]
     pub queries: ::prost::alloc::vec::Vec<SelectorDrawsQuery>,
 }
@@ -677,7 +494,7 @@ pub struct GetSelectorDrawsRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SelectorDrawsQuery {
-    /// object value
+    /// Filter
     #[prost(message, optional, tag = "1")]
     pub filter: ::core::option::Option<SelectorDrawsFilter>,
 }
@@ -685,7 +502,7 @@ pub struct SelectorDrawsQuery {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SelectorDrawsFilter {
-    /// string value
+    /// Address
     #[prost(string, tag = "1")]
     pub address: ::prost::alloc::string::String,
 }
@@ -693,74 +510,180 @@ pub struct SelectorDrawsFilter {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSelectorDrawsResponse {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object value
+    /// Selector draws
     #[prost(message, repeated, tag = "2")]
     pub selector_draws: ::prost::alloc::vec::Vec<SelectorDraws>,
 }
-/// SelectorDraws
+/// Selector draws
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SelectorDraws {
-    /// string value
+    /// Address
     #[prost(string, tag = "1")]
     pub address: ::prost::alloc::string::String,
-    /// object value
+    /// Next block draws
     #[prost(message, repeated, tag = "2")]
     pub next_block_draws: ::prost::alloc::vec::Vec<Slot>,
-    /// object value
+    /// Next endorsements draws
     #[prost(message, repeated, tag = "3")]
     pub next_endorsement_draws: ::prost::alloc::vec::Vec<IndexedSlot>,
+}
+/// GetTransactionsThroughputRequest holds request for GetTransactionsThroughput
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTransactionsThroughputRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+<<<<<<< testnet_21
+    /// best parents
+    #[prost(message, repeated, tag = "2")]
+    pub data: ::prost::alloc::vec::Vec<BestParentTuple>,
+=======
+>>>>>>> refactor: add complete doc and enhance
+}
+/// GetTransactionsThroughputResponse holds response from GetTransactionsThroughput
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+<<<<<<< testnet_21
+pub struct BestParentTuple {
+    /// string value
+=======
+pub struct GetTransactionsThroughputResponse {
+    /// Request id
+>>>>>>> refactor: add complete doc and enhance
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Transactions throughput
+    #[prost(fixed32, tag = "2")]
+    pub throughput: u32,
 }
 /// GetVersionRequest holds request from GetVersion
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetVersionRequest {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "2")]
-    pub version: ::prost::alloc::string::String,
 }
 /// GetVersionResponse holds response from GetVersion
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetVersionResponse {
-    /// string value
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// string field
+    /// Version
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
 }
-/// SendBlocksRequest holds parameters to SendBlocks
+/// NewBlocksStreamRequest holds request for NewBlocksStream
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SendBlocksRequest {
-    /// string value
+pub struct NewBlocksStreamRequest {
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object field
+}
+/// NewBlocksStreamResponse holds response from NewBlocksStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewBlocksStreamResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Block
     #[prost(message, optional, tag = "2")]
-    pub block: ::core::option::Option<SecureSharePayload>,
+    pub block: ::core::option::Option<Block>,
 }
-/// SendBlocksResponse holds response from SendBlocks
+/// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SendBlocksResponse {
-    /// string value
+pub struct NewBlocksHeadersStreamRequest {
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object field
-    #[prost(oneof = "send_blocks_response::Result", tags = "2, 3")]
-    pub result: ::core::option::Option<send_blocks_response::Result>,
 }
-/// Nested message and enum types in `SendBlocksResponse`.
-pub mod send_blocks_response {
-    /// object field
+/// NewBlocksHeadersStreamResponse holds response from NewBlocksHeadersStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewBlocksHeadersStreamResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Signed block header
+    #[prost(message, optional, tag = "2")]
+    pub block_header: ::core::option::Option<SecureShareBlockHeader>,
+}
+/// NewFilledBlocksStreamRequest holds request for NewFilledBlocksStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewFilledBlocksStreamRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+/// NewFilledBlocksStreamResponse holds response from NewFilledBlocksStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewFilledBlocksStreamResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Block with operations content
+    #[prost(message, optional, tag = "2")]
+    pub filled_block: ::core::option::Option<FilledBlock>,
+}
+/// NewOperationsStreamRequest holds request for NewOperationsStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewOperationsStreamRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Filter
+    #[prost(enumeration = "OperationStreamFilterType", repeated, tag = "2")]
+    pub filter: ::prost::alloc::vec::Vec<i32>,
+}
+/// NewOperationsStreamResponse holds response from NewOperationsStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewOperationsStreamResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Signed operation
+    #[prost(message, optional, tag = "2")]
+    pub operation: ::core::option::Option<SecureShareOperation>,
+}
+/// SendBlocksStreamRequest holds parameters to SendBlocks
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SendBlocksStreamRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Signed block
+    #[prost(message, optional, tag = "2")]
+    pub block: ::core::option::Option<SecureShareBlock>,
+}
+/// SendBlocksStreamResponse holds response from SendBlocks
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SendBlocksStreamResponse {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Block result or a gRPC status
+    #[prost(oneof = "send_blocks_stream_response::Result", tags = "2, 3")]
+    pub result: ::core::option::Option<send_blocks_stream_response::Result>,
+}
+/// Nested message and enum types in `SendBlocksStreamResponse`.
+pub mod send_blocks_stream_response {
+    /// Block result or a gRPC status
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Result {
@@ -774,35 +697,35 @@ pub mod send_blocks_response {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockResult {
-    /// string field
+    /// Block id
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub block_id: ::prost::alloc::string::String,
 }
-/// SendEndorsementsRequest holds parameters to SendEndorsements
+/// SendEndorsementsStreamRequest holds parameters to SendEndorsements
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SendEndorsementsRequest {
-    /// string field
+pub struct SendEndorsementsStreamRequest {
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object field
+    /// Signed endorsements
     #[prost(message, repeated, tag = "2")]
-    pub endorsements: ::prost::alloc::vec::Vec<SecureSharePayload>,
+    pub endorsements: ::prost::alloc::vec::Vec<SecureShareEndorsement>,
 }
-/// SendEndorsementsResponse holds response from SendEndorsements
+/// SendEndorsementsStreamResponse holds response from SendEndorsements
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SendEndorsementsResponse {
-    /// string field
+pub struct SendEndorsementsStreamResponse {
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object field
-    #[prost(oneof = "send_endorsements_response::Message", tags = "2, 3")]
-    pub message: ::core::option::Option<send_endorsements_response::Message>,
+    /// Endorsement result or gRPC status
+    #[prost(oneof = "send_endorsements_stream_response::Message", tags = "2, 3")]
+    pub message: ::core::option::Option<send_endorsements_stream_response::Message>,
 }
-/// Nested message and enum types in `SendEndorsementsResponse`.
-pub mod send_endorsements_response {
-    /// object field
+/// Nested message and enum types in `SendEndorsementsStreamResponse`.
+pub mod send_endorsements_stream_response {
+    /// Endorsement result or gRPC status
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Message {
@@ -816,35 +739,35 @@ pub mod send_endorsements_response {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EndorsementResult {
-    /// string field
+    /// Endorsement(s) id(s)
     #[prost(string, repeated, tag = "1")]
-    pub ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    pub endorsements_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-/// SendOperationsRequest holds parameters to SendOperations
+/// SendOperationsStreamRequest holds parameters to SendOperations
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SendOperationsRequest {
-    /// string field
+pub struct SendOperationsStreamRequest {
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object field
+    /// Signed operations
     #[prost(message, repeated, tag = "2")]
-    pub operations: ::prost::alloc::vec::Vec<SecureSharePayload>,
+    pub operations: ::prost::alloc::vec::Vec<SecureShareOperation>,
 }
-/// SendOperationsResponse holds response from SendOperations
+/// SendOperationsStreamResponse holds response from SendOperations
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SendOperationsResponse {
-    /// string field
+pub struct SendOperationsStreamResponse {
+    /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// object field
-    #[prost(oneof = "send_operations_response::Message", tags = "2, 3")]
-    pub message: ::core::option::Option<send_operations_response::Message>,
+    /// Operation result or gRPC status
+    #[prost(oneof = "send_operations_stream_response::Message", tags = "2, 3")]
+    pub message: ::core::option::Option<send_operations_stream_response::Message>,
 }
-/// Nested message and enum types in `SendOperationsResponse`.
-pub mod send_operations_response {
-    /// object field
+/// Nested message and enum types in `SendOperationsStreamResponse`.
+pub mod send_operations_stream_response {
+    /// Operation result or gRPC status
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Message {
@@ -858,9 +781,20 @@ pub mod send_operations_response {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OperationResult {
-    /// string field
+    /// Operation(s) id(s)
     #[prost(string, repeated, tag = "1")]
-    pub ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    pub operations_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+/// TransactionsThroughputStreamRequest holds request for TransactionsThroughputStream
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TransactionsThroughputStreamRequest {
+    /// Request id
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    /// Optional timer interval in sec. Defaults to 10s
+    #[prost(fixed64, optional, tag = "2")]
+    pub interval: ::core::option::Option<u64>,
 }
 /// Generated client implementations.
 pub mod grpc_client {
@@ -944,6 +878,29 @@ pub mod grpc_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// GetBlocksBySlot
+        pub async fn get_blocks_by_slot(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetBlocksBySlotRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBlocksBySlotResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/GetBlocksBySlot",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// GetDatastoreEntries
         pub async fn get_datastore_entries(
             &mut self,
@@ -964,75 +921,6 @@ pub mod grpc_client {
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/GetDatastoreEntries",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// GetSelectorDraws
-        pub async fn get_selector_draws(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetSelectorDrawsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetSelectorDrawsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/GetSelectorDraws",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// GetVersion
-        pub async fn get_version(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetVersionRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetVersionResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/GetVersion",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// GetTransactionsThroughput
-        pub async fn get_transactions_throughput(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetTransactionsThroughputRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetTransactionsThroughputResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/GetTransactionsThroughput",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
@@ -1059,11 +947,12 @@ pub mod grpc_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        pub async fn get_blocks_by_slot(
+        /// GetSelectorDraws
+        pub async fn get_selector_draws(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetBlocksBySlotRequest>,
+            request: impl tonic::IntoRequest<super::GetSelectorDrawsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetBlocksBySlotResponse>,
+            tonic::Response<super::GetSelectorDrawsResponse>,
             tonic::Status,
         > {
             self.inner
@@ -1077,16 +966,16 @@ pub mod grpc_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/GetBlocksBySlot",
+                "/massa.api.v1.Grpc/GetSelectorDraws",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// SendBlocks
-        pub async fn send_blocks(
+        /// GetTransactionsThroughput
+        pub async fn get_transactions_throughput(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::SendBlocksRequest>,
+            request: impl tonic::IntoRequest<super::GetTransactionsThroughputRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::SendBlocksResponse>>,
+            tonic::Response<super::GetTransactionsThroughputResponse>,
             tonic::Status,
         > {
             self.inner
@@ -1100,18 +989,16 @@ pub mod grpc_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/SendBlocks",
+                "/massa.api.v1.Grpc/GetTransactionsThroughput",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            self.inner.unary(request.into_request(), path, codec).await
         }
-        /// SendEndorsements
-        pub async fn send_endorsements(
+        /// GetVersion
+        pub async fn get_version(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<
-                Message = super::SendEndorsementsRequest,
-            >,
+            request: impl tonic::IntoRequest<super::GetVersionRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::SendEndorsementsResponse>>,
+            tonic::Response<super::GetVersionResponse>,
             tonic::Status,
         > {
             self.inner
@@ -1125,61 +1012,9 @@ pub mod grpc_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/SendEndorsements",
+                "/massa.api.v1.Grpc/GetVersion",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
-        }
-        /// SendOperations
-        pub async fn send_operations(
-            &mut self,
-            request: impl tonic::IntoStreamingRequest<
-                Message = super::SendOperationsRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::SendOperationsResponse>>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/SendOperations",
-            );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
-        }
-        /// Subscribe GetTransactionsThroughput
-        pub async fn transactions_throughput(
-            &mut self,
-            request: impl tonic::IntoStreamingRequest<
-                Message = super::TransactionsThroughputStreamRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<super::GetTransactionsThroughputResponse>,
-            >,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/TransactionsThroughput",
-            );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            self.inner.unary(request.into_request(), path, codec).await
         }
         /// NewBlocks
         pub async fn new_blocks(
@@ -1285,6 +1120,112 @@ pub mod grpc_client {
             );
             self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
+        /// SendBlocks
+        pub async fn send_blocks(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::SendBlocksStreamRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::SendBlocksStreamResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/SendBlocks",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
+        /// SendEndorsements
+        pub async fn send_endorsements(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::SendEndorsementsStreamRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::SendEndorsementsStreamResponse>,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/SendEndorsements",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
+        /// SendOperations
+        pub async fn send_operations(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::SendOperationsStreamRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::SendOperationsStreamResponse>,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/SendOperations",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
+        /// TransactionsThroughput
+        pub async fn transactions_throughput(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::TransactionsThroughputStreamRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::GetTransactionsThroughputResponse>,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/massa.api.v1.Grpc/TransactionsThroughput",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -1294,36 +1235,20 @@ pub mod grpc_server {
     /// Generated trait containing gRPC methods that should be implemented for use with GrpcServer.
     #[async_trait]
     pub trait Grpc: Send + Sync + 'static {
+        /// GetBlocksBySlot
+        async fn get_blocks_by_slot(
+            &self,
+            request: tonic::Request<super::GetBlocksBySlotRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBlocksBySlotResponse>,
+            tonic::Status,
+        >;
         /// GetDatastoreEntries
         async fn get_datastore_entries(
             &self,
             request: tonic::Request<super::GetDatastoreEntriesRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetDatastoreEntriesResponse>,
-            tonic::Status,
-        >;
-        /// GetSelectorDraws
-        async fn get_selector_draws(
-            &self,
-            request: tonic::Request<super::GetSelectorDrawsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetSelectorDrawsResponse>,
-            tonic::Status,
-        >;
-        /// GetVersion
-        async fn get_version(
-            &self,
-            request: tonic::Request<super::GetVersionRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetVersionResponse>,
-            tonic::Status,
-        >;
-        /// GetTransactionsThroughput
-        async fn get_transactions_throughput(
-            &self,
-            request: tonic::Request<super::GetTransactionsThroughputRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetTransactionsThroughputResponse>,
             tonic::Status,
         >;
         /// GetNextBlockBestParents
@@ -1334,72 +1259,28 @@ pub mod grpc_server {
             tonic::Response<super::GetNextBlockBestParentsResponse>,
             tonic::Status,
         >;
-        async fn get_blocks_by_slot(
+        /// GetSelectorDraws
+        async fn get_selector_draws(
             &self,
-            request: tonic::Request<super::GetBlocksBySlotRequest>,
+            request: tonic::Request<super::GetSelectorDrawsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetBlocksBySlotResponse>,
+            tonic::Response<super::GetSelectorDrawsResponse>,
             tonic::Status,
         >;
-        /// Server streaming response type for the SendBlocks method.
-        type SendBlocksStream: futures_core::Stream<
-                Item = std::result::Result<super::SendBlocksResponse, tonic::Status>,
-            >
-            + Send
-            + 'static;
-        /// SendBlocks
-        async fn send_blocks(
+        /// GetTransactionsThroughput
+        async fn get_transactions_throughput(
             &self,
-            request: tonic::Request<tonic::Streaming<super::SendBlocksRequest>>,
-        ) -> std::result::Result<tonic::Response<Self::SendBlocksStream>, tonic::Status>;
-        /// Server streaming response type for the SendEndorsements method.
-        type SendEndorsementsStream: futures_core::Stream<
-                Item = std::result::Result<
-                    super::SendEndorsementsResponse,
-                    tonic::Status,
-                >,
-            >
-            + Send
-            + 'static;
-        /// SendEndorsements
-        async fn send_endorsements(
-            &self,
-            request: tonic::Request<tonic::Streaming<super::SendEndorsementsRequest>>,
+            request: tonic::Request<super::GetTransactionsThroughputRequest>,
         ) -> std::result::Result<
-            tonic::Response<Self::SendEndorsementsStream>,
+            tonic::Response<super::GetTransactionsThroughputResponse>,
             tonic::Status,
         >;
-        /// Server streaming response type for the SendOperations method.
-        type SendOperationsStream: futures_core::Stream<
-                Item = std::result::Result<super::SendOperationsResponse, tonic::Status>,
-            >
-            + Send
-            + 'static;
-        /// SendOperations
-        async fn send_operations(
+        /// GetVersion
+        async fn get_version(
             &self,
-            request: tonic::Request<tonic::Streaming<super::SendOperationsRequest>>,
+            request: tonic::Request<super::GetVersionRequest>,
         ) -> std::result::Result<
-            tonic::Response<Self::SendOperationsStream>,
-            tonic::Status,
-        >;
-        /// Server streaming response type for the TransactionsThroughput method.
-        type TransactionsThroughputStream: futures_core::Stream<
-                Item = std::result::Result<
-                    super::GetTransactionsThroughputResponse,
-                    tonic::Status,
-                >,
-            >
-            + Send
-            + 'static;
-        /// Subscribe GetTransactionsThroughput
-        async fn transactions_throughput(
-            &self,
-            request: tonic::Request<
-                tonic::Streaming<super::TransactionsThroughputStreamRequest>,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<Self::TransactionsThroughputStream>,
+            tonic::Response<super::GetVersionResponse>,
             tonic::Status,
         >;
         /// Server streaming response type for the NewBlocks method.
@@ -1466,6 +1347,75 @@ pub mod grpc_server {
             request: tonic::Request<tonic::Streaming<super::NewOperationsStreamRequest>>,
         ) -> std::result::Result<
             tonic::Response<Self::NewOperationsStream>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the SendBlocks method.
+        type SendBlocksStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::SendBlocksStreamResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// SendBlocks
+        async fn send_blocks(
+            &self,
+            request: tonic::Request<tonic::Streaming<super::SendBlocksStreamRequest>>,
+        ) -> std::result::Result<tonic::Response<Self::SendBlocksStream>, tonic::Status>;
+        /// Server streaming response type for the SendEndorsements method.
+        type SendEndorsementsStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::SendEndorsementsStreamResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// SendEndorsements
+        async fn send_endorsements(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::SendEndorsementsStreamRequest>,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<Self::SendEndorsementsStream>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the SendOperations method.
+        type SendOperationsStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::SendOperationsStreamResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// SendOperations
+        async fn send_operations(
+            &self,
+            request: tonic::Request<tonic::Streaming<super::SendOperationsStreamRequest>>,
+        ) -> std::result::Result<
+            tonic::Response<Self::SendOperationsStream>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the TransactionsThroughput method.
+        type TransactionsThroughputStream: futures_core::Stream<
+                Item = std::result::Result<
+                    super::GetTransactionsThroughputResponse,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// TransactionsThroughput
+        async fn transactions_throughput(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::TransactionsThroughputStreamRequest>,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<Self::TransactionsThroughputStream>,
             tonic::Status,
         >;
     }
@@ -1545,6 +1495,52 @@ pub mod grpc_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
+                "/massa.api.v1.Grpc/GetBlocksBySlot" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetBlocksBySlotSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::UnaryService<super::GetBlocksBySlotRequest>
+                    for GetBlocksBySlotSvc<T> {
+                        type Response = super::GetBlocksBySlotResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetBlocksBySlotRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_blocks_by_slot(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetBlocksBySlotSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/massa.api.v1.Grpc/GetDatastoreEntries" => {
                     #[allow(non_camel_case_types)]
                     struct GetDatastoreEntriesSvc<T: Grpc>(pub Arc<T>);
@@ -1591,6 +1587,54 @@ pub mod grpc_server {
                     };
                     Box::pin(fut)
                 }
+                "/massa.api.v1.Grpc/GetNextBlockBestParents" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetNextBlockBestParentsSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::UnaryService<super::GetNextBlockBestParentsRequest>
+                    for GetNextBlockBestParentsSvc<T> {
+                        type Response = super::GetNextBlockBestParentsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::GetNextBlockBestParentsRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).get_next_block_best_parents(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetNextBlockBestParentsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/massa.api.v1.Grpc/GetSelectorDraws" => {
                     #[allow(non_camel_case_types)]
                     struct GetSelectorDrawsSvc<T: Grpc>(pub Arc<T>);
@@ -1622,48 +1666,6 @@ pub mod grpc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetSelectorDrawsSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/massa.api.v1.Grpc/GetVersion" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetVersionSvc<T: Grpc>(pub Arc<T>);
-                    impl<T: Grpc> tonic::server::UnaryService<super::GetVersionRequest>
-                    for GetVersionSvc<T> {
-                        type Response = super::GetVersionResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetVersionRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move { (*inner).get_version(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = GetVersionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1728,28 +1730,22 @@ pub mod grpc_server {
                     };
                     Box::pin(fut)
                 }
-                "/massa.api.v1.Grpc/GetNextBlockBestParents" => {
+                "/massa.api.v1.Grpc/GetVersion" => {
                     #[allow(non_camel_case_types)]
-                    struct GetNextBlockBestParentsSvc<T: Grpc>(pub Arc<T>);
-                    impl<
-                        T: Grpc,
-                    > tonic::server::UnaryService<super::GetNextBlockBestParentsRequest>
-                    for GetNextBlockBestParentsSvc<T> {
-                        type Response = super::GetNextBlockBestParentsResponse;
+                    struct GetVersionSvc<T: Grpc>(pub Arc<T>);
+                    impl<T: Grpc> tonic::server::UnaryService<super::GetVersionRequest>
+                    for GetVersionSvc<T> {
+                        type Response = super::GetVersionResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::GetNextBlockBestParentsRequest,
-                            >,
+                            request: tonic::Request<super::GetVersionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                (*inner).get_next_block_best_parents(request).await
-                            };
+                            let fut = async move { (*inner).get_version(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1760,7 +1756,7 @@ pub mod grpc_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = GetNextBlockBestParentsSvc(inner);
+                        let method = GetVersionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1772,247 +1768,6 @@ pub mod grpc_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/massa.api.v1.Grpc/GetBlocksBySlot" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetBlocksBySlotSvc<T: Grpc>(pub Arc<T>);
-                    impl<
-                        T: Grpc,
-                    > tonic::server::UnaryService<super::GetBlocksBySlotRequest>
-                    for GetBlocksBySlotSvc<T> {
-                        type Response = super::GetBlocksBySlotResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetBlocksBySlotRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                (*inner).get_blocks_by_slot(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = GetBlocksBySlotSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/massa.api.v1.Grpc/SendBlocks" => {
-                    #[allow(non_camel_case_types)]
-                    struct SendBlocksSvc<T: Grpc>(pub Arc<T>);
-                    impl<
-                        T: Grpc,
-                    > tonic::server::StreamingService<super::SendBlocksRequest>
-                    for SendBlocksSvc<T> {
-                        type Response = super::SendBlocksResponse;
-                        type ResponseStream = T::SendBlocksStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<
-                                tonic::Streaming<super::SendBlocksRequest>,
-                            >,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move { (*inner).send_blocks(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = SendBlocksSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/massa.api.v1.Grpc/SendEndorsements" => {
-                    #[allow(non_camel_case_types)]
-                    struct SendEndorsementsSvc<T: Grpc>(pub Arc<T>);
-                    impl<
-                        T: Grpc,
-                    > tonic::server::StreamingService<super::SendEndorsementsRequest>
-                    for SendEndorsementsSvc<T> {
-                        type Response = super::SendEndorsementsResponse;
-                        type ResponseStream = T::SendEndorsementsStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<
-                                tonic::Streaming<super::SendEndorsementsRequest>,
-                            >,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                (*inner).send_endorsements(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = SendEndorsementsSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/massa.api.v1.Grpc/SendOperations" => {
-                    #[allow(non_camel_case_types)]
-                    struct SendOperationsSvc<T: Grpc>(pub Arc<T>);
-                    impl<
-                        T: Grpc,
-                    > tonic::server::StreamingService<super::SendOperationsRequest>
-                    for SendOperationsSvc<T> {
-                        type Response = super::SendOperationsResponse;
-                        type ResponseStream = T::SendOperationsStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<
-                                tonic::Streaming<super::SendOperationsRequest>,
-                            >,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                (*inner).send_operations(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = SendOperationsSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/massa.api.v1.Grpc/TransactionsThroughput" => {
-                    #[allow(non_camel_case_types)]
-                    struct TransactionsThroughputSvc<T: Grpc>(pub Arc<T>);
-                    impl<
-                        T: Grpc,
-                    > tonic::server::StreamingService<
-                        super::TransactionsThroughputStreamRequest,
-                    > for TransactionsThroughputSvc<T> {
-                        type Response = super::GetTransactionsThroughputResponse;
-                        type ResponseStream = T::TransactionsThroughputStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<
-                                tonic::Streaming<super::TransactionsThroughputStreamRequest>,
-                            >,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                (*inner).transactions_throughput(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = TransactionsThroughputSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -2198,6 +1953,202 @@ pub mod grpc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = NewOperationsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/SendBlocks" => {
+                    #[allow(non_camel_case_types)]
+                    struct SendBlocksSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::StreamingService<super::SendBlocksStreamRequest>
+                    for SendBlocksSvc<T> {
+                        type Response = super::SendBlocksStreamResponse;
+                        type ResponseStream = T::SendBlocksStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::SendBlocksStreamRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move { (*inner).send_blocks(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SendBlocksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/SendEndorsements" => {
+                    #[allow(non_camel_case_types)]
+                    struct SendEndorsementsSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::StreamingService<
+                        super::SendEndorsementsStreamRequest,
+                    > for SendEndorsementsSvc<T> {
+                        type Response = super::SendEndorsementsStreamResponse;
+                        type ResponseStream = T::SendEndorsementsStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::SendEndorsementsStreamRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).send_endorsements(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SendEndorsementsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/SendOperations" => {
+                    #[allow(non_camel_case_types)]
+                    struct SendOperationsSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::StreamingService<super::SendOperationsStreamRequest>
+                    for SendOperationsSvc<T> {
+                        type Response = super::SendOperationsStreamResponse;
+                        type ResponseStream = T::SendOperationsStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::SendOperationsStreamRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).send_operations(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SendOperationsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/massa.api.v1.Grpc/TransactionsThroughput" => {
+                    #[allow(non_camel_case_types)]
+                    struct TransactionsThroughputSvc<T: Grpc>(pub Arc<T>);
+                    impl<
+                        T: Grpc,
+                    > tonic::server::StreamingService<
+                        super::TransactionsThroughputStreamRequest,
+                    > for TransactionsThroughputSvc<T> {
+                        type Response = super::GetTransactionsThroughputResponse;
+                        type ResponseStream = T::TransactionsThroughputStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::TransactionsThroughputStreamRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).transactions_throughput(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = TransactionsThroughputSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
