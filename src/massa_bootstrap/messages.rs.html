@@ -836,39 +836,6 @@
 <a href="#836" id="836">836</a>
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -896,13 +863,11 @@
 <span class="kw">use </span>massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 <span class="kw">use </span>massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer, InitialState, InitialStateDeserializer,
-    InitialStateSerializer,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer,
 };
 <span class="kw">use </span>massa_serialization::{
-    BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
-    SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 <span class="kw">use </span>nom::error::context;
@@ -954,8 +919,6 @@
         </span>consensus_part: BootstrapableGraph,
         <span class="doccomment">/// Outdated block ids in the current consensus graph bootstrap
         </span>consensus_outdated_ids: PreHashSet&lt;BlockId&gt;,
-        <span class="doccomment">/// Initial state for the pos look back before genesis
-        </span>initial_state: <span class="prelude-ty">Option</span>&lt;InitialState&gt;,
     },
     <span class="doccomment">/// Message sent when the final state and consensus bootstrap are finished
     </span>BootstrapFinished,
@@ -995,7 +958,6 @@
     opt_pos_cycle_serializer: OptionSerializer&lt;CycleInfo, CycleInfoSerializer&gt;,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
-    opt_initial_state_serializer: OptionSerializer&lt;InitialState, InitialStateSerializer&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>BootstrapServerMessageSerializer {
@@ -1022,7 +984,6 @@
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
-            opt_initial_state_serializer: OptionSerializer::new(InitialStateSerializer::new()),
         }
     }
 }
@@ -1074,7 +1035,6 @@
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
-                initial_state,
             } =&gt; {
                 <span class="comment">// message type
                 </span><span class="self">self</span>.u32_serializer
@@ -1109,9 +1069,6 @@
                 <span class="comment">// consensus outdated ids
                 </span><span class="self">self</span>.block_id_set_serializer
                     .serialize(consensus_outdated_ids, buffer)<span class="question-mark">?</span>;
-                <span class="comment">// initial state
-                </span><span class="self">self</span>.opt_initial_state_serializer
-                    .serialize(initial_state, buffer)<span class="question-mark">?</span>;
             }
             BootstrapServerMessage::BootstrapFinished =&gt; {
                 <span class="self">self</span>.u32_serializer
@@ -1154,7 +1111,6 @@
     opt_pos_cycle_deserializer: OptionDeserializer&lt;CycleInfo, CycleInfoDeserializer&gt;,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
-    opt_initial_state_deserializer: OptionDeserializer&lt;InitialState, InitialStateDeserializer&gt;,
 }
 
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
@@ -1226,9 +1182,6 @@
                 args.max_executed_ops_length,
                 args.max_operations_per_block <span class="kw">as </span>u64,
             ),
-            opt_initial_state_deserializer: OptionDeserializer::new(InitialStateDeserializer::new(
-                args.max_rolls_length,
-            )),
         }
     }
 }
@@ -1349,9 +1302,6 @@
                     context(<span class="string">&quot;Failed consensus_outdated_ids deserialization&quot;</span>, |input| {
                         <span class="self">self</span>.block_id_set_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed initial state deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.opt_initial_state_deserializer.deserialize(input)
-                    }),
                 ))
                 .map(
                     |(
@@ -1364,7 +1314,6 @@
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
-                        initial_state,
                     )| {
                         BootstrapServerMessage::BootstrapPart {
                             slot,
@@ -1376,7 +1325,6 @@
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
-                            initial_state,
                         }
                     },
                 )
@@ -1423,8 +1371,6 @@
         </span>last_ops_step: StreamingStep&lt;Slot&gt;,
         <span class="doccomment">/// Last received consensus block slot
         </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
-        <span class="doccomment">/// Should be true only for the first part, false later
-        </span>send_initial_state: bool,
     },
     <span class="doccomment">/// Bootstrap error
     </span>BootstrapError {
@@ -1456,7 +1402,6 @@
         PreHashSet&lt;BlockId&gt;,
         PreHashSetSerializer&lt;BlockId, BlockIdSerializer&gt;,
     &gt;,
-    bool_serializer: BoolSerializer,
 }
 
 <span class="kw">impl </span>BootstrapClientMessageSerializer {
@@ -1472,7 +1417,6 @@
             block_ids_step_serializer: StreamingStepSerializer::new(PreHashSetSerializer::new(
                 BlockIdSerializer::new(),
             )),
-            bool_serializer: BoolSerializer::new(),
         }
     }
 }
@@ -1515,7 +1459,6 @@
                 last_credits_step,
                 last_ops_step,
                 last_consensus_step,
-                send_initial_state,
             } =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageClientTypeId::AskFinalStatePart), buffer)<span class="question-mark">?</span>;
@@ -1532,7 +1475,6 @@
                     <span class="self">self</span>.slot_step_serializer.serialize(last_ops_step, buffer)<span class="question-mark">?</span>;
                     <span class="self">self</span>.block_ids_step_serializer
                         .serialize(last_consensus_step, buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.bool_serializer.serialize(send_initial_state, buffer)<span class="question-mark">?</span>;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } =&gt; {
@@ -1568,7 +1510,6 @@
         PreHashSet&lt;BlockId&gt;,
         PreHashSetDeserializer&lt;BlockId, BlockIdDeserializer&gt;,
     &gt;,
-    bool_deserializer: BoolDeserializer,
 }
 
 <span class="kw">impl </span>BootstrapClientMessageDeserializer {
@@ -1607,7 +1548,6 @@
                     Included(max_consensus_block_ids),
                 ),
             ),
-            bool_deserializer: BoolDeserializer::new(),
         }
     }
 }
@@ -1666,7 +1606,6 @@
                                 last_credits_step: StreamingStep::Started,
                                 last_ops_step: StreamingStep::Started,
                                 last_consensus_step: StreamingStep::Started,
-                                send_initial_state: <span class="bool-val">true</span>,
                             },
                         ))
                     } <span class="kw">else </span>{
@@ -1692,9 +1631,6 @@
                             context(<span class="string">&quot;Failed last_consensus_step deserialization&quot;</span>, |input| {
                                 <span class="self">self</span>.block_ids_step_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Failed send_initial_state deserialization&quot;</span>, |input| {
-                                <span class="self">self</span>.bool_deserializer.deserialize(input)
-                            }),
                         ))
                         .map(
                             |(
@@ -1705,7 +1641,6 @@
                                 last_credits_step,
                                 last_ops_step,
                                 last_consensus_step,
-                                send_initial_state,
                             )| {
                                 BootstrapClientMessage::AskBootstrapPart {
                                     last_slot: <span class="prelude-val">Some</span>(last_slot),
@@ -1715,7 +1650,6 @@
                                     last_credits_step,
                                     last_ops_step,
                                     last_consensus_step,
-                                    send_initial_state,
                                 }
                             },
                         )
