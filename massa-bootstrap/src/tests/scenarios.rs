@@ -221,6 +221,8 @@ async fn test_bootstrap_server() {
     });
 
     // intercept peers being asked
+    // TODO: This would ideally be mocked such that the bootstrap server takes an impl of the network controller.
+    // and the impl is mocked such that it will just return the sent peers
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =

@@ -823,6 +823,8 @@ async fn manage_bootstrap<D: Duplex>(
                         .send_msg(
                             write_timeout,
                             BootstrapServerMessage::BootstrapPeers {
+                                // TODO: pass in an impl that can be mocked so that this will be hardcoded
+                                // where the mock is defined
                                 peers: network_command_sender.get_bootstrap_peers().await?,
                             },
                         )
