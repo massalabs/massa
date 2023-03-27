@@ -10,18 +10,18 @@ option java_package = "com.massa.api.v1";
 option objc_class_prefix = "SLOT";
 option php_namespace = "Massa\\Api\\V1";
 
-// message struct
+// When an address is drawn to create an endorsement it is selected for a specific index
 message IndexedSlot {
-    // fixed64 field
-    fixed64 index = 1;
-    // object field
-    Slot slot = 2;
+    // slot
+    Slot slot = 1;
+    // endorsement index in the slot
+    fixed64 index = 2;
 }
 
-// message struct
+// a point in time where a block is expected
 message Slot {
-    // fixed64 field
+    // period
     fixed64 period = 1;
-    // fixed32 field
+    // thread
     fixed32 thread = 2;
 }

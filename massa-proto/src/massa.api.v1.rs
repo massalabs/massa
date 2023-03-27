@@ -32,25 +32,25 @@ pub struct SecureSharePayload {
     #[prost(bytes = "vec", tag = "3")]
     pub serialized_content: ::prost::alloc::vec::Vec<u8>,
 }
-/// message struct
+/// When an address is drawn to create an endorsement it is selected for a specific index
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexedSlot {
-    /// fixed64 field
-    #[prost(fixed64, tag = "1")]
-    pub index: u64,
-    /// object field
-    #[prost(message, optional, tag = "2")]
+    /// slot
+    #[prost(message, optional, tag = "1")]
     pub slot: ::core::option::Option<Slot>,
+    /// endorsement index in the slot
+    #[prost(fixed64, tag = "2")]
+    pub index: u64,
 }
-/// message struct
+/// a point in time where a block is expected
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Slot {
-    /// fixed64 field
+    /// period
     #[prost(fixed64, tag = "1")]
     pub period: u64,
-    /// fixed32 field
+    /// thread
     #[prost(fixed32, tag = "2")]
     pub thread: u32,
 }

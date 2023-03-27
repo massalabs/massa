@@ -635,7 +635,7 @@ async fn launch(
         {
             match result {
                 Ok(stop) => {
-                    info!("gRPC server listening on: {}", grpc_config.bind);
+                    info!("API|gRPC| listening on: {}", grpc_config.bind);
                     Some(stop)
                 }
                 Err(e) => {
@@ -663,7 +663,7 @@ async fn launch(
         .await
         .expect("failed to start PRIVATE API");
     info!(
-        "PRIVATE JsonRPC server listening on: {}",
+        "API|PRIVATE JsonRPC| listening on: {}",
         api_config.bind_private
     );
 
@@ -686,7 +686,7 @@ async fn launch(
         .await
         .expect("failed to start PUBLIC API");
     info!(
-        "PUBLIC JsonRPC server listening on: {}",
+        "API|PUBLIC JsonRPC| listening on: {}",
         api_config.bind_public
     );
 
