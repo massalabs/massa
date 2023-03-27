@@ -8,7 +8,7 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use crate::establisher::{BSConnector, BSEstablisher, BSListener};
+use crate::establisher::{BSConnector, BSListener};
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
@@ -114,11 +114,8 @@ pub struct MockEstablisher {
     connection_connector_tx: Sender<(TcpStream, SocketAddr, Arc<AtomicBool>)>,
 }
 
-impl BSEstablisher for MockEstablisher {
-    type Listener = MockListener;
-    type Connector = MockConnector;
-
-    fn get_listener(&mut self, _addr: &SocketAddr) -> io::Result<MockListener> {
+impl MockEstablisher {
+    pub fn get_listener(&mut self, _addr: &SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self
                 .connection_listener_rx
@@ -127,12 +124,12 @@ impl BSEstablisher for MockEstablisher {
         })
     }
 
-    fn get_connector(&mut self, _timeout_duration: MassaTime) -> std::io::Result<MockConnector> {
+    pub fn get_connector(&mut self) -> MockConnector {
         // create connector stream
 
-        Ok(MockConnector {
+        MockConnector {
             connection_connector_tx: self.connection_connector_tx.clone(),
-        })
+        }
     }
 }
 

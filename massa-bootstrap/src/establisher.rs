@@ -24,18 +24,6 @@ pub trait BSConnector {
     fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream>;
 }
 
-/// Specifies a common interface that can be used by standard, or mockers
-pub trait BSEstablisher {
-    /// For non-mock situations is a plain wrapper around a TcpListener
-    type Listener: BSListener;
-    /// For non-mock situations is a plain wrapper around an interface that provides a TcpStream
-    type Connector: BSConnector;
-    /// Generates an instance of the assonciated type
-    fn get_listener(&mut self, addr: &SocketAddr) -> io::Result<Self::Listener>;
-    /// Generates an instance of the assonciated type
-    fn get_connector(&mut self, timeout_duration: MassaTime) -> io::Result<Self::Connector>;
-}
-
 /// The listener we are using
 #[derive(Debug)]
 pub struct DefaultListener(TcpListener);
@@ -73,16 +61,11 @@ impl DefaultEstablisher {
     pub fn new() -> Self {
         DefaultEstablisher {}
     }
-}
-
-impl BSEstablisher for DefaultEstablisher {
-    type Connector = DefaultConnector;
-    type Listener = DefaultListener;
     /// Gets the associated listener
     ///
     /// # Argument
     /// * `addr`: `SocketAddr` we want to bind to.
-    fn get_listener(&mut self, addr: &SocketAddr) -> io::Result<DefaultListener> {
+    pub fn get_listener(&mut self, addr: &SocketAddr) -> io::Result<DefaultListener> {
         // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
         // This is needed to get the same behavior on all OS
         // However, if IPv6 is disabled system-wide, you may need to bind to an IPv4 address instead.
@@ -107,7 +90,7 @@ impl BSEstablisher for DefaultEstablisher {
     ///
     /// # Argument
     /// * `timeout_duration`: timeout duration in milliseconds
-    fn get_connector(&mut self, timeout_duration: MassaTime) -> io::Result<DefaultConnector> {
+    pub fn get_connector(&mut self, timeout_duration: MassaTime) -> io::Result<DefaultConnector> {
         Ok(DefaultConnector(timeout_duration))
     }
 }

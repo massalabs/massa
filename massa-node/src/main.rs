@@ -11,9 +11,7 @@ use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
-use massa_bootstrap::{
-    get_state, start_bootstrap_server, BSEstablisher, BootstrapConfig, BootstrapManager,
-};
+use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
@@ -239,7 +237,7 @@ async fn launch(
         res = get_state(
             &bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::DefaultEstablisher::default(),
+            massa_bootstrap::DefaultEstablisher::default().get_connector(bootstrap_config.connect_timeout).unwrap(),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,

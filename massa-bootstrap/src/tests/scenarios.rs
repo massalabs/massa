@@ -7,16 +7,13 @@ use super::{
         get_random_ledger_changes, wait_network_command,
     },
 };
+use crate::tests::tools::{
+    get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
+};
 use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
-};
-use crate::{
-    tests::tools::{
-        get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
-    },
-    BSEstablisher,
 };
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
@@ -172,12 +169,12 @@ async fn test_bootstrap_server() {
 
     dbg!("test: launching get state");
     // launch the get_state process
-    let (remote_establisher, mut remote_interface) = mock_establisher::new();
+    let (mut remote_establisher, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_config,
             final_state_client_clone,
-            remote_establisher,
+            remote_establisher.get_connector(),
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,

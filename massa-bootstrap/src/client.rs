@@ -17,7 +17,7 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, BSEstablisher, Duplex},
+    establisher::{BSConnector, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -372,15 +372,11 @@ async fn send_client_message<D: Duplex>(
 }
 
 fn connect_to_server(
-    establisher: &mut impl BSEstablisher,
+    connector: &mut impl BSConnector,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder<tokio::net::TcpStream>, Box<BootstrapError>> {
-    // connect
-    let mut connector = establisher
-        .get_connector(bootstrap_config.connect_timeout)
-        .map_err(|e| Box::new(e.into()))?;
     let socket = connector.connect(*addr).map_err(|e| Box::new(e.into()))?;
     socket.set_nonblocking(true).unwrap();
     Ok(BootstrapClientBinder::new(
@@ -422,7 +418,7 @@ fn filter_bootstrap_list(
 pub async fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
-    mut establisher: impl BSEstablisher,
+    mut connector: impl BSConnector,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
@@ -490,7 +486,7 @@ pub async fn get_state(
             }
             info!("Start bootstrapping from {}", addr);
             match connect_to_server(
-                &mut establisher,
+                &mut connector,
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
