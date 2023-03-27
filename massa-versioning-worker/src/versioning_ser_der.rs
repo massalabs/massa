@@ -11,8 +11,8 @@ use nom::{
 };
 
 use crate::versioning::{
-    Advance, ComponentState, ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStoreRaw,
-    Started,
+    Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo, MipState,
+    MipStoreRaw, Started,
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -193,10 +193,10 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
 // ComponentState
 
 /// Serializer for `ComponentState`
-#[derive(Clone)]
 pub struct ComponentStateSerializer {
     u32_serializer: U32VarIntSerializer,
     amount_serializer: AmountSerializer,
+    time_serializer: MassaTimeSerializer,
 }
 
 impl ComponentStateSerializer {
@@ -205,6 +205,7 @@ impl ComponentStateSerializer {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             amount_serializer: AmountSerializer::new(),
+            time_serializer: MassaTimeSerializer::new(),
         }
     }
 }
@@ -221,19 +222,21 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         value: &ComponentState,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        let (state, threshold_): (u32, Option<Amount>) = match value {
-            ComponentState::Error => (u32::from(ComponentStateTypeId::Error), None),
-            ComponentState::Defined(_) => (u32::from(ComponentStateTypeId::Defined), None),
+        match value {
             ComponentState::Started(Started { threshold }) => {
-                (u32::from(ComponentStateTypeId::Started), Some(*threshold))
+                let state_id = u32::from(ComponentStateTypeId::from(value));
+                self.u32_serializer.serialize(&state_id, buffer)?;
+                self.amount_serializer.serialize(&threshold, buffer)?;
             }
-            ComponentState::LockedIn(_) => (u32::from(ComponentStateTypeId::LockedIn), None),
-            ComponentState::Active(_) => (u32::from(ComponentStateTypeId::Active), None),
-            ComponentState::Failed(_) => (u32::from(ComponentStateTypeId::Failed), None),
-        };
-        self.u32_serializer.serialize(&state, buffer)?;
-        if let Some(threshold) = threshold_ {
-            self.amount_serializer.serialize(&threshold, buffer)?;
+            ComponentState::LockedIn(LockedIn { at }) => {
+                let state_id = u32::from(ComponentStateTypeId::from(value));
+                self.u32_serializer.serialize(&state_id, buffer)?;
+                self.time_serializer.serialize(&at, buffer)?;
+            }
+            _ => {
+                let state_id = u32::from(ComponentStateTypeId::from(value));
+                self.u32_serializer.serialize(&state_id, buffer)?;
+            }
         }
         Ok(())
     }
@@ -303,7 +306,7 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
                 })
                 .parse(rem)?;
                 (rem2, ComponentState::locked_in(at))
-            } // (rem, ComponentState::locked_in()),
+            }
             ComponentStateTypeId::Active => (rem, ComponentState::active()),
             ComponentStateTypeId::Failed => (rem, ComponentState::failed()),
             _ => (rem, ComponentState::Error),
@@ -341,11 +344,18 @@ impl Default for AdvanceSerializer {
 
 impl Serializer<Advance> for AdvanceSerializer {
     fn serialize(&self, value: &Advance, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        // start
         self.time_serializer
             .serialize(&value.start_timestamp, buffer)?;
+        // timeout
         self.time_serializer.serialize(&value.timeout, buffer)?;
+        // threshold
         self.amount_serializer.serialize(&value.threshold, buffer)?;
+        // now
         self.time_serializer.serialize(&value.now, buffer)?;
+        // activation delay
+        self.time_serializer
+            .serialize(&value.activation_delay, buffer)?;
         Ok(())
     }
 }
@@ -454,6 +464,7 @@ impl Serializer<MipState> for MipStateSerializer {
             })?,
             buffer,
         )?;
+        // history
         for (advance, state_id) in value.history.iter() {
             self.advance_serializer.serialize(advance, buffer)?;
             self.u32_serializer
@@ -502,16 +513,15 @@ impl Deserializer<MipState> for MipStateDeserializer {
             self.state_deserializer.deserialize(input)
         })
         .parse(buffer)?;
-
         // Der history
         let (rem2, history) = context(
-            "Failed Vec<OperationId> deserialization",
+            "Failed history deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u32_deserializer.deserialize(input)
                 }),
                 context(
-                    "Failed deserialization",
+                    "Failed history items deserialization",
                     tuple((
                         context("Failed advance deserialization", |input| {
                             self.advance_deserializer.deserialize(input)
@@ -780,9 +790,9 @@ mod test {
 
         let state_2 = advance_state_until(ComponentState::locked_in(MassaTime::from(3)), &mi_1);
         state_ser.serialize(&state_2, &mut buf).unwrap();
-        let (rem, state_der_res) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+        let (rem2, state_der_res) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
 
-        assert!(rem.is_empty());
+        assert!(rem2.is_empty());
         assert_eq!(state_2, state_der_res);
     }
 

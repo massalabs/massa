@@ -96,7 +96,7 @@ machine!(
         /// Past start, can only go to LockedIn after the threshold is above a given value
         Started { pub(crate) threshold: Amount },
         /// Wait for some time before going to active (to let user the time to upgrade)
-        LockedIn { at: MassaTime },
+        LockedIn { pub(crate) at: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
         Active,
         /// Past the timeout, if LockedIn is not reach
