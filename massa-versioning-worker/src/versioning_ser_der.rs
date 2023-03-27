@@ -226,12 +226,12 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
             ComponentState::Started(Started { threshold }) => {
                 let state_id = u32::from(ComponentStateTypeId::from(value));
                 self.u32_serializer.serialize(&state_id, buffer)?;
-                self.amount_serializer.serialize(&threshold, buffer)?;
+                self.amount_serializer.serialize(threshold, buffer)?;
             }
             ComponentState::LockedIn(LockedIn { at }) => {
                 let state_id = u32::from(ComponentStateTypeId::from(value));
                 self.u32_serializer.serialize(&state_id, buffer)?;
-                self.time_serializer.serialize(&at, buffer)?;
+                self.time_serializer.serialize(at, buffer)?;
             }
             _ => {
                 let state_id = u32::from(ComponentStateTypeId::from(value));
