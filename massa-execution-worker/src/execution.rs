@@ -567,11 +567,21 @@ impl ExecutionState {
             }];
         };
 
-        // run the VM on the bytecode contained in the operation
+        // load the tmp module
         let module = self
             .module_cache
             .read()
             .load_tmp_module(bytecode, *max_gas)?;
+        // debit tmp module compilation cost
+        let tmp_compilation_cost =
+            Amount::from_mantissa_scale(self.config.gas_costs.sp_compilation_cost, 0);
+        context_guard!(self).transfer_coins(
+            Some(sender_addr),
+            None,
+            tmp_compilation_cost,
+            false,
+        )?;
+        // run the VM
         match massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
@@ -664,7 +674,7 @@ impl ExecutionState {
             bytecode = context.get_bytecode(&target_addr).unwrap_or_default().0;
         }
 
-        // Execute bytecode
+        // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
@@ -756,7 +766,7 @@ impl ExecutionState {
             bytecode.0
         };
 
-        // Execute bytecode
+        // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         let module = self
             .module_cache
@@ -1133,14 +1143,14 @@ impl ExecutionState {
         // run the interpreter according to the target type
         let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
-                // set the execution context for execution
+                // set the execution context
                 *context_guard!(self) = execution_context;
-
-                // run the bytecode's main function
+                // load the tmp module
                 let module = self
                     .module_cache
                     .read()
                     .load_tmp_module(&bytecode, req.max_gas)?;
+                // run the VM
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,
@@ -1168,7 +1178,7 @@ impl ExecutionState {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
-                // Execute bytecode
+                // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
                 let module = self
                     .module_cache
@@ -1184,7 +1194,7 @@ impl ExecutionState {
                 )
                 .map_err(|err| {
                     ExecutionError::RuntimeError(format!(
-                        "module execution error in execute_readonly_request BytecodeExecution: {}",
+                        "module execution error in execute_readonly_request FunctionCall: {}",
                         err,
                     ))
                 })?;
