@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"massa_proto":[["impl&lt;T: <a class=\"trait\" href=\"massa_proto/massa/api/v1/grpc_server/trait.Grpc.html\" title=\"trait massa_proto::massa::api::v1::grpc_server::Grpc\">Grpc</a>&gt; <a class=\"trait\" href=\"https://docs.rs/tonic/0.8.3/tonic/server/trait.NamedService.html\" title=\"trait tonic::server::NamedService\">NamedService</a> for <a class=\"struct\" href=\"massa_proto/massa/api/v1/grpc_server/struct.GrpcServer.html\" title=\"struct massa_proto::massa::api::v1::grpc_server::GrpcServer\">GrpcServer</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
