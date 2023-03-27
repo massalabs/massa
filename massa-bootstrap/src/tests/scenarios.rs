@@ -152,13 +152,13 @@ async fn test_bootstrap_server() {
     let final_state_server_clone = final_state_server.clone();
 
     // start bootstrap server
-    let (mut bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
+    let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server::<TcpStream>(
         consensus_controller,
         NetworkCommandSender(network_cmd_tx),
         final_state_server.clone(),
         bootstrap_config.clone(),
-        bootstrap_establisher
+        mock_bs_listener
             .get_listener(&bootstrap_config.listen_addr.unwrap())
             .unwrap(),
         keypair.clone(),
@@ -169,12 +169,12 @@ async fn test_bootstrap_server() {
 
     dbg!("test: launching get state");
     // launch the get_state process
-    let (mut remote_establisher, mut remote_interface) = mock_establisher::new();
+    let (mut mock_remote_connector, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_config,
             final_state_client_clone,
-            remote_establisher.get_connector(),
+            mock_remote_connector.get_connector(),
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
@@ -185,7 +185,7 @@ async fn test_bootstrap_server() {
     dbg!("test: get state launched, waiting on connection");
 
     // accept connection attempt from remote
-    let remote_rw = std::thread::spawn(move || {
+    let remote_bridge = std::thread::spawn(move || {
         dbg!("conn wait thread");
         let (remote_rw, conn_addr, waker) = remote_interface
             .wait_connection_attempt_from_controller()
@@ -202,7 +202,7 @@ async fn test_bootstrap_server() {
 
     // connect to bootstrap
     let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked
-    let bootstrap_rw = tokio::time::timeout(
+    let bootstrap_bridge = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         bootstrap_interface.connect_to_controller(&remote_addr),
     )
@@ -211,13 +211,13 @@ async fn test_bootstrap_server() {
     .expect("could not connect to bootstrap");
 
     // launch bridge
-    bootstrap_rw.set_nonblocking(true).unwrap();
-    let bootstrap_rw = TcpStream::from_std(bootstrap_rw).unwrap();
+    bootstrap_bridge.set_nonblocking(true).unwrap();
+    let bootstrap_bridge = TcpStream::from_std(bootstrap_bridge).unwrap();
     let bridge = tokio::spawn(async move {
-        let remote_rw = remote_rw.join().unwrap();
-        remote_rw.set_nonblocking(true).unwrap();
-        let remote_rw = TcpStream::from_std(remote_rw).unwrap();
-        bridge_mock_streams(remote_rw, bootstrap_rw).await;
+        let remote_bridge = remote_bridge.join().unwrap();
+        remote_bridge.set_nonblocking(true).unwrap();
+        let remote_bridge = TcpStream::from_std(remote_bridge).unwrap();
+        bridge_mock_streams(remote_bridge, bootstrap_bridge).await;
     });
 
     // intercept peers being asked
