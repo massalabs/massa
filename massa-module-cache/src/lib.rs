@@ -1,4 +1,6 @@
-//! CACHE TODO: module description
+//! Module caching saves compiled `massa-sc-runtime` modules for later execution
+//!
+//! Its purpose is to improve `massa-execution-worker` SC execution performances
 
 #![feature(let_chains)]
 

@@ -32,6 +32,7 @@ pub struct ModuleCache {
 }
 
 impl ModuleCache {
+    /// Creates a new `ModuleCache`
     pub fn new(cfg: ModuleCacheConfig) -> Self {
         Self {
             lru_cache: LRUCache::new(cfg.lru_cache_size),
