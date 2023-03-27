@@ -892,6 +892,61 @@
 <a href="#892" id="892">892</a>
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -901,11 +956,9 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::module_cache::ModuleCache;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+</span><span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
-<span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId};
 <span class="kw">use </span>massa_executed_ops::ExecutedOpsChanges;
@@ -916,6 +969,8 @@
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
+<span class="kw">use </span>massa_models::prehash::PreHashMap;
+<span class="kw">use </span>massa_models::vesting_range::VestingRange;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
@@ -924,6 +979,7 @@
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
 };
+<span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::SeedableRng;
@@ -1035,8 +1091,8 @@
     <span class="comment">// cache of compiled runtime modules
     </span><span class="kw">pub </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
 
-    <span class="comment">// Vesting Manager
-    </span><span class="kw">pub </span>vesting_manager: Arc&lt;VestingManager&gt;,
+    <span class="comment">// Map of vesting addresses
+    </span><span class="kw">pub </span>vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -1055,7 +1111,7 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
+        vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -1089,7 +1145,7 @@
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            vesting_manager,
+            vesting_registry,
         }
     }
 
@@ -1164,7 +1220,7 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
+        vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -1193,7 +1249,7 @@
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
+                vesting_registry,
             )
         }
     }
@@ -1235,7 +1291,7 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
+        vesting_registry: Arc&lt;PreHashMap&lt;Address, Vec&lt;VestingRange&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -1262,7 +1318,7 @@
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
+                vesting_registry,
             )
         }
     }
@@ -1389,16 +1445,6 @@
         <span class="self">self</span>.speculative_ledger.get_balance(address)
     }
 
-    <span class="doccomment">/// Get deferred credits of an address starting from a given slot
-    </span><span class="kw">pub fn </span>get_address_deferred_credits(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        address: <span class="kw-2">&amp;</span>Address,
-        min_slot: Slot,
-    ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
-        <span class="self">self</span>.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
-    }
-
     <span class="doccomment">/// Sets a datastore entry for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     /// The datastore entry is created if it is absent for that address.
@@ -1518,8 +1564,47 @@
             }
 
             <span class="comment">// control vesting min_balance for sender address
-            </span><span class="self">self</span>.vesting_manager
-                .check_vesting_transfer_coins(<span class="self">self</span>, from_addr, amount)<span class="question-mark">?</span>;
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_range) = <span class="self">self</span>.find_vesting_range(from_addr, <span class="kw-2">&amp;</span><span class="self">self</span>.slot) &amp;&amp; (amount != Amount::zero()){
+                <span class="kw">let </span>new_balance = <span class="self">self
+                    </span>.get_balance(from_addr)
+                    .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, from_addr)))<span class="question-mark">?
+                    </span>.checked_sub(amount)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed check transfer {} from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
+                            </span>.get_balance(from_addr).unwrap_or_default()))
+                    })<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>vec = <span class="self">self</span>.get_address_cycle_infos(from_addr, <span class="self">self</span>.config.periods_per_cycle);
+                <span class="kw">let </span><span class="prelude-val">Some</span>(exec_info) = vec.last() <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(<span class="string">&quot;can not get address info cycle for {}&quot;</span>, from_addr)));
+                };
+
+                <span class="kw">let </span>rolls_value = exec_info
+                    .active_rolls
+                    .map(|rolls| <span class="self">self</span>.config.roll_price.saturating_mul_u64(rolls))
+                    .unwrap_or(Amount::zero());
+
+                <span class="kw">let </span>deferred_map = <span class="self">self
+                    </span>.speculative_roll_state
+                    .get_address_deferred_credits(from_addr, <span class="self">self</span>.slot);
+                <span class="kw">let </span>deferred_credits = <span class="kw">if </span>deferred_map.is_empty() {
+                    Amount::zero()
+                } <span class="kw">else </span>{
+                    Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
+                };
+
+                <span class="comment">// min_balance = (rolls * roll_price) + balance + deferred_credits
+                </span><span class="kw">let </span>min_balance = new_balance
+                    .saturating_add(rolls_value)
+                    .saturating_add(deferred_credits);
+
+                <span class="kw">if </span>min_balance &lt; vesting_range.min_balance {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(
+                        <span class="string">&quot;vesting_min_balance={} with value min_balance={} &quot;</span>,
+                        vesting_range.min_balance, min_balance
+                    )));
+                }
+            }
         }
 
         <span class="comment">// do the transfer
@@ -1635,13 +1720,24 @@
         <span class="comment">// execute the deferred credits coming from roll sells
         </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
-        <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
+        <span class="comment">// take the ledger changes first as they are needed for async messages and cache
         </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
-        <span class="kw">let </span>deleted_messages = <span class="self">self
+
+        <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
+        </span><span class="kw">let </span>deleted_messages = <span class="self">self
             </span>.speculative_async_pool
             .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>ledger_changes);
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
             <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg);
+        }
+
+        <span class="comment">// update module cache
+        </span><span class="kw">let </span>bc_updates = ledger_changes.get_bytecode_updates();
+        {
+            <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
+            <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
+                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>);
+            }
         }
 
         <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
@@ -1699,6 +1795,9 @@
                 can&#39;t set the bytecode of address {} because this is not a smart contract address&quot;</span>,
                                                             address)));
         }
+
+        <span class="comment">// CACHE TODO: pass only this to speculative_ledger
+        </span><span class="kw">let </span>_input = <span class="self">self</span>.config.gas_costs.cl_compilation_cost;
 
         <span class="comment">// set data entry
         </span><span class="self">self</span>.speculative_ledger
@@ -1784,6 +1883,17 @@
             .expect(<span class="string">&quot;unexpected slot overflow in context.get_addresses_deferred_credits&quot;</span>);
         <span class="self">self</span>.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
+    }
+
+    <span class="doccomment">/// find a vesting range in the registry, otherwise return None
+    </span><span class="kw">pub fn </span>find_vesting_range(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, current_slot: <span class="kw-2">&amp;</span>Slot) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>VestingRange&gt; {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(vector) = <span class="self">self</span>.vesting_registry.get(addr) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">None</span>;
+        };
+
+        vector.iter().find(|vesting| {
+            vesting.start_slot &lt;= <span class="kw-2">*</span>current_slot &amp;&amp; vesting.end_slot &gt;= <span class="kw-2">*</span>current_slot
+        })
     }
 }
 </code></pre></div>
