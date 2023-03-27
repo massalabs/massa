@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::mem;
 use std::ops::Bound::{Excluded, Included};
 
-use nom::error::{context, ParseError, ContextError};
+use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
-use nom::{Parser, IResult};
+use nom::{IResult, Parser};
 
 use crate::versioning::{
     Advance, ComponentState, ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStoreRaw,
