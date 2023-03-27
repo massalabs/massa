@@ -644,7 +644,7 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
         context(
             "Failed MipStoreRaw der",
             length_count(
-                context("Failed len der", |input| {
+                context("Failed entry count der", |input| {
                     let (rem, count) = self.u32_deserializer.deserialize(input)?;
                     IResult::Ok((rem, count))
                 }),
