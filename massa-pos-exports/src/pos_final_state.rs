@@ -11,7 +11,7 @@ use massa_serialization::{Serializer, U64VarIntSerializer};
 use std::collections::VecDeque;
 use std::{
     collections::BTreeMap,
-    ops::Bound::{Excluded, Unbounded},
+    ops::Bound::{Excluded, Included, Unbounded},
     path::PathBuf,
 };
 use tracing::debug;
@@ -110,7 +110,6 @@ impl PoSFinalState {
         from_slot: Slot,
         end_slot: Slot,
     ) -> Result<(), PosError> {
-        let mut deferred_credits = self.deferred_credits.clone();
 
         let mut updated_deferred_credits = DeferredCredits::default();
         let next_slot = end_slot
@@ -119,17 +118,11 @@ impl PoSFinalState {
                 PosError::OverflowError(String::from("Cannot get next slot after genesis"))
             })?;
 
-        for (slot, map) in deferred_credits.credits.clone() {
-            // Deferred credit was already credited
-            if slot <= from_slot {
-                continue;
-            }
-            // Deferred credit is not due yet
-            if slot > end_slot {
-                break;
-            }
+        let credits_clone = deferred_credits.credits.clone();
+        let credits_iter = credits_clone.range((Excluded(from_slot), Included(end_slot)));
 
-            for (addr, amount) in map.into_iter() {
+        for (&slot, map) in credits_iter {
+            for (&addr, &amount) in map.into_iter() {
                 let prev_amount_at_next_slot = deferred_credits
                     .get_address_deferred_credit_for_slot(&addr, &next_slot)
                     .unwrap_or(Amount::zero());
