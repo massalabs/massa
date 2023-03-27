@@ -933,6 +933,18 @@
 <a href="#933" id="933">933</a>
 <a href="#934" id="934">934</a>
 <a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -942,8 +954,7 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::module_cache::ModuleCache;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+</span><span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
@@ -966,6 +977,7 @@
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
 };
+<span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::SeedableRng;
@@ -1107,6 +1119,7 @@
                 config.max_bytecode_size,
                 config.max_datastore_value_size,
                 config.storage_costs_constants,
+                config.gas_costs.cl_compilation_cost,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
@@ -1706,13 +1719,24 @@
         <span class="comment">// execute the deferred credits coming from roll sells
         </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
-        <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
+        <span class="comment">// take the ledger changes first as they are needed for async messages and cache
         </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
-        <span class="kw">let </span>deleted_messages = <span class="self">self
+
+        <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
+        </span><span class="kw">let </span>deleted_messages = <span class="self">self
             </span>.speculative_async_pool
             .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>ledger_changes);
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
             <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg);
+        }
+
+        <span class="comment">// update module cache
+        </span><span class="kw">let </span>bc_updates = ledger_changes.get_bytecode_updates();
+        {
+            <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
+            <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
+                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>);
+            }
         }
 
         <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
