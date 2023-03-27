@@ -516,8 +516,6 @@
 <a href="#516" id="516">516</a>
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -537,7 +535,7 @@
 <span class="kw">use crate</span>::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
-    establisher::{BSConnector, BSEstablisher},
+    establisher::{BSConnector, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
@@ -546,9 +544,9 @@
 <span class="doccomment">/// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-</span><span class="kw">async fn </span>stream_final_state_and_consensus(
+</span><span class="kw">async fn </span>stream_final_state_and_consensus&lt;D: Duplex&gt;(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
-    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
+    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder&lt;D&gt;,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
@@ -714,9 +712,9 @@
 
 <span class="doccomment">/// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-</span><span class="kw">async fn </span>bootstrap_from_server(
+</span><span class="kw">async fn </span>bootstrap_from_server&lt;D: Duplex&gt;(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
-    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
+    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder&lt;D&gt;,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
     our_version: Version,
@@ -872,9 +870,9 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async fn </span>send_client_message(
+<span class="kw">async fn </span>send_client_message&lt;D: Duplex&gt;(
     message_to_send: <span class="kw-2">&amp;</span>BootstrapClientMessage,
-    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
+    client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder&lt;D&gt;,
     write_timeout: Duration,
     read_timeout: Duration,
     error: <span class="kw-2">&amp;</span>str,
@@ -891,17 +889,17 @@
     }
 }
 
-<span class="kw">async fn </span>connect_to_server(
-    establisher: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSEstablisher,
+<span class="kw">fn </span>connect_to_server(
+    connector: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSConnector,
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
     pub_key: <span class="kw-2">&amp;</span>PublicKey,
-) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, BootstrapError&gt; {
-    <span class="comment">// connect
-    </span><span class="kw">let </span><span class="kw-2">mut </span>connector = establisher.get_connector(bootstrap_config.connect_timeout)<span class="question-mark">?</span>;
-    <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).<span class="kw">await</span><span class="question-mark">?</span>;
+) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder&lt;tokio::net::TcpStream&gt;, Box&lt;BootstrapError&gt;&gt; {
+    <span class="kw">let </span>socket = connector.connect(<span class="kw-2">*</span>addr).map_err(|e| Box::new(e.into()))<span class="question-mark">?</span>;
+    socket.set_nonblocking(<span class="bool-val">true</span>).unwrap();
     <span class="prelude-val">Ok</span>(BootstrapClientBinder::new(
-        socket,
+        <span class="comment">// this from_std will panic if this method doesn&#39;t exist within an async runtime...
+        </span>tokio::net::TcpStream::from_std(socket).unwrap(),
         <span class="kw-2">*</span>pub_key,
         bootstrap_config.into(),
     ))
@@ -938,7 +936,7 @@
 </span><span class="kw">pub async fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    <span class="kw-2">mut </span>establisher: <span class="kw">impl </span>BSEstablisher,
+    <span class="kw-2">mut </span>connector: <span class="kw">impl </span>BSConnector,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
@@ -1006,13 +1004,11 @@
             }
             <span class="macro">info!</span>(<span class="string">&quot;Start bootstrapping from {}&quot;</span>, addr);
             <span class="kw">match </span>connect_to_server(
-                <span class="kw-2">&amp;mut </span>establisher,
+                <span class="kw-2">&amp;mut </span>connector,
                 bootstrap_config,
                 addr,
                 <span class="kw-2">&amp;</span>node_id.get_public_key(),
-            )
-            .<span class="kw">await
-            </span>{
+            ) {
                 <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>client) =&gt; {
                     <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
                     .<span class="kw">await  </span><span class="comment">// cancellable
