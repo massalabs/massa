@@ -56,6 +56,9 @@ pub(crate) struct SpeculativeLedger {
 
     /// storage cost constants
     storage_costs_constants: StorageCostsConstants,
+
+    /// compilation cost for bytecode updates
+    cl_compilation_cost: u64,
 }
 
 impl SpeculativeLedger {
@@ -71,6 +74,7 @@ impl SpeculativeLedger {
         max_bytecode_size: u64,
         max_datastore_value_size: u64,
         storage_costs_constants: StorageCostsConstants,
+        cl_compilation_cost: u64,
     ) -> Self {
         SpeculativeLedger {
             final_state,
@@ -80,6 +84,7 @@ impl SpeculativeLedger {
             max_datastore_value_size,
             max_bytecode_size,
             storage_costs_constants,
+            cl_compilation_cost,
         }
     }
 
@@ -372,9 +377,11 @@ impl SpeculativeLedger {
                 })?;
             self.transfer_coins(Some(*caller_addr), None, bytecode_storage_cost)?;
         }
-        // CACHE TODO: add compilation cost here
-        // NOTE: only need to pay here as create_new_sc_address runs this function right after
-        // set the bytecode of that address
+
+        // debit compilation cost
+        let compil_amount = Amount::from_mantissa_scale(self.cl_compilation_cost, 0);
+        self.transfer_coins(Some(*caller_addr), None, compil_amount)?;
+
         self.added_changes.set_bytecode(*addr, bytecode);
 
         Ok(())

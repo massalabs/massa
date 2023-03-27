@@ -239,10 +239,7 @@ mod tests {
 
         cache.set_init_cost(hash, init_cost);
         let cached_module_v2 = cache.get(hash, limit, gas_costs.clone()).unwrap();
-        assert!(matches!(
-            cached_module_v2,
-            ModuleInfo::ModuleAndDelta(_)
-        ));
+        assert!(matches!(cached_module_v2, ModuleInfo::ModuleAndDelta(_)));
 
         cache.set_invalid(hash);
         let cached_module_v3 = cache.get(hash, limit, gas_costs).unwrap();

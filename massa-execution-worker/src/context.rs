@@ -172,6 +172,7 @@ impl ExecutionContext {
                 config.max_bytecode_size,
                 config.max_datastore_value_size,
                 config.storage_costs_constants,
+                config.gas_costs.cl_compilation_cost,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
@@ -846,9 +847,6 @@ impl ExecutionContext {
                 can't set the bytecode of address {} because this is not a smart contract address",
                                                             address)));
         }
-
-        // CACHE TODO: pass only this to speculative_ledger
-        let _input = self.config.gas_costs.cl_compilation_cost;
 
         // set data entry
         self.speculative_ledger
