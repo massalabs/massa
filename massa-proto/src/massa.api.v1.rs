@@ -609,12 +609,12 @@ pub struct GetNextBlockBestParentsResponse {
     pub id: ::prost::alloc::string::String,
     /// best parents
     #[prost(message, repeated, tag = "2")]
-    pub data: ::prost::alloc::vec::Vec<Parents>,
+    pub data: ::prost::alloc::vec::Vec<BestParentTuple>,
 }
 /// Best Parent Tuple
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Parents {
+pub struct BestParentTuple {
     /// string value
     #[prost(string, tag = "1")]
     pub block_id: ::prost::alloc::string::String,
