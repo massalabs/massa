@@ -372,6 +372,8 @@ impl SpeculativeLedger {
                 })?;
             self.transfer_coins(Some(*caller_addr), None, bytecode_storage_cost)?;
         }
+        // CACHE TODO: add compilation cost here
+        // NOTE: only need to pay here as create_new_sc_address runs this function right after
         // set the bytecode of that address
         self.added_changes.set_bytecode(*addr, bytecode);
 

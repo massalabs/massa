@@ -847,6 +847,9 @@ impl ExecutionContext {
                                                             address)));
         }
 
+        // CACHE TODO: pass only this to speculative_ledger
+        let _input = self.config.gas_costs.cl_compilation_cost;
+
         // set data entry
         self.speculative_ledger
             .set_bytecode(&self.get_current_address()?, address, bytecode)
