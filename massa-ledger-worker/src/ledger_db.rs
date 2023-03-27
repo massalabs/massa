@@ -46,6 +46,7 @@ const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 const SLOT_KEY: &[u8; 1] = b"s";
 const LEDGER_HASH_KEY: &[u8; 1] = b"h";
 const LEDGER_FINAL_STATE_KEY: &[u8; 2] = b"fs";
+const LEDGER_FINAL_STATE_HASH_KEY: &[u8; 3] = b"fsh";
 const LEDGER_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// Ledger sub entry enum
@@ -198,7 +199,12 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
-    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+    pub fn apply_changes(
+        &mut self,
+        changes: LedgerChanges,
+        slot: Slot,
+        final_state_data: Option<Vec<u8>>,
+    ) {
         // create the batch
         let mut batch = LedgerBatch::new(self.get_ledger_hash());
         // for all incoming changes
@@ -224,6 +230,14 @@ impl LedgerDB {
         }
         // set the associated slot in metadata
         self.set_slot(slot, &mut batch);
+
+        if let Some(final_state) = final_state_data {
+            let fs_handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
+            batch
+                .write_batch
+                .put_cf(fs_handle, LEDGER_FINAL_STATE_KEY, final_state);
+        }
+
         // write the batch
         self.write_batch(batch);
     }
@@ -419,27 +433,29 @@ impl LedgerDB {
             .expect("Error creating metadata cf");
     }
 
-    pub fn set_final_state(&mut self, data: &[u8]) -> Result<(), ModelsError> {
+    pub fn set_final_state_hash(&mut self, data: &[u8]) {
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
         let mut batch = WriteBatch::default();
-        batch.put_cf(handle, LEDGER_FINAL_STATE_KEY, data);
 
+        batch.put_cf(handle, LEDGER_FINAL_STATE_HASH_KEY, data);
         self.db.write(batch).expect(CRUD_ERROR);
-
-        Ok(())
     }
 
     pub fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
         let opt = ReadOptions::default();
+
+        let Ok(Some(final_state_data)) = self.db.get_cf_opt(handle, LEDGER_FINAL_STATE_KEY, &opt) else {
+            return Err(ModelsError::BufferError(String::from("Could not recover final_state_data")));
+        };
+        let Ok(Some(final_state_hash)) = self.db.get_cf_opt(handle, LEDGER_FINAL_STATE_HASH_KEY, &opt) else {
+            return Err(ModelsError::BufferError(String::from("Could not recover final_state_hash")));
+        };
+
         let mut final_state = Vec::new();
 
-        let db_iterator = self.db.iterator_cf_opt(handle, opt, IteratorMode::Start);
-
-        // Iterates over the whole database
-        for (_key, entry) in db_iterator.flatten() {
-            final_state.extend_from_slice(&entry);
-        }
+        final_state.extend_from_slice(&final_state_data);
+        final_state.extend_from_slice(&final_state_hash);
 
         Ok(final_state)
     }

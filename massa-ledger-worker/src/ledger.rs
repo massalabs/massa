@@ -54,8 +54,14 @@ impl FinalLedger {
 
 impl LedgerController for FinalLedger {
     /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
-        self.sorted_ledger.apply_changes(changes, slot);
+    fn apply_changes(
+        &mut self,
+        changes: LedgerChanges,
+        slot: Slot,
+        final_state_data: Option<Vec<u8>>,
+    ) {
+        self.sorted_ledger
+            .apply_changes(changes, slot, final_state_data);
     }
 
     /// Loads ledger from file
@@ -187,8 +193,8 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.reset();
     }
 
-    fn set_final_state(&mut self, data: Vec<u8>) -> Result<(), ModelsError> {
-        self.sorted_ledger.set_final_state(&data)
+    fn set_final_state_hash(&mut self, data: Vec<u8>) {
+        self.sorted_ledger.set_final_state_hash(&data)
     }
 
     fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {

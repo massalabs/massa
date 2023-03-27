@@ -346,19 +346,34 @@ impl FinalState {
         self.executed_ops
             .apply_changes(changes.executed_ops_changes.clone(), self.slot);
 
+        let mut final_state_data = None;
+
         if cfg!(feature = "create_snapshot") {
-            match self.dump_final_state(false) {
-                Ok(()) => {
-                    debug!("Dumped temporary final state");
-                }
-                Err(err) => {
-                    debug!("Error while trying to dump temporary final state: {}", err);
-                }
+            let mut final_state_buffer = Vec::new();
+
+            let final_state_raw_serializer = FinalStateRawSerializer::new();
+
+            let final_state_raw = FinalStateRaw {
+                async_pool_messages: self.async_pool.messages.clone(),
+                cycle_history: self.pos_state.cycle_history.clone(),
+                deferred_credits: self.pos_state.deferred_credits.clone(),
+                sorted_ops: self.executed_ops.sorted_ops.clone(),
+                latest_consistent_slot: self.slot,
+                final_state_hash_from_snapshot: self.final_state_hash,
+            };
+
+            if final_state_raw_serializer
+                .serialize(&final_state_raw, &mut final_state_buffer)
+                .is_err()
+            {
+                debug!("Error while trying to serialize final_state");
             }
+
+            final_state_data = Some(final_state_buffer)
         }
 
         self.ledger
-            .apply_changes(changes.ledger_changes.clone(), self.slot);
+            .apply_changes(changes.ledger_changes.clone(), self.slot, final_state_data);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
@@ -371,80 +386,25 @@ impl FinalState {
         // compute the final state hash
         self.compute_state_hash_at_slot(slot);
 
+        if cfg!(feature = "create_snapshot") {
+            let mut hash_buffer = Vec::new();
+
+            let hash_serializer = HashSerializer::new();
+
+            if hash_serializer
+                .serialize(&self.final_state_hash, &mut hash_buffer)
+                .is_err()
+            {
+                debug!("Error while trying to serialize final_state_hash");
+            }
+
+            self.ledger.set_final_state_hash(hash_buffer);
+        }
+
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, self.final_state_hash);
-
-        if cfg!(feature = "create_snapshot") {
-            match self.dump_final_state(true) {
-                Ok(()) => {
-                    debug!("Commited final state");
-                }
-                Err(err) => {
-                    debug!("Error while trying to commit final state: {}", err);
-                }
-            }
-        }
-    }
-
-    /// Serialize the final_state in the ledger.
-    ///
-    /// TODO: Better handle the commit bool. We should have:
-    /// - ledger(slot)
-    /// - temp_final_state(slot)
-    /// Before the ledger apply_change
-    /// - ledger(slot+1)
-    /// - final_state(slot+1)
-    /// After the ledger apply_change
-    ///
-    fn dump_final_state(&mut self, _commit: bool) -> Result<(), FinalStateError> {
-        let mut final_state_buffer = Vec::new();
-
-        let final_state_raw_serializer = FinalStateRawSerializer::new();
-
-        let final_state_raw = FinalStateRaw {
-            async_pool_messages: self.async_pool.messages.clone(),
-            cycle_history: self.pos_state.cycle_history.clone(),
-            deferred_credits: self.pos_state.deferred_credits.clone(),
-            sorted_ops: self.executed_ops.sorted_ops.clone(),
-            latest_consistent_slot: self.slot,
-            final_state_hash_from_snapshot: self.final_state_hash,
-        };
-
-        final_state_raw_serializer
-            .serialize(&final_state_raw, &mut final_state_buffer)
-            .map_err(|err| {
-                FinalStateError::SnapshotError(format!("Could not serialize async_pool: {}", err))
-            })?;
-
-        self.ledger
-            .set_final_state(final_state_buffer)
-            .map_err(|err| {
-                FinalStateError::SnapshotError(format!(
-                    "Could not set final_state in ledger: {}",
-                    err
-                ))
-            })
-
-        /*match commit {
-            true => self.ledger
-            .set_final_state(final_state_buffer)
-            .map_err(|err| {
-                FinalStateError::SnapshotError(format!(
-                    "Could not set final_state in ledger: {}",
-                    err
-                ))
-            }),
-            false => self.ledger
-            .set_temp_final_state(final_state_buffer)
-            .map_err(|err| {
-                FinalStateError::SnapshotError(format!(
-                    "Could not set temp final_state in ledger: {}",
-                    err
-                ))
-            })
-        }*/
     }
 
     /// Used for bootstrap.
@@ -600,7 +560,6 @@ pub struct FinalStateRawSerializer {
     deferred_credits_serializer: DeferredCreditsSerializer,
     executed_ops_serializer: ExecutedOpsSerializer,
     slot_serializer: SlotSerializer,
-    hash_serializer: HashSerializer,
 }
 
 impl Default for FinalStateRawSerializer {
@@ -631,7 +590,6 @@ impl FinalStateRawSerializer {
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
             executed_ops_serializer: ExecutedOpsSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            hash_serializer: HashSerializer::new(),
         }
     }
 }
@@ -655,8 +613,8 @@ impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
         // Serialize metadata
         self.slot_serializer
             .serialize(&value.latest_consistent_slot, buffer)?;
-        self.hash_serializer
-            .serialize(&value.final_state_hash_from_snapshot, buffer)?;
+
+        // /!\ The final_state_hash has to be serialized separately!
 
         Ok(())
     }

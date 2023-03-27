@@ -93,9 +93,11 @@ async fn stream_final_state_and_consensus(
                         .executed_ops
                         .set_executed_ops_part(exec_ops_part);
                     for (changes_slot, changes) in final_state_changes.iter() {
-                        write_final_state
-                            .ledger
-                            .apply_changes(changes.ledger_changes.clone(), *changes_slot);
+                        write_final_state.ledger.apply_changes(
+                            changes.ledger_changes.clone(),
+                            *changes_slot,
+                            None,
+                        );
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(&changes.async_pool_changes);
