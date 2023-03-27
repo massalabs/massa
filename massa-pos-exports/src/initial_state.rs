@@ -80,7 +80,7 @@ pub struct InitialStateDeserializer {
 }
 
 impl InitialStateDeserializer {
-    /// Initialize a`InitialStateDeserializer`
+    /// Initialize a `InitialStateDeserializer`
     pub fn new(max_rolls_length: u64) -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),

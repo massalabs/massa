@@ -55,8 +55,12 @@ impl AsyncPool {
     pub fn from_snapshot(
         config: AsyncPoolConfig,
         messages: BTreeMap<AsyncMessageId, AsyncMessage>,
-        hash: Hash,
     ) -> AsyncPool {
+        let mut hash = Hash::from_bytes(&[0; HASH_SIZE_BYTES]);
+        for (_, msg) in messages.iter() {
+            hash ^= msg.hash;
+        }
+
         AsyncPool {
             config,
             messages,
