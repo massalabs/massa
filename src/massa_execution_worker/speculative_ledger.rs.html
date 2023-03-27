@@ -617,8 +617,6 @@
 <a href="#617" id="617">617</a>
 <a href="#618" id="618">618</a>
 <a href="#619" id="619">619</a>
-<a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -993,9 +991,7 @@
                 })<span class="question-mark">?</span>;
             <span class="self">self</span>.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr), <span class="prelude-val">None</span>, bytecode_storage_cost)<span class="question-mark">?</span>;
         }
-        <span class="comment">// CACHE TODO: add compilation cost here
-        // NOTE: only need to pay here as create_new_sc_address runs this function right after
-        // set the bytecode of that address
+        <span class="comment">// set the bytecode of that address
         </span><span class="self">self</span>.added_changes.set_bytecode(<span class="kw-2">*</span>addr, bytecode);
 
         <span class="prelude-val">Ok</span>(())
