@@ -29,7 +29,7 @@ mod server_binder;
 mod settings;
 mod tools;
 pub use client::get_state;
-pub use establisher::DefaultEstablisher;
+pub use establisher::{DefaultEstablisher, DefaultListener};
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
