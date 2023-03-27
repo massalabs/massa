@@ -1505,6 +1505,17 @@
 <a href="#1505" id="1505">1505</a>
 <a href="#1506" id="1506">1506</a>
 <a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2074,12 +2085,22 @@
             }];
         };
 
-        <span class="comment">// run the VM on the bytecode contained in the operation
+        <span class="comment">// load the tmp module
         </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .read()
             .load_tmp_module(bytecode, <span class="kw-2">*</span>max_gas)<span class="question-mark">?</span>;
-        <span class="kw">match </span>massa_sc_runtime::run_main(
+        <span class="comment">// debit tmp module compilation cost
+        </span><span class="kw">let </span>tmp_compilation_cost =
+            Amount::from_mantissa_scale(<span class="self">self</span>.config.gas_costs.sp_compilation_cost, <span class="number">0</span>);
+        <span class="macro">context_guard!</span>(<span class="self">self</span>).transfer_coins(
+            <span class="prelude-val">Some</span>(sender_addr),
+            <span class="prelude-val">None</span>,
+            tmp_compilation_cost,
+            <span class="bool-val">false</span>,
+        )<span class="question-mark">?</span>;
+        <span class="comment">// run the VM
+        </span><span class="kw">match </span>massa_sc_runtime::run_main(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
             <span class="kw-2">*</span>max_gas,
@@ -2171,7 +2192,7 @@
             </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default().<span class="number">0</span>;
         }
 
-        <span class="comment">// Execute bytecode
+        <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().load_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
         <span class="kw">match </span>massa_sc_runtime::run_function(
@@ -2263,7 +2284,7 @@
             bytecode.<span class="number">0
         </span>};
 
-        <span class="comment">// Execute bytecode
+        <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
@@ -2640,15 +2661,16 @@
         <span class="comment">// run the interpreter according to the target type
         </span><span class="kw">let </span>exec_response = <span class="kw">match </span>req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) =&gt; {
-                <span class="comment">// set the execution context for execution
+                <span class="comment">// set the execution context
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
-                <span class="comment">// run the bytecode&#39;s main function
+                <span class="comment">// load the tmp module
                 </span><span class="kw">let </span>module = <span class="self">self
                     </span>.module_cache
                     .read()
                     .load_tmp_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
-                massa_sc_runtime::run_main(
+                <span class="comment">// run the VM
+                </span>massa_sc_runtime::run_main(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     module,
                     req.max_gas,
@@ -2672,10 +2694,10 @@
                     .unwrap_or_default()
                     .<span class="number">0</span>;
 
-                <span class="comment">// set the execution context for execution
+                <span class="comment">// set the execution context
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
-                <span class="comment">// Execute bytecode
+                <span class="comment">// load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
                 </span><span class="kw">let </span>module = <span class="self">self
                     </span>.module_cache
@@ -2691,7 +2713,7 @@
                 )
                 .map_err(|err| {
                     ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;module execution error in execute_readonly_request BytecodeExecution: {}&quot;</span>,
+                        <span class="string">&quot;module execution error in execute_readonly_request FunctionCall: {}&quot;</span>,
                         err,
                     ))
                 })<span class="question-mark">?</span>;
