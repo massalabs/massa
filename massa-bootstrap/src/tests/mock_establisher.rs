@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_models::config::CHANNEL_SIZE;
-use massa_time::MassaTime;
 use socket2 as _;
 use std::io;
 use std::net::{SocketAddr, TcpListener, TcpStream};

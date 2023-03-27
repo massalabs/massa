@@ -25,6 +25,8 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
+async-trait = "0.1.68"
+mockall = "0.11.4"
 
 [dev-dependencies]
 massa_models = { path = "../massa-models", features = ["testing"] }

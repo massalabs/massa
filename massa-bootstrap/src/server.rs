@@ -39,7 +39,7 @@ use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
 };
-use massa_network_exports::NetworkCommandSender;
+use massa_network_exports::{NetworkCommandSender, NetworkCommandSenderTrait};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
