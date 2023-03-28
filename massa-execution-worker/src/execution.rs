@@ -572,20 +572,17 @@ impl ExecutionState {
             .module_cache
             .read()
             .load_tmp_module(bytecode, *max_gas)?;
-        // debit tmp module compilation cost
-        let tmp_compilation_cost =
-            Amount::from_mantissa_scale(self.config.gas_costs.sp_compilation_cost, 0);
-        context_guard!(self).transfer_coins(
-            Some(sender_addr),
-            None,
-            tmp_compilation_cost,
-            false,
-        )?;
+        // sub tmp module compilation cost
+        let remaining_gas = max_gas
+            .checked_sub(self.config.gas_costs.sp_compilation_cost)
+            .ok_or(ExecutionError::RuntimeError(
+                "not enough gas to pay for singlepass compilation".to_string(),
+            ))?;
         // run the VM
         match massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
-            *max_gas,
+            remaining_gas,
             self.config.gas_costs.clone(),
         ) {
             Ok(_response) => {}

@@ -1,6 +1,4 @@
-// TODO LIST:
-// * add an execution test for cache gas behaviour
-// * run high end tests on labnet
+// IMPORTANT TODO: change bc update ABI costs in abi_gas_costs.json
 
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
