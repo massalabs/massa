@@ -86,12 +86,6 @@ impl MassaGrpcService {
                 router_with_http1 = router_with_http1.add_service(reflection_service);
             }
 
-            //  // TODO get config runtime
-            //  match self.cfg.tokio_runtime.take() {
-            //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
-            //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
-            //  };
-
             tokio::spawn(
                 router_with_http1.serve_with_shutdown(config.bind, shutdown_recv.map(drop)),
             );
@@ -105,12 +99,6 @@ impl MassaGrpcService {
 
                 router = router.add_service(reflection_service);
             }
-
-            //  // TODO get config runtime
-            //  match self.cfg.tokio_runtime.take() {
-            //      Some(rt) => rt.spawn(self.start_inner(methods, stop_handle)),
-            //      None => tokio::spawn(self.start_inner(methods, stop_handle)),
-            //  };
 
             tokio::spawn(router.serve_with_shutdown(config.bind, shutdown_recv.map(drop)));
         }

@@ -50,7 +50,7 @@ service Grpc {
 
     // GetTransactionsThroughput
     rpc GetTransactionsThroughput (GetTransactionsThroughputRequest) returns (GetTransactionsThroughputResponse) {
-        option (google.api.http) = {get: "/v1/transaction_throughput"};
+        option (google.api.http) = {get: "/v1/transactions_throughput"};
     }
 
     // GetVersion

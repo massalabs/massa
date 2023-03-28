@@ -97,10 +97,11 @@ pub(crate) async fn send_endorsements(
                                     endorsement_storage.store_endorsements(
                                         verified_eds.values().cloned().collect(),
                                     );
-                                    pool_command_sender.add_endorsements(endorsement_storage.clone());
+                                    pool_command_sender
+                                        .add_endorsements(endorsement_storage.clone());
 
-                                    if let Err(e) =
-                                        protocol_command_sender.propagate_endorsements(endorsement_storage)
+                                    if let Err(e) = protocol_command_sender
+                                        .propagate_endorsements(endorsement_storage)
                                     {
                                         let error =
                                             format!("failed to propagate endorsement: {}", e);

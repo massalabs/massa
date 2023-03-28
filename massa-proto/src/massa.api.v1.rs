@@ -20,32 +20,7 @@ pub struct Slot {
     #[prost(fixed32, tag = "2")]
     pub thread: u32,
 }
-<<<<<<< testnet_21
-/// region Endorsement
-/// message struct
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EndorsementInfo {
-    /// string field
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    /// bool field
-    #[prost(bool, tag = "2")]
-    pub in_pool: bool,
-    /// string field
-    #[prost(string, repeated, tag = "3")]
-    pub in_blocks: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// bool field
-    #[prost(bool, tag = "4")]
-    pub is_final: bool,
-    /// object field
-    #[prost(message, optional, tag = "5")]
-    pub endorsement: ::core::option::Option<Endorsement>,
-}
-/// message struct
-=======
 /// An endorsement, as sent in the network
->>>>>>> refactor: add complete doc and enhance
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Endorsement {
@@ -55,12 +30,8 @@ pub struct Endorsement {
     /// string field
     #[prost(fixed32, tag = "2")]
     pub index: u32,
-<<<<<<< testnet_21
-    /// string field
-=======
     /// Hash of endorsed block
     /// This is the parent in thread `self.slot.thread` of the block in which the endorsement is included
->>>>>>> refactor: add complete doc and enhance
     #[prost(string, tag = "3")]
     pub endorsed_block: ::prost::alloc::string::String,
 }
@@ -96,19 +67,6 @@ pub struct SecureShareEndorsement {
     /// object field
     #[prost(message, optional, tag = "1")]
     pub content: ::core::option::Option<Endorsement>,
-<<<<<<< testnet_21
-    /// string field
-    #[prost(string, tag = "2")]
-    pub signature: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "3")]
-    pub content_creator_pub_key: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "4")]
-    pub content_creator_address: ::prost::alloc::string::String,
-    /// string field
-    #[prost(string, tag = "5")]
-=======
     /// Content in sharable, deserializable form. Is used in the secure verification protocols
     #[prost(bytes = "vec", tag = "2")]
     pub serialized_data: ::prost::alloc::vec::Vec<u8>,
@@ -123,7 +81,6 @@ pub struct SecureShareEndorsement {
     pub content_creator_address: ::prost::alloc::string::String,
     /// A secure hash of the data. See also \[massa_hash::Hash\]
     #[prost(string, tag = "6")]
->>>>>>> refactor: add complete doc and enhance
     pub id: ::prost::alloc::string::String,
 }
 /// BytesMapFieldEntry
@@ -538,23 +495,12 @@ pub struct GetTransactionsThroughputRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-<<<<<<< testnet_21
-    /// best parents
-    #[prost(message, repeated, tag = "2")]
-    pub data: ::prost::alloc::vec::Vec<BestParentTuple>,
-=======
->>>>>>> refactor: add complete doc and enhance
 }
 /// GetTransactionsThroughputResponse holds response from GetTransactionsThroughput
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-<<<<<<< testnet_21
-pub struct BestParentTuple {
-    /// string value
-=======
 pub struct GetTransactionsThroughputResponse {
     /// Request id
->>>>>>> refactor: add complete doc and enhance
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
     /// Transactions throughput
@@ -899,7 +845,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/GetBlocksBySlot",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetBlocksBySlot"));
+            self.inner.unary(req, path, codec).await
         }
         /// GetDatastoreEntries
         pub async fn get_datastore_entries(
@@ -922,7 +871,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/GetDatastoreEntries",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetDatastoreEntries"));
+            self.inner.unary(req, path, codec).await
         }
         /// GetNextBlockBestParents
         pub async fn get_next_block_best_parents(
@@ -945,7 +897,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/GetNextBlockBestParents",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetNextBlockBestParents"));
+            self.inner.unary(req, path, codec).await
         }
         /// GetSelectorDraws
         pub async fn get_selector_draws(
@@ -968,7 +923,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/GetSelectorDraws",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetSelectorDraws"));
+            self.inner.unary(req, path, codec).await
         }
         /// GetTransactionsThroughput
         pub async fn get_transactions_throughput(
@@ -991,7 +949,12 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/GetTransactionsThroughput",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("massa.api.v1.Grpc", "GetTransactionsThroughput"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// GetVersion
         pub async fn get_version(
@@ -1014,7 +977,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/GetVersion",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetVersion"));
+            self.inner.unary(req, path, codec).await
         }
         /// NewBlocks
         pub async fn new_blocks(
@@ -1039,7 +1005,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/NewBlocks",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewBlocks"));
+            self.inner.streaming(req, path, codec).await
         }
         /// NewBlocksHeaders
         pub async fn new_blocks_headers(
@@ -1066,7 +1035,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/NewBlocksHeaders",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewBlocksHeaders"));
+            self.inner.streaming(req, path, codec).await
         }
         /// NewFilledBlocks
         pub async fn new_filled_blocks(
@@ -1093,7 +1065,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/NewFilledBlocks",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewFilledBlocks"));
+            self.inner.streaming(req, path, codec).await
         }
         /// NewOperations
         pub async fn new_operations(
@@ -1118,7 +1093,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/NewOperations",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "NewOperations"));
+            self.inner.streaming(req, path, codec).await
         }
         /// SendBlocks
         pub async fn send_blocks(
@@ -1143,7 +1121,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/SendBlocks",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "SendBlocks"));
+            self.inner.streaming(req, path, codec).await
         }
         /// SendEndorsements
         pub async fn send_endorsements(
@@ -1170,7 +1151,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/SendEndorsements",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "SendEndorsements"));
+            self.inner.streaming(req, path, codec).await
         }
         /// SendOperations
         pub async fn send_operations(
@@ -1197,7 +1181,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/SendOperations",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "SendOperations"));
+            self.inner.streaming(req, path, codec).await
         }
         /// TransactionsThroughput
         pub async fn transactions_throughput(
@@ -1224,7 +1211,10 @@ pub mod grpc_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/massa.api.v1.Grpc/TransactionsThroughput",
             );
-            self.inner.streaming(request.into_streaming_request(), path, codec).await
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "TransactionsThroughput"));
+            self.inner.streaming(req, path, codec).await
         }
     }
 }

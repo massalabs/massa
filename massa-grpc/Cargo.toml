@@ -8,10 +8,11 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
-tonic = { git = "https://github.com/hyperium/tonic", branch = "master", features = ["gzip"] }
-tonic-web = { git = "https://github.com/hyperium/tonic", branch = "master" }
-tonic-reflection = { git = "https://github.com/hyperium/tonic", branch = "master" }
-tonic-health = { git = "https://github.com/hyperium/tonic", branch = "master" }
+#TODO add stable version when released
+tonic = { git = "https://github.com/hyperium/tonic", rev = "b3358dc", features = ["gzip"] }
+tonic-web = { git = "https://github.com/hyperium/tonic", rev = "b3358dc" }
+tonic-reflection = { git = "https://github.com/hyperium/tonic", rev = "b3358dc" }
+tonic-health = { git = "https://github.com/hyperium/tonic", rev = "b3358dc" }
 futures-util = "0.3.25"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
