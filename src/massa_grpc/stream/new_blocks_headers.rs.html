@@ -84,6 +84,17 @@
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::service::MassaGrpcService;
 <span class="kw">use </span>futures_util::StreamExt;
@@ -107,24 +118,30 @@
     &gt;,
 &gt;;
 
-<span class="doccomment">/// New blocks headers
+<span class="doccomment">/// Creates a new stream of new produced and received blocks headers
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_blocks_headers(
     grpc: <span class="kw-2">&amp;</span>MassaGrpcService,
     request: Request&lt;Streaming&lt;NewBlocksHeadersStreamRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewBlocksHeadersStream, GrpcError&gt; {
-    <span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
-    <span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
-    <span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.consensus_channels.block_header_sender.subscribe();
+    <span class="comment">// Create a channel to handle communication with the client
+    </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    <span class="comment">// Get the inner stream from the request
+    </span><span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
+    <span class="comment">// Subscribe to the new blocks headers channel
+    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.consensus_channels.block_header_sender.subscribe();
 
-    tokio::spawn(<span class="kw">async move </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>request_id = String::new();
+    <span class="comment">// Spawn a new task for sending new blocks headers
+    </span>tokio::spawn(<span class="kw">async move </span>{
+        <span class="comment">// Initialize the request_id string
+        </span><span class="kw">let </span><span class="kw-2">mut </span>request_id = String::new();
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                  event = subscriber.recv() =&gt; {
                     <span class="kw">match </span>event {
                         <span class="prelude-val">Ok</span>(share_block_header) =&gt; {
                             <span class="kw">let </span>massa_block_header = share_block_header <span class="kw">as </span>SecureShare&lt;BlockHeader, BlockId&gt;;
-                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewBlocksHeadersStreamResponse {
+                            <span class="comment">// Send the new block header through the channel
+                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewBlocksHeadersStreamResponse {
                                     id: request_id.clone(),
                                     block_header: <span class="prelude-val">Some</span>(massa_block_header.into())
                             })).<span class="kw">await </span>{
@@ -135,34 +152,39 @@
                         <span class="prelude-val">Err</span>(e) =&gt; {<span class="macro">error!</span>(<span class="string">&quot;error on receive new block header : {}&quot;</span>, e)}
                     }
                 },
-                res = in_stream.next() =&gt; {
-                    <span class="kw">match </span>res {
-                        <span class="prelude-val">Some</span>(res) =&gt; {
-                            <span class="kw">match </span>res {
-                                <span class="prelude-val">Ok</span>(data) =&gt; {
-                                    request_id = data.id
-                                },
-                                <span class="prelude-val">Err</span>(err) =&gt; {
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
-                                        <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
-                                            <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
-                                            <span class="kw">break</span>;
-                                        }
-                                    }
-                                    <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, err);
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
-                                        <span class="macro">error!</span>(<span class="string">&quot;failed to send back new_blocks_headers error response: {}&quot;</span>, e);
+            <span class="comment">// Receive a new request from the in_stream
+            </span>res = in_stream.next() =&gt; {
+                <span class="kw">match </span>res {
+                    <span class="prelude-val">Some</span>(res) =&gt; {
+                        <span class="kw">match </span>res {
+                            <span class="comment">// Get the request_id from the received data
+                            </span><span class="prelude-val">Ok</span>(data) =&gt; {
+                                request_id = data.id
+                            },
+                            <span class="comment">// Handle any errors that may occur during receiving the data
+                            </span><span class="prelude-val">Err</span>(err) =&gt; {
+                                <span class="comment">// Check if the error matches any IO errors
+                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
+                                    <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
+                                        <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
                                         <span class="kw">break</span>;
                                     }
                                 }
+                                <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, err);
+                                <span class="comment">// Send the error response back to the client
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
+                                    <span class="macro">error!</span>(<span class="string">&quot;failed to send back new_blocks_headers error response: {}&quot;</span>, e);
+                                    <span class="kw">break</span>;
+                                }
                             }
-                        },
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="comment">// Client disconnected
-                            </span><span class="kw">break</span>;
-                        },
-                    }
+                        }
+                    },
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// The client has disconnected
+                        </span><span class="kw">break</span>;
+                    },
                 }
+            }
             }
         }
     });

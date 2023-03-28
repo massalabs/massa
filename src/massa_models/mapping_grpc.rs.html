@@ -180,27 +180,113 @@
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block::FilledBlock;
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block::{Block, FilledBlock, SecureShareBlock};
 <span class="kw">use </span><span class="kw">crate</span>::block_header::{BlockHeader, SecuredHeader};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, SecureShareEndorsement};
 <span class="kw">use </span><span class="kw">crate</span>::operation::{Operation, OperationType, SecureShareOperation};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{IndexedSlot, Slot};
 <span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc, BytesMapFieldEntry, FilledOperationTuple};
 
-<span class="kw">impl </span>From&lt;IndexedSlot&gt; <span class="kw">for </span>grpc::IndexedSlot {
-    <span class="kw">fn </span>from(s: IndexedSlot) -&gt; <span class="self">Self </span>{
-        grpc::IndexedSlot {
-            index: s.index <span class="kw">as </span>u64,
-            slot: <span class="prelude-val">Some</span>(s.slot.into()),
+<span class="kw">impl </span>From&lt;Block&gt; <span class="kw">for </span>grpc::Block {
+    <span class="kw">fn </span>from(value: Block) -&gt; <span class="self">Self </span>{
+        grpc::Block {
+            header: <span class="prelude-val">Some</span>(value.header.into()),
+            operations: value
+                .operations
+                .into_iter()
+                .map(|operation| operation.to_string())
+                .collect(),
         }
     }
 }
 
-<span class="kw">impl </span>From&lt;Slot&gt; <span class="kw">for </span>grpc::Slot {
-    <span class="kw">fn </span>from(s: Slot) -&gt; <span class="self">Self </span>{
-        grpc::Slot {
-            period: s.period,
-            thread: s.thread <span class="kw">as </span>u32,
+<span class="kw">impl </span>From&lt;BlockHeader&gt; <span class="kw">for </span>grpc::BlockHeader {
+    <span class="kw">fn </span>from(value: BlockHeader) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>endorsement <span class="kw">in </span>value.endorsements {
+            res.push(endorsement.into());
+        }
+
+        grpc::BlockHeader {
+            slot: <span class="prelude-val">Some</span>(value.slot.into()),
+            parents: value
+                .parents
+                .into_iter()
+                .map(|parent| parent.to_string())
+                .collect(),
+            operation_merkle_root: value.operation_merkle_root.to_string(),
+            endorsements: res,
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;FilledBlock&gt; <span class="kw">for </span>grpc::FilledBlock {
+    <span class="kw">fn </span>from(value: FilledBlock) -&gt; <span class="self">Self </span>{
+        grpc::FilledBlock {
+            header: <span class="prelude-val">Some</span>(value.header.into()),
+            operations: value
+                .operations
+                .into_iter()
+                .map(|tuple| FilledOperationTuple {
+                    operation_id: tuple.<span class="number">0</span>.to_string(),
+                    operation: tuple.<span class="number">1</span>.map(|op| op.into()),
+                })
+                .collect(),
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;SecureShareBlock&gt; <span class="kw">for </span>grpc::SecureShareBlock {
+    <span class="kw">fn </span>from(value: SecureShareBlock) -&gt; <span class="self">Self </span>{
+        grpc::SecureShareBlock {
+            content: <span class="prelude-val">Some</span>(value.content.into()),
+            <span class="comment">//HACK do not map serialized_data
+            </span>serialized_data: Vec::new(),
+            signature: value.signature.to_bs58_check(),
+            content_creator_pub_key: value.content_creator_pub_key.to_string(),
+            content_creator_address: value.content_creator_address.to_string(),
+            id: value.id.to_string(),
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;SecuredHeader&gt; <span class="kw">for </span>grpc::SecureShareBlockHeader {
+    <span class="kw">fn </span>from(value: SecuredHeader) -&gt; <span class="self">Self </span>{
+        grpc::SecureShareBlockHeader {
+            content: <span class="prelude-val">Some</span>(value.content.into()),
+            <span class="comment">//HACK do not map serialized_data
+            </span>serialized_data: Vec::new(),
+            signature: value.signature.to_bs58_check(),
+            content_creator_pub_key: value.content_creator_pub_key.to_string(),
+            content_creator_address: value.content_creator_address.to_string(),
+            id: value.id.to_string(),
         }
     }
 }
@@ -313,52 +399,20 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;BlockHeader&gt; <span class="kw">for </span>grpc::BlockHeader {
-    <span class="kw">fn </span>from(value: BlockHeader) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>endorsement <span class="kw">in </span>value.endorsements {
-            res.push(endorsement.into());
-        }
-
-        grpc::BlockHeader {
-            slot: <span class="prelude-val">Some</span>(value.slot.into()),
-            parents: value
-                .parents
-                .into_iter()
-                .map(|parent| parent.to_string())
-                .collect(),
-            operation_merkle_root: value.operation_merkle_root.to_string(),
-            endorsements: res,
+<span class="kw">impl </span>From&lt;IndexedSlot&gt; <span class="kw">for </span>grpc::IndexedSlot {
+    <span class="kw">fn </span>from(s: IndexedSlot) -&gt; <span class="self">Self </span>{
+        grpc::IndexedSlot {
+            index: s.index <span class="kw">as </span>u64,
+            slot: <span class="prelude-val">Some</span>(s.slot.into()),
         }
     }
 }
 
-<span class="kw">impl </span>From&lt;FilledBlock&gt; <span class="kw">for </span>grpc::FilledBlock {
-    <span class="kw">fn </span>from(value: FilledBlock) -&gt; <span class="self">Self </span>{
-        grpc::FilledBlock {
-            header: <span class="prelude-val">Some</span>(value.header.into()),
-            operations: value
-                .operations
-                .into_iter()
-                .map(|tuple| FilledOperationTuple {
-                    operation_id: tuple.<span class="number">0</span>.to_string(),
-                    operation: tuple.<span class="number">1</span>.map(|op| op.into()),
-                })
-                .collect(),
-        }
-    }
-}
-
-<span class="kw">impl </span>From&lt;SecuredHeader&gt; <span class="kw">for </span>grpc::SecureShareBlockHeader {
-    <span class="kw">fn </span>from(value: SecuredHeader) -&gt; <span class="self">Self </span>{
-        grpc::SecureShareBlockHeader {
-            content: <span class="prelude-val">Some</span>(value.content.into()),
-            <span class="comment">//HACK do not map serialized_data
-            </span>serialized_data: Vec::new(),
-            signature: value.signature.to_bs58_check(),
-            content_creator_pub_key: value.content_creator_pub_key.to_string(),
-            content_creator_address: value.content_creator_address.to_string(),
-            id: value.id.to_string(),
+<span class="kw">impl </span>From&lt;Slot&gt; <span class="kw">for </span>grpc::Slot {
+    <span class="kw">fn </span>from(s: Slot) -&gt; <span class="self">Self </span>{
+        grpc::Slot {
+            period: s.period,
+            thread: s.thread <span class="kw">as </span>u32,
         }
     }
 }

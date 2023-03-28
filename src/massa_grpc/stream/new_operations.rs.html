@@ -170,6 +170,11 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span><span class="kw">crate</span>::service::MassaGrpcService;
 <span class="kw">use </span>futures_util::StreamExt;
@@ -193,16 +198,20 @@
     &gt;,
 &gt;;
 
-<span class="doccomment">/// New operations
+<span class="doccomment">/// Creates a new stream of new produced and received operations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_operations(
     grpc: <span class="kw-2">&amp;</span>MassaGrpcService,
     request: Request&lt;Streaming&lt;NewOperationsStreamRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewOperationsStream, GrpcError&gt; {
-    <span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
-    <span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
-    <span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.pool_channels.operation_sender.subscribe();
+    <span class="comment">// Create a channel to handle communication with the client
+    </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    <span class="comment">// Get the inner stream from the request
+    </span><span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
+    <span class="comment">// Subscribe to the new operations channel
+    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.pool_channels.operation_sender.subscribe();
 
-    tokio::spawn(<span class="kw">async move </span>{
+    <span class="comment">// Spawn a new task for sending new operations
+    </span>tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>request_id = request.id;
             <span class="kw">let </span><span class="kw-2">mut </span>filter = request.filter;
@@ -213,8 +222,8 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(ope) =&gt; {
                                 <span class="kw">let </span>operation = ope <span class="kw">as </span>SecureShareOperation;
-
-                                <span class="kw">match </span>operation.clone().content.op {
+                                <span class="comment">//
+                                </span><span class="kw">match </span>operation.clone().content.op {
                                     OperationType::Transaction{recipient_address,amount} =&gt; {
                                         <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, OperationStreamFilterType::Transaction) {
                                             <span class="kw">continue
@@ -288,7 +297,8 @@
                                     content_creator_address: operation.content_creator_address.to_string(),
                                     id: operation.id.to_string()
                                 };
-                                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewOperationsStreamResponse {
+                                <span class="comment">// Send the new operation through the channel
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewOperationsStreamResponse {
                                     id: request_id.clone(),
                                     operation: <span class="prelude-val">Some</span>(ret)
                                 })).<span class="kw">await </span>{

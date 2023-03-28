@@ -209,6 +209,9 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::service::MassaGrpcService;
 <span class="kw">use </span>futures_util::StreamExt;
@@ -373,15 +376,18 @@
                         }
                     }
                 }
-                <span class="prelude-val">Err</span>(err) =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
+                <span class="comment">// Handle any errors that may occur during receiving the data
+                </span><span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="comment">// Check if the error matches any IO errors
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
                         <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
                             <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
                             <span class="kw">break</span>;
                         }
                     }
                     <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, err);
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
+                    <span class="comment">// Send the error response back to the client
+                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
                         <span class="macro">error!</span>(<span class="string">&quot;failed to send back send_operations error response: {}&quot;</span>, e);
                         <span class="kw">break</span>;
                     }

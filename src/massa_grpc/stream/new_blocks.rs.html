@@ -89,11 +89,18 @@
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::service::MassaGrpcService;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::block::SecureShareBlock;
-<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc};
 <span class="kw">use </span>massa_proto::massa::api::v1::{NewBlocksStreamRequest, NewBlocksStreamResponse};
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
@@ -111,32 +118,33 @@
     &gt;,
 &gt;;
 
-<span class="doccomment">/// New blocks
+<span class="doccomment">/// Creates a new stream of new produced and received blocks
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_blocks(
     grpc: <span class="kw-2">&amp;</span>MassaGrpcService,
     request: Request&lt;Streaming&lt;NewBlocksStreamRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewBlocksStream, GrpcError&gt; {
-    <span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
-    <span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
-    <span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.consensus_channels.block_sender.subscribe();
+    <span class="comment">// Create a channel to handle communication with the client
+    </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    <span class="comment">// Get the inner stream from the request
+    </span><span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
+    <span class="comment">// Subscribe to the new blocks channel
+    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.consensus_channels.block_sender.subscribe();
 
-    tokio::spawn(<span class="kw">async move </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>request_id = String::new();
+    <span class="comment">// Spawn a new task for sending new blocks
+    </span>tokio::spawn(<span class="kw">async move </span>{
+        <span class="comment">// Initialize the request_id string
+        </span><span class="kw">let </span><span class="kw-2">mut </span>request_id = String::new();
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
-                 event = subscriber.recv() =&gt; {
+                <span class="comment">// Receive a new block from the subscriber
+                </span>event = subscriber.recv() =&gt; {
                     <span class="kw">match </span>event {
                         <span class="prelude-val">Ok</span>(share_block) =&gt; {
                             <span class="kw">let </span>massa_block = share_block <span class="kw">as </span>SecureShareBlock;
-                            <span class="kw">let </span>header = massa_block.content.header.into();
-                            <span class="kw">let </span>operations = massa_block.content.operations.into_iter().map(|operation| operation.to_string()).collect();
-
-                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewBlocksStreamResponse {
+                            <span class="comment">// Send the new block through the channel
+                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewBlocksStreamResponse {
                                     id: request_id.clone(),
-                                    block: <span class="prelude-val">Some</span>(grpc::Block {
-                                        header: <span class="prelude-val">Some</span>(header),
-                                        operations
-                                    })
+                                    block: <span class="prelude-val">Some</span>(massa_block.into())
                             })).<span class="kw">await </span>{
                                 <span class="macro">error!</span>(<span class="string">&quot;failed to send new block : {}&quot;</span>, e);
                                 <span class="kw">break</span>;
@@ -145,22 +153,27 @@
                         <span class="prelude-val">Err</span>(e) =&gt; {<span class="macro">error!</span>(<span class="string">&quot;error on receive new block : {}&quot;</span>, e)}
                     }
                 },
-                res = in_stream.next() =&gt; {
+                <span class="comment">// Receive a new request from the in_stream
+                </span>res = in_stream.next() =&gt; {
                     <span class="kw">match </span>res {
                         <span class="prelude-val">Some</span>(res) =&gt; {
                             <span class="kw">match </span>res {
-                                <span class="prelude-val">Ok</span>(data) =&gt; {
+                                <span class="comment">// Get the request_id from the received data
+                                </span><span class="prelude-val">Ok</span>(data) =&gt; {
                                     request_id = data.id
                                 },
-                                <span class="prelude-val">Err</span>(err) =&gt; {
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
+                                <span class="comment">// Handle any errors that may occur during receiving the data
+                                </span><span class="prelude-val">Err</span>(err) =&gt; {
+                                    <span class="comment">// Check if the error matches any IO errors
+                                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
                                         <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
                                             <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
                                             <span class="kw">break</span>;
                                         }
                                     }
                                     <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, err);
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
+                                    <span class="comment">// Send the error response back to the client
+                                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err)).<span class="kw">await </span>{
                                         <span class="macro">error!</span>(<span class="string">&quot;failed to send back new_blocks error response: {}&quot;</span>, e);
                                         <span class="kw">break</span>;
                                     }
@@ -168,7 +181,7 @@
                             }
                         },
                         <span class="prelude-val">None </span>=&gt; {
-                            <span class="comment">// Client disconnected
+                            <span class="comment">// The client has disconnected
                             </span><span class="kw">break</span>;
                         },
                     }
@@ -177,8 +190,11 @@
         }
     });
 
-    <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewBlocksStream)
+    <span class="comment">// Create a new stream from the received channel.
+    </span><span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    <span class="comment">// Return the new stream of blocks.
+    </span><span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewBlocksStream)
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

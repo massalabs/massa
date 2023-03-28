@@ -2688,9 +2688,9 @@
     <span class="doccomment">/// Request id
     </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
-    <span class="doccomment">/// Block
+    <span class="doccomment">/// Signed block
     </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>block: ::core::option::Option&lt;Block&gt;,
+    </span><span class="kw">pub </span>block: ::core::option::Option&lt;SecureShareBlock&gt;,
 }
 <span class="doccomment">/// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
