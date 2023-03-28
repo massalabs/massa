@@ -206,15 +206,16 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
-/// Block Deserializer Args
+/// Block Deserializer Args struct. Useful to pass around the parameters,
+/// e.g. create a block deserializer from a BootstrapServerMessageDeserializerArgs.
 pub struct BlockDeserializerArgs {
-    /// thread count
+    /// thread count for slot deserialization
     pub thread_count: u8,
-    /// max operations per block
+    /// max operations, otherwise the block is invalid
     pub max_operations_per_block: u32,
-    /// endorsement_count
+    /// endorsement deserialization and checks
     pub endorsement_count: u32,
-    /// last start period
+    /// If Some(lsp), this will through if trying to deserialize a block with a period before the genesis blocks
     pub last_start_period: Option<u64>,
 }
 
@@ -226,7 +227,6 @@ pub struct BlockDeserializer {
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    // pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -> Self {
     pub fn new(args: BlockDeserializerArgs) -> Self {
         BlockDeserializer {
             header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
