@@ -902,6 +902,11 @@
 <a href="#902" id="902">902</a>
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -980,7 +985,7 @@
 <span class="kw">mod </span>settings;
 
 <span class="kw">async fn </span>launch(
-    _args: <span class="kw-2">&amp;</span>Args,
+    args: <span class="kw-2">&amp;</span>Args,
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
@@ -1046,7 +1051,9 @@
 
     <span class="comment">// Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    </span><span class="kw">if </span>SETTINGS.ledger.disk_ledger_path.exists() {
+    </span><span class="kw">if </span>args.keep_ledger {
+        <span class="macro">info!</span>(<span class="string">&quot;Loading old ledger for next episode&quot;</span>);
+    } <span class="kw">else if </span>SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
             .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
     }
@@ -1095,6 +1102,7 @@
         max_ping: SETTINGS.bootstrap.max_ping,
         max_clock_delta: SETTINGS.bootstrap.max_clock_delta,
         cache_duration: SETTINGS.bootstrap.cache_duration,
+        keep_ledger: args.keep_ledger,
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
@@ -1505,7 +1513,7 @@
         </span><span class="kw">use </span>parking_lot::deadlock;
         <span class="kw">use </span>std::thread;
 
-        <span class="kw">let </span>interval = Duration::from_secs(_args.dl_interval);
+        <span class="kw">let </span>interval = Duration::from_secs(args.dl_interval);
         <span class="macro">warn!</span>(<span class="string">&quot;deadlocks detector will run every {:?}&quot;</span>, interval);
 
         <span class="comment">// Create a background thread which checks for deadlocks at the defined interval
@@ -1625,6 +1633,8 @@
 
 <span class="attr">#[derive(StructOpt)]
 </span><span class="kw">struct </span>Args {
+    <span class="attr">#[structopt(long = <span class="string">&quot;keep-ledger&quot;</span>)]
+    </span>keep_ledger: bool,
     <span class="doccomment">/// Wallet password
     </span><span class="attr">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
