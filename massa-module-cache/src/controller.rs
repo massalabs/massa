@@ -1,4 +1,5 @@
 // IMPORTANT TODO: change bc update ABI costs in abi_gas_costs.json
+// TODO: move some of the warn logs to debug
 
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
@@ -42,16 +43,19 @@ impl ModuleCache {
     }
 
     /// Internal function to compile and build `ModuleInfo`
-    fn compile(&mut self, bytecode: &[u8]) -> ModuleInfo {
+    fn compile(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
         match RuntimeModule::new(
             bytecode,
             self.cfg.compilation_gas,
             self.cfg.gas_costs.clone(),
             true,
         ) {
-            Ok(module) => ModuleInfo::Module(module),
+            Ok(module) => {
+                warn!("compilation of module {} succeeded", hash);
+                ModuleInfo::Module(module)
+            }
             Err(e) => {
-                warn!("module compilation failed with: {}", e);
+                warn!("compilation of module {} failed with: {}", hash, e);
                 ModuleInfo::Invalid
             }
         }
@@ -64,11 +68,14 @@ impl ModuleCache {
             self.hd_cache
                 .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
         {
+            warn!("save_module: {} present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info);
         } else if let Some(lru_module_info) = self.lru_cache.get(hash) {
+            warn!("save_module: {} missing in hd but present in lru", hash);
             self.hd_cache.insert(hash, lru_module_info);
         } else {
-            let module_info = self.compile(bytecode);
+            warn!("save_module: {} missing", hash);
+            let module_info = self.compile(bytecode, hash);
             self.hd_cache.insert(hash, module_info.clone());
             self.lru_cache.insert(hash, module_info);
         }
@@ -92,15 +99,18 @@ impl ModuleCache {
     fn load_module_info(&mut self, bytecode: &[u8]) -> ModuleInfo {
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
+            warn!("load_module: {} present in lru", hash);
             lru_module_info
         } else if let Some(hd_module_info) =
             self.hd_cache
                 .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
         {
+            warn!("load_module: {} missing in lru but present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info.clone());
             hd_module_info
         } else {
-            let module_info = self.compile(bytecode);
+            warn!("load_module: {} missing", hash);
+            let module_info = self.compile(bytecode, hash);
             self.hd_cache.insert(hash, module_info.clone());
             self.lru_cache.insert(hash, module_info.clone());
             module_info
@@ -138,6 +148,7 @@ impl ModuleCache {
         bytecode: &[u8],
         limit: u64,
     ) -> Result<RuntimeModule, CacheError> {
+        warn!("load_tmp_module");
         Ok(RuntimeModule::new(
             bytecode,
             limit,
