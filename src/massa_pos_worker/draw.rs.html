@@ -101,6 +101,7 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::CycleDraws;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{address::Address, slot::Slot};
@@ -131,6 +132,7 @@
     cycle: u64,
     lookback_rolls: BTreeMap&lt;Address, u64&gt;,
     lookback_seed: Hash,
+    last_start_period: u64,
 ) -&gt; PosResult&lt;CycleDraws&gt; {
     <span class="comment">// get seeded RNG
     </span><span class="kw">let </span><span class="kw-2">mut </span>rng = Xoshiro256PlusPlus::from_seed(<span class="kw-2">*</span>lookback_seed.to_bytes());
@@ -164,7 +166,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
     <span class="kw">loop </span>{
         <span class="comment">// draw block creator
-        </span><span class="kw">let </span>producer = <span class="kw">if </span>cur_slot.period &gt; <span class="number">0 </span>{
+        </span><span class="kw">let </span>producer = <span class="kw">if </span>cur_slot.period &gt; last_start_period {
             addresses[dist.sample(<span class="kw-2">&amp;mut </span>rng)]
         } <span class="kw">else </span>{
             <span class="comment">// force draws for genesis blocks
