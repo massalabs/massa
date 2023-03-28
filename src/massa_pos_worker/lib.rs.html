@@ -96,7 +96,6 @@
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 // Features used for draining cache in selector thread
@@ -123,7 +122,6 @@
         cycle: u64,
         lookback_rolls: BTreeMap&lt;Address, u64&gt;,
         lookback_seed: Hash,
-        last_start_period: u64,
     },
     <span class="doccomment">/// Stop the thread (usually sent by the manager and pushed at the top
     /// of the command queue)
