@@ -39,8 +39,8 @@ pub struct TempFileVestingRange {
     pub timestamp: MassaTime,
 
     /// minimal balance
-    pub min_balance: Amount,
+    pub min_balance: Option<Amount>,
 
     /// max rolls
-    pub max_rolls: u64,
+    pub max_rolls: Option<u64>,
 }

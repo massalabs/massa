@@ -52,8 +52,8 @@ mod test {
             assert_eq!(
                 result.1,
                 VestingInfo {
-                    min_balance: Amount::from_str("150000").unwrap(),
-                    max_rolls: 30,
+                    min_balance: Some(Amount::from_str("150000").unwrap()),
+                    max_rolls: Some(30),
                 }
             )
         }
@@ -64,8 +64,8 @@ mod test {
             assert_eq!(
                 result.1,
                 VestingInfo {
-                    min_balance: Amount::from_str("100000").unwrap(),
-                    max_rolls: 50,
+                    min_balance: Some(Amount::from_str("100000").unwrap()),
+                    max_rolls: Some(50),
                 }
             );
         }
@@ -76,8 +76,8 @@ mod test {
             assert_eq!(
                 result.1,
                 VestingInfo {
-                    min_balance: Amount::from_str("80000").unwrap(),
-                    max_rolls: 80,
+                    min_balance: Some(Amount::from_str("80000").unwrap()),
+                    max_rolls: None,
                 }
             )
         }

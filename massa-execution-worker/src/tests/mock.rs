@@ -181,18 +181,18 @@ pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
         let vec = vec![
             TempFileVestingRange {
                 timestamp: MassaTime::from(SEC_TIMESTAMP),
-                min_balance: Amount::from_str("100000").unwrap(),
-                max_rolls: 50,
+                min_balance: Some(Amount::from_str("100000").unwrap()),
+                max_rolls: Some(50),
             },
             TempFileVestingRange {
                 timestamp: MassaTime::from(FUTURE_TIMESTAMP),
-                min_balance: Amount::from_str("80000").unwrap(),
-                max_rolls: 80,
+                min_balance: Some(Amount::from_str("80000").unwrap()),
+                max_rolls: None,
             },
             TempFileVestingRange {
                 timestamp: MassaTime::from(PAST_TIMESTAMP),
-                min_balance: Amount::from_str("150000").unwrap(),
-                max_rolls: 30,
+                min_balance: Some(Amount::from_str("150000").unwrap()),
+                max_rolls: Some(30),
             },
         ];
 
