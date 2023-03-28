@@ -98,7 +98,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::service::MassaGrpcService;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::block::FilledBlock;
-<span class="kw">use </span>massa_proto::massa::api::v1::{NewFilledBlocksStreamRequest, NewFilledBlocksStreamResponse};
+<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc};
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::select;
@@ -109,7 +109,7 @@
 <span class="doccomment">/// Type declaration for NewFilledBlocksStream
 </span><span class="kw">pub type </span>NewFilledBlocksStream = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;NewFilledBlocksStreamResponse, tonic::Status&gt;&gt;
+        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::NewFilledBlocksStreamResponse, tonic::Status&gt;&gt;
             + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,
@@ -118,7 +118,7 @@
 <span class="doccomment">/// Creates a new stream of new produced and received filled blocks
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_filled_blocks(
     grpc: <span class="kw-2">&amp;</span>MassaGrpcService,
-    request: Request&lt;Streaming&lt;NewFilledBlocksStreamRequest&gt;&gt;,
+    request: Request&lt;Streaming&lt;grpc::NewFilledBlocksStreamRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewFilledBlocksStream, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -139,7 +139,7 @@
                         <span class="prelude-val">Ok</span>(share_block) =&gt; {
                             <span class="kw">let </span>massa_block = share_block <span class="kw">as </span>FilledBlock;
                             <span class="comment">// Send the new filled block through the channel
-                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewFilledBlocksStreamResponse {
+                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc::NewFilledBlocksStreamResponse {
                                     id: request_id.clone(),
                                     filled_block: <span class="prelude-val">Some</span>(massa_block.into())
                             })).<span class="kw">await </span>{

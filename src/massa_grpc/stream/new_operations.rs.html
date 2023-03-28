@@ -175,14 +175,16 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span><span class="kw">crate</span>::service::MassaGrpcService;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::operation::{OperationType, SecureShareOperation};
-<span class="kw">use </span>massa_proto::massa::api::v1::{
-    <span class="self">self </span><span class="kw">as </span>grpc, BytesMapFieldEntry, NewOperationsStreamRequest, NewOperationsStreamResponse,
-    OperationStreamFilterType,
-};
+<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc};
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::select;
 <span class="kw">use </span>tonic::codegen::futures_core;
@@ -192,7 +194,7 @@
 <span class="doccomment">/// Type declaration for StreamTransactionsThroughputStream
 </span><span class="kw">pub type </span>NewOperationsStream = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;NewOperationsStreamResponse, tonic::Status&gt;&gt;
+        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::NewOperationsStreamResponse, tonic::Status&gt;&gt;
             + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,
@@ -201,7 +203,7 @@
 <span class="doccomment">/// Creates a new stream of new produced and received operations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_operations(
     grpc: <span class="kw-2">&amp;</span>MassaGrpcService,
-    request: Request&lt;Streaming&lt;NewOperationsStreamRequest&gt;&gt;,
+    request: Request&lt;Streaming&lt;grpc::NewOperationsStreamRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewOperationsStream, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -214,7 +216,7 @@
     </span>tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>request_id = request.id;
-            <span class="kw">let </span><span class="kw-2">mut </span>filter = request.filter;
+            <span class="kw">let </span><span class="kw-2">mut </span>filter = request.query.and_then(|q| q.filter);
 
             <span class="kw">loop </span>{
                 <span class="macro">select! </span>{
@@ -225,7 +227,7 @@
                                 <span class="comment">//
                                 </span><span class="kw">match </span>operation.clone().content.op {
                                     OperationType::Transaction{recipient_address,amount} =&gt; {
-                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, OperationStreamFilterType::Transaction) {
+                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::Transaction) {
                                             <span class="kw">continue
                                         </span>}
                                         grpc::OperationType{
@@ -234,7 +236,7 @@
                                         }
                                     },
                                     OperationType::RollBuy { roll_count } =&gt; {
-                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, OperationStreamFilterType::RollBuy) {
+                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::RollBuy) {
                                             <span class="kw">continue
                                         </span>}
                                         grpc::OperationType {
@@ -243,7 +245,7 @@
                                         }
                                     },
                                     OperationType::RollSell { roll_count } =&gt; {
-                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, OperationStreamFilterType::RollSell) {
+                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::RollSell) {
                                             <span class="kw">continue
                                         </span>}
                                         grpc::OperationType {
@@ -252,12 +254,12 @@
                                         }
                                     },
                                     OperationType::ExecuteSC { data, max_gas, datastore } =&gt; {
-                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, OperationStreamFilterType::ExecuteSc) {
+                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::ExecuteSc) {
                                             <span class="kw">continue
                                         </span>}
 
                                        <span class="kw">let </span>vec_bytes_map =  datastore.into_iter().map(|(k, v)| {
-                                             BytesMapFieldEntry {
+                                        grpc::BytesMapFieldEntry {
                                                 key: k,
                                                 value: v
                                             }
@@ -272,7 +274,7 @@
                                         }
                                     },
                                     OperationType::CallSC { target_addr, target_func,  max_gas, param, coins} =&gt; {
-                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, OperationStreamFilterType::CallSc) {
+                                        <span class="kw">if </span>is_filtered(<span class="kw-2">&amp;</span>filter, grpc::OperationTypeEnum::CallSc) {
                                             <span class="kw">continue
                                         </span>}
                                         grpc::OperationType {
@@ -298,7 +300,7 @@
                                     id: operation.id.to_string()
                                 };
                                 <span class="comment">// Send the new operation through the channel
-                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(NewOperationsStreamResponse {
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc::NewOperationsStreamResponse {
                                     id: request_id.clone(),
                                     operation: <span class="prelude-val">Some</span>(ret)
                                 })).<span class="kw">await </span>{
@@ -315,7 +317,8 @@
                                 <span class="kw">match </span>res {
                                     <span class="prelude-val">Ok</span>(data) =&gt; {
                                         <span class="comment">// Update current filter &amp;&amp; request id
-                                        </span>filter = data.filter;
+                                        </span>filter = data.query
+                                        .and_then(|q| q.filter);
                                         request_id = data.id;
                                     },
                                     <span class="prelude-val">Err</span>(e) =&gt; {
@@ -344,13 +347,20 @@
 <span class="doccomment">/// Return if the type of operation is filtered
 ///
 /// if return true the operation is not sent
-</span><span class="kw">fn </span>is_filtered(filter_ids: <span class="kw-2">&amp;</span>Vec&lt;i32&gt;, ope_type: OperationStreamFilterType) -&gt; bool {
-    <span class="kw">if </span>filter_ids.is_empty() {
-        <span class="kw">return </span><span class="bool-val">false</span>;
-    }
-
-    <span class="kw">let </span>id: i32 = ope_type <span class="kw">as </span>i32;
-    !filter_ids.contains(<span class="kw-2">&amp;</span>id)
+</span><span class="kw">fn </span>is_filtered(
+    filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc::NewOperationsStreamFilter&gt;,
+    ope_type: grpc::OperationTypeEnum,
+) -&gt; bool {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter_opt {
+        <span class="kw">let </span>filtered_ope_ids = <span class="kw-2">&amp;</span>filter.types;
+        <span class="kw">if </span>filtered_ope_ids.is_empty() {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+        <span class="kw">let </span>id: i32 = ope_type <span class="kw">as </span>i32;
+        !filtered_ope_ids.contains(<span class="kw-2">&amp;</span>id)
+    } <span class="kw">else </span>{
+        <span class="bool-val">false
+    </span>}
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

@@ -2170,6 +2170,22 @@
 <a href="#2170" id="2170">2170</a>
 <a href="#2171" id="2171">2171</a>
 <a href="#2172" id="2172">2172</a>
+<a href="#2173" id="2173">2173</a>
+<a href="#2174" id="2174">2174</a>
+<a href="#2175" id="2175">2175</a>
+<a href="#2176" id="2176">2176</a>
+<a href="#2177" id="2177">2177</a>
+<a href="#2178" id="2178">2178</a>
+<a href="#2179" id="2179">2179</a>
+<a href="#2180" id="2180">2180</a>
+<a href="#2181" id="2181">2181</a>
+<a href="#2182" id="2182">2182</a>
+<a href="#2183" id="2183">2183</a>
+<a href="#2184" id="2184">2184</a>
+<a href="#2185" id="2185">2185</a>
+<a href="#2186" id="2186">2186</a>
+<a href="#2187" id="2187">2187</a>
+<a href="#2188" id="2188">2188</a>
 </pre><pre class="rust"><code><span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -2358,42 +2374,6 @@
     <span class="doccomment">/// A secure hash of the data. See also \[massa_hash::Hash\]
     </span><span class="attr">#[prost(string, tag = <span class="string">&quot;6&quot;</span>)]
     </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
-}
-<span class="doccomment">/// Operation filter type
-</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-</span><span class="kw">pub enum </span>OperationStreamFilterType {
-    Transaction = <span class="number">0</span>,
-    RollBuy = <span class="number">1</span>,
-    RollSell = <span class="number">2</span>,
-    ExecuteSc = <span class="number">3</span>,
-    CallSc = <span class="number">4</span>,
-}
-<span class="kw">impl </span>OperationStreamFilterType {
-    <span class="doccomment">/// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    </span><span class="kw">pub fn </span>as_str_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
-        <span class="kw">match </span><span class="self">self </span>{
-            OperationStreamFilterType::Transaction =&gt; <span class="string">&quot;TRANSACTION&quot;</span>,
-            OperationStreamFilterType::RollBuy =&gt; <span class="string">&quot;ROLL_BUY&quot;</span>,
-            OperationStreamFilterType::RollSell =&gt; <span class="string">&quot;ROLL_SELL&quot;</span>,
-            OperationStreamFilterType::ExecuteSc =&gt; <span class="string">&quot;EXECUTE_SC&quot;</span>,
-            OperationStreamFilterType::CallSc =&gt; <span class="string">&quot;CALL_SC&quot;</span>,
-        }
-    }
-    <span class="doccomment">/// Creates an enum from field names used in the ProtoBuf definition.
-    </span><span class="kw">pub fn </span>from_str_name(value: <span class="kw-2">&amp;</span>str) -&gt; ::core::option::Option&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">match </span>value {
-            <span class="string">&quot;TRANSACTION&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Transaction),
-            <span class="string">&quot;ROLL_BUY&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::RollBuy),
-            <span class="string">&quot;ROLL_SELL&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::RollSell),
-            <span class="string">&quot;EXECUTE_SC&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::ExecuteSc),
-            <span class="string">&quot;CALL_SC&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::CallSc),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        }
-    }
 }
 <span class="doccomment">/// Block
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
@@ -2737,9 +2717,25 @@
     <span class="doccomment">/// Request id
     </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>id: ::prost::alloc::string::String,
+    <span class="doccomment">/// Query
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>query: ::core::option::Option&lt;NewOperationsStreamQuery&gt;,
+}
+<span class="doccomment">/// NewOperationsStream Query
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>NewOperationsStreamQuery {
     <span class="doccomment">/// Filter
-    </span><span class="attr">#[prost(enumeration = <span class="string">&quot;OperationStreamFilterType&quot;</span>, repeated, tag = <span class="string">&quot;2&quot;</span>)]
-    </span><span class="kw">pub </span>filter: ::prost::alloc::vec::Vec&lt;i32&gt;,
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>filter: ::core::option::Option&lt;NewOperationsStreamFilter&gt;,
+}
+<span class="doccomment">/// NewOperationsStream Filter
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>NewOperationsStreamFilter {
+    <span class="doccomment">/// Operation type enum
+    </span><span class="attr">#[prost(enumeration = <span class="string">&quot;OperationTypeEnum&quot;</span>, repeated, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>types: ::prost::alloc::vec::Vec&lt;i32&gt;,
 }
 <span class="doccomment">/// NewOperationsStreamResponse holds response from NewOperationsStream
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
@@ -2888,6 +2884,42 @@
     <span class="doccomment">/// Optional timer interval in sec. Defaults to 10s
     </span><span class="attr">#[prost(fixed64, optional, tag = <span class="string">&quot;2&quot;</span>)]
     </span><span class="kw">pub </span>interval: ::core::option::Option&lt;u64&gt;,
+}
+<span class="doccomment">/// Operation type enum
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+</span><span class="kw">pub enum </span>OperationTypeEnum {
+    Transaction = <span class="number">0</span>,
+    RollBuy = <span class="number">1</span>,
+    RollSell = <span class="number">2</span>,
+    ExecuteSc = <span class="number">3</span>,
+    CallSc = <span class="number">4</span>,
+}
+<span class="kw">impl </span>OperationTypeEnum {
+    <span class="doccomment">/// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    </span><span class="kw">pub fn </span>as_str_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="kw">match </span><span class="self">self </span>{
+            OperationTypeEnum::Transaction =&gt; <span class="string">&quot;TRANSACTION&quot;</span>,
+            OperationTypeEnum::RollBuy =&gt; <span class="string">&quot;ROLL_BUY&quot;</span>,
+            OperationTypeEnum::RollSell =&gt; <span class="string">&quot;ROLL_SELL&quot;</span>,
+            OperationTypeEnum::ExecuteSc =&gt; <span class="string">&quot;EXECUTE_SC&quot;</span>,
+            OperationTypeEnum::CallSc =&gt; <span class="string">&quot;CALL_SC&quot;</span>,
+        }
+    }
+    <span class="doccomment">/// Creates an enum from field names used in the ProtoBuf definition.
+    </span><span class="kw">pub fn </span>from_str_name(value: <span class="kw-2">&amp;</span>str) -&gt; ::core::option::Option&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">match </span>value {
+            <span class="string">&quot;TRANSACTION&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Transaction),
+            <span class="string">&quot;ROLL_BUY&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::RollBuy),
+            <span class="string">&quot;ROLL_SELL&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::RollSell),
+            <span class="string">&quot;EXECUTE_SC&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::ExecuteSc),
+            <span class="string">&quot;CALL_SC&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::CallSc),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+    }
 }
 <span class="doccomment">/// Generated client implementations.
 </span><span class="kw">pub mod </span>grpc_client {

@@ -92,7 +92,7 @@
 <a href="#92" id="92">92</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{error::GrpcError, service::MassaGrpcService};
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc, GetTransactionsThroughputResponse};
+<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc};
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>tokio::{select, time};
@@ -164,7 +164,7 @@
                         .unwrap_or_default() <span class="kw">as </span>u32;
                     <span class="comment">// Send the throughput response back to the client
                     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
-                        .send(<span class="prelude-val">Ok</span>(GetTransactionsThroughputResponse {
+                        .send(<span class="prelude-val">Ok</span>(grpc::GetTransactionsThroughputResponse {
                             id: request_id.clone(),
                             throughput,
                         }))

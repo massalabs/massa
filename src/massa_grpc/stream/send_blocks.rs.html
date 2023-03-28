@@ -219,7 +219,7 @@
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_proto::google::rpc::Status;
-<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc, SendBlocksStreamResponse};
+<span class="kw">use </span>massa_proto::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
@@ -231,7 +231,7 @@
 <span class="doccomment">/// Type declaration for SendBlockStream
 </span><span class="kw">pub type </span>SendBlocksStream = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;SendBlocksStreamResponse, tonic::Status&gt;&gt;
+        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::SendBlocksStreamResponse, tonic::Status&gt;&gt;
             + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,
@@ -340,7 +340,7 @@
                                     };
                                     <span class="comment">// Send the response message back to the client
                                     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
-                                        .send(<span class="prelude-val">Ok</span>(SendBlocksStreamResponse {
+                                        .send(<span class="prelude-val">Ok</span>(grpc::SendBlocksStreamResponse {
                                             id: req_content.id.clone(),
 
                                             result: <span class="prelude-val">Some</span>(
@@ -405,14 +405,14 @@
 <span class="doccomment">/// This function reports an error to the sender by sending a gRPC response message to the client
 </span><span class="kw">async fn </span>report_error(
     id: String,
-    sender: Sender&lt;<span class="prelude-ty">Result</span>&lt;SendBlocksStreamResponse, tonic::Status&gt;&gt;,
+    sender: Sender&lt;<span class="prelude-ty">Result</span>&lt;grpc::SendBlocksStreamResponse, tonic::Status&gt;&gt;,
     code: tonic::Code,
     error: String,
 ) {
     <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, error);
     <span class="comment">// Attempt to send the error response message to the sender
     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = sender
-        .send(<span class="prelude-val">Ok</span>(SendBlocksStreamResponse {
+        .send(<span class="prelude-val">Ok</span>(grpc::SendBlocksStreamResponse {
             id,
             result: <span class="prelude-val">Some</span>(grpc::send_blocks_stream_response::Result::Error(Status {
                 code: code.into(),
