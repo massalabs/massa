@@ -14,6 +14,11 @@ use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerial
 use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
+    config::{
+        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+        MAX_EXECUTED_OPS_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
+        MAX_ROLLS_COUNT_LENGTH,
+    },
     operation::OperationId,
     prehash::PreHashSet,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -132,24 +137,15 @@ impl FinalState {
 
         // Deserialize FinalStateRaw from Snapshot
 
-        let max_async_pool_length = massa_models::config::constants::MAX_ASYNC_POOL_LENGTH;
-        let max_datastore_key_length = massa_models::config::constants::MAX_DATASTORE_KEY_LENGTH;
-        let max_rolls_length = massa_models::config::constants::MAX_ROLLS_COUNT_LENGTH;
-        let max_production_stats_length =
-            massa_models::config::constants::MAX_PRODUCTION_STATS_LENGTH;
-        let max_credit_length = massa_models::config::constants::MAX_DEFERRED_CREDITS_LENGTH;
-        let max_executed_ops_length = massa_models::config::constants::MAX_EXECUTED_OPS_LENGTH;
-        let max_operations_per_block = massa_models::config::constants::MAX_OPERATIONS_PER_BLOCK;
-
         let final_state_raw_deserializer = FinalStateRawDeserializer::new(
             config.clone(),
-            max_async_pool_length,
-            max_datastore_key_length,
-            max_rolls_length,
-            max_production_stats_length,
-            max_credit_length,
-            max_executed_ops_length,
-            max_operations_per_block,
+            MAX_ASYNC_POOL_LENGTH,
+            MAX_DATASTORE_KEY_LENGTH,
+            MAX_ROLLS_COUNT_LENGTH,
+            MAX_PRODUCTION_STATS_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH,
+            MAX_EXECUTED_OPS_LENGTH,
+            MAX_OPERATIONS_PER_BLOCK,
         );
 
         let (_rest, final_state_raw) = final_state_raw_deserializer
