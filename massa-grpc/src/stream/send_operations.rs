@@ -162,7 +162,9 @@ pub(crate) async fn send_operations(
                         }
                     }
                 }
+                // Handle any errors that may occur during receiving the data
                 Err(err) => {
+                    // Check if the error matches any IO errors
                     if let Some(io_err) = match_for_io_error(&err) {
                         if io_err.kind() == ErrorKind::BrokenPipe {
                             warn!("client disconnected, broken pipe: {}", io_err);
@@ -170,6 +172,7 @@ pub(crate) async fn send_operations(
                         }
                     }
                     error!("{}", err);
+                    // Send the error response back to the client
                     if let Err(e) = tx.send(Err(err)).await {
                         error!("failed to send back send_operations error response: {}", e);
                         break;

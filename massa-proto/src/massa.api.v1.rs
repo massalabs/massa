@@ -541,9 +541,9 @@ pub struct NewBlocksStreamResponse {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
-    /// Block
+    /// Signed block
     #[prost(message, optional, tag = "2")]
-    pub block: ::core::option::Option<Block>,
+    pub block: ::core::option::Option<SecureShareBlock>,
 }
 /// NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream
 #[allow(clippy::derive_partial_eq_without_eq)]

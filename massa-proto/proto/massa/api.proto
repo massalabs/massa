@@ -232,8 +232,8 @@ message NewBlocksStreamRequest {
 message NewBlocksStreamResponse {
     // Request id
     string id = 1;
-    // Block
-    Block block = 2;
+    // Signed block
+    SecureShareBlock block = 2;
 }
 
 // NewBlocksHeadersStreamRequest holds request for NewBlocksHeadersStream

@@ -1,24 +1,83 @@
-use crate::block::FilledBlock;
+use crate::block::{Block, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::operation::{Operation, OperationType, SecureShareOperation};
 use crate::slot::{IndexedSlot, Slot};
 use massa_proto::massa::api::v1::{self as grpc, BytesMapFieldEntry, FilledOperationTuple};
 
-impl From<IndexedSlot> for grpc::IndexedSlot {
-    fn from(s: IndexedSlot) -> Self {
-        grpc::IndexedSlot {
-            index: s.index as u64,
-            slot: Some(s.slot.into()),
+impl From<Block> for grpc::Block {
+    fn from(value: Block) -> Self {
+        grpc::Block {
+            header: Some(value.header.into()),
+            operations: value
+                .operations
+                .into_iter()
+                .map(|operation| operation.to_string())
+                .collect(),
         }
     }
 }
 
-impl From<Slot> for grpc::Slot {
-    fn from(s: Slot) -> Self {
-        grpc::Slot {
-            period: s.period,
-            thread: s.thread as u32,
+impl From<BlockHeader> for grpc::BlockHeader {
+    fn from(value: BlockHeader) -> Self {
+        let mut res = vec![];
+        for endorsement in value.endorsements {
+            res.push(endorsement.into());
+        }
+
+        grpc::BlockHeader {
+            slot: Some(value.slot.into()),
+            parents: value
+                .parents
+                .into_iter()
+                .map(|parent| parent.to_string())
+                .collect(),
+            operation_merkle_root: value.operation_merkle_root.to_string(),
+            endorsements: res,
+        }
+    }
+}
+
+impl From<FilledBlock> for grpc::FilledBlock {
+    fn from(value: FilledBlock) -> Self {
+        grpc::FilledBlock {
+            header: Some(value.header.into()),
+            operations: value
+                .operations
+                .into_iter()
+                .map(|tuple| FilledOperationTuple {
+                    operation_id: tuple.0.to_string(),
+                    operation: tuple.1.map(|op| op.into()),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<SecureShareBlock> for grpc::SecureShareBlock {
+    fn from(value: SecureShareBlock) -> Self {
+        grpc::SecureShareBlock {
+            content: Some(value.content.into()),
+            //HACK do not map serialized_data
+            serialized_data: Vec::new(),
+            signature: value.signature.to_bs58_check(),
+            content_creator_pub_key: value.content_creator_pub_key.to_string(),
+            content_creator_address: value.content_creator_address.to_string(),
+            id: value.id.to_string(),
+        }
+    }
+}
+
+impl From<SecuredHeader> for grpc::SecureShareBlockHeader {
+    fn from(value: SecuredHeader) -> Self {
+        grpc::SecureShareBlockHeader {
+            content: Some(value.content.into()),
+            //HACK do not map serialized_data
+            serialized_data: Vec::new(),
+            signature: value.signature.to_bs58_check(),
+            content_creator_pub_key: value.content_creator_pub_key.to_string(),
+            content_creator_address: value.content_creator_address.to_string(),
+            id: value.id.to_string(),
         }
     }
 }
@@ -131,52 +190,20 @@ impl From<SecureShareOperation> for grpc::SecureShareOperation {
     }
 }
 
-impl From<BlockHeader> for grpc::BlockHeader {
-    fn from(value: BlockHeader) -> Self {
-        let mut res = vec![];
-        for endorsement in value.endorsements {
-            res.push(endorsement.into());
-        }
-
-        grpc::BlockHeader {
-            slot: Some(value.slot.into()),
-            parents: value
-                .parents
-                .into_iter()
-                .map(|parent| parent.to_string())
-                .collect(),
-            operation_merkle_root: value.operation_merkle_root.to_string(),
-            endorsements: res,
+impl From<IndexedSlot> for grpc::IndexedSlot {
+    fn from(s: IndexedSlot) -> Self {
+        grpc::IndexedSlot {
+            index: s.index as u64,
+            slot: Some(s.slot.into()),
         }
     }
 }
 
-impl From<FilledBlock> for grpc::FilledBlock {
-    fn from(value: FilledBlock) -> Self {
-        grpc::FilledBlock {
-            header: Some(value.header.into()),
-            operations: value
-                .operations
-                .into_iter()
-                .map(|tuple| FilledOperationTuple {
-                    operation_id: tuple.0.to_string(),
-                    operation: tuple.1.map(|op| op.into()),
-                })
-                .collect(),
-        }
-    }
-}
-
-impl From<SecuredHeader> for grpc::SecureShareBlockHeader {
-    fn from(value: SecuredHeader) -> Self {
-        grpc::SecureShareBlockHeader {
-            content: Some(value.content.into()),
-            //HACK do not map serialized_data
-            serialized_data: Vec::new(),
-            signature: value.signature.to_bs58_check(),
-            content_creator_pub_key: value.content_creator_pub_key.to_string(),
-            content_creator_address: value.content_creator_address.to_string(),
-            id: value.id.to_string(),
+impl From<Slot> for grpc::Slot {
+    fn from(s: Slot) -> Self {
+        grpc::Slot {
+            period: s.period,
+            thread: s.thread as u32,
         }
     }
 }

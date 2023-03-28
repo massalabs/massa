@@ -2,7 +2,6 @@ use crate::error::{match_for_io_error, GrpcError};
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::block::SecureShareBlock;
-use massa_proto::massa::api::v1::{self as grpc};
 use massa_proto::massa::api::v1::{NewBlocksStreamRequest, NewBlocksStreamResponse};
 use std::io::ErrorKind;
 use std::pin::Pin;
@@ -20,32 +19,33 @@ pub type NewBlocksStream = Pin<
     >,
 >;
 
-/// New blocks
+/// Creates a new stream of new produced and received blocks
 pub(crate) async fn new_blocks(
     grpc: &MassaGrpcService,
     request: Request<Streaming<NewBlocksStreamRequest>>,
 ) -> Result<NewBlocksStream, GrpcError> {
+    // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    // Get the inner stream from the request
     let mut in_stream = request.into_inner();
+    // Subscribe to the new blocks channel
     let mut subscriber = grpc.consensus_channels.block_sender.subscribe();
 
+    // Spawn a new task for sending new blocks
     tokio::spawn(async move {
+        // Initialize the request_id string
         let mut request_id = String::new();
         loop {
             select! {
-                 event = subscriber.recv() => {
+                // Receive a new block from the subscriber
+                event = subscriber.recv() => {
                     match event {
                         Ok(share_block) => {
                             let massa_block = share_block as SecureShareBlock;
-                            let header = massa_block.content.header.into();
-                            let operations = massa_block.content.operations.into_iter().map(|operation| operation.to_string()).collect();
-
+                            // Send the new block through the channel
                             if let Err(e) = tx.send(Ok(NewBlocksStreamResponse {
                                     id: request_id.clone(),
-                                    block: Some(grpc::Block {
-                                        header: Some(header),
-                                        operations
-                                    })
+                                    block: Some(massa_block.into())
                             })).await {
                                 error!("failed to send new block : {}", e);
                                 break;
@@ -54,14 +54,18 @@ pub(crate) async fn new_blocks(
                         Err(e) => {error!("error on receive new block : {}", e)}
                     }
                 },
+                // Receive a new request from the in_stream
                 res = in_stream.next() => {
                     match res {
                         Some(res) => {
                             match res {
+                                // Get the request_id from the received data
                                 Ok(data) => {
                                     request_id = data.id
                                 },
+                                // Handle any errors that may occur during receiving the data
                                 Err(err) => {
+                                    // Check if the error matches any IO errors
                                     if let Some(io_err) = match_for_io_error(&err) {
                                         if io_err.kind() == ErrorKind::BrokenPipe {
                                             warn!("client disconnected, broken pipe: {}", io_err);
@@ -69,6 +73,7 @@ pub(crate) async fn new_blocks(
                                         }
                                     }
                                     error!("{}", err);
+                                    // Send the error response back to the client
                                     if let Err(e) = tx.send(Err(err)).await {
                                         error!("failed to send back new_blocks error response: {}", e);
                                         break;
@@ -77,7 +82,7 @@ pub(crate) async fn new_blocks(
                             }
                         },
                         None => {
-                            // Client disconnected
+                            // The client has disconnected
                             break;
                         },
                     }
@@ -86,6 +91,9 @@ pub(crate) async fn new_blocks(
         }
     });
 
+    // Create a new stream from the received channel.
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    // Return the new stream of blocks.
     Ok(Box::pin(out_stream) as NewBlocksStream)
 }

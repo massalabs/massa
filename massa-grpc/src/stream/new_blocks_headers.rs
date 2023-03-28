@@ -21,16 +21,21 @@ pub type NewBlocksHeadersStream = Pin<
     >,
 >;
 
-/// New blocks headers
+/// Creates a new stream of new produced and received blocks headers
 pub(crate) async fn new_blocks_headers(
     grpc: &MassaGrpcService,
     request: Request<Streaming<NewBlocksHeadersStreamRequest>>,
 ) -> Result<NewBlocksHeadersStream, GrpcError> {
+    // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    // Get the inner stream from the request
     let mut in_stream = request.into_inner();
+    // Subscribe to the new blocks headers channel
     let mut subscriber = grpc.consensus_channels.block_header_sender.subscribe();
 
+    // Spawn a new task for sending new blocks headers
     tokio::spawn(async move {
+        // Initialize the request_id string
         let mut request_id = String::new();
         loop {
             select! {
@@ -38,6 +43,7 @@ pub(crate) async fn new_blocks_headers(
                     match event {
                         Ok(share_block_header) => {
                             let massa_block_header = share_block_header as SecureShare<BlockHeader, BlockId>;
+                            // Send the new block header through the channel
                             if let Err(e) = tx.send(Ok(NewBlocksHeadersStreamResponse {
                                     id: request_id.clone(),
                                     block_header: Some(massa_block_header.into())
@@ -49,34 +55,39 @@ pub(crate) async fn new_blocks_headers(
                         Err(e) => {error!("error on receive new block header : {}", e)}
                     }
                 },
-                res = in_stream.next() => {
-                    match res {
-                        Some(res) => {
-                            match res {
-                                Ok(data) => {
-                                    request_id = data.id
-                                },
-                                Err(err) => {
-                                    if let Some(io_err) = match_for_io_error(&err) {
-                                        if io_err.kind() == ErrorKind::BrokenPipe {
-                                            warn!("client disconnected, broken pipe: {}", io_err);
-                                            break;
-                                        }
-                                    }
-                                    error!("{}", err);
-                                    if let Err(e) = tx.send(Err(err)).await {
-                                        error!("failed to send back new_blocks_headers error response: {}", e);
+            // Receive a new request from the in_stream
+            res = in_stream.next() => {
+                match res {
+                    Some(res) => {
+                        match res {
+                            // Get the request_id from the received data
+                            Ok(data) => {
+                                request_id = data.id
+                            },
+                            // Handle any errors that may occur during receiving the data
+                            Err(err) => {
+                                // Check if the error matches any IO errors
+                                if let Some(io_err) = match_for_io_error(&err) {
+                                    if io_err.kind() == ErrorKind::BrokenPipe {
+                                        warn!("client disconnected, broken pipe: {}", io_err);
                                         break;
                                     }
                                 }
+                                error!("{}", err);
+                                // Send the error response back to the client
+                                if let Err(e) = tx.send(Err(err)).await {
+                                    error!("failed to send back new_blocks_headers error response: {}", e);
+                                    break;
+                                }
                             }
-                        },
-                        None => {
-                            // Client disconnected
-                            break;
-                        },
-                    }
+                        }
+                    },
+                    None => {
+                        // The client has disconnected
+                        break;
+                    },
                 }
+            }
             }
         }
     });

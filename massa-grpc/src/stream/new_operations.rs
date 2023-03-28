@@ -21,15 +21,19 @@ pub type NewOperationsStream = Pin<
     >,
 >;
 
-/// New operations
+/// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(
     grpc: &MassaGrpcService,
     request: Request<Streaming<NewOperationsStreamRequest>>,
 ) -> Result<NewOperationsStream, GrpcError> {
+    // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    // Get the inner stream from the request
     let mut in_stream = request.into_inner();
+    // Subscribe to the new operations channel
     let mut subscriber = grpc.pool_channels.operation_sender.subscribe();
 
+    // Spawn a new task for sending new operations
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
             let mut request_id = request.id;
@@ -41,7 +45,7 @@ pub(crate) async fn new_operations(
                         match event {
                             Ok(ope) => {
                                 let operation = ope as SecureShareOperation;
-
+                                //
                                 match operation.clone().content.op {
                                     OperationType::Transaction{recipient_address,amount} => {
                                         if is_filtered(&filter, OperationStreamFilterType::Transaction) {
@@ -116,6 +120,7 @@ pub(crate) async fn new_operations(
                                     content_creator_address: operation.content_creator_address.to_string(),
                                     id: operation.id.to_string()
                                 };
+                                // Send the new operation through the channel
                                 if let Err(e) = tx.send(Ok(NewOperationsStreamResponse {
                                     id: request_id.clone(),
                                     operation: Some(ret)

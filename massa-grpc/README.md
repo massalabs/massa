@@ -40,6 +40,14 @@ After installing `protoc`, you should be able to compile proto files using the a
 
 After installing `protoc`, please verify that the `protoc` command is accessible by running `protoc --version` again.
 
+Project build
+-------------
+
+The project is set up to automatically compile proto files during the build process using 
+[massa-proto/build.rs](../massa-proto/build.rs).
+
+When the project is built, `build.rs` is executed and it uses the `tonic-build` crate to generate Rust code from the proto files. The generated Rust code could be found in [massa-proto/src/](../massa-proto/src/).
+
 
 VSCode Settings
 ---------------
