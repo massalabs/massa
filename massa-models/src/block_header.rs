@@ -12,6 +12,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
+use massa_signature::PublicKey;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::{context, ContextError, ParseError};
@@ -82,6 +83,23 @@ impl BlockHeader {
 /// BlockHeader wrapped up alongside verification data
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
+impl SecureShareContent for BlockHeader {
+    /// Compute hash for Block header in SecuredHeader - taking care of Denunciation verification
+    fn compute_hash(
+        content: &Self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Hash {
+        let de_data = BlockHeaderDenunciationData::new(content.slot);
+
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(de_data.to_bytes());
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Hash::compute_from(&hash_data)
+    }
+}
+
 impl SecuredHeader {
     /// gets the header fitness
     pub fn get_fitness(&self) -> u64 {
@@ -96,8 +114,6 @@ impl SecuredHeader {
             .map_err(|er| format!("{}", er).into())
     }
 }
-
-impl SecureShareContent for BlockHeader {}
 
 /// Serializer for `BlockHeader`
 pub struct BlockHeaderSerializer {
@@ -460,5 +476,24 @@ impl std::fmt::Display for BlockHeader {
             writeln!(f, "\tNo endorsements found")?;
         }
         Ok(())
+    }
+}
+
+/// A denunciation data for block header
+pub struct BlockHeaderDenunciationData {
+    slot: Slot,
+}
+
+impl BlockHeaderDenunciationData {
+    /// Create a new DenunciationData for block hedader
+    pub fn new(slot: Slot) -> Self {
+        Self { slot }
+    }
+
+    /// Get byte array
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend(self.slot.to_bytes_key());
+        buf
     }
 }

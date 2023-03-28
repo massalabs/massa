@@ -1,119 +1,124 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+use async_trait::async_trait;
+use massa_time::MassaTime;
+use std::{io, net::SocketAddr};
 
-#[cfg(test)]
-pub mod types {
-    pub type Duplex = crate::tests::mock_establisher::Duplex;
+/// duplex connection
+pub type Duplex = tokio::net::TcpStream;
 
-    pub type Listener = crate::tests::mock_establisher::MockListener;
+/// Listener used to establish a Duplex
+pub type DuplexListener = tokio::net::TcpListener;
 
-    pub type Connector = crate::tests::mock_establisher::MockConnector;
-
-    pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
+#[async_trait]
+/// Specifies a common interface that can be used by standard, or mockers
+pub trait BSListener {
+    async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)>;
 }
 
-#[cfg(not(test))]
-/// Connection types
-pub mod types {
-    use massa_time::MassaTime;
-    use std::{io, net::SocketAddr};
-    use tokio::{
-        net::{TcpListener, TcpStream},
-        time::timeout,
-    };
-    /// duplex connection
-    pub type Duplex = TcpStream;
-    /// listener
-    pub type Listener = DefaultListener;
-    /// connector
-    pub type Connector = DefaultConnector;
-    /// connection establisher
-    pub type Establisher = DefaultEstablisher;
+#[async_trait]
+/// Specifies a common interface that can be used by standard, or mockers
+pub trait BSConnector {
+    async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex>;
+}
 
-    /// The listener we are using
-    #[derive(Debug)]
-    pub struct DefaultListener(TcpListener);
+/// Specifies a common interface that can be used by standard, or mockers
+pub trait BSEstablisher {
+    // TODO: this is needed for thread spawning. Once the listener is on-thread, the static
+    // lifetime can be thrown away.
+    // TODO: use super-advanced lifetime/GAT/other shenanigans to
+    // make the listener compatable with being moved into a thread
+    type Listener: BSListener + Send + 'static;
+    type Connector: BSConnector;
+    fn get_listener(&mut self, addr: SocketAddr) -> io::Result<Self::Listener>;
+    fn get_connector(&mut self, timeout_duration: MassaTime) -> io::Result<Self::Connector>;
+}
 
-    impl DefaultListener {
-        /// Accepts a new incoming connection from this listener.
-        pub async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
-            // accept
-            let (sock, mut remote_addr) = self.0.accept().await?;
-            // normalize address
-            remote_addr.set_ip(remote_addr.ip().to_canonical());
-            Ok((sock, remote_addr))
+/// The listener we are using
+#[derive(Debug)]
+pub struct DefaultListener(DuplexListener);
+
+#[async_trait]
+impl BSListener for DefaultListener {
+    /// Accepts a new incoming connection from this listener.
+    async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
+        // accept
+        let (sock, mut remote_addr) = self.0.accept().await?;
+        // normalize address
+        remote_addr.set_ip(remote_addr.ip().to_canonical());
+        Ok((sock, remote_addr))
+    }
+}
+/// Initiates a connection with given timeout in milliseconds
+#[derive(Debug)]
+pub struct DefaultConnector(MassaTime);
+
+#[async_trait]
+impl BSConnector for DefaultConnector {
+    /// Tries to connect to address
+    ///
+    /// # Argument
+    /// * `addr`: `SocketAddr` we are trying to connect to.
+    async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
+        match tokio::time::timeout(self.0.to_duration(), Duplex::connect(addr)).await {
+            Ok(Ok(sock)) => Ok(sock),
+            Ok(Err(e)) => Err(e),
+            Err(e) => Err(io::Error::new(io::ErrorKind::TimedOut, e)),
         }
     }
+}
 
-    /// Initiates a connection with given timeout in milliseconds
-    #[derive(Debug)]
-    pub struct DefaultConnector(MassaTime);
+/// Establishes a connection
+#[derive(Debug)]
+pub struct DefaultEstablisher;
 
-    impl DefaultConnector {
-        /// Tries to connect to address
-        ///
-        /// # Argument
-        /// * `addr`: `SocketAddr` we are trying to connect to.
-        pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
-            match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
-                Ok(Ok(sock)) => Ok(sock),
-                Ok(Err(e)) => Err(e),
-                Err(e) => Err(io::Error::new(io::ErrorKind::TimedOut, e)),
-            }
+impl DefaultEstablisher {
+    /// Creates an Establisher.
+    pub fn new() -> Self {
+        DefaultEstablisher {}
+    }
+}
+
+impl BSEstablisher for DefaultEstablisher {
+    type Connector = DefaultConnector;
+    type Listener = DefaultListener;
+    /// Gets the associated listener
+    ///
+    /// # Argument
+    /// * `addr`: `SocketAddr` we want to bind to.
+    fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
+        // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
+        // This is needed to get the same behavior on all OS
+        // However, if IPv6 is disabled system-wide, you may need to bind to an IPv4 address instead.
+        let domain = match addr.is_ipv4() {
+            true => socket2::Domain::IPV4,
+            _ => socket2::Domain::IPV6,
+        };
+
+        let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
+
+        if addr.is_ipv6() {
+            socket.set_only_v6(false)?;
         }
+        socket.set_nonblocking(true)?;
+        socket.bind(&addr.into())?;
+
+        // Number of connections to queue, set to the hardcoded value used by tokio
+        socket.listen(1024)?;
+
+        Ok(DefaultListener(DuplexListener::from_std(socket.into())?))
     }
 
-    /// Establishes a connection
-    #[derive(Debug)]
-    pub struct DefaultEstablisher;
-
-    impl DefaultEstablisher {
-        /// Creates an Establisher.
-        pub fn new() -> Self {
-            DefaultEstablisher {}
-        }
-
-        /// Gets the associated listener
-        ///
-        /// # Argument
-        /// * `addr`: `SocketAddr` we want to bind to.
-        pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
-            // Create a socket2 TCP listener to manually set the IPV6_V6ONLY flag
-            // This is needed to get the same behavior on all OS
-            // However, if IPv6 is disabled system-wide, you may need to bind to an IPv4 address instead.
-            let domain = match addr.is_ipv4() {
-                true => socket2::Domain::IPV4,
-                _ => socket2::Domain::IPV6,
-            };
-
-            let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
-
-            if addr.is_ipv6() {
-                socket.set_only_v6(false)?;
-            }
-            socket.set_nonblocking(true)?;
-            socket.bind(&addr.into())?;
-
-            // Number of connections to queue, set to the hardcoded value used by tokio
-            socket.listen(1024)?;
-
-            Ok(DefaultListener(TcpListener::from_std(socket.into())?))
-        }
-
-        /// Get the connector with associated timeout
-        ///
-        /// # Argument
-        /// * `timeout_duration`: timeout duration in milliseconds
-        pub async fn get_connector(
-            &mut self,
-            timeout_duration: MassaTime,
-        ) -> io::Result<DefaultConnector> {
-            Ok(DefaultConnector(timeout_duration))
-        }
+    /// Get the connector with associated timeout
+    ///
+    /// # Argument
+    /// * `timeout_duration`: timeout duration in milliseconds
+    fn get_connector(&mut self, timeout_duration: MassaTime) -> io::Result<DefaultConnector> {
+        Ok(DefaultConnector(timeout_duration))
     }
+}
 
-    impl Default for DefaultEstablisher {
-        fn default() -> Self {
-            Self::new()
-        }
+impl Default for DefaultEstablisher {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -238,10 +238,10 @@ impl ExecutionState {
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
-            return Err(ExecutionError::IncludeOperationError(format!(
-                "could not spend fees: {}",
-                err
-            )));
+            let error = format!("could not spend fees: {}", err);
+            let event = context.event_create(error.clone(), true);
+            context.event_emit(event);
+            return Err(ExecutionError::IncludeOperationError(error));
         }
 
         // from here, fees transferred. Op will be executed just after in the context of a snapshot.
@@ -435,8 +435,8 @@ impl ExecutionState {
             let max_rolls = rolls.1.saturating_add(*roll_count);
             if max_rolls > vesting_range.max_rolls {
                 return Err(ExecutionError::VestingError(format!(
-                    "vesting_max_rolls={} with value max_rolls={} ",
-                    vesting_range.max_rolls, max_rolls
+                    "trying to get to a total of {} rolls but only {} are allowed at that time by the vesting scheme",
+                    max_rolls, vesting_range.max_rolls
                 )));
             }
         }
@@ -1463,7 +1463,7 @@ impl ExecutionState {
         for v in hashmap.values_mut() {
             if v.len().eq(&1) {
                 return Err(ExecutionError::InitVestingError(
-                    "vesting file should has more one element".to_string(),
+                    "vesting file should have more than one element".to_string(),
                 ));
             } else {
                 *v = v

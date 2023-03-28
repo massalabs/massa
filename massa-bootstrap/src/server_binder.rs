@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::BootstrapError;
-use crate::establisher::types::Duplex;
+use crate::establisher::Duplex;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,

@@ -54,10 +54,10 @@ use white_black_list::*;
 
 use crate::{
     error::BootstrapError,
+    establisher::{BSEstablisher, BSListener, Duplex},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    types::{Duplex, Listener},
-    BootstrapConfig, Establisher,
+    BootstrapConfig,
 };
 
 /// Abstraction layer over data produced by the listener, and transported
@@ -102,7 +102,7 @@ pub async fn start_bootstrap_server(
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
     config: BootstrapConfig,
-    mut establisher: Establisher,
+    mut establisher: impl BSEstablisher,
     keypair: KeyPair,
     version: Version,
 ) -> Result<Option<BootstrapManager>, Box<BootstrapError>> {
@@ -132,7 +132,6 @@ pub async fn start_bootstrap_server(
 
     let listener = establisher
         .get_listener(listen_addr)
-        .await
         .map_err(BootstrapError::IoError)?;
 
     // This is the primary interface between the async-listener, and the "sync" worker
@@ -164,6 +163,8 @@ pub async fn start_bootstrap_server(
     let listen_rt_handle = bs_server_runtime.handle().clone();
     let listen_handle = thread::Builder::new()
         .name("bs_listener".to_string())
+        // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
+        // GAT lifetime is likely to remedy this, however.
         .spawn(move || {
             let res =
                 listen_rt_handle.block_on(BootstrapServer::run_listener(listener, listener_tx));
@@ -248,7 +249,7 @@ impl BootstrapServer<'_> {
     /// Err(..) Error accepting a connection
     /// TODO: Integrate the listener into the bootstrap-main-loop
     async fn run_listener(
-        mut listener: Listener,
+        mut listener: impl BSListener,
         listener_tx: crossbeam::channel::Sender<BsConn>,
     ) -> Result<Result<(), BsConn>, Box<BootstrapError>> {
         loop {

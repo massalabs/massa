@@ -1,6 +1,6 @@
+use crate::establisher::Duplex;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
-use crate::types::Duplex;
 use crate::BootstrapConfig;
 use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
@@ -21,7 +21,6 @@ use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
-use tokio::io::duplex;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -66,9 +65,13 @@ impl BootstrapClientBinder {
 #[serial]
 async fn test_binders() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let server = server.accept().await.unwrap();
+    // let (client, server) = duplex(1000000);
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
@@ -165,10 +168,14 @@ async fn test_binders() {
 async fn test_binders_double_send_server_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let client = tokio::net::TcpStream::connect(server.local_addr().unwrap())
+        .await
+        .unwrap();
+    let server = server.accept().await.unwrap();
 
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
@@ -250,9 +257,12 @@ async fn test_binders_double_send_server_works() {
 async fn test_binders_try_double_send_client_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let server = server.accept().await.unwrap();
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
