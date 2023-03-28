@@ -771,7 +771,7 @@ impl ExecutionState {
             .load_module(&bytecode, message.max_gas)?;
         match massa_sc_runtime::run_function(
             &*self.execution_interface,
-            module.clone(),
+            module,
             &message.handler,
             &message.data,
             message.max_gas,
@@ -1184,7 +1184,7 @@ impl ExecutionState {
                     .load_module(&bytecode, req.max_gas)?;
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
-                    module.clone(),
+                    module,
                     &target_func,
                     &parameter,
                     req.max_gas,
