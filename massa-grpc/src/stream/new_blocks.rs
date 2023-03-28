@@ -2,7 +2,7 @@ use crate::error::{match_for_io_error, GrpcError};
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::block::SecureShareBlock;
-use massa_proto::massa::api::v1::{NewBlocksStreamRequest, NewBlocksStreamResponse};
+use massa_proto::massa::api::v1::{self as grpc};
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -13,7 +13,7 @@ use tracing::log::{error, warn};
 /// Type declaration for NewBlocksStream
 pub type NewBlocksStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<NewBlocksStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::NewBlocksStreamResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -22,7 +22,7 @@ pub type NewBlocksStream = Pin<
 /// Creates a new stream of new produced and received blocks
 pub(crate) async fn new_blocks(
     grpc: &MassaGrpcService,
-    request: Request<Streaming<NewBlocksStreamRequest>>,
+    request: Request<Streaming<grpc::NewBlocksStreamRequest>>,
 ) -> Result<NewBlocksStream, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -43,7 +43,7 @@ pub(crate) async fn new_blocks(
                         Ok(share_block) => {
                             let massa_block = share_block as SecureShareBlock;
                             // Send the new block through the channel
-                            if let Err(e) = tx.send(Ok(NewBlocksStreamResponse {
+                            if let Err(e) = tx.send(Ok(grpc::NewBlocksStreamResponse {
                                     id: request_id.clone(),
                                     block: Some(massa_block.into())
                             })).await {

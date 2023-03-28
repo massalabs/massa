@@ -212,42 +212,6 @@ pub struct SecureShareOperation {
     #[prost(string, tag = "6")]
     pub id: ::prost::alloc::string::String,
 }
-/// Operation filter type
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum OperationStreamFilterType {
-    Transaction = 0,
-    RollBuy = 1,
-    RollSell = 2,
-    ExecuteSc = 3,
-    CallSc = 4,
-}
-impl OperationStreamFilterType {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            OperationStreamFilterType::Transaction => "TRANSACTION",
-            OperationStreamFilterType::RollBuy => "ROLL_BUY",
-            OperationStreamFilterType::RollSell => "ROLL_SELL",
-            OperationStreamFilterType::ExecuteSc => "EXECUTE_SC",
-            OperationStreamFilterType::CallSc => "CALL_SC",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "TRANSACTION" => Some(Self::Transaction),
-            "ROLL_BUY" => Some(Self::RollBuy),
-            "ROLL_SELL" => Some(Self::RollSell),
-            "EXECUTE_SC" => Some(Self::ExecuteSc),
-            "CALL_SC" => Some(Self::CallSc),
-            _ => None,
-        }
-    }
-}
 /// Block
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -590,9 +554,25 @@ pub struct NewOperationsStreamRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
+    /// Query
+    #[prost(message, optional, tag = "2")]
+    pub query: ::core::option::Option<NewOperationsStreamQuery>,
+}
+/// NewOperationsStream Query
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewOperationsStreamQuery {
     /// Filter
-    #[prost(enumeration = "OperationStreamFilterType", repeated, tag = "2")]
-    pub filter: ::prost::alloc::vec::Vec<i32>,
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<NewOperationsStreamFilter>,
+}
+/// NewOperationsStream Filter
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NewOperationsStreamFilter {
+    /// Operation type enum
+    #[prost(enumeration = "OperationTypeEnum", repeated, tag = "1")]
+    pub types: ::prost::alloc::vec::Vec<i32>,
 }
 /// NewOperationsStreamResponse holds response from NewOperationsStream
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -741,6 +721,42 @@ pub struct TransactionsThroughputStreamRequest {
     /// Optional timer interval in sec. Defaults to 10s
     #[prost(fixed64, optional, tag = "2")]
     pub interval: ::core::option::Option<u64>,
+}
+/// Operation type enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum OperationTypeEnum {
+    Transaction = 0,
+    RollBuy = 1,
+    RollSell = 2,
+    ExecuteSc = 3,
+    CallSc = 4,
+}
+impl OperationTypeEnum {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            OperationTypeEnum::Transaction => "TRANSACTION",
+            OperationTypeEnum::RollBuy => "ROLL_BUY",
+            OperationTypeEnum::RollSell => "ROLL_SELL",
+            OperationTypeEnum::ExecuteSc => "EXECUTE_SC",
+            OperationTypeEnum::CallSc => "CALL_SC",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "TRANSACTION" => Some(Self::Transaction),
+            "ROLL_BUY" => Some(Self::RollBuy),
+            "ROLL_SELL" => Some(Self::RollSell),
+            "EXECUTE_SC" => Some(Self::ExecuteSc),
+            "CALL_SC" => Some(Self::CallSc),
+            _ => None,
+        }
+    }
 }
 /// Generated client implementations.
 pub mod grpc_client {

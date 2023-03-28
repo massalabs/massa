@@ -1,6 +1,6 @@
 use crate::{error::GrpcError, service::MassaGrpcService};
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1::{self as grpc, GetTransactionsThroughputResponse};
+use massa_proto::massa::api::v1::{self as grpc};
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::{select, time};
@@ -72,7 +72,7 @@ pub(crate) async fn transactions_throughput(
                         .unwrap_or_default() as u32;
                     // Send the throughput response back to the client
                     if let Err(e) = tx
-                        .send(Ok(GetTransactionsThroughputResponse {
+                        .send(Ok(grpc::GetTransactionsThroughputResponse {
                             id: request_id.clone(),
                             throughput,
                         }))

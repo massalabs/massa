@@ -268,8 +268,28 @@ message NewFilledBlocksStreamResponse {
 message NewOperationsStreamRequest {
     // Request id
     string id = 1;
+    // Query
+    NewOperationsStreamQuery query = 2;
+}
+
+// NewOperationsStream Query
+message NewOperationsStreamQuery {
     // Filter
-    repeated OperationStreamFilterType filter = 2;
+    NewOperationsStreamFilter filter = 1;
+}
+// NewOperationsStream Filter
+message NewOperationsStreamFilter {
+    // Operation type enum
+    repeated OperationTypeEnum types = 1;
+}
+
+// Operation type enum
+enum OperationTypeEnum {
+    TRANSACTION = 0;
+    ROLL_BUY = 1;
+    ROLL_SELL = 2;
+    EXECUTE_SC = 3;
+    CALL_SC = 4;
 }
 
 // NewOperationsStreamResponse holds response from NewOperationsStream

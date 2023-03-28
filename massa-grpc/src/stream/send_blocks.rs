@@ -5,7 +5,7 @@ use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareB
 use massa_models::error::ModelsError;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto::google::rpc::Status;
-use massa_proto::massa::api::v1::{self as grpc, SendBlocksStreamResponse};
+use massa_proto::massa::api::v1::{self as grpc};
 use massa_serialization::{DeserializeError, Deserializer};
 use std::io::ErrorKind;
 use std::pin::Pin;
@@ -17,7 +17,7 @@ use tracing::log::{error, warn};
 /// Type declaration for SendBlockStream
 pub type SendBlocksStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<SendBlocksStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::SendBlocksStreamResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -126,7 +126,7 @@ pub(crate) async fn send_blocks(
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
-                                        .send(Ok(SendBlocksStreamResponse {
+                                        .send(Ok(grpc::SendBlocksStreamResponse {
                                             id: req_content.id.clone(),
 
                                             result: Some(
@@ -191,14 +191,14 @@ pub(crate) async fn send_blocks(
 /// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
     id: String,
-    sender: Sender<Result<SendBlocksStreamResponse, tonic::Status>>,
+    sender: Sender<Result<grpc::SendBlocksStreamResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
-        .send(Ok(SendBlocksStreamResponse {
+        .send(Ok(grpc::SendBlocksStreamResponse {
             id,
             result: Some(grpc::send_blocks_stream_response::Result::Error(Status {
                 code: code.into(),

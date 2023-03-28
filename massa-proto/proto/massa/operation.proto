@@ -12,15 +12,6 @@ option java_package = "com.massa.api.v1";
 option objc_class_prefix = "OPERATION";
 option php_namespace = "Massa\\Api\\V1";
 
-// Operation filter type
-enum OperationStreamFilterType {
-    TRANSACTION = 0;
-    ROLL_BUY = 1;
-    ROLL_SELL = 2;
-    EXECUTE_SC = 3;
-    CALL_SC = 4;
-}
-
 // The operation as sent in the network
 message Operation {
     // The fee they have decided for this operation

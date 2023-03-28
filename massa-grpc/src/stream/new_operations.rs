@@ -2,10 +2,7 @@ use crate::error::GrpcError;
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::operation::{OperationType, SecureShareOperation};
-use massa_proto::massa::api::v1::{
-    self as grpc, BytesMapFieldEntry, NewOperationsStreamRequest, NewOperationsStreamResponse,
-    OperationStreamFilterType,
-};
+use massa_proto::massa::api::v1::{self as grpc};
 use std::pin::Pin;
 use tokio::select;
 use tonic::codegen::futures_core;
@@ -15,7 +12,7 @@ use tracing::log::error;
 /// Type declaration for StreamTransactionsThroughputStream
 pub type NewOperationsStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<NewOperationsStreamResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc::NewOperationsStreamResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -24,7 +21,7 @@ pub type NewOperationsStream = Pin<
 /// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(
     grpc: &MassaGrpcService,
-    request: Request<Streaming<NewOperationsStreamRequest>>,
+    request: Request<Streaming<grpc::NewOperationsStreamRequest>>,
 ) -> Result<NewOperationsStream, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -37,7 +34,7 @@ pub(crate) async fn new_operations(
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
             let mut request_id = request.id;
-            let mut filter = request.filter;
+            let mut filter = request.query.and_then(|q| q.filter);
 
             loop {
                 select! {
@@ -48,7 +45,7 @@ pub(crate) async fn new_operations(
                                 //
                                 match operation.clone().content.op {
                                     OperationType::Transaction{recipient_address,amount} => {
-                                        if is_filtered(&filter, OperationStreamFilterType::Transaction) {
+                                        if is_filtered(&filter, grpc::OperationTypeEnum::Transaction) {
                                             continue
                                         }
                                         grpc::OperationType{
@@ -57,7 +54,7 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::RollBuy { roll_count } => {
-                                        if is_filtered(&filter, OperationStreamFilterType::RollBuy) {
+                                        if is_filtered(&filter, grpc::OperationTypeEnum::RollBuy) {
                                             continue
                                         }
                                         grpc::OperationType {
@@ -66,7 +63,7 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::RollSell { roll_count } => {
-                                        if is_filtered(&filter, OperationStreamFilterType::RollSell) {
+                                        if is_filtered(&filter, grpc::OperationTypeEnum::RollSell) {
                                             continue
                                         }
                                         grpc::OperationType {
@@ -75,12 +72,12 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::ExecuteSC { data, max_gas, datastore } => {
-                                        if is_filtered(&filter, OperationStreamFilterType::ExecuteSc) {
+                                        if is_filtered(&filter, grpc::OperationTypeEnum::ExecuteSc) {
                                             continue
                                         }
 
                                        let vec_bytes_map =  datastore.into_iter().map(|(k, v)| {
-                                             BytesMapFieldEntry {
+                                        grpc::BytesMapFieldEntry {
                                                 key: k,
                                                 value: v
                                             }
@@ -95,7 +92,7 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::CallSC { target_addr, target_func,  max_gas, param, coins} => {
-                                        if is_filtered(&filter, OperationStreamFilterType::CallSc) {
+                                        if is_filtered(&filter, grpc::OperationTypeEnum::CallSc) {
                                             continue
                                         }
                                         grpc::OperationType {
@@ -121,7 +118,7 @@ pub(crate) async fn new_operations(
                                     id: operation.id.to_string()
                                 };
                                 // Send the new operation through the channel
-                                if let Err(e) = tx.send(Ok(NewOperationsStreamResponse {
+                                if let Err(e) = tx.send(Ok(grpc::NewOperationsStreamResponse {
                                     id: request_id.clone(),
                                     operation: Some(ret)
                                 })).await {
@@ -138,7 +135,8 @@ pub(crate) async fn new_operations(
                                 match res {
                                     Ok(data) => {
                                         // Update current filter && request id
-                                        filter = data.filter;
+                                        filter = data.query
+                                        .and_then(|q| q.filter);
                                         request_id = data.id;
                                     },
                                     Err(e) => {
@@ -167,11 +165,18 @@ pub(crate) async fn new_operations(
 /// Return if the type of operation is filtered
 ///
 /// if return true the operation is not sent
-fn is_filtered(filter_ids: &Vec<i32>, ope_type: OperationStreamFilterType) -> bool {
-    if filter_ids.is_empty() {
-        return false;
+fn is_filtered(
+    filter_opt: &Option<grpc::NewOperationsStreamFilter>,
+    ope_type: grpc::OperationTypeEnum,
+) -> bool {
+    if let Some(filter) = filter_opt {
+        let filtered_ope_ids = &filter.types;
+        if filtered_ope_ids.is_empty() {
+            return false;
+        }
+        let id: i32 = ope_type as i32;
+        !filtered_ope_ids.contains(&id)
+    } else {
+        false
     }
-
-    let id: i32 = ope_type as i32;
-    !filter_ids.contains(&id)
 }
