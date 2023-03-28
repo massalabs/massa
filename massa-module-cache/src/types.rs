@@ -46,6 +46,12 @@ impl ModuleMetadataSerializer {
     }
 }
 
+impl Default for ModuleMetadataSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<ModuleMetadata> for ModuleMetadataSerializer {
     fn serialize(
         &self,
@@ -87,6 +93,12 @@ impl ModuleMetadataDeserializer {
     }
 }
 
+impl Default for ModuleMetadataDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<ModuleMetadata> for ModuleMetadataDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -102,7 +114,7 @@ impl Deserializer<ModuleMetadata> for ModuleMetadataDeserializer {
                 ModuleMetadataId::NotExecuted => Ok((input, ModuleMetadata::NotExecuted)),
                 ModuleMetadataId::Delta => {
                     context("Delta", |input| self.delta_deser.deserialize(input))
-                        .map(|delta| ModuleMetadata::Delta(delta))
+                        .map(ModuleMetadata::Delta)
                         .parse(input)
                 }
             }

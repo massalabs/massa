@@ -65,14 +65,12 @@ impl ModuleCache {
                 .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
         {
             self.lru_cache.insert(hash, hd_module_info);
+        } else if let Some(lru_module_info) = self.lru_cache.get(hash) {
+            self.hd_cache.insert(hash, lru_module_info);
         } else {
-            if let Some(lru_module_info) = self.lru_cache.get(hash) {
-                self.hd_cache.insert(hash, lru_module_info);
-            } else {
-                let module_info = self.compile(bytecode);
-                self.hd_cache.insert(hash, module_info.clone());
-                self.lru_cache.insert(hash, module_info);
-            }
+            let module_info = self.compile(bytecode);
+            self.hd_cache.insert(hash, module_info.clone());
+            self.lru_cache.insert(hash, module_info);
         }
     }
 
@@ -95,19 +93,17 @@ impl ModuleCache {
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             lru_module_info
+        } else if let Some(hd_module_info) =
+            self.hd_cache
+                .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
+        {
+            self.lru_cache.insert(hash, hd_module_info.clone());
+            hd_module_info
         } else {
-            if let Some(hd_module_info) =
-                self.hd_cache
-                    .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
-            {
-                self.lru_cache.insert(hash, hd_module_info.clone());
-                hd_module_info
-            } else {
-                let module_info = self.compile(bytecode);
-                self.hd_cache.insert(hash, module_info.clone());
-                self.lru_cache.insert(hash, module_info.clone());
-                module_info
-            }
+            let module_info = self.compile(bytecode);
+            self.hd_cache.insert(hash, module_info.clone());
+            self.lru_cache.insert(hash, module_info.clone());
+            module_info
         }
     }
 
@@ -117,7 +113,7 @@ impl ModuleCache {
         bytecode: &[u8],
         execution_gas: u64,
     ) -> Result<RuntimeModule, CacheError> {
-        let module_info = self.load_module_info(&bytecode);
+        let module_info = self.load_module_info(bytecode);
         let module = match module_info {
             ModuleInfo::Invalid => {
                 return Err(CacheError::LoadError("Loading invalid module".to_string()));

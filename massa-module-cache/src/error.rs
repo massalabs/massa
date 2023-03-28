@@ -13,6 +13,6 @@ pub enum CacheError {
 
 impl From<anyhow::Error> for CacheError {
     fn from(e: anyhow::Error) -> CacheError {
-        return CacheError::VMError(e.to_string());
+        CacheError::VMError(e.to_string())
     }
 }
