@@ -16,7 +16,7 @@ pub struct Settings {
     pub history: usize,
     pub history_file_path: PathBuf,
     pub timeout: MassaTime,
-    pub http: HttpSettings,
+    pub client: ClientSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -26,10 +26,10 @@ pub struct DefaultNode {
     pub public_port: u16,
 }
 
-/// Http Client settings.
-/// the Http Client settings
+/// Client settings
+/// the client settings.
 #[derive(Debug, Deserialize, Clone)]
-pub struct HttpSettings {
+pub struct ClientSettings {
     pub max_request_body_size: u32,
     pub request_timeout: MassaTime,
     pub max_concurrent_requests: usize,
@@ -37,6 +37,15 @@ pub struct HttpSettings {
     pub id_kind: String,
     pub max_log_length: u32,
     pub headers: Vec<(String, String)>,
+    pub http: HttpSettings,
+}
+
+///TODO add WebSocket to CLI
+/// Http client settings.
+/// the Http client settings
+#[derive(Debug, Deserialize, Clone)]
+pub struct HttpSettings {
+    pub enabled: bool,
 }
 
 #[cfg(test)]

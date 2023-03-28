@@ -22,11 +22,11 @@ use massa_models::config::{
     MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
 use massa_models::{
-    block::BlockId,
+    block_id::BlockId,
     endorsement::{Endorsement, EndorsementSerializer},
     node::NodeId,
+    secure_share::SecureShareContent,
     slot::Slot,
-    wrapped::WrappedContent,
 };
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
@@ -102,7 +102,7 @@ async fn test_node_worker_shutdown() {
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
 
     let node_worker_command_tx = node_command_tx.clone();
     let node_fn_handle = tokio::spawn(async move {
@@ -176,7 +176,7 @@ async fn test_node_worker_operations_message() {
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
 
     // Create transaction.
     let transaction = get_transaction(50, 10);
@@ -1197,7 +1197,7 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Endorsement::new_wrapped(
+            let endorsement = Endorsement::new_verifiable(
                 content.clone(),
                 EndorsementSerializer::new(),
                 &sender_keypair,
@@ -1233,7 +1233,7 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Endorsement::new_wrapped(
+            let endorsement = Endorsement::new_verifiable(
                 content.clone(),
                 EndorsementSerializer::new(),
                 &sender_keypair,

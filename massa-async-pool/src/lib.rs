@@ -16,7 +16,7 @@
 //!
 //! ```json
 //! {
-//!     "sender": "xxxx",  // address that sent the message and spent max_gas*gas_price+coins on emission
+//!     "sender": "xxxx",  // address that sent the message and spent fee + coins on emission
 //!     "slot": {"period": 123455, "thread": 11},  // slot at which the message was emitted
 //!     "emission_index": 212,  // index of the message emitted in this slot
 //!     "destination": "xxxx",  // target address
@@ -24,7 +24,6 @@
 //!     "validity_start": {"period": 123456, "thread": 12},  // the message can be handled starting from the validity_start slot (included)
 //!     "validity_end": {"period": 123457, "thread": 16},  // the message can be handled until the validity_end slot (excluded)
 //!     "max_gas": 12334,  // max gas available when the handler is called
-//!     "gas_price": "124.23",  // gas price for the handler call
 //!     "coins": "1111.11",  // amount of coins to transfer to the destination address when calling its handler
 //!     "data": { ... any object ... }  // data payload of the message, passed as the sole parameter of the destination handler when called
 //! }
@@ -32,17 +31,17 @@
 //!
 //! ## How to send a message during bytecode execution
 //!
-//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -> Result<(), ABIReturnError>`. Note that data has a configuration defined `max_async_message_data_size`.
+//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, fee, coins, data: JSON string) -> Result<(), ABIReturnError>`. Note that data has a configuration defined `max_async_message_data_size`.
 //! * when called, this ABI does this:
 //!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer
-//!   * it consumes `max_gas * gas_price + coins` coins from the sender
+//!   * it consumes `fee + coins` coins from the sender
 //!   * it generates an `AsyncMessage` and stores it in an asynchronous pool
 //!
-//! Note that `max_gas*gas_price` coins are burned when sending the message.
+//! Note that `fee + coins` coins are burned when sending the message.
 //!
 //! ## How is the `AsyncPool` handled
 //! ```md
-//! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`
+//! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(rev(Ratio(msg.fee, max(msg.max_gas,1))), rev(msg.slot), rev(msg.emission_index))`
 //!
 //! * when an AsyncMessage is added to the AsyncPool:
 //!   * if the AsyncPool length has exceeded config.max_async_pool_length:
@@ -55,7 +54,7 @@
 //!     * credit target_address with M.coins
 //!     * run the target handler function with M.payload as parameter and the context:
 //!       * max_gas = M.max_gas
-//!       * gas_price = M.gas_price
+//!       * fee = M.fee
 //!       * slot = S
 //!       * call_stack = [M.target_address, M.sender_address]
 //!   * on any failure, cancel all the effects of execution and credit M.coins back to the sender
@@ -87,6 +86,7 @@
 //! See `test_exports/mod.rs` for details.
 
 #![feature(btree_drain_filter)]
+#![feature(let_chains)]
 #![feature(drain_filter)]
 
 mod changes;
@@ -100,7 +100,7 @@ pub use changes::{
 pub use config::AsyncPoolConfig;
 pub use message::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageSerializer,
+    AsyncMessageIdSerializer, AsyncMessageSerializer, AsyncMessageTrigger,
 };
 pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 

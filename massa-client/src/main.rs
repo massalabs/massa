@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Massa stateless CLI
-#![feature(str_split_whitespace_as_str)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 use crate::settings::SETTINGS;
@@ -9,18 +8,19 @@ use atty::Stream;
 use cmds::Command;
 use console::style;
 use dialoguer::Password;
-use massa_sdk::{Client, HttpConfig};
+use massa_sdk::{Client, ClientConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
+use std::env;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use structopt::StructOpt;
 
 mod cmds;
+mod display;
 mod repl;
 mod settings;
-mod utils;
 
 #[cfg(test)]
 pub mod tests;
@@ -65,7 +65,7 @@ struct JsonError {
 
 /// Ask for the wallet password
 /// If the wallet does not exist, it will require password confirmation
-fn ask_password(wallet_path: &Path) -> String {
+pub(crate) fn ask_password(wallet_path: &Path) -> String {
     if wallet_path.is_file() {
         Password::new()
             .with_prompt("Enter wallet password")
@@ -96,14 +96,19 @@ fn main(args: Args) -> anyhow::Result<()> {
 }
 
 async fn run(args: Args) -> Result<()> {
+    let client_config = ClientConfig {
+        max_request_body_size: SETTINGS.client.max_request_body_size,
+        request_timeout: SETTINGS.client.request_timeout,
+        max_concurrent_requests: SETTINGS.client.max_concurrent_requests,
+        certificate_store: SETTINGS.client.certificate_store.clone(),
+        id_kind: SETTINGS.client.id_kind.clone(),
+        max_log_length: SETTINGS.client.max_log_length,
+        headers: SETTINGS.client.headers.clone(),
+    };
+
     let http_config = HttpConfig {
-        max_request_body_size: SETTINGS.http.max_request_body_size,
-        request_timeout: SETTINGS.http.request_timeout,
-        max_concurrent_requests: SETTINGS.http.max_concurrent_requests,
-        certificate_store: SETTINGS.http.certificate_store.clone(),
-        id_kind: SETTINGS.http.id_kind.clone(),
-        max_log_length: SETTINGS.http.max_log_length,
-        headers: SETTINGS.http.headers.clone(),
+        client_config,
+        enabled: SETTINGS.client.http.enabled,
     };
 
     // TODO: move settings loading in another crate ... see #1277
@@ -132,18 +137,31 @@ async fn run(args: Args) -> Result<()> {
         std::process::exit(1);
     }));
 
-    // ...
-    let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
-    let mut wallet = Wallet::new(args.wallet, password)?;
     let client = Client::new(address, public_port, private_port, &http_config).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &mut wallet).await;
+        repl::run(&client, &args.wallet, args.password).await?;
     } else {
         // Non-Interactive mode
+
+        // Only prompt for password if the command needs wallet access.
+        let mut wallet_opt = match args.command.is_pwd_needed() {
+            true => {
+                let password = match (args.password, env::var("MASSA_CLIENT_PASSWORD")) {
+                    (Some(pwd), _) => pwd,
+                    (_, Ok(pwd)) => pwd,
+                    _ => ask_password(&args.wallet),
+                };
+
+                let wallet = Wallet::new(args.wallet, password)?;
+                Some(wallet)
+            }
+            false => None,
+        };
+
         match args
             .command
-            .run(&client, &mut wallet, &args.parameters, args.json)
+            .run(&client, &mut wallet_opt, &args.parameters, args.json)
             .await
         {
             Ok(output) => {

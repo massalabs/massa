@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
 use massa_executed_ops::ExecutedOps;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
@@ -30,6 +31,7 @@ pub fn create_final_state(
         changes_history,
         pos_state,
         executed_ops,
+        final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
     }
 }
 
@@ -57,5 +59,48 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     assert_eq!(
         v1.executed_ops.sorted_ops, v2.executed_ops.sorted_ops,
         "executed_ops.sorted_ops mismatch"
+    );
+}
+
+/// asserts that two `FinalState` hashes are equal
+pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
+    assert_eq!(
+        v1.ledger.get_ledger_hash(),
+        v2.ledger.get_ledger_hash(),
+        "ledger hash mismatch"
+    );
+    assert_eq!(
+        v1.async_pool.hash, v2.async_pool.hash,
+        "async pool hash mismatch"
+    );
+    assert_eq!(
+        v1.pos_state.deferred_credits.hash, v2.pos_state.deferred_credits.hash,
+        "deferred credits hash mismatch"
+    );
+    for (cycle1, cycle2) in v1
+        .pos_state
+        .cycle_history
+        .iter()
+        .zip(v2.pos_state.cycle_history.iter())
+    {
+        assert_eq!(
+            cycle1.roll_counts_hash, cycle2.roll_counts_hash,
+            "cycle ({}) roll_counts_hash mismatch",
+            cycle1.cycle
+        );
+        assert_eq!(
+            cycle1.production_stats_hash, cycle2.production_stats_hash,
+            "cycle ({}) roll_counts_hash mismatch",
+            cycle1.cycle
+        );
+        assert_eq!(
+            cycle1.cycle_global_hash, cycle2.cycle_global_hash,
+            "cycle ({}) global_hash mismatch",
+            cycle1.cycle
+        );
+    }
+    assert_eq!(
+        v1.executed_ops.hash, v2.executed_ops.hash,
+        "executed ops hash mismatch"
     );
 }

@@ -3,11 +3,12 @@ history_file_path = "config/.massa_history"
 timeout = 1000
 
 [default_node]
+# The IP of your node. Works both with IPv4 (like 127.0.0.1) and IPv6 (like ::1) addresses, if the node is bound to the correct protocol.
 ip = "127.0.0.1"
 private_port = 33034
 public_port = 33035
 
-[http]
+[client]
     # maximum size in bytes of a request
     max_request_body_size = 52428800
     # request timeout
@@ -22,3 +23,7 @@ public_port = 33035
     max_log_length = 4096
     # custom headers passed to the server with every request (default is empty).
     headers = []
+
+    [client.http]
+        # whether to enable HTTP.
+        enabled = true

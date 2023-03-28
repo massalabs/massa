@@ -4,17 +4,12 @@ use bitvec::vec::BitVec;
 use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::streaming_step::StreamingStep;
-use massa_models::{
-    address::{Address, AddressDeserializer},
-    amount::{Amount, AmountDeserializer},
-    prehash::PreHashMap,
-    slot::{Slot, SlotDeserializer},
-};
-use massa_serialization::U64VarIntDeserializer;
+use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
+use massa_serialization::{Serializer, U64VarIntSerializer};
 use std::collections::VecDeque;
 use std::{
     collections::BTreeMap,
-    ops::Bound::{Excluded, Included, Unbounded},
+    ops::Bound::{Excluded, Unbounded},
     path::PathBuf,
 };
 use tracing::debug;
@@ -33,14 +28,8 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
-    /// amount deserializer
-    pub amount_deserializer: AmountDeserializer,
-    /// slot deserializer
-    pub slot_deserializer: SlotDeserializer,
-    /// deserializer
-    pub deferred_credit_length_deserializer: U64VarIntDeserializer,
-    /// address deserializer
-    pub address_deserializer: AddressDeserializer,
+    /// initial state hash
+    pub initial_ledger_hash: Hash,
 }
 
 impl PoSFinalState {
@@ -50,6 +39,7 @@ impl PoSFinalState {
         initial_seed_string: &str,
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
+        initial_ledger_hash: Hash,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -63,17 +53,6 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        // Deserializers
-        let amount_deserializer =
-            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
-        let slot_deserializer = SlotDeserializer::new(
-            (Included(u64::MIN), Included(u64::MAX)),
-            (Included(0), Excluded(config.thread_count)),
-        );
-        let deferred_credit_length_deserializer =
-            U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)); // TODO define a max here
-        let address_deserializer = AddressDeserializer::new();
-
         Ok(Self {
             config,
             cycle_history: Default::default(),
@@ -81,11 +60,16 @@ impl PoSFinalState {
             selector,
             initial_rolls,
             initial_seeds,
-            amount_deserializer,
-            slot_deserializer,
-            deferred_credit_length_deserializer,
-            address_deserializer,
+            initial_ledger_hash,
         })
+    }
+
+    /// Reset the state of the PoS final state
+    ///
+    /// USED ONLY FOR BOOTSTRAP
+    pub fn reset(&mut self) {
+        self.cycle_history.clear();
+        self.deferred_credits = DeferredCredits::default();
     }
 
     /// Create the initial cycle based off the initial rolls.
@@ -103,13 +87,13 @@ impl PoSFinalState {
             // assume genesis blocks have a "False" seed bit to avoid passing them around
             rng_seed.push(false);
         }
-        self.cycle_history.push_back(CycleInfo {
-            cycle: 0,
+        self.cycle_history.push_back(CycleInfo::new_with_hash(
+            0,
+            false,
+            self.initial_rolls.clone(),
             rng_seed,
-            production_stats: Default::default(),
-            roll_counts: self.initial_rolls.clone(),
-            complete: false,
-        });
+            PreHashMap::default(),
+        ));
     }
 
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
@@ -199,13 +183,13 @@ impl PoSFinalState {
                 // extend the last incomplete cycle
             } else if info.cycle.checked_add(1) == Some(cycle) && info.complete {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
-                self.cycle_history.push_back(CycleInfo {
+                self.cycle_history.push_back(CycleInfo::new_with_hash(
                     cycle,
-                    roll_counts: info.roll_counts.clone(),
-                    rng_seed: BitVec::with_capacity(slots_per_cycle),
-                    production_stats: Default::default(),
-                    complete: false,
-                });
+                    false,
+                    info.roll_counts.clone(),
+                    BitVec::with_capacity(slots_per_cycle),
+                    PreHashMap::default(),
+                ));
                 while self.cycle_history.len() > self.config.cycle_history_length {
                     self.cycle_history.pop_front();
                 }
@@ -215,47 +199,29 @@ impl PoSFinalState {
                 ));
             }
         } else {
-            panic!("PoS History shouldn't be empty here.");
+            return Err(PosError::ContainerInconsistency(
+                "PoS history should never be empty here".into(),
+            ));
         }
 
-        // update cycle data
-        let cycle_completed: bool;
-        {
-            let current = self
-                .cycle_history
-                .back_mut()
-                .expect("cycle history should be non-empty"); // because if was filled above
+        // get the last history cycle, should always be present because it was filled above
+        let current = self
+            .cycle_history
+            .back_mut()
+            .expect("cycle history should be non-empty");
 
-            // extend seed_bits with changes.seed_bits
-            current.rng_seed.extend(changes.seed_bits);
-
-            // extend roll counts
-            current.roll_counts.extend(changes.roll_changes);
-            current.roll_counts.retain(|_, &mut count| count != 0);
-
-            // extend production stats
-            for (addr, stats) in changes.production_stats {
-                current
-                    .production_stats
-                    .entry(addr)
-                    .and_modify(|cur| cur.extend(&stats))
-                    .or_insert(stats);
-            }
-
-            // check for completion
-            current.complete =
-                slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
-            // if the cycle just completed, check that it has the right number of seed bits
-            if current.complete && current.rng_seed.len() != slots_per_cycle {
-                panic!("cycle completed with incorrect number of seed bits");
-            }
-            cycle_completed = current.complete;
-        }
+        // apply changes to the current cycle
+        let cycle_completed = current.apply_changes(
+            changes.clone(),
+            slot,
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+        );
 
         // extent deferred_credits with changes.deferred_credits
         // remove zero-valued credits
         self.deferred_credits
-            .nested_replace(changes.deferred_credits);
+            .final_nested_extend(changes.deferred_credits);
         self.deferred_credits.remove_zeros();
 
         // feed the cycle if it is complete
@@ -281,7 +247,7 @@ impl PoSFinalState {
     /// Feeds the selector targeting a given draw cycle
     fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
         // get roll lookback
-        let lookback_rolls = match draw_cycle.checked_sub(3) {
+        let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
             Some(c) => {
                 let index = self
@@ -291,10 +257,16 @@ impl PoSFinalState {
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
-                cycle_info.roll_counts.clone()
+                // take the final_state_hash_snapshot at cycle - 3
+                // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
+                // do this here to avoid a potential attacker manipulating the selections
+                let state_hash = cycle_info
+                    .final_state_hash_snapshot
+                    .expect("critical: a complete cycle must contain a final state hash snapshot");
+                (cycle_info.roll_counts.clone(), state_hash)
             }
             // looking back to negative cycles
-            None => self.initial_rolls.clone(),
+            None => (self.initial_rolls.clone(), self.initial_ledger_hash),
         };
 
         // get seed lookback
@@ -308,7 +280,12 @@ impl PoSFinalState {
                 if !cycle_info.complete {
                     return Err(PosError::CycleUnfinished(c));
                 }
-                Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
+                let u64_ser = U64VarIntSerializer::new();
+                let mut seed = Vec::new();
+                u64_ser.serialize(&c, &mut seed).unwrap();
+                seed.extend(cycle_info.rng_seed.clone().into_vec());
+                seed.extend(lookback_state_hash.to_bytes());
+                Hash::compute_from(&seed)
             }
             // looking back to negative cycles
             None => self.initial_seeds[draw_cycle as usize],
@@ -318,6 +295,16 @@ impl PoSFinalState {
         self.selector
             .as_ref()
             .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
+    }
+
+    /// Feeds the selector targeting a given draw cycle
+    pub fn feed_cycle_state_hash(&mut self, cycle: u64, final_state_hash: Hash) {
+        if let Some(index) = self.get_cycle_index(cycle) {
+            let cycle = self.cycle_history.get_mut(index).unwrap();
+            cycle.final_state_hash_snapshot = Some(final_state_hash);
+        } else {
+            panic!("cycle {} should be contained here", cycle);
+        }
     }
 
     /// Retrieves the amount of rolls a given address has at the latest cycle
@@ -350,7 +337,7 @@ impl PoSFinalState {
     /// Retrieves every deferred credit of the given slot
     pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
         self.deferred_credits
-            .0
+            .credits
             .get(slot)
             .cloned()
             .unwrap_or_default()
@@ -439,9 +426,9 @@ impl PoSFinalState {
             StreamingStep::Finished(_) => return (credits_part, cursor),
         };
         let mut credit_part_last_slot: Option<Slot> = None;
-        for (slot, credits) in self.deferred_credits.0.range((left_bound, Unbounded)) {
-            if credits_part.0.len() < self.config.credits_bootstrap_part_size as usize {
-                credits_part.0.insert(*slot, credits.clone());
+        for (slot, credits) in self.deferred_credits.credits.range((left_bound, Unbounded)) {
+            if credits_part.credits.len() < self.config.credits_bootstrap_part_size as usize {
+                credits_part.credits.insert(*slot, credits.clone());
                 credit_part_last_slot = Some(*slot);
             } else {
                 break;
@@ -464,12 +451,15 @@ impl PoSFinalState {
                 .cycle_history
                 .back()
                 .map(|info| info.cycle.saturating_add(1));
-            let current_cycle = cycle_info.cycle;
-            if let Some(next_cycle) = opt_next_cycle && current_cycle != next_cycle {
-            panic!("PoS received cycle ({}) should be equal to the next expected cycle ({})", current_cycle, next_cycle);
-        }
+            let received_cycle = cycle_info.cycle;
+            if let Some(next_cycle) = opt_next_cycle && received_cycle != next_cycle {
+                panic!(
+                    "PoS received cycle ({}) should be equal to the next expected cycle ({})",
+                    received_cycle, next_cycle
+                );
+            }
             self.cycle_history.push_back(cycle_info);
-            StreamingStep::Ongoing(current_cycle)
+            StreamingStep::Ongoing(received_cycle)
         } else {
             StreamingStep::Finished(None)
         }
@@ -480,10 +470,10 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
     pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
-        self.deferred_credits.nested_replace(part);
+        self.deferred_credits.final_nested_extend(part);
         if let Some(slot) = self
             .deferred_credits
-            .0
+            .credits
             .last_key_value()
             .map(|(&slot, _)| slot)
         {

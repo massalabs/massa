@@ -8,9 +8,9 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer},
     prehash::PreHashSet,
+    secure_share::Id,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
-    wrapped::Id,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -22,11 +22,11 @@ use nom::{
     IResult, Parser,
 };
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     ops::Bound::{Excluded, Included, Unbounded},
 };
 
-const EXECUTED_OPS_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const EXECUTED_OPS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 /// A structure to list and prune previously executed operations
 #[derive(Debug, Clone)]
@@ -39,6 +39,8 @@ pub struct ExecutedOps {
     pub ops: PreHashSet<OperationId>,
     /// Accumulated hash of the executed operations
     pub hash: Hash,
+    /// execution status of operations (true: success, false: fail)
+    pub op_exec_status: HashMap<OperationId, bool>,
 }
 
 impl ExecutedOps {
@@ -48,8 +50,18 @@ impl ExecutedOps {
             config,
             sorted_ops: BTreeMap::new(),
             ops: PreHashSet::default(),
-            hash: Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+            hash: Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
+            op_exec_status: HashMap::new(),
         }
+    }
+
+    /// Reset the executed operations
+    ///
+    /// USED FOR BOOTSTRAP ONLY
+    pub fn reset(&mut self) {
+        self.sorted_ops.clear();
+        self.ops.clear();
+        self.hash = Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES);
     }
 
     /// Returns the number of executed operations
@@ -77,7 +89,7 @@ impl ExecutedOps {
     /// Apply speculative operations changes to the final executed operations state
     pub fn apply_changes(&mut self, changes: ExecutedOpsChanges, slot: Slot) {
         self.extend_and_compute_hash(changes.keys());
-        for (op_id, slot) in changes {
+        for (op_id, (op_exec_success, slot)) in changes {
             self.sorted_ops
                 .entry(slot)
                 .and_modify(|ids| {
@@ -88,7 +100,10 @@ impl ExecutedOps {
                     new.insert(op_id);
                     new
                 });
+
+            self.op_exec_status.insert(op_id, op_exec_success);
         }
+
         self.prune(slot);
     }
 
@@ -104,6 +119,7 @@ impl ExecutedOps {
         for (_, ids) in removed {
             for op_id in ids {
                 self.ops.remove(&op_id);
+                self.op_exec_status.remove(&op_id);
                 self.hash ^= *op_id.get_hash();
             }
         }
@@ -164,7 +180,7 @@ impl ExecutedOps {
 #[test]
 fn test_executed_ops_xor_computing() {
     use massa_models::prehash::PreHashMap;
-    use massa_models::wrapped::Id;
+    use massa_models::secure_share::Id;
 
     // initialize the executed ops config
     let config = ExecutedOpsConfig {
@@ -184,12 +200,21 @@ fn test_executed_ops_xor_computing() {
             thread: 0,
         };
         if i < 12 {
-            change_a.insert(OperationId::new(Hash::compute_from(&[i])), expiration_slot);
+            change_a.insert(
+                OperationId::new(Hash::compute_from(&[i])),
+                (true, expiration_slot),
+            );
         }
         if i > 8 {
-            change_b.insert(OperationId::new(Hash::compute_from(&[i])), expiration_slot);
+            change_b.insert(
+                OperationId::new(Hash::compute_from(&[i])),
+                (true, expiration_slot),
+            );
         }
-        change_c.insert(OperationId::new(Hash::compute_from(&[i])), expiration_slot);
+        change_c.insert(
+            OperationId::new(Hash::compute_from(&[i])),
+            (true, expiration_slot),
+        );
     }
 
     // apply change_b to a which performs a.hash ^ $(change_b)
@@ -215,7 +240,7 @@ fn test_executed_ops_xor_computing() {
     // at this point the hash should have been XORed with itself
     assert_eq!(
         a.hash,
-        Hash::from_bytes(EXECUTED_OPS_INITIAL_BYTES),
+        Hash::from_bytes(EXECUTED_OPS_HASH_INITIAL_BYTES),
         "'a' was not reset to its initial value"
     );
 }

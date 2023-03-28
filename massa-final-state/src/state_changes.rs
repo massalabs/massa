@@ -16,9 +16,10 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use serde::{Deserialize, Serialize};
 
 /// represents changes that can be applied to the execution state
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct StateChanges {
     /// ledger changes
     pub ledger_changes: LedgerChanges,
@@ -60,7 +61,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -68,24 +69,25 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     handler: String::from("test"),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
-    ///     coins: Amount::from_str("1").unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
+    ///     10000000,
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    ///     None,
+    /// );
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
@@ -93,7 +95,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// };
     /// let mut ledger_changes = LedgerChanges::default();
     /// ledger_changes.0.insert(
-    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Update(ledger_entry),
     /// );
     /// state_changes.ledger_changes = ledger_changes;
@@ -148,6 +150,7 @@ impl StateChangesDeserializer {
                 thread_count,
                 max_async_pool_changes,
                 max_async_message_data,
+                max_datastore_key_length as u32,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
                 thread_count,
@@ -167,7 +170,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// ## Example
     /// ```
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{address::Address, prehash::PreHashMap, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, prehash::PreHashMap, slot::Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
@@ -175,24 +178,25 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage {
-    ///     emission_slot: Slot::new(1, 0),
-    ///     emission_index: 0,
-    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     handler: String::from("test"),
-    ///     max_gas: 10000000,
-    ///     gas_price: Amount::from_str("1").unwrap(),
-    ///     coins: Amount::from_str("1").unwrap(),
-    ///     validity_start: Slot::new(2, 0),
-    ///     validity_end: Slot::new(3, 0),
-    ///     data: vec![1, 2, 3, 4]
-    /// };
+    /// let message = AsyncMessage::new_with_hash(
+    ///     Slot::new(1, 0),
+    ///     0,
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
+    ///     10000000,
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Slot::new(2, 0),
+    ///     Slot::new(3, 0),
+    ///     vec![1, 2, 3, 4],
+    ///     None,
+    /// );
     /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
@@ -200,7 +204,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// };
     /// let mut ledger_changes = LedgerChanges::default();
     /// ledger_changes.0.insert(
-    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Update(ledger_entry),
     /// );
     /// state_changes.ledger_changes = ledger_changes;

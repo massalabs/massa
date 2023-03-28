@@ -16,8 +16,8 @@ pub use config::LedgerConfig;
 pub use controller::LedgerController;
 pub use error::LedgerError;
 pub use key::{
-    get_address_from_key, KeyDeserializer, KeySerializer, BALANCE_IDENT, BYTECODE_IDENT,
-    DATASTORE_IDENT,
+    datastore_prefix_from_address, Key, KeyDeserializer, KeySerializer, KeyType, BALANCE_IDENT,
+    BYTECODE_IDENT, DATASTORE_IDENT,
 };
 pub use ledger_changes::{
     DatastoreUpdateDeserializer, DatastoreUpdateSerializer, LedgerChanges,

@@ -272,7 +272,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0);
+            let address = Address::from_public_key(&nodes[0].id.get_public_key());
             let thread = address.get_thread(2);
 
             let endorsement = tools::create_endorsement();
@@ -295,6 +295,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously received header.
             let mut sender = protocol_command_sender.clone();
             thread::spawn(move || {
+                std::thread::sleep(Duration::from_millis(300));
                 let mut storage = Storage::create_root();
                 storage.store_endorsements(vec![endorsement]);
                 sender.propagate_endorsements(storage).unwrap();
@@ -345,7 +346,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0);
+            let address = Address::from_public_key(&nodes[0].id.get_public_key());
             let thread = address.get_thread(2);
 
             let endorsement = tools::create_endorsement();
@@ -418,7 +419,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0);
+            let address = Address::from_public_key(&nodes[0].id.get_public_key());
             let thread = address.get_thread(2);
 
             let endorsement = tools::create_endorsement();

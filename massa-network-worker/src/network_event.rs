@@ -80,11 +80,12 @@ pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
     use massa_models::{
-        block::{BlockId, WrappedHeader},
-        endorsement::WrappedEndorsement,
+        block_header::SecuredHeader,
+        block_id::BlockId,
+        endorsement::SecureShareEndorsement,
         node::NodeId,
-        operation::{OperationPrefixIds, WrappedOperation},
-        wrapped::Id,
+        operation::{OperationPrefixIds, SecureShareOperation},
+        secure_share::Id,
     };
     use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NodeCommand};
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -102,7 +103,6 @@ pub mod event_impl {
         from: NodeId,
         list: &[IpAddr],
     ) -> Result<(), NetworkError> {
-        debug!("node_id={} sent us a peer list ({} ips)", from, list.len());
         massa_trace!("peer_list_received", {
             "node_id": from,
             "ips": list
@@ -128,7 +128,7 @@ pub mod event_impl {
     pub async fn on_received_block_header(
         worker: &mut NetworkWorker,
         from: NodeId,
-        header: WrappedHeader,
+        header: SecuredHeader,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
@@ -166,7 +166,6 @@ pub mod event_impl {
         worker: &mut NetworkWorker,
         from: NodeId,
     ) -> Result<(), NetworkError> {
-        debug!("node_id={} asked us for peer list", from);
         massa_trace!("node_asked_peer_list", { "node_id": from });
         let peer_list = worker.peer_info_db.get_advertisable_peer_ips();
         if let Some((_, node_command_tx)) = worker.active_nodes.get(&from) {
@@ -195,7 +194,7 @@ pub mod event_impl {
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -262,7 +261,7 @@ pub mod event_impl {
     pub async fn on_received_endorsements(
         worker: &mut NetworkWorker,
         from: NodeId,
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements",

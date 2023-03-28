@@ -2,7 +2,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
 };
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::clique::Clique;
 use massa_models::config::CHANNEL_SIZE;
 use massa_models::prehash::PreHashSet;
@@ -63,7 +63,7 @@ pub fn start_consensus_worker(
     let shared_state = Arc::new(RwLock::new(ConsensusState {
         storage: storage.clone(),
         config: config.clone(),
-        channels,
+        channels: channels.clone(),
         max_cliques: vec![Clique {
             block_ids: PreHashSet::<BlockId>::default(),
             fitness: 0,
@@ -89,7 +89,7 @@ pub fn start_consensus_worker(
         stale_block_stats: Default::default(),
         protocol_blocks: Default::default(),
         wishlist: Default::default(),
-        launch_time: MassaTime::now(config.clock_compensation_millis).unwrap(),
+        launch_time: MassaTime::now().unwrap(),
         stats_desync_detection_timespan,
         stats_history_timespan: std::cmp::max(
             stats_desync_detection_timespan,
@@ -99,20 +99,25 @@ pub fn start_consensus_worker(
     }));
 
     let shared_state_cloned = shared_state.clone();
+    let mut consensus_worker =
+        ConsensusWorker::new(config.clone(), rx, shared_state_cloned, init_graph, storage).unwrap();
+
     let consensus_thread = thread::Builder::new()
         .name("consensus worker".into())
-        .spawn(move || {
-            let mut consensus_worker =
-                ConsensusWorker::new(config, rx, shared_state_cloned, init_graph, storage).unwrap();
-            consensus_worker.run()
-        })
+        .spawn(move || consensus_worker.run())
         .expect("Can't spawn consensus thread.");
 
     let manager = ConsensusManagerImpl {
         consensus_thread: Some((tx.clone(), consensus_thread)),
     };
 
-    let controller = ConsensusControllerImpl::new(tx, shared_state, bootstrap_part_size);
+    let controller = ConsensusControllerImpl::new(
+        tx,
+        channels,
+        shared_state,
+        bootstrap_part_size,
+        config.broadcast_enabled,
+    );
 
     (Box::new(controller), Box::new(manager))
 }

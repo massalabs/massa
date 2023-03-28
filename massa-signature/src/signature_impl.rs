@@ -184,44 +184,6 @@ impl KeyPair {
     pub fn get_public_key(&self) -> PublicKey {
         PublicKey(self.0.public)
     }
-
-    /// Encode a keypair into his `base58` form
-    ///
-    /// # Example
-    /// ```
-    /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate();
-    /// let bs58 = keypair.to_bs58_check();
-    /// ```
-    pub fn to_bs58_check(&self) -> String {
-        bs58::encode(self.to_bytes()).with_check().into_string()
-    }
-
-    /// Decode a `base58` encoded keypair
-    ///
-    /// # Example
-    /// ```
-    /// # use massa_signature::KeyPair;
-    /// let keypair = KeyPair::generate();
-    /// let bs58 = keypair.to_bs58_check();
-    /// let keypair2 = KeyPair::from_bs58_check(&bs58).unwrap();
-    /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Self, MassaSignatureError> {
-        bs58::decode(data)
-            .with_check(None)
-            .into_vec()
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!(
-                    "keypair bs58_check parsing error: {}",
-                    err
-                ))
-            })
-            .and_then(|key| {
-                KeyPair::from_bytes(&key.try_into().map_err(|_| {
-                    MassaSignatureError::ParsingError("Bad keypair format".to_string())
-                })?)
-            })
-    }
 }
 
 impl ::serde::Serialize for KeyPair {
@@ -367,7 +329,7 @@ pub struct PublicKey(ed25519_dalek::PublicKey);
 
 const PUBLIC_PREFIX: char = 'P';
 
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for PublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.as_bytes().hash(state);
@@ -451,20 +413,6 @@ impl PublicKey {
         })
     }
 
-    /// Serialize a `PublicKey` using `bs58` encoding with checksum.
-    ///
-    /// # Example
-    ///  ```
-    /// # use massa_signature::{PublicKey, KeyPair};
-    /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
-    ///
-    /// let serialized: String = keypair.get_public_key().to_bs58_check();
-    /// ```
-    pub fn to_bs58_check(&self) -> String {
-        bs58::encode(self.to_bytes()).with_check().into_string()
-    }
-
     /// Serialize a `PublicKey` as bytes.
     ///
     /// # Example
@@ -491,37 +439,6 @@ impl PublicKey {
     /// ```
     pub fn into_bytes(self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
         self.0.to_bytes()
-    }
-
-    /// Deserialize a `PublicKey` using `bs58` encoding with checksum.
-    ///
-    /// # Example
-    ///  ```
-    /// # use massa_signature::{PublicKey, KeyPair};
-    /// # use serde::{Deserialize, Serialize};
-    /// let keypair = KeyPair::generate();
-    ///
-    /// let serialized: String = keypair.get_public_key().to_bs58_check();
-    /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
-    /// ```
-    pub fn from_bs58_check(data: &str) -> Result<PublicKey, MassaSignatureError> {
-        bs58::decode(data)
-            .with_check(None)
-            .into_vec()
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!(
-                    "public key bs58_check parsing error: {}",
-                    err
-                ))
-            })
-            .and_then(|key| {
-                PublicKey::from_bytes(&key.try_into().map_err(|err| {
-                    MassaSignatureError::ParsingError(format!(
-                        "public key bs58_check parsing error: {:?}",
-                        err
-                    ))
-                })?)
-            })
     }
 
     /// Deserialize a `PublicKey` from bytes.

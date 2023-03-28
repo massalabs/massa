@@ -14,7 +14,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
@@ -26,8 +26,6 @@ use tracing::debug;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
-    // Execution config
-    config: ExecutionConfig,
     // A copy of the input data allowing access to incoming requests
     input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     // Total continuous slot sequence
@@ -62,9 +60,8 @@ impl ExecutionThread {
             input_data,
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             execution_state,
-            slot_sequencer: SlotSequencer::new(config.clone(), final_cursor),
+            slot_sequencer: SlotSequencer::new(config, final_cursor),
             selector,
-            config,
         }
     }
 
@@ -88,8 +85,8 @@ impl ExecutionThread {
         if let Some(req_resp) = self.readonly_requests.pop() {
             let (req, resp_tx) = req_resp.into_request_sender_pair();
 
-            // Acquire read access to the execution state and execute the read-only request
-            let outcome = self.execution_state.read().execute_readonly_request(req);
+            // Acquire write access to the execution state (for cache updates) and execute the read-only request
+            let outcome = self.execution_state.write().execute_readonly_request(req);
 
             // Send the execution output through resp_tx.
             // Ignore errors because they just mean that the request emitter dropped the received
@@ -141,8 +138,7 @@ impl ExecutionThread {
             // Compute when the next slot will be
             // This is useful to wait for the next speculative miss to append to active slots.
             let wakeup_deadline = self.slot_sequencer.get_next_slot_deadline();
-            let now =
-                MassaTime::now(self.config.clock_compensation).expect("could not get current time");
+            let now = MassaTime::now().expect("could not get current time");
             if wakeup_deadline <= now {
                 // next slot is right now: the loop needs to iterate
                 return (input_data, false);
@@ -153,7 +149,7 @@ impl ExecutionThread {
             let _ = self.input_data.0.wait_until(
                 &mut input_data_lock,
                 wakeup_deadline
-                    .estimate_instant(self.config.clock_compensation)
+                    .estimate_instant()
                     .expect("could not estimate instant"),
             );
         }

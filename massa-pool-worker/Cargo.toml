@@ -15,6 +15,7 @@ massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 
 [dev-dependencies]
+tokio = { version = "1.23", features = ["sync"] }
 massa_signature = { path = "../massa-signature" }
 massa_hash = { path = "../massa-hash" }
 massa_pool_exports = { path = "../massa-pool-exports", features = [ "testing" ] }

@@ -5,7 +5,7 @@ use massa_consensus_exports::{
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
-use massa_models::{block::BlockId, clique::Clique, prehash::PreHashSet, slot::Slot};
+use massa_models::{block_id::BlockId, clique::Clique, prehash::PreHashSet, slot::Slot};
 
 use super::ConsensusState;
 
@@ -168,7 +168,7 @@ impl ConsensusState {
             self.discarded_index.insert(*block_id);
             Ok(())
         } else {
-            return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id)));
+            Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id)))
         }
     }
 

@@ -11,12 +11,12 @@ use crate::NetworkEvent;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::wrapped::WrappedContent;
+use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::BlockId,
-    operation::{Operation, OperationSerializer, OperationType, WrappedOperation},
+    block_id::BlockId,
+    operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     version::Version,
 };
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
@@ -83,7 +83,7 @@ pub async fn full_connection_to_controller(
 
     // perform handshake
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -142,7 +142,7 @@ pub async fn rejected_connection_to_controller(
 
     // perform handshake and ignore errors
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
     let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -227,7 +227,7 @@ pub async fn full_connection_from_controller(
 
     // perform handshake
     let keypair = KeyPair::generate();
-    let mock_node_id = NodeId(keypair.get_public_key());
+    let mock_node_id = NodeId::new(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -324,7 +324,7 @@ pub async fn incoming_message_drain_stop(
     join_handle.await.expect("could not join message drain")
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
+pub fn get_transaction(expire_period: u64, fee: u64) -> SecureShareOperation {
     let sender_keypair = KeyPair::generate();
 
     let recv_keypair = KeyPair::generate();
@@ -339,7 +339,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
         expire_period,
     };
 
-    Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.
@@ -370,7 +370,6 @@ pub async fn network_test<F, V>(
         start_network_controller(
             &network_settings,
             establisher,
-            0,
             None,
             Version::from_str("TEST.1.10").unwrap(),
         )

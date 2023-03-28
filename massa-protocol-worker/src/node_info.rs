@@ -8,7 +8,7 @@
 
 use massa_models::operation::OperationPrefixId;
 use massa_models::prehash::{CapacityAllocator, PreHashMap};
-use massa_models::{block::BlockId, endorsement::EndorsementId};
+use massa_models::{block_id::BlockId, endorsement::EndorsementId};
 use massa_protocol_exports::ProtocolConfig;
 use tokio::time::Instant;
 

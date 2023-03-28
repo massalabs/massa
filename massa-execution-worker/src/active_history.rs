@@ -3,9 +3,10 @@ use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::{
-    address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
+    address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId,
+    prehash::PreHashMap, slot::Slot,
 };
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Default)]
 /// History of the outputs of recently executed slots.
@@ -79,16 +80,16 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active bytecode of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_bytecode(&self, addr: &Address) -> HistorySearchResult<Vec<u8>> {
+    pub fn fetch_bytecode(&self, addr: &Address) -> HistorySearchResult<Bytecode> {
         for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => {
-                    return HistorySearchResult::Present(v.bytecode.to_vec())
+                    return HistorySearchResult::Present(v.bytecode.clone())
                 }
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     bytecode: SetOrKeep::Set(v),
                     ..
-                })) => return HistorySearchResult::Present(v.to_vec()),
+                })) => return HistorySearchResult::Present(v.clone()),
                 Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
                 _ => (),
             }
@@ -152,7 +153,7 @@ impl ActiveHistory {
                     .state_changes
                     .pos_changes
                     .deferred_credits
-                    .0
+                    .credits
                     .get(slot)
                     .cloned()
             })
@@ -258,5 +259,20 @@ impl ActiveHistory {
                 (idx1..idx2.saturating_add(1), false, false)
             }
         }
+    }
+
+    /// Get the execution statuses of operations
+    ///
+    /// # Return Value
+    ///
+    /// A hashmap with
+    /// * the operation id as the key
+    /// * and a bool as the value: true: execution succeeded, false: execution failed
+    pub fn get_op_exec_status(&self) -> HashMap<OperationId, bool> {
+        self.0
+            .iter()
+            .flat_map(|exec_output| exec_output.state_changes.executed_ops_changes.clone())
+            .map(|(op_id, (status, _))| (op_id, status))
+            .collect()
     }
 }

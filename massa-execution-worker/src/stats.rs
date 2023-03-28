@@ -9,8 +9,6 @@ use std::collections::VecDeque;
 pub struct ExecutionStatsCounter {
     /// duration of the time window
     time_window_duration: MassaTime,
-    /// time compensation (milliseconds)
-    compensation_millis: i64,
     /// final blocks in the time window (count, instant)
     final_blocks: VecDeque<(usize, MassaTime)>,
     /// final operations executed in the time window (count, instant)
@@ -19,10 +17,9 @@ pub struct ExecutionStatsCounter {
 
 impl ExecutionStatsCounter {
     /// create a new `ExecutionStatsCounter`
-    pub fn new(time_window_duration: MassaTime, compensation_millis: i64) -> Self {
+    pub fn new(time_window_duration: MassaTime) -> Self {
         ExecutionStatsCounter {
             time_window_duration,
-            compensation_millis,
             final_blocks: Default::default(),
             final_executed_ops: Default::default(),
         }
@@ -53,24 +50,21 @@ impl ExecutionStatsCounter {
 
     /// register final blocks
     pub fn register_final_blocks(&mut self, count: usize) {
-        let current_time =
-            MassaTime::now(self.compensation_millis).expect("could not get current time");
+        let current_time = MassaTime::now().expect("could not get current time");
         self.final_blocks.push_back((count, current_time));
         self.refresh(current_time);
     }
 
     /// register final executed operations
     pub fn register_final_executed_operations(&mut self, count: usize) {
-        let current_time =
-            MassaTime::now(self.compensation_millis).expect("could not get current time");
+        let current_time = MassaTime::now().expect("could not get current time");
         self.final_executed_ops.push_back((count, current_time));
         self.refresh(current_time);
     }
 
     /// get statistics
     pub fn get_stats(&self, active_cursor: Slot) -> ExecutionStats {
-        let current_time =
-            MassaTime::now(self.compensation_millis).expect("could not get current time");
+        let current_time = MassaTime::now().expect("could not get current time");
         let start_time = current_time.saturating_sub(self.time_window_duration);
         let map_func = |pair: &(usize, MassaTime)| -> usize {
             let (cnt, t) = pair;

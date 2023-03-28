@@ -39,6 +39,15 @@ pub enum ExecutionError {
     /// Not enough gas in the block: {0}
     NotEnoughGas(String),
 
+    /// Given gas is above the threshold: {0}
+    TooMuchGas(String),
+
     /// Include operation error: {0}
     IncludeOperationError(String),
+
+    /// Error when initialize vesting addresses : {0}
+    InitVestingError(String),
+
+    /// We reach the vesting constraint : {0}
+    VestingError(String),
 }

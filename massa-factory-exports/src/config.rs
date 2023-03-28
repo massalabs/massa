@@ -16,9 +16,6 @@ pub struct FactoryConfig {
     /// period duration
     pub t0: MassaTime,
 
-    /// clock compensation in relative milliseconds
-    pub clock_compensation_millis: i64,
-
     /// initial delay before starting production, to avoid double-production on node restart
     pub initial_delay: MassaTime,
 

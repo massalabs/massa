@@ -1,7 +1,7 @@
 use massa_models::{
     address::Address,
     amount::Amount,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, SecureShareOperation},
 };
 use num::rational::Ratio;
 use std::cmp::Reverse;
@@ -40,7 +40,7 @@ pub struct OperationInfo {
 
 impl OperationInfo {
     pub fn from_op(
-        op: &WrappedOperation,
+        op: &SecureShareOperation,
         operation_validity_periods: u64,
         roll_price: Amount,
         thread_count: u8,
@@ -50,9 +50,9 @@ impl OperationInfo {
             cursor: build_operation_cursor(op),
             size: op.serialized_size(),
             max_gas: op.get_gas_usage(),
-            creator_address: op.creator_address,
-            fee: op.get_total_fee(),
-            thread: op.creator_address.get_thread(thread_count),
+            creator_address: op.content_creator_address,
+            fee: op.content.fee,
+            thread: op.content_creator_address.get_thread(thread_count),
             validity_period_range: op.get_validity_range(operation_validity_periods),
             max_spending: op.get_max_spending(roll_price),
         }
@@ -60,8 +60,8 @@ impl OperationInfo {
 }
 
 /// build a cursor from an operation
-fn build_operation_cursor(op: &WrappedOperation) -> PoolOperationCursor {
-    let quality = Ratio::new(op.get_total_fee().to_raw(), op.serialized_size() as u64);
+fn build_operation_cursor(op: &SecureShareOperation) -> PoolOperationCursor {
+    let quality = Ratio::new(op.content.fee.to_raw(), op.serialized_size() as u64);
     let inner = (Reverse(quality), op.id);
     // TODO take into account max_gas as well in the future (multi-dimensional packing)
     PoolOperationCursor::new(inner)

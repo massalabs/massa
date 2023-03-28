@@ -3,8 +3,10 @@
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
 use massa_models::amount::Amount;
+use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
 use num::rational::Ratio;
+use std::path::PathBuf;
 
 /// Storage cost constants
 #[derive(Debug, Clone, Copy)]
@@ -34,8 +36,6 @@ pub struct ExecutionConfig {
     pub roll_price: Amount,
     /// extra lag to add on the execution cursor to improve performance
     pub cursor_delay: MassaTime,
-    /// time compensation in milliseconds
-    pub clock_compensation: i64,
     /// genesis timestamp
     pub genesis_timestamp: MassaTime,
     /// period duration
@@ -58,6 +58,14 @@ pub struct ExecutionConfig {
     pub max_bytecode_size: u64,
     /// Max datastore value size
     pub max_datastore_value_size: u64,
+    /// Max number of compiled modules in the cache
+    pub max_module_cache_size: u32,
     /// Storage cost constants
     pub storage_costs_constants: StorageCostsConstants,
+    /// Max gas for read only executions
+    pub max_read_only_gas: u64,
+    /// Gas costs
+    pub gas_costs: GasCosts,
+    /// path of the initial vesting file
+    pub initial_vesting_path: PathBuf,
 }

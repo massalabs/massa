@@ -1,6 +1,6 @@
 use crate::{
     address::Address,
-    block::BlockId,
+    block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
 };

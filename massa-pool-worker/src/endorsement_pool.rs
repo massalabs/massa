@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    block::BlockId,
+    block_id::BlockId,
     endorsement::EndorsementId,
     prehash::{CapacityAllocator, PreHashSet},
     slot::Slot,

@@ -9,6 +9,8 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum FinalStateError {
+    /// invalid slot: {0}
+    InvalidSlot(String),
     /// ledger error: {0}
     LedgerError(String),
     /// PoS error: {0}

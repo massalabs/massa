@@ -97,7 +97,7 @@ impl NetworkWorker {
         }: NetworkWorkerChannels,
         version: Version,
     ) -> NetworkWorker {
-        let self_node_id = NodeId(keypair.get_public_key());
+        let self_node_id = NodeId::new(keypair.get_public_key());
 
         let (node_event_tx, node_event_rx) =
             mpsc::channel::<NodeEvent>(cfg.node_event_channel_size);
@@ -328,10 +328,6 @@ impl NetworkWorker {
         match outcome {
             // a handshake finished, and succeeded
             Ok((new_node_id, socket_reader, socket_writer)) => {
-                debug!(
-                    "handshake with connection_id={} succeeded => node_id={}",
-                    new_connection_id, new_node_id
-                );
                 massa_trace!("handshake_ok", {
                     "connection_id": new_connection_id,
                     "node_id": new_node_id
@@ -438,10 +434,6 @@ impl NetworkWorker {
             }
             // a handshake finished and failed
             Err(err) => {
-                debug!(
-                    "handshake failed with connection_id={}: {}",
-                    new_connection_id, err
-                );
                 massa_trace!("handshake_failed", {
                     "connection_id": new_connection_id,
                     "err": err.to_string()

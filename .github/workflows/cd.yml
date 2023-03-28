@@ -32,23 +32,25 @@ jobs:
             platform: x86_64
             target: x86_64-apple-darwin
             name: release_macos.tar.gz
+          - os: macOS-latest
+            platform: arm64
+            target: aarch64-apple-darwin
+            name: release_macos_aarch64.tar.gz
         exclude:
           - os: windows-latest
             platform: arm64
-          - os: macOS-latest
-            platform: arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2023-02-27
           target: ${{ matrix.target }}
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
       - uses: actions-rs/cargo@v1
         if: matrix.platform != 'arm64'
         with:

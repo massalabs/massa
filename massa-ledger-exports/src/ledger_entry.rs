@@ -5,8 +5,8 @@
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+use massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
 use massa_models::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
-use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::sequence::tuple;
@@ -21,7 +21,7 @@ pub struct LedgerEntry {
     pub balance: Amount,
 
     /// Executable bytecode
-    pub bytecode: Vec<u8>,
+    pub bytecode: Bytecode,
 
     /// A key-value store associating a hash to arbitrary bytes
     pub datastore: Datastore,
@@ -30,7 +30,7 @@ pub struct LedgerEntry {
 /// Serializer for `LedgerEntry`
 pub struct LedgerEntrySerializer {
     amount_serializer: AmountSerializer,
-    vec_u8_serializer: VecU8Serializer,
+    bytecode_serializer: BytecodeSerializer,
     datastore_serializer: DatastoreSerializer,
 }
 
@@ -38,8 +38,8 @@ impl LedgerEntrySerializer {
     /// Creates a new `LedgerEntrySerializer`
     pub fn new() -> Self {
         Self {
-            vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
+            bytecode_serializer: BytecodeSerializer::new(),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -57,14 +57,14 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// use massa_serialization::Serializer;
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::amount::Amount;
+    /// use massa_models::{amount::Amount, bytecode::Bytecode};
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
     /// let balance = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
     ///    bytecode,
@@ -76,7 +76,8 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// ```
     fn serialize(&self, value: &LedgerEntry, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.amount_serializer.serialize(&value.balance, buffer)?;
-        self.vec_u8_serializer.serialize(&value.bytecode, buffer)?;
+        self.bytecode_serializer
+            .serialize(&value.bytecode, buffer)?;
         self.datastore_serializer
             .serialize(&value.datastore, buffer)?;
         Ok(())
@@ -86,7 +87,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
 /// Deserializer for `LedgerEntry`
 pub struct LedgerEntryDeserializer {
     amount_deserializer: AmountDeserializer,
-    bytecode_deserializer: VecU8Deserializer,
+    bytecode_deserializer: BytecodeDeserializer,
     datastore_deserializer: DatastoreDeserializer,
 }
 
@@ -102,10 +103,7 @@ impl LedgerEntryDeserializer {
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             ),
-            bytecode_deserializer: VecU8Deserializer::new(
-                Included(u64::MIN),
-                Included(max_datastore_value_length),
-            ),
+            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_datastore_entry_count,
                 max_datastore_key_length,
@@ -121,14 +119,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
-    /// use massa_models::amount::Amount;
+    /// use massa_models::{amount::Amount, bytecode::Bytecode};
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
     ///
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
     /// let balance = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
     ///    bytecode,

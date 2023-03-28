@@ -2,11 +2,11 @@
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
-    block::BlockId,
-    endorsement::{Endorsement, EndorsementSerializer, WrappedEndorsement},
+    block_id::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
+    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-    wrapped::WrappedContent,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -62,8 +62,7 @@ impl EndorsementFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get delayed time
-        let now =
-            MassaTime::now(self.cfg.clock_compensation_millis).expect("could not get current time");
+        let now = MassaTime::now().expect("could not get current time");
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {
@@ -103,7 +102,7 @@ impl EndorsementFactoryWorker {
         )
         .expect("could not get block slot timestamp")
         .saturating_sub(self.half_t0)
-        .estimate_instant(self.cfg.clock_compensation_millis)
+        .estimate_instant()
         .expect("could not estimate block slot instant");
 
         (next_slot, next_instant)
@@ -168,9 +167,10 @@ impl EndorsementFactoryWorker {
             .get_latest_blockclique_block_at_slot(slot);
 
         // produce endorsements
-        let mut endorsements: Vec<WrappedEndorsement> = Vec::with_capacity(producers_indices.len());
+        let mut endorsements: Vec<SecureShareEndorsement> =
+            Vec::with_capacity(producers_indices.len());
         for (keypair, index) in producers_indices {
-            let endorsement = Endorsement::new_wrapped(
+            let endorsement = Endorsement::new_verifiable(
                 Endorsement {
                     slot,
                     index: index as u32,
@@ -184,7 +184,7 @@ impl EndorsementFactoryWorker {
             // log endorsement creation
             debug!(
                 "endorsement {} created at slot {} by address {}",
-                endorsement.id, endorsement.content.slot, endorsement.creator_address
+                endorsement.id, endorsement.content.slot, endorsement.content_creator_address
             );
 
             endorsements.push(endorsement);

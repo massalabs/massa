@@ -4,7 +4,7 @@ use crate::{
 };
 use bitvec::prelude::*;
 use massa_models::{
-    address::Address,
+    address::{Address, AddressSerializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
 };
@@ -14,9 +14,10 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use serde::{Deserialize, Serialize};
 
 /// Recap of all PoS changes
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<u8>,
@@ -38,8 +39,9 @@ impl PoSChanges {
         self.seed_bits.is_empty()
             && self.roll_changes.is_empty()
             && self.production_stats.is_empty()
-            && self.deferred_credits.0.is_empty()
+            && self.deferred_credits.credits.is_empty()
     }
+
     /// Extends the current `PosChanges` with another one
     pub fn extend(&mut self, other: PoSChanges) {
         // extend seed bits
@@ -57,7 +59,7 @@ impl PoSChanges {
         }
 
         // extend deferred credits
-        self.deferred_credits.nested_replace(other.deferred_credits);
+        self.deferred_credits.nested_extend(other.deferred_credits);
     }
 }
 
@@ -66,6 +68,7 @@ pub struct PoSChangesSerializer {
     bit_vec_serializer: BitVecSerializer,
     u64_serializer: U64VarIntSerializer,
     production_stats_serializer: ProductionStatsSerializer,
+    address_serializer: AddressSerializer,
     deferred_credits_serializer: DeferredCreditsSerializer,
 }
 
@@ -82,6 +85,7 @@ impl PoSChangesSerializer {
             bit_vec_serializer: BitVecSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             production_stats_serializer: ProductionStatsSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             deferred_credits_serializer: DeferredCreditsSerializer::new(),
         }
     }
@@ -97,7 +101,7 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
         self.u64_serializer
             .serialize(&(value.roll_changes.len() as u64), buffer)?;
         for (addr, roll) in value.roll_changes.iter() {
-            buffer.extend(addr.to_bytes());
+            self.address_serializer.serialize(addr, buffer)?;
             self.u64_serializer.serialize(roll, buffer)?;
         }
 

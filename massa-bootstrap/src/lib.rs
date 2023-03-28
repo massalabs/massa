@@ -13,7 +13,6 @@
 #![feature(ip)]
 #![feature(let_chains)]
 
-pub use establisher::types::Establisher;
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
 use massa_network_exports::BootstrapPeers;
@@ -30,16 +29,17 @@ mod server_binder;
 mod settings;
 mod tools;
 pub use client::get_state;
-pub use establisher::types;
+pub use establisher::DefaultEstablisher;
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
 };
 pub use server::{start_bootstrap_server, BootstrapManager};
-pub use settings::BootstrapConfig;
+pub use settings::IpType;
+pub use settings::{BootstrapConfig, BootstrapServerMessageDeserializerArgs};
 
 #[cfg(test)]
-pub mod tests;
+pub(crate) mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
 pub struct GlobalBootstrapState {
@@ -51,9 +51,6 @@ pub struct GlobalBootstrapState {
 
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
-
-    /// timestamp correction in milliseconds
-    pub compensation_millis: i64,
 }
 
 impl GlobalBootstrapState {
@@ -62,7 +59,6 @@ impl GlobalBootstrapState {
             final_state,
             graph: None,
             peers: None,
-            compensation_millis: Default::default(),
         }
     }
 }

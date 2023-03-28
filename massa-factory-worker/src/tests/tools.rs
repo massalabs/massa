@@ -12,9 +12,9 @@ use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
 use massa_models::{
-    address::Address, block::BlockId, config::ENDORSEMENT_COUNT, endorsement::WrappedEndorsement,
-    operation::WrappedOperation, prehash::PreHashMap, slot::Slot,
-    test_exports::get_next_slot_instant,
+    address::Address, block_id::BlockId, config::ENDORSEMENT_COUNT,
+    endorsement::SecureShareEndorsement, operation::SecureShareOperation, prehash::PreHashMap,
+    slot::Slot, test_exports::get_next_slot_instant,
 };
 use massa_pool_exports::test_exports::{
     MockPoolController, MockPoolControllerMessage, PoolEventReceiver,
@@ -110,10 +110,10 @@ impl TestFactory {
     /// - `endorsements`: Optional list of endorsements to include in the block
     pub fn get_next_created_block(
         &mut self,
-        operations: Option<Vec<WrappedOperation>>,
-        endorsements: Option<Vec<WrappedEndorsement>>,
+        operations: Option<Vec<SecureShareOperation>>,
+        endorsements: Option<Vec<SecureShareEndorsement>>,
     ) -> (BlockId, Storage) {
-        let now = MassaTime::now(0).expect("could not get current time");
+        let now = MassaTime::now().expect("could not get current time");
         let next_slot_instant = get_next_slot_instant(
             self.factory_config.genesis_timestamp,
             self.factory_config.thread_count,

@@ -7,8 +7,8 @@ use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
 use massa_models::amount::Amount;
-use massa_models::api::EventFilter;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
+use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashMap;
@@ -50,6 +50,16 @@ pub trait ExecutionController: Send + Sync {
         &self,
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
+
+    /// Get the execution status of operation that have been executed both speculatively or finaly
+    ///
+    ///  Return value
+    ///  `(speculative_statuses, final_statuses)`
+    ///  for each hashmap:
+    ///      key: the operation id
+    ///      value: true: operation executed successfully,
+    ///             false: operation failed
+    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>);
 
     /// Get a copy of a single datastore entry with its final and active values
     ///

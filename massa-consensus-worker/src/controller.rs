@@ -1,17 +1,19 @@
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
-    export_active_block::ExportActiveBlock, ConsensusController,
+    export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
 };
 use massa_models::{
-    api::BlockGraphStatus,
-    block::{BlockHeader, BlockId},
+    block::{BlockGraphStatus, FilledBlock},
+    block_header::BlockHeader,
+    block_id::BlockId,
     clique::Clique,
+    operation::{Operation, OperationId},
     prehash::PreHashSet,
+    secure_share::SecureShare,
     slot::Slot,
     stats::ConsensusStats,
     streaming_step::StreamingStep,
-    wrapped::Wrapped,
 };
 use massa_storage::Storage;
 use parking_lot::RwLock;
@@ -30,20 +32,26 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 #[derive(Clone)]
 pub struct ConsensusControllerImpl {
     command_sender: SyncSender<ConsensusCommand>,
+    channels: ConsensusChannels,
     shared_state: Arc<RwLock<ConsensusState>>,
     bootstrap_part_size: u64,
+    broadcast_enabled: bool,
 }
 
 impl ConsensusControllerImpl {
     pub fn new(
         command_sender: SyncSender<ConsensusCommand>,
+        channels: ConsensusChannels,
         shared_state: Arc<RwLock<ConsensusState>>,
         bootstrap_part_size: u64,
+        broadcast_enabled: bool,
     ) -> Self {
         Self {
             command_sender,
+            channels,
             shared_state,
             bootstrap_part_size,
+            broadcast_enabled,
         }
     }
 }
@@ -115,8 +123,12 @@ impl ConsensusController for ConsensusControllerImpl {
         let mut final_blocks: Vec<ExportActiveBlock> = Vec::new();
         let mut retrieved_ids: PreHashSet<BlockId> = PreHashSet::default();
         let read_shared_state = self.shared_state.read();
-        let required_blocks: PreHashSet<BlockId> =
-            read_shared_state.list_required_active_blocks()?;
+        let required_blocks: PreHashSet<BlockId> = match execution_cursor {
+            StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
+                read_shared_state.list_required_active_blocks(Some(slot))?
+            }
+            _ => PreHashSet::default(),
+        };
 
         let (current_ids, previous_ids, outdated_ids) = match cursor {
             StreamingStep::Started => (
@@ -215,6 +227,40 @@ impl ConsensusController for ConsensusControllerImpl {
     }
 
     fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool) {
+        if self.broadcast_enabled {
+            if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
+                let operations: Vec<(OperationId, Option<SecureShare<Operation, OperationId>>)> =
+                    verifiable_block
+                        .content
+                        .operations
+                        .iter()
+                        .map(|operation_id| {
+                            match block_storage.read_operations().get(operation_id).cloned() {
+                                Some(verifiable_operation) => {
+                                    (*operation_id, Some(verifiable_operation))
+                                }
+                                None => (*operation_id, None),
+                            }
+                        })
+                        .collect();
+
+                let _block_receivers_count = self
+                    .channels
+                    .block_sender
+                    .send(verifiable_block.content.clone());
+                let _filled_block_receivers_count =
+                    self.channels.filled_block_sender.send(FilledBlock {
+                        header: verifiable_block.content.header.clone(),
+                        operations,
+                    });
+            } else {
+                warn!(
+                    "error no ws event sent, block with id {} not found",
+                    block_id
+                );
+            };
+        }
+
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlock(
@@ -228,7 +274,13 @@ impl ConsensusController for ConsensusControllerImpl {
         }
     }
 
-    fn register_block_header(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
+    fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
+        if self.broadcast_enabled {
+            let _ = self
+                .channels
+                .block_header_sender
+                .send(header.clone().content);
+        }
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))
@@ -237,7 +289,7 @@ impl ConsensusController for ConsensusControllerImpl {
         }
     }
 
-    fn mark_invalid_block(&self, block_id: BlockId, header: Wrapped<BlockHeader, BlockId>) {
+    fn mark_invalid_block(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::MarkInvalidBlock(block_id, header))

@@ -1,4 +1,4 @@
-use crate::{address::Address, block::BlockId, operation::OperationId, slot::Slot};
+use crate::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt::Display};
 
@@ -35,6 +35,8 @@ pub struct EventExecutionContext {
     pub origin_operation_id: Option<OperationId>,
     /// if the event is final
     pub is_final: bool,
+    /// if the sc that emitted this event failed
+    pub is_error: bool,
 }
 
 impl Display for EventExecutionContext {

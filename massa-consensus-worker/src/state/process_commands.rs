@@ -5,10 +5,7 @@ use massa_consensus_exports::{
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
-use massa_models::{
-    block::{BlockId, WrappedHeader},
-    slot::Slot,
-};
+use massa_models::{block_header::SecuredHeader, block_id::BlockId, slot::Slot};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::debug;
@@ -28,7 +25,7 @@ impl ConsensusState {
     pub fn register_block_header(
         &mut self,
         block_id: BlockId,
-        header: WrappedHeader,
+        header: SecuredHeader,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // ignore genesis blocks
@@ -97,7 +94,7 @@ impl ConsensusState {
 
         // Block is coming from protocol mark it for desync calculation
         if !created {
-            let now = MassaTime::now(self.config.clock_compensation_millis)?;
+            let now = MassaTime::now()?;
             self.protocol_blocks.push_back((now, block_id));
         }
 
@@ -164,7 +161,7 @@ impl ConsensusState {
     /// # Arguments:
     /// * `block_id`: Block id of the block to mark as invalid
     /// * `header`: Header of the block to mark as invalid
-    pub fn mark_invalid_block(&mut self, block_id: &BlockId, header: WrappedHeader) {
+    pub fn mark_invalid_block(&mut self, block_id: &BlockId, header: SecuredHeader) {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
@@ -174,7 +171,7 @@ impl ConsensusState {
             *block_id,
             BlockStatus::Discarded {
                 slot: header.content.slot,
-                creator: header.creator_address,
+                creator: header.content_creator_address,
                 parents: header.content.parents,
                 reason,
                 sequence_number: {

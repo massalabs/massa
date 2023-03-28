@@ -6,7 +6,7 @@ use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
 use massa_models::datastore::Datastore;
 use massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block::BlockId,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
     slot::Slot,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -56,6 +56,8 @@ pub struct ReadOnlyExecutionOutput {
     pub out: ExecutionOutput,
     /// Gas cost for this execution
     pub gas_cost: u64,
+    /// Returned value from the module call
+    pub call_result: Vec<u8>,
 }
 
 /// structure describing different types of read-only execution request
@@ -63,12 +65,14 @@ pub struct ReadOnlyExecutionOutput {
 pub struct ReadOnlyExecutionRequest {
     /// Maximum gas to spend in the execution.
     pub max_gas: u64,
-    /// The simulated price of gas for the read-only execution.
-    pub simulated_gas_price: Amount,
     /// Call stack to simulate, older caller first
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target of the request
     pub target: ReadOnlyExecutionTarget,
+    /// execution start state
+    ///
+    /// Whether to start execution from final or active state
+    pub is_final: bool,
 }
 
 /// structure describing different possible targets of a read-only execution request
@@ -93,8 +97,6 @@ pub enum ReadOnlyExecutionTarget {
 pub struct ReadOnlyCallRequest {
     /// Maximum gas to spend in the execution.
     pub max_gas: u64,
-    /// The simulated price of gas for the read-only execution.
-    pub simulated_gas_price: Amount,
     /// Call stack to simulate, older caller first. Target should be last.
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target address
@@ -103,6 +105,10 @@ pub struct ReadOnlyCallRequest {
     pub target_func: String,
     /// Parameter to pass to the target function
     pub parameter: String,
+    /// execution start state
+    ///
+    /// Whether to start execution from final or active state
+    pub is_final: bool,
 }
 
 /// Structure describing an element of the execution stack.

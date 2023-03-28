@@ -2,7 +2,7 @@ use std::collections::hash_map;
 
 use massa_models::{
     address::Address,
-    operation::{OperationId, OperationPrefixId, WrappedOperation},
+    operation::{OperationId, OperationPrefixId, SecureShareOperation},
     prehash::{PreHashMap, PreHashSet},
 };
 
@@ -11,7 +11,7 @@ use massa_models::{
 #[derive(Default)]
 pub struct OperationIndexes {
     /// Operations structure container
-    operations: PreHashMap<OperationId, WrappedOperation>,
+    operations: PreHashMap<OperationId, SecureShareOperation>,
     /// Structure mapping creators with the created operations
     index_by_creator: PreHashMap<Address, PreHashSet<OperationId>>,
     /// Structure indexing operations by ID prefix
@@ -22,11 +22,11 @@ impl OperationIndexes {
     /// Insert an operation and populate the indexes.
     /// Arguments:
     /// * `operation`: the operation to insert
-    pub(crate) fn insert(&mut self, operation: WrappedOperation) {
+    pub(crate) fn insert(&mut self, operation: SecureShareOperation) {
         if let Ok(o) = self.operations.try_insert(operation.id, operation) {
             // update creator index
             self.index_by_creator
-                .entry(o.creator_address)
+                .entry(o.content_creator_address)
                 .or_default()
                 .insert(o.id);
             // update prefix index
@@ -40,11 +40,11 @@ impl OperationIndexes {
     /// Remove a operation, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
     /// * `operation_id`: the operation id to remove
-    pub(crate) fn remove(&mut self, operation_id: &OperationId) -> Option<WrappedOperation> {
+    pub(crate) fn remove(&mut self, operation_id: &OperationId) -> Option<SecureShareOperation> {
         if let Some(o) = self.operations.remove(operation_id) {
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =
-                self.index_by_creator.entry(o.creator_address)
+                self.index_by_creator.entry(o.content_creator_address)
             {
                 occ.get_mut().remove(&o.id);
                 if occ.get().is_empty() {
@@ -64,7 +64,7 @@ impl OperationIndexes {
     }
 
     /// Gets a reference to a stored operation, if any.
-    pub fn get(&self, id: &OperationId) -> Option<&WrappedOperation> {
+    pub fn get(&self, id: &OperationId) -> Option<&SecureShareOperation> {
         self.operations.get(id)
     }
 

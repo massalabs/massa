@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::prehash::PreHashMap;
-use crate::{address::Address, block::BlockId, operation::WrappedOperation};
+use crate::{address::Address, block_id::BlockId, operation::SecureShareOperation};
 use massa_signature::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -36,7 +36,7 @@ pub enum OperationSearchResultStatus {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OperationSearchResult {
     /// the operation
-    pub op: WrappedOperation,
+    pub op: SecureShareOperation,
     /// true if in pool
     pub in_pool: bool,
     /// maps block id to index on the operation in the block and if it's final

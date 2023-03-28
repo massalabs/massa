@@ -3,12 +3,14 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedHeader},
-    endorsement::WrappedEndorsement,
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
+    block_id::BlockId,
+    endorsement::SecureShareEndorsement,
     prehash::PreHashSet,
+    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-    wrapped::WrappedContent,
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
@@ -18,7 +20,7 @@ use std::{
     thread,
     time::Instant,
 };
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
@@ -56,8 +58,7 @@ impl BlockFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get current absolute time
-        let now =
-            MassaTime::now(self.cfg.clock_compensation_millis).expect("could not get current time");
+        let now = MassaTime::now().expect("could not get current time");
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {
@@ -96,7 +97,7 @@ impl BlockFactoryWorker {
             next_slot,
         )
         .expect("could not get block slot timestamp")
-        .estimate_instant(self.cfg.clock_compensation_millis)
+        .estimate_instant()
         .expect("could not estimate block slot instant");
 
         (next_slot, next_instant)
@@ -130,6 +131,11 @@ impl BlockFactoryWorker {
                 return;
             }
         };
+
+        debug!(
+            "block factory selected block producer address for slot {}: {}",
+            slot, block_producer_addr
+        );
 
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();
@@ -172,7 +178,7 @@ impl BlockFactoryWorker {
             .get_block_endorsements(&same_thread_parent_id, &slot);
 
         //TODO: Do we want ot populate only with endorsement id in the future ?
-        let endorsements: Vec<WrappedEndorsement> = {
+        let endorsements: Vec<SecureShareEndorsement> = {
             let endo_read = endo_storage.read_endorsements();
             endorsements_ids
                 .into_iter()
@@ -198,7 +204,7 @@ impl BlockFactoryWorker {
         );
 
         // create header
-        let header: WrappedHeader = BlockHeader::new_wrapped::<BlockHeaderSerializer, BlockId>(
+        let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
@@ -211,7 +217,7 @@ impl BlockFactoryWorker {
         .expect("error while producing block header");
 
         // create block
-        let block = Block::new_wrapped(
+        let block = Block::new_verifiable(
             Block {
                 header,
                 operations: op_ids.into_iter().collect(),

@@ -5,6 +5,7 @@
     draw_lookahead_period_count = 10
     bind_private = "127.0.0.1:33034"
     bind_public = "0.0.0.0:33035"
+    bind_api = "0.0.0.0:33036"
     max_arguments = 128
 
 [execution]
@@ -69,8 +70,10 @@
         ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
         ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
         ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
-        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
+        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"],
+        ["[dba7:c8ca:cfda:ffad:23ee:feb7:569e:a0bf]:31245", "6DbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"]
     ]
+    bootstrap_protocol = "Both"
     bind = "[::]:31245"
     connect_timeout = 15000
     retry_delay = 5000

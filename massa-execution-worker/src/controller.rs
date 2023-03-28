@@ -9,12 +9,12 @@ use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
-use massa_models::api::EventFilter;
+use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::ExecutionStats;
 use massa_models::{address::Address, amount::Amount, operation::OperationId};
-use massa_models::{block::BlockId, slot::Slot};
+use massa_models::{block_id::BlockId, slot::Slot};
 use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeMap, HashMap};
@@ -137,22 +137,6 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_filtered_sc_output_event(filter)
     }
 
-    /// Get a copy of a single datastore entry with its final and active values
-    ///
-    /// # Return value
-    /// * `Vec<(final_data_entry, active_data_entry)>`
-    fn get_final_and_active_data_entry(
-        &self,
-        input: Vec<(Address, Vec<u8>)>,
-    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        let lock = self.execution_state.read();
-        let mut result = Vec::with_capacity(input.len());
-        for (addr, key) in input {
-            result.push(lock.get_final_and_active_data_entry(&addr, &key));
-        }
-        result
-    }
-
     /// Get the final and candidate values of balance.
     ///
     /// # Return value
@@ -165,6 +149,22 @@ impl ExecutionController for ExecutionControllerImpl {
         let mut result = Vec::with_capacity(addresses.len());
         for addr in addresses {
             result.push(lock.get_final_and_candidate_balance(addr));
+        }
+        result
+    }
+
+    /// Get a copy of a single datastore entry with its final and active values
+    ///
+    /// # Return value
+    /// * `Vec<(final_data_entry, active_data_entry)>`
+    fn get_final_and_active_data_entry(
+        &self,
+        input: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::with_capacity(input.len());
+        for (addr, key) in input {
+            result.push(lock.get_final_and_active_data_entry(&addr, &key));
         }
         result
     }
@@ -261,6 +261,11 @@ impl ExecutionController for ExecutionControllerImpl {
     /// see `massa-execution-exports/controller_traits.rs`
     fn clone_box(&self) -> Box<dyn ExecutionController> {
         Box::new(self.clone())
+    }
+
+    /// See trait definition
+    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
+        self.execution_state.read().get_op_exec_status()
     }
 }
 

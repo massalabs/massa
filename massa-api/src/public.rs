@@ -1,25 +1,35 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 
-use crate::config::APIConfig;
-use crate::error::ApiError;
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockInfoContent, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
+    slot::SlotAmount,
+    TimeInterval,
+};
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_models::api::{
-    BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
-};
-use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
-use massa_models::wrapped::WrappedDeserializer;
+use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::{
-    block::Block, endorsement::WrappedEndorsement, error::ModelsError, operation::WrappedOperation,
+    block::{Block, BlockGraphStatus},
+    endorsement::SecureShareEndorsement,
+    error::ModelsError,
+    operation::SecureShareOperation,
     timeslots,
 };
 use massa_pos_exports::SelectorController;
@@ -30,16 +40,12 @@ use itertools::{izip, Itertools};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::{
     address::Address,
-    api::{
-        AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
-        NodeStatus, OperationInfo, TimeInterval,
-    },
-    block::BlockId,
+    block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
     endorsement::EndorsementId,
-    execution::ExecuteReadOnlyResponse,
+    execution::EventFilter,
     node::NodeId,
     operation::OperationId,
     output_event::SCOutputEvent,
@@ -53,6 +59,7 @@ use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -67,7 +74,6 @@ impl API<Public> {
         network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
-        compensation_millis: i64,
         node_id: NodeId,
         storage: Storage,
     ) -> Self {
@@ -79,7 +85,6 @@ impl API<Public> {
             version,
             network_command_sender,
             protocol_command_sender,
-            compensation_millis,
             node_id,
             execution_controller,
             selector_controller,
@@ -95,7 +100,7 @@ impl RpcServer for API<Public> {
         url: &SocketAddr,
         api_config: &APIConfig,
     ) -> Result<StopHandle, JsonRpseeError> {
-        crate::serve(self, url, api_config).await
+        crate::serve(self.into_rpc(), url, api_config).await
     }
 }
 
@@ -126,9 +131,9 @@ impl MassaRpcServer for API<Public> {
         for ReadOnlyBytecodeExecution {
             max_gas,
             address,
-            simulated_gas_price,
             bytecode,
             operation_datastore,
+            is_final,
         } in reqs
         {
             let address = address.unwrap_or_else(|| {
@@ -165,7 +170,6 @@ impl MassaRpcServer for API<Public> {
             // translate request
             let req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::BytecodeExecution(bytecode),
                 call_stack: vec![ExecutionStackElement {
                     address,
@@ -173,6 +177,7 @@ impl MassaRpcServer for API<Public> {
                     owned_addresses: vec![address],
                     operation_datastore: op_datastore,
                 }],
+                is_final,
             };
 
             // run
@@ -185,11 +190,13 @@ impl MassaRpcServer for API<Public> {
                     .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
-                    |_| ReadOnlyResult::Ok,
+                    |res| ReadOnlyResult::Ok(res.call_result.clone()),
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
@@ -210,11 +217,11 @@ impl MassaRpcServer for API<Public> {
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
         for ReadOnlyCall {
             max_gas,
-            simulated_gas_price,
             target_address,
             target_function,
             parameter,
             caller_address,
+            is_final,
         } in reqs
         {
             let caller_address = caller_address.unwrap_or_else(|| {
@@ -230,7 +237,6 @@ impl MassaRpcServer for API<Public> {
             // translate request
             let req = ReadOnlyExecutionRequest {
                 max_gas,
-                simulated_gas_price,
                 target: ReadOnlyExecutionTarget::FunctionCall {
                     target_func: target_function,
                     target_addr: target_address,
@@ -250,6 +256,7 @@ impl MassaRpcServer for API<Public> {
                         operation_datastore: None, // should always be None
                     },
                 ],
+                is_final,
             };
 
             // run
@@ -262,11 +269,13 @@ impl MassaRpcServer for API<Public> {
                     .map_or_else(|_| Slot::new(0, 0), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
-                    |_| ReadOnlyResult::Ok,
+                    |res| ReadOnlyResult::Ok(res.call_result.clone()),
                 ),
                 gas_cost: result.as_ref().map_or_else(|_| 0, |v| v.gas_cost),
                 output_events: result
-                    .map_or_else(|_| Default::default(), |mut v| v.out.events.take()),
+                    .as_ref()
+                    .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
+                state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
 
             res.push(result);
@@ -307,13 +316,12 @@ impl MassaRpcServer for API<Public> {
         let network_config = self.0.network_settings.clone();
         let version = self.0.version;
         let api_settings = self.0.api_settings.clone();
-        let compensation_millis = self.0.compensation_millis;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
-        let now = match MassaTime::now(compensation_millis) {
+        let now = match MassaTime::now() {
             Ok(now) => now,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::TimeError(e).into()),
         };
 
         let last_slot_result = get_latest_block_slot_at_timestamp(
@@ -324,14 +332,14 @@ impl MassaRpcServer for API<Public> {
         );
         let last_slot = match last_slot_result {
             Ok(last_slot) => last_slot,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
         let execution_stats = execution_controller.get_stats();
         let consensus_stats_result = consensus_controller.get_stats();
         let consensus_stats = match consensus_stats_result {
             Ok(consensus_stats) => consensus_stats,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };
 
         let (network_stats_result, peers_result) = tokio::join!(
@@ -341,12 +349,12 @@ impl MassaRpcServer for API<Public> {
 
         let network_stats = match network_stats_result {
             Ok(network_stats) => network_stats,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::NetworkError(e).into()),
         };
 
         let peers = match peers_result {
             Ok(peers) => peers,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::NetworkError(e).into()),
         };
 
         let pool_stats = (
@@ -360,7 +368,48 @@ impl MassaRpcServer for API<Public> {
 
         let next_slot = match next_slot_result {
             Ok(next_slot) => next_slot,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
+        };
+
+        let connected_nodes = peers
+            .peers
+            .iter()
+            .flat_map(|(ip, peer)| {
+                peer.active_nodes
+                    .iter()
+                    .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        let current_cycle = last_slot
+            .unwrap_or_else(|| Slot::new(0, 0))
+            .get_cycle(api_settings.periods_per_cycle);
+
+        let cycle_duration = match api_settings.t0.checked_mul(api_settings.periods_per_cycle) {
+            Ok(cycle_duration) => cycle_duration,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
+        let current_cycle_time_result = if current_cycle == 0 {
+            Ok(api_settings.genesis_timestamp)
+        } else {
+            cycle_duration.checked_mul(current_cycle).and_then(
+                |elapsed_time_before_current_cycle| {
+                    api_settings
+                        .genesis_timestamp
+                        .checked_add(elapsed_time_before_current_cycle)
+                },
+            )
+        };
+
+        let current_cycle_time = match current_cycle_time_result {
+            Ok(current_cycle_time) => current_cycle_time,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
+        };
+
+        let next_cycle_time = match current_cycle_time.checked_add(cycle_duration) {
+            Ok(next_cycle_time) => next_cycle_time,
+            Err(e) => return Err(ApiError::TimeError(e).into()),
         };
 
         Ok(NodeStatus {
@@ -368,15 +417,9 @@ impl MassaRpcServer for API<Public> {
             node_ip: network_config.routable_ip,
             version,
             current_time: now,
-            connected_nodes: peers
-                .peers
-                .iter()
-                .flat_map(|(ip, peer)| {
-                    peer.active_nodes
-                        .iter()
-                        .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
-                })
-                .collect(),
+            current_cycle_time,
+            next_cycle_time,
+            connected_nodes,
             last_slot,
             next_slot,
             execution_stats,
@@ -384,9 +427,7 @@ impl MassaRpcServer for API<Public> {
             network_stats,
             pool_stats,
             config,
-            current_cycle: last_slot
-                .unwrap_or_else(|| Slot::new(0, 0))
-                .get_cycle(api_settings.periods_per_cycle),
+            current_cycle,
         })
     }
 
@@ -395,14 +436,16 @@ impl MassaRpcServer for API<Public> {
         Ok(consensus_controller.get_cliques())
     }
 
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>> {
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>> {
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
-        let compensation_millis = self.0.compensation_millis;
 
-        let now = match MassaTime::now(compensation_millis) {
+        let now = match MassaTime::now() {
             Ok(now) => now,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::TimeError(e).into()),
         };
 
         let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
@@ -416,21 +459,25 @@ impl MassaRpcServer for API<Public> {
             Ok(curr_cycle) => curr_cycle
                 .unwrap_or_else(|| Slot::new(0, 0))
                 .get_cycle(cfg.periods_per_cycle),
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
         let mut staker_vec = execution_controller
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();
+
         staker_vec
             .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
-        Ok(staker_vec)
+
+        let paged_vec = PagedVec::new(staker_vec, page_request);
+
+        Ok(paged_vec)
     }
 
     async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
         // get the operations and the list of blocks that contain them from storage
-        let storage_info: Vec<(WrappedOperation, PreHashSet<BlockId>)> = {
+        let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
             let read_ops = self.0.storage.read_operations();
             ops.iter()
@@ -448,41 +495,41 @@ impl MassaRpcServer for API<Public> {
                 .collect()
         };
 
-        // keep only the ops found in storage
+        // keep only the ops id (found in storage)
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
 
-        // ask pool whether it carries the operations
-        let in_pool = self.0.pool_command_sender.contains_operations(&ops);
-
         let api_cfg = self.0.api_settings.clone();
-        let consensus_controller = self.0.consensus_controller.clone();
         if ops.len() as u64 > api_cfg.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
 
-        // check finality by cross-referencing Consensus and looking for final blocks that contain the op
-        let is_final: Vec<bool> = {
-            let involved_blocks: Vec<BlockId> = storage_info
-                .iter()
-                .flat_map(|(_op, bs)| bs.iter())
-                .unique()
-                .cloned()
-                .collect();
+        // ask pool whether it carries the operations
+        let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-            let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+        let (speculative_op_exec_statuses, final_op_exec_statuses) =
+            self.0.execution_controller.get_op_exec_status();
 
-            let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
-                .into_iter()
-                .zip(involved_block_statuses.into_iter())
-                .collect();
-            storage_info
-                .iter()
-                .map(|(_op, bs)| {
-                    bs.iter()
-                        .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
-                })
-                .collect()
-        };
+        // compute operation finality and operation execution status from *_op_exec_statuses
+        let (is_operation_final, statuses): (Vec<Option<bool>>, Vec<Option<bool>>) = ops
+            .iter()
+            .map(|op| {
+                match (
+                    final_op_exec_statuses.get(op),
+                    speculative_op_exec_statuses.get(op),
+                ) {
+                    // op status found in the final hashmap, so the op is "final"(first value of the tuple: Some(true))
+                    // and we keep its status (copied as the second value of the tuple)
+                    (Some(val), _) => (Some(true), Some(*val)),
+                    // op status NOT found in the final hashmap but in the speculative one, so the op is "not final"(first value of the tuple: Some(false))
+                    // and we keep its status (copied as the second value of the tuple)
+                    (None, Some(val)) => (Some(false), Some(*val)),
+                    // op status not defined in any hashmap, finality and status are unknow hence (None, None)
+                    (None, None) => (None, None),
+                }
+            })
+            .collect::<Vec<(Option<bool>, Option<bool>)>>()
+            .into_iter()
+            .unzip();
 
         // gather all values into a vector of OperationInfo instances
         let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());
@@ -490,15 +537,22 @@ impl MassaRpcServer for API<Public> {
             ops.into_iter(),
             storage_info.into_iter(),
             in_pool.into_iter(),
-            is_final.into_iter()
+            is_operation_final.into_iter(),
+            statuses.into_iter(),
         );
-        for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
+        for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in
+            zipped_iterator
+        {
             res.push(OperationInfo {
                 id,
-                operation,
                 in_pool,
-                is_final,
+                is_operation_final,
+                thread: operation
+                    .content_creator_address
+                    .get_thread(api_cfg.thread_count),
+                operation,
                 in_blocks: in_blocks.into_iter().collect(),
+                op_exec_status,
             });
         }
 
@@ -508,7 +562,7 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_endorsements(&self, eds: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>> {
         // get the endorsements and the list of blocks that contain them from storage
-        let storage_info: Vec<(WrappedEndorsement, PreHashSet<BlockId>)> = {
+        let storage_info: Vec<(SecureShareEndorsement, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
             let read_endos = self.0.storage.read_endorsements();
             eds.iter()
@@ -585,40 +639,48 @@ impl MassaRpcServer for API<Public> {
         Ok(res)
     }
 
-    /// gets a block. Returns None if not found
+    /// gets a block(s). Returns nothing if not found
     /// only active blocks are returned
-    async fn get_block(&self, id: BlockId) -> RpcResult<BlockInfo> {
+    async fn get_blocks(&self, ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
         let consensus_controller = self.0.consensus_controller.clone();
         let storage = self.0.storage.clone_without_refs();
-        let block = match storage.read_blocks().get(&id).cloned() {
-            Some(b) => b.content,
-            None => {
-                return Ok(BlockInfo { id, content: None });
-            }
-        };
-
-        let graph_status = consensus_controller
-            .get_block_statuses(&[id])
+        let blocks = ids
             .into_iter()
-            .next()
-            .expect("expected get_block_statuses to return one element");
+            .filter_map(|id| {
+                let content = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
+                    wrapped_block.content.clone()
+                } else {
+                    return None;
+                };
 
-        let is_final = graph_status == BlockGraphStatus::Final;
-        let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-        let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-            || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-        let is_discarded = graph_status == BlockGraphStatus::Discarded;
+                if let Some(graph_status) = consensus_controller
+                    .get_block_statuses(&[id])
+                    .into_iter()
+                    .next()
+                {
+                    let is_final = graph_status == BlockGraphStatus::Final;
+                    let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+                    let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+                    let is_discarded = graph_status == BlockGraphStatus::Discarded;
 
-        Ok(BlockInfo {
-            id,
-            content: Some(BlockInfoContent {
-                is_final,
-                is_in_blockclique,
-                is_candidate,
-                is_discarded,
-                block,
-            }),
-        })
+                    return Some(BlockInfo {
+                        id,
+                        content: Some(BlockInfoContent {
+                            is_final,
+                            is_in_blockclique,
+                            is_candidate,
+                            is_discarded,
+                            block: content,
+                        }),
+                    });
+                }
+
+                None
+            })
+            .collect::<Vec<BlockInfo>>();
+
+        Ok(blocks)
     }
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
@@ -656,12 +718,12 @@ impl MassaRpcServer for API<Public> {
 
         let (start_slot, end_slot) = match time_range_to_slot_range_result {
             Ok(time_range_to_slot_range) => time_range_to_slot_range,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
         let graph = match consensus_controller.get_block_graph_status(start_slot, end_slot) {
             Ok(graph) => graph,
-            Err(e) => return Err(ApiError::from(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };
 
         let mut res = Vec::with_capacity(graph.active_blocks.len());
@@ -677,7 +739,7 @@ impl MassaRpcServer for API<Public> {
                 is_stale: false,
                 is_in_blockclique: blockclique.block_ids.contains(&id),
                 slot: exported_block.header.content.slot,
-                creator: exported_block.header.creator_address,
+                creator: exported_block.header.content_creator_address,
                 parents: exported_block.header.content.parents,
             });
         }
@@ -766,7 +828,6 @@ impl MassaRpcServer for API<Public> {
                 self.0.api_settings.thread_count,
                 self.0.api_settings.t0,
                 self.0.api_settings.genesis_timestamp,
-                self.0.compensation_millis,
             )
             .expect("could not get latest current slot")
             .unwrap_or_else(|| Slot::new(0, 0));
@@ -860,7 +921,7 @@ impl MassaRpcServer for API<Public> {
         if ops.len() as u64 > api_cfg.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
-        let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
+        let operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
             api_cfg.max_datastore_value_length,
             api_cfg.max_function_name_length,
             api_cfg.max_parameter_size,
@@ -875,7 +936,7 @@ impl MassaRpcServer for API<Public> {
                 op_serialized.extend(op_input.signature.to_bytes());
                 op_serialized.extend(op_input.creator_public_key.to_bytes());
                 op_serialized.extend(op_input.serialized_content);
-                let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
+                let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
                     .deserialize::<DeserializeError>(&op_serialized)
                     .map_err(|err| {
                         ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
@@ -893,13 +954,13 @@ impl MassaRpcServer for API<Public> {
                 Ok(operation) => {
                     let _verify_signature = match operation.verify_signature() {
                         Ok(()) => (),
-                        Err(e) => return Err(ApiError::from(e).into()),
+                        Err(e) => return Err(ApiError::ModelsError(e).into()),
                     };
                     Ok(operation)
                 }
                 Err(e) => Err(e),
             })
-            .collect::<RpcResult<Vec<WrappedOperation>>>()?;
+            .collect::<RpcResult<Vec<SecureShareOperation>>>()?;
         to_send.store_operations(verified_ops.clone());
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());
@@ -932,11 +993,43 @@ impl MassaRpcServer for API<Public> {
         Ok(events)
     }
 
-    async fn node_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+    async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+        crate::wrong_api::<Vec<IpAddr>>()
+    }
+
+    async fn node_add_to_peers_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
-    async fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+    async fn node_remove_from_peers_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
+        crate::wrong_api::<Vec<IpAddr>>()
+    }
+
+    async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_add_to_bootstrap_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_remove_from_bootstrap_whitelist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>> {
+        crate::wrong_api::<Vec<IpAddr>>()
+    }
+
+    async fn node_add_to_bootstrap_blacklist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
+        crate::wrong_api::<()>()
+    }
+
+    async fn node_remove_from_bootstrap_blacklist(&self, _: Vec<IpAddr>) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 

@@ -134,7 +134,7 @@ impl HandshakeWorker {
         let self_random_hash = Hash::compute_from(&self_random_bytes);
         // send handshake init future
         let msg = Message::HandshakeInitiation {
-            public_key: self.self_node_id.0,
+            public_key: self.self_node_id.get_public_key(),
             random_bytes: self_random_bytes,
             version: self.version,
         };
@@ -158,7 +158,7 @@ impl HandshakeWorker {
                     public_key: pk,
                     random_bytes: rb,
                     version,
-                } => (NodeId(pk), rb, version),
+                } => (NodeId::new(pk), rb, version),
                 Message::PeerList(list) => throw!(PeerListReceived, list),
                 _ => throw!(HandshakeWrongMessage),
             },
@@ -205,7 +205,7 @@ impl HandshakeWorker {
 
         // check their signature
         other_node_id
-            .0
+            .get_public_key()
             .verify_signature(&self_random_hash, &other_signature)
             .map_err(|_err| {
                 NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignature)

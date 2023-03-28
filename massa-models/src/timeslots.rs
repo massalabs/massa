@@ -39,17 +39,17 @@ pub fn get_block_slot_timestamp(
 ) -> Result<MassaTime, ModelsError> {
     let base: MassaTime = t0
         .checked_div_u64(thread_count as u64)
-        .or(Err(ModelsError::TimeOverflowError))?
+        .map_err(|_| ModelsError::TimeOverflowError)?
         .checked_mul(slot.thread as u64)
-        .or(Err(ModelsError::TimeOverflowError))?;
+        .map_err(|_| ModelsError::TimeOverflowError)?;
     let shift: MassaTime = t0
         .checked_mul(slot.period)
-        .or(Err(ModelsError::TimeOverflowError))?;
+        .map_err(|_| ModelsError::TimeOverflowError)?;
     genesis_timestamp
         .checked_add(base)
-        .or(Err(ModelsError::TimeOverflowError))?
+        .map_err(|_| ModelsError::TimeOverflowError)?
         .checked_add(shift)
-        .or(Err(ModelsError::TimeOverflowError))
+        .map_err(|_| ModelsError::TimeOverflowError)
 }
 
 /// Returns the thread and block period index of the latest block slot at a given timestamp (inclusive), if any happened
@@ -88,14 +88,8 @@ pub fn get_current_latest_block_slot(
     thread_count: u8,
     t0: MassaTime,
     genesis_timestamp: MassaTime,
-    clock_compensation: i64,
 ) -> Result<Option<Slot>, ModelsError> {
-    get_latest_block_slot_at_timestamp(
-        thread_count,
-        t0,
-        genesis_timestamp,
-        MassaTime::now(clock_compensation)?,
-    )
+    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, MassaTime::now()?)
 }
 
 /// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end

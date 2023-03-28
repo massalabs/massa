@@ -17,7 +17,7 @@ pub struct FinalStateConfig {
     pub async_pool_config: AsyncPoolConfig,
     /// proof-of-stake configuration
     pub pos_config: PoSConfig,
-    /// exectued operations configuration
+    /// executed operations configuration
     pub executed_ops_config: ExecutedOpsConfig,
     /// final changes history length
     pub final_history_length: usize,

@@ -14,7 +14,7 @@ lazy_static = "1.4"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.21", features = ["full"] }
+tokio = { version = "1.23", features = ["full"] }
 tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
@@ -24,6 +24,7 @@ paw = "1.0"
 structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.10"
 # custom modules
+massa_api_exports = { path = "../massa-api-exports" }
 massa_api = { path = "../massa-api" }
 massa_async_pool = { path = "../massa-async-pool" }
 massa_bootstrap = { path = "../massa-bootstrap" }
@@ -32,7 +33,6 @@ massa_consensus_worker = { path = "../massa-consensus-worker" }
 massa_executed_ops = { path = "../massa-executed-ops" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_execution_worker = { path = "../massa-execution-worker" }
-massa_signature = { path = "../massa-signature" }
 massa_logging = { path = "../massa-logging" }
 massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }

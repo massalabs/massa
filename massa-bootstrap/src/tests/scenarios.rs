@@ -22,10 +22,15 @@ use massa_consensus_exports::{
 };
 use massa_executed_ops::ExecutedOpsConfig;
 use massa_final_state::{
-    test_exports::assert_eq_final_state, FinalState, FinalStateConfig, StateChanges,
+    test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
+    FinalState, FinalStateConfig, StateChanges,
 };
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
-use massa_models::{address::Address, slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{
+    address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
+    streaming_step::StreamingStep, version::Version,
+};
 use massa_models::{
     config::{
         MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
@@ -48,7 +53,7 @@ use tokio::sync::mpsc;
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
         let keypair = KeyPair::generate();
-        (get_bootstrap_config(keypair.get_public_key()), keypair)
+        (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };
 }
 
@@ -74,6 +79,7 @@ async fn test_bootstrap_server() {
             disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_ledger_part_size: 100_000,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
@@ -121,6 +127,7 @@ async fn test_bootstrap_server() {
             "",
             &rolls_path,
             server_selector_controller.clone(),
+            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         )
         .unwrap(),
         final_state_local_config.clone(),
@@ -131,6 +138,7 @@ async fn test_bootstrap_server() {
             "",
             &rolls_path,
             client_selector_controller.clone(),
+            Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         )
         .unwrap(),
         final_state_local_config,
@@ -147,7 +155,6 @@ async fn test_bootstrap_server() {
         bootstrap_config.clone(),
         bootstrap_establisher,
         keypair.clone(),
-        0,
         Version::from_str("TEST.1.10").unwrap(),
     )
     .await
@@ -162,7 +169,7 @@ async fn test_bootstrap_server() {
             final_state_client_clone,
             remote_establisher,
             Version::from_str("TEST.1.10").unwrap(),
-            MassaTime::now(0).unwrap().saturating_sub(1000.into()),
+            MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
         )
         .await
@@ -204,7 +211,7 @@ async fn test_bootstrap_server() {
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response =
-            match wait_network_command(&mut network_cmd_rx, 10_000.into(), |cmd| match cmd {
+            match wait_network_command(&mut network_cmd_rx, 20_000.into(), |cmd| match cmd {
                 NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
                 _ => None,
             })
@@ -222,18 +229,18 @@ async fn test_bootstrap_server() {
     let sent_graph = get_boot_state();
     let sent_graph_clone = sent_graph.clone();
     std::thread::spawn(move || loop {
-        consensus_event_receiver.wait_command(MassaTime::from_millis(10_000), |cmd| match &cmd {
+        consensus_event_receiver.wait_command(MassaTime::from_millis(20_000), |cmd| match &cmd {
             MockConsensusControllerMessage::GetBootstrapableGraph {
                 execution_cursor,
                 response_tx,
                 ..
             } => {
-                // send the consensus blocks only on the first call
-                // give an empty answer for the following ones
+                // send the consensus blocks at the 4th slot (1 for startup + 3 for safety)
+                // give an empty answer for any other call
                 if execution_cursor
                     == &StreamingStep::Ongoing(Slot {
                         period: 1,
-                        thread: 0,
+                        thread: 1,
                     })
                 {
                     response_tx
@@ -283,6 +290,7 @@ async fn test_bootstrap_server() {
         }
     });
 
+    // wait for peers and graph
     let sent_peers = wait_peers().await;
 
     // wait for get_state
@@ -317,6 +325,7 @@ async fn test_bootstrap_server() {
 
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());
+    assert_eq_final_state_hash(&final_state_server.read(), &final_state_client.read());
 
     // compute initial draws
     final_state_server.write().compute_initial_draws().unwrap();

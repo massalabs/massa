@@ -6,11 +6,12 @@ use crate::{
     BlockInfoReply, BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
 use massa_models::{
-    block::{BlockId, WrappedHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     composite::PubkeySig,
-    endorsement::WrappedEndorsement,
+    endorsement::SecureShareEndorsement,
     node::NodeId,
-    operation::{OperationPrefixIds, WrappedOperation},
+    operation::{OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
 use std::{
@@ -50,7 +51,7 @@ impl NetworkCommandSender {
     }
 
     /// add ip to whitelist
-    pub async fn whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    pub async fn add_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Whitelist(ips))
             .await
@@ -123,7 +124,7 @@ impl NetworkCommandSender {
     pub async fn send_block_header(
         &self,
         node: NodeId,
-        header: WrappedHeader,
+        header: SecuredHeader,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendBlockHeader { node, header })
@@ -178,7 +179,7 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
@@ -241,7 +242,7 @@ impl NetworkCommandSender {
     pub async fn send_endorsements(
         &self,
         node: NodeId,
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendEndorsements { node, endorsements })

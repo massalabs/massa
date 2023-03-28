@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    address::{Address, AddressDeserializer},
+    address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     error::ModelsError,
     error::ModelsResult as Result,
@@ -49,10 +49,10 @@ impl LedgerDataSerializer {
 impl Serializer<LedgerData> for LedgerDataSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::ledger_models::{LedgerData, LedgerDataSerializer};
     /// use massa_models::amount::Amount;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
+    /// use massa_models::ledger::{LedgerData, LedgerDataSerializer};
     ///
     /// let ledger_data = LedgerData {
     ///    balance: Amount::from_str("1349").unwrap(),
@@ -92,10 +92,10 @@ impl Default for LedgerDataDeserializer {
 impl Deserializer<LedgerData> for LedgerDataDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::ledger_models::{LedgerData, LedgerDataDeserializer, LedgerDataSerializer};
     /// use massa_models::amount::Amount;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
+    /// use massa_models::ledger::{LedgerData, LedgerDataDeserializer, LedgerDataSerializer};
     ///
     /// let ledger_data = LedgerData {
     ///    balance: Amount::from_str("1349").unwrap(),
@@ -193,9 +193,9 @@ impl LedgerChangeSerializer {
 impl Serializer<LedgerChange> for LedgerChangeSerializer {
     /// ## Example
     /// ```rust
-    /// use massa_models::{address::Address, amount::Amount, ledger_models::LedgerChangeSerializer};
+    /// use massa_models::{address::Address, amount::Amount};
     /// use std::str::FromStr;
-    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_models::ledger::{LedgerChange, LedgerChangeSerializer};
     /// use massa_serialization::Serializer;
     /// let ledger_change = LedgerChange {
     ///   balance_delta: Amount::from_str("1149").unwrap(),
@@ -238,9 +238,9 @@ impl Default for LedgerChangeDeserializer {
 impl Deserializer<LedgerChange> for LedgerChangeDeserializer {
     /// ## Example
     /// ```rust
-    /// use massa_models::{address::Address, amount::Amount, ledger_models::{LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// use massa_models::{address::Address, amount::Amount};
     /// use std::str::FromStr;
-    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_models::ledger::{LedgerChange, LedgerChangeDeserializer, LedgerChangeSerializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let ledger_change = LedgerChange {
     ///   balance_delta: Amount::from_str("1149").unwrap(),
@@ -322,6 +322,7 @@ pub struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
 /// Basic serializer for `LedgerChanges`
 pub struct LedgerChangesSerializer {
     length_serializer: U64VarIntSerializer,
+    address_serializer: AddressSerializer,
     ledger_change_serializer: LedgerChangeSerializer,
 }
 
@@ -330,6 +331,7 @@ impl LedgerChangesSerializer {
     pub fn new() -> Self {
         Self {
             length_serializer: U64VarIntSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             ledger_change_serializer: LedgerChangeSerializer::new(),
         }
     }
@@ -346,7 +348,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
         self.length_serializer
             .serialize(&(value.0.len() as u64), buffer)?;
         for (address, change) in value.0.iter() {
-            buffer.extend(address.to_bytes());
+            self.address_serializer.serialize(address, buffer)?;
             self.ledger_change_serializer.serialize(change, buffer)?;
         }
         Ok(())
@@ -377,20 +379,20 @@ impl LedgerChangesDeserializer {
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// ## Example
     /// ```rust
-    /// # use massa_models::{address::Address, amount::Amount, ledger_models::{LedgerChangesSerializer, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// # use massa_models::{address::Address, amount::Amount};
     /// # use std::str::FromStr;
-    /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
+    /// use massa_models::ledger::{LedgerChange, LedgerChanges, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangesSerializer};
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// # let ledger_changes = LedgerChanges(vec![
     /// #   (
-    /// #       Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(),
+    /// #       Address::from_str("AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap(),
     /// #       LedgerChange {
     /// #           balance_delta: Amount::from_str("1149").unwrap(),
     /// #           balance_increment: true
     /// #       },
     /// #   ),
     /// #   (
-    /// #       Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(),
+    /// #       Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     /// #       LedgerChange {
     /// #           balance_delta: Amount::from_str("1020").unwrap(),
     /// #           balance_increment: true

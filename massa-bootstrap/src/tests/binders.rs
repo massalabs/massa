@@ -1,7 +1,6 @@
-use std::str::FromStr;
-
+use crate::establisher::Duplex;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
-use crate::types::Duplex;
+use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::BootstrapConfig;
 use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
@@ -16,47 +15,48 @@ use massa_models::config::{
     MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
     MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
 };
+use massa_models::node::NodeId;
 use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
+use massa_time::MassaTime;
 use serial_test::serial;
-use tokio::io::duplex;
+use std::str::FromStr;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
         let keypair = KeyPair::generate();
-        (get_bootstrap_config(keypair.get_public_key()), keypair)
+        (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };
 }
 
 impl BootstrapClientBinder {
     pub fn test_default(client_duplex: Duplex, remote_pubkey: PublicKey) -> Self {
-        BootstrapClientBinder::new(
-            client_duplex,
-            remote_pubkey,
-            f64::INFINITY,
-            MAX_BOOTSTRAP_MESSAGE_SIZE,
-            ENDORSEMENT_COUNT,
-            MAX_ADVERTISE_LENGTH,
-            MAX_BOOTSTRAP_BLOCKS,
-            MAX_OPERATIONS_PER_BLOCK,
-            THREAD_COUNT,
-            BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-            MAX_BOOTSTRAP_ERROR_LENGTH,
-            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-            MAX_DATASTORE_ENTRY_COUNT,
-            MAX_DATASTORE_KEY_LENGTH,
-            MAX_DATASTORE_VALUE_LENGTH,
-            MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-            MAX_ASYNC_POOL_LENGTH,
-            MAX_ASYNC_MESSAGE_DATA,
-            MAX_LEDGER_CHANGES_COUNT,
-            1000,
-            MAX_ROLLS_COUNT_LENGTH,
-            MAX_PRODUCTION_STATS_LENGTH,
-            MAX_DEFERRED_CREDITS_LENGTH,
-            MAX_EXECUTED_OPS_LENGTH,
-            MAX_EXECUTED_OPS_CHANGES_LENGTH,
-        )
+        let cfg = BootstrapClientConfig {
+            max_bytes_read_write: f64::INFINITY,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_advertise_length: MAX_ADVERTISE_LENGTH,
+            max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            thread_count: THREAD_COUNT,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
+            max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+            max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+            max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
+            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
+            max_changes_slot_count: 1000,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
+            max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
+            max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
+        };
+        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg)
     }
 }
 
@@ -65,19 +65,28 @@ impl BootstrapClientBinder {
 #[serial]
 async fn test_binders() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let server = server.accept().await.unwrap();
+    // let (client, server) = duplex(1000000);
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
-        f64::INFINITY,
-        MAX_BOOTSTRAP_MESSAGE_SIZE,
-        THREAD_COUNT,
-        MAX_DATASTORE_KEY_LENGTH,
-        BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-        CONSENSUS_BOOTSTRAP_PART_SIZE,
+        BootstrapSrvBindCfg {
+            max_bytes_read_write: f64::INFINITY,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
     );
-    let mut client =
-        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -159,19 +168,29 @@ async fn test_binders() {
 async fn test_binders_double_send_server_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let client = tokio::net::TcpStream::connect(server.local_addr().unwrap())
+        .await
+        .unwrap();
+    let server = server.accept().await.unwrap();
+
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
-        f64::INFINITY,
-        MAX_BOOTSTRAP_MESSAGE_SIZE,
-        THREAD_COUNT,
-        MAX_DATASTORE_KEY_LENGTH,
-        BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-        CONSENSUS_BOOTSTRAP_PART_SIZE,
+        BootstrapSrvBindCfg {
+            max_bytes_read_write: f64::INFINITY,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
     );
-    let mut client =
-        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -238,19 +257,27 @@ async fn test_binders_double_send_server_works() {
 async fn test_binders_try_double_send_client_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let (client, server) = duplex(1000000);
+    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let server = server.accept().await.unwrap();
     let mut server = BootstrapServerBinder::new(
-        server,
+        server.0,
         server_keypair.clone(),
-        f64::INFINITY,
-        MAX_BOOTSTRAP_MESSAGE_SIZE,
-        THREAD_COUNT,
-        MAX_DATASTORE_KEY_LENGTH,
-        BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-        CONSENSUS_BOOTSTRAP_PART_SIZE,
+        BootstrapSrvBindCfg {
+            max_bytes_read_write: f64::INFINITY,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
     );
-    let mut client =
-        BootstrapClientBinder::test_default(client, bootstrap_config.bootstrap_list[0].1);
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1

@@ -53,11 +53,12 @@ mod types;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;
+pub use massa_sc_runtime::GasCosts;
 pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
     ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 
-#[cfg(feature = "testing")]
+#[cfg(any(feature = "testing", feature = "gas_calibration"))]
 pub mod test_exports;

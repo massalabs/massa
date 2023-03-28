@@ -4,8 +4,8 @@
 use std::path::PathBuf;
 
 use enum_map::EnumMap;
-use massa_models::config::build_massa_settings;
-use massa_signature::PublicKey;
+use massa_bootstrap::IpType;
+use massa_models::{config::build_massa_settings, node::NodeId};
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
@@ -27,6 +27,11 @@ pub struct ExecutionSettings {
     pub readonly_queue_length: usize,
     pub cursor_delay: MassaTime,
     pub stats_time_window_duration: MassaTime,
+    pub max_read_only_gas: u64,
+    pub abi_gas_costs_file: PathBuf,
+    pub wasm_gas_costs_file: PathBuf,
+    pub max_module_cache_size: u32,
+    pub initial_vesting_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -72,9 +77,10 @@ pub struct NetworkSettings {
 /// Bootstrap configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
-    pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
-    pub bootstrap_whitelist_file: std::path::PathBuf,
-    pub bootstrap_blacklist_file: std::path::PathBuf,
+    pub bootstrap_list: Vec<(SocketAddr, NodeId)>,
+    pub bootstrap_protocol: IpType,
+    pub bootstrap_whitelist_path: PathBuf,
+    pub bootstrap_blacklist_path: PathBuf,
     pub bind: Option<SocketAddr>,
     pub connect_timeout: MassaTime,
     pub read_timeout: MassaTime,
@@ -83,12 +89,14 @@ pub struct BootstrapSettings {
     pub write_error_timeout: MassaTime,
     pub retry_delay: MassaTime,
     pub max_ping: MassaTime,
-    pub enable_clock_synchronization: bool,
+    pub max_clock_delta: MassaTime,
     pub cache_duration: MassaTime,
     pub max_simultaneous_bootstraps: u32,
     pub per_ip_min_interval: MassaTime,
     pub ip_list_max_size: usize,
     pub max_bytes_read_write: f64,
+    /// Allocated time with which to manage the bootstrap process
+    pub bootstrap_timeout: MassaTime,
 }
 
 /// Factory settings
@@ -107,6 +115,8 @@ pub struct PoolSettings {
     pub max_operation_future_validity_start_periods: u64,
     pub max_endorsement_count: u64,
     pub max_item_return_count: usize,
+    /// operations sender(channel) capacity
+    pub broadcast_operations_capacity: usize,
 }
 
 /// API and server configuration, read from a file configuration.
@@ -115,6 +125,7 @@ pub struct APISettings {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
+    pub bind_api: SocketAddr,
     pub max_arguments: u64,
     pub openrpc_spec_path: PathBuf,
     pub max_request_body_size: u32,
@@ -166,6 +177,12 @@ pub struct ConsensusSettings {
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
+    /// blocks headers sender(channel) capacity
+    pub broadcast_blocks_headers_capacity: usize,
+    /// blocks sender(channel) capacity
+    pub broadcast_blocks_capacity: usize,
+    /// filled blocks sender(channel) capacity
+    pub broadcast_filled_blocks_capacity: usize,
 }
 
 /// Protocol Configuration, read from toml user configuration file

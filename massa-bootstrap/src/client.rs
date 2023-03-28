@@ -1,8 +1,9 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use humantime::format_duration;
+use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
-use massa_models::{streaming_step::StreamingStep, version::Version};
+use massa_models::{node::NodeId, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -16,8 +17,10 @@ use tracing::{debug, info, warn};
 use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
+    establisher::{BSConnector, BSEstablisher},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    BootstrapConfig, Establisher, GlobalBootstrapState,
+    settings::IpType,
+    BootstrapConfig, GlobalBootstrapState,
 };
 
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
@@ -165,12 +168,19 @@ async fn stream_final_state_and_consensus(
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
                     };
-                    panic!("Bootstrap failed, try to bootstrap again.");
+                    let mut write_final_state = global_bootstrap_state.final_state.write();
+                    write_final_state.reset();
+                    return Err(BootstrapError::GeneralError(String::from("Slot too old")));
+                }
+                BootstrapServerMessage::BootstrapError { error } => {
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, error).into())
                 }
                 _ => {
-                    return Err(
-                        std::io::Error::new(std::io::ErrorKind::TimedOut, "bad message").into(),
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "unexpected message",
                     )
+                    .into())
                 }
             }
         }
@@ -210,7 +220,7 @@ async fn bootstrap_from_server(
     };
 
     // handshake
-    let send_time_uncompensated = MassaTime::now(0)?;
+    let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
         Err(_) => {
@@ -225,7 +235,7 @@ async fn bootstrap_from_server(
     }
 
     // compute ping
-    let ping = MassaTime::now(0)?.saturating_sub(send_time_uncompensated);
+    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
@@ -261,39 +271,32 @@ async fn bootstrap_from_server(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
-    let recv_time_uncompensated = MassaTime::now(0)?;
+    // get the time of reception
+    let recv_time = MassaTime::now()?;
 
     // compute ping
-    let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
+    let ping = recv_time.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
         ));
     }
 
-    // compute compensation
-    let compensation_millis = if cfg.enable_clock_synchronization {
-        let local_time_uncompensated =
-            recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
-        let compensation_millis = if server_time >= local_time_uncompensated {
-            server_time
-                .saturating_sub(local_time_uncompensated)
-                .to_millis()
-        } else {
-            local_time_uncompensated
-                .saturating_sub(server_time)
-                .to_millis()
-        };
-        let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
-            BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
-        })?;
-        debug!("Server clock compensation set to: {}", compensation_millis);
-        compensation_millis
-    } else {
-        0
-    };
+    // compute client / server clock delta
+    // div 2 is an approximation of the time it took the message to do server -> client
+    // the complete ping value being client -> server -> client
+    let adjusted_server_time = server_time.checked_add(ping.checked_div_u64(2)?)?;
+    let clock_delta = adjusted_server_time.abs_diff(recv_time);
 
-    global_bootstrap_state.compensation_millis = compensation_millis;
+    // if clock delta is too high warn the user and restart bootstrap
+    if clock_delta > cfg.max_clock_delta {
+        warn!("client and server clocks differ too much, please check your clock");
+        let message = format!(
+            "client = {}, server = {}, ping = {}, max_delta = {}",
+            recv_time, server_time, ping, cfg.max_clock_delta
+        );
+        return Err(BootstrapError::ClockError(message));
+    }
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
@@ -369,43 +372,45 @@ async fn send_client_message(
 }
 
 async fn connect_to_server(
-    establisher: &mut Establisher,
+    establisher: &mut impl BSEstablisher,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     // connect
-    let mut connector = establisher
-        .get_connector(bootstrap_config.connect_timeout)
-        .await?; // cancellable
-    let socket = connector.connect(*addr).await?; // cancellable
+    let mut connector = establisher.get_connector(bootstrap_config.connect_timeout)?;
+    let socket = connector.connect(*addr).await?;
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,
-        bootstrap_config.max_bytes_read_write,
-        bootstrap_config.max_bootstrap_message_size,
-        bootstrap_config.endorsement_count,
-        bootstrap_config.max_advertise_length,
-        bootstrap_config.max_bootstrap_blocks_length,
-        bootstrap_config.max_operations_per_block,
-        bootstrap_config.thread_count,
-        bootstrap_config.randomness_size_bytes,
-        bootstrap_config.max_bootstrap_error_length,
-        bootstrap_config.max_bootstrap_final_state_parts_size,
-        bootstrap_config.max_datastore_entry_count,
-        bootstrap_config.max_datastore_key_length,
-        bootstrap_config.max_datastore_value_length,
-        bootstrap_config.max_async_pool_changes,
-        bootstrap_config.max_async_pool_length,
-        bootstrap_config.max_async_message_data,
-        bootstrap_config.max_ledger_changes_count,
-        bootstrap_config.max_changes_slot_count,
-        bootstrap_config.max_rolls_length,
-        bootstrap_config.max_production_stats_length,
-        bootstrap_config.max_credits_length,
-        bootstrap_config.max_executed_ops_length,
-        bootstrap_config.max_ops_changes_length,
+        bootstrap_config.into(),
     ))
+}
+
+fn filter_bootstrap_list(
+    bootstrap_list: Vec<(SocketAddr, NodeId)>,
+    ip_type: IpType,
+) -> Vec<(SocketAddr, NodeId)> {
+    let ip_filter: fn(&(SocketAddr, NodeId)) -> bool = match ip_type {
+        IpType::IPv4 => |&(addr, _)| addr.is_ipv4(),
+        IpType::IPv6 => |&(addr, _)| addr.is_ipv6(),
+        IpType::Both => |_| true,
+    };
+
+    let prev_bootstrap_list_len = bootstrap_list.len();
+
+    let filtered_bootstrap_list: Vec<_> = bootstrap_list.into_iter().filter(ip_filter).collect();
+
+    let new_bootstrap_list_len = filtered_bootstrap_list.len();
+
+    debug!(
+        "Keeping {:?} bootstrap ips. Filtered out {} bootstrap addresses out of a total of {} bootstrap servers.",
+        ip_type,
+        prev_bootstrap_list_len as i32 - new_bootstrap_list_len as i32,
+        prev_bootstrap_list_len
+    );
+
+    filtered_bootstrap_list
 }
 
 /// Gets the state from a bootstrap server
@@ -413,13 +418,13 @@ async fn connect_to_server(
 pub async fn get_state(
     bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
-    mut establisher: Establisher,
+    mut establisher: impl BSEstablisher,
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now(0)?;
+    let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
@@ -431,15 +436,28 @@ pub async fn get_state(
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
+
+    // we filter the bootstrap list to keep only the ip addresses we are compatible with
+    let mut filtered_bootstrap_list = filter_bootstrap_list(
+        bootstrap_config.bootstrap_list.clone(),
+        bootstrap_config.bootstrap_protocol,
+    );
+
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
-    if bootstrap_config.bootstrap_list.is_empty() {
+    if filtered_bootstrap_list.is_empty() {
         return Err(BootstrapError::GeneralError(
             "no bootstrap nodes found in list".into(),
         ));
     }
-    let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
-    shuffled_list.shuffle(&mut StdRng::from_entropy());
+
+    // we shuffle the list
+    filtered_bootstrap_list.shuffle(&mut StdRng::from_entropy());
+
+    // we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
+    let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
+    filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
+
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
             last_slot: None,
@@ -451,15 +469,23 @@ pub async fn get_state(
             last_consensus_step: StreamingStep::Started,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
+
     loop {
-        for (addr, pub_key) in shuffled_list.iter() {
+        for (addr, node_id) in filtered_bootstrap_list.iter() {
             if let Some(end) = end_timestamp {
-                if MassaTime::now(0).expect("could not get now time") > end {
+                if MassaTime::now().expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(&mut establisher, bootstrap_config, addr, pub_key).await {
+            match connect_to_server(
+                &mut establisher,
+                bootstrap_config,
+                addr,
+                &node_id.get_public_key(),
+            )
+            .await
+            {
                 Ok(mut client) => {
                     match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable
@@ -480,7 +506,7 @@ pub async fn get_state(
                 }
             };
 
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_config.retry_delay.to_duration());
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.", addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
             sleep(bootstrap_config.retry_delay.into()).await;
         }
     }

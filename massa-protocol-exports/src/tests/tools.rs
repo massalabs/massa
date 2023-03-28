@@ -5,13 +5,15 @@ use crate::ProtocolConfig;
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationSerializer;
-use massa_models::wrapped::WrappedContent;
+use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
-    endorsement::{Endorsement, EndorsementSerializerLW, WrappedEndorsement},
-    operation::{Operation, OperationType, WrappedOperation},
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
+    endorsement::{Endorsement, EndorsementSerializerLW, SecureShareEndorsement},
+    operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
 };
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
@@ -33,7 +35,7 @@ pub struct NodeInfo {
 /// create node info
 pub fn create_node() -> NodeInfo {
     let keypair = KeyPair::generate();
-    let id = NodeId(keypair.get_public_key());
+    let id = NodeId::new(keypair.get_public_key());
     NodeInfo { keypair, id }
 }
 
@@ -55,8 +57,8 @@ pub async fn create_and_connect_nodes(
 /// Creates a block for use in protocol,
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
-pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
-    let header = BlockHeader::new_wrapped(
+pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(1, 0),
             parents: vec![
@@ -71,7 +73,7 @@ pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
     )
     .unwrap();
 
-    Block::new_wrapped(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -90,14 +92,14 @@ pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
 pub fn create_block_with_operations(
     keypair: &KeyPair,
     slot: Slot,
-    operations: Vec<WrappedOperation>,
-) -> WrappedBlock {
+    operations: Vec<SecureShareOperation>,
+) -> SecureShareBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.id.to_bytes().to_vec()].concat()
         })[..],
     );
-    let header = BlockHeader::new_wrapped(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: vec![
@@ -113,7 +115,7 @@ pub fn create_block_with_operations(
     .unwrap();
 
     let op_ids = operations.into_iter().map(|op| op.id).collect();
-    Block::new_wrapped(
+    Block::new_verifiable(
         Block {
             header,
             operations: op_ids,
@@ -132,9 +134,9 @@ pub fn create_block_with_operations(
 pub fn create_block_with_endorsements(
     keypair: &KeyPair,
     slot: Slot,
-    endorsements: Vec<WrappedEndorsement>,
-) -> WrappedBlock {
-    let header = BlockHeader::new_wrapped(
+    endorsements: Vec<SecureShareEndorsement>,
+) -> SecureShareBlock {
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot,
             parents: vec![
@@ -149,7 +151,7 @@ pub fn create_block_with_endorsements(
     )
     .unwrap();
 
-    Block::new_wrapped(
+    Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -162,7 +164,7 @@ pub fn create_block_with_endorsements(
 
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-pub fn create_endorsement() -> WrappedEndorsement {
+pub fn create_endorsement() -> SecureShareEndorsement {
     let keypair = KeyPair::generate();
 
     let content = Endorsement {
@@ -170,14 +172,14 @@ pub fn create_endorsement() -> WrappedEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Endorsement::new_wrapped(content, EndorsementSerializerLW::new(), &keypair).unwrap()
+    Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), &keypair).unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
 pub fn create_operation_with_expire_period(
     keypair: &KeyPair,
     expire_period: u64,
-) -> WrappedOperation {
+) -> SecureShareOperation {
     let recv_keypair = KeyPair::generate();
 
     let op = OperationType::Transaction {
@@ -189,7 +191,7 @@ pub fn create_operation_with_expire_period(
         op,
         expire_period,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 lazy_static::lazy_static! {
@@ -220,7 +222,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_serialized_operations_size_per_block: 1024,
         controller_channel_size: 1024,
         event_channel_size: 1024,
-        genesis_timestamp: MassaTime::now(0).unwrap(),
+        genesis_timestamp: MassaTime::now().unwrap(),
         t0: MassaTime::from_millis(16000),
         max_operations_propagation_time: MassaTime::from_millis(30000),
         max_endorsements_propagation_time: MassaTime::from_millis(60000),

@@ -40,19 +40,19 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now(0)
+            MassaTime::now()
                 .unwrap()
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1667260800000.into()  // Tuesday, November 01, 2022 00:00:01 AM UTC
+        1677682800000.into()  // Wednesday, March 1, 2023 03:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1669827600000.into())  // Wednesday, November 30, 2022 5:00:00 PM UTC
+        Some(1680292800000.into())  // Friday, March 31, 2023 08:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -62,9 +62,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.0.0"
+            "SAND.20.0"
         } else {
-            "TEST.16.0"
+            "TEST.21.0"
         }
         .parse()
         .unwrap()
@@ -92,9 +92,9 @@ pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 10000;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 500_000;
+pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum data size in async message
@@ -117,6 +117,8 @@ pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
 pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
 /// Maximum number of consensus blocks in a bootstrap batch
 pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
+/// Maximum number of consensus block ids when sending a bootstrap cursor from the client
+pub const MAX_CONSENSUS_BLOCKS_IDS: u64 = 300;
 /// Maximum size of proof-of-stake rolls
 pub const MAX_ROLLS_COUNT_LENGTH: u64 = 10_000;
 /// Maximum size of proof-of-stake production stats
@@ -126,7 +128,7 @@ pub const MAX_DEFERRED_CREDITS_LENGTH: u64 = 10_000;
 /// Maximum size of executed ops
 pub const MAX_EXECUTED_OPS_LENGTH: u64 = 1_000;
 /// Maximum size of executed ops changes
-pub const MAX_EXECUTED_OPS_CHANGES_LENGTH: u64 = 1_000;
+pub const MAX_EXECUTED_OPS_CHANGES_LENGTH: u64 = 20_000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 /// Maximum length of an operation datastore key
@@ -136,7 +138,7 @@ pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
 /// Maximum length of a datastore value
 pub const MAX_BYTECODE_LENGTH: u64 = 10_000_000;
 /// Maximum length of an operation datastore value
-pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 1_000;
+pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 500_000;
 /// Maximum ledger changes in a block
 pub const MAX_LEDGER_CHANGES_PER_SLOT: u32 = u32::MAX;
 /// Maximum production events in a block
@@ -195,7 +197,7 @@ pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 //
 
 /// Maximum of GAS allowed for a block
-pub const MAX_GAS_PER_BLOCK: u64 = 1_000_000_000;
+pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 
@@ -217,6 +219,12 @@ pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 10_000;
 pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 10_000;
 /// network node event channel size
 pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
+
+//
+// Constants used in versioning
+//
+/// Threshold to accept a new versioning
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

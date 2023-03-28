@@ -3,7 +3,7 @@
 //! Pool controller implementation
 
 use massa_models::{
-    block::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
+    block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
 use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
 use massa_storage::Storage;

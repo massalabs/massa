@@ -14,26 +14,33 @@ use nom::{
 };
 use serde::{Deserialize, Serialize};
 
-/// Wrapped structure T where U is the associated id
+/// Packages type T such that it can be securely sent and received in a trust-free network
+///
+/// If the internal content is mutated, then it must be re-wrapped, as the assosciated
+/// signature, serialized data, etc. would no longer be in sync
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Wrapped<T, U>
+pub struct SecureShare<T, ID>
 where
-    T: Display + WrappedContent,
-    U: Id,
+    T: Display + SecureShareContent,
+    ID: Id,
 {
-    /// content
+    /// Reference contents. Not required for the the security protocols.
+    ///
+    /// Use the Lightweight equivilant structures when you need verifiable
+    /// serialized data, but do not need to read the values directly (such as when sending)
     pub content: T,
-    /// signature
-    pub signature: Signature,
-    /// the content creator public key
-    pub creator_public_key: PublicKey,
-    /// the content creator address
-    pub creator_address: Address,
-    /// Id
-    pub id: U,
     #[serde(skip)]
-    /// Content serialized
+    /// Content in sharable, deserializable form. Is used in the secure verification protocols.
     pub serialized_data: Vec<u8>,
+
+    /// A cryptographically generated value using `serialized_data` and a public key.
+    pub signature: Signature,
+    /// The public-key component used in the generation of the signature
+    pub content_creator_pub_key: PublicKey,
+    /// Derived from the same public key used to generate the signature
+    pub content_creator_address: Address,
+    /// A secure hash of the data. See also [massa_hash::Hash]
+    pub id: ID,
 }
 
 /// Used by signed structure
@@ -44,36 +51,47 @@ pub trait Id {
     fn get_hash(&self) -> &Hash;
 }
 
-/// Trait that define a structure that can be wrapped.
-pub trait WrappedContent
+/// Trait that define a structure that can be signed for secure sharing.
+pub trait SecureShareContent
 where
     Self: Sized + Display,
 {
-    /// Creates a wrapped version of the object
-    fn new_wrapped<SC: Serializer<Self>, U: Id>(
+    /// Using the provided key-pair, applies a cryptographic signature, and packages
+    /// the data required to share and verify the data in a trust-free network of peers.
+    fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
         content: Self,
-        content_serializer: SC,
+        content_serializer: Ser,
         keypair: &KeyPair,
-    ) -> Result<Wrapped<Self, U>, ModelsError> {
+    ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
-        let mut hash_data = Vec::new();
         let public_key = keypair.get_public_key();
-        hash_data.extend(public_key.to_bytes());
-        hash_data.extend(content_serialized.clone());
-        let hash = Hash::compute_from(&hash_data);
+        let hash = Self::compute_hash(&content, &content_serialized, &public_key);
         let creator_address = Address::from_public_key(&public_key);
-        Ok(Wrapped {
+        Ok(SecureShare {
             signature: keypair.sign(&hash)?,
-            creator_public_key: public_key,
-            creator_address,
+            content_creator_pub_key: public_key,
+            content_creator_address: creator_address,
             content,
             serialized_data: content_serialized,
-            id: U::new(hash),
+            id: ID::new(hash),
         })
     }
 
-    /// Serialize the wrapped structure
+    /// Compute hash
+    #[allow(unused_variables)]
+    fn compute_hash(
+        content: &Self, // use only for Denounce able object
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Hash {
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(content_serialized);
+        Hash::compute_from(&hash_data)
+    }
+
+    /// Serialize the secured structure
     fn serialize(
         signature: &Signature,
         creator_public_key: &PublicKey,
@@ -86,21 +104,21 @@ where
         Ok(())
     }
 
-    /// Deserialize the wrapped structure
+    /// Deserialize the secured structure
     fn deserialize<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
-        DC: Deserializer<Self>,
-        U: Id,
+        Deser: Deserializer<Self>,
+        ID: Id,
     >(
         content_serializer: Option<&dyn Serializer<Self>>,
         signature_deserializer: &SignatureDeserializer,
         creator_public_key_deserializer: &PublicKeyDeserializer,
-        content_deserializer: &DC,
+        content_deserializer: &Deser,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
+    ) -> IResult<&'a [u8], SecureShare<Self, ID>, E> {
         let (serialized_data, (signature, creator_public_key)) = context(
-            "Failed wrapped deserialization",
+            "Failed SecureShare deserialization",
             tuple((
                 context("Failed signature deserialization", |input| {
                     signature_deserializer.deserialize(input)
@@ -127,46 +145,46 @@ where
             serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         let creator_address = Address::from_public_key(&creator_public_key);
-        let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
-        serialized_full_data.extend(&content_serialized);
+        let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key);
+
         Ok((
             rest,
-            Wrapped {
+            SecureShare {
                 content,
                 signature,
-                creator_public_key,
-                creator_address,
+                content_creator_pub_key: creator_public_key,
+                content_creator_address: creator_address,
                 serialized_data: content_serialized.to_vec(),
-                id: U::new(Hash::compute_from(&serialized_full_data)),
+                id: ID::new(hash),
             },
         ))
     }
 }
 
-impl<T, U> Display for Wrapped<T, U>
+impl<T, ID> Display for SecureShare<T, ID>
 where
-    T: Display + WrappedContent,
-    U: Id,
+    T: Display + SecureShareContent,
+    ID: Id,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Signature: {}", self.signature)?;
-        writeln!(f, "Creator pubkey: {}", self.creator_public_key)?;
-        writeln!(f, "Creator address: {}", self.creator_address)?;
+        writeln!(f, "Creator pubkey: {}", self.content_creator_pub_key)?;
+        writeln!(f, "Creator address: {}", self.content_creator_address)?;
         writeln!(f, "Id: {}", self.id.get_hash())?;
         writeln!(f, "{}", self.content)?;
         Ok(())
     }
 }
 
-impl<T, U> Wrapped<T, U>
+impl<T, ID> SecureShare<T, ID>
 where
-    T: Display + WrappedContent,
-    U: Id,
+    T: Display + SecureShareContent,
+    ID: Id,
 {
     /// check if self has been signed by public key
     pub fn verify_signature(&self) -> Result<(), ModelsError> {
         Ok(self
-            .creator_public_key
+            .content_creator_pub_key
             .verify_signature(self.id.get_hash(), &self.signature)?)
     }
 
@@ -180,83 +198,87 @@ where
 }
 
 // NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
-/// Serializer for `Wrapped` structure
+/// Serializer for `SecureShare` structure
 #[derive(Default)]
-pub struct WrappedSerializer;
+pub struct SecureShareSerializer;
 
-impl WrappedSerializer {
-    /// Creates a new `WrappedSerializer`
+impl SecureShareSerializer {
+    /// Creates a new `SecureShareSerializer`
     pub const fn new() -> Self {
         Self
     }
 
-    /// This method is used to serialize a `Wrapped` structure and use a custom serializer instead of
+    /// This method is used to serialize a `SecureShare` structure and use a custom serializer instead of
     /// using the serialized form of the content stored in `serialized_data`.
     /// This is useful when the content need to be serialized in a lighter form in specific cases.
     ///
     /// # Arguments:
-    /// * `serializer_content`: Custom serializer to be used instead of the data in `serialized_data`
-    /// * `value`: Wrapped structure to be serialized
+    /// * `content_serializer`: Custom serializer to be used instead of the data in `serialized_data`
+    /// * `value`: SecureShare structure to be serialized
     /// * `buffer`: buffer of serialized data to be extend
-    pub fn serialize_with<SC, T, U>(
+    pub fn serialize_with<Ser, T, ID>(
         &self,
-        serializer_content: &SC,
-        value: &Wrapped<T, U>,
+        content_serializer: &Ser,
+        value: &SecureShare<T, ID>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError>
     where
-        SC: Serializer<T>,
-        T: Display + WrappedContent,
-        U: Id,
+        Ser: Serializer<T>,
+        T: Display + SecureShareContent,
+        ID: Id,
     {
         let mut content_buffer = Vec::new();
-        serializer_content.serialize(&value.content, &mut content_buffer)?;
+        content_serializer.serialize(&value.content, &mut content_buffer)?;
         T::serialize(
             &value.signature,
-            &value.creator_public_key,
+            &value.content_creator_pub_key,
             &content_buffer,
             buffer,
         )
     }
 }
 
-impl<T, U> Serializer<Wrapped<T, U>> for WrappedSerializer
+impl<T, ID> Serializer<SecureShare<T, ID>> for SecureShareSerializer
 where
-    T: Display + WrappedContent,
-    U: Id,
+    T: Display + SecureShareContent,
+    ID: Id,
 {
-    fn serialize(&self, value: &Wrapped<T, U>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+    fn serialize(
+        &self,
+        value: &SecureShare<T, ID>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         T::serialize(
             &value.signature,
-            &value.creator_public_key,
+            &value.content_creator_pub_key,
             &value.serialized_data,
             buffer,
         )
     }
 }
 
-/// Deserializer for Wrapped structure
-pub struct WrappedDeserializer<T, DT>
+/// Deserializer for SecureShare structure
+pub struct SecureShareDeserializer<T, Deser>
 where
-    T: Display + WrappedContent,
-    DT: Deserializer<T>,
+    T: Display + SecureShareContent,
+    Deser: Deserializer<T>,
 {
     signature_deserializer: SignatureDeserializer,
     public_key_deserializer: PublicKeyDeserializer,
-    content_deserializer: DT,
+    content_deserializer: Deser,
     marker_t: std::marker::PhantomData<T>,
 }
 
-impl<T, DT> WrappedDeserializer<T, DT>
+impl<T, Deser> SecureShareDeserializer<T, Deser>
 where
-    T: Display + WrappedContent,
-    DT: Deserializer<T>,
+    T: Display + SecureShareContent,
+    Deser: Deserializer<T>,
 {
-    /// Creates a new `WrappedDeserializer`
+    /// Creates a new `SecureShareDeserializer`
     ///
     /// # Arguments
     /// * `content_deserializer` - Deserializer for the content
-    pub const fn new(content_deserializer: DT) -> Self {
+    pub const fn new(content_deserializer: Deser) -> Self {
         Self {
             signature_deserializer: SignatureDeserializer::new(),
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -276,17 +298,17 @@ where
     /// * `buffer`: buffer of serialized data to be deserialized
     ///
     /// # Returns:
-    /// A rest and the wrapped structure with coherent fields.
+    /// A rest (data left over from deserialization), an instance of `T`, and the data enabling signature verification
     pub fn deserialize_with<
         'a,
         E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
-        U: Id,
-        ST: Serializer<T>,
+        ID: Id,
+        Ser: Serializer<T>,
     >(
         &self,
-        content_serializer: &ST,
+        content_serializer: &Ser,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
+    ) -> IResult<&'a [u8], SecureShare<T, ID>, E> {
         T::deserialize(
             Some(content_serializer),
             &self.signature_deserializer,
@@ -297,14 +319,15 @@ where
     }
 }
 
-impl<T, U, DT> Deserializer<Wrapped<T, U>> for WrappedDeserializer<T, DT>
+impl<T, ID, Deser> Deserializer<SecureShare<T, ID>> for SecureShareDeserializer<T, Deser>
 where
-    T: Display + WrappedContent,
-    U: Id,
-    DT: Deserializer<T>,
+    T: Display + SecureShareContent,
+    ID: Id,
+    Deser: Deserializer<T>,
 {
     /// ```
-    /// # use massa_models::{block::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}, slot::Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};
+    /// # use massa_models::{endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}, slot::Slot, secure_share::{SecureShare, SecureShareSerializer, SecureShareDeserializer, SecureShareContent}};
+    /// use massa_models::block_id::BlockId;
     /// # use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
     /// # use massa_signature::KeyPair;
     /// # use std::ops::Bound::Included;
@@ -316,22 +339,22 @@ where
     ///    endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     /// };
     /// let keypair = KeyPair::generate();
-    /// let wrapped: Wrapped<Endorsement, BlockId> = Endorsement::new_wrapped(
+    /// let secured: SecureShare<Endorsement, BlockId> = Endorsement::new_verifiable(
     ///    content,
     ///    EndorsementSerializer::new(),
     ///    &keypair
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
-    /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();
-    /// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new(32, 1));
-    /// let (rest, deserialized): (&[u8], Wrapped<Endorsement, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
+    /// let serialized = SecureShareSerializer::new().serialize(&secured, &mut serialized_data).unwrap();
+    /// let deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1));
+    /// let (rest, deserialized): (&[u8], SecureShare<Endorsement, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(wrapped.id, deserialized.id);
+    /// assert_eq!(secured.id, deserialized.id);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
+    ) -> IResult<&'a [u8], SecureShare<T, ID>, E> {
         T::deserialize(
             None,
             &self.signature_deserializer,

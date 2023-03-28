@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, staging, trying]
   pull_request:
-    branches: [main]
+    branches: [main, 'testnet_*']
     types:
     - opened
     - reopened
@@ -21,16 +21,19 @@ jobs:
   sanity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "sanity"
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -40,74 +43,42 @@ jobs:
     if: github.ref != 'refs/heads/staging'
     needs: sanity
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
-          override: true
-      - uses: Swatinem/rust-cache@v1
+          toolchain: nightly-2023-02-27
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "check"
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
 
-  test:
-    if: github.ref != 'refs/heads/staging'
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --lib
-
-  doctest:
-    if: github.ref != 'refs/heads/staging'
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc
-
   clippy:
     if: github.ref != 'refs/heads/staging'
-    needs: check
+    needs: sanity
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2023-02-27
           components: clippy
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "clippy"
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -116,7 +87,6 @@ jobs:
 
   # Full cross-platform tests required by bors to merge on main branch
   full:
-    if: github.ref == 'refs/heads/staging'
     name: full
     needs: sanity
     runs-on: ${{ matrix.os }}
@@ -127,15 +97,18 @@ jobs:
           - macOS-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2023-02-27
           override: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "massa"
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -143,59 +116,71 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --retries 2
+          args: run --features testing --retries 10
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features testing --doc
 
   build: # quick hack because bors wrongly detect matrix jobs status
-    if: github.ref == 'refs/heads/staging'
     needs: full
     runs-on: ubuntu-latest
     steps:
       - run: exit 0
 
-  # Code documentation and coverage will be run only on main branch
-  coverage:
+  # Maybe launch it only in testnet branches
+  gas-costs-check:
+    if: github.ref != 'refs/heads/staging' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2023-02-27
+          components: rustfmt
           override: true
-      - uses: actions-rs/cargo@v1
+      - uses: actions/checkout@v3
         with:
-          command: clean
-      - uses: actions-rs/cargo@v1
+          repository: massalabs/gas-calibration
+          path: gas-calibration
+          ref: main
+      - uses: actions/checkout@v3
         with:
-          command: test
-          args: --features testing --no-fail-fast
-        env:
-          CARGO_INCREMENTAL: "0"
-          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
-          RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
-      - id: coverage
-        uses: actions-rs/grcov@v0.1
-      - uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ${{ steps.coverage.outputs.report }}
+          repository: massalabs/massa-as-sdk
+          path: massa-as-sdk
+          ref: main
+      # Replace the branch in the dependencies in gas-calibration project by the current branch
+      # Special case for massa-sc-runtime: we use the branch referenced in the Cargo.toml of massa-execution-worker.
+      - name: "Use the current branch as dependency for gas-calibration"
+        run: >
+          cd gas-calibration &&
+          sed -i 's!main!${{ github.head_ref || github.ref_name }}!g' Cargo.toml &&
+          sed -i 's!massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", features = \["gas_calibration"\] }!'"$(cat ../massa-execution-worker/Cargo.toml | grep 'massalabs/massa-sc-runtime' | sed 's!/!\\/!g' | sed 's!}!, features = ["gas_calibration"]}!g' )"'!g' Cargo.toml
+      #- name: "Launch gas-calibration with one SC per ABI in massa-as-sdk to see if there is an ABI missing"
+      #  run: >
+      #    cd gas-calibration &&
+      #    cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
+
 
   doc:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2023-02-27
           components: rustfmt
           override: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "doc"
+          save-if: ${{ github.ref_name == 'testnet_21' }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc

@@ -5,7 +5,7 @@ use massa_consensus_exports::{
 use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
-    block::BlockId,
+    block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
 };
@@ -17,7 +17,7 @@ impl ConsensusState {
     /// prune active blocks and return final blocks, return discarded final blocks
     fn prune_active(&mut self) -> Result<PreHashMap<BlockId, ActiveBlock>, ConsensusError> {
         // list required active blocks
-        let mut retain_active: PreHashSet<BlockId> = self.list_required_active_blocks()?;
+        let mut retain_active: PreHashSet<BlockId> = self.list_required_active_blocks(None)?;
 
         // retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
@@ -57,7 +57,7 @@ impl ConsensusState {
                     ))
                 })?;
                 block_slot = block.content.header.content.slot;
-                block_creator = block.creator_address;
+                block_creator = block.content_creator_address;
                 block_parents = block.content.header.content.parents.clone();
             };
 
@@ -301,15 +301,17 @@ impl ConsensusState {
                 if let Some(reason) = reason_opt {
                     // add to stats if reason is Stale
                     if reason == DiscardReason::Stale {
-                        self.new_stale_blocks
-                            .insert(block_id, (header.creator_address, header.content.slot));
+                        self.new_stale_blocks.insert(
+                            block_id,
+                            (header.content_creator_address, header.content.slot),
+                        );
                     }
                     // transition to Discarded only if there is a reason
                     self.block_statuses.insert(
                         block_id,
                         BlockStatus::Discarded {
                             slot: header.content.slot,
-                            creator: header.creator_address,
+                            creator: header.content_creator_address,
                             parents: header.content.parents.clone(),
                             reason,
                             sequence_number: {

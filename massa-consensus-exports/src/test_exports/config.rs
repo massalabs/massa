@@ -12,7 +12,6 @@ use crate::ConsensusConfig;
 impl Default for ConsensusConfig {
     fn default() -> Self {
         Self {
-            clock_compensation_millis: 0,
             genesis_timestamp: *GENESIS_TIMESTAMP,
             t0: T0,
             thread_count: THREAD_COUNT,
@@ -34,6 +33,10 @@ impl Default for ConsensusConfig {
             stats_timespan: MassaTime::from_millis(60000),
             channel_size: CHANNEL_SIZE,
             bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            broadcast_enabled: true,
+            broadcast_blocks_headers_capacity: 128,
+            broadcast_blocks_capacity: 128,
+            broadcast_filled_blocks_capacity: 128,
         }
     }
 }

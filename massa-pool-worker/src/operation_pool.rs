@@ -8,9 +8,10 @@ use massa_models::{
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
 };
-use massa_pool_exports::PoolConfig;
+use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use std::collections::BTreeSet;
+use tracing::debug;
 
 use crate::types::{OperationInfo, PoolOperationCursor};
 
@@ -35,6 +36,9 @@ pub struct OperationPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
+
+    /// channels used by the pool worker
+    channels: PoolChannels,
 }
 
 impl OperationPool {
@@ -42,6 +46,7 @@ impl OperationPool {
         config: PoolConfig,
         storage: &Storage,
         execution_controller: Box<dyn ExecutionController>,
+        channels: PoolChannels,
     ) -> Self {
         OperationPool {
             operations: Default::default(),
@@ -51,6 +56,7 @@ impl OperationPool {
             config,
             storage: storage.clone_without_refs(),
             execution_controller,
+            channels,
         }
     }
 
@@ -68,7 +74,10 @@ impl OperationPool {
     pub(crate) fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final slot counter
         self.last_cs_final_periods = final_cs_periods.to_vec();
-
+        debug!(
+            "notified of new final consensus periods: {:?}",
+            self.last_cs_final_periods
+        );
         // prune old ops
         let mut removed_ops: PreHashSet<_> = Default::default();
         while let Some((expire_slot, op_id)) = self.ops_per_expiration.first().copied() {
@@ -112,10 +121,15 @@ impl OperationPool {
         {
             let ops = ops_storage.read_operations();
             for op_id in items {
+                let op = ops
+                    .get(&op_id)
+                    .expect("attempting to add operation to pool, but it is absent from storage");
+                // Broadcast operation to active sender(channel) subscribers.
+                if self.config.broadcast_enabled {
+                    let _ = self.channels.operation_sender.send(op.content.clone());
+                }
                 let op_info = OperationInfo::from_op(
-                    ops.get(&op_id).expect(
-                        "attempting to add operation to pool, but it is absent from storage",
-                    ),
+                    op,
                     self.config.operation_validity_periods,
                     self.config.roll_price,
                     self.config.thread_count,
@@ -172,6 +186,10 @@ impl OperationPool {
     }
 
     /// get operations for block creation
+    ///
+    /// Searches the available operations, and selects the sub-set of operations that:
+    /// - fit inside the block
+    /// - is the most profitable for block producer
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
@@ -180,11 +198,17 @@ impl OperationPool {
         let mut remaining_space = self.config.max_block_size as usize;
         // init remaining gas
         let mut remaining_gas = self.config.max_block_gas;
+        // init remaining number of operations
+        let mut remaining_ops = self.config.max_operations_per_block;
         // cache of balances
         let mut balance_cache: PreHashMap<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+            // if we have reached the maximum number of operations, stop
+            if remaining_ops == 0 {
+                break;
+            }
             let op_info = self
                 .operations
                 .get(&cursor.get_id())
@@ -247,6 +271,9 @@ impl OperationPool {
 
             // update remaining block gas
             remaining_gas -= op_info.max_gas;
+
+            // update remaining number of operations
+            remaining_ops -= 1;
 
             // update balance cache
             *creator_balance = creator_balance.saturating_sub(op_info.max_spending);

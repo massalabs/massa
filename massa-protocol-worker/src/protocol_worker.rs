@@ -8,23 +8,24 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_consensus_exports::ConsensusController;
 use massa_logging::massa_trace;
 
+use massa_models::secure_share::Id;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
-    block::{BlockId, WrappedHeader},
-    endorsement::{EndorsementId, WrappedEndorsement},
+    block_header::SecuredHeader,
+    block_id::BlockId,
+    endorsement::{EndorsementId, SecureShareEndorsement},
     node::NodeId,
     operation::OperationPrefixId,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
 };
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolConfig, ProtocolError, ProtocolManagementCommand, ProtocolManager,
+    ProtocolReceivers, ProtocolSenders,
 };
-
-use massa_models::wrapped::Id;
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use std::collections::{HashMap, HashSet};
@@ -43,14 +44,14 @@ use tracing::{debug, error, info, warn};
 ///
 /// # Arguments
 /// * `config`: protocol settings
-/// * `network_command_sender`: the `NetworkCommandSender` we interact with
-/// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
+/// * `senders`: sender(s) channel(s) to communicate with other modules
+/// * `receivers`: receiver(s) channel(s) to communicate with other modules
+/// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     config: ProtocolConfig,
-    network_command_sender: NetworkCommandSender,
-    network_event_receiver: NetworkEventReceiver,
-    protocol_command_receiver: mpsc::Receiver<ProtocolCommand>,
+    receivers: ProtocolReceivers,
+    senders: ProtocolSenders,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
@@ -64,9 +65,9 @@ pub async fn start_protocol_controller(
         let res = ProtocolWorker::new(
             config,
             ProtocolWorkerChannels {
-                network_command_sender,
-                network_event_receiver,
-                controller_command_rx: protocol_command_receiver,
+                network_command_sender: senders.network_command_sender,
+                network_event_receiver: receivers.network_event_receiver,
+                controller_command_rx: receivers.protocol_command_receiver,
                 controller_manager_rx,
             },
             consensus_controller,
@@ -94,7 +95,7 @@ pub async fn start_protocol_controller(
 #[derive(Debug, Clone)]
 pub(crate) struct BlockInfo {
     /// The header of the block.
-    pub(crate) header: Option<WrappedHeader>,
+    pub(crate) header: Option<SecuredHeader>,
     /// Operations ids. None if not received yet
     pub(crate) operation_ids: Option<Vec<OperationId>>,
     /// Operations and endorsements contained in the block,
@@ -105,7 +106,7 @@ pub(crate) struct BlockInfo {
 }
 
 impl BlockInfo {
-    fn new(header: Option<WrappedHeader>, storage: Storage) -> Self {
+    fn new(header: Option<SecuredHeader>, storage: Storage) -> Self {
         BlockInfo {
             header,
             operation_ids: None,
@@ -141,7 +142,7 @@ pub struct ProtocolWorker {
     /// Cache of processed operations
     pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
-    pub(crate) checked_headers: LinearHashCacheMap<BlockId, WrappedHeader>,
+    pub(crate) checked_headers: LinearHashCacheMap<BlockId, SecuredHeader>,
     /// List of ids of operations that we asked to the nodes
     pub(crate) asked_operations: PreHashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -370,7 +371,7 @@ impl ProtocolWorker {
             { "endorsements": storage.get_endorsement_refs() }
         );
         for (node, node_info) in self.active_nodes.iter_mut() {
-            let new_endorsements: PreHashMap<EndorsementId, WrappedEndorsement> = {
+            let new_endorsements: PreHashMap<EndorsementId, SecureShareEndorsement> = {
                 let endorsements_reader = storage.read_endorsements();
                 storage
                     .get_endorsement_refs()
@@ -771,7 +772,7 @@ impl ProtocolWorker {
     /// - Block matches that of the block.
     pub(crate) async fn note_header_from_node(
         &mut self,
-        header: &WrappedHeader,
+        header: &SecuredHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
@@ -886,7 +887,7 @@ impl ProtocolWorker {
     /// - Valid signature
     pub(crate) async fn note_operations_from_node(
         &mut self,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
         source_node_id: &NodeId,
         op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
@@ -917,7 +918,7 @@ impl ProtocolWorker {
         verify_sigs_batch(
             &new_operations
                 .iter()
-                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.creator_public_key))
+                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.content_creator_pub_key))
                 .collect::<Vec<_>>(),
         )?;
 
@@ -938,7 +939,7 @@ impl ProtocolWorker {
             // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
             let mut ops_to_propagate = ops.clone();
             let operations_to_not_propagate = {
-                let now = MassaTime::now(0)?;
+                let now = MassaTime::now()?;
                 let read_operations = ops_to_propagate.read_operations();
                 ops_to_propagate
                     .get_op_refs()
@@ -988,7 +989,7 @@ impl ProtocolWorker {
     /// - Valid signature.
     pub(crate) async fn note_endorsements_from_node(
         &mut self,
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(), ProtocolError> {
@@ -1015,7 +1016,7 @@ impl ProtocolWorker {
                     (
                         *endorsement_id.get_hash(),
                         endorsement.signature,
-                        endorsement.creator_public_key,
+                        endorsement.content_creator_pub_key,
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -1039,7 +1040,7 @@ impl ProtocolWorker {
                 // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
                 let mut endorsements_to_propagate = endorsements.clone();
                 let endorsements_to_not_propagate = {
-                    let now = MassaTime::now(0)?;
+                    let now = MassaTime::now()?;
                     let read_endorsements = endorsements_to_propagate.read_endorsements();
                     endorsements_to_propagate
                         .get_endorsement_refs()

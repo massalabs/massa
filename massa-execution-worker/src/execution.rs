@@ -9,8 +9,9 @@
 //! * the output of the execution is extracted from the context
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
-use crate::context::ExecutionContext;
+use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
+use crate::module_cache::ModuleCache;
 use crate::stats::ExecutionStatsCounter;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
@@ -20,21 +21,24 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::api::EventFilter;
+use massa_models::bytecode::Bytecode;
+use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::ExecutionStats;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
-    block::BlockId,
-    operation::{OperationId, OperationType, WrappedOperation},
+    block_id::BlockId,
+    operation::{OperationId, OperationType, SecureShareOperation},
 };
 use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::Interface;
+use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use parking_lot::{Mutex, RwLock};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
@@ -70,6 +74,10 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     // execution statistics
     stats_counter: ExecutionStatsCounter,
+    // cache of pre compiled sc modules
+    module_cache: Arc<RwLock<ModuleCache>>,
+    // Map of vesting addresses
+    vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
 }
 
 impl ExecutionState {
@@ -89,11 +97,27 @@ impl ExecutionState {
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
 
+        // Initialize the map of vesting addresses from file
+        let vesting_registry = match ExecutionState::init_vesting_registry(&config) {
+            Ok(map) => Arc::new(map),
+            Err(e) => {
+                panic!("{}", e);
+            }
+        };
+
+        // Initialize the SC module cache
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(
+            config.gas_costs.clone(),
+            config.max_module_cache_size,
+        )));
+
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
+            module_cache.clone(),
+            vesting_registry.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -114,11 +138,10 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
-            stats_counter: ExecutionStatsCounter::new(
-                config.stats_time_window_duration,
-                config.clock_compensation,
-            ),
+            stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
+            module_cache,
             config,
+            vesting_registry,
         }
     }
 
@@ -185,6 +208,59 @@ impl ExecutionState {
         self.active_history.write().0.push_back(exec_out);
     }
 
+    /// Helper function.
+    /// Within a locked execution context (lock is taken at the beginning of the function then released at the end):
+    /// - if not yet executed then transfer fee and add the operation to the context then return a context snapshot
+    ///
+    /// # Arguments
+    /// * `operation`: operation to be schedule
+    /// * `sender_addr`: sender address for the operation (for fee transfer)
+
+    fn schedule_operation_for_execution(
+        &self,
+        operation: &SecureShareOperation,
+        sender_addr: Address,
+    ) -> Result<ExecutionContextSnapshot, ExecutionError> {
+        let operation_id = operation.id;
+
+        // lock execution context
+        let mut context = context_guard!(self);
+
+        // ignore the operation if it was already executed
+        if context.is_op_executed(&operation_id) {
+            return Err(ExecutionError::IncludeOperationError(
+                "operation was executed previously".to_string(),
+            ));
+        }
+
+        // debit the fee from the operation sender
+        // fail execution if there are not enough coins
+        if let Err(err) =
+            context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
+        {
+            let error = format!("could not spend fees: {}", err);
+            let event = context.event_create(error.clone(), true);
+            context.event_emit(event);
+            return Err(ExecutionError::IncludeOperationError(error));
+        }
+
+        // from here, fees transferred. Op will be executed just after in the context of a snapshot.
+
+        // save a snapshot of the context to revert any further changes on error
+        let context_snapshot = context.get_snapshot();
+
+        // set the context max gas to match the one defined in the operation
+        context.max_gas = operation.get_gas_usage();
+
+        // set the creator address
+        context.creator_address = Some(operation.content_creator_address);
+
+        // set the context origin operation ID
+        context.origin_operation_id = Some(operation_id);
+
+        Ok(context_snapshot)
+    }
+
     /// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
@@ -195,7 +271,7 @@ impl ExecutionState {
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     pub fn execute_operation(
         &self,
-        operation: &WrappedOperation,
+        operation: &SecureShareOperation,
         block_slot: Slot,
         remaining_block_gas: &mut u64,
         block_credits: &mut Amount,
@@ -217,7 +293,7 @@ impl ExecutionState {
         })?;
 
         // get the operation's sender address
-        let sender_addr = operation.creator_address;
+        let sender_addr = operation.content_creator_address;
 
         // get the thread to which the operation belongs
         let op_thread = sender_addr.get_thread(self.config.thread_count);
@@ -232,56 +308,10 @@ impl ExecutionState {
         // get operation ID
         let operation_id = operation.id;
 
-        // compute fee from (op.max_gas * op.gas_price + op.fee)
-        let op_fees = operation.get_total_fee();
-        let new_block_credits = block_credits.saturating_add(op_fees);
+        // Add fee from operation.
+        let new_block_credits = block_credits.saturating_add(operation.content.fee);
 
-        let context_snapshot;
-        {
-            // lock execution context
-            let mut context = context_guard!(self);
-
-            // ignore the operation if it was already executed
-            if context.is_op_executed(&operation_id) {
-                return Err(ExecutionError::IncludeOperationError(
-                    "operation was executed previously".to_string(),
-                ));
-            }
-
-            // debit the fee and coins from the operation sender
-            // fail execution if there are not enough coins
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, op_fees, false) {
-                return Err(ExecutionError::IncludeOperationError(format!(
-                    "could not spend fees: {}",
-                    err
-                )));
-            }
-
-            // from here, the op is considered as executed (fees transferred)
-
-            // add operation to executed ops list
-            context.insert_executed_op(
-                operation_id,
-                Slot::new(operation.content.expire_period, op_thread),
-            );
-
-            // save a snapshot of the context to revert any further changes on error
-            context_snapshot = context.get_snapshot();
-
-            // set the context gas price to match the one defined in the operation
-            context.gas_price = operation.get_gas_price();
-
-            // set the context max gas to match the one defined in the operation
-            context.max_gas = operation.get_gas_usage();
-
-            // set the creator address
-            context.creator_address = Some(operation.creator_address);
-
-            // set the context origin operation ID
-            context.origin_operation_id = Some(operation_id);
-
-            // execution context lock dropped here because the op-specific execution functions below acquire it again
-        }
+        let context_snapshot = self.schedule_operation_for_execution(operation, sender_addr)?;
 
         // update block gas
         *remaining_block_gas = new_remaining_block_gas;
@@ -298,7 +328,7 @@ impl ExecutionState {
                 self.execute_callsc_op(&operation.content.op, sender_addr)
             }
             OperationType::RollBuy { .. } => {
-                self.execute_roll_buy_op(&operation.content.op, sender_addr)
+                self.execute_roll_buy_op(&operation.content.op, sender_addr, block_slot)
             }
             OperationType::RollSell { .. } => {
                 self.execute_roll_sell_op(&operation.content.op, sender_addr)
@@ -314,7 +344,11 @@ impl ExecutionState {
 
             // check execution results
             match execution_result {
-                Ok(_) => {}
+                Ok(_) => context.insert_executed_op(
+                    operation_id,
+                    true,
+                    Slot::new(operation.content.expire_period, op_thread),
+                ),
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
                     let err = ExecutionError::RuntimeError(format!(
@@ -322,7 +356,14 @@ impl ExecutionState {
                         operation_id, &err
                     ));
                     debug!("{}", &err);
-                    context.reset_to_snapshot(context_snapshot, Some(err));
+                    context.reset_to_snapshot(context_snapshot, err);
+
+                    // Insert op AFTER the context has been restore (else it would be overwritten)
+                    context.insert_executed_op(
+                        operation_id,
+                        false,
+                        Slot::new(operation.content.expire_period, op_thread),
+                    )
                 }
             }
         }
@@ -379,12 +420,26 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         buyer_addr: Address,
+        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
         let roll_count = match operation {
             OperationType::RollBuy { roll_count } => roll_count,
             _ => panic!("unexpected operation type"),
         };
+
+        // control vesting max_rolls for buyer address
+        if let Some(vesting_range) = self.find_vesting_range(&buyer_addr, &current_slot) {
+            let rolls = self.get_final_and_candidate_rolls(&buyer_addr);
+            // (candidate_rolls + amount to buy)
+            let max_rolls = rolls.1.saturating_add(*roll_count);
+            if max_rolls > vesting_range.max_rolls {
+                return Err(ExecutionError::VestingError(format!(
+                    "trying to get to a total of {} rolls but only {} are allowed at that time by the vesting scheme",
+                    max_rolls, vesting_range.max_rolls
+                )));
+            }
+        }
 
         // acquire write access to the context
         let mut context = context_guard!(self);
@@ -508,12 +563,23 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        match massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface) {
-            Ok(_reamining_gas) => {}
+        let module = RuntimeModule::new(bytecode, *max_gas, self.config.gas_costs.clone())
+            .map_err(|err| {
+                ExecutionError::RuntimeError(format!(
+                    "compilation error in execute_executesc_op: {}",
+                    err
+                ))
+            })?;
+        match massa_sc_runtime::run_main(
+            &*self.execution_interface,
+            module,
+            *max_gas,
+            self.config.gas_costs.clone(),
+        ) {
+            Ok(_response) => {}
             Err(err) => {
-                // there was an error during bytecode execution
                 return Err(ExecutionError::RuntimeError(format!(
-                    "bytecode execution error: {}",
+                    "module execution error in execute_executesc_op: {}",
                     err
                 )));
             }
@@ -565,7 +631,7 @@ impl ExecutionState {
                 },
                 ExecutionStackElement {
                     address: target_addr,
-                    coins: Default::default(),
+                    coins,
                     owned_addresses: vec![target_addr],
                     operation_datastore: None,
                 },
@@ -593,28 +659,31 @@ impl ExecutionState {
             }
 
             // Load bytecode. Assume empty bytecode if not found.
-            bytecode = context.get_bytecode(&target_addr).unwrap_or_default();
+            bytecode = context.get_bytecode(&target_addr).unwrap_or_default().0;
         }
 
-        // run the VM on the bytecode loaded from the target address
+        // Execute bytecode
+        // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
+        let module = self.module_cache.write().get_module(&bytecode, max_gas)?;
         match massa_sc_runtime::run_function(
-            &bytecode,
-            max_gas,
-            target_func,
-            &param,
             &*self.execution_interface,
+            module.clone(),
+            target_func,
+            param,
+            max_gas,
+            self.config.gas_costs.clone(),
         ) {
-            Ok(_reamining_gas) => {}
-            Err(err) => {
-                // there was an error during bytecode execution
-                return Err(ExecutionError::RuntimeError(format!(
-                    "bytecode execution error: {}",
-                    err
-                )));
+            Ok(Response { init_cost, .. }) => {
+                self.module_cache
+                    .write()
+                    .save_module(&bytecode, module, init_cost);
+                Ok(())
             }
+            Err(err) => Err(ExecutionError::RuntimeError(format!(
+                "module execution error in execute_callsc_op: {}",
+                err
+            ))),
         }
-
-        Ok(())
     }
 
     /// Tries to execute an asynchronous message
@@ -626,15 +695,14 @@ impl ExecutionState {
     pub fn execute_async_message(
         &self,
         message: AsyncMessage,
-        bytecode: Option<Vec<u8>>,
+        bytecode: Option<Bytecode>,
     ) -> Result<(), ExecutionError> {
         // prepare execution context
         let context_snapshot;
-        let bytecode: Vec<u8> = {
+        let bytecode: Bytecode = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
-            context.gas_price = message.gas_price;
             context.creator_address = None;
             context.stack = vec![
                 ExecutionStackElement {
@@ -663,7 +731,7 @@ impl ExecutionState {
                             "message data does not convert to utf-8".into(),
                         )
                     };
-                    context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                    context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(&message);
                     return Err(err);
                 }
@@ -678,7 +746,7 @@ impl ExecutionState {
                     "could not credit coins to target of async execution: {}",
                     err
                 ));
-                context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
             }
@@ -686,25 +754,37 @@ impl ExecutionState {
             bytecode
         };
 
-        // run the target function
-        if let Err(err) = massa_sc_runtime::run_function(
-            &bytecode,
-            message.max_gas,
+        // Execute bytecode
+        // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
+        let module = self
+            .module_cache
+            .write()
+            .get_module(&bytecode.0, message.max_gas)?;
+        match massa_sc_runtime::run_function(
+            &*self.execution_interface,
+            module.clone(),
             &message.handler,
             &message.data,
-            &*self.execution_interface,
+            message.max_gas,
+            self.config.gas_costs.clone(),
         ) {
-            // execution failed: reset context to snapshot and reimburse sender
-            let err = ExecutionError::RuntimeError(format!(
-                "async message runtime execution error: {}",
-                err
-            ));
-            let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
-            context.cancel_async_message(&message);
-            Err(err)
-        } else {
-            Ok(())
+            Ok(Response { init_cost, .. }) => {
+                self.module_cache
+                    .write()
+                    .save_module(&bytecode.0, module, init_cost);
+                Ok(())
+            }
+            Err(err) => {
+                // execution failed: reset context to snapshot and reimburse sender
+                let err = ExecutionError::RuntimeError(format!(
+                    "module execution error in execute_async_message: {}",
+                    err
+                ));
+                let mut context = context_guard!(self);
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(&message);
+                Err(err)
+            }
         }
     }
 
@@ -731,10 +811,13 @@ impl ExecutionState {
             exec_target.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
+            self.module_cache.clone(),
+            self.vesting_registry.clone(),
         );
 
         // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(self.config.max_async_gas);
+        debug!("executing {} messages at slot {}", messages.len(), slot);
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
@@ -771,6 +854,8 @@ impl ExecutionState {
                     .collect::<Vec<_>>()
             };
 
+            debug!("executing {} operations at slot {}", operations.len(), slot);
+
             // gather all available endorsement creators and target blocks
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
                 &stored_block
@@ -779,7 +864,7 @@ impl ExecutionState {
                     .content
                     .endorsements
                     .iter()
-                    .map(|endo| (endo.creator_address, endo.content.endorsed_block))
+                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
                     .unzip();
 
             // deduce endorsement target block creators
@@ -791,7 +876,7 @@ impl ExecutionState {
                         blocks
                             .get(b_id)
                             .expect("endorsed block absent from storage")
-                            .creator_address
+                            .content_creator_address
                     })
                     .collect::<Vec<_>>()
             };
@@ -819,7 +904,7 @@ impl ExecutionState {
             }
 
             // Get block creator address
-            let block_creator_addr = stored_block.creator_address;
+            let block_creator_addr = stored_block.content_creator_address;
 
             // acquire lock on execution context
             let mut context = context_guard!(self);
@@ -929,11 +1014,10 @@ impl ExecutionState {
         }
 
         let exec_out = self.execute_slot(slot, exec_target, selector);
-        debug!("execute_candidate_slot: execution finished");
 
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);
-        debug!("execute_candidate_slot: execution state applied");
+        debug!("execute_candidate_slot: execution finished & state applied");
     }
 
     /// Execute an SCE-final slot
@@ -990,11 +1074,10 @@ impl ExecutionState {
         // execute slot
         debug!("execute_final_slot: execution started");
         let exec_out = self.execute_slot(slot, exec_target, selector);
-        debug!("execute_final_slot: execution finished");
 
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
-        debug!("execute_final_slot: execution result applied");
+        debug!("execute_final_slot: execution finished & result applied");
     }
 
     /// Runs a read-only execution request.
@@ -1014,32 +1097,64 @@ impl ExecutionState {
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
         // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
 
-        // set the execution slot to be the one after the latest executed active slot
-        let slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow in readonly execution");
+        // check if read only request max gas is above the threshold
+        if req.max_gas > self.config.max_read_only_gas {
+            return Err(ExecutionError::TooMuchGas(format!(
+                "execution gas for read-only call is {} which is above the maximum allowed {}",
+                req.max_gas, self.config.max_read_only_gas
+            )));
+        }
+
+        // set the execution slot to be the one after the latest executed active or final slot
+        let slot = if req.is_final {
+            self.final_cursor
+                .get_next_slot(self.config.thread_count)
+                .expect("slot overflow in readonly execution from final slot")
+        } else {
+            self.active_cursor
+                .get_next_slot(self.config.thread_count)
+                .expect("slot overflow in readonly execution from active slot")
+        };
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
             self.config.clone(),
             slot,
             req.max_gas,
-            req.simulated_gas_price,
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
+            self.module_cache.clone(),
+            self.vesting_registry.clone(),
         );
 
-        // run the intepreter according to the target type
-        let remaining_gas = match req.target {
+        // run the interpreter according to the target type
+        let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
                 // run the bytecode's main function
-                massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
-                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
+                let module =
+                    RuntimeModule::new(&bytecode, req.max_gas, self.config.gas_costs.clone())
+                        .map_err(|err| {
+                            ExecutionError::RuntimeError(format!(
+                                "compilation error in execute_readonly_request: {}",
+                                err
+                            ))
+                        })?;
+                massa_sc_runtime::run_main(
+                    &*self.execution_interface,
+                    module,
+                    req.max_gas,
+                    self.config.gas_costs.clone(),
+                )
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(format!(
+                        "module execution error in execute_readonly_request BytecodeExecution: {}",
+                        err,
+                    ))
+                })?
             }
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -1049,20 +1164,36 @@ impl ExecutionState {
                 // get the bytecode, default to an empty vector
                 let bytecode = execution_context
                     .get_bytecode(&target_addr)
-                    .unwrap_or_default();
+                    .unwrap_or_default()
+                    .0;
 
                 // set the execution context for execution
                 *context_guard!(self) = execution_context;
 
-                // run the target function in the bytecode
-                massa_sc_runtime::run_function(
-                    &bytecode,
-                    req.max_gas,
+                // Execute bytecode
+                // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
+                let module = self
+                    .module_cache
+                    .write()
+                    .get_module(&bytecode, req.max_gas)?;
+                let response = massa_sc_runtime::run_function(
+                    &*self.execution_interface,
+                    module.clone(),
                     &target_func,
                     &parameter,
-                    &*self.execution_interface,
+                    req.max_gas,
+                    self.config.gas_costs.clone(),
                 )
-                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(format!(
+                        "module execution error in execute_readonly_request BytecodeExecution: {}",
+                        err,
+                    ))
+                })?;
+                self.module_cache
+                    .write()
+                    .save_module(&bytecode, module, response.init_cost);
+                response
             }
         };
 
@@ -1070,7 +1201,8 @@ impl ExecutionState {
         let execution_output = context_guard!(self).settle_slot();
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
-            gas_cost: req.max_gas.saturating_sub(remaining_gas),
+            gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
+            call_result: exec_response.ret,
         })
     }
 
@@ -1129,7 +1261,13 @@ impl ExecutionState {
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
-        let final_keys = self.final_state.read().ledger.get_datastore_keys(addr);
+        // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
+        let final_keys = self
+            .final_state
+            .read()
+            .ledger
+            .get_datastore_keys(addr)
+            .unwrap_or_default();
         let mut candidate_keys = final_keys.clone();
 
         // here, traverse the history from oldest to newest, applying additions and deletions
@@ -1267,5 +1405,105 @@ impl ExecutionState {
     /// Get future deferred credits of an address
     pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    }
+
+    /// Get the execution statuses of both speculative and final executions
+    ///
+    /// # Return
+    ///
+    /// * A tuple of hashmaps with:
+    /// * first the statuses for speculative executions
+    /// * second the statuses for final executions
+    pub fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
+        (
+            self.active_history.read().get_op_exec_status(),
+            self.final_state.read().executed_ops.op_exec_status.clone(),
+        )
+    }
+
+    /// Initialize the hashmap of addresses from the vesting file
+    pub fn init_vesting_registry(
+        config: &ExecutionConfig,
+    ) -> Result<PreHashMap<Address, Vec<VestingRange>>, ExecutionError> {
+        let mut hashmap: PreHashMap<Address, Vec<VestingRange>> = serde_json::from_str(
+            &std::fs::read_to_string(&config.initial_vesting_path).map_err(|err| {
+                ExecutionError::InitVestingError(format!(
+                    "error loading initial vesting file  {}",
+                    err
+                ))
+            })?,
+        )
+        .map_err(|err| {
+            ExecutionError::InitVestingError(format!(
+                "error on deserialize initial vesting file  {}",
+                err
+            ))
+        })?;
+
+        let get_slot_at_timestamp = |config: &ExecutionConfig, timestamp: MassaTime| {
+            massa_models::timeslots::get_latest_block_slot_at_timestamp(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                timestamp,
+            )
+            .map_err(|e| {
+                ExecutionError::InitVestingError(format!(
+                    "can no get the slot at timestamp {} : {}",
+                    timestamp, e
+                ))
+            })
+        };
+
+        for v in hashmap.values_mut() {
+            if v.len().eq(&1) {
+                return Err(ExecutionError::InitVestingError(
+                    "vesting file should have more than one element".to_string(),
+                ));
+            } else {
+                *v = v
+                    .windows(2)
+                    .map(|elements| {
+                        let (mut prev, next) = (elements[0], elements[1]);
+
+                        // retrieve the start_slot
+                        if prev.timestamp.eq(&MassaTime::from(0)) {
+                            // first range with timestamp = 0
+                            prev.start_slot = Slot::min();
+                        } else if let Some(slot) = get_slot_at_timestamp(config, prev.timestamp)? {
+                            prev.start_slot = slot;
+                        }
+
+                        // retrieve the end_slot
+                        if let Some(next_range_slot) =
+                            get_slot_at_timestamp(config, next.timestamp)?
+                        {
+                            prev.end_slot = next_range_slot.get_prev_slot(config.thread_count)?;
+                        }
+
+                        Ok(prev)
+                    })
+                    // we don't need range with StartSlot(0,0) && EndSlot(0,0)
+                    // this can happen when the timestamp is passed
+                    .filter(|a| {
+                        !(a.as_ref().unwrap().end_slot == Slot::min()
+                            && a.as_ref().unwrap().start_slot == Slot::min())
+                    })
+                    .collect::<Result<Vec<VestingRange>, ExecutionError>>()?;
+            }
+        }
+
+        Ok(hashmap)
+    }
+
+    /// find a vesting range in the registry, otherwise return None
+    fn find_vesting_range(&self, addr: &Address, current_slot: &Slot) -> Option<&VestingRange> {
+        let Some(vector) = self.vesting_registry.get(addr) else {
+            return None;
+        };
+
+        vector.iter().find(|vesting| {
+            vesting.start_slot <= *current_slot && vesting.end_slot >= *current_slot
+        })
     }
 }

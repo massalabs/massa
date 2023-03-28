@@ -81,12 +81,14 @@
 #![feature(is_sorted)]
 #![feature(map_try_insert)]
 #![feature(let_chains)]
+#![feature(option_get_or_insert_default)]
 
 mod active_history;
 mod context;
 mod controller;
 mod execution;
 mod interface_impl;
+mod module_cache;
 mod request_queue;
 mod slot_sequencer;
 mod speculative_async_pool;
@@ -98,5 +100,17 @@ mod worker;
 
 pub use worker::start_execution_worker;
 
-#[cfg(test)]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
+pub use interface_impl::InterfaceImpl;
+
+#[cfg(any(
+    test,
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 mod tests;

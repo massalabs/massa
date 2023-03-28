@@ -4,7 +4,7 @@
 
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
 use massa_protocol_exports::tests::tools;

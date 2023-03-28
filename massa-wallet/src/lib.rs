@@ -11,9 +11,9 @@ use massa_cipher::{decrypt, encrypt};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
-use massa_models::operation::{Operation, OperationSerializer, WrappedOperation};
+use massa_models::operation::{Operation, OperationSerializer, SecureShareOperation};
 use massa_models::prehash::{PreHashMap, PreHashSet};
-use massa_models::wrapped::WrappedContent;
+use massa_models::secure_share::SecureShareContent;
 use massa_signature::{KeyPair, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -142,11 +142,11 @@ impl Wallet {
         &self,
         content: Operation,
         address: Address,
-    ) -> Result<WrappedOperation, WalletError> {
+    ) -> Result<SecureShareOperation, WalletError> {
         let sender_keypair = self
             .find_associated_keypair(&address)
             .ok_or_else(|| WalletError::MissingKeyError(address))?;
-        Ok(Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap())
+        Ok(Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
 }
 

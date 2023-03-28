@@ -10,8 +10,8 @@ use massa_ledger_exports::LedgerEntry;
 use massa_models::{
     address::Address,
     amount::Amount,
-    api::EventFilter,
-    block::BlockId,
+    block_id::BlockId,
+    execution::EventFilter,
     operation::OperationId,
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
@@ -35,7 +35,7 @@ use std::{
 /// and is emitted in a thread-safe way by the mock whenever that method is called.
 /// Some variants wait for a response on their `response_tx` field, if present.
 /// See the documentation of `ExecutionController` for details on parameters and return values.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum MockExecutionControllerMessage {
     /// update blockclique status
     UpdateBlockcliqueStatus {
@@ -116,8 +116,8 @@ impl ExecutionController for MockExecutionController {
     /// Get execution statistics
     fn get_stats(&self) -> ExecutionStats {
         ExecutionStats {
-            time_window_start: MassaTime::now(0).unwrap(),
-            time_window_end: MassaTime::now(0).unwrap(),
+            time_window_start: MassaTime::now().unwrap(),
+            time_window_end: MassaTime::now().unwrap(),
             final_block_count: 0,
             final_executed_operations_count: 0,
             active_cursor: Slot::new(0, 0),
@@ -221,5 +221,9 @@ impl ExecutionController for MockExecutionController {
 
     fn clone_box(&self) -> Box<dyn ExecutionController> {
         Box::new(self.clone())
+    }
+
+    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
+        (HashMap::new(), HashMap::new())
     }
 }

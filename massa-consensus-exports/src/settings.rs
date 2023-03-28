@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ConsensusConfig {
-    /// Clock compensation
-    pub clock_compensation_millis: i64,
     /// Genesis timestamp
     pub genesis_timestamp: MassaTime,
     /// Delta time between two period
@@ -48,4 +46,12 @@ pub struct ConsensusConfig {
     pub channel_size: usize,
     /// size of a consensus bootstrap streaming part
     pub bootstrap_part_size: u64,
+    /// whether broadcast is enabled
+    pub broadcast_enabled: bool,
+    /// blocks headers sender(channel) capacity
+    pub broadcast_blocks_headers_capacity: usize,
+    /// blocks sender(channel) capacity
+    pub broadcast_blocks_capacity: usize,
+    /// filled blocks sender(channel) capacity
+    pub broadcast_filled_blocks_capacity: usize,
 }

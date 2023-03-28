@@ -1,13 +1,15 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::prehash::PreHashed;
+use crate::secure_share::{Id, SecureShare, SecureShareContent};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
-use crate::wrapped::{Id, Wrapped, WrappedContent};
-use crate::{block::BlockId, error::ModelsError};
+use crate::{block_id::BlockId, error::ModelsError};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
+    U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use massa_signature::PublicKey;
 use nom::error::context;
 use nom::sequence::tuple;
 use nom::Parser;
@@ -16,6 +18,7 @@ use nom::{
     IResult,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::ops::Bound::{Excluded, Included};
 use std::{fmt::Display, str::FromStr};
 
@@ -23,8 +26,13 @@ use std::{fmt::Display, str::FromStr};
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// endorsement id
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct EndorsementId(Hash);
+
+const ENDORSEMENTID_PREFIX: char = 'E';
+const ENDORSEMENTID_VERSION: u64 = 0;
 
 impl PreHashed for EndorsementId {}
 
@@ -40,14 +48,60 @@ impl Id for EndorsementId {
 
 impl std::fmt::Display for EndorsementId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        let u64_serializer = U64VarIntSerializer::new();
+        // might want to allocate the vector with capacity in order to avoid re-allocation
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&ENDORSEMENTID_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.to_bytes());
+        write!(
+            f,
+            "{}{}",
+            ENDORSEMENTID_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
+    }
+}
+
+impl std::fmt::Debug for EndorsementId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
 impl FromStr for EndorsementId {
     type Err = ModelsError;
+    /// ## Example
+    /// ```rust
+    /// # use massa_hash::Hash;
+    /// # use std::str::FromStr;
+    /// # use massa_models::endorsement::EndorsementId;
+    /// # let endo_id = EndorsementId::from_bytes(&[0; 32]);
+    /// let ser = endo_id.to_string();
+    /// let res_endo_id = EndorsementId::from_str(&ser).unwrap();
+    /// assert_eq!(endo_id, res_endo_id);
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(EndorsementId(Hash::from_str(s)?))
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(prefix) if prefix == ENDORSEMENTID_PREFIX => {
+                let data = chars.collect::<String>();
+                let decoded_bs58_check = bs58::decode(data)
+                    .with_check(None)
+                    .into_vec()
+                    .map_err(|_| ModelsError::EndorsementIdParseError)?;
+                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+                let (rest, _version) = u64_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+                    .map_err(|_| ModelsError::EndorsementIdParseError)?;
+                Ok(EndorsementId(Hash::from_bytes(
+                    rest.try_into()
+                        .map_err(|_| ModelsError::EndorsementIdParseError)?,
+                )))
+            }
+            _ => Err(ModelsError::EndorsementIdParseError),
+        }
     }
 }
 
@@ -65,13 +119,6 @@ impl EndorsementId {
     /// endorsement id from bytes
     pub fn from_bytes(data: &[u8; ENDORSEMENT_ID_SIZE_BYTES]) -> EndorsementId {
         EndorsementId(Hash::from_bytes(data))
-    }
-
-    /// endorsement id from `bs58` check
-    pub fn from_bs58_check(data: &str) -> Result<EndorsementId, ModelsError> {
-        Ok(EndorsementId(
-            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
-        ))
     }
 }
 
@@ -99,10 +146,42 @@ pub struct Endorsement {
     pub endorsed_block: BlockId,
 }
 
-/// Wrapped endorsement
-pub type WrappedEndorsement = Wrapped<Endorsement, EndorsementId>;
+#[cfg(any(test, feature = "testing"))]
+impl SecureShareEndorsement {
+    // TODO: gh-issue #3398
+    /// Used under testing conditions to validate an instance of Self
+    pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
+        if let Err(e) = self.verify_signature() {
+            return Err(e.into());
+        }
+        if self.content.slot.thread >= crate::config::THREAD_COUNT {
+            Err("Endorsement slot on non-existant thread".into())
+        } else if self.content.index >= crate::config::ENDORSEMENT_COUNT {
+            Err("Endorsement index out of range".into())
+        } else {
+            Ok(())
+        }
+    }
+}
 
-impl WrappedContent for Endorsement {}
+/// Wrapped endorsement
+pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
+
+impl SecureShareContent for Endorsement {
+    /// Compute hash for Endorsement in SecuredHeader - taking care of Denunciation verification
+    fn compute_hash(
+        content: &Self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+    ) -> Hash {
+        let de_data = EndorsementDenunciationData::new(content.slot, content.index);
+        let mut hash_data = Vec::new();
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(de_data.to_bytes());
+        hash_data.extend(Hash::compute_from(content_serialized).to_bytes());
+        Hash::compute_from(&hash_data)
+    }
+}
 
 /// Serializer for `Endorsement`
 #[derive(Clone)]
@@ -130,7 +209,7 @@ impl Default for EndorsementSerializer {
 impl Serializer<Endorsement> for EndorsementSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializer}};
+    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializer}};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     ///
@@ -177,7 +256,7 @@ impl EndorsementDeserializer {
 impl Deserializer<Endorsement> for EndorsementDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}};
+    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializer, EndorsementDeserializer}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_hash::Hash;
     ///
@@ -246,7 +325,7 @@ impl Default for EndorsementSerializerLW {
 impl Serializer<Endorsement> for EndorsementSerializerLW {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializerLW}};
+    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializerLW}};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     ///
@@ -288,7 +367,7 @@ impl EndorsementDeserializerLW {
 impl Deserializer<Endorsement> for EndorsementDeserializerLW {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{slot::Slot, block::BlockId, endorsement::{Endorsement, EndorsementSerializerLW, EndorsementDeserializerLW}};
+    /// use massa_models::{slot::Slot, block_id::BlockId, endorsement::{Endorsement, EndorsementSerializerLW, EndorsementDeserializerLW}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_hash::Hash;
     ///
@@ -321,9 +400,30 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
     }
 }
 
+/// A denunciation data for endorsement
+pub struct EndorsementDenunciationData {
+    slot: Slot,
+    index: u32,
+}
+
+impl EndorsementDenunciationData {
+    /// Create a new denunciation data for endorsement
+    pub fn new(slot: Slot, index: u32) -> Self {
+        Self { slot, index }
+    }
+
+    /// Get byte array
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend(self.slot.to_bytes_key());
+        buf.extend(self.index.to_le_bytes());
+        buf
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::wrapped::{WrappedDeserializer, WrappedSerializer};
+    use crate::secure_share::{SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
 
     use super::*;
     use massa_serialization::DeserializeError;
@@ -339,17 +439,17 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: WrappedEndorsement =
-            Endorsement::new_wrapped(content, EndorsementSerializer::new(), &sender_keypair)
+        let endorsement: SecureShareEndorsement =
+            Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair)
                 .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
-        let serializer = WrappedSerializer::new();
+        let serializer = SecureShareSerializer::new();
         serializer
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
-        let (_, res_endorsement): (&[u8], WrappedEndorsement) =
-            WrappedDeserializer::new(EndorsementDeserializer::new(32, 1))
+        let (_, res_endorsement): (&[u8], SecureShareEndorsement) =
+            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         assert_eq!(res_endorsement, endorsement);
@@ -364,22 +464,23 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: WrappedEndorsement =
-            Endorsement::new_wrapped(content, EndorsementSerializerLW::new(), &sender_keypair)
+        let endorsement: SecureShareEndorsement =
+            Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), &sender_keypair)
                 .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
-        let serializer = WrappedSerializer::new();
+        let serializer = SecureShareSerializer::new();
         serializer
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
 
         let parent = BlockId(Hash::compute_from("blk".as_bytes()));
 
-        let (_, res_endorsement): (&[u8], WrappedEndorsement) =
-            WrappedDeserializer::new(EndorsementDeserializerLW::new(1, Slot::new(10, 1), parent))
-                .deserialize::<DeserializeError>(&ser_endorsement)
-                .unwrap();
+        let (_, res_endorsement): (&[u8], SecureShareEndorsement) = SecureShareDeserializer::new(
+            EndorsementDeserializerLW::new(1, Slot::new(10, 1), parent),
+        )
+        .deserialize::<DeserializeError>(&ser_endorsement)
+        .unwrap();
         // Test only endorsement index as with the lw ser. we only process this field
         assert_eq!(res_endorsement.content.index, endorsement.content.index);
     }

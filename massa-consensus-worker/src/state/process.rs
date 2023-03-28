@@ -11,7 +11,8 @@ use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{BlockId, WrappedHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
@@ -173,15 +174,17 @@ impl ConsensusState {
                         massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
                         if reason == DiscardReason::Stale {
-                            self.new_stale_blocks
-                                .insert(block_id, (header.creator_address, header.content.slot));
+                            self.new_stale_blocks.insert(
+                                block_id,
+                                (header.content_creator_address, header.content.slot),
+                            );
                         }
                         // discard
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
                                 slot: header.content.slot,
-                                creator: header.creator_address,
+                                creator: header.content_creator_address,
                                 parents: header.content.parents,
                                 reason,
                                 sequence_number: {
@@ -239,7 +242,7 @@ impl ConsensusState {
                             "block_id": block_id
                         });
                         (
-                            stored_block.content.header.creator_public_key,
+                            stored_block.content.header.content_creator_pub_key,
                             slot,
                             parents_hash_period,
                             incompatibilities,
@@ -299,7 +302,7 @@ impl ConsensusState {
                             self.new_stale_blocks.insert(
                                 block_id,
                                 (
-                                    stored_block.content.header.creator_address,
+                                    stored_block.content.header.content_creator_address,
                                     stored_block.content.header.content.slot,
                                 ),
                             );
@@ -309,7 +312,7 @@ impl ConsensusState {
                             block_id,
                             BlockStatus::Discarded {
                                 slot: stored_block.content.header.content.slot,
-                                creator: stored_block.creator_address,
+                                creator: stored_block.content_creator_address,
                                 parents: stored_block.content.header.content.parents.clone(),
                                 reason,
                                 sequence_number: {
@@ -781,7 +784,7 @@ impl ConsensusState {
             }
 
             // manage finalized blocks
-            let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
+            let timestamp = MassaTime::now()?;
             let finalized_blocks = mem::take(&mut self.new_final_blocks);
             let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
             let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
@@ -810,7 +813,7 @@ impl ConsensusState {
 
             // add stale blocks to stats
             let new_stale_block_ids_creators_slots = mem::take(&mut self.new_stale_blocks);
-            let timestamp = MassaTime::now(self.config.clock_compensation_millis)?;
+            let timestamp = MassaTime::now()?;
             for (_b_id, (_b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
                 self.stale_block_stats.push_back(timestamp);
             }
@@ -822,7 +825,7 @@ impl ConsensusState {
 
         // notify protocol of block wishlist
         let new_wishlist = self.get_block_wishlist()?;
-        let new_blocks: PreHashMap<BlockId, Option<WrappedHeader>> = new_wishlist
+        let new_blocks: PreHashMap<BlockId, Option<SecuredHeader>> = new_wishlist
             .iter()
             .filter_map(|(id, header)| {
                 if !self.wishlist.contains_key(id) {

@@ -8,8 +8,9 @@ use crate::types::{
     SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
-use massa_models::address::{Address, AddressDeserializer};
+use massa_models::address::{Address, AddressDeserializer, AddressSerializer};
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
+use massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
 use massa_models::prehash::PreHashMap;
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
@@ -19,16 +20,17 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
+use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeMap};
 use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LedgerEntryUpdate {
     /// change the balance
     pub balance: SetOrKeep<Amount>,
     /// change the executable bytecode
-    pub bytecode: SetOrKeep<Vec<u8>>,
+    pub bytecode: SetOrKeep<Bytecode>,
     /// change datastore entries
     pub datastore: BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>,
 }
@@ -170,7 +172,7 @@ impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDe
 /// Serializer for `LedgerEntryUpdate`
 pub struct LedgerEntryUpdateSerializer {
     balance_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
-    bytecode_serializer: SetOrKeepSerializer<Vec<u8>, VecU8Serializer>,
+    bytecode_serializer: SetOrKeepSerializer<Bytecode, BytecodeSerializer>,
     datastore_serializer: DatastoreUpdateSerializer,
 }
 
@@ -179,7 +181,7 @@ impl LedgerEntryUpdateSerializer {
     pub fn new() -> Self {
         Self {
             balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
-            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new()),
+            bytecode_serializer: SetOrKeepSerializer::new(BytecodeSerializer::new()),
             datastore_serializer: DatastoreUpdateSerializer::new(),
         }
     }
@@ -195,7 +197,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount};
+    /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount, bytecode::Bytecode};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
@@ -204,7 +206,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
@@ -231,7 +233,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
 /// Deserializer for `LedgerEntryUpdate`
 pub struct LedgerEntryUpdateDeserializer {
     amount_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
-    bytecode_deserializer: SetOrKeepDeserializer<Vec<u8>, VecU8Deserializer>,
+    bytecode_deserializer: SetOrKeepDeserializer<Bytecode, BytecodeDeserializer>,
     datastore_deserializer: DatastoreUpdateDeserializer,
 }
 
@@ -247,9 +249,8 @@ impl LedgerEntryUpdateDeserializer {
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             )),
-            bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(
-                Included(u64::MIN),
-                Included(max_datastore_value_length),
+            bytecode_deserializer: SetOrKeepDeserializer::new(BytecodeDeserializer::new(
+                max_datastore_value_length,
             )),
             datastore_deserializer: DatastoreUpdateDeserializer::new(
                 max_datastore_key_length,
@@ -264,7 +265,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// ## Example
     /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
-    /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount};
+    /// use massa_models::{prehash::PreHashMap, address::Address, amount::Amount, bytecode::Bytecode};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
@@ -273,7 +274,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
     ///    bytecode: SetOrKeep::Set(bytecode.clone()),
@@ -324,7 +325,7 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 }
 
 /// represents a list of changes to multiple ledger entries
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LedgerChanges(
     pub PreHashMap<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>,
 );
@@ -332,6 +333,7 @@ pub struct LedgerChanges(
 /// `LedgerChanges` serializer
 pub struct LedgerChangesSerializer {
     u64_serializer: U64VarIntSerializer,
+    address_serializer: AddressSerializer,
     entry_serializer: SetUpdateOrDeleteSerializer<
         LedgerEntry,
         LedgerEntryUpdate,
@@ -345,6 +347,7 @@ impl LedgerChangesSerializer {
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
+            address_serializer: AddressSerializer::new(),
             entry_serializer: SetUpdateOrDeleteSerializer::new(
                 LedgerEntrySerializer::new(),
                 LedgerEntryUpdateSerializer::new(),
@@ -366,13 +369,13 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
-    /// use massa_models::{amount::Amount, address::Address};
+    /// use massa_models::{amount::Amount, address::Address, bytecode::Bytecode};
     ///
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
     /// let balance = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
     ///    bytecode,
@@ -381,7 +384,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
@@ -392,7 +395,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
         for (address, data) in value.0.iter() {
-            buffer.extend(address.to_bytes());
+            self.address_serializer.serialize(address, buffer)?;
             self.entry_serializer.serialize(data, buffer)?;
         }
         Ok(())
@@ -424,7 +427,7 @@ impl LedgerChangesDeserializer {
                 Included(u64::MIN),
                 Included(max_ledger_changes_count),
             ),
-            address_deserializer: AddressDeserializer::default(),
+            address_deserializer: AddressDeserializer::new(),
             entry_deserializer: SetUpdateOrDeleteDeserializer::new(
                 LedgerEntryDeserializer::new(
                     max_datastore_entry_count,
@@ -448,13 +451,13 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
-    /// use massa_models::{amount::Amount, address::Address};
+    /// use massa_models::{amount::Amount, address::Address, bytecode::Bytecode};
     ///
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
     /// let balance = Amount::from_str("1").unwrap();
-    /// let bytecode = vec![1, 2, 3];
+    /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
     ///    bytecode,
@@ -463,7 +466,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
@@ -590,11 +593,11 @@ impl LedgerChanges {
     /// * Some(v) if a value is present, where v is a copy of the value
     /// * None if the value is absent
     /// * f() if the value is unknown
-    pub fn get_bytecode_or_else<F: FnOnce() -> Option<Vec<u8>>>(
+    pub fn get_bytecode_or_else<F: FnOnce() -> Option<Bytecode>>(
         &self,
         addr: &Address,
         f: F,
-    ) -> Option<Vec<u8>> {
+    ) -> Option<Bytecode> {
         // Get the changes to the provided address
         match self.0.get(addr) {
             // This entry is being replaced by a new one: get the bytecode from the new entry
@@ -709,7 +712,7 @@ impl LedgerChanges {
     /// # Parameters
     /// * `addr`: target address
     /// * `bytecode`: executable bytecode to assign to that address
-    pub fn set_bytecode(&mut self, addr: Address, bytecode: Vec<u8>) {
+    pub fn set_bytecode(&mut self, addr: Address, bytecode: Bytecode) {
         // Get the current changes being applied to the entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the entry
@@ -802,6 +805,36 @@ impl LedgerChanges {
             // We therefore have no info on the absolute contents of its datastore entry.
             // We call the fallback function and return its output.
             None => f(),
+        }
+    }
+
+    /// Tries to return whether there is a change on a given address in the ledger changes
+    /// and optionally if a datastore key modification also exists in the address's datastore.
+    ///
+    /// # Arguments
+    /// * `addr`: target address
+    /// * `key`: optional datastore key
+    ///
+    /// # Returns
+    /// * true if the address and, optionally the datastore key, exists in the ledger changes
+    pub fn has_changes(&self, addr: &Address, key: Option<Vec<u8>>) -> bool {
+        // Get the current changes being applied to the ledger entry associated to that address
+        match self.0.get(addr) {
+            // This ledger entry is being replaced by a new one:
+            // check if the new ledger entry has a datastore entry for the provided key
+            Some(SetUpdateOrDelete::Set(v)) => key.map_or(true, |k| v.datastore.contains_key(&k)),
+
+            // This ledger entry is being updated
+            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                // Check if the update being applied to that datastore entry
+                key.map_or(true, |k| datastore.contains_key(&k))
+            }
+
+            // This ledger entry is being deleted: return true
+            Some(SetUpdateOrDelete::Delete) => true,
+
+            // This ledger entry is not being changed.
+            None => false,
         }
     }
 

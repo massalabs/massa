@@ -7,7 +7,10 @@ use std::collections::BTreeMap;
 
 use crate::{Command, DrawCachePtr};
 use massa_hash::Hash;
-use massa_models::{address::Address, api::IndexedSlot, slot::Slot};
+use massa_models::{
+    address::Address,
+    slot::{IndexedSlot, Slot},
+};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
 #[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};

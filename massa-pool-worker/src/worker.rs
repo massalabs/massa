@@ -7,14 +7,13 @@ use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
 use massa_execution_exports::ExecutionController;
 use massa_pool_exports::PoolConfig;
-use massa_pool_exports::{PoolController, PoolManager};
+use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use std::sync::mpsc::RecvError;
-use std::thread;
 use std::{
-    sync::mpsc::{sync_channel, Receiver},
+    sync::mpsc::{sync_channel, Receiver, RecvError},
     sync::Arc,
+    thread,
     thread::JoinHandle,
 };
 
@@ -112,6 +111,7 @@ pub fn start_pool_controller(
     config: PoolConfig,
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
+    channels: PoolChannels,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
@@ -120,6 +120,7 @@ pub fn start_pool_controller(
         config,
         storage,
         execution_controller,
+        channels,
     )));
     let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage)));
     let controller = PoolControllerImpl {

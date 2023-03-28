@@ -6,6 +6,7 @@
 #![feature(bound_map)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
+#![feature(variant_count)]
 
 extern crate lazy_static;
 
@@ -15,10 +16,14 @@ pub mod active_block;
 pub mod address;
 /// amount related structures
 pub mod amount;
-/// structure use by the API
-pub mod api;
-/// block-related structures
+/// block structure
 pub mod block;
+/// block-related structure: block_header
+pub mod block_header;
+/// block-related structure: block_id
+pub mod block_id;
+/// bytecode structures
+pub mod bytecode;
 /// clique
 pub mod clique;
 /// various structures
@@ -27,6 +32,8 @@ pub mod composite;
 pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
+/// denunciation
+pub mod denunciation;
 /// endorsements
 pub mod endorsement;
 /// models error
@@ -34,7 +41,7 @@ pub mod error;
 /// execution related structures
 pub mod execution;
 /// ledger related structures
-pub mod ledger_models;
+pub mod ledger;
 /// node related structure
 pub mod node;
 /// operations
@@ -45,6 +52,8 @@ pub mod output_event;
 pub mod prehash;
 /// rolls
 pub mod rolls;
+/// trait for [Signature] secured data-structs
+pub mod secure_share;
 /// serialization
 pub mod serialization;
 /// slots
@@ -57,8 +66,8 @@ pub mod streaming_step;
 pub mod timeslots;
 /// versions
 pub mod version;
-/// trait for signed structure
-pub mod wrapped;
+/// vesting range
+pub mod vesting_range;
 
 /// Test utils
 #[cfg(feature = "testing")]

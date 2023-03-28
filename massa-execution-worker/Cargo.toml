@@ -10,10 +10,15 @@ edition = "2021"
 anyhow = "1.0"
 rand = "0.8"
 rand_xoshiro = "0.6"
+criterion = { version = "0.4", optional = true }
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 tracing = "0.1"
 serde_json = "1.0"
 num = { version = "0.4", features = ["serde"] }
+schnellru = "0.2.0"
+sha2 = "0.10.6"
+# use with gas_calibration feature
+tempfile = { version = "3.3", optional = true }
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
 massa_executed_ops = { path = "../massa-executed-ops" }
@@ -21,33 +26,57 @@ massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "testnet_17" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "testnet_21" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
+massa_pos_worker = { path = "../massa-pos-worker", optional = true }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
 
 [dev-dependencies]
-serial_test = "0.9"
-tempfile = "3.2"
-# custom modules with testing enabled
 massa_pos_worker = { path = "../massa-pos-worker" }
-massa_ledger_worker = { path = "../massa-ledger-worker", features = [
-    "testing",
-] }
+serial_test = "0.10"
+hex-literal = "0.3.4"
+tempfile = "3.2"
+massa_ledger_worker = { path = "../massa-ledger-worker" }
+# custom modules with testing enabled
 massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
 ] }
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
 
+[[bench]]
+name = "basic"
+harness = false
+
 [features]
 sandbox = ["massa_async_pool/sandbox"]
+gas_calibration = [
+    "massa-sc-runtime/gas_calibration",
+    "massa_execution_exports/gas_calibration",
+    "massa_final_state/testing",
+    "massa_pos_worker",
+    "massa_ledger_worker",
+    "tempfile",
+]
 testing = [
     "massa_execution_exports/testing",
     "massa_ledger_exports/testing",
     "massa_pos_exports/testing",
-    "massa_pos_worker/testing",
-    "massa_ledger_worker/testing",
     "massa_final_state/testing",
+    "massa-sc-runtime/testing",
+    "tempfile",
+    "massa_pos_worker",
+    "massa_ledger_worker",
+]
+
+# This feature is useful as we want to have code that is compiled only when running benchmarks
+benchmarking = [
+    "massa-sc-runtime/gas_calibration",
+    "criterion",
+    "massa_pos_worker",
+    "massa_ledger_worker",
+    "tempfile",
 ]

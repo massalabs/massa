@@ -6,11 +6,13 @@ use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock},
+    block::{Block, BlockSerializer, SecureShareBlock},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
     prehash::PreHashMap,
+    secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    wrapped::WrappedContent,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -36,9 +38,9 @@ use super::ConsensusWorker;
 pub fn create_genesis_block(
     cfg: &ConsensusConfig,
     thread_number: u8,
-) -> Result<WrappedBlock, ConsensusError> {
+) -> Result<SecureShareBlock, ConsensusError> {
     let keypair = &cfg.genesis_key;
-    let header = BlockHeader::new_wrapped(
+    let header = BlockHeader::new_verifiable(
         BlockHeader {
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
@@ -49,7 +51,7 @@ pub fn create_genesis_block(
         keypair,
     )?;
 
-    Ok(Block::new_wrapped(
+    Ok(Block::new_verifiable(
         Block {
             header,
             operations: Default::default(),
@@ -79,8 +81,7 @@ impl ConsensusWorker {
         init_graph: Option<BootstrapableGraph>,
         storage: Storage,
     ) -> Result<Self, ConsensusError> {
-        let now = MassaTime::now(config.clock_compensation_millis)
-            .expect("Couldn't init timer consensus");
+        let now = MassaTime::now().expect("Couldn't init timer consensus");
         let previous_slot = get_latest_block_slot_at_timestamp(
             config.thread_count,
             config.t0,
@@ -103,7 +104,7 @@ impl ConsensusWorker {
                 block.id,
                 BlockStatus::Active {
                     a_block: Box::new(ActiveBlock {
-                        creator_address: block.creator_address,
+                        creator_address: block.content_creator_address,
                         parents: Vec::new(),
                         children: vec![PreHashMap::default(); config.thread_count as usize],
                         descendants: Default::default(),
@@ -126,7 +127,7 @@ impl ConsensusWorker {
             config.genesis_timestamp,
             next_slot,
         )?
-        .estimate_instant(config.clock_compensation_millis)?;
+        .estimate_instant()?;
 
         info!(
             "Started node at time {}, cycle {}, period {}, thread {}",

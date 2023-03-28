@@ -50,11 +50,11 @@ impl Display for CompactConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "    Genesis timestamp: {}",
+            "    Genesis time: {}",
             self.genesis_timestamp.to_utc_string()
         )?;
         if let Some(end) = self.end_timestamp {
-            writeln!(f, "    End timestamp: {}", end.to_utc_string())?;
+            writeln!(f, "    End time: {}", end.to_utc_string())?;
         }
         writeln!(f, "    Thread count: {}", self.thread_count)?;
         writeln!(f, "    t0: {}", self.t0)?;
@@ -67,6 +67,7 @@ impl Display for CompactConfig {
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
         writeln!(f, "    Block reward: {}", self.block_reward)?;
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
+        writeln!(f, "    Roll price: {}", self.roll_price)?;
         writeln!(f, "    Max block size (in bytes): {}", self.max_block_size)?;
         Ok(())
     }

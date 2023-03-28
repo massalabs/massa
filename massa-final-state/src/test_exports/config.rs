@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::{
@@ -29,6 +30,7 @@ impl FinalState {
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
             changes_history: Default::default(),
             config,
+            final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
         }
     }
 }

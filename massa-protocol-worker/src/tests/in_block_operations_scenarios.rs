@@ -4,10 +4,11 @@ use super::tools::{protocol_test, send_and_propagate_block};
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
 use massa_hash::Hash;
 use massa_models::operation::OperationId;
-use massa_models::wrapped::{Id, WrappedContent};
+use massa_models::secure_share::{Id, SecureShareContent};
 use massa_models::{
     address::Address,
-    block::{Block, BlockHeader, BlockHeaderSerializer, BlockSerializer},
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer},
     slot::Slot,
 };
 use massa_network_exports::NetworkCommand;
@@ -47,7 +48,9 @@ async fn test_protocol_does_propagate_operations_received_in_blocks() {
 
             // block with ok operation
             let op = create_operation_with_expire_period(&keypair, 5);
-            let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
+            let op_thread = op
+                .content_creator_address
+                .get_thread(protocol_config.thread_count);
 
             let block = create_block_with_operations(
                 &creator_node.keypair,
@@ -156,7 +159,9 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with ok operation
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
+                let op_thread = op
+                    .content_creator_address
+                    .get_thread(protocol_config.thread_count);
 
                 let block = create_block_with_operations(
                     &creator_node.keypair,
@@ -208,11 +213,13 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with wrong merkle root
             {
                 let op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
+                let op_thread = op
+                    .content_creator_address
+                    .get_thread(protocol_config.thread_count);
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
-                    let header = BlockHeader::new_wrapped(
+                    let header = BlockHeader::new_verifiable(
                         BlockHeader {
                             slot: Slot::new(1, op_thread),
                             parents: Vec::new(),
@@ -224,7 +231,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     )
                     .unwrap();
 
-                    Block::new_wrapped(
+                    Block::new_verifiable(
                         Block {
                             header,
                             operations: vec![op.clone()].into_iter().map(|op| op.id).collect(),
@@ -271,7 +278,9 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with operation with wrong signature
             {
                 let mut op = create_operation_with_expire_period(&keypair, 5);
-                let op_thread = op.creator_address.get_thread(protocol_config.thread_count);
+                let op_thread = op
+                    .content_creator_address
+                    .get_thread(protocol_config.thread_count);
                 op.id = OperationId::new(Hash::compute_from("wrong signature".as_bytes()));
                 let block = create_block_with_operations(
                     &creator_node.keypair,

@@ -71,11 +71,12 @@
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
-    block::{BlockId, WrappedHeader},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     composite::PubkeySig,
-    endorsement::WrappedEndorsement,
+    endorsement::SecureShareEndorsement,
     node::NodeId,
-    operation::{OperationId, OperationPrefixIds, WrappedOperation},
+    operation::{OperationId, OperationPrefixIds, SecureShareOperation},
     stats::NetworkStats,
 };
 use serde::{Deserialize, Serialize};
@@ -89,7 +90,7 @@ pub enum NodeCommand {
     /// Send given peer list to node.
     SendPeerList(Vec<IpAddr>),
     /// Send the header of a block to a node.
-    SendBlockHeader(WrappedHeader),
+    SendBlockHeader(SecuredHeader),
     /// Ask for info on a list of blocks.
     AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
     /// Reply with info on a list of blocks.
@@ -97,13 +98,13 @@ pub enum NodeCommand {
     /// Close the node worker.
     Close(ConnectionClosureReason),
     /// Send full Operations (send to a node that previously asked for)
-    SendOperations(Vec<WrappedOperation>),
+    SendOperations(Vec<SecureShareOperation>),
     /// Send a batch of operation ids
     SendOperationAnnouncements(OperationPrefixIds),
     /// Ask for a set of operations
     AskForOperations(OperationPrefixIds),
     /// Endorsements
-    SendEndorsements(Vec<WrappedEndorsement>),
+    SendEndorsements(Vec<SecureShareEndorsement>),
     /// Ask peer list
     AskPeerList,
 }
@@ -119,19 +120,19 @@ pub enum NodeEventType {
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
     /// Node we are connected to sent block header
-    ReceivedBlockHeader(WrappedHeader),
+    ReceivedBlockHeader(SecuredHeader),
     /// Node we are connected asked for info on a list of blocks.
     ReceivedAskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
     /// Node we are connected sent info on a list of blocks.
     ReceivedReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Received full operations.
-    ReceivedOperations(Vec<WrappedOperation>),
+    ReceivedOperations(Vec<SecureShareOperation>),
     /// Received an operation id batch announcing new operations
     ReceivedOperationAnnouncements(OperationPrefixIds),
     /// Receive a list of wanted operations
     ReceivedAskForOperations(OperationPrefixIds),
     /// Receive a set of endorsement
-    ReceivedEndorsements(Vec<WrappedEndorsement>),
+    ReceivedEndorsements(Vec<SecureShareEndorsement>),
 }
 
 /// Events node worker can emit.
@@ -172,7 +173,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// block id
-        header: WrappedHeader,
+        header: SecuredHeader,
     },
     /// `(PeerInfo, Vec <(NodeId, bool)>) peer info + list` of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
@@ -191,7 +192,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// endorsements
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
     },
     /// sign message with our node keypair (associated to node id)
     /// != staking key
@@ -211,7 +212,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// operations
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {
@@ -238,11 +239,11 @@ pub enum NetworkCommand {
 #[allow(clippy::large_enum_variant)]
 pub enum BlockInfoReply {
     /// Header
-    Header(WrappedHeader),
+    Header(SecuredHeader),
     /// The info about the block is required(list of operations ids).
     Info(Vec<OperationId>),
     /// The actual operations required.
-    Operations(Vec<WrappedOperation>),
+    Operations(Vec<SecureShareOperation>),
     /// Block not found
     NotFound,
 }
@@ -267,7 +268,7 @@ pub enum NetworkEvent {
         /// from node id
         source_node_id: NodeId,
         /// header
-        header: WrappedHeader,
+        header: SecuredHeader,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {
@@ -281,7 +282,7 @@ pub enum NetworkEvent {
         /// node id
         node: NodeId,
         /// operations
-        operations: Vec<WrappedOperation>,
+        operations: Vec<SecureShareOperation>,
     },
     /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {
@@ -302,7 +303,7 @@ pub enum NetworkEvent {
         /// node id
         node: NodeId,
         /// Endorsements
-        endorsements: Vec<WrappedEndorsement>,
+        endorsements: Vec<SecureShareEndorsement>,
     },
 }
 

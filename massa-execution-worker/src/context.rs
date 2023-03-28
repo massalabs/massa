@@ -7,6 +7,7 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
+use crate::module_cache::ModuleCache;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
@@ -18,11 +19,14 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
-use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::address::{ExecutionAddressCycleInfo, SCAddress};
+use massa_models::bytecode::Bytecode;
+use massa_models::prehash::PreHashMap;
+use massa_models::vesting_range::VestingRange;
 use massa_models::{
     address::Address,
     amount::Amount,
-    block::BlockId,
+    block_id::BlockId,
     operation::OperationId,
     output_event::{EventExecutionContext, SCOutputEvent},
     slot::Slot,
@@ -31,13 +35,13 @@ use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::debug;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
-pub(crate) struct ExecutionContextSnapshot {
+pub struct ExecutionContextSnapshot {
     /// speculative ledger changes caused so far in the context
     pub ledger_changes: LedgerChanges,
 
@@ -69,13 +73,24 @@ pub(crate) struct ExecutionContextSnapshot {
 /// An execution context that needs to be initialized before executing bytecode,
 /// passed to the VM to interact with during bytecode execution (through ABIs),
 /// and read after execution to gather results.
-pub(crate) struct ExecutionContext {
+pub struct ExecutionContext {
     /// configuration
     config: ExecutionConfig,
 
     /// speculative ledger state,
     /// as seen after everything that happened so far in the context
+    #[cfg(all(
+        not(feature = "gas_calibration"),
+        not(feature = "benchmarking"),
+        not(feature = "testing")
+    ))]
     speculative_ledger: SpeculativeLedger,
+    #[cfg(any(
+        feature = "gas_calibration",
+        feature = "benchmarking",
+        feature = "testing"
+    ))]
+    pub(crate) speculative_ledger: SpeculativeLedger,
 
     /// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
@@ -90,9 +105,6 @@ pub(crate) struct ExecutionContext {
 
     /// max gas for this execution
     pub max_gas: u64,
-
-    /// gas price of the execution
-    pub gas_price: Amount,
 
     /// slot at which the execution happens
     pub slot: Slot,
@@ -126,6 +138,12 @@ pub(crate) struct ExecutionContext {
 
     /// operation id that originally caused this execution (if any)
     pub origin_operation_id: Option<OperationId>,
+
+    // cache of compiled runtime modules
+    pub module_cache: Arc<RwLock<ModuleCache>>,
+
+    // Map of vesting addresses
+    pub vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
 }
 
 impl ExecutionContext {
@@ -143,6 +161,8 @@ impl ExecutionContext {
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        module_cache: Arc<RwLock<ModuleCache>>,
+        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -163,7 +183,6 @@ impl ExecutionContext {
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
-            gas_price: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -175,7 +194,9 @@ impl ExecutionContext {
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
             creator_address: Default::default(),
             origin_operation_id: Default::default(),
+            module_cache,
             config,
+            vesting_registry,
         }
     }
 
@@ -201,19 +222,8 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `snapshot`: a saved snapshot to be restored
-    /// * `with_error`: an optional execution error to emit as an event conserved after snapshot reset.
-    pub fn reset_to_snapshot(
-        &mut self,
-        snapshot: ExecutionContextSnapshot,
-        with_error: Option<ExecutionError>,
-    ) {
-        // Create error event, if any.
-        let err_event = with_error.map(|err| {
-            self.event_create(
-                serde_json::json!({ "massa_execution_error": format!("{}", err) }).to_string(),
-            )
-        });
-
+    /// * `error`: an execution error to emit as an event conserved after snapshot reset.
+    pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
         // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
@@ -226,14 +236,20 @@ impl ExecutionContext {
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
-        self.events = snapshot.events;
         self.unsafe_rng = snapshot.unsafe_rng;
 
-        // If there was an error, emit the corresponding event now.
-        // Note that the context event counter is properly handled by event_emit (see doc).
-        if let Some(event) = err_event {
-            self.event_emit(event);
+        // For events, set snapshot delta to error events.
+        // Start iterating from snapshot events length because we are dealing with a VecDeque.
+        for event in self.events.0.range_mut(snapshot.events.0.len()..) {
+            event.context.is_error = true;
         }
+
+        // Emit the error event.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        self.event_emit(self.event_create(
+            serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
+            true,
+        ));
     }
 
     /// Create a new `ExecutionContext` for read-only execution
@@ -246,14 +262,16 @@ impl ExecutionContext {
     ///
     /// # returns
     /// A `ExecutionContext` instance ready for a read-only execution
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn readonly(
         config: ExecutionConfig,
         slot: Slot,
         max_gas: u64,
-        gas_price: Amount,
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        module_cache: Arc<RwLock<ModuleCache>>,
+        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -273,12 +291,17 @@ impl ExecutionContext {
         // return readonly context
         ExecutionContext {
             max_gas,
-            gas_price,
             slot,
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history)
+            ..ExecutionContext::new(
+                config,
+                final_state,
+                active_history,
+                module_cache,
+                vesting_registry,
+            )
         }
     }
 
@@ -288,13 +311,13 @@ impl ExecutionContext {
     /// * `max_gas`: maximal amount of asynchronous gas available
     ///
     /// # Returns
-    /// A vector of `(Option<Vec<u8>>, AsyncMessage)` pairs where:
-    /// * `Option<Vec<u8>>` is the bytecode to execute (or `None` if not found)
+    /// A vector of `(Option<Bytecode>, AsyncMessage)` pairs where:
+    /// * `Option<Bytecode>` is the bytecode to execute (or `None` if not found)
     /// * `AsyncMessage` is the asynchronous message to execute
     pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
-    ) -> Vec<(Option<Vec<u8>>, AsyncMessage)> {
+    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
         self.speculative_async_pool
             .take_batch_to_execute(self.slot, max_gas)
             .into_iter()
@@ -318,6 +341,8 @@ impl ExecutionContext {
         opt_block_id: Option<BlockId>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        module_cache: Arc<RwLock<ModuleCache>>,
+        vesting_registry: Arc<PreHashMap<Address, Vec<VestingRange>>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -339,7 +364,13 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(config, final_state, active_history)
+            ..ExecutionContext::new(
+                config,
+                final_state,
+                active_history,
+                module_cache,
+                vesting_registry,
+            )
         }
     }
 
@@ -387,7 +418,7 @@ impl ExecutionContext {
     }
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
-    pub fn create_new_sc_address(&mut self, bytecode: Vec<u8>) -> Result<Address, ExecutionError> {
+    pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
         // TODO: collision problem:
         //  prefix addresses to know if they are SCs or normal,
         //  otherwise people can already create new accounts by sending coins to the right hash
@@ -410,7 +441,7 @@ impl ExecutionContext {
             data.push(1u8);
         }
         // hash the seed to get a unique address
-        let address = Address(massa_hash::Hash::compute_from(&data));
+        let address = Address::SC(SCAddress(massa_hash::Hash::compute_from(&data)));
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(
@@ -430,7 +461,7 @@ impl ExecutionContext {
             None => {
                 return Err(ExecutionError::RuntimeError(
                     "owned addresses not found in context stack".into(),
-                ))
+                ));
             }
         };
 
@@ -441,8 +472,13 @@ impl ExecutionContext {
     }
 
     /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
-    pub fn get_bytecode(&self, address: &Address) -> Option<Vec<u8>> {
+    pub fn get_bytecode(&self, address: &Address) -> Option<Bytecode> {
         self.speculative_ledger.get_bytecode(address)
+    }
+
+    /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
+    pub fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
+        self.speculative_ledger.get_keys(address)
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
@@ -561,6 +597,7 @@ impl ExecutionContext {
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
+    /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
     pub fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
@@ -568,17 +605,59 @@ impl ExecutionContext {
         amount: Amount,
         check_rights: bool,
     ) -> Result<(), ExecutionError> {
-        // check access rights
-        if check_rights {
-            if let Some(from_addr) = &from_addr {
-                if !self.has_write_rights_on(from_addr) {
-                    return Err(ExecutionError::RuntimeError(format!(
-                        "spending from address {} is not allowed in this context",
-                        from_addr
+        if let Some(from_addr) = &from_addr {
+            // check access rights
+            if check_rights && !self.has_write_rights_on(from_addr) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "spending from address {} is not allowed in this context",
+                    from_addr
+                )));
+            }
+
+            // control vesting min_balance for sender address
+            if let Some(vesting_range) = self.find_vesting_range(from_addr, &self.slot) && (amount != Amount::zero()){
+                let new_balance = self
+                    .get_balance(from_addr)
+                    .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
+                    .checked_sub(amount)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                            .get_balance(from_addr).unwrap_or_default()))
+                    })?;
+
+                let vec = self.get_address_cycle_infos(from_addr, self.config.periods_per_cycle);
+                let Some(exec_info) = vec.last() else {
+                    return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", from_addr)));
+                };
+
+                let rolls_value = exec_info
+                    .active_rolls
+                    .map(|rolls| self.config.roll_price.saturating_mul_u64(rolls))
+                    .unwrap_or(Amount::zero());
+
+                let deferred_map = self
+                    .speculative_roll_state
+                    .get_address_deferred_credits(from_addr, self.slot);
+                let deferred_credits = if deferred_map.is_empty() {
+                    Amount::zero()
+                } else {
+                    Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
+                };
+
+                // min_balance = (rolls * roll_price) + balance + deferred_credits
+                let min_balance = new_balance
+                    .saturating_add(rolls_value)
+                    .saturating_add(deferred_credits);
+
+                if min_balance < vesting_range.min_balance {
+                    return Err(ExecutionError::VestingError(format!(
+                        "vesting_min_balance={} with value min_balance={} ",
+                        vesting_range.min_balance, min_balance
                     )));
                 }
             }
         }
+
         // do the transfer
         self.speculative_ledger
             .transfer_coins(from_addr, to_addr, amount)
@@ -593,7 +672,7 @@ impl ExecutionContext {
     }
 
     /// Cancels an asynchronous message, reimbursing `msg.coins` to the sender
-    ///
+    ///x
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
@@ -664,7 +743,7 @@ impl ExecutionContext {
             self.speculative_roll_state
                 .added_changes
                 .deferred_credits
-                .0
+                .credits
                 .entry(*slot)
                 .or_default()
                 .entry(address)
@@ -689,14 +768,17 @@ impl ExecutionContext {
     pub fn settle_slot(&mut self) -> ExecutionOutput {
         let slot = self.slot;
 
+        // execute the deferred credits coming from roll sells
+        self.execute_deferred_credits(&slot);
+
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self.speculative_async_pool.settle_slot(&slot);
+        let ledger_changes = self.speculative_ledger.take();
+        let deleted_messages = self
+            .speculative_async_pool
+            .settle_slot(&slot, &ledger_changes);
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
         }
-
-        // execute the deferred credits coming from roll sells
-        self.execute_deferred_credits(&slot);
 
         // if the current slot is last in cycle check the production stats and act accordingly
         if self
@@ -714,7 +796,7 @@ impl ExecutionContext {
 
         // generate the execution output
         let state_changes = StateChanges {
-            ledger_changes: self.speculative_ledger.take(),
+            ledger_changes,
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
@@ -736,7 +818,7 @@ impl ExecutionContext {
     pub fn set_bytecode(
         &mut self,
         address: &Address,
-        bytecode: Vec<u8>,
+        bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
         // check access right
         if !self.has_write_rights_on(address) {
@@ -751,7 +833,7 @@ impl ExecutionContext {
         if let Some(creator_address) = self.creator_address && &creator_address == address {
             return Err(ExecutionError::RuntimeError(format!("
                 can't set the bytecode of address {} because this is not a smart contract address",
-                address)))
+                                                            address)));
         }
 
         // set data entry
@@ -764,7 +846,7 @@ impl ExecutionContext {
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    pub fn event_create(&self, data: String) -> SCOutputEvent {
+    pub fn event_create(&self, data: String, is_error: bool) -> SCOutputEvent {
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: self.slot,
@@ -774,6 +856,7 @@ impl ExecutionContext {
             index_in_slot: self.created_event_index,
             origin_operation_id: self.origin_operation_id,
             is_final: false,
+            is_error,
         };
 
         // Return the event
@@ -803,10 +886,16 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `op_id`: operation ID
+    /// * `op_exec_status` : the status of the execution of the operation (true: success, false: failed).
     /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
-    pub fn insert_executed_op(&mut self, op_id: OperationId, op_valid_until_slot: Slot) {
+    pub fn insert_executed_op(
+        &mut self,
+        op_id: OperationId,
+        op_exec_status: bool,
+        op_valid_until_slot: Slot,
+    ) {
         self.speculative_executed_ops
-            .insert_executed_op(op_id, op_valid_until_slot)
+            .insert_executed_op(op_id, op_exec_status, op_valid_until_slot)
     }
 
     /// gets the cycle information for an address
@@ -831,5 +920,16 @@ impl ExecutionContext {
             .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
         self.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
+    }
+
+    /// find a vesting range in the registry, otherwise return None
+    pub fn find_vesting_range(&self, addr: &Address, current_slot: &Slot) -> Option<&VestingRange> {
+        let Some(vector) = self.vesting_registry.get(addr) else {
+            return None;
+        };
+
+        vector.iter().find(|vesting| {
+            vesting.start_slot <= *current_slot && vesting.end_slot >= *current_slot
+        })
     }
 }

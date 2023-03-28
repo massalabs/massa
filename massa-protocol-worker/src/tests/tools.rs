@@ -2,16 +2,14 @@ use crate::start_protocol_controller;
 use futures::Future;
 use massa_consensus_exports::test_exports::{ConsensusEventReceiver, MockConsensusController};
 use massa_models::{
-    block::{BlockId, WrappedBlock},
-    node::NodeId,
-    operation::WrappedOperation,
+    block::SecureShareBlock, block_id::BlockId, node::NodeId, operation::SecureShareOperation,
     prehash::PreHashSet,
 };
 use massa_network_exports::BlockInfoReply;
 use massa_pool_exports::test_exports::{MockPoolController, PoolEventReceiver};
 use massa_protocol_exports::{
     tests::mock_network_controller::MockNetworkController, ProtocolCommandSender, ProtocolConfig,
-    ProtocolManager,
+    ProtocolManager, ProtocolReceivers, ProtocolSenders,
 };
 use massa_storage::Storage;
 use tokio::sync::mpsc;
@@ -44,12 +42,18 @@ where
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel(protocol_config.controller_channel_size);
+    let protocol_receivers = ProtocolReceivers {
+        network_event_receiver,
+        protocol_command_receiver,
+    };
+    let protocol_senders = ProtocolSenders {
+        network_command_sender,
+    };
     // start protocol controller
     let protocol_manager: ProtocolManager = start_protocol_controller(
         *protocol_config,
-        network_command_sender,
-        network_event_receiver,
-        protocol_command_receiver,
+        protocol_receivers,
+        protocol_senders,
         consensus_controller,
         pool_controller,
         Storage::create_root(),
@@ -108,11 +112,20 @@ where
     // start protocol controller
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel(protocol_config.controller_channel_size);
-    let protocol_manager = start_protocol_controller(
-        *protocol_config,
-        network_command_sender,
+
+    let protocol_senders = ProtocolSenders {
+        network_command_sender: network_command_sender.clone(),
+    };
+
+    let protocol_receivers = ProtocolReceivers {
         network_event_receiver,
         protocol_command_receiver,
+    };
+
+    let protocol_manager = start_protocol_controller(
+        *protocol_config,
+        protocol_receivers,
+        protocol_senders,
         consensus_controller,
         pool_controller,
         storage.clone(),
@@ -146,10 +159,10 @@ where
 /// send a block and assert it has been propagate (or not)
 pub async fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
-    block: WrappedBlock,
+    block: SecureShareBlock,
     source_node_id: NodeId,
     protocol_command_sender: &mut ProtocolCommandSender,
-    operations: Vec<WrappedOperation>,
+    operations: Vec<SecureShareOperation>,
 ) {
     network_controller
         .send_header(source_node_id, block.content.header.clone())

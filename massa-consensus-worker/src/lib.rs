@@ -11,7 +11,9 @@
 //! when protocol sends informations to this module.
 //!
 //! This module doesn't use asynchronous code.
+
 #![feature(deadline_api)]
+#![feature(let_chains)]
 
 mod commands;
 mod controller;

@@ -200,10 +200,7 @@ impl MassaTime {
     /// Smallest time interval
     pub const EPSILON: MassaTime = MassaTime(1);
 
-    /// Gets current compensated UNIX timestamp (resolution: milliseconds).
-    ///
-    /// # Parameters
-    ///   * `compensation_millis`: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp
+    /// Gets current UNIX timestamp (resolution: milliseconds).
     ///
     /// ```
     /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -211,23 +208,18 @@ impl MassaTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    /// let now_massa_time : MassaTime = MassaTime::now(0).unwrap();
+    /// let now_massa_time : MassaTime = MassaTime::now().unwrap();
     /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
     /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < 100.into())
     /// ```
-    pub fn now(compensation_millis: i64) -> Result<Self, TimeError> {
-        let now: i64 = SystemTime::now()
+    pub fn now() -> Result<Self, TimeError> {
+        let now: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| TimeError::TimeOverflowError)?
             .as_millis()
             .try_into()
             .map_err(|_| TimeError::TimeOverflowError)?;
-        let compensated = now
-            .checked_add(compensation_millis)
-            .ok_or(TimeError::TimeOverflowError)?
-            .try_into()
-            .map_err(|_| TimeError::TimeOverflowError)?;
-        Ok(MassaTime(compensated))
+        Ok(MassaTime(now))
     }
 
     /// Conversion to `std::time::Duration`.
@@ -260,16 +252,16 @@ impl MassaTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// # use std::time::Instant;
-    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now(0).unwrap(), Instant::now());
-    /// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
+    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
+    /// let massa_time_instant: Instant = cur_timestamp.estimate_instant().unwrap();
     /// assert!(max(
     ///     massa_time_instant.saturating_duration_since(cur_instant),
     ///     cur_instant.saturating_duration_since(massa_time_instant)
     /// ) < std::time::Duration::from_millis(10))
     /// ```
-    pub fn estimate_instant(self, compensation_millis: i64) -> Result<Instant, TimeError> {
+    pub fn estimate_instant(self) -> Result<Instant, TimeError> {
         let (cur_timestamp, cur_instant): (MassaTime, Instant) =
-            (MassaTime::now(compensation_millis)?, Instant::now());
+            (MassaTime::now()?, Instant::now());
         cur_instant
             .checked_add(self.to_duration())
             .ok_or(TimeError::TimeOverflowError)?
@@ -404,6 +396,19 @@ impl MassaTime {
             .checked_rem(n)
             .ok_or_else(|| TimeError::CheckedOperationError("remainder error".to_string()))
             .map(MassaTime)
+    }
+
+    /// ```
+    /// # use massa_time::*;
+    ///
+    /// let time1 = MassaTime::from(42);
+    /// let time2 = MassaTime::from(84);
+    ///
+    /// assert_eq!(time1.abs_diff(time2), MassaTime::from(42));
+    /// assert_eq!(time2.abs_diff(time1), MassaTime::from(42));
+    /// ```
+    pub fn abs_diff(&self, t: MassaTime) -> MassaTime {
+        MassaTime(self.0.abs_diff(t.0))
     }
 
     /// ```

@@ -9,12 +9,13 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
 use massa_models::{
-    block::Block,
-    block::{BlockId, BlockSerializer, WrappedHeader},
+    block::{Block, BlockSerializer},
+    block_header::SecuredHeader,
+    block_id::BlockId,
     node::NodeId,
-    operation::{OperationId, WrappedOperation},
+    operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashSet},
-    wrapped::{Id, Wrapped},
+    secure_share::{Id, SecureShare},
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent};
 use massa_protocol_exports::ProtocolError;
@@ -171,9 +172,9 @@ impl ProtocolWorker {
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
             let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
-                Some(wrapped_block) => (
-                    wrapped_block.content.header.clone(),
-                    wrapped_block.content.operations.clone(),
+                Some(signed_block) => (
+                    signed_block.content.header.clone(),
+                    signed_block.content.operations.clone(),
                 ),
                 None => {
                     // let the node know we don't have the block.
@@ -238,7 +239,7 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        header: WrappedHeader,
+        header: SecuredHeader,
     ) -> Result<(), ProtocolError> {
         if let Some(info) = self.block_wishlist.get(&block_id) {
             if info.header.is_some() {
@@ -410,7 +411,7 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        mut operations: Vec<WrappedOperation>,
+        mut operations: Vec<SecureShareOperation>,
         op_timer: &mut Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         if let Err(err) = self
@@ -495,10 +496,10 @@ impl ProtocolWorker {
                         .unwrap();
 
                     // wrap block
-                    let wrapped_block = Wrapped {
+                    let signed_block = SecureShare {
                         signature: header.signature,
-                        creator_public_key: header.creator_public_key,
-                        creator_address: header.creator_address,
+                        content_creator_pub_key: header.content_creator_pub_key,
+                        content_creator_address: header.content_creator_address,
                         id: block_id,
                         content: block,
                         serialized_data: content_serialized,
@@ -509,14 +510,13 @@ impl ProtocolWorker {
                     // add endorsements to local storage and claim ref
                     // TODO change this if we make endorsements separate from block header
                     block_storage.store_endorsements(
-                        wrapped_block.content.header.content.endorsements.clone(),
+                        signed_block.content.header.content.endorsements.clone(),
                     );
-                    let slot = wrapped_block.content.header.content.slot;
+                    let slot = signed_block.content.header.content.slot;
                     // add block to local storage and claim ref
-                    block_storage.store_block(wrapped_block);
+                    block_storage.store_block(signed_block);
 
                     // Send to consensus
-                    info!("Send to consensus block for slot: {}", slot);
                     self.consensus_controller
                         .register_block(block_id, slot, block_storage, false);
                 }

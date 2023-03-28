@@ -16,10 +16,16 @@ pub struct APIConfig {
     pub bind_private: SocketAddr,
     /// bind for the public API
     pub bind_public: SocketAddr,
+    /// bind for the Massa API
+    pub bind_api: SocketAddr,
     /// max argument count
     pub max_arguments: u64,
     /// openrpc specification path
     pub openrpc_spec_path: PathBuf,
+    /// bootstrap whitelist path
+    pub bootstrap_whitelist_path: PathBuf,
+    /// bootstrap blacklist path
+    pub bootstrap_blacklist_path: PathBuf,
     /// maximum size in bytes of a request.
     pub max_request_body_size: u32,
     /// maximum size in bytes of a response.

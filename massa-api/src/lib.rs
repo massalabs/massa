@@ -3,33 +3,39 @@
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-use crate::error::ApiError::WrongAPI;
+use api_trait::MassaApiServer;
+use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
-use massa_consensus_exports::ConsensusController;
-use massa_execution_exports::ExecutionController;
-use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+use jsonrpsee::RpcModule;
+use massa_api_exports::{
+    address::AddressInfo,
+    block::{BlockInfo, BlockSummary},
+    config::APIConfig,
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
+    endorsement::EndorsementInfo,
+    error::ApiError::WrongAPI,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    node::NodeStatus,
+    operation::{OperationInfo, OperationInput},
+    page::{PageRequest, PagedVec},
+    TimeInterval,
 };
+use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address,
-    block::{Block, BlockId},
-    endorsement::EndorsementId,
-    slot::Slot,
-    version::Version,
+    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
+    execution::EventFilter, slot::Slot, version::Version,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
-use massa_pool_exports::PoolController;
+use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
 use massa_storage::Storage;
@@ -38,15 +44,14 @@ use parking_lot::RwLock;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
-
 use tokio::sync::mpsc;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
-mod config;
-mod error;
+mod api;
+mod api_trait;
 mod private;
 mod public;
-pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
@@ -70,8 +75,6 @@ pub struct Public {
     pub version: Version,
     /// link to the network component
     pub network_command_sender: NetworkCommandSender,
-    /// compensation milliseconds (used to sync time with bootstrap server)
-    pub compensation_millis: i64,
     /// our node id
     pub node_id: NodeId,
 }
@@ -90,6 +93,22 @@ pub struct Private {
     pub node_wallet: Arc<RwLock<Wallet>>,
 }
 
+/// API v2 content
+pub struct ApiV2 {
+    /// link to the consensus component
+    pub consensus_controller: Box<dyn ConsensusController>,
+    /// link(channels) to the consensus component
+    pub consensus_channels: ConsensusChannels,
+    /// link to the execution component
+    pub execution_controller: Box<dyn ExecutionController>,
+    /// link(channels) to the pool component
+    pub pool_channels: PoolChannels,
+    /// API settings
+    pub api_settings: APIConfig,
+    /// node version
+    pub version: Version,
+}
+
 /// The API wrapper
 pub struct API<T>(T);
 
@@ -104,8 +123,19 @@ pub trait RpcServer: MassaRpcServer {
     ) -> Result<StopHandle, JsonRpseeError>;
 }
 
-async fn serve(
-    api: impl MassaRpcServer,
+/// Used to manage the API
+#[async_trait::async_trait]
+pub trait ApiServer: MassaApiServer {
+    /// Start the API
+    async fn serve(
+        self,
+        url: &SocketAddr,
+        api_config: &APIConfig,
+    ) -> Result<StopHandle, JsonRpseeError>;
+}
+
+async fn serve<T>(
+    api: RpcModule<T>,
     url: &SocketAddr,
     api_config: &APIConfig,
 ) -> Result<StopHandle, JsonRpseeError> {
@@ -132,16 +162,26 @@ async fn serve(
         server_builder = server_builder.http_only();
     } else if api_config.enable_ws && !api_config.enable_http {
         server_builder = server_builder.ws_only()
-    } else {
-        panic!("wrong server configuration, you can't disable both http and ws")
+    } else if !api_config.enable_http && !api_config.enable_ws {
+        panic!("wrong server configuration, you can't disable both http and ws");
     }
 
+    let cors = CorsLayer::new()
+        // Allow `POST` and `OPTIONS` when accessing the resource
+        .allow_methods([Method::POST, Method::OPTIONS])
+        // Allow requests from any origin
+        .allow_origin(Any)
+        .allow_headers([hyper::header::CONTENT_TYPE]);
+
+    let middleware = tower::ServiceBuilder::new().layer(cors);
+
     let server = server_builder
+        .set_middleware(middleware)
         .build(url)
         .await
         .expect("failed to build server");
 
-    let server_handler = server.start(api.into_rpc()).expect("server start failed");
+    let server_handler = server.start(api).expect("server start failed");
     let stop_handler = StopHandle { server_handler };
 
     Ok(stop_handler)
@@ -214,17 +254,50 @@ pub trait MassaRpc {
     #[method(name = "node_ban_by_id")]
     async fn node_ban_by_id(&self, arg: Vec<NodeId>) -> RpcResult<()>;
 
-    /// whitelist given IP address.
+    /// Returns node peers whitelist IP address(es).
+    #[method(name = "node_peers_whitelist")]
+    async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>>;
+
+    /// Add IP address(es) to node peers whitelist.
     /// No confirmation to expect.
     /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
-    #[method(name = "node_whitelist")]
-    async fn node_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+    #[method(name = "node_add_to_peers_whitelist")]
+    async fn node_add_to_peers_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
-    /// remove from whitelist given IP address.
+    /// Remove from peers whitelist given IP address(es).
     /// keep it as standard
     /// No confirmation to expect.
-    #[method(name = "node_remove_from_whitelist")]
-    async fn node_remove_from_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+    #[method(name = "node_remove_from_peers_whitelist")]
+    async fn node_remove_from_peers_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
+    /// Returns node bootstrap whitelist IP address(es).
+    #[method(name = "node_bootstrap_whitelist")]
+    async fn node_bootstrap_whitelist(&self) -> RpcResult<Vec<IpAddr>>;
+
+    /// Allow everyone to bootstrap from the node.
+    /// remove bootstrap whitelist configuration file.
+    #[method(name = "node_bootstrap_whitelist_allow_all")]
+    async fn node_bootstrap_whitelist_allow_all(&self) -> RpcResult<()>;
+
+    /// Add IP address(es) to node bootstrap whitelist.
+    #[method(name = "node_add_to_bootstrap_whitelist")]
+    async fn node_add_to_bootstrap_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
+    /// Remove IP address(es) to bootstrap whitelist.
+    #[method(name = "node_remove_from_bootstrap_whitelist")]
+    async fn node_remove_from_bootstrap_whitelist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
+    /// Returns node bootstrap blacklist IP address(es).
+    #[method(name = "node_bootstrap_blacklist")]
+    async fn node_bootstrap_blacklist(&self) -> RpcResult<Vec<IpAddr>>;
+
+    /// Add IP address(es) to node bootstrap blacklist.
+    #[method(name = "node_add_to_bootstrap_blacklist")]
+    async fn node_add_to_bootstrap_blacklist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
+
+    /// Remove IP address(es) to bootstrap blacklist.
+    #[method(name = "node_remove_from_bootstrap_blacklist")]
+    async fn node_remove_from_bootstrap_blacklist(&self, arg: Vec<IpAddr>) -> RpcResult<()>;
 
     /// Unban given IP address(es).
     /// No confirmation to expect.
@@ -246,19 +319,22 @@ pub trait MassaRpc {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[method(name = "get_stakers")]
-    async fn get_stakers(&self) -> RpcResult<Vec<(Address, u64)>>;
+    async fn get_stakers(
+        &self,
+        page_request: Option<PageRequest>,
+    ) -> RpcResult<PagedVec<(Address, u64)>>;
 
-    /// Returns operations information associated to a given list of operations' IDs.
+    /// Returns operation(s) information associated to a given list of operation(s) ID(s).
     #[method(name = "get_operations")]
     async fn get_operations(&self, arg: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>>;
 
-    /// Get endorsements (not yet implemented).
+    /// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
     #[method(name = "get_endorsements")]
     async fn get_endorsements(&self, arg: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>>;
 
-    /// Get information on a block given its hash.
-    #[method(name = "get_block")]
-    async fn get_block(&self, arg: BlockId) -> RpcResult<BlockInfo>;
+    /// Returns block(s) information associated to a given list of block(s) ID(s)
+    #[method(name = "get_blocks")]
+    async fn get_blocks(&self, arg: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>>;
 
     /// Get information on the block at a slot in the blockclique.
     /// If there is no block at this slot a `None` is returned.
@@ -302,8 +378,4 @@ pub trait MassaRpc {
 
 fn wrong_api<T>() -> RpcResult<T> {
     Err((WrongAPI).into())
-}
-
-fn _jsonrpsee_assert(_method: &str, _request: Value, _response: Value) {
-    // TODO: jsonrpsee_client_transports::RawClient::call_method ... see #1182
 }

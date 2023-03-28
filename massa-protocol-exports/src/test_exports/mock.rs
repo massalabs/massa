@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{ProtocolCommand, ProtocolCommandSender};
-use massa_models::block::BlockId;
+use massa_models::block_id::BlockId;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
