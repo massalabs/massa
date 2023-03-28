@@ -2286,7 +2286,7 @@
             .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
         <span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module.clone(),
+            module,
             <span class="kw-2">&amp;</span>message.handler,
             <span class="kw-2">&amp;</span>message.data,
             message.max_gas,
@@ -2699,7 +2699,7 @@
                     .load_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
                 <span class="kw">let </span>response = massa_sc_runtime::run_function(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-                    module.clone(),
+                    module,
                     <span class="kw-2">&amp;</span>target_func,
                     <span class="kw-2">&amp;</span>parameter,
                     req.max_gas,
