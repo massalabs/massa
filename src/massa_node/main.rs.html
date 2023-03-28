@@ -902,18 +902,6 @@
 <a href="#902" id="902">902</a>
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -960,7 +948,7 @@
     NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
     PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
-    T0, THREAD_COUNT, VERSION, VERSIONING_COUNT_BLOCKS_CONSIDERED,
+    T0, THREAD_COUNT, VERSION,
 };
 <span class="kw">use </span>massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 <span class="kw">use </span>massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -976,8 +964,6 @@
 <span class="kw">use </span>massa_protocol_worker::start_protocol_controller;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning_exports::VersioningConfig;
-<span class="kw">use </span>massa_versioning_worker::{versioning::MipStore, versioning_middleware::VersioningMiddleware};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::path::PathBuf;
@@ -1234,16 +1220,6 @@
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE <span class="kw">as </span>u64)
             .expect(<span class="string">&quot;Overflow when creating constant ledger_entry_datastore_base_size&quot;</span>),
     };
-
-    <span class="kw">let </span>versioning_config = VersioningConfig {
-        count_blocks_considered: VERSIONING_COUNT_BLOCKS_CONSIDERED,
-    };
-
-    <span class="comment">// Creates an empty default store
-    </span><span class="kw">let </span>mip_store = MipStore::try_from([]).unwrap();
-
-    <span class="kw">let </span>_versioning_middleware = VersioningMiddleware::new(versioning_config, mip_store.clone());
-
     <span class="comment">// launch execution module
     </span><span class="kw">let </span>execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
