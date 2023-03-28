@@ -225,8 +225,6 @@ pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 //
 /// Threshold to accept a new versioning
 pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
-/// versioning controller event channel size
-pub const VERSIONING_CONTROLLER_CHANNEL_SIZE: usize = 10_000;
 /// versioning block stats queue size
 pub const VERSIONING_COUNT_BLOCKS_CONSIDERED: usize = 1000;
 

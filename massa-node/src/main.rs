@@ -44,8 +44,7 @@ use massa_models::config::constants::{
     NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
     PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
-    T0, THREAD_COUNT, VERSION, VERSIONING_CONTROLLER_CHANNEL_SIZE,
-    VERSIONING_COUNT_BLOCKS_CONSIDERED,
+    T0, THREAD_COUNT, VERSION, VERSIONING_COUNT_BLOCKS_CONSIDERED,
 };
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -61,12 +60,8 @@ use massa_protocol_exports::{
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_exports::{
-    VersioningCommand, /*VersioningCommandSender,*/ VersioningConfig, VersioningManager,
-    VersioningReceivers, VersioningSenders,
-};
-use massa_versioning_worker::start_versioning_worker;
-use massa_versioning_worker::versioning::MipStore;
+use massa_versioning_exports::VersioningConfig;
+use massa_versioning_worker::{versioning::MipStore, versioning_middleware::VersioningMiddleware};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::path::PathBuf;
@@ -93,7 +88,6 @@ async fn launch(
     Box<dyn SelectorManager>,
     Box<dyn PoolManager>,
     ProtocolManager,
-    VersioningManager,
     NetworkManager,
     Box<dyn FactoryManager>,
     mpsc::Receiver<()>,
@@ -324,6 +318,16 @@ async fn launch(
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
+
+    let versioning_config = VersioningConfig {
+        count_blocks_considered: VERSIONING_COUNT_BLOCKS_CONSIDERED,
+    };
+
+    // Creates an empty default store
+    let mip_store = MipStore::try_from([]).unwrap();
+
+    let _versioning_middleware = VersioningMiddleware::new(versioning_config, mip_store.clone());
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -390,9 +394,6 @@ async fn launch(
     let (protocol_command_sender, protocol_command_receiver) =
         mpsc::channel::<ProtocolCommand>(PROTOCOL_CONTROLLER_CHANNEL_SIZE);
 
-    let (_versioning_command_sender, versioning_command_receiver) =
-        mpsc::channel::<VersioningCommand>(VERSIONING_CONTROLLER_CHANNEL_SIZE);
-
     let consensus_config = ConsensusConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,
         end_timestamp: *END_TIMESTAMP,
@@ -442,29 +443,6 @@ async fn launch(
         bootstrap_state.graph,
         shared_storage.clone(),
     );
-
-    let versioning_config = VersioningConfig {
-        count_blocks_considered: VERSIONING_COUNT_BLOCKS_CONSIDERED,
-    };
-
-    let versioning_senders = VersioningSenders {};
-
-    let versioning_receivers = VersioningReceivers {
-        versioning_command_receiver,
-    };
-
-    // Creates an empty default store
-    let mip_store = MipStore::try_from([]).unwrap();
-
-    // launch versioning manager
-    let versioning_manager = start_versioning_worker(
-        versioning_config,
-        versioning_receivers,
-        versioning_senders.clone(),
-        mip_store.clone(),
-    )
-    .await
-    .expect("could not start versioning controller");
 
     // launch protocol controller
     let protocol_config = ProtocolConfig {
@@ -666,7 +644,6 @@ async fn launch(
         selector_manager,
         pool_manager,
         protocol_manager,
-        versioning_manager,
         network_manager,
         factory_manager,
         api_private_stop_rx,
@@ -683,7 +660,6 @@ struct Managers {
     selector_manager: Box<dyn SelectorManager>,
     pool_manager: Box<dyn PoolManager>,
     protocol_manager: ProtocolManager,
-    versioning_manager: VersioningManager,
     network_manager: NetworkManager,
     factory_manager: Box<dyn FactoryManager>,
 }
@@ -697,7 +673,6 @@ async fn stop(
         mut selector_manager,
         mut pool_manager,
         protocol_manager,
-        versioning_manager,
         network_manager,
         mut factory_manager,
     }: Managers,
@@ -742,9 +717,6 @@ async fn stop(
 
     // stop selector controller
     selector_manager.stop();
-
-    // stop versioning controller
-    versioning_manager.stop();
 
     // stop pool controller
     // TODO
@@ -858,7 +830,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
             selector_manager,
             pool_manager,
             protocol_manager,
-            versioning_manager,
             network_manager,
             factory_manager,
             mut api_private_stop_rx,
@@ -927,7 +898,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 selector_manager,
                 pool_manager,
                 protocol_manager,
-                versioning_manager,
                 network_manager,
                 factory_manager,
             },

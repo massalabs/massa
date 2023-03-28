@@ -5,24 +5,24 @@ use massa_time::{MassaTime, TimeError};
 use tracing::debug;
 
 use crate::versioning::{Advance, MipStore};
-use massa_versioning_exports::VersioningMiddlewareError;
+use massa_versioning_exports::{VersioningConfig, VersioningMiddlewareError};
 use queues::{CircularBuffer, IsQueue};
 
 /// Struct used to keep track of announced versions in previous blocks
 pub struct VersioningMiddleware {
+    config: VersioningConfig,
     latest_announcements: CircularBuffer<u32>,
     counts: HashMap<u32, usize>,
-    count_blocks_considered: usize,
     mip_store: MipStore,
 }
 
 impl VersioningMiddleware {
     /// Creates a new empty versioning middleware.
-    pub fn new(count_blocks_considered: usize, mip_store: MipStore) -> Self {
+    pub fn new(config: VersioningConfig, mip_store: MipStore) -> Self {
         VersioningMiddleware {
-            latest_announcements: CircularBuffer::new(count_blocks_considered),
+            config: config.clone(),
+            latest_announcements: CircularBuffer::new(config.count_blocks_considered),
             counts: HashMap::new(),
-            count_blocks_considered,
             mip_store,
         }
     }
@@ -56,7 +56,7 @@ impl VersioningMiddleware {
         // TODO / OPTIM: filter the store to avoid advancing on failed and active versions
         for (vi, state) in store.0.iter_mut() {
             let ratio_counts = 100.0 * *self.counts.get(&vi.version).unwrap_or(&0) as f32
-                / self.count_blocks_considered as f32;
+                / self.config.count_blocks_considered as f32;
 
             let ratio_counts = Amount::from_mantissa_scale(ratio_counts.round() as u64, 0);
 
@@ -126,7 +126,11 @@ mod test {
 
         let vs = MipStore::try_from([(vi.clone(), state)]).expect("Cannot create the MipStore");
 
-        let mut vm = VersioningMiddleware::new(5, vs.clone());
+        let versioning_config = VersioningConfig {
+            count_blocks_considered: 5,
+        };
+
+        let mut vm = VersioningMiddleware::new(versioning_config, vs.clone());
 
         // The MIP-0001 hasn't Started yet, so we do not announce it.
         assert_eq!(vs.get_state_for(&vi).inner, ComponentState::defined());
