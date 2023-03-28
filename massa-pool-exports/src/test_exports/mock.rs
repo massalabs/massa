@@ -31,6 +31,11 @@ pub enum MockPoolControllerMessage {
         /// Storage that contains all operations
         operations: Storage,
     },
+    /// Add denunciations to the pool
+    AddDenunciations {
+        /// Storage that contains all denunciations
+        denunciations: Storage,
+    },
     /// Get block endorsements
     GetBlockEndorsements {
         /// Block id of the block endorsed
@@ -228,5 +233,13 @@ impl PoolController for MockPoolController {
 
     fn clone_box(&self) -> Box<dyn PoolController> {
         Box::new(self.clone())
+    }
+
+    fn add_denunciations(&mut self, denunciations: Storage) {
+        self.0
+            .lock()
+            .unwrap()
+            .send(MockPoolControllerMessage::AddDenunciations { denunciations })
+            .unwrap();
     }
 }

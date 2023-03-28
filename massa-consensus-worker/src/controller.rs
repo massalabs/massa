@@ -281,6 +281,15 @@ impl ConsensusController for ConsensusControllerImpl {
                 .block_header_sender
                 .send(header.clone().content);
         }
+
+        if let Err(e) = self
+            .channels
+            .denunciation_factory_sender
+            .send(header.clone())
+        {
+            warn!("Cannot send header to denunciation factory: {}", e);
+        }
+
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))

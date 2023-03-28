@@ -19,17 +19,21 @@ use crate::endorsement::{
 };
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
+use crate::prehash::PreHashed;
+use crate::secure_share::Id;
 use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntSerializer,
 };
 use massa_signature::{
     MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
 };
 
+/// A Variant of Denunciation enum for endorsement
 #[allow(dead_code)]
 #[derive(Debug, PartialEq)]
-struct EndorsementDenunciation {
+pub struct EndorsementDenunciation {
     public_key: PublicKey,
     slot: Slot,
     index: u32,
@@ -69,9 +73,10 @@ impl EndorsementDenunciation {
     }
 }
 
+/// A Variant of Denunciation enum for block header
 #[allow(dead_code)]
 #[derive(Debug, PartialEq)]
-struct BlockHeaderDenunciation {
+pub struct BlockHeaderDenunciation {
     public_key: PublicKey,
     slot: Slot,
     hash_1: Hash,
@@ -117,8 +122,10 @@ impl BlockHeaderDenunciation {
     }
 }
 
+/// A denunciation enum
 #[derive(Debug, PartialEq)]
-enum Denunciation {
+#[allow(missing_docs)]
+pub enum Denunciation {
     Endorsement(EndorsementDenunciation),
     BlockHeader(BlockHeaderDenunciation),
 }
@@ -713,6 +720,93 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 }
 
 // End Ser / Der
+
+// Denunciation Id
+
+/// Endorsement ID size in bytes
+pub const DENUNCIATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+
+/// endorsement id
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct DenunciationId(Hash);
+
+const DENUNCIATION_ID_PREFIX: char = 'D';
+const DENUNCIATION_ID_VERSION: u64 = 0;
+
+impl PreHashed for DenunciationId {}
+
+impl Id for DenunciationId {
+    fn new(hash: Hash) -> Self {
+        Self(hash)
+    }
+
+    fn get_hash(&self) -> &Hash {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for DenunciationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let u64_serializer = U64VarIntSerializer::new();
+        // might want to allocate the vector with capacity in order to avoid re-allocation
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&DENUNCIATION_ID_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.to_bytes());
+        write!(
+            f,
+            "{}{}",
+            DENUNCIATION_ID_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
+    }
+}
+
+impl std::fmt::Debug for DenunciationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl DenunciationId {
+    /// denunciation id to bytes
+    pub fn to_bytes(&self) -> &[u8; DENUNCIATION_ID_SIZE_BYTES] {
+        self.0.to_bytes()
+    }
+
+    /// endorsement id into bytes
+    pub fn into_bytes(self) -> [u8; DENUNCIATION_ID_SIZE_BYTES] {
+        self.0.into_bytes()
+    }
+
+    /// endorsement id from bytes
+    pub fn from_bytes(data: &[u8; DENUNCIATION_ID_SIZE_BYTES]) -> DenunciationId {
+        DenunciationId(Hash::from_bytes(data))
+    }
+}
+
+impl From<&Denunciation> for DenunciationId {
+    fn from(value: &Denunciation) -> Self {
+        match value {
+            Denunciation::Endorsement(endo_de) => {
+                let mut to_hash = Vec::new();
+                to_hash.extend(endo_de.public_key.to_bytes());
+                to_hash.extend(endo_de.slot.to_bytes_key());
+                to_hash.extend(endo_de.index.to_le_bytes());
+                DenunciationId(Hash::compute_from(&to_hash))
+            }
+            Denunciation::BlockHeader(blkh_de) => {
+                let mut to_hash = Vec::new();
+                to_hash.extend(blkh_de.public_key.to_bytes());
+                to_hash.extend(blkh_de.slot.to_bytes_key());
+                DenunciationId(Hash::compute_from(&to_hash))
+            }
+        }
+    }
+}
+
+// End Denunciation Id
 
 #[cfg(test)]
 mod tests {

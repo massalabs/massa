@@ -1,3 +1,4 @@
+use crossbeam_channel::Sender;
 use massa_consensus_exports::test_exports::{
     ConsensusEventReceiver, MockConsensusController, MockConsensusControllerMessage,
 };
@@ -11,6 +12,7 @@ use std::{
 use massa_factory_exports::{
     test_exports::create_empty_block, FactoryChannels, FactoryConfig, FactoryManager,
 };
+use massa_models::block_header::SecuredHeader;
 use massa_models::{
     address::Address, block_id::BlockId, config::ENDORSEMENT_COUNT,
     endorsement::SecureShareEndorsement, operation::SecureShareOperation, prehash::PreHashMap,
@@ -42,8 +44,10 @@ pub struct TestFactory {
     factory_config: FactoryConfig,
     factory_manager: Box<dyn FactoryManager>,
     genesis_blocks: Vec<(BlockId, u64)>,
-    storage: Storage,
+    pub(crate) storage: Storage,
     keypair: KeyPair,
+    pub(crate) denunciation_factory_sender: Sender<SecuredHeader>,
+    pub(crate) denunciation_factory_tx: Sender<SecureShareEndorsement>,
 }
 
 impl TestFactory {
@@ -58,6 +62,10 @@ impl TestFactory {
         let (consensus_controller, consensus_event_receiver) =
             MockConsensusController::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
+        let (denunciation_factory_tx, denunciation_factory_rx) =
+            crossbeam_channel::unbounded::<SecureShareEndorsement>();
+        let (denunciation_factory_sender, denunciation_factory_receiver) =
+            crossbeam_channel::bounded(massa_models::config::CHANNEL_SIZE);
         let mut storage = Storage::create_root();
         let mut factory_config = FactoryConfig::default();
         let (_protocol_controller, protocol_command_sender) = MockProtocolController::new();
@@ -88,6 +96,8 @@ impl TestFactory {
                 protocol: protocol_command_sender,
                 storage: storage.clone_without_refs(),
             },
+            denunciation_factory_receiver,
+            denunciation_factory_rx,
         );
 
         TestFactory {
@@ -99,6 +109,8 @@ impl TestFactory {
             genesis_blocks,
             storage,
             keypair: default_keypair.clone(),
+            denunciation_factory_sender,
+            denunciation_factory_tx,
         }
     }
 

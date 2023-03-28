@@ -12,7 +12,10 @@ use std::sync::mpsc::TrySendError;
 use std::sync::{mpsc::SyncSender, Arc};
 use tracing::{info, warn};
 
-use crate::{endorsement_pool::EndorsementPool, operation_pool::OperationPool};
+use crate::{
+    denunciation_pool::DenunciationPool, endorsement_pool::EndorsementPool,
+    operation_pool::OperationPool,
+};
 
 /// A generic command to send commands to a pool
 pub enum Command {
@@ -33,6 +36,8 @@ pub struct PoolControllerImpl {
     pub(crate) operation_pool: Arc<RwLock<OperationPool>>,
     /// Shared reference to the endorsement pool
     pub(crate) endorsement_pool: Arc<RwLock<EndorsementPool>>,
+    /// Shared reference to the denunciation pool
+    pub(crate) denunciation_pool: Arc<RwLock<DenunciationPool>>,
     /// Operation write worker command sender
     pub(crate) operations_input_sender: SyncSender<Command>,
     /// Endorsement write worker command sender
@@ -149,6 +154,12 @@ impl PoolController for PoolControllerImpl {
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
         let lck = self.operation_pool.read();
         operations.iter().map(|id| lck.contains(id)).collect()
+    }
+
+    /// Add denunciation to pool
+    fn add_denunciations(&mut self, denunciations: Storage) {
+        let mut lck = self.denunciation_pool.write();
+        lck.add_denunciation(denunciations);
     }
 }
 

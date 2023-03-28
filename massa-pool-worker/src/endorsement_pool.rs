@@ -1,5 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crossbeam_channel::Sender;
+use massa_models::endorsement::SecureShareEndorsement;
 use massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,
@@ -9,6 +11,7 @@ use massa_models::{
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
 use std::collections::{BTreeMap, HashMap};
+use tracing::warn;
 
 pub struct EndorsementPool {
     /// configuration
@@ -26,16 +29,24 @@ pub struct EndorsementPool {
 
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
+
+    /// Queue to Denunciation factory
+    denunciation_factory_tx: Sender<SecureShareEndorsement>,
 }
 
 impl EndorsementPool {
-    pub fn init(config: PoolConfig, storage: &Storage) -> Self {
+    pub fn init(
+        config: PoolConfig,
+        storage: &Storage,
+        denunciation_factory_tx: Sender<SecureShareEndorsement>,
+    ) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
             endorsements_sorted: vec![Default::default(); config.thread_count as usize],
             config,
             storage: storage.clone_without_refs(),
+            denunciation_factory_tx,
         }
     }
 
@@ -116,6 +127,12 @@ impl EndorsementPool {
                     }
                     added.insert(endo.id);
                 }
+
+                // And send endorsements to Denunciation Factory
+                // let de_interest = DenunciationInterest::WrappedEndorsement(endo.clone());
+                if let Err(e) = self.denunciation_factory_tx.send(endo.clone()) {
+                    warn!("Cannot send endorsement to Denunciation factory: {}", e);
+                }
             }
         }
 
@@ -139,6 +156,7 @@ impl EndorsementPool {
             &Default::default(),
             &Default::default(),
             &added,
+            &Default::default(),
         ));
 
         // drop removed endorsements from storage

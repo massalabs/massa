@@ -3,9 +3,12 @@
 //! Write worker for the pools, allowing asynchronous writes.
 
 use crate::controller_impl::{Command, PoolManagerImpl};
+use crate::denunciation_pool::DenunciationPool;
 use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
+use crossbeam_channel::Sender;
 use massa_execution_exports::ExecutionController;
+use massa_models::endorsement::SecureShareEndorsement;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
@@ -112,6 +115,7 @@ pub fn start_pool_controller(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
     channels: PoolChannels,
+    denunciation_factory_tx: Sender<SecureShareEndorsement>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) = sync_channel(config.channels_size);
     let (endorsements_input_sender, endorsements_input_receiver) =
@@ -122,11 +126,17 @@ pub fn start_pool_controller(
         execution_controller,
         channels,
     )));
-    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config, storage)));
+    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(
+        config,
+        storage,
+        denunciation_factory_tx,
+    )));
+    let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(config, storage)));
     let controller = PoolControllerImpl {
         _config: config,
         operation_pool: operation_pool.clone(),
         endorsement_pool: endorsement_pool.clone(),
+        denunciation_pool: denunciation_pool,
         operations_input_sender: operations_input_sender.clone(),
         endorsements_input_sender: endorsements_input_sender.clone(),
     };

@@ -9,6 +9,7 @@
 #![feature(let_chains)]
 
 mod controller_impl;
+mod denunciation_pool;
 mod endorsement_pool;
 mod operation_pool;
 mod types;

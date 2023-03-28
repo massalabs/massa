@@ -1,6 +1,6 @@
 use massa_execution_exports::ExecutionController;
 use massa_models::block::{Block, FilledBlock};
-use massa_models::block_header::BlockHeader;
+use massa_models::block_header::{BlockHeader, SecuredHeader};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolCommandSender;
@@ -26,4 +26,5 @@ pub struct ConsensusChannels {
     pub block_header_sender: tokio::sync::broadcast::Sender<BlockHeader>,
     /// Channel use by Websocket (if they are enable) to broadcast a new block integrated
     pub filled_block_sender: tokio::sync::broadcast::Sender<FilledBlock>,
+    pub denunciation_factory_sender: crossbeam_channel::Sender<SecuredHeader>,
 }
