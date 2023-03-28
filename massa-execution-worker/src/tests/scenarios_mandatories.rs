@@ -391,15 +391,6 @@ mod tests {
             coins_sent.to_raw()
         )));
 
-        // HERE
-        // let a = sample_state
-        //     .read()
-        //     .ledger
-        //     .get_balance(&Address::from_public_key(&keypair.get_public_key()))
-        //     .unwrap();
-        // dbg!(a);
-        // panic!();
-
         // stop the execution controller
         manager.stop();
     }
@@ -672,7 +663,7 @@ mod tests {
         assert!(events.len() == 8, "8 events were expected");
         assert_eq!(
             Amount::from_raw(events[1].data.parse().unwrap()),
-            Amount::from_str("289_990").unwrap() // start (300_000) - fee (10) - compilation cost (10_000)
+            Amount::from_str("299990").unwrap() // start (300_000) - fee (1000)
         );
         assert_eq!(events[1].context.call_stack.len(), 1);
         assert_eq!(
@@ -681,11 +672,10 @@ mod tests {
         );
         assert_eq!(events[2].data, "one local execution completed");
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
-        dbg!(amount);
         assert!(
-            // start (289_990) - fee (10) - compilation cost (10_000) - storage cost
-            Amount::from_str("279_979").unwrap() < amount
-                && amount < Amount::from_str("279_980").unwrap()
+            // start (299_000) - fee (1000) - storage cost
+            Amount::from_str("299_979").unwrap() < amount
+                && amount < Amount::from_str("299_980").unwrap()
         );
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
@@ -1681,11 +1671,6 @@ mod tests {
                         .ledger_cost_per_byte
                         .saturating_mul_u64(value_len)
                 )
-                // Compilation cost
-                .saturating_sub(Amount::from_mantissa_scale(
-                    exec_cfg.gas_costs.sp_compilation_cost,
-                    0
-                ))
         );
 
         // stop the execution controller
@@ -1774,6 +1759,74 @@ mod tests {
         assert_eq!(events.len(), 2, "wrong event count");
         assert_eq!(events[0].context.slot, Slot::new(1, 0), "Wrong event slot");
         assert_eq!(events[1].context.slot, Slot::new(1, 1), "Wrong event slot");
+
+        manager.stop();
+    }
+
+    #[test]
+    #[serial]
+    pub fn not_enough_compilation_gas() {
+        let vesting = get_initials_vesting(false);
+        // config
+        let exec_cfg = ExecutionConfig {
+            t0: 100.into(),
+            initial_vesting_path: vesting.path().to_path_buf(),
+            ..ExecutionConfig::default()
+        };
+        // get a sample final state
+        let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
+        // init the storage
+        let mut storage = Storage::create_root();
+        // start the execution worker
+        let (mut manager, controller) = start_execution_worker(
+            exec_cfg.clone(),
+            sample_state.clone(),
+            sample_state.read().pos_state.selector.clone(),
+        );
+        // initialize the execution system with genesis blocks
+        init_execution_worker(&exec_cfg, &storage, controller.clone());
+
+        // keypair associated to thread 0
+        let keypair =
+            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+
+        // load bytecode
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
+        // create the block containing the operation
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::from_mantissa_scale(10, 0),
+                expire_period: 10,
+                op: OperationType::ExecuteSC {
+                    data: bytecode.to_vec(),
+                    max_gas: 0,
+                    datastore: BTreeMap::default(),
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+        storage.store_operations(vec![operation.clone()]);
+        let block = create_block(KeyPair::generate(), vec![operation], Slot::new(1, 0)).unwrap();
+        // store the block in storage
+        storage.store_block(block.clone());
+        // set our block as a final block
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+
+        // update blockclique
+        controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
+        std::thread::sleep(Duration::from_millis(100));
+
+        // assert events
+        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        assert!(events[0]
+            .data
+            .contains("not enough gas to pay for singlepass compilation"));
 
         manager.stop();
     }
