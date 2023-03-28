@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["api","config","error","handler","service","stream"]};
