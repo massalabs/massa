@@ -146,7 +146,19 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
 </pre><pre class="rust"><code><span class="comment">// IMPORTANT TODO: change bc update ABI costs in abi_gas_costs.json
+// TODO: move some of the warn logs to debug
 
 </span><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
@@ -190,16 +202,19 @@
     }
 
     <span class="doccomment">/// Internal function to compile and build `ModuleInfo`
-    </span><span class="kw">fn </span>compile(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; ModuleInfo {
+    </span><span class="kw">fn </span>compile(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], hash: Hash) -&gt; ModuleInfo {
         <span class="kw">match </span>RuntimeModule::new(
             bytecode,
             <span class="self">self</span>.cfg.compilation_gas,
             <span class="self">self</span>.cfg.gas_costs.clone(),
             <span class="bool-val">true</span>,
         ) {
-            <span class="prelude-val">Ok</span>(module) =&gt; ModuleInfo::Module(module),
+            <span class="prelude-val">Ok</span>(module) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;compilation of module {} succeeded&quot;</span>, hash);
+                ModuleInfo::Module(module)
+            }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;module compilation failed with: {}&quot;</span>, e);
+                <span class="macro">warn!</span>(<span class="string">&quot;compilation of module {} failed with: {}&quot;</span>, hash, e);
                 ModuleInfo::Invalid
             }
         }
@@ -212,11 +227,14 @@
             <span class="self">self</span>.hd_cache
                 .get(hash, <span class="self">self</span>.cfg.compilation_gas, <span class="self">self</span>.cfg.gas_costs.clone())
         {
+            <span class="macro">warn!</span>(<span class="string">&quot;save_module: {} present in hd&quot;</span>, hash);
             <span class="self">self</span>.lru_cache.insert(hash, hd_module_info);
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
+            <span class="macro">warn!</span>(<span class="string">&quot;save_module: {} missing in hd but present in lru&quot;</span>, hash);
             <span class="self">self</span>.hd_cache.insert(hash, lru_module_info);
         } <span class="kw">else </span>{
-            <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode);
+            <span class="macro">warn!</span>(<span class="string">&quot;save_module: {} missing&quot;</span>, hash);
+            <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode, hash);
             <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
             <span class="self">self</span>.lru_cache.insert(hash, module_info);
         }
@@ -240,15 +258,18 @@
     </span><span class="kw">fn </span>load_module_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; ModuleInfo {
         <span class="kw">let </span>hash = Hash::compute_from(bytecode);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
+            <span class="macro">warn!</span>(<span class="string">&quot;load_module: {} present in lru&quot;</span>, hash);
             lru_module_info
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(hd_module_info) =
             <span class="self">self</span>.hd_cache
                 .get(hash, <span class="self">self</span>.cfg.compilation_gas, <span class="self">self</span>.cfg.gas_costs.clone())
         {
+            <span class="macro">warn!</span>(<span class="string">&quot;load_module: {} missing in lru but present in hd&quot;</span>, hash);
             <span class="self">self</span>.lru_cache.insert(hash, hd_module_info.clone());
             hd_module_info
         } <span class="kw">else </span>{
-            <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode);
+            <span class="macro">warn!</span>(<span class="string">&quot;load_module: {} missing&quot;</span>, hash);
+            <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode, hash);
             <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
             <span class="self">self</span>.lru_cache.insert(hash, module_info.clone());
             module_info
@@ -286,6 +307,7 @@
         bytecode: <span class="kw-2">&amp;</span>[u8],
         limit: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, CacheError&gt; {
+        <span class="macro">warn!</span>(<span class="string">&quot;load_tmp_module&quot;</span>);
         <span class="prelude-val">Ok</span>(RuntimeModule::new(
             bytecode,
             limit,
