@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use massa_models::amount::Amount;
-use massa_time::{MassaTime, TimeError};
+use massa_models::{amount::Amount, error::ModelsError};
+use massa_time::MassaTime;
 use tracing::debug;
 
 use crate::versioning::{Advance, MipStore};
-use massa_versioning_exports::{VersioningConfig, VersioningMiddlewareError};
+use massa_versioning_exports::VersioningConfig;
 use queues::{CircularBuffer, IsQueue};
 
 /// Struct used to keep track of announced versions in previous blocks
@@ -29,11 +29,20 @@ impl VersioningMiddleware {
 
     /// Add the announced version of a new block
     /// If needed, remove the info related to a ancient block
-    pub fn new_block(&mut self, version: u32) {
+    /// params:
+    /// * slot_timestamp: the timestamp of newly finalized slot
+    /// * version_opt: Some(advertising_version) the version advertised in the associated block, or None if Block miss
+    pub fn new_block(&mut self, slot_timestamp: MassaTime, advertising_version_opt: Option<u32>) {
+        // If the finalized slot was a block miss, we do not keep track of it.
+        // TODO: Check if we want to keep track of slots and not blocks in our latest_announcements CircularBuffer
+        let Some(advertising_version) = advertising_version_opt else {
+            return;
+        };
+
         // This will never return Err for a queue::CircularBuffer
-        if let Ok(removed_version) = self.latest_announcements.add(version) {
+        if let Ok(removed_version) = self.latest_announcements.add(advertising_version) {
             // We update the count of the received version
-            *self.counts.entry(version).or_default() += 1;
+            *self.counts.entry(advertising_version).or_default() += 1;
 
             if let Some(prev_version) = removed_version {
                 // We update the count of the oldest version in the buffer, if at capacity
@@ -41,17 +50,14 @@ impl VersioningMiddleware {
             }
         }
 
-        let _ = self.create_and_send_advance_message_for_all();
+        let _ = self.create_and_send_advance_message_for_all(slot_timestamp);
     }
 
-    fn create_and_send_advance_message_for_all(&mut self) -> Result<(), VersioningMiddlewareError> {
+    fn create_and_send_advance_message_for_all(
+        &mut self,
+        slot_timestamp: MassaTime,
+    ) -> Result<(), ModelsError> {
         let mut store = self.mip_store.0.write();
-
-        let now = MassaTime::now().map_err(|_| {
-            VersioningMiddlewareError::ModelsError(massa_models::error::ModelsError::TimeError(
-                TimeError::TimeOverflowError,
-            ))
-        })?;
 
         // TODO / OPTIM: filter the store to avoid advancing on failed and active versions
         for (vi, state) in store.0.iter_mut() {
@@ -64,7 +70,7 @@ impl VersioningMiddleware {
                 start_timestamp: vi.start,
                 timeout: vi.timeout,
                 threshold: ratio_counts,
-                now,
+                now: slot_timestamp,
             };
 
             state.on_advance(&advance_msg.clone());
@@ -79,10 +85,8 @@ impl VersioningMiddleware {
 mod test {
     use super::*;
 
-    use core::time::Duration;
-    use std::str::FromStr;
-
     use crate::versioning::{ComponentState, MipComponent, MipInfo, MipState, MipStoreRaw};
+    use std::str::FromStr;
 
     // test only
     impl MipStoreRaw {
@@ -137,27 +141,20 @@ mod test {
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 0);
 
-        vm.new_block(0);
         // Need to wait a least 1ms between each block otherwise MipState filtered the advance msg
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(0);
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(0);
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(0);
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(0);
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(0);
+        vm.new_block(now, Some(0));
+        vm.new_block(now.saturating_add(MassaTime::from(1)), Some(0));
+        vm.new_block(now.saturating_add(MassaTime::from(2)), Some(0));
+        vm.new_block(now.saturating_add(MassaTime::from(3)), Some(0));
+        vm.new_block(now.saturating_add(MassaTime::from(4)), Some(0));
+        vm.new_block(now.saturating_add(MassaTime::from(5)), Some(0));
 
         // The MIP-0001 hasn't Started yet, so we do not announce it.
         assert_eq!(vs.get_state_for(&vi).inner, ComponentState::defined());
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 0);
 
-        tokio::time::sleep(Duration::from_secs(2)).await;
-
-        vm.new_block(0);
+        vm.new_block(start.saturating_add(MassaTime::from(1)), Some(0));
 
         // The MIP-0001 has Started, we start announcing it.
         assert_eq!(
@@ -167,27 +164,23 @@ mod test {
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 1);
 
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(1);
+        vm.new_block(start.saturating_add(MassaTime::from(2)), Some(1));
+
         assert_eq!(
             vs.get_state_for(&vi).inner,
             ComponentState::started(Amount::from_str("20.0").unwrap())
         );
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(1);
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(1);
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        vm.new_block(1);
-        tokio::time::sleep(Duration::from_millis(1)).await;
+
+        vm.new_block(start.saturating_add(MassaTime::from(3)), Some(1));
+        vm.new_block(start.saturating_add(MassaTime::from(4)), Some(1));
+        vm.new_block(start.saturating_add(MassaTime::from(5)), Some(1));
 
         // Enough people voted for MIP-0001, but Timeout has not occurred, so we still announce it and don't consider it active
         assert_eq!(vs.get_state_for(&vi).inner, ComponentState::locked_in());
         assert_eq!(vs.get_network_version_current(), 0);
         assert_eq!(vs.get_network_version_to_announce(), 1);
 
-        tokio::time::sleep(Duration::from_millis(2200)).await;
-        vm.new_block(1);
+        vm.new_block(timeout.saturating_add(MassaTime::from(1)), Some(1));
 
         // Timeout occurred, so we don't announce MIP-0001 anymore, and consider it active
         assert_eq!(vs.get_state_for(&vi).inner, ComponentState::active());
