@@ -76,7 +76,7 @@ use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
 
 async fn launch(
-    _args: &Args,
+    args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     Receiver<ConsensusEvent>,
@@ -142,7 +142,9 @@ async fn launch(
 
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
-    if SETTINGS.ledger.disk_ledger_path.exists() {
+    if args.keep_ledger {
+        info!("Loading old ledger for next episode");
+    } else if SETTINGS.ledger.disk_ledger_path.exists() {
         std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
             .expect("disk ledger delete failed");
     }
@@ -191,6 +193,7 @@ async fn launch(
         max_ping: SETTINGS.bootstrap.max_ping,
         max_clock_delta: SETTINGS.bootstrap.max_clock_delta,
         cache_duration: SETTINGS.bootstrap.cache_duration,
+        keep_ledger: args.keep_ledger,
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
@@ -601,7 +604,7 @@ async fn launch(
         use parking_lot::deadlock;
         use std::thread;
 
-        let interval = Duration::from_secs(_args.dl_interval);
+        let interval = Duration::from_secs(args.dl_interval);
         warn!("deadlocks detector will run every {:?}", interval);
 
         // Create a background thread which checks for deadlocks at the defined interval
@@ -721,6 +724,8 @@ async fn stop(
 
 #[derive(StructOpt)]
 struct Args {
+    #[structopt(long = "keep-ledger")]
+    keep_ledger: bool,
     /// Wallet password
     #[structopt(short = "p", long = "pwd")]
     password: Option<String>,
