@@ -50,7 +50,7 @@ mod test {
             let timestamp = &MassaTime::from(1677675988000); // 01/03/2023 14h06
             let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
             assert_eq!(
-                result.1,
+                result,
                 VestingInfo {
                     min_balance: Some(Amount::from_str("150000").unwrap()),
                     max_rolls: Some(30),
@@ -62,7 +62,7 @@ mod test {
             let timestamp = &MassaTime::from(1678193291000); // 07/03/2023 13h48
             let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
             assert_eq!(
-                result.1,
+                result,
                 VestingInfo {
                     min_balance: Some(Amount::from_str("100000").unwrap()),
                     max_rolls: Some(50),
@@ -74,7 +74,7 @@ mod test {
             let timestamp = &MassaTime::from(1734786585000); // 21/12/2024 14h09
             let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
             assert_eq!(
-                result.1,
+                result,
                 VestingInfo {
                     min_balance: Some(Amount::from_str("80000").unwrap()),
                     max_rolls: None,

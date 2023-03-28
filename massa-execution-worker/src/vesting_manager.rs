@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use crate::context::ExecutionContext;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, Clone, PartialEq)]
 pub struct VestingInfo {
     pub(crate) min_balance: Option<Amount>,
     pub(crate) max_rolls: Option<u64>,
@@ -60,7 +60,7 @@ impl VestingManager {
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
         if let Some(vesting) = self.get_addr_vesting_at_slot(buyer_addr, slot)? {
-            if let Some(vesting_max_rolls) = vesting.1.max_rolls {
+            if let Some(vesting_max_rolls) = vesting.max_rolls {
                 // (candidate_rolls + amount to buy)
                 let max_rolls = rolls.1.saturating_add(roll_count);
                 if max_rolls > vesting_max_rolls {
@@ -95,7 +95,7 @@ impl VestingManager {
         // That implies spending the coins first, then receiving them.
         // So the spending part can fail in the case of vesting
         if let Some(vesting) = self.get_addr_vesting_at_slot(addr, context.slot)? {
-            if let Some(vesting_min_balance) = vesting.1.min_balance {
+            if let Some(vesting_min_balance) = vesting.min_balance {
                 let new_balance = context
                     .get_balance(addr)
                     .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", addr)))?
@@ -147,15 +147,19 @@ impl VestingManager {
         &self,
         addr: &Address,
         timestamp: &MassaTime,
-    ) -> Option<&(MassaTime, VestingInfo)> {
-        let Some(vest) = self.vesting_registry.get(addr) else {
+    ) -> Option<VestingInfo> {
+        let Some(vec) = self.vesting_registry.get(addr) else {
             return None;
         };
 
-        vest.get(
-            vest.binary_search_by_key(timestamp, |(t, _)| *t)
+        let Some(vesting) = vec.get(
+            vec.binary_search_by_key(timestamp, |(t, _)| *t)
                 .unwrap_or_else(|i| i.saturating_sub(1)),
-        )
+        ) else {
+            return None;
+        };
+
+        Some(vesting.1.clone())
     }
 
     /// Retrieve vesting info for address at given slot
@@ -165,7 +169,7 @@ impl VestingManager {
         &self,
         addr: &Address,
         slot: Slot,
-    ) -> Result<Option<&(MassaTime, VestingInfo)>, ExecutionError> {
+    ) -> Result<Option<VestingInfo>, ExecutionError> {
         let timestamp = timeslots::get_block_slot_timestamp(
             self.thread_count,
             self.t0,
