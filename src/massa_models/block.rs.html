@@ -1139,20 +1139,6 @@
 <a href="#1139" id="1139">1139</a>
 <a href="#1140" id="1140">1140</a>
 <a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="comment">// use crate::config::THREAD_COUNT;
@@ -1361,17 +1347,14 @@
     }
 }
 
-<span class="doccomment">/// Block Deserializer Args struct. Useful to pass around the parameters,
-/// e.g. create a block deserializer from a BootstrapServerMessageDeserializerArgs.
+<span class="doccomment">///
 </span><span class="kw">pub struct </span>BlockDeserializerArgs {
-    <span class="doccomment">/// thread count for slot deserialization
+    <span class="doccomment">///
     </span><span class="kw">pub </span>thread_count: u8,
-    <span class="doccomment">/// max operations, otherwise the block is invalid
+    <span class="doccomment">///
     </span><span class="kw">pub </span>max_operations_per_block: u32,
-    <span class="doccomment">/// endorsement deserialization and checks
+    <span class="doccomment">///
     </span><span class="kw">pub </span>endorsement_count: u32,
-    <span class="doccomment">/// If Some(lsp), this will through if trying to deserialize a block with a period before the genesis blocks
-    </span><span class="kw">pub </span>last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="doccomment">/// Deserializer for `Block`
@@ -1382,12 +1365,12 @@
 
 <span class="kw">impl </span>BlockDeserializer {
     <span class="doccomment">/// Creates a new `BlockDeserializer`
+    </span><span class="comment">// pub fn new(thread_count: u8, max_operations_per_block: u32, endorsement_count: u32) -&gt; Self {
     </span><span class="kw">pub fn </span>new(args: BlockDeserializerArgs) -&gt; <span class="self">Self </span>{
         BlockDeserializer {
             header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 args.thread_count,
                 args.endorsement_count,
-                args.last_start_period,
             )),
             op_ids_deserializer: OperationIdsDeserializer::new(args.max_operations_per_block),
         }
@@ -1450,7 +1433,7 @@
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&amp;orig_block, &amp;mut buffer).unwrap();
-    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9,last_start_period: Some(0),};
+    /// let args = BlockDeserializerArgs { thread_count: THREAD_COUNT, max_operations_per_block: 100, endorsement_count: 9};
     /// let (rest, res_block) = BlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());
@@ -1644,7 +1627,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1720,7 +1702,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1805,7 +1786,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1858,7 +1838,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1906,7 +1885,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -1957,7 +1935,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -2030,7 +2007,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>(<span class="kw">_</span>, res): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -2080,7 +2056,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -2145,7 +2120,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -2215,7 +2189,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
@@ -2297,7 +2270,6 @@
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
-            last_start_period: <span class="prelude-val">Some</span>(<span class="number">0</span>),
         };
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], SecureShareBlock), <span class="kw">_</span>&gt; =
             SecureShareDeserializer::new(BlockDeserializer::new(args))
