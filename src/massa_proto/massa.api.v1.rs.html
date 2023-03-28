@@ -2186,6 +2186,31 @@
 <a href="#2186" id="2186">2186</a>
 <a href="#2187" id="2187">2187</a>
 <a href="#2188" id="2188">2188</a>
+<a href="#2189" id="2189">2189</a>
+<a href="#2190" id="2190">2190</a>
+<a href="#2191" id="2191">2191</a>
+<a href="#2192" id="2192">2192</a>
+<a href="#2193" id="2193">2193</a>
+<a href="#2194" id="2194">2194</a>
+<a href="#2195" id="2195">2195</a>
+<a href="#2196" id="2196">2196</a>
+<a href="#2197" id="2197">2197</a>
+<a href="#2198" id="2198">2198</a>
+<a href="#2199" id="2199">2199</a>
+<a href="#2200" id="2200">2200</a>
+<a href="#2201" id="2201">2201</a>
+<a href="#2202" id="2202">2202</a>
+<a href="#2203" id="2203">2203</a>
+<a href="#2204" id="2204">2204</a>
+<a href="#2205" id="2205">2205</a>
+<a href="#2206" id="2206">2206</a>
+<a href="#2207" id="2207">2207</a>
+<a href="#2208" id="2208">2208</a>
+<a href="#2209" id="2209">2209</a>
+<a href="#2210" id="2210">2210</a>
+<a href="#2211" id="2211">2211</a>
+<a href="#2212" id="2212">2212</a>
+<a href="#2213" id="2213">2213</a>
 </pre><pre class="rust"><code><span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -2212,10 +2237,10 @@
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 </span><span class="kw">pub struct </span>Endorsement {
-    <span class="doccomment">/// Slot in which the endorsement can be included
+    <span class="doccomment">/// object field
     </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>slot: ::core::option::Option&lt;Slot&gt;,
-    <span class="doccomment">/// Endorsement index inside the including block
+    <span class="doccomment">/// string field
     </span><span class="attr">#[prost(fixed32, tag = <span class="string">&quot;2&quot;</span>)]
     </span><span class="kw">pub </span>index: u32,
     <span class="doccomment">/// Hash of endorsed block
@@ -2223,11 +2248,36 @@
     </span><span class="attr">#[prost(string, tag = <span class="string">&quot;3&quot;</span>)]
     </span><span class="kw">pub </span>endorsed_block: ::prost::alloc::string::String,
 }
-<span class="doccomment">/// Packages type Endorsement such that it can be securely sent and received in a trust-free network
+<span class="doccomment">/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>EndorsementContent {
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>sender_public_key: ::prost::alloc::string::String,
+    <span class="doccomment">/// object field
+    </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;2&quot;</span>)]
+    </span><span class="kw">pub </span>slot: ::core::option::Option&lt;Slot&gt;,
+    <span class="doccomment">/// float field
+    </span><span class="attr">#[prost(fixed32, tag = <span class="string">&quot;3&quot;</span>)]
+    </span><span class="kw">pub </span>index: u32,
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;4&quot;</span>)]
+    </span><span class="kw">pub </span>endorsed_block: ::prost::alloc::string::String,
+}
+<span class="doccomment">/// message struct
+</span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+</span><span class="kw">pub struct </span>EndorsementId {
+    <span class="doccomment">/// string field
+    </span><span class="attr">#[prost(string, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>value: ::prost::alloc::string::String,
+}
+<span class="doccomment">/// message struct
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 </span><span class="kw">pub struct </span>SecureShareEndorsement {
-    <span class="doccomment">/// Endorsement
+    <span class="doccomment">/// object field
     </span><span class="attr">#[prost(message, optional, tag = <span class="string">&quot;1&quot;</span>)]
     </span><span class="kw">pub </span>content: ::core::option::Option&lt;Endorsement&gt;,
     <span class="doccomment">/// Content in sharable, deserializable form. Is used in the secure verification protocols

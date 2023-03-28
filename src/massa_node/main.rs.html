@@ -1645,7 +1645,7 @@
         </span>{
             <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(stop) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;API |gRPC| listening on: {}&quot;</span>, grpc_config.bind);
+                    <span class="macro">info!</span>(<span class="string">&quot;API|gRPC| listening on: {}&quot;</span>, grpc_config.bind);
                     <span class="prelude-val">Some</span>(stop)
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; {
@@ -1673,7 +1673,7 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start PRIVATE API&quot;</span>);
     <span class="macro">info!</span>(
-        <span class="string">&quot;API |PRIVATE JsonRPC| listening on: {}&quot;</span>,
+        <span class="string">&quot;API|PRIVATE JsonRPC| listening on: {}&quot;</span>,
         api_config.bind_private
     );
 
@@ -1696,7 +1696,7 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start PUBLIC API&quot;</span>);
     <span class="macro">info!</span>(
-        <span class="string">&quot;API |PUBLIC JsonRPC| listening on: {}&quot;</span>,
+        <span class="string">&quot;API|PUBLIC JsonRPC| listening on: {}&quot;</span>,
         api_config.bind_public
     );
 
