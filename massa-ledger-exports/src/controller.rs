@@ -10,6 +10,7 @@ use crate::{Key, LedgerChanges, LedgerError};
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
+    /// * final_state_data should be non-None only if we are storing a final_state snapshot.
     fn apply_changes(
         &mut self,
         changes: LedgerChanges,

@@ -199,6 +199,7 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
+    /// * final_state_data: the serialized final state data to include, in case we use the feature `create_snapshot`
     pub fn apply_changes(
         &mut self,
         changes: LedgerChanges,
@@ -445,7 +446,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(FINAL_STATE_CF).expect(CF_ERROR);
         let opt = ReadOptions::default();
 
-        // TODO: See if using get_pinned_cf_opt() here can impove memory usage
+        // TODO: See if using get_pinned_cf_opt() here can improve memory usage
         let Ok(Some(final_state_data)) = self.db.get_cf_opt(handle, LEDGER_FINAL_STATE_KEY, &opt) else {
             return Err(ModelsError::BufferError(String::from("Could not recover final_state_data")));
         };
