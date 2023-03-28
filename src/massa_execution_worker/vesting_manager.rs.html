@@ -222,6 +222,10 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::amount::Amount;
@@ -234,7 +238,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
 
-<span class="attr">#[derive(Debug, Eq, PartialEq)]
+<span class="attr">#[derive(Debug, Eq, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>VestingInfo {
     <span class="kw">pub</span>(<span class="kw">crate</span>) min_balance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) max_rolls: <span class="prelude-ty">Option</span>&lt;u64&gt;,
@@ -284,7 +288,7 @@
         roll_count: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(vesting) = <span class="self">self</span>.get_addr_vesting_at_slot(buyer_addr, slot)<span class="question-mark">? </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_max_rolls) = vesting.<span class="number">1</span>.max_rolls {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_max_rolls) = vesting.max_rolls {
                 <span class="comment">// (candidate_rolls + amount to buy)
                 </span><span class="kw">let </span>max_rolls = rolls.<span class="number">1</span>.saturating_add(roll_count);
                 <span class="kw">if </span>max_rolls &gt; vesting_max_rolls {
@@ -319,7 +323,7 @@
         // That implies spending the coins first, then receiving them.
         // So the spending part can fail in the case of vesting
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vesting) = <span class="self">self</span>.get_addr_vesting_at_slot(addr, context.slot)<span class="question-mark">? </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_min_balance) = vesting.<span class="number">1</span>.min_balance {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(vesting_min_balance) = vesting.min_balance {
                 <span class="kw">let </span>new_balance = context
                     .get_balance(addr)
                     .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, addr)))<span class="question-mark">?
@@ -371,15 +375,19 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
         timestamp: <span class="kw-2">&amp;</span>MassaTime,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(MassaTime, VestingInfo)&gt; {
-        <span class="kw">let </span><span class="prelude-val">Some</span>(vest) = <span class="self">self</span>.vesting_registry.get(addr) <span class="kw">else </span>{
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;VestingInfo&gt; {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(vec) = <span class="self">self</span>.vesting_registry.get(addr) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">None</span>;
         };
 
-        vest.get(
-            vest.binary_search_by_key(timestamp, |(t, <span class="kw">_</span>)| <span class="kw-2">*</span>t)
+        <span class="kw">let </span><span class="prelude-val">Some</span>(vesting) = vec.get(
+            vec.binary_search_by_key(timestamp, |(t, <span class="kw">_</span>)| <span class="kw-2">*</span>t)
                 .unwrap_or_else(|i| i.saturating_sub(<span class="number">1</span>)),
-        )
+        ) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">None</span>;
+        };
+
+        <span class="prelude-val">Some</span>(vesting.<span class="number">1</span>.clone())
     }
 
     <span class="doccomment">/// Retrieve vesting info for address at given slot
@@ -389,7 +397,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
         slot: Slot,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(MassaTime, VestingInfo)&gt;, ExecutionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;VestingInfo&gt;, ExecutionError&gt; {
         <span class="kw">let </span>timestamp = timeslots::get_block_slot_timestamp(
             <span class="self">self</span>.thread_count,
             <span class="self">self</span>.t0,
