@@ -42,13 +42,14 @@ mod test {
             let addr2 =
                 Address::from_str("AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs").unwrap();
             let timestamp = &MassaTime::from(1678193291000); // 07/03/2023 13h48
-            let opt = manager.get_addr_vesting_at_time(&addr2, timestamp);
-            assert!(opt.is_none());
+            let vesting = manager.get_addr_vesting_at_time(&addr2, timestamp);
+            assert!(vesting.min_balance.is_none());
+            assert!(vesting.max_rolls.is_none());
         }
 
         {
             let timestamp = &MassaTime::from(1677675988000); // 01/03/2023 14h06
-            let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
+            let result = manager.get_addr_vesting_at_time(&addr, timestamp);
             assert_eq!(
                 result,
                 VestingInfo {
@@ -60,7 +61,7 @@ mod test {
 
         {
             let timestamp = &MassaTime::from(1678193291000); // 07/03/2023 13h48
-            let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
+            let result = manager.get_addr_vesting_at_time(&addr, timestamp);
             assert_eq!(
                 result,
                 VestingInfo {
@@ -72,7 +73,7 @@ mod test {
 
         {
             let timestamp = &MassaTime::from(1734786585000); // 21/12/2024 14h09
-            let result = manager.get_addr_vesting_at_time(&addr, timestamp).unwrap();
+            let result = manager.get_addr_vesting_at_time(&addr, timestamp);
             assert_eq!(
                 result,
                 VestingInfo {

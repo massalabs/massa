@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use crate::context::ExecutionContext;
 
-#[derive(Debug, Eq, Clone, PartialEq)]
+#[derive(Debug, Eq, Default, Clone, PartialEq)]
 pub struct VestingInfo {
     pub(crate) min_balance: Option<Amount>,
     pub(crate) max_rolls: Option<u64>,
@@ -59,16 +59,14 @@ impl VestingManager {
         slot: Slot,
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
-        if let Some(vesting) = self.get_addr_vesting_at_slot(buyer_addr, slot)? {
-            if let Some(vesting_max_rolls) = vesting.max_rolls {
-                // (candidate_rolls + amount to buy)
-                let max_rolls = rolls.1.saturating_add(roll_count);
-                if max_rolls > vesting_max_rolls {
-                    return Err(ExecutionError::VestingError(format!(
+        if let Some(vesting_max_rolls) = self.get_addr_vesting_at_slot(buyer_addr, slot).max_rolls {
+            // (candidate_rolls + amount to buy)
+            let max_rolls = rolls.1.saturating_add(roll_count);
+            if max_rolls > vesting_max_rolls {
+                return Err(ExecutionError::VestingError(format!(
                         "trying to get to a total of {} rolls but only {} are allowed at that time by the vesting scheme",
                         max_rolls, vesting_max_rolls
                     )));
-                }
             }
         }
 
@@ -94,9 +92,11 @@ impl VestingManager {
         // For the case of user sending coins to itself :
         // That implies spending the coins first, then receiving them.
         // So the spending part can fail in the case of vesting
-        if let Some(vesting) = self.get_addr_vesting_at_slot(addr, context.slot)? {
-            if let Some(vesting_min_balance) = vesting.min_balance {
-                let new_balance = context
+        if let Some(vesting_min_balance) = self
+            .get_addr_vesting_at_slot(addr, context.slot)
+            .min_balance
+        {
+            let new_balance = context
                     .get_balance(addr)
                     .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", addr)))?
                     .checked_sub(amount)
@@ -105,35 +105,34 @@ impl VestingManager {
                             .get_balance(addr).unwrap_or_default()))
                     })?;
 
-                let vec = context.get_address_cycle_infos(addr, self.periods_per_cycle);
-                let Some(exec_info) = vec.last() else {
+            let vec = context.get_address_cycle_infos(addr, self.periods_per_cycle);
+            let Some(exec_info) = vec.last() else {
                     return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", addr)));
                 };
 
-                let rolls_value = exec_info
-                    .active_rolls
-                    .map(|rolls| self.roll_price.saturating_mul_u64(rolls))
-                    .unwrap_or(Amount::zero());
+            let rolls_value = exec_info
+                .active_rolls
+                .map(|rolls| self.roll_price.saturating_mul_u64(rolls))
+                .unwrap_or(Amount::zero());
 
-                let deferred_map = context.get_address_deferred_credits(addr, context.slot);
+            let deferred_map = context.get_address_deferred_credits(addr, context.slot);
 
-                let deferred_credits = if deferred_map.is_empty() {
-                    Amount::zero()
-                } else {
-                    Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
-                };
+            let deferred_credits = if deferred_map.is_empty() {
+                Amount::zero()
+            } else {
+                Amount::from_raw(deferred_map.into_values().map(|a| a.to_raw()).sum())
+            };
 
-                // min_balance = (rolls * roll_price) + balance + deferred_credits
-                let min_balance = new_balance
-                    .saturating_add(rolls_value)
-                    .saturating_add(deferred_credits);
+            // min_balance = (rolls * roll_price) + balance + deferred_credits
+            let min_balance = new_balance
+                .saturating_add(rolls_value)
+                .saturating_add(deferred_credits);
 
-                if min_balance < vesting_min_balance {
-                    return Err(ExecutionError::VestingError(format!(
-                        "vesting_min_balance={} with value min_balance={} ",
-                        vesting_min_balance, min_balance
-                    )));
-                }
+            if min_balance < vesting_min_balance {
+                return Err(ExecutionError::VestingError(format!(
+                    "vesting_min_balance={} with value min_balance={} ",
+                    vesting_min_balance, min_balance
+                )));
             }
         }
 
@@ -141,49 +140,33 @@ impl VestingManager {
     }
 
     /// Retrieve vesting info for address at given time
-    ///
-    /// Return None if address is not vested
     pub(crate) fn get_addr_vesting_at_time(
         &self,
         addr: &Address,
         timestamp: &MassaTime,
-    ) -> Option<VestingInfo> {
-        let Some(vec) = self.vesting_registry.get(addr) else {
-            return None;
-        };
+    ) -> VestingInfo {
+        if let Some(vec) = self.vesting_registry.get(addr) {
+            if let Some(vesting) = vec.get(
+                vec.binary_search_by_key(timestamp, |(t, _)| *t)
+                    .unwrap_or_else(|i| i.saturating_sub(1)),
+            ) {
+                return vesting.1.clone();
+            }
+        }
 
-        let Some(vesting) = vec.get(
-            vec.binary_search_by_key(timestamp, |(t, _)| *t)
-                .unwrap_or_else(|i| i.saturating_sub(1)),
-        ) else {
-            return None;
-        };
-
-        Some(vesting.1.clone())
+        VestingInfo::default()
     }
 
     /// Retrieve vesting info for address at given slot
-    ///
-    /// Return Ok(None) if address is not vested
-    fn get_addr_vesting_at_slot(
-        &self,
-        addr: &Address,
-        slot: Slot,
-    ) -> Result<Option<VestingInfo>, ExecutionError> {
+    fn get_addr_vesting_at_slot(&self, addr: &Address, slot: Slot) -> VestingInfo {
         let timestamp = timeslots::get_block_slot_timestamp(
             self.thread_count,
             self.t0,
             self.genesis_timestamp,
             slot,
         )
-        .map_err(|e| {
-            ExecutionError::RuntimeError(format!(
-                "error with get_block_slot_timestamp with slot : {}, error : {}",
-                slot, e
-            ))
-        })?;
-
-        Ok(self.get_addr_vesting_at_time(addr, &timestamp))
+        .unwrap_or_else(|_| MassaTime::max());
+        self.get_addr_vesting_at_time(addr, &timestamp)
     }
 
     /// Initialize the hashmap of addresses from the vesting file
