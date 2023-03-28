@@ -11,7 +11,7 @@ use std::pin::Pin;
 use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
-/// type declaration for SendEndorsementsStream
+/// Type declaration for SendEndorsementsStream
 pub type SendEndorsementsStream = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsStreamResponse, tonic::Status>>
@@ -20,12 +20,13 @@ pub type SendEndorsementsStream = Pin<
     >,
 >;
 
+/// Send endorsements
 pub(crate) async fn send_endorsements(
     grpc: &MassaGrpcService,
     request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsStreamRequest>>,
 ) -> Result<SendEndorsementsStream, GrpcError> {
-    let mut cmd_sender = grpc.pool_command_sender.clone();
-    let mut protocol_sender = grpc.protocol_command_sender.clone();
+    let mut pool_command_sender = grpc.pool_command_sender.clone();
+    let mut protocol_command_sender = grpc.protocol_command_sender.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
 
@@ -37,7 +38,7 @@ pub(crate) async fn send_endorsements(
             match result {
                 Ok(req_content) => {
                     if req_content.endorsements.is_empty() {
-                        send_endorsements_notify_error(
+                        report_error(
                             req_content.id.clone(),
                             tx.clone(),
                             tonic::Code::InvalidArgument,
@@ -47,7 +48,7 @@ pub(crate) async fn send_endorsements(
                     } else {
                         let proto_endorsement = req_content.endorsements;
                         if proto_endorsement.len() as u32 > config.max_endorsements_per_message {
-                            send_endorsements_notify_error(
+                            report_error(
                                 req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
@@ -96,14 +97,14 @@ pub(crate) async fn send_endorsements(
                                     endorsement_storage.store_endorsements(
                                         verified_eds.values().cloned().collect(),
                                     );
-                                    cmd_sender.add_endorsements(endorsement_storage.clone());
+                                    pool_command_sender.add_endorsements(endorsement_storage.clone());
 
                                     if let Err(e) =
-                                        protocol_sender.propagate_endorsements(endorsement_storage)
+                                        protocol_command_sender.propagate_endorsements(endorsement_storage)
                                     {
                                         let error =
                                             format!("failed to propagate endorsement: {}", e);
-                                        send_endorsements_notify_error(
+                                        report_error(
                                             req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::Internal,
@@ -131,7 +132,7 @@ pub(crate) async fn send_endorsements(
                                 }
                                 Err(e) => {
                                     let error = format!("invalid endorsement(s): {}", e);
-                                    send_endorsements_notify_error(
+                                    report_error(
                                         req_content.id.clone(),
                                         tx.clone(),
                                         tonic::Code::InvalidArgument,
@@ -164,17 +165,18 @@ pub(crate) async fn send_endorsements(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-
     Ok(Box::pin(out_stream) as SendEndorsementsStream)
 }
 
-async fn send_endorsements_notify_error(
+/// This function reports an error to the sender by sending a gRPC response message to the client
+async fn report_error(
     id: String,
     sender: tokio::sync::mpsc::Sender<Result<grpc::SendEndorsementsStreamResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
+    // Attempt to send the error response message to the sender
     if let Err(e) = sender
         .send(Ok(grpc::SendEndorsementsStreamResponse {
             id,
@@ -188,6 +190,7 @@ async fn send_endorsements_notify_error(
         }))
         .await
     {
+        // If sending the message fails, log the error message
         error!(
             "failed to send back send_endorsements error response: {}",
             e

@@ -14,7 +14,7 @@ use tonic::codegen::futures_core;
 use tonic::Request;
 use tracing::log::{error, warn};
 
-/// type declaration for SendBlockStream
+/// Type declaration for SendBlockStream
 pub type SendBlocksStream = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<SendBlocksStreamResponse, tonic::Status>>
@@ -23,12 +23,13 @@ pub type SendBlocksStream = Pin<
     >,
 >;
 
+/// Send blocks
 pub(crate) async fn send_blocks(
     grpc: &MassaGrpcService,
     request: Request<tonic::Streaming<grpc::SendBlocksStreamRequest>>,
 ) -> Result<SendBlocksStream, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
-    let mut protocol_sender = grpc.protocol_command_sender.clone();
+    let mut protocol_command_sender = grpc.protocol_command_sender.clone();
     let storage = grpc.storage.clone_without_refs();
     let config = grpc.grpc_config.clone();
     let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -39,7 +40,7 @@ pub(crate) async fn send_blocks(
             match result {
                 Ok(req_content) => {
                     let Some(proto_block) = req_content.block else {
-                        send_blocks_notify_error(
+                        report_error(
                             req_content.id.clone(),
                             tx.clone(),
                             tonic::Code::InvalidArgument,
@@ -76,7 +77,7 @@ pub(crate) async fn send_blocks(
                                         })
                                     {
                                         // Signature error
-                                        send_blocks_notify_error(
+                                        report_error(
                                             req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::InvalidArgument,
@@ -97,10 +98,10 @@ pub(crate) async fn send_blocks(
                                         false,
                                     );
 
-                                    if let Err(e) =
-                                        protocol_sender.integrated_block(block_id, block_storage)
+                                    if let Err(e) = protocol_command_sender
+                                        .integrated_block(block_id, block_storage)
                                     {
-                                        send_blocks_notify_error(
+                                        report_error(
                                             req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::Internal,
@@ -129,7 +130,7 @@ pub(crate) async fn send_blocks(
                                         error!("failed to send back block response: {}", e);
                                     };
                                 } else {
-                                    send_blocks_notify_error(
+                                    report_error(
                                         req_content.id.clone(),
                                         tx.clone(),
                                         tonic::Code::InvalidArgument,
@@ -141,7 +142,7 @@ pub(crate) async fn send_blocks(
                                 Ok(())
                             }
                             Err(e) => {
-                                send_blocks_notify_error(
+                                report_error(
                                     req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
@@ -170,17 +171,18 @@ pub(crate) async fn send_blocks(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-
     Ok(Box::pin(out_stream) as SendBlocksStream)
 }
 
-async fn send_blocks_notify_error(
+/// This function reports an error to the sender by sending a gRPC response message to the client
+async fn report_error(
     id: String,
     sender: Sender<Result<SendBlocksStreamResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
+    // Attempt to send the error response message to the sender
     if let Err(e) = sender
         .send(Ok(SendBlocksStreamResponse {
             id,
@@ -192,6 +194,7 @@ async fn send_blocks_notify_error(
         }))
         .await
     {
+        // If sending the message fails, log the error message
         error!("failed to send back send_blocks error response: {}", e);
     }
 }

@@ -12,7 +12,7 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::error;
 
-/// type declaration for StreamTransactionsThroughputStream
+/// Type declaration for StreamTransactionsThroughputStream
 pub type NewOperationsStream = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<NewOperationsStreamResponse, tonic::Status>>
@@ -21,6 +21,7 @@ pub type NewOperationsStream = Pin<
     >,
 >;
 
+/// New operations
 pub(crate) async fn new_operations(
     grpc: &MassaGrpcService,
     request: Request<Streaming<NewOperationsStreamRequest>>,
@@ -131,7 +132,7 @@ pub(crate) async fn new_operations(
                             Some(res) => {
                                 match res {
                                     Ok(data) => {
-                                        // update current filter && request id
+                                        // Update current filter && request id
                                         filter = data.filter;
                                         request_id = data.id;
                                     },
@@ -142,7 +143,7 @@ pub(crate) async fn new_operations(
                                 }
                             },
                             None => {
-                                // client disconnected
+                                // Client disconnected
                                 break;
                             },
                         }

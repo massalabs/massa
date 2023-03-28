@@ -11,7 +11,7 @@ use std::pin::Pin;
 use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
-/// type declaration for SendOperationsStream
+/// Type declaration for SendOperationsStream
 pub type SendOperationsStream = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<grpc::SendOperationsStreamResponse, tonic::Status>>
@@ -20,24 +20,31 @@ pub type SendOperationsStream = Pin<
     >,
 >;
 
+/// This function takes a streaming request of operations messages,
+/// verifies, saves and propagates the operations received in each message, and sends back a stream of
+/// operations ids messages
 pub(crate) async fn send_operations(
     grpc: &MassaGrpcService,
     request: tonic::Request<tonic::Streaming<grpc::SendOperationsStreamRequest>>,
 ) -> Result<SendOperationsStream, GrpcError> {
-    let mut cmd_sender = grpc.pool_command_sender.clone();
-    let mut protocol_sender = grpc.protocol_command_sender.clone();
+    let mut pool_command_sender = grpc.pool_command_sender.clone();
+    let mut protocol_command_sender = grpc.protocol_command_sender.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
 
+    // Create a channel for sending responses to the client
     let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
+    // Extract the incoming stream of operations messages
     let mut in_stream = request.into_inner();
 
+    // Spawn a task that reads incoming messages and processes the operations in each message
     tokio::spawn(async move {
         while let Some(result) = in_stream.next().await {
             match result {
                 Ok(req_content) => {
+                    // If the incoming message has no operations, send an error message back to the client
                     if req_content.operations.is_empty() {
-                        send_operations_notify_error(
+                        report_error(
                             req_content.id.clone(),
                             tx.clone(),
                             tonic::Code::InvalidArgument,
@@ -45,9 +52,9 @@ pub(crate) async fn send_operations(
                         )
                         .await;
                     } else {
-                        let proto_operations = req_content.operations;
-                        if proto_operations.len() as u32 > config.max_operations_per_message {
-                            send_operations_notify_error(
+                        // If there are too many operations in the incoming message, send an error message back to the client
+                        if req_content.operations.len() as u32 > config.max_operations_per_message {
+                            report_error(
                                 req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
@@ -55,6 +62,7 @@ pub(crate) async fn send_operations(
                             )
                             .await;
                         } else {
+                            // Deserialize and verify each operation in the incoming message
                             let operation_deserializer =
                                 SecureShareDeserializer::new(OperationDeserializer::new(
                                     config.max_datastore_value_length,
@@ -64,13 +72,16 @@ pub(crate) async fn send_operations(
                                     config.max_op_datastore_key_length,
                                     config.max_op_datastore_value_length,
                                 ));
-                            let verified_ops_res: Result<HashMap<String, SecureShareOperation>, GrpcError> = proto_operations
+                            let verified_ops_res: Result<HashMap<String, SecureShareOperation>, GrpcError> = req_content.operations
                                 .into_iter()
                                 .map(|proto_operation| {
+                                    // Concatenate signature, public key, and data into a single byte vector
                                     let mut op_serialized = Vec::new();
                                     op_serialized.extend(proto_operation.signature.as_bytes());
                                     op_serialized.extend(proto_operation.content_creator_pub_key.as_bytes());
                                     op_serialized.extend(proto_operation.serialized_data);
+
+                                    // Deserialize the operation and verify its signature
                                     let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
@@ -93,18 +104,22 @@ pub(crate) async fn send_operations(
                                 .collect();
 
                             match verified_ops_res {
+                                // If all operations in the incoming message are valid, store and propagate them
                                 Ok(verified_ops) => {
                                     let mut operation_storage = storage.clone_without_refs();
                                     operation_storage
                                         .store_operations(verified_ops.values().cloned().collect());
-                                    cmd_sender.add_operations(operation_storage.clone());
+                                    // Add the received operations to the operations pool
+                                    pool_command_sender.add_operations(operation_storage.clone());
 
-                                    if let Err(e) =
-                                        protocol_sender.propagate_operations(operation_storage)
+                                    // Propagate the operations to the network
+                                    if let Err(e) = protocol_command_sender
+                                        .propagate_operations(operation_storage)
                                     {
+                                        // If propagation failed, send an error message back to the client
                                         let error =
                                             format!("failed to propagate operations: {}", e);
-                                        send_operations_notify_error(
+                                        report_error(
                                             req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::Internal,
@@ -113,9 +128,11 @@ pub(crate) async fn send_operations(
                                         .await;
                                     };
 
+                                    // Build the response message
                                     let result = grpc::OperationResult {
                                         operations_ids: verified_ops.keys().cloned().collect(),
                                     };
+                                    // Send the response message back to the client
                                     if let Err(e) = tx
                                         .send(Ok(grpc::SendOperationsStreamResponse {
                                             id: req_content.id.clone(),
@@ -130,9 +147,10 @@ pub(crate) async fn send_operations(
                                         error!("failed to send back operations response: {}", e);
                                     };
                                 }
+                                // If the verification failed, send an error message back to the client
                                 Err(e) => {
                                     let error = format!("invalid operation(s): {}", e);
-                                    send_operations_notify_error(
+                                    report_error(
                                         req_content.id.clone(),
                                         tx.clone(),
                                         tonic::Code::InvalidArgument,
@@ -162,17 +180,18 @@ pub(crate) async fn send_operations(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-
     Ok(Box::pin(out_stream) as SendOperationsStream)
 }
 
-async fn send_operations_notify_error(
+/// This function reports an error to the sender by sending a gRPC response message to the client
+async fn report_error(
     id: String,
     sender: tokio::sync::mpsc::Sender<Result<grpc::SendOperationsStreamResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
+    // Attempt to send the error response message to the sender
     if let Err(e) = sender
         .send(Ok(grpc::SendOperationsStreamResponse {
             id,
@@ -186,6 +205,7 @@ async fn send_operations_notify_error(
         }))
         .await
     {
+        // If sending the message fails, log the error message
         error!("failed to send back send_operations error response: {}", e);
     }
 }

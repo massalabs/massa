@@ -7,9 +7,10 @@ use tokio::{select, time};
 use tonic::codegen::futures_core;
 use tracing::log::error;
 
-const INTERVAL_TIME: u64 = 10; // second
+// Throughput interval in seconds
+const THROUGHPUT_INTERVAL: u64 = 10;
 
-/// type declaration for StreamTransactionsThroughputStream
+/// Type declaration for StreamTransactionsThroughputStream
 pub type TransactionsThroughputStream = Pin<
     Box<
         dyn futures_core::Stream<
@@ -19,48 +20,57 @@ pub type TransactionsThroughputStream = Pin<
     >,
 >;
 
+/// The function returns a stream of transaction throughput statistics
 pub(crate) async fn transactions_throughput(
     grpc: &MassaGrpcService,
     request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputStreamRequest>>,
 ) -> Result<TransactionsThroughputStream, GrpcError> {
-    let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
-    let mut in_stream = request.into_inner();
-    let ctrl = grpc.execution_controller.clone();
+    let execution_controller = grpc.execution_controller.clone();
 
+    // Create a channel for sending responses to the client
+    let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    // Extract the incoming stream of operations messages
+    let mut in_stream = request.into_inner();
+
+    // Spawn a new Tokio task to handle the stream processing
     tokio::spawn(async move {
         let mut request_id = "".to_string();
-        let mut interval = time::interval(Duration::from_secs(INTERVAL_TIME));
+        let mut interval = time::interval(Duration::from_secs(THROUGHPUT_INTERVAL));
 
+        // Continuously loop until the stream ends or an error occurs
         loop {
             select! {
+                // Receive the next request from the client
                 res = in_stream.next() => {
                     match res {
                         Some(Ok(req)) => {
+                            // Update the request ID
                             request_id = req.id;
-                            // update interval tick
-                            let new_timer = req.interval.unwrap_or(INTERVAL_TIME);
+                            // Update the interval timer based on the request (or use the default)
+                            let new_timer = req.interval.unwrap_or(THROUGHPUT_INTERVAL);
                             interval = time::interval(Duration::from_secs(new_timer));
                             interval.reset();
                         },
                         _ => {
-                            // client disconnected
+                            // Client disconnected
                             break;
                         }
                     }
                 },
+                // Execute the code block whenever the timer ticks
                 _ = interval.tick() => {
-                    let stats = ctrl.get_stats();
+                    let stats = execution_controller.get_stats();
+                    // Calculate the throughput over the time window
                     let nb_sec_range = stats
                         .time_window_end
                         .saturating_sub(stats.time_window_start)
                         .to_duration()
                         .as_secs();
-
                     let throughput = stats
                         .final_executed_operations_count
                         .checked_div(nb_sec_range as usize)
                         .unwrap_or_default() as u32;
-
+                    // Send the throughput response back to the client
                     if let Err(e) = tx
                         .send(Ok(GetTransactionsThroughputResponse {
                             id: request_id.clone(),
@@ -68,7 +78,8 @@ pub(crate) async fn transactions_throughput(
                         }))
                         .await
                     {
-                        error!("failed to send back throughput response: {}", e);
+                        // Log an error if sending the response fails
+                        error!("failed to send back transactions_throughput response: {}", e);
                         break;
                     }
                 }
@@ -77,6 +88,5 @@ pub(crate) async fn transactions_throughput(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-
     Ok(Box::pin(out_stream) as TransactionsThroughputStream)
 }

@@ -12,7 +12,7 @@ use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
-/// type declaration for NewBlocksHeadersStream
+/// Type declaration for NewBlocksHeadersStream
 pub type NewBlocksHeadersStream = Pin<
     Box<
         dyn futures_core::Stream<Item = Result<NewBlocksHeadersStreamResponse, tonic::Status>>
@@ -21,6 +21,7 @@ pub type NewBlocksHeadersStream = Pin<
     >,
 >;
 
+/// New blocks headers
 pub(crate) async fn new_blocks_headers(
     grpc: &MassaGrpcService,
     request: Request<Streaming<NewBlocksHeadersStreamRequest>>,
@@ -71,7 +72,7 @@ pub(crate) async fn new_blocks_headers(
                             }
                         },
                         None => {
-                            // client disconnected
+                            // Client disconnected
                             break;
                         },
                     }
