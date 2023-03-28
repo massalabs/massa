@@ -152,7 +152,7 @@ async fn launch(
     // Create final ledger
     let ledger = FinalLedger::new(
         ledger_config.clone(),
-        _args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
+        args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
     );
 
     // launch selector worker
@@ -172,7 +172,7 @@ async fn launch(
             final_state_config,
             Box::new(ledger),
             selector_controller.clone(),
-            _args.restart_from_snapshot_at_period.unwrap_or_default(),
+            args.restart_from_snapshot_at_period.unwrap_or_default(),
         )
         .expect("could not init final state"),
     ));
@@ -247,7 +247,7 @@ async fn launch(
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
-            _args.restart_from_snapshot_at_period
+            args.restart_from_snapshot_at_period
         ) => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
