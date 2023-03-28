@@ -1080,7 +1080,7 @@
     <span class="comment">// Create final ledger
     </span><span class="kw">let </span>ledger = FinalLedger::new(
         ledger_config.clone(),
-        _args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
+        args.restart_from_snapshot_at_period.is_some() || <span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>),
     );
 
     <span class="comment">// launch selector worker
@@ -1100,7 +1100,7 @@
             final_state_config,
             Box::new(ledger),
             selector_controller.clone(),
-            _args.restart_from_snapshot_at_period.unwrap_or_default(),
+            args.restart_from_snapshot_at_period.unwrap_or_default(),
         )
         .expect(<span class="string">&quot;could not init final state&quot;</span>),
     ));
@@ -1175,7 +1175,7 @@
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
-            _args.restart_from_snapshot_at_period
+            args.restart_from_snapshot_at_period
         ) =&gt; <span class="kw">match </span>res {
             <span class="prelude-val">Ok</span>(vals) =&gt; vals,
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err)

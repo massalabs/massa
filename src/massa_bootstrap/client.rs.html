@@ -547,7 +547,6 @@
 <a href="#547" id="547">547</a>
 <a href="#548" id="548">548</a>
 <a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
 </pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 
@@ -1003,7 +1002,6 @@
             <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
 
             <span class="kw">if </span>!bootstrap_config.keep_ledger {
-              
                 <span class="comment">// load ledger from initial ledger file
                 </span>final_state_guard
                     .ledger
@@ -1015,7 +1013,7 @@
                         ))
                     })<span class="question-mark">?</span>;
             }
-          
+
             <span class="comment">// create the initial cycle of PoS cycle_history
             </span>final_state_guard.pos_state.create_initial_cycle();
         }
