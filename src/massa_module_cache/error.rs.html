@@ -31,7 +31,7 @@
 
 <span class="kw">impl </span>From&lt;anyhow::Error&gt; <span class="kw">for </span>CacheError {
     <span class="kw">fn </span>from(e: anyhow::Error) -&gt; CacheError {
-        <span class="kw">return </span>CacheError::VMError(e.to_string());
+        CacheError::VMError(e.to_string())
     }
 }
 </code></pre></div>

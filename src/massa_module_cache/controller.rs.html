@@ -146,10 +146,6 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
 </pre><pre class="rust"><code><span class="comment">// IMPORTANT TODO: change bc update ABI costs in abi_gas_costs.json
 
 </span><span class="kw">use </span>massa_hash::Hash;
@@ -217,14 +213,12 @@
                 .get(hash, <span class="self">self</span>.cfg.compilation_gas, <span class="self">self</span>.cfg.gas_costs.clone())
         {
             <span class="self">self</span>.lru_cache.insert(hash, hd_module_info);
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
+            <span class="self">self</span>.hd_cache.insert(hash, lru_module_info);
         } <span class="kw">else </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
-                <span class="self">self</span>.hd_cache.insert(hash, lru_module_info);
-            } <span class="kw">else </span>{
-                <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode);
-                <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
-                <span class="self">self</span>.lru_cache.insert(hash, module_info);
-            }
+            <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode);
+            <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
+            <span class="self">self</span>.lru_cache.insert(hash, module_info);
         }
     }
 
@@ -247,19 +241,17 @@
         <span class="kw">let </span>hash = Hash::compute_from(bytecode);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
             lru_module_info
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(hd_module_info) =
+            <span class="self">self</span>.hd_cache
+                .get(hash, <span class="self">self</span>.cfg.compilation_gas, <span class="self">self</span>.cfg.gas_costs.clone())
+        {
+            <span class="self">self</span>.lru_cache.insert(hash, hd_module_info.clone());
+            hd_module_info
         } <span class="kw">else </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(hd_module_info) =
-                <span class="self">self</span>.hd_cache
-                    .get(hash, <span class="self">self</span>.cfg.compilation_gas, <span class="self">self</span>.cfg.gas_costs.clone())
-            {
-                <span class="self">self</span>.lru_cache.insert(hash, hd_module_info.clone());
-                hd_module_info
-            } <span class="kw">else </span>{
-                <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode);
-                <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
-                <span class="self">self</span>.lru_cache.insert(hash, module_info.clone());
-                module_info
-            }
+            <span class="kw">let </span>module_info = <span class="self">self</span>.compile(bytecode);
+            <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
+            <span class="self">self</span>.lru_cache.insert(hash, module_info.clone());
+            module_info
         }
     }
 
@@ -269,7 +261,7 @@
         bytecode: <span class="kw-2">&amp;</span>[u8],
         execution_gas: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, CacheError&gt; {
-        <span class="kw">let </span>module_info = <span class="self">self</span>.load_module_info(<span class="kw-2">&amp;</span>bytecode);
+        <span class="kw">let </span>module_info = <span class="self">self</span>.load_module_info(bytecode);
         <span class="kw">let </span>module = <span class="kw">match </span>module_info {
             ModuleInfo::Invalid =&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(CacheError::LoadError(<span class="string">&quot;Loading invalid module&quot;</span>.to_string()));
