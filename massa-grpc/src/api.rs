@@ -213,6 +213,7 @@ pub(crate) fn get_blocks_by_slots(
                         index: endorsement.content.index,
                         endorsed_block: endorsement.content.endorsed_block.to_string(),
                     }),
+                    //HACK do not map serialized_data
                     serialized_data: Vec::new(),
                     signature: endorsement.signature.to_string(),
                     content_creator_pub_key: endorsement.content_creator_pub_key.to_string(),
@@ -242,6 +243,7 @@ pub(crate) fn get_blocks_by_slots(
             (
                 grpc::SecureShareBlockHeader {
                     content: Some(block_header),
+                    //HACK do not map serialized_data
                     serialized_data: Vec::new(),
                     signature: header.signature.to_string(),
                     content_creator_pub_key: header.content_creator_pub_key.to_string(),

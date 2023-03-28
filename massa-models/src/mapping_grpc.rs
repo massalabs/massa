@@ -37,7 +37,7 @@ impl From<SecureShareEndorsement> for grpc::SecureShareEndorsement {
     fn from(value: SecureShareEndorsement) -> Self {
         grpc::SecureShareEndorsement {
             content: Some(value.content.into()),
-            //TODO do not map serialized_data
+            //HACK do not map serialized_data
             serialized_data: Vec::new(),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
@@ -121,7 +121,7 @@ impl From<SecureShareOperation> for grpc::SecureShareOperation {
     fn from(value: SecureShareOperation) -> Self {
         grpc::SecureShareOperation {
             content: Some(value.content.into()),
-            //TODO do not map serialized_data
+            //HACK do not map serialized_data
             serialized_data: Vec::new(),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
@@ -171,7 +171,7 @@ impl From<SecuredHeader> for grpc::SecureShareBlockHeader {
     fn from(value: SecuredHeader) -> Self {
         grpc::SecureShareBlockHeader {
             content: Some(value.content.into()),
-            //TODO do not map serialized_data
+            //HACK do not map serialized_data
             serialized_data: Vec::new(),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),

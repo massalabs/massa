@@ -40,9 +40,9 @@
 
 [grpc]
     # whether to enable gRPC
-    enabled = true
+    enabled = false
     # whether to add HTTP 1 layer
-    accept_http1 = true
+    accept_http1 = false
     # whether to enable gRPC reflection(introspection)
     enable_reflection = true
     # bind for the Massa gRPC API

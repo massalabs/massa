@@ -313,7 +313,7 @@ pub struct FilledBlock {
     #[prost(message, repeated, tag = "2")]
     pub operations: ::prost::alloc::vec::Vec<FilledOperationTuple>,
 }
-/// message struct
+/// Block header
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockHeader {

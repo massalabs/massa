@@ -108,6 +108,7 @@ pub(crate) async fn new_operations(
 
                                 let ret = grpc::SecureShareOperation {
                                     content: Some(operation.content.into()),
+                                    //HACK do not map serialized_data
                                     serialized_data: Vec::new(),
                                     signature: operation.signature.to_string(),
                                     content_creator_pub_key: operation.content_creator_pub_key.to_string(),

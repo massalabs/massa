@@ -31,7 +31,7 @@ message FilledBlock {
     repeated FilledOperationTuple operations = 2;
 }
 
-// message struct
+// Block header
 message BlockHeader {
     // Slot
     Slot slot = 1;
