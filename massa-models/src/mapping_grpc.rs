@@ -25,7 +25,6 @@ impl From<Slot> for grpc::Slot {
 
 impl From<Endorsement> for grpc::Endorsement {
     fn from(value: Endorsement) -> Self {
-        println!("slot into {}", value.slot);
         grpc::Endorsement {
             slot: Some(value.slot.into()),
             index: value.index,

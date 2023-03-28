@@ -17,7 +17,9 @@ use tracing::log::{error, warn};
 /// type declaration for SendBlockStream
 pub type SendBlocksStream = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<SendBlocksStreamResponse, tonic::Status>> + Send + 'static,
+        dyn futures_core::Stream<Item = Result<SendBlocksStreamResponse, tonic::Status>>
+            + Send
+            + 'static,
     >,
 >;
 
@@ -116,9 +118,11 @@ pub(crate) async fn send_blocks(
                                         .send(Ok(SendBlocksStreamResponse {
                                             id: req_content.id.clone(),
 
-                                            result: Some(grpc::send_blocks_stream_response::Result::Ok(
-                                                result,
-                                            )),
+                                            result: Some(
+                                                grpc::send_blocks_stream_response::Result::Ok(
+                                                    result,
+                                                ),
+                                            ),
                                         }))
                                         .await
                                     {
