@@ -1,5 +1,5 @@
 // IMPORTANT TODO: change bc update ABI costs in abi_gas_costs.json
-// TODO: move some of the warn logs to debug
+// IMPORTANT TODO: move non-error warn logs to debug
 
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;

@@ -19,7 +19,7 @@ pub enum FactoryError {
     OnCreate(String, String),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// Strategy to use when creating a new object from a factory
 pub enum FactoryStrategy {
     /// use get_latest_version (see Factory trait)
@@ -264,6 +264,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
+            activation_delay: MassaTime::from(2),
         };
         let vs_1 = MipState::new(MassaTime::from(10));
 
@@ -274,6 +275,7 @@ mod test {
             component_version: 2,
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 
@@ -345,6 +347,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(12),
             timeout: MassaTime::from(15),
+            activation_delay: MassaTime::from(2),
         };
         let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
 
@@ -355,6 +358,7 @@ mod test {
             component_version: 2,
             start: MassaTime::from(25),
             timeout: MassaTime::from(28),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = MipState::new(MassaTime::from(18));
 
@@ -376,7 +380,7 @@ mod test {
         let st_1 = FactoryStrategy::At(MassaTime::from(8)); // vi_1 not yet defined
         let ts_1_2 = MassaTime::from(13);
         let st_1_2 = FactoryStrategy::At(ts_1_2); // vi_1 is started (after vi_1.start)
-        let st_2 = FactoryStrategy::At(MassaTime::from(16)); // vi_1 is active (after vi_1.timeout)
+        let st_2 = FactoryStrategy::At(MassaTime::from(18)); // vi_1 is active (after start + activation delay)
         let st_3 = FactoryStrategy::At(MassaTime::from(27)); // vi_2 is started or locked_in
         let st_4 = FactoryStrategy::At(MassaTime::from(30)); // vi_2 is active (after vi_2.timeout)
 

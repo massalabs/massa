@@ -23,3 +23,13 @@ mod interface;
     feature = "testing"
 ))]
 pub use mock::get_sample_state;
+
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
+pub use mock::get_initials_vesting;
+
+#[cfg(any(test, feature = "testing"))]
+mod tests_vesting_manager;

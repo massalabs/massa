@@ -3,6 +3,7 @@ use crate::versioning::{Advance, ComponentState, MipInfo, MipState};
 use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_time::MassaTime;
 
+// TODO: rename versioning_info
 pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) -> MipState {
     // A helper function to advance a state
     // Assume enough time between versioning info start & timeout
@@ -26,6 +27,7 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
         timeout,
         threshold: Default::default(),
         now: start.saturating_add(MassaTime::from(1)),
+        activation_delay: versioning_info.activation_delay,
     };
     state.on_advance(&advance_msg);
 
@@ -47,7 +49,11 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
         return state;
     }
 
-    advance_msg.now = timeout.saturating_add(MassaTime::from(1));
+    advance_msg.now = advance_msg
+        .now
+        .saturating_add(versioning_info.activation_delay)
+        .saturating_add(MassaTime::from(1));
+
     state.on_advance(&advance_msg);
     // Active
     state
