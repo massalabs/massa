@@ -204,22 +204,7 @@ pub(crate) fn get_blocks_by_slots(
                 .content
                 .endorsements
                 .into_iter()
-                .map(|endorsement| grpc::SecureShareEndorsement {
-                    content: Some(grpc::Endorsement {
-                        slot: Some(grpc::Slot {
-                            period: endorsement.content.slot.period,
-                            thread: endorsement.content.slot.thread as u32,
-                        }),
-                        index: endorsement.content.index,
-                        endorsed_block: endorsement.content.endorsed_block.to_string(),
-                    }),
-                    //HACK do not map serialized_data
-                    serialized_data: Vec::new(),
-                    signature: endorsement.signature.to_string(),
-                    content_creator_pub_key: endorsement.content_creator_pub_key.to_string(),
-                    content_creator_address: endorsement.content_creator_address.to_string(),
-                    id: endorsement.id.to_string(),
-                })
+                .map(|endorsement| endorsement.into())
                 .collect();
 
             let block_header = grpc::BlockHeader {
