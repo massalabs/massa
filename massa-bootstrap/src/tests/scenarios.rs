@@ -1,17 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::{
-    mock_establisher,
-    tools::{
-        bridge_mock_streams, get_boot_state, get_peers, get_random_final_state_bootstrap,
-        get_random_ledger_changes,
-    },
+use super::tools::{
+    get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
 use crate::tests::tools::{
     get_random_async_pool_changes, get_random_executed_ops_changes, get_random_pos_changes,
 };
 use crate::BootstrapConfig;
 use crate::{
+    establisher::{MockBSConnector, MockBSListener},
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
@@ -45,12 +42,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{
-    path::PathBuf,
-    str::FromStr,
-    sync::{atomic::Ordering, Arc},
-    time::Duration,
-};
+use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 use tokio::net::TcpStream;
 
@@ -146,8 +138,8 @@ async fn test_bootstrap_server() {
     let final_state_client_clone = final_state_client.clone();
     let final_state_server_clone = final_state_server.clone();
 
-    // Setup bootstrap mock-duplex
-    let (mut mock_bs_listener, bootstrap_interface) = mock_establisher::new();
+    let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
+
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
     let mut mocked1 = MockNetworkCommandSender::new();
     let mut mocked2 = MockNetworkCommandSender::new();
@@ -196,9 +188,7 @@ async fn test_bootstrap_server() {
         mocked1,
         final_state_server.clone(),
         bootstrap_config.clone(),
-        mock_bs_listener
-            .get_listener(&bootstrap_config.listen_addr.unwrap())
-            .unwrap(),
+        mock_bs_listener,
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
     )
@@ -206,52 +196,17 @@ async fn test_bootstrap_server() {
     .unwrap();
 
     // launch the get_state process
-    let (mut mock_remote_connector, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_config,
             final_state_client_clone,
-            mock_remote_connector.get_connector(),
+            mock_remote_connector,
             Version::from_str("TEST.1.10").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
         )
         .await
         .unwrap()
-    });
-
-    // accept connection attempt from remote
-    let remote_bridge = std::thread::spawn(move || {
-        let (remote_rw, conn_addr, waker) = remote_interface
-            .wait_connection_attempt_from_controller()
-            .expect("timeout waiting for connection attempt from remote");
-        let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
-        assert_eq!(
-            conn_addr, expect_conn_addr,
-            "client connected to wrong bootstrap ip"
-        );
-        waker.store(true, Ordering::Relaxed);
-        remote_rw
-    });
-
-    // connect to bootstrap
-    let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked
-    let bootstrap_bridge = tokio::time::timeout(
-        std::time::Duration::from_millis(1000),
-        bootstrap_interface.connect_to_controller(&remote_addr),
-    )
-    .await
-    .expect("timeout while connecting to bootstrap")
-    .expect("could not connect to bootstrap");
-
-    // launch bridge
-    bootstrap_bridge.set_nonblocking(true).unwrap();
-    let bootstrap_bridge = TcpStream::from_std(bootstrap_bridge).unwrap();
-    let bridge = tokio::spawn(async move {
-        let remote_bridge = remote_bridge.join().unwrap();
-        remote_bridge.set_nonblocking(true).unwrap();
-        let remote_bridge = TcpStream::from_std(remote_bridge).unwrap();
-        bridge_mock_streams(remote_bridge, bootstrap_bridge).await;
     });
 
     // launch the modifier thread
@@ -281,9 +236,6 @@ async fn test_bootstrap_server() {
     let bootstrap_res = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
-
-    // wait for bridge
-    bridge.await.expect("bridge join failed");
 
     // apply the changes to the server state before matching with the client
     {
@@ -339,4 +291,28 @@ async fn test_bootstrap_server() {
     // stop selector controllers
     server_selector_manager.stop();
     client_selector_manager.stop();
+}
+
+fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
+    // Setup the server/client connection
+    // Bind a TcpListener to localhost on a specific port
+    let listener = std::net::TcpListener::bind("127.0.0.1:8069").unwrap();
+    let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
+    let conn = std::thread::spawn(|| std::net::TcpStream::connect("127.0.0.1:8069").unwrap());
+    std::thread::spawn(move || loop {
+        conn_tx.send(listener.accept().unwrap()).unwrap()
+    });
+
+    // Mock the connection setups
+    let mut mock_bs_listener = MockBSListener::new();
+    mock_bs_listener
+        .expect_accept()
+        .times(2)
+        .returning(move || Ok(conn_rx.recv().unwrap()));
+    let mut mock_remote_connector = MockBSConnector::new();
+    mock_remote_connector
+        .expect_connect()
+        .times(1)
+        .return_once(move |_| Ok(conn.join().unwrap()));
+    (mock_bs_listener, mock_remote_connector)
 }
