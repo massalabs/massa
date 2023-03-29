@@ -127,8 +127,8 @@ async fn test_binders() {
 
         let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        client.handshake(version).await.unwrap();
-        let message = client.next().await.unwrap();
+        client.handshake(version).unwrap();
+        let message = client.next().unwrap();
         match message {
             BootstrapServerMessage::BootstrapPeers { peers } => {
                 assert_eq!(vector_peers, peers.0);
@@ -140,7 +140,6 @@ async fn test_binders() {
             .send(&BootstrapClientMessage::BootstrapError {
                 error: "test error".to_string(),
             })
-            .await
             .unwrap();
 
         // Test message 3
@@ -149,7 +148,7 @@ async fn test_binders() {
             bootstrap_config.bootstrap_list[0].0.ip(),
             bootstrap_config.bootstrap_list[0].0.ip(),
         ];
-        let message = client.next().await.unwrap();
+        let message = client.next().unwrap();
         match message {
             BootstrapServerMessage::BootstrapPeers { peers } => {
                 assert_eq!(vector_peers, peers.0);
@@ -221,8 +220,8 @@ async fn test_binders_double_send_server_works() {
 
         let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        client.handshake(version).await.unwrap();
-        let message = client.next().await.unwrap();
+        client.handshake(version).unwrap();
+        let message = client.next().unwrap();
         match message {
             BootstrapServerMessage::BootstrapPeers { peers } => {
                 assert_eq!(vector_peers, peers.0);
@@ -236,7 +235,7 @@ async fn test_binders_double_send_server_works() {
             bootstrap_config.bootstrap_list[0].0.ip(),
             bootstrap_config.bootstrap_list[0].0.ip(),
         ];
-        let message = client.next().await.unwrap();
+        let message = client.next().unwrap();
         match message {
             BootstrapServerMessage::BootstrapPeers { peers } => {
                 assert_eq!(vector_peers, peers.0);
@@ -312,8 +311,8 @@ async fn test_binders_try_double_send_client_works() {
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
         let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        client.handshake(version).await.unwrap();
-        let message = client.next().await.unwrap();
+        client.handshake(version).unwrap();
+        let message = client.next().unwrap();
         match message {
             BootstrapServerMessage::BootstrapPeers { peers } => {
                 assert_eq!(vector_peers, peers.0);
@@ -325,7 +324,6 @@ async fn test_binders_try_double_send_client_works() {
             .send(&BootstrapClientMessage::BootstrapError {
                 error: "test error".to_string(),
             })
-            .await
             .unwrap();
 
         // Test message 3
@@ -333,11 +331,10 @@ async fn test_binders_try_double_send_client_works() {
             .send(&BootstrapClientMessage::BootstrapError {
                 error: "test error".to_string(),
             })
-            .await
             .unwrap();
 
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let message = client.next().await.unwrap();
+        let message = client.next().unwrap();
         match message {
             BootstrapServerMessage::BootstrapPeers { peers } => {
                 assert_eq!(vector_peers, peers.0);

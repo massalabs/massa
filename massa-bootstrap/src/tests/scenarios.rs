@@ -195,41 +195,47 @@ async fn test_bootstrap_server() {
     .unwrap();
 
     // launch the get_state process
-    let get_state_h = tokio::spawn(async move {
-        get_state(
-            bootstrap_config,
-            final_state_client_clone,
-            mock_remote_connector,
-            Version::from_str("TEST.1.10").unwrap(),
-            MassaTime::now().unwrap().saturating_sub(1000.into()),
-            None,
-        )
-        .await
-        .unwrap()
-    });
+    let get_state_h = tokio::task::Builder::new()
+        .name("state-getter")
+        .spawn(async move {
+            get_state(
+                bootstrap_config,
+                final_state_client_clone,
+                mock_remote_connector,
+                Version::from_str("TEST.1.10").unwrap(),
+                MassaTime::now().unwrap().saturating_sub(1000.into()),
+                None,
+            )
+            .await
+            .unwrap()
+        })
+        .unwrap();
 
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
-    std::thread::spawn(move || {
-        for _ in 0..10 {
-            std::thread::sleep(Duration::from_millis(500));
-            let mut final_write = final_state_server_clone.write();
-            let next = final_write.slot.get_next_slot(thread_count).unwrap();
-            final_write.slot = next;
-            let changes = StateChanges {
-                pos_changes: get_random_pos_changes(10),
-                ledger_changes: get_random_ledger_changes(10),
-                async_pool_changes: get_random_async_pool_changes(10),
-                executed_ops_changes: get_random_executed_ops_changes(10),
-            };
-            final_write
-                .changes_history
-                .push_back((next, changes.clone()));
-            let mut list_changes_write = list_changes_clone.write();
-            list_changes_write.push((next, changes));
-        }
-    });
+    std::thread::Builder::new()
+        .name("modifier thread".to_string())
+        .spawn(move || {
+            for _ in 0..10 {
+                std::thread::sleep(Duration::from_millis(500));
+                let mut final_write = final_state_server_clone.write();
+                let next = final_write.slot.get_next_slot(thread_count).unwrap();
+                final_write.slot = next;
+                let changes = StateChanges {
+                    pos_changes: get_random_pos_changes(10),
+                    ledger_changes: get_random_ledger_changes(10),
+                    async_pool_changes: get_random_async_pool_changes(10),
+                    executed_ops_changes: get_random_executed_ops_changes(10),
+                };
+                final_write
+                    .changes_history
+                    .push_back((next, changes.clone()));
+                let mut list_changes_write = list_changes_clone.write();
+                list_changes_write.push((next, changes));
+            }
+        })
+        .unwrap();
 
     // wait for get_state
     let bootstrap_res = get_state_h
@@ -300,7 +306,10 @@ fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
     // Due to the limitations of the mocking system, the listener must loop-accept in a dedicated
     // thread. We use a channel to make the connection available in the mocked `accept` method
     let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
-    let conn = std::thread::spawn(|| std::net::TcpStream::connect("127.0.0.1:8069").unwrap());
+    let conn = std::thread::Builder::new()
+        .name("mock conn connect".to_string())
+        .spawn(|| std::net::TcpStream::connect("127.0.0.1:8069").unwrap())
+        .unwrap();
     std::thread::Builder::new()
         .name("mock-listen-loop".to_string())
         .spawn(move || loop {
@@ -319,8 +328,8 @@ fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
 
     let mut mock_remote_connector = MockBSConnector::new();
     mock_remote_connector
-        .expect_connect()
+        .expect_connect_timeout()
         .times(1)
-        .return_once(move |_| Ok(conn.join().unwrap()));
+        .return_once(move |_, _| Ok(conn.join().unwrap()));
     (mock_bs_listener, mock_remote_connector)
 }
