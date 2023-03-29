@@ -36,14 +36,12 @@ pub struct MockListener {
 
 impl BSListener for MockListener {
     fn accept(&mut self) -> std::io::Result<(TcpStream, SocketAddr)> {
-        dbg!("accept recving");
         let (_addr, sender) = self.connection_listener_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener accept channel from Establisher closed".to_string(),
             )
         })?;
-        dbg!("accept received");
         let duplex_controller = TcpListener::bind("localhost:0").unwrap();
         let duplex_mock = TcpStream::connect(duplex_controller.local_addr().unwrap()).unwrap();
         let duplex_controller = duplex_controller.accept().unwrap();
@@ -51,15 +49,12 @@ impl BSListener for MockListener {
         // Tokio `from_std` have non-blocking Tcp objects as a requirement
         duplex_mock.set_nonblocking(true).unwrap();
 
-        dbg!("accept sending mock", &duplex_mock);
         sender.send(duplex_mock).map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener accept return \"oneshot\" channel to Establisher closed".to_string(),
             )
         })?;
-        dbg!("accept mock sent");
-        dbg!("accept returning", &duplex_controller);
 
         Ok(duplex_controller)
     }
@@ -72,7 +67,6 @@ pub struct MockConnector {
 
 impl BSConnector for MockConnector {
     fn connect(&mut self, addr: SocketAddr) -> std::io::Result<TcpStream> {
-        dbg!("connect");
         let duplex_mock = TcpListener::bind(addr).unwrap();
         let duplex_controller = TcpStream::connect(addr).unwrap();
         let duplex_mock = duplex_mock.accept().unwrap();
@@ -84,7 +78,6 @@ impl BSConnector for MockConnector {
         let sender = self.connection_connector_tx.clone();
         let send = std::thread::spawn(move || {
             // send new connection to mock
-            dbg!("connect thread sending");
             sender
                 .send((duplex_mock.0, addr, provided_waker))
                 .map_err(|_err| {
@@ -94,16 +87,12 @@ impl BSConnector for MockConnector {
                     )
                 })
                 .unwrap();
-            dbg!("connect thread sent");
         });
-        dbg!("sent spun up");
 
         while !waker.load(Ordering::Relaxed) {
             std::thread::yield_now();
         }
-        dbg!("flag is true");
         send.join().unwrap();
-        dbg!("joined");
         Ok(duplex_controller)
     }
 }
@@ -140,7 +129,6 @@ pub struct MockEstablisherInterface {
 
 impl MockEstablisherInterface {
     pub async fn connect_to_controller(&self, addr: &SocketAddr) -> io::Result<TcpStream> {
-        dbg!("conn ctrl");
         let sender = self.connection_listener_tx.as_ref().ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Other,
@@ -148,15 +136,12 @@ impl MockEstablisherInterface {
             )
         })?;
         let (response_tx, response_rx) = bounded::<TcpStream>(1);
-        dbg!("conn ctrl: sending resp_tx", addr);
         sender.send((*addr, response_tx)).map_err(|_err| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "mock connect_to_controller_listener channel to listener closed".to_string(),
             )
         })?;
-        dbg!("conn ctrl: sent resp_tx");
-        dbg!("conn ctrl: getting duplex mokc");
         let duplex_mock = response_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
@@ -164,14 +149,12 @@ impl MockEstablisherInterface {
                     .to_string(),
             )
         })?;
-        dbg!("conn ctrl: got", &duplex_mock);
         Ok(duplex_mock)
     }
 
     pub fn wait_connection_attempt_from_controller(
         &mut self,
     ) -> io::Result<(TcpStream, SocketAddr, Arc<AtomicBool>)> {
-        dbg!("wait conn attempt");
         self.connection_connector_rx.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,

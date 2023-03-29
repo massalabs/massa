@@ -167,7 +167,6 @@ async fn test_bootstrap_server() {
     .unwrap()
     .unwrap();
 
-    dbg!("test: launching get state");
     // launch the get_state process
     let (mut mock_remote_connector, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
@@ -182,15 +181,12 @@ async fn test_bootstrap_server() {
         .await
         .unwrap()
     });
-    dbg!("test: get state launched, waiting on connection");
 
     // accept connection attempt from remote
     let remote_bridge = std::thread::spawn(move || {
-        dbg!("conn wait thread");
         let (remote_rw, conn_addr, waker) = remote_interface
             .wait_connection_attempt_from_controller()
             .expect("timeout waiting for connection attempt from remote");
-        dbg!("test: got conn", &conn_addr);
         let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
         assert_eq!(
             conn_addr, expect_conn_addr,
