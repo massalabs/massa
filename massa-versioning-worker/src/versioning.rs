@@ -30,19 +30,10 @@ pub struct MipInfo {
     pub name: String,
     /// Network (or global) version (to be included in block header)
     pub version: u32,
-    /// Component concerned by this versioning (e.g. a new Block version)
-    pub component: MipComponent,
-    /// Component version
-    pub component_version: u32,
-
-    /// a timestamp at which the version gains its meaning (e.g. accepted in block header)
-    // pub start: MassaTime,
-    /// a timestamp at which the deployment is considered active or failed (timeout > start)
-    // pub timeout: MassaTime,
-
+    /// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
+    pub components: HashMap<MipComponent, u32>,
     /// a timestamp at which the version gains its meaning (e.g. announced in block header)
     pub start: MassaTime,
-    // TODO: rename to start_timeout?
     /// a timestamp at the which the deployment is considered failed
     pub timeout: MassaTime,
     /// Once deployment has been locked, wait for this duration before deployment is considered active
@@ -67,7 +58,7 @@ impl PartialEq for MipInfo {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.version == other.version
-            && self.component == other.component
+            && self.components == other.components
             && self.start == other.start
             && self.timeout == other.timeout
             && self.activation_delay == other.activation_delay
@@ -81,7 +72,7 @@ impl Hash for MipInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         self.version.hash(state);
-        self.component.hash(state);
+        self.components.iter().for_each(|c| c.hash(state));
         self.start.hash(state);
         self.timeout.hash(state);
     }
@@ -498,7 +489,13 @@ impl MipStoreRaw {
         let mut component_versions: HashMap<MipComponent, u32> = self
             .0
             .iter()
-            .map(|i| (i.0.component.clone(), i.0.component_version))
+            .flat_map(|c| {
+                c.0.components
+                    .iter()
+                    .map(|(mip_component, component_version)| {
+                        (mip_component.clone(), *component_version)
+                    })
+            })
             .collect();
         let mut names: BTreeSet<String> = self.0.iter().map(|i| i.0.name.clone()).collect();
         let mut to_update: BTreeMap<MipInfo, MipState> = Default::default();
@@ -544,18 +541,27 @@ impl MipStoreRaw {
                     .or(self.0.last_key_value().map(|i| i.0));
 
                 if let Some(last_v_info) = last_v_info_ {
+                    // check for versions of all components in v_info
+                    let mut component_version_compatible = true;
+                    for component in v_info.components.iter() {
+                        if component.1 <= component_versions.get(component.0).unwrap_or(&0) {
+                            component_version_compatible = false;
+                            break;
+                        }
+                    }
+
                     if v_info.start > last_v_info.timeout
                         && v_info.timeout > v_info.start
                         && v_info.version > last_v_info.version
                         && !names.contains(&v_info.name)
-                        && v_info.component_version
-                            > *component_versions.get(&v_info.component).unwrap_or(&0)
+                        && component_version_compatible
                     {
                         // Time range is ok / version is ok / name is unique, let's add it
                         to_add.insert(v_info.clone(), v_state.clone());
                         names.insert(v_info.name.clone());
-                        component_versions
-                            .insert(v_info.component.clone(), v_info.component_version);
+                        for component in v_info.components.iter() {
+                            component_versions.insert(component.0.clone(), *component.1);
+                        }
                     } else {
                         // Something is wrong (time range not ok? / version not incr? / names?
                         // or component version not incr?)
@@ -652,8 +658,7 @@ mod test {
             MipInfo {
                 name: "MIP-0002".to_string(),
                 version: 2,
-                component: MipComponent::Address,
-                component_version: 1,
+                components: HashMap::from([(MipComponent::Address, 1)]),
                 start: MassaTime::from(start.timestamp() as u64),
                 timeout: MassaTime::from(timeout.timestamp() as u64),
                 activation_delay: MassaTime::from(20),
@@ -893,8 +898,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -903,8 +907,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(7),
             timeout: MassaTime::from(10),
             activation_delay: MassaTime::from(2),
@@ -960,8 +963,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -973,8 +975,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            component: MipComponent::Address,
-            component_version: 2,
+            components: HashMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
             activation_delay: MassaTime::from(2),
@@ -1008,8 +1009,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(0),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -1020,8 +1020,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            component: MipComponent::Address,
-            component_version: 2,
+            components: HashMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
             activation_delay: MassaTime::from(2),
@@ -1059,7 +1058,7 @@ mod test {
                 .unwrap();
 
         let mut vi_2_2 = vi_2.clone();
-        vi_2_2.component_version = vi_1.component_version;
+        vi_2_2.components = vi_1.components.clone();
 
         let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
         let vs_raw_2 = MipStoreRaw(BTreeMap::from([
