@@ -113,7 +113,6 @@ impl SelectorThread {
                 cycle,
                 lookback_rolls,
                 lookback_seed,
-                last_start_period,
             }) = self.input_mpsc.recv() else {
                 break;
             };
@@ -124,7 +123,6 @@ impl SelectorThread {
                 cycle,
                 lookback_rolls,
                 lookback_seed,
-                last_start_period,
             );
 
             // add result to cache and notify waiters

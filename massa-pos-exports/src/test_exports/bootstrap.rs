@@ -43,11 +43,11 @@ pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
         "PoS deferred_credits mismatching"
     );
     assert_eq!(
-        s1.initial_state.initial_rolls, s2.initial_state.initial_rolls,
+        s1.initial_rolls, s2.initial_rolls,
         "PoS initial_rolls mismatching"
     );
     assert_eq!(
-        s1.initial_state.initial_seeds, s2.initial_state.initial_seeds,
+        s1.initial_seeds, s2.initial_seeds,
         "PoS initial_seeds mismatching"
     );
 }

@@ -558,7 +558,7 @@ pub async fn stream_bootstrap_information(
     mut last_credits_step: StreamingStep<Slot>,
     mut last_ops_step: StreamingStep<Slot>,
     mut last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
-    mut send_initial_state: bool,
+    mut send_last_start_period: bool,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
@@ -575,7 +575,7 @@ pub async fn stream_bootstrap_information(
         let pos_credits_part;
         let exec_ops_part;
         let final_state_changes;
-        let initial_state;
+        let last_start_period;
 
         let mut slot_too_old = false;
 
@@ -583,8 +583,8 @@ pub async fn stream_bootstrap_information(
         {
             let final_state_read = final_state.read();
 
-            initial_state = if send_initial_state {
-                Some(final_state_read.pos_state.initial_state.clone())
+            last_start_period = if send_last_start_period {
+                Some(final_state_read.last_start_period)
             } else {
                 None
             };
@@ -646,7 +646,7 @@ pub async fn stream_bootstrap_information(
             last_ops_step = new_ops_step;
             last_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
-            send_initial_state = false;
+            send_last_start_period = false;
         }
 
         if slot_too_old {
@@ -744,7 +744,7 @@ pub async fn stream_bootstrap_information(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    initial_state,
+                    last_start_period,
                 },
             )
             .await
@@ -855,7 +855,7 @@ async fn manage_bootstrap(
                     last_credits_step,
                     last_ops_step,
                     last_consensus_step,
-                    send_initial_state,
+                    send_last_start_period,
                 } => {
                     stream_bootstrap_information(
                         server,
@@ -868,7 +868,7 @@ async fn manage_bootstrap(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
-                        send_initial_state,
+                        send_last_start_period,
                         write_timeout,
                     )
                     .await?;

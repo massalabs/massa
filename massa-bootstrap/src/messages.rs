@@ -25,8 +25,7 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer, InitialState, InitialStateDeserializer,
-    InitialStateSerializer,
+    DeferredCreditsDeserializer, DeferredCreditsSerializer, 
 };
 use massa_serialization::{
     BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
@@ -83,8 +82,8 @@ pub enum BootstrapServerMessage {
         consensus_part: BootstrapableGraph,
         /// Outdated block ids in the current consensus graph bootstrap
         consensus_outdated_ids: PreHashSet<BlockId>,
-        /// Initial state for the pos look back before genesis
-        initial_state: Option<InitialState>,
+        /// Last Start Period for network restart management
+        last_start_period: Option<u64>,
     },
     /// Message sent when the final state and consensus bootstrap are finished
     BootstrapFinished,
@@ -124,7 +123,7 @@ pub struct BootstrapServerMessageSerializer {
     opt_pos_cycle_serializer: OptionSerializer<CycleInfo, CycleInfoSerializer>,
     pos_credits_serializer: DeferredCreditsSerializer,
     exec_ops_serializer: ExecutedOpsSerializer,
-    opt_initial_state_serializer: OptionSerializer<InitialState, InitialStateSerializer>,
+    opt_last_start_period_serializer: OptionSerializer<u64, U64VarIntSerializer>,
 }
 
 impl Default for BootstrapServerMessageSerializer {
@@ -151,7 +150,7 @@ impl BootstrapServerMessageSerializer {
             opt_pos_cycle_serializer: OptionSerializer::new(CycleInfoSerializer::new()),
             pos_credits_serializer: DeferredCreditsSerializer::new(),
             exec_ops_serializer: ExecutedOpsSerializer::new(),
-            opt_initial_state_serializer: OptionSerializer::new(InitialStateSerializer::new()),
+            opt_last_start_period_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
         }
     }
 }
@@ -203,7 +202,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 final_state_changes,
                 consensus_part,
                 consensus_outdated_ids,
-                initial_state,
+                last_start_period,
             } => {
                 // message type
                 self.u32_serializer
@@ -239,8 +238,8 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.block_id_set_serializer
                     .serialize(consensus_outdated_ids, buffer)?;
                 // initial state
-                self.opt_initial_state_serializer
-                    .serialize(initial_state, buffer)?;
+                self.opt_last_start_period_serializer
+                    .serialize(last_start_period, buffer)?;
             }
             BootstrapServerMessage::BootstrapFinished => {
                 self.u32_serializer
@@ -283,7 +282,7 @@ pub struct BootstrapServerMessageDeserializer {
     opt_pos_cycle_deserializer: OptionDeserializer<CycleInfo, CycleInfoDeserializer>,
     pos_credits_deserializer: DeferredCreditsDeserializer,
     exec_ops_deserializer: ExecutedOpsDeserializer,
-    opt_initial_state_deserializer: OptionDeserializer<InitialState, InitialStateDeserializer>,
+    opt_last_start_period_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
 }
 
 impl BootstrapServerMessageDeserializer {
@@ -355,8 +354,8 @@ impl BootstrapServerMessageDeserializer {
                 args.max_executed_ops_length,
                 args.max_operations_per_block as u64,
             ),
-            opt_initial_state_deserializer: OptionDeserializer::new(InitialStateDeserializer::new(
-                args.max_rolls_length,
+            opt_last_start_period_deserializer: OptionDeserializer::new(U64VarIntDeserializer::new(
+                u64::MIN, u64::MAX
             )),
         }
     }
@@ -493,7 +492,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         final_state_changes,
                         consensus_part,
                         consensus_outdated_ids,
-                        initial_state,
+                        last_start_period,
                     )| {
                         BootstrapServerMessage::BootstrapPart {
                             slot,
@@ -505,7 +504,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                             final_state_changes,
                             consensus_part,
                             consensus_outdated_ids,
-                            initial_state,
+                            last_start_period,
                         }
                     },
                 )
@@ -553,7 +552,7 @@ pub enum BootstrapClientMessage {
         /// Last received consensus block slot
         last_consensus_step: StreamingStep<PreHashSet<BlockId>>,
         /// Should be true only for the first part, false later
-        send_initial_state: bool,
+        send_last_start_period: bool,
     },
     /// Bootstrap error
     BootstrapError {
@@ -644,7 +643,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                 last_credits_step,
                 last_ops_step,
                 last_consensus_step,
-                send_initial_state,
+                send_last_start_period,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageClientTypeId::AskFinalStatePart), buffer)?;
@@ -661,7 +660,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.slot_step_serializer.serialize(last_ops_step, buffer)?;
                     self.block_ids_step_serializer
                         .serialize(last_consensus_step, buffer)?;
-                    self.bool_serializer.serialize(send_initial_state, buffer)?;
+                    self.bool_serializer.serialize(send_last_start_period, buffer)?;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
@@ -795,7 +794,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_credits_step: StreamingStep::Started,
                                 last_ops_step: StreamingStep::Started,
                                 last_consensus_step: StreamingStep::Started,
-                                send_initial_state: true,
+                                send_last_start_period: true,
                             },
                         ))
                     } else {
@@ -821,7 +820,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed last_consensus_step deserialization", |input| {
                                 self.block_ids_step_deserializer.deserialize(input)
                             }),
-                            context("Failed send_initial_state deserialization", |input| {
+                            context("Failed send_last_start_period deserialization", |input| {
                                 self.bool_deserializer.deserialize(input)
                             }),
                         ))
@@ -834,7 +833,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_credits_step,
                                 last_ops_step,
                                 last_consensus_step,
-                                send_initial_state,
+                                send_last_start_period,
                             )| {
                                 BootstrapClientMessage::AskBootstrapPart {
                                     last_slot: Some(last_slot),
@@ -844,7 +843,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                     last_credits_step,
                                     last_ops_step,
                                     last_consensus_step,
-                                    send_initial_state,
+                                    send_last_start_period,
                                 }
                             },
                         )

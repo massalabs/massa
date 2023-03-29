@@ -70,15 +70,14 @@ async fn stream_final_state_and_consensus(
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
-                    initial_state,
+                    last_start_period,
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
 
                     // We only need to receive the initial_state once
-                    if let Some(initial_state) = initial_state {
-                        write_final_state.last_start_period = initial_state.last_start_period;
-                        write_final_state.pos_state.initial_state = initial_state;
+                    if let Some(last_start_period) = last_start_period {
+                        write_final_state.last_start_period = last_start_period;
                     }
 
                     let last_ledger_step = write_final_state.ledger.set_ledger_part(ledger_part)?;
@@ -149,7 +148,7 @@ async fn stream_final_state_and_consensus(
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
-                        send_initial_state: false,
+                        send_last_start_period: false,
                     };
 
                     // Logs for an easier diagnostic if needed
@@ -178,7 +177,7 @@ async fn stream_final_state_and_consensus(
                         last_credits_step: StreamingStep::Started,
                         last_ops_step: StreamingStep::Started,
                         last_consensus_step: StreamingStep::Started,
-                        send_initial_state: true,
+                        send_last_start_period: true,
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
@@ -502,7 +501,7 @@ pub async fn get_state(
             last_credits_step: StreamingStep::Started,
             last_ops_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
-            send_initial_state: true,
+            send_last_start_period: true,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
 

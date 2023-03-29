@@ -42,7 +42,6 @@ pub trait SelectorController: Send + Sync {
         cycle: u64,
         lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
-        last_start_period: u64,
     ) -> PosResult<()>;
 
     /// Get [Selection] computed for a slot:

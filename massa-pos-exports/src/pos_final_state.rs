@@ -1,5 +1,5 @@
 use crate::{
-    CycleInfo, InitialState, PoSChanges, PosError, PosResult, ProductionStats, SelectorController,
+    CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController,
 };
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
@@ -27,8 +27,14 @@ pub struct PoSFinalState {
     pub deferred_credits: DeferredCredits,
     /// selector controller
     pub selector: Box<dyn SelectorController>,
-    /// initial state, used for lookback before genesis
-    pub initial_state: InitialState,
+    /// initial rolls
+    pub initial_rolls: BTreeMap<Address, u64>,
+    /// initial seeds
+    pub initial_seeds: Vec<Hash>,
+    /// initial ledger hash
+    pub initial_ledger_hash: Hash,
+    /// last start period
+    pub last_start_period: u64,
 }
 
 impl PoSFinalState {
@@ -52,22 +58,15 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let end_slot = Slot::new(0, config.thread_count.saturating_sub(1));
-
-        let initial_state = InitialState {
-            initial_rolls,
-            initial_seeds,
-            initial_ledger_hash,
-            initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
-            last_start_period: end_slot.period,
-        };
-
         Ok(Self {
             config,
             cycle_history: Default::default(),
             deferred_credits: DeferredCredits::default(),
             selector,
-            initial_state,
+            initial_rolls,
+            initial_seeds,
+            initial_ledger_hash,
+            last_start_period: 0,
         })
     }
 
@@ -78,7 +77,7 @@ impl PoSFinalState {
         cycle_history: VecDeque<CycleInfo>,
         deferred_credits: DeferredCredits,
         initial_seed_string: &str,
-        initial_rolls_in_snapshot: BTreeMap<Address, u64>,
+        initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
         initial_ledger_hash: Hash,
         end_slot: Slot,
@@ -86,21 +85,23 @@ impl PoSFinalState {
         // Seeds used as the initial seeds for negative cycles (initial_cycle-2 and initial_cycle-1 respectively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
-
-        let initial_state = InitialState {
-            initial_rolls: initial_rolls_in_snapshot,
-            initial_seeds,
-            initial_ledger_hash,
-            initial_cycle: end_slot.get_cycle(config.periods_per_cycle),
-            last_start_period: end_slot.period,
-        };
+        // load get initial rolls from file
+        let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
+            &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
+                PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
+            })?,
+        )
+        .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
 
         Ok(Self {
             config,
             cycle_history,
             deferred_credits,
             selector,
-            initial_state,
+            initial_rolls,
+            initial_seeds,
+            initial_ledger_hash,
+            last_start_period: end_slot.period,
         })
     }
 
@@ -170,7 +171,7 @@ impl PoSFinalState {
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             0,
             false,
-            self.initial_state.initial_rolls.clone(),
+            self.initial_rolls.clone(),
             rng_seed,
             PreHashMap::default(),
         ));
@@ -250,7 +251,7 @@ impl PoSFinalState {
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             false,
-            self.initial_state.initial_rolls.clone(),
+            self.initial_rolls.clone(),
             rng_seed,
             latest_consistent_cycle_info.production_stats.clone(),
         ));
@@ -263,7 +264,7 @@ impl PoSFinalState {
         let history_starts_late = self
             .cycle_history
             .front()
-            .map(|c_info| c_info.cycle > self.initial_state.initial_cycle)
+            .map(|c_info| c_info.cycle > 0)
             .unwrap_or(false);
 
         let mut max_cycle = None;
@@ -271,7 +272,7 @@ impl PoSFinalState {
         // feed cycles initial_cycle, initial_cycle+1 to selector if necessary
         if !history_starts_late {
             for draw_cycle in
-                self.initial_state.initial_cycle..=self.initial_state.initial_cycle + 1
+                0..=1
             {
                 self.feed_selector(draw_cycle)?;
                 max_cycle = Some(draw_cycle);
@@ -411,7 +412,7 @@ impl PoSFinalState {
         // get roll lookback
         let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
-            Some(c) if c >= self.initial_state.initial_cycle => {
+            Some(c) => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -429,15 +430,15 @@ impl PoSFinalState {
             }
             // looking back to negative cycles
             _ => (
-                self.initial_state.initial_rolls.clone(),
-                self.initial_state.initial_ledger_hash,
+                self.initial_rolls.clone(),
+                self.initial_ledger_hash,
             ),
         };
 
         // get seed lookback
         let lookback_seed = match draw_cycle.checked_sub(2) {
             // looking back in history
-            Some(c) if c >= self.initial_state.initial_cycle => {
+            Some(c) => {
                 let index = self
                     .get_cycle_index(c)
                     .ok_or(PosError::CycleUnavailable(c))?;
@@ -454,9 +455,7 @@ impl PoSFinalState {
             }
             // looking back to negative cycles
             _ => {
-                self.initial_state.initial_seeds[draw_cycle
-                    .checked_sub(self.initial_state.initial_cycle)
-                    .unwrap_or_default() as usize]
+                self.initial_seeds[draw_cycle as usize]
             }
         };
 
@@ -465,7 +464,6 @@ impl PoSFinalState {
             draw_cycle,
             lookback_rolls,
             lookback_seed,
-            self.initial_state.last_start_period,
         )
     }
 
@@ -490,7 +488,7 @@ impl PoSFinalState {
     /// Retrieves the amount of rolls a given address has at a given cycle
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
         match cycle.checked_sub(3) {
-            Some(lookback_cycle) if lookback_cycle >= self.initial_state.initial_cycle => {
+            Some(lookback_cycle) => {
                 let lookback_index = match self.get_cycle_index(lookback_cycle) {
                     Some(idx) => idx,
                     None => return None,
@@ -501,7 +499,7 @@ impl PoSFinalState {
                     .get(addr)
                     .cloned()
             }
-            _ => self.initial_state.initial_rolls.get(addr).cloned(),
+            _ => self.initial_rolls.get(addr).cloned(),
         }
     }
 
@@ -652,93 +650,5 @@ impl PoSFinalState {
         } else {
             StreamingStep::Finished(None)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use massa_models::config::{
-        DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT,
-    };
-    use massa_signature::KeyPair;
-
-    #[test]
-    fn test_deferred_credits() {
-        use crate::test_exports::MockSelectorController;
-
-        let pos_config = PoSConfig {
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            thread_count: THREAD_COUNT,
-            cycle_history_length: POS_SAVED_CYCLES,
-            credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
-        };
-
-        let (selector, _recv) = MockSelectorController::new_with_receiver();
-
-        let cycle_history = VecDeque::new();
-        let mut deferred_credits = DeferredCredits::default();
-
-        let addr = Address::from_public_key(&KeyPair::generate().get_public_key());
-
-        let slot1 = Slot::new(40, 2);
-        let slot2 = Slot::new(41, 2);
-        let slot3 = Slot::new(46, 3);
-        let amount1 = Amount::from_mantissa_scale(10, 0);
-        let amount2 = Amount::from_mantissa_scale(13, 0);
-        let amount3 = Amount::from_mantissa_scale(4, 0);
-
-        deferred_credits.insert(addr, slot1, amount1);
-        deferred_credits.insert(addr, slot2, amount2);
-        deferred_credits.insert(addr, slot3, amount3);
-
-        let initial_seed_string = "";
-        let initial_rolls_in_snapshot = BTreeMap::new();
-        let initial_ledger_hash = Hash::compute_from(b"data");
-        let end_slot = Slot::new(45, 31);
-
-        let pos_final_state_res = PoSFinalState::from_snapshot(
-            pos_config.clone(),
-            cycle_history,
-            deferred_credits,
-            initial_seed_string,
-            initial_rolls_in_snapshot,
-            selector,
-            initial_ledger_hash,
-            end_slot,
-        );
-        let mut pos_final_state = pos_final_state_res.unwrap();
-
-        assert!(pos_final_state
-            .update_deferred_credits_after_restart(Slot::new(0, 0), end_slot)
-            .is_ok());
-
-        assert!(pos_final_state
-            .deferred_credits
-            .get_address_deferred_credit_for_slot(&addr, &slot1)
-            .is_none());
-        assert!(pos_final_state
-            .deferred_credits
-            .get_address_deferred_credit_for_slot(&addr, &slot2)
-            .is_none());
-        assert_eq!(
-            pos_final_state
-                .deferred_credits
-                .get_address_deferred_credit_for_slot(
-                    &addr,
-                    &end_slot
-                        .get_next_slot(pos_config.thread_count)
-                        .expect("Error getting next slot")
-                )
-                .expect("Should have deferred credits"),
-            amount1.saturating_add(amount2)
-        );
-        assert_eq!(
-            pos_final_state
-                .deferred_credits
-                .get_address_deferred_credit_for_slot(&addr, &slot3)
-                .expect("Should have deferred credits"),
-            amount3
-        );
     }
 }

@@ -1309,8 +1309,7 @@ impl ExecutionState {
         let final_state = self.final_state.read();
 
         match cycle.checked_sub(3) {
-            Some(lookback_cycle)
-                if lookback_cycle >= final_state.pos_state.initial_state.initial_cycle =>
+            Some(lookback_cycle) =>
             {
                 let lookback_cycle_index =
                     match final_state.pos_state.get_cycle_index(lookback_cycle) {
@@ -1322,7 +1321,7 @@ impl ExecutionState {
                     .roll_counts
                     .clone()
             }
-            _ => final_state.pos_state.initial_state.initial_rolls.clone(),
+            _ => final_state.pos_state.initial_rolls.clone(),
         }
     }
 
