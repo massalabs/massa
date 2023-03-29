@@ -1,6 +1,4 @@
-use crate::{
-    CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController,
-};
+use crate::{CycleInfo, PoSChanges, PosError, PosResult, ProductionStats, SelectorController};
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_hash::Hash;
@@ -271,9 +269,7 @@ impl PoSFinalState {
 
         // feed cycles initial_cycle, initial_cycle+1 to selector if necessary
         if !history_starts_late {
-            for draw_cycle in
-                0..=1
-            {
+            for draw_cycle in 0..=1 {
                 self.feed_selector(draw_cycle)?;
                 max_cycle = Some(draw_cycle);
             }
@@ -429,10 +425,7 @@ impl PoSFinalState {
                 (cycle_info.roll_counts.clone(), state_hash)
             }
             // looking back to negative cycles
-            _ => (
-                self.initial_rolls.clone(),
-                self.initial_ledger_hash,
-            ),
+            _ => (self.initial_rolls.clone(), self.initial_ledger_hash),
         };
 
         // get seed lookback
@@ -454,17 +447,13 @@ impl PoSFinalState {
                 Hash::compute_from(&seed)
             }
             // looking back to negative cycles
-            _ => {
-                self.initial_seeds[draw_cycle as usize]
-            }
+            _ => self.initial_seeds[draw_cycle as usize],
         };
 
         // feed selector
-        self.selector.as_ref().feed_cycle(
-            draw_cycle,
-            lookback_rolls,
-            lookback_seed,
-        )
+        self.selector
+            .as_ref()
+            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
     }
 
     /// Feeds the selector targeting a given draw cycle

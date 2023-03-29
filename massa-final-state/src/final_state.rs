@@ -30,8 +30,8 @@ use massa_pos_exports::{
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{error::context, sequence::tuple, IResult, Parser};
-use std::ops::Bound::{Excluded, Included};
 use std::collections::{BTreeMap, VecDeque};
+use std::ops::Bound::{Excluded, Included};
 use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`

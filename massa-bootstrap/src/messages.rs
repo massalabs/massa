@@ -25,7 +25,7 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_pos_exports::{
     CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer, 
+    DeferredCreditsDeserializer, DeferredCreditsSerializer,
 };
 use massa_serialization::{
     BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
@@ -354,9 +354,9 @@ impl BootstrapServerMessageDeserializer {
                 args.max_executed_ops_length,
                 args.max_operations_per_block as u64,
             ),
-            opt_last_start_period_deserializer: OptionDeserializer::new(U64VarIntDeserializer::new(
-                u64::MIN, u64::MAX
-            )),
+            opt_last_start_period_deserializer: OptionDeserializer::new(
+                U64VarIntDeserializer::new(u64::MIN, u64::MAX),
+            ),
         }
     }
 }
@@ -660,7 +660,8 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.slot_step_serializer.serialize(last_ops_step, buffer)?;
                     self.block_ids_step_serializer
                         .serialize(last_consensus_step, buffer)?;
-                    self.bool_serializer.serialize(send_last_start_period, buffer)?;
+                    self.bool_serializer
+                        .serialize(send_last_start_period, buffer)?;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {

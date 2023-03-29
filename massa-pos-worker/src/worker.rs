@@ -118,12 +118,7 @@ impl SelectorThread {
             };
 
             // perform draws
-            let draws_result = perform_draws(
-                &self.cfg,
-                cycle,
-                lookback_rolls,
-                lookback_seed,
-            );
+            let draws_result = perform_draws(&self.cfg, cycle, lookback_rolls, lookback_seed);
 
             // add result to cache and notify waiters
             self.process_draws_result(cycle, draws_result)?;
