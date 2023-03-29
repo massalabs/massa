@@ -14,6 +14,7 @@ mod scenarios_mandatories;
 #[cfg(all(not(feature = "gas_calibration"), not(feature = "benchmarking")))]
 mod tests_active_history;
 
+#[cfg(feature = "testing")]
 mod interface;
 
 #[cfg(any(
