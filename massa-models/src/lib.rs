@@ -68,8 +68,6 @@ pub mod streaming_step;
 pub mod timeslots;
 /// versions
 pub mod version;
-/// vesting range
-pub mod vesting_range;
 
 /// Test utils
 #[cfg(feature = "testing")]
