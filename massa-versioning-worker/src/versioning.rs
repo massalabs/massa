@@ -189,8 +189,7 @@ impl Defined {
     /// Update state from state Defined
     pub fn on_advance(self, input: Advance) -> ComponentState {
         match input.now {
-            // TODO: >= ?
-            n if n > input.timeout => ComponentState::failed(),
+            n if n >= input.timeout => ComponentState::failed(),
             n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
             _ => ComponentState::Defined(Defined {}),
         }
