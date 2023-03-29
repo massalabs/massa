@@ -42,9 +42,8 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{net::TcpStream, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
-use tokio::net::TcpStream;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {

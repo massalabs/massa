@@ -7,10 +7,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-speed-limit = { git = "https://github.com/adrien-zinger/async-speed-limit", rev = "36d79e0", features = [
-    "default",
-    "tokio",
-] }
 displaydoc = "0.2"
 num_enum = "0.5"
 nom = "7.1"

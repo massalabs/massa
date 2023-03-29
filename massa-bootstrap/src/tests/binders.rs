@@ -65,10 +65,10 @@ impl<D: Duplex> BootstrapClientBinder<D> {
 #[serial]
 async fn test_binders() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
-    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
-    let server = server.accept().await.unwrap();
+    let client = std::net::TcpStream::connect(addr).unwrap();
+    let server = server.accept().unwrap();
     // let (client, server) = duplex(1000000);
     let mut server = BootstrapServerBinder::new(
         server.0,
@@ -168,11 +168,9 @@ async fn test_binders() {
 async fn test_binders_double_send_server_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
-    let client = tokio::net::TcpStream::connect(server.local_addr().unwrap())
-        .await
-        .unwrap();
-    let server = server.accept().await.unwrap();
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
+    let client = std::net::TcpStream::connect(server.local_addr().unwrap()).unwrap();
+    let server = server.accept().unwrap();
 
     let mut server = BootstrapServerBinder::new(
         server.0,
@@ -257,10 +255,10 @@ async fn test_binders_double_send_server_works() {
 async fn test_binders_try_double_send_client_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
-    let server = tokio::net::TcpListener::bind("localhost:0").await.unwrap();
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
-    let client = tokio::net::TcpStream::connect(addr).await.unwrap();
-    let server = server.accept().await.unwrap();
+    let client = std::net::TcpStream::connect(addr).unwrap();
+    let server = server.accept().unwrap();
     let mut server = BootstrapServerBinder::new(
         server.0,
         server_keypair.clone(),

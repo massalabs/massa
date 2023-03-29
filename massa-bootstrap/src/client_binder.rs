@@ -7,23 +7,19 @@ use crate::messages::{
     BootstrapServerMessageDeserializer,
 };
 use crate::settings::BootstrapClientConfig;
-use async_speed_limit::clock::StandardClock;
-use async_speed_limit::{Limiter, Resource};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder<D: Duplex> {
     // max_bootstrap_message_size: u32,
     size_field_len: usize,
     remote_pubkey: PublicKey,
-    duplex: Resource<D, StandardClock>,
+    duplex: D,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
@@ -41,7 +37,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
         BootstrapClientBinder {
             size_field_len,
             remote_pubkey,
-            duplex: <Limiter>::new(cfg.max_bytes_read_write).limit(duplex),
+            duplex,
             prev_message: None,
             version_serializer: VersionSerializer::new(),
             cfg,
@@ -60,7 +56,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
                 vec![0u8; version_ser.len() + self.cfg.randomness_size_bytes];
             version_random_bytes[..version_ser.len()].clone_from_slice(&version_ser);
             StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version_ser.len()..]);
-            self.duplex.write_all(&version_random_bytes).await?;
+            self.duplex.write_all(&version_random_bytes)?;
             Hash::compute_from(&version_random_bytes)
         };
 
@@ -74,14 +70,14 @@ impl<D: Duplex> BootstrapClientBinder<D> {
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-            self.duplex.read_exact(&mut sig_bytes).await?;
+            self.duplex.read_exact(&mut sig_bytes)?;
             Signature::from_bytes(&sig_bytes)?
         };
 
         // read message length
         let msg_len = {
             let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..]).await?;
+            self.duplex.read_exact(&mut msg_len_bytes[..])?;
             u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
         };
 
@@ -93,8 +89,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
                 let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
                 sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
                 self.duplex
-                    .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])
-                    .await?;
+                    .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
@@ -104,7 +99,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
             } else {
                 self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; msg_len as usize];
-                self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
+                self.duplex.read_exact(&mut sig_msg_bytes[..])?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
@@ -138,7 +133,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
             self.prev_message = Some(Hash::compute_from(&hash_data));
 
             // send old previous message
-            self.duplex.write_all(prev_message).await?;
+            self.duplex.write_all(prev_message)?;
         } else {
             // there was no previous message
 
@@ -149,11 +144,11 @@ impl<D: Duplex> BootstrapClientBinder<D> {
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes).await?;
+            self.duplex.write_all(&msg_len_bytes)?;
         }
 
         // send message
-        self.duplex.write_all(&msg_bytes).await?;
+        self.duplex.write_all(&msg_bytes)?;
         Ok(())
     }
 }

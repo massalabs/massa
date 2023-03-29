@@ -45,15 +45,12 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, SocketAddr, TcpStream},
     sync::Arc,
     thread,
     time::{Duration, Instant},
 };
-use tokio::{
-    net::TcpStream,
-    runtime::{self, Handle, Runtime},
-};
+use tokio::runtime::{self, Handle, Runtime};
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -253,8 +250,6 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
     ) -> Result<Result<(), BsConn<TcpStream>>, Box<BootstrapError>> {
         loop {
             let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
-            msg.set_nonblocking(true).unwrap();
-            let msg = TcpStream::from_std(msg).unwrap();
             match listener_tx.send((msg, addr)) {
                 Ok(_) => continue,
                 Err(SendError((dplx, remote_addr))) => {

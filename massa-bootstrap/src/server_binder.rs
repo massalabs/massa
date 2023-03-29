@@ -7,8 +7,6 @@ use crate::messages::{
     BootstrapServerMessageSerializer,
 };
 use crate::settings::BootstrapSrvBindCfg;
-use async_speed_limit::clock::StandardClock;
-use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
@@ -20,7 +18,6 @@ use std::convert::TryInto;
 use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::runtime::Handle;
 use tokio::time::error::Elapsed;
 use tracing::error;
@@ -34,7 +31,7 @@ pub struct BootstrapServerBinder<D: Duplex> {
     randomness_size_bytes: usize,
     size_field_len: usize,
     local_keypair: KeyPair,
-    duplex: Resource<D, StandardClock>,
+    duplex: D,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -51,7 +48,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(duplex: D, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
         let BootstrapSrvBindCfg {
-            max_bytes_read_write: limit,
+            max_bytes_read_write: _limit,
             max_bootstrap_message_size,
             thread_count,
             max_datastore_key_length,
@@ -65,7 +62,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             size_field_len,
             local_keypair,
-            duplex: <Limiter>::new(limit).limit(duplex),
+            duplex,
             prev_message: None,
             thread_count,
             max_datastore_key_length,
@@ -85,7 +82,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.duplex.read_exact(&mut msg_bytes).await?;
+            self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
@@ -182,16 +179,16 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         };
 
         // send signature
-        self.duplex.write_all(&sig.to_bytes()).await?;
+        self.duplex.write_all(&sig.to_bytes())?;
 
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes).await?;
+            self.duplex.write_all(&msg_len_bytes)?;
         }
 
         // send message
-        self.duplex.write_all(&msg_bytes).await?;
+        self.duplex.write_all(&msg_bytes)?;
 
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -206,7 +203,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         let received_prev_hash = {
             if self.prev_message.is_some() {
                 let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-                self.duplex.read_exact(&mut hash_bytes).await?;
+                self.duplex.read_exact(&mut hash_bytes)?;
                 Some(Hash::from_bytes(&hash_bytes))
             } else {
                 None
@@ -216,13 +213,13 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         // read message length
         let msg_len = {
             let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..]).await?;
+            self.duplex.read_exact(&mut msg_len_bytes[..])?;
             u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
         // read message
         let mut msg_bytes = vec![0u8; msg_len as usize];
-        self.duplex.read_exact(&mut msg_bytes).await?;
+        self.duplex.read_exact(&mut msg_bytes)?;
 
         // check previous hash
         if received_prev_hash != self.prev_message {

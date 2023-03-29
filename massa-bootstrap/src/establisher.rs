@@ -8,11 +8,11 @@ use std::{
 /// duplex connection
 pub trait Duplex:
 // static because need to send between threads :(
-    'static  + Send + tokio::io::AsyncReadExt + tokio::io::AsyncWriteExt + std::marker::Unpin
+    'static  + Send + io::Read + io::Write
 {
 }
 
-impl Duplex for tokio::net::TcpStream {}
+impl Duplex for std::net::TcpStream {}
 
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
