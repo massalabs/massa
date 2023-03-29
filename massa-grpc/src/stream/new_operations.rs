@@ -1,7 +1,7 @@
 use crate::error::GrpcError;
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
-use massa_models::operation::{OperationType, SecureShareOperation};
+use massa_models::operation::OperationType;
 use massa_proto::massa::api::v1::{self as grpc};
 use std::pin::Pin;
 use tokio::select;
@@ -40,9 +40,7 @@ pub(crate) async fn new_operations(
                 select! {
                      event = subscriber.recv() => {
                         match event {
-                            Ok(ope) => {
-                                let operation = ope as SecureShareOperation;
-                                //
+                            Ok(operation) => {
                                 match operation.clone().content.op {
                                     OperationType::Transaction{recipient_address,amount} => {
                                         if is_filtered(&filter, grpc::OperationTypeEnum::Transaction) {
