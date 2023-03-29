@@ -216,6 +216,10 @@ impl FinalState {
             }
             latest_cycle_info.complete = true;
 
+            // feed final_state_hash to the completed cycle
+            self.pos_state
+                .feed_cycle_state_hash(current_slot_cycle, self.final_state_hash);
+
             // Then, build all the already completed cycles
             for cycle in current_slot_cycle + 1..end_slot_cycle {
                 // TODO: build a new cycle by repeating the one before. How do we handle this if latest cycle info is not complete?
@@ -233,6 +237,9 @@ impl FinalState {
 
                 self.pos_state
                     .create_new_cycle_from_last(&latest_consistent_cycle_info, last_slot);
+                
+                self.pos_state
+                    .feed_cycle_state_hash(cycle, self.final_state_hash);
             }
 
             // Then, build the last cycle
