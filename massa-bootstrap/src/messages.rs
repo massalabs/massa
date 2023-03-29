@@ -355,7 +355,7 @@ impl BootstrapServerMessageDeserializer {
                 args.max_operations_per_block as u64,
             ),
             opt_last_start_period_deserializer: OptionDeserializer::new(
-                U64VarIntDeserializer::new(u64::MIN, u64::MAX),
+                U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             ),
         }
     }
@@ -477,8 +477,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed consensus_outdated_ids deserialization", |input| {
                         self.block_id_set_deserializer.deserialize(input)
                     }),
-                    context("Failed initial state deserialization", |input| {
-                        self.opt_initial_state_deserializer.deserialize(input)
+                    context("Failed last_start_period deserialization", |input| {
+                        self.opt_last_start_period_deserializer.deserialize(input)
                     }),
                 ))
                 .map(

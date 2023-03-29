@@ -217,7 +217,7 @@ impl FinalState {
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(format!(
                         "Cannot create slot for interpolating downtime: {}",
-                        err.to_string()
+                        err
                     ))
                 })?;
 
