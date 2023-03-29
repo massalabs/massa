@@ -76,6 +76,8 @@ pub trait LedgerController: Send + Sync + Debug {
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self);
 
+    fn get_slot(&self) -> Result<Slot, ModelsError>;
+
     fn set_final_state_hash(&mut self, data: Vec<u8>);
 
     fn get_final_state(&self) -> Result<Vec<u8>, ModelsError>;

@@ -10,7 +10,7 @@ use massa_models::{
     bytecode::BytecodeSerializer,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
-    slot::{Slot, SlotSerializer},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
@@ -82,6 +82,7 @@ pub(crate) struct LedgerDB {
     amount_serializer: AmountSerializer,
     bytecode_serializer: BytecodeSerializer,
     slot_serializer: SlotSerializer,
+    slot_deserializer: SlotDeserializer,
     len_serializer: U64VarIntSerializer,
     ledger_part_size_message_bytes: u64,
     #[cfg(feature = "testing")]
@@ -166,6 +167,13 @@ impl LedgerDB {
             amount_serializer: AmountSerializer::new(),
             bytecode_serializer: BytecodeSerializer::new(),
             slot_serializer: SlotSerializer::new(),
+            slot_deserializer: SlotDeserializer::new(
+                (Bound::Included(u64::MIN), Bound::Included(u64::MAX)),
+                (
+                    Bound::Included(u8::MIN),
+                    Bound::Included(thread_count.saturating_sub(1)),
+                ),
+            ),
             len_serializer: U64VarIntSerializer::new(),
             ledger_part_size_message_bytes,
             #[cfg(feature = "testing")]
@@ -491,6 +499,20 @@ impl LedgerDB {
             batch.ledger_hash ^= Hash::compute_from(&prev_bytes);
         }
         batch.ledger_hash ^= Hash::compute_from(&slot_bytes);
+    }
+
+    pub fn get_slot(&self) -> Result<Slot, ModelsError> {
+        let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        self.db.get_pinned_cf(handle, SLOT_KEY).expect(CRUD_ERROR);
+
+        let Ok(Some(slot_bytes)) = self.db.get_pinned_cf(handle, SLOT_KEY) else {
+            return Err(ModelsError::BufferError(String::from("Could not recover final_state_hash")));
+        };
+
+        let (_rest, slot) = self.slot_deserializer.deserialize(&slot_bytes)?;
+
+        Ok(slot)
     }
 
     /// Internal function to put a key & value and perform the ledger hash XORs

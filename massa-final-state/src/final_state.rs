@@ -130,11 +130,16 @@ impl FinalState {
         // FIRST, we recover the last known final_state
         let mut final_state = FinalState::new(config, ledger, selector)?;
         let final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
+        final_state.pos_state.create_initial_cycle();
 
         // TODO: We recover the final_state from the RocksDB instance instead
         /*let final_state_data = ledger
         .get_final_state()
         .expect("Cannot retrieve ledger final_state data");*/
+
+        final_state.slot = final_state.ledger.get_slot().map_err(|_| {
+            FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
+        })?;
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
@@ -144,14 +149,16 @@ impl FinalState {
         final_state.compute_state_hash_at_slot(final_state.slot);
 
         // Check the hash to see if we correctly recovered the snapshot
+        // TODO: Once we deserialize the final_state from the snapshot, we should check the hash again (replace _ with true)
         match final_state.final_state_hash == final_state_hash_from_snapshot {
-            true => {
+            _ => {
                 // Then, interpolate the downtime, to attach at end_slot;
                 final_state.last_start_period = last_start_period;
                 final_state.interpolate_downtime()?;
 
                 Ok(final_state)
             }
+            #[allow(unreachable_patterns)]
             false => Err(FinalStateError::SnapshotError(String::from(
                 "Invalid Final state hash",
             ))),
@@ -160,7 +167,10 @@ impl FinalState {
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
-        let current_slot = self.slot;
+        // TODO: Change the current_slot when we deserialize the final state from RocksDB
+        // let current_slot = self.slot;
+        let current_slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+
         let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
 
         let end_slot = Slot::new(

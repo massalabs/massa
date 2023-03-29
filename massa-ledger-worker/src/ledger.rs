@@ -193,6 +193,10 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.reset();
     }
 
+    fn get_slot(&self) -> Result<Slot, ModelsError> {
+        self.sorted_ledger.get_slot()
+    }
+
     fn set_final_state_hash(&mut self, data: Vec<u8>) {
         self.sorted_ledger.set_final_state_hash(&data)
     }
