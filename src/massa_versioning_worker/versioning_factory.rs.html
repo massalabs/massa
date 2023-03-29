@@ -407,10 +407,6 @@
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::iter;
@@ -432,7 +428,7 @@
     </span>OnCreate(String, String),
 }
 
-<span class="attr">#[derive(Clone, Debug)]
+<span class="attr">#[derive(Clone)]
 </span><span class="doccomment">/// Strategy to use when creating a new object from a factory
 </span><span class="kw">pub enum </span>FactoryStrategy {
     <span class="doccomment">/// use get_latest_version (see Factory trait)
@@ -677,7 +673,6 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">15</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_1 = MipState::new(MassaTime::from(<span class="number">10</span>));
 
@@ -688,7 +683,6 @@
             component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">25</span>),
             timeout: MassaTime::from(<span class="number">28</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
@@ -760,7 +754,6 @@
             component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">15</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_1 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>vi_1);
 
@@ -771,7 +764,6 @@
             component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">25</span>),
             timeout: MassaTime::from(<span class="number">28</span>),
-            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
         <span class="kw">let </span>vs_2 = MipState::new(MassaTime::from(<span class="number">18</span>));
 
@@ -793,7 +785,7 @@
         </span><span class="kw">let </span>st_1 = FactoryStrategy::At(MassaTime::from(<span class="number">8</span>)); <span class="comment">// vi_1 not yet defined
         </span><span class="kw">let </span>ts_1_2 = MassaTime::from(<span class="number">13</span>);
         <span class="kw">let </span>st_1_2 = FactoryStrategy::At(ts_1_2); <span class="comment">// vi_1 is started (after vi_1.start)
-        </span><span class="kw">let </span>st_2 = FactoryStrategy::At(MassaTime::from(<span class="number">18</span>)); <span class="comment">// vi_1 is active (after start + activation delay)
+        </span><span class="kw">let </span>st_2 = FactoryStrategy::At(MassaTime::from(<span class="number">16</span>)); <span class="comment">// vi_1 is active (after vi_1.timeout)
         </span><span class="kw">let </span>st_3 = FactoryStrategy::At(MassaTime::from(<span class="number">27</span>)); <span class="comment">// vi_2 is started or locked_in
         </span><span class="kw">let </span>st_4 = FactoryStrategy::At(MassaTime::from(<span class="number">30</span>)); <span class="comment">// vi_2 is active (after vi_2.timeout)
 
