@@ -411,15 +411,6 @@
 <a href="#411" id="411">411</a>
 <a href="#412" id="412">412</a>
 <a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::iter;
@@ -488,11 +479,8 @@
             </span>.iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                <span class="kw">if </span>vsh.inner == state_active {
-                    vi.components.get(<span class="kw-2">&amp;</span>component).copied()
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
+                (vi.component == component &amp;&amp; vsh.inner == state_active)
+                    .then_some(vi.component_version)
             })
             .unwrap_or(<span class="number">0</span>)
     }
@@ -509,13 +497,11 @@
             .<span class="number">0
             </span>.iter()
             .rev()
-            .filter(|(vi, vsh)| {
-                vi.components.get(<span class="kw-2">&amp;</span>component).is_some() &amp;&amp; vsh.inner == state_active
-            })
+            .filter(|(vi, vsh)| vi.component == component &amp;&amp; vsh.inner == state_active)
             .find_map(|(vi, vsh)| {
                 <span class="kw">let </span>res = vsh.state_at(ts, vi.start, vi.timeout);
                 <span class="kw">match </span>res {
-                    <span class="prelude-val">Ok</span>(ComponentStateTypeId::Active) =&gt; vi.components.get(<span class="kw-2">&amp;</span>component).copied(),
+                    <span class="prelude-val">Ok</span>(ComponentStateTypeId::Active) =&gt; <span class="prelude-val">Some</span>(vi.component_version),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                 }
             })
@@ -532,11 +518,7 @@
 
         <span class="kw">let </span>state_active = ComponentState::active();
         <span class="kw">let </span>versions_iter = vi_store.<span class="number">0</span>.iter().filter_map(|(vi, vsh)| {
-            <span class="kw">if </span>vsh.inner == state_active {
-                vi.components.get(<span class="kw-2">&amp;</span>component).copied()
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
+            (vi.component == component &amp;&amp; vsh.inner == state_active).then_some(vi.component_version)
         });
         <span class="kw">let </span>versions: Vec&lt;u32&gt; = iter::once(<span class="number">0</span>).chain(versions_iter).collect();
         versions
@@ -549,12 +531,8 @@
         <span class="kw">let </span>vi_store = vi_store_.<span class="number">0</span>.read();
 
         <span class="kw">let </span>versions_iter = vi_store.<span class="number">0</span>.iter().filter_map(|(vi, vsh)| {
-            vi.components
-                .get(<span class="kw-2">&amp;</span>component)
-                .copied()
-                .map(|component_version| {
-                    (component_version, ComponentStateTypeId::from(<span class="kw-2">&amp;</span>vsh.inner))
-                })
+            (vi.component == component)
+                .then_some((vi.component_version, ComponentStateTypeId::from(<span class="kw-2">&amp;</span>vsh.inner)))
         });
         iter::once((<span class="number">0</span>, ComponentStateTypeId::Active))
             .chain(versions_iter)
@@ -573,7 +551,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+    <span class="kw">use </span>std::collections::BTreeMap;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
     <span class="kw">use </span><span class="kw">crate</span>::versioning::{MipInfo, MipState};
@@ -695,7 +673,8 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">1</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">15</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -705,7 +684,8 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">25</span>),
             timeout: MassaTime::from(<span class="number">28</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -776,7 +756,8 @@
         </span><span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">1</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">1</span>,
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">15</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -786,7 +767,8 @@
         <span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            components: HashMap::from([(MipComponent::Address, <span class="number">2</span>)]),
+            component: MipComponent::Address,
+            component_version: <span class="number">2</span>,
             start: MassaTime::from(<span class="number">25</span>),
             timeout: MassaTime::from(<span class="number">28</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
