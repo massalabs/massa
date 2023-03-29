@@ -79,12 +79,7 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
-        last_start_period: u64,
     ) -> Result<Self, FinalStateError> {
-        if last_start_period > 0 {
-            return Self::from_snapshot(config, ledger, selector, last_start_period);
-        }
-
         // create the pos state
         let pos_state = PoSFinalState::new(
             config.pos_config.clone(),
@@ -96,7 +91,7 @@ impl FinalState {
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-        let slot = Slot::new(last_start_period, config.thread_count.saturating_sub(1));
+        let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
