@@ -13,6 +13,7 @@ impl DenunciationIndexes {
     /// Insert a denunciation
     /// Arguments:
     /// - denunciation: the denunciation to insert
+    #[allow(unused_must_use)]
     pub(crate) fn insert(&mut self, denunciation: Denunciation) {
         let denunciation_id = DenunciationId::from(&denunciation);
         self.denunciations.try_insert(denunciation_id, denunciation);

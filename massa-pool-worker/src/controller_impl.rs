@@ -42,6 +42,10 @@ pub struct PoolControllerImpl {
     pub(crate) operations_input_sender: SyncSender<Command>,
     /// Endorsement write worker command sender
     pub(crate) endorsements_input_sender: SyncSender<Command>,
+    /// Denunciation write worker command sender
+    pub(crate) denunciations_input_sender: SyncSender<Command>,
+    /// Last final periods from Consensus
+    pub last_cs_final_periods: Vec<u64>,
 }
 
 impl PoolController for PoolControllerImpl {
@@ -79,6 +83,8 @@ impl PoolController for PoolControllerImpl {
 
     /// Asynchronously notify of new final consensus periods. Simply print a warning on failure.
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
+        self.last_cs_final_periods = final_cs_periods.to_vec().clone();
+
         match self
             .operations_input_sender
             .try_send(Command::NotifyFinalCsPeriods(final_cs_periods.to_vec()))
@@ -96,6 +102,23 @@ impl PoolController for PoolControllerImpl {
 
         match self
             .endorsements_input_sender
+            .try_send(Command::NotifyFinalCsPeriods(final_cs_periods.to_vec()))
+        {
+            Err(TrySendError::Disconnected(_)) => {
+                warn!(
+                    "Could not notify endorsement pool of new final slots: worker is unreachable."
+                );
+            }
+            Err(TrySendError::Full(_)) => {
+                warn!(
+                    "Could not notify endorsement pool of new final slots: worker channel is full."
+                );
+            }
+            Ok(_) => {}
+        }
+
+        match self
+            .denunciations_input_sender
             .try_send(Command::NotifyFinalCsPeriods(final_cs_periods.to_vec()))
         {
             Err(TrySendError::Disconnected(_)) => {
@@ -158,8 +181,23 @@ impl PoolController for PoolControllerImpl {
 
     /// Add denunciation to pool
     fn add_denunciations(&mut self, denunciations: Storage) {
-        let mut lck = self.denunciation_pool.write();
-        lck.add_denunciation(denunciations);
+        match self
+            .denunciations_input_sender
+            .try_send(Command::AddItems(denunciations))
+        {
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Could not add denunciations to pool: worker is unreachable.");
+            }
+            Err(TrySendError::Full(_)) => {
+                warn!("Could not add denunciations to pool: worker channel is full.");
+            }
+            Ok(_) => {}
+        }
+    }
+
+    /// Get final consensus periods
+    fn get_final_cs_periods(&self) -> &Vec<u64> {
+        &self.last_cs_final_periods
     }
 }
 
@@ -171,10 +209,14 @@ pub struct PoolManagerImpl {
     pub(crate) operations_thread_handle: Option<std::thread::JoinHandle<()>>,
     /// Handle used to join the endorsement thread
     pub(crate) endorsements_thread_handle: Option<std::thread::JoinHandle<()>>,
+    /// Handle used to join the denunciation thread
+    pub(crate) denunciations_thread_handle: Option<std::thread::JoinHandle<()>>,
     /// Operations input data mpsc (used to stop the pool thread)
     pub(crate) operations_input_sender: SyncSender<Command>,
     /// Endorsements input data mpsc (used to stop the pool thread)
     pub(crate) endorsements_input_sender: SyncSender<Command>,
+    /// Denunciations input data mpsc (used to stop the pool thread)
+    pub(crate) denunciations_input_sender: SyncSender<Command>,
 }
 
 impl PoolManager for PoolManagerImpl {

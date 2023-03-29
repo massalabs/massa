@@ -44,6 +44,9 @@ pub trait PoolController: Send + Sync {
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.
     fn clone_box(&self) -> Box<dyn PoolController>;
+
+    /// Get final cs periods (updated regularly from consensus)
+    fn get_final_cs_periods(&self) -> &Vec<u64>;
 }
 
 /// Allow cloning `Box<dyn PoolController>`

@@ -27,4 +27,10 @@ pub struct FactoryConfig {
 
     /// maximum number of operation ids in block
     pub max_operations_per_block: u32,
+
+    /// cycle duration in periods
+    pub periods_per_cycle: u64,
+
+    /// denunciation expiration as cycle delta
+    pub denunciation_expire_cycle_delta: u64,
 }

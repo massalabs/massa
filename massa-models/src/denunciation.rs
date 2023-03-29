@@ -265,6 +265,40 @@ impl Denunciation {
             && public_key.verify_signature(&hash_1, &signature_1).is_ok()
             && public_key.verify_signature(&hash_2, &signature_2).is_ok())
     }
+
+    /// Get Denunciation slot ref
+    pub fn get_slot(&self) -> &Slot {
+        match self {
+            Denunciation::Endorsement(endo_de) => &endo_de.slot,
+            Denunciation::BlockHeader(blkh_de) => &blkh_de.slot,
+        }
+    }
+
+    /// For a given slot (and given the slot at now()), check if it can be denounced
+    /// Can be used to check if block header | endorsement is not too old (at reception or too cleanup cache)
+    pub fn is_expired(
+        slot: &Slot,
+        slot_at_now: &Slot,
+        last_cs_final_periods: &[u64],
+        periods_per_cycle: u64,
+        denunciation_expire_cycle_delta: u64,
+    ) -> bool {
+        // Slot is final -> cannot be Denounced anymore, it's too late!
+        if slot.period <= last_cs_final_periods[slot.thread as usize] {
+            return true;
+        }
+
+        // As we need to ensure that the Denounced has some 'Deferred credits'
+        // we will reject Denunciation older than 3 cycle compared to the current slot
+        let cycle = slot.get_cycle(periods_per_cycle);
+        let next_cycle = slot_at_now.get_cycle(periods_per_cycle);
+
+        if (next_cycle - cycle) > denunciation_expire_cycle_delta {
+            return true;
+        }
+
+        false
+    }
 }
 
 /// Create a new Denunciation from 2 SecureShareEndorsement

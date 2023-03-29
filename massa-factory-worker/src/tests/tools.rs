@@ -37,10 +37,11 @@ use massa_wallet::test_exports::create_test_wallet;
 /// The factory will ask that to the the pool, consensus and factory and then will send the block to the consensus.
 /// You can use the method `new` to build all the mocks and make the connections
 /// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
+#[allow(dead_code)]
 pub struct TestFactory {
     consensus_event_receiver: ConsensusEventReceiver,
     pool_receiver: PoolEventReceiver,
-    selector_receiver: Receiver<MockSelectorControllerMessage>,
+    selector_receiver: Option<Receiver<MockSelectorControllerMessage>>,
     factory_config: FactoryConfig,
     factory_manager: Box<dyn FactoryManager>,
     genesis_blocks: Vec<(BlockId, u64)>,
@@ -103,7 +104,7 @@ impl TestFactory {
         TestFactory {
             consensus_event_receiver,
             pool_receiver,
-            selector_receiver,
+            selector_receiver: Some(selector_receiver),
             factory_config,
             factory_manager,
             genesis_blocks,
@@ -136,6 +137,8 @@ impl TestFactory {
         loop {
             match self
                 .selector_receiver
+                .as_ref()
+                .unwrap()
                 .recv_timeout(Duration::from_millis(100))
             {
                 Ok(MockSelectorControllerMessage::GetProducer {
@@ -235,6 +238,16 @@ impl TestFactory {
 
 impl Drop for TestFactory {
     fn drop(&mut self) {
+        // Need this otherwise factory_manager is stuck while waiting for block & endorsement factory
+        // to join
+        // For instance, block factory is waiting for selector.get_producer(...)
+        //               endorsement factory is waiting for selector.get_selection(...)
+        // Note: that this will make the 2 threads panic
+        // TODO: find a better way to resolve this
+        if let Some(selector_receiver) = self.selector_receiver.take() {
+            drop(selector_receiver);
+        }
+
         self.factory_manager.stop();
     }
 }

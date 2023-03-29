@@ -2,16 +2,18 @@ use super::TestFactory;
 use massa_hash::Hash;
 use massa_models::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use massa_models::block_id::BlockId;
-use massa_models::config::THREAD_COUNT;
+use massa_models::config::{T0, THREAD_COUNT};
 use massa_models::denunciation::{Denunciation, DenunciationId};
 use massa_models::endorsement::{Endorsement, EndorsementSerializerLW};
 use massa_models::slot::Slot;
+use massa_models::timeslots::get_closest_slot_to_timestamp;
 use massa_models::{
     amount::Amount,
     operation::{Operation, OperationSerializer, OperationType},
     secure_share::SecureShareContent,
 };
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -74,11 +76,13 @@ fn basic_creation_with_multiple_operations() {
 
 /// Send 2 block headers and check if a Denunciation op is in storage
 #[test]
-#[ignore]
 fn test_denunciation_factory_block_header_denunciation() {
     let keypair = KeyPair::generate();
 
-    let slot = Slot::new(2, 1);
+    let now = MassaTime::now().expect("could not get current time");
+    // get closest slot according to the current absolute time
+    let slot = get_closest_slot_to_timestamp(THREAD_COUNT, T0, now, now);
+
     let parents: Vec<BlockId> = (0..THREAD_COUNT)
         .map(|i| BlockId(Hash::compute_from(&[i])))
         .collect();
@@ -146,7 +150,8 @@ fn test_denunciation_factory_block_header_denunciation() {
     let de_indexes = test_factory.storage.read_denunciations();
     assert_eq!(de_indexes.get(&denunciation_id), Some(&denunciation));
 
-    drop(de_indexes); // release RwLockReadGuard
-                      // stop everything
+    // release RwLockReadGuard
+    drop(de_indexes);
+    // stop everything
     drop(test_factory);
 }

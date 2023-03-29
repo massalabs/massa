@@ -1,5 +1,5 @@
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::thread;
 
 use crossbeam_channel::{select, Receiver};
@@ -10,6 +10,8 @@ use massa_models::block_header::SecuredHeader;
 use massa_models::denunciation::Denunciation;
 use massa_models::endorsement::SecureShareEndorsement;
 use massa_models::slot::Slot;
+use massa_models::timeslots::get_closest_slot_to_timestamp;
+use massa_time::MassaTime;
 
 // TODO: rework these values
 const DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN: usize = 4096;
@@ -29,14 +31,12 @@ pub(crate) struct DenunciationFactoryWorker {
     /// Internal storage for endorsement -
     /// store at max 1 endorsement per entry, as soon as we have 2 we produce a Denunciation
     endorsements_by_slot_index: HashMap<(Slot, u32), Vec<SecureShareEndorsement>>,
-    /// Cache to avoid processing several time the same endorsement denunciation
-    seen_endorsement_denunciation: HashSet<(Slot, u32)>,
+
     // internal for block header (or secured header)
     /// Internal storage for endorsement -
     /// store at max 1 endorsement per entry, as soon as we have 2 we produce a Denunciation
+    // FIXME: Store per 'Slot' then per 'PubKey'
     block_header_by_slot: HashMap<Slot, Vec<SecuredHeader>>,
-    /// Cache to avoid processing several time the same endorsement denunciation
-    seen_block_header_denunciation: HashSet<Slot>,
 }
 
 impl DenunciationFactoryWorker {
@@ -59,9 +59,7 @@ impl DenunciationFactoryWorker {
                     consensus_receiver,
                     endorsement_pool_receiver,
                     endorsements_by_slot_index: Default::default(),
-                    seen_endorsement_denunciation: Default::default(),
                     block_header_by_slot: Default::default(),
-                    seen_block_header_denunciation: Default::default(),
                 };
                 factory.run();
             })
@@ -71,22 +69,10 @@ impl DenunciationFactoryWorker {
     /// Process new secured header (~ block header)
     fn process_new_secured_header(&mut self, secured_header: SecuredHeader) {
         let key = secured_header.content.slot;
-        if self.seen_block_header_denunciation.contains(&key) {
-            warn!(
-                "Denunciation factory process a block header that have already been denounced: {}",
-                secured_header
-            );
-            return;
-        }
 
-        // TODO: need 2 separate constants here?
-        if self.seen_block_header_denunciation.len()
-            > DENUNCIATION_FACTORY_BLOCK_HEADER_CACHE_MAX_LEN
-            || self.block_header_by_slot.len() > DENUNCIATION_FACTORY_BLOCK_HEADER_CACHE_MAX_LEN
-        {
+        if self.block_header_by_slot.len() > DENUNCIATION_FACTORY_BLOCK_HEADER_CACHE_MAX_LEN {
             warn!(
-                "Denunciation factory cannot process - cache full: {}, {}",
-                self.seen_block_header_denunciation.len(),
+                "Denunciation factory cannot process - cache full: {}",
                 self.block_header_by_slot.len()
             );
             return;
@@ -130,6 +116,8 @@ impl DenunciationFactoryWorker {
             de_storage.store_denunciation(denunciation);
             self.channels.pool.add_denunciations(de_storage);
         }
+
+        self.cleanup_cache();
     }
 
     /// Process new secure share endorsement (~ endorsement)
@@ -141,7 +129,7 @@ impl DenunciationFactoryWorker {
             secure_share_endorsement.content.slot,
             secure_share_endorsement.content.index,
         );
-        if self.seen_endorsement_denunciation.contains(&key) {
+        if self.endorsements_by_slot_index.contains_key(&key) {
             warn!(
                 "Denunciation factory process an endorsement that have already been denounced: {}",
                 secure_share_endorsement
@@ -149,13 +137,9 @@ impl DenunciationFactoryWorker {
             return;
         }
 
-        if self.seen_endorsement_denunciation.len() > DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN
-            || self.endorsements_by_slot_index.len()
-                > DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN
-        {
+        if self.endorsements_by_slot_index.len() > DENUNCIATION_FACTORY_ENDORSEMENT_CACHE_MAX_LEN {
             warn!(
-                "Denunciation factory cannot process - cache full: {}, {}",
-                self.seen_endorsement_denunciation.len(),
+                "Denunciation factory cannot process - cache full: {}",
                 self.endorsements_by_slot_index.len()
             );
             return;
@@ -194,7 +178,45 @@ impl DenunciationFactoryWorker {
                 "Created a new endorsement denunciation : {:?}",
                 denunciation
             );
+
+            let mut de_storage = self.channels.storage.clone_without_refs();
+            de_storage.store_denunciation(denunciation);
+            self.channels.pool.add_denunciations(de_storage);
         }
+
+        self.cleanup_cache();
+    }
+
+    fn cleanup_cache(&mut self) {
+        let now = MassaTime::now().expect("could not get current time");
+
+        // get closest slot according to the current absolute time
+        let slot_now = get_closest_slot_to_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            now,
+        );
+
+        self.endorsements_by_slot_index.retain(|(slot, _index), _| {
+            Denunciation::is_expired(
+                slot,
+                &slot_now,
+                self.channels.pool.get_final_cs_periods(),
+                self.cfg.periods_per_cycle,
+                self.cfg.denunciation_expire_cycle_delta,
+            )
+        });
+
+        self.block_header_by_slot.retain(|slot, _| {
+            Denunciation::is_expired(
+                slot,
+                &slot_now,
+                self.channels.pool.get_final_cs_periods(),
+                self.cfg.periods_per_cycle,
+                self.cfg.denunciation_expire_cycle_delta,
+            )
+        });
     }
 
     /// main run loop of the denunciation creator thread

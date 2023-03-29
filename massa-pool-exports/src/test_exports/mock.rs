@@ -5,6 +5,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
+use massa_models::config::THREAD_COUNT;
 use massa_models::{
     block_id::BlockId, endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -95,7 +96,11 @@ pub enum MockPoolControllerMessage {
 /// For messages with a `response_tx` field, the mock will await a response through their `response_tx` channel
 /// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
-pub struct MockPoolController(Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>);
+// pub struct MockPoolController(Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>);
+pub struct MockPoolController {
+    q: Arc<Mutex<mpsc::Sender<MockPoolControllerMessage>>>,
+    last_final_cs_periods: Vec<u64>,
+}
 
 impl MockPoolController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
@@ -103,7 +108,10 @@ impl MockPoolController {
     pub fn new_with_receiver() -> (Box<dyn PoolController>, PoolEventReceiver) {
         let (tx, rx) = mpsc::channel();
         (
-            Box::new(MockPoolController(Arc::new(Mutex::new(tx)))),
+            Box::new(MockPoolController {
+                q: Arc::new(Mutex::new(tx)),
+                last_final_cs_periods: vec![0u64; THREAD_COUNT as usize],
+            }),
             PoolEventReceiver(rx),
         )
     }
@@ -129,7 +137,7 @@ impl PoolEventReceiver {
 /// See the documentation of `PoolController` for details on each function.
 impl PoolController for MockPoolController {
     fn add_endorsements(&mut self, endorsements: Storage) {
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::AddEndorsements { endorsements })
@@ -137,7 +145,7 @@ impl PoolController for MockPoolController {
     }
 
     fn add_operations(&mut self, operations: Storage) {
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::AddOperations { operations })
@@ -150,7 +158,7 @@ impl PoolController for MockPoolController {
         target_slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage) {
         let (response_tx, response_rx) = mpsc::channel();
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::GetBlockEndorsements {
@@ -164,7 +172,7 @@ impl PoolController for MockPoolController {
 
     fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
         let (response_tx, response_rx) = mpsc::channel();
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::GetBlockOperations {
@@ -177,7 +185,7 @@ impl PoolController for MockPoolController {
 
     fn get_endorsement_count(&self) -> usize {
         let (response_tx, response_rx) = mpsc::channel();
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::GetEndorsementCount { response_tx })
@@ -187,7 +195,7 @@ impl PoolController for MockPoolController {
 
     fn get_operation_count(&self) -> usize {
         let (response_tx, response_rx) = mpsc::channel();
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::GetOperationCount { response_tx })
@@ -197,7 +205,7 @@ impl PoolController for MockPoolController {
 
     fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
         let (response_tx, response_rx) = mpsc::channel();
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::ContainsEndorsements {
@@ -210,7 +218,7 @@ impl PoolController for MockPoolController {
 
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
         let (response_tx, response_rx) = mpsc::channel();
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::ContainsOperations {
@@ -222,7 +230,8 @@ impl PoolController for MockPoolController {
     }
 
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
-        self.0
+        self.last_final_cs_periods = final_cs_periods.to_vec();
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::NotifyFinalCsPeriods {
@@ -236,10 +245,14 @@ impl PoolController for MockPoolController {
     }
 
     fn add_denunciations(&mut self, denunciations: Storage) {
-        self.0
+        self.q
             .lock()
             .unwrap()
             .send(MockPoolControllerMessage::AddDenunciations { denunciations })
             .unwrap();
+    }
+
+    fn get_final_cs_periods(&self) -> &Vec<u64> {
+        &self.last_final_cs_periods
     }
 }

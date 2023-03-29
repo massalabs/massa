@@ -46,7 +46,7 @@ use massa_models::config::constants::{
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
     T0, THREAD_COUNT, VERSION,
 };
-use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
+use massa_models::config::{CONSENSUS_BOOTSTRAP_PART_SIZE, DENUNCIATION_EXPIRE_CYCLE_DELTA};
 use massa_models::endorsement::SecureShareEndorsement;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -370,6 +370,10 @@ async fn launch(
         channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_ws,
         broadcast_operations_capacity: SETTINGS.pool.broadcast_operations_capacity,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        denunciation_expire_cycle_delta: DENUNCIATION_EXPIRE_CYCLE_DELTA,
     };
 
     let pool_channels = PoolChannels {
@@ -504,6 +508,8 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        denunciation_expire_cycle_delta: DENUNCIATION_EXPIRE_CYCLE_DELTA,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

@@ -226,6 +226,13 @@ pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 /// Threshold to accept a new versioning
 pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
 
+//
+// Constants for denunciation factory
+//
+
+/// denunciation expiration delta (in cycle count)
+pub const DENUNCIATION_EXPIRE_CYCLE_DELTA: u64 = 3;
+
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {
