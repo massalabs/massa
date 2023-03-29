@@ -154,6 +154,9 @@ impl FinalState {
             _ => {
                 // Then, interpolate the downtime, to attach at end_slot;
                 final_state.last_start_period = last_start_period;
+
+                final_state.compute_initial_draws()?;
+
                 final_state.interpolate_downtime()?;
 
                 Ok(final_state)
@@ -220,6 +223,14 @@ impl FinalState {
             self.pos_state
                 .feed_cycle_state_hash(current_slot_cycle, self.final_state_hash);
 
+            self.pos_state
+                .feed_selector(current_slot_cycle.checked_add(2).ok_or_else(|| {
+                    FinalStateError::PosError("cycle overflow when feeding selector".into())
+                })?)
+                .map_err(|_| {
+                    FinalStateError::PosError("cycle overflow when feeding selector".into())
+                })?;
+
             // Then, build all the already completed cycles
             for cycle in current_slot_cycle + 1..end_slot_cycle {
                 // TODO: build a new cycle by repeating the one before. How do we handle this if latest cycle info is not complete?
@@ -241,6 +252,14 @@ impl FinalState {
 
                 self.pos_state
                     .feed_cycle_state_hash(cycle, self.final_state_hash);
+
+                self.pos_state
+                    .feed_selector(cycle.checked_add(2).ok_or_else(|| {
+                        FinalStateError::PosError("cycle overflow when feeding selector".into())
+                    })?)
+                    .map_err(|_| {
+                        FinalStateError::PosError("cycle overflow when feeding selector".into())
+                    })?;
             }
 
             // Then, build the last cycle

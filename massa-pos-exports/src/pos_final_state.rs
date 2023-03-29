@@ -209,12 +209,6 @@ impl PoSFinalState {
         let complete =
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
 
-        if complete {
-            self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
-                PosError::OverflowError("cycle overflow when feeding selector".into())
-            })?)?;
-        }
-
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             complete,
@@ -416,8 +410,11 @@ impl PoSFinalState {
     }
 
     /// Feeds the selector targeting a given draw cycle
-    fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
+    pub fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
         // get roll lookback
+
+        //info!("Feed selector with draw cycle: {}", draw_cycle);
+
         let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
             // looking back in history
             Some(c) => {
