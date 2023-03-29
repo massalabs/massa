@@ -23,7 +23,11 @@ pub trait BSListener {
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
 pub trait BSConnector {
-    fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream>;
+    fn connect_timeout(
+        &self,
+        addr: SocketAddr,
+        duration: Option<MassaTime>,
+    ) -> io::Result<TcpStream>;
 }
 
 /// The listener we are using
@@ -65,14 +69,21 @@ impl BSListener for DefaultListener {
 }
 /// Initiates a connection with given timeout in milliseconds
 #[derive(Debug)]
-pub struct DefaultConnector(MassaTime);
+pub struct DefaultConnector;
 
 impl BSConnector for DefaultConnector {
     /// Tries to connect to address
     ///
     /// # Argument
     /// * `addr`: `SocketAddr` we are trying to connect to.
-    fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream> {
-        TcpStream::connect_timeout(&addr, self.0.to_duration())
+    fn connect_timeout(
+        &self,
+        addr: SocketAddr,
+        duration: Option<MassaTime>,
+    ) -> io::Result<TcpStream> {
+        let Some(duration) = duration else {
+            return TcpStream::connect(&addr);
+        };
+        TcpStream::connect_timeout(&addr, duration.to_duration())
     }
 }

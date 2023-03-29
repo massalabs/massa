@@ -382,10 +382,9 @@ fn connect_to_server(
     addr: &SocketAddr,
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder<std::net::TcpStream>, Box<BootstrapError>> {
-    let socket = connector.connect(*addr).map_err(|e| Box::new(e.into()))?;
-    socket
-        .set_nonblocking(true)
-        .map_err(|e| Box::new(BootstrapError::IoError(e)))?;
+    let socket = connector
+        .connect_timeout(*addr, Some(bootstrap_config.connect_timeout))
+        .map_err(|e| Box::new(e.into()))?;
     Ok(BootstrapClientBinder::new(
         // this from_std will panic if this method doesn't exist within an async runtime...
         socket,
