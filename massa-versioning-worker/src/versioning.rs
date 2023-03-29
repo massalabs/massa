@@ -191,8 +191,7 @@ impl Defined {
         match input.now {
             // TODO: >= ?
             n if n > input.timeout => ComponentState::failed(),
-            // TODO: >= ?
-            n if n > input.start_timestamp => ComponentState::started(Amount::zero()),
+            n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
             _ => ComponentState::Defined(Defined {}),
         }
     }
@@ -670,7 +669,7 @@ mod test {
         let mut state: ComponentState = Default::default();
         assert_eq!(state, ComponentState::defined());
 
-        let now = mi.start;
+        let now = mi.start.saturating_sub(MassaTime::from(1));
         let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
