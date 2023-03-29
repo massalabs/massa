@@ -96,6 +96,7 @@ mod speculative_executed_ops;
 mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
+mod vesting_manager;
 mod worker;
 
 pub use worker::start_execution_worker;

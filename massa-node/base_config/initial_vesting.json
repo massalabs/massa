@@ -17,8 +17,8 @@
         },
         {
             "timestamp": 1679321600000,
-            "min_balance": "0",
-            "max_rolls": 18446744073709551615
+            "min_balance": null,
+            "max_rolls": null
         }
     ],
     "AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs": [
@@ -34,8 +34,8 @@
         },
         {
             "timestamp": 1679321600000,
-            "min_balance": "0",
-            "max_rolls": 18446744073709551615
+            "min_balance": null,
+            "max_rolls": null
         }
     ],
     "AU12spryWgt7VUoT9LRi8Roe5WVgUPLeaQ6GXMd9ABUQyfv62Ab18": [

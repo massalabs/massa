@@ -103,7 +103,7 @@ mod types {
             socket.listen(1024)?;
 
             let socket: std::net::TcpListener = socket.into();
-            socket.set_nonblocking(true).unwrap();
+            socket.set_nonblocking(true)?;
             Ok(DefaultListener(TcpListener::from_std(socket)?))
         }
 
