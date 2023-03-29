@@ -31,10 +31,7 @@ use massa_pos_exports::{
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{error::context, sequence::tuple, IResult, Parser};
 use std::ops::Bound::{Excluded, Included};
-use std::{
-    collections::{BTreeMap, VecDeque},
-    fmt::format,
-};
+use std::collections::{BTreeMap, VecDeque};
 use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -219,7 +216,7 @@ impl FinalState {
                 )
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(format!(
-                        "Cannot create slot for interpolating downtime: {}}",
+                        "Cannot create slot for interpolating downtime: {}",
                         err.to_string()
                     ))
                 })?;
@@ -620,6 +617,7 @@ pub struct FinalStateRaw {
     deferred_credits: DeferredCredits,
     sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     latest_consistent_slot: Slot,
+    #[allow(dead_code)]
     final_state_hash_from_snapshot: Hash,
 }
 
@@ -635,6 +633,7 @@ pub struct FinalStateRawDeserializer {
 
 impl FinalStateRawDeserializer {
     #[allow(clippy::too_many_arguments)]
+    #[allow(dead_code)]
     /// Initialize a `FinalStateRawDeserializer`
     pub fn new(
         config: FinalStateConfig,
