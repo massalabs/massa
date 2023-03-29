@@ -253,8 +253,8 @@ impl<D: Duplex> BootstrapServer<'_, D> {
     ) -> Result<Result<(), BsConn<TcpStream>>, Box<BootstrapError>> {
         loop {
             let (msg, addr) = listener.accept().map_err(BootstrapError::IoError)?;
-            msg.set_nonblocking(true).unwrap();
-            let msg = TcpStream::from_std(msg).unwrap();
+            msg.set_nonblocking(true).map_err(BootstrapError::IoError)?;
+            let msg = TcpStream::from_std(msg).map_err(BootstrapError::IoError)?;
             match listener_tx.send((msg, addr)) {
                 Ok(_) => continue,
                 Err(SendError((dplx, remote_addr))) => {
