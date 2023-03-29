@@ -7,11 +7,11 @@
 [api]
     # max number of future periods considered during requests
     draw_lookahead_period_count = 10
-    # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed. Bind to "[::]:port" if you want to access the node from IPv6.
+    # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed. Bind to "[::1]:port" for IPv6
     bind_private = "127.0.0.1:33034"
-    # port on which the node API listens for public requests. Can be exposed to the Internet. Bind to "[::]:port" if you want to access the node from IPv6.
+    # port on which the node API listens for public requests. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
     bind_public = "0.0.0.0:33035"
-    # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet. Bind to "[::]:port" if you want to access the node from IPv6.
+    # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
     bind_api = "0.0.0.0:33036"
     # max number of arguments per RPC call
     max_arguments = 128
