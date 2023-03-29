@@ -29,9 +29,8 @@ pub(crate) fn get_datastore_entries(
     grpc: &MassaGrpcService,
     request: Request<grpc::GetDatastoreEntriesRequest>,
 ) -> Result<GetDatastoreEntriesResponse, GrpcError> {
-    let execution_controller = grpc.execution_controller.clone();
     let inner_req = request.into_inner();
-    let id = inner_req.id.clone();
+    let id = inner_req.id;
 
     let filters = inner_req
         .queries
@@ -42,7 +41,8 @@ pub(crate) fn get_datastore_entries(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let entries = execution_controller
+    let entries = grpc
+        .execution_controller
         .get_final_and_active_data_entry(filters)
         .into_iter()
         .map(|output| grpc::BytesMapFieldEntry {
@@ -59,10 +59,8 @@ pub(crate) fn get_selector_draws(
     grpc: &MassaGrpcService,
     request: Request<grpc::GetSelectorDrawsRequest>,
 ) -> Result<GetSelectorDrawsResponse, GrpcError> {
-    let selector_controller = grpc.selector_controller.clone();
-    let config = grpc.grpc_config.clone();
     let inner_req = request.into_inner();
-    let id = inner_req.id.clone();
+    let id = inner_req.id;
 
     let addresses = inner_req
         .queries
@@ -73,22 +71,23 @@ pub(crate) fn get_selector_draws(
     // get future draws from selector
     let selection_draws = {
         let cur_slot = timeslots::get_current_latest_block_slot(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
+            grpc.grpc_config.thread_count,
+            grpc.grpc_config.t0,
+            grpc.grpc_config.genesis_timestamp,
         )
         .expect("could not get latest current slot")
         .unwrap_or_else(|| Slot::new(0, 0));
         let slot_end = Slot::new(
             cur_slot
                 .period
-                .saturating_add(config.draw_lookahead_period_count),
+                .saturating_add(grpc.grpc_config.draw_lookahead_period_count),
             cur_slot.thread,
         );
         addresses
             .iter()
             .map(|addr| {
-                let (nt_block_draws, nt_endorsement_draws) = selector_controller
+                let (nt_block_draws, nt_endorsement_draws) = grpc
+                    .selector_controller
                     .get_address_selections(addr, cur_slot, slot_end)
                     .unwrap_or_default();
 
@@ -169,20 +168,21 @@ pub(crate) fn get_transactions_throughput(
 
 /// get blocks by slots
 pub(crate) fn get_blocks_by_slots(
-    gprc: &MassaGrpcService,
+    grpc: &MassaGrpcService,
     request: Request<GetBlocksBySlotRequest>,
 ) -> Result<GetBlocksBySlotResponse, GrpcError> {
     let inner_req = request.into_inner();
-    let consensus_controller = gprc.consensus_controller.clone();
-    let storage = gprc.storage.clone_without_refs();
+    let storage = grpc.storage.clone_without_refs();
 
     let mut blocks = vec![];
 
     for slot in inner_req.slots.into_iter() {
-        let block_id_option = consensus_controller.get_blockclique_block_at_slot(Slot {
-            period: slot.period,
-            thread: slot.thread as u8,
-        });
+        let block_id_option = grpc
+            .consensus_controller
+            .get_blockclique_block_at_slot(Slot {
+                period: slot.period,
+                thread: slot.thread as u8,
+            });
 
         let block_id = match block_id_option {
             Some(id) => id,
