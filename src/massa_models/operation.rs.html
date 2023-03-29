@@ -1510,6 +1510,21 @@
 <a href="#1510" id="1510">1510</a>
 <a href="#1511" id="1511">1511</a>
 <a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -1960,6 +1975,8 @@
         </span>data: Vec&lt;u8&gt;,
         <span class="doccomment">/// The maximum amount of gas that the execution of the contract is allowed to cost.
         </span>max_gas: u64,
+        <span class="doccomment">/// Max amount of coins allowed to be spent by the execution
+        </span>max_coins: Amount,
         <span class="doccomment">/// A key-value store associating a hash to arbitrary bytes
         </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(_, _)&gt;&quot;</span>)]
         </span>datastore: Datastore,
@@ -2000,10 +2017,12 @@
             }
             OperationType::ExecuteSC {
                 max_gas,
+                max_coins,
                 ..
                 <span class="comment">// data &amp; datastore, // these fields are ignored because bytes eh
             </span>} =&gt; {
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;ExecuteSC: &quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- max_coins:{}&quot;</span>, max_coins)<span class="question-mark">?</span>;
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- max_gas:{}&quot;</span>, max_gas)<span class="question-mark">?</span>;
             },
             OperationType::CallSC {
@@ -2070,6 +2089,7 @@
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
+    ///    max_coins: Amount::from_str(&quot;5000000&quot;).unwrap(),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
@@ -2100,11 +2120,13 @@
             OperationType::ExecuteSC {
                 data,
                 max_gas,
+                max_coins,
                 datastore,
             } =&gt; {
                 <span class="self">self</span>.u32_serializer
                     .serialize(<span class="kw-2">&amp;</span>u32::from(OperationTypeId::ExecuteSC), buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.u64_serializer.serialize(max_gas, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.amount_serializer.serialize(max_coins, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.vec_u8_serializer.serialize(data, buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.datastore_serializer.serialize(datastore, buffer)<span class="question-mark">?</span>;
             }
@@ -2195,6 +2217,7 @@
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
+    ///    max_coins: Amount::from_str(&quot;5000000&quot;).unwrap(),
     ///    datastore: BTreeMap::from([(vec![1, 2], vec![254, 255])])
     /// };
     /// let mut buffer = Vec::new();
@@ -2259,6 +2282,9 @@
                         context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
                             <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                         }),
+                        context(<span class="string">&quot;Failed max_coins deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.amount_deserializer.deserialize(input)
+                        }),
                         context(<span class="string">&quot;Failed data deserialization&quot;</span>, |input| {
                             <span class="self">self</span>.data_deserializer.deserialize(input)
                         }),
@@ -2267,11 +2293,14 @@
                         }),
                     )),
                 )
-                .map(|(max_gas, data, datastore)| OperationType::ExecuteSC {
-                    data,
-                    max_gas,
-                    datastore,
-                })
+                .map(
+                    |(max_gas, max_coins, data, datastore)| OperationType::ExecuteSC {
+                        data,
+                        max_gas,
+                        max_coins,
+                        datastore,
+                    },
+                )
                 .parse(input),
                 OperationTypeId::CallSC =&gt; context(
                     <span class="string">&quot;Failed CallSC deserialization&quot;</span>,
@@ -2359,7 +2388,7 @@
             OperationType::Transaction { amount, .. } =&gt; <span class="kw-2">*</span>amount,
             OperationType::RollBuy { roll_count } =&gt; roll_price.saturating_mul_u64(<span class="kw-2">*</span>roll_count),
             OperationType::RollSell { .. } =&gt; Amount::zero(),
-            OperationType::ExecuteSC { .. } =&gt; Amount::zero(),
+            OperationType::ExecuteSC { max_coins, .. } =&gt; <span class="kw-2">*</span>max_coins,
             OperationType::CallSC { coins, .. } =&gt; <span class="kw-2">*</span>coins,
         };
 
@@ -2879,6 +2908,7 @@
 
         <span class="kw">let </span>op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
+            max_coins: Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap(),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
             datastore: BTreeMap::from([
                 (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),

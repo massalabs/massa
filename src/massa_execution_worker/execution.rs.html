@@ -1422,6 +1422,13 @@
 <a href="#1422" id="1422">1422</a>
 <a href="#1423" id="1423">1423</a>
 <a href="#1424" id="1424">1424</a>
+<a href="#1425" id="1425">1425</a>
+<a href="#1426" id="1426">1426</a>
+<a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1662,12 +1669,18 @@
             ));
         }
 
+        <span class="comment">// Set the creator coin spending allowance.
+        // Note that this needs to be initialized before any spending from the creator.
+        </span>context.creator_coin_spending_allowance =
+            <span class="prelude-val">Some</span>(operation.get_max_spending(<span class="self">self</span>.config.roll_price));
+
         <span class="comment">// debit the fee from the operation sender
         // fail execution if there are not enough coins
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
             context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
         {
-            <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">&quot;could not spend fees: {}&quot;</span>, err);
+            <span class="comment">// reset the creator spending allowance (because it happens before the snapshot)
+            </span><span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">&quot;could not spend fees: {}&quot;</span>, err);
             <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
             context.event_emit(event);
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));
@@ -2129,6 +2142,7 @@
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = <span class="prelude-val">None</span>;
+            context.creator_coin_spending_allowance = <span class="prelude-val">None</span>;
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
