@@ -13,7 +13,7 @@ use massa_proto::massa::api::v1::{
 use std::str::FromStr;
 use tonic::Request;
 
-/// get version
+/// Get version
 pub(crate) fn get_version(
     grpc: &MassaGrpcService,
     request: Request<grpc::GetVersionRequest>,
@@ -24,7 +24,7 @@ pub(crate) fn get_version(
     })
 }
 
-/// Get multiple datastore entries.
+/// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
     grpc: &MassaGrpcService,
     request: Request<grpc::GetDatastoreEntriesRequest>,

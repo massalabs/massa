@@ -567,11 +567,16 @@ async fn launch(
         .await
         .expect("failed to start MASSA API");
 
+    info!(
+        "API | EXPERIMENTAL | listening on: {}",
+        &SETTINGS.api.bind_api
+    );
+
     // Disable WebSockets for Private and Public API's
     let mut api_config = api_config.clone();
     api_config.enable_ws = false;
 
-    // Wheter to spawn gRPC API
+    // Whether to spawn gRPC API
     let grpc_handle = if SETTINGS.grpc.enabled {
         let grpc_config = GrpcConfig {
             enabled: SETTINGS.grpc.enabled,
@@ -629,13 +634,13 @@ async fn launch(
             version: *VERSION,
         };
 
-        // maybe should remove timeout later
+        // HACK maybe should remove timeout later
         if let Ok(result) =
             tokio::time::timeout(Duration::from_secs(3), grpc_api.serve(&grpc_config)).await
         {
             match result {
                 Ok(stop) => {
-                    info!("API|gRPC| listening on: {}", grpc_config.bind);
+                    info!("API | gRPC | listening on: {}", grpc_config.bind);
                     Some(stop)
                 }
                 Err(e) => {
@@ -663,7 +668,7 @@ async fn launch(
         .await
         .expect("failed to start PRIVATE API");
     info!(
-        "API|PRIVATE JsonRPC| listening on: {}",
+        "API | PRIVATE JsonRPC | listening on: {}",
         api_config.bind_private
     );
 

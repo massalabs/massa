@@ -49,17 +49,19 @@ The project is set up to automatically compile proto files during the build proc
 When the project is built, `build.rs` is executed and it uses the `tonic-build` crate to generate Rust code from the proto files. The generated Rust code could be found in [massa-proto/src/](../massa-proto/src/).
 
 
-VSCode Settings
----------------
+VSCode integration
+------------------
 
-The following settings contain a `protoc` configuration block:
+1- Install [vscode-proto3](https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3) extension.
+
+2- The following settings contain a `protoc` configuration block:
 
 ```
 {
     "rust-analyzer.procMacro.enable": true,
-    "rust-analyzer.cargo.loadOutDirsFromCheck": true,
+    "rust-analyzer.cargo.buildScripts.enable": true,
     "protoc": {
-        "path": "/path/to/protoc"",
+        "path": "/path/to/protoc",
         "compile_on_save": true,
         "options": [
             "{workspaceRoot}/massa-proto/proto/massa/*.proto",
@@ -70,3 +72,5 @@ The following settings contain a `protoc` configuration block:
     }
 }
 ```
+
+3- Add the snippet above to `.vscode/settings.json`.

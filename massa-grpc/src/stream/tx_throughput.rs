@@ -40,7 +40,7 @@ pub(crate) async fn transactions_throughput(
         // Continuously loop until the stream ends or an error occurs
         loop {
             select! {
-                // Receive the next request from the client
+                // Receive a new message from the in_stream
                 res = in_stream.next() => {
                     match res {
                         Some(Ok(req)) => {

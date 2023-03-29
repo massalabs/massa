@@ -129,6 +129,7 @@ pub(crate) async fn new_operations(
                             Err(e) => error!("{}", e)
                         }
                     },
+                    // Receive a new message from the in_stream
                     res = in_stream.next() => {
                         match res {
                             Some(res) => {
