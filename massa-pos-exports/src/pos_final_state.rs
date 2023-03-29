@@ -176,6 +176,45 @@ impl PoSFinalState {
         ));
     }
 
+    /// Create the initial cycle based off the initial rolls.
+    ///
+    /// This should be called only if bootstrap did not happen.
+    pub fn create_new_cycle_from_last(&mut self, last_cycle_info: &CycleInfo, last_slot: Slot) {
+        let mut rng_seed = BitVec::with_capacity(
+            self.config
+                .periods_per_cycle
+                .saturating_mul(self.config.thread_count as u64)
+                .try_into()
+                .unwrap(),
+        );
+
+        let cycle = last_slot.get_cycle(self.config.periods_per_cycle);
+
+        let num_slots = last_slot
+            .slots_since(
+                &Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
+                    .expect("Cannot create first slot for cycle"),
+                self.config.thread_count,
+            )
+            .expect("Error in slot ordering")
+            .saturating_add(1);
+
+        for _ in 0..num_slots {
+            rng_seed.push(false);
+        }
+
+        let complete =
+            last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
+
+        self.cycle_history.push_back(CycleInfo::new_with_hash(
+            cycle,
+            complete,
+            last_cycle_info.roll_counts.clone(),
+            rng_seed,
+            last_cycle_info.production_stats.clone(),
+        ));
+    }
+
     /// Create a new empty cycle based off the initial rolls.
     /// Completes the rng_seed to start at the given period.
     ///

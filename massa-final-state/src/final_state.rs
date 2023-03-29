@@ -14,11 +14,11 @@ use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerial
 use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
-    config::{
+    /*config::{
         MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
         MAX_EXECUTED_OPS_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
         MAX_ROLLS_COUNT_LENGTH,
-    },
+    },*/
     operation::OperationId,
     prehash::PreHashSet,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -30,8 +30,11 @@ use massa_pos_exports::{
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{error::context, sequence::tuple, IResult, Parser};
-use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::{Excluded, Included};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    fmt::format,
+};
 use tracing::{debug, info};
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -74,7 +77,6 @@ impl FinalState {
     /// * `config`: the configuration of the execution state
     /// * `ledger`: a handle to the ledger
     /// * `selector`: a handle to the POS selector
-    /// * `last_start_period`: at what period we should attach the final_state
     pub fn new(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
@@ -117,6 +119,9 @@ impl FinalState {
     ///
     /// # Arguments
     /// * `config`: the configuration of the execution state
+    /// * `ledger`: a handle to the ledger
+    /// * `selector`: a handle to the POS selector
+    /// * `last_start_period`: at what period we should attach the final_state
     pub fn from_snapshot(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
@@ -125,88 +130,28 @@ impl FinalState {
     ) -> Result<Self, FinalStateError> {
         info!("Restarting from snapshot");
 
-        // We recover the final_state from the RocksDB instance
-        let final_state_data = ledger
-            .get_final_state()
-            .expect("Cannot retrieve ledger final_state data");
+        // FIRST, we recover the last known final_state
+        let mut final_state = FinalState::new(config, ledger, selector)?;
+        let final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
 
-        // Deserialize FinalStateRaw from Snapshot
-
-        let final_state_raw_deserializer = FinalStateRawDeserializer::new(
-            config.clone(),
-            MAX_ASYNC_POOL_LENGTH,
-            MAX_DATASTORE_KEY_LENGTH,
-            MAX_ROLLS_COUNT_LENGTH,
-            MAX_PRODUCTION_STATS_LENGTH,
-            MAX_DEFERRED_CREDITS_LENGTH,
-            MAX_EXECUTED_OPS_LENGTH,
-            MAX_OPERATIONS_PER_BLOCK,
-        );
-
-        let (_rest, final_state_raw) = final_state_raw_deserializer
-            .deserialize::<massa_serialization::DeserializeError>(&final_state_data)
-            .map_err(|_| {
-                FinalStateError::SnapshotError(String::from(
-                    "Could not deserialize final_state_raw from snapshot",
-                ))
-            })?;
+        // TODO: We recover the final_state from the RocksDB instance instead
+        /*let final_state_data = ledger
+        .get_final_state()
+        .expect("Cannot retrieve ledger final_state data");*/
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
-            final_state_raw.latest_consistent_slot
+            final_state.slot
         );
 
-        // Rebuild Async Pool with hash
-        let async_pool = AsyncPool::from_snapshot(
-            config.async_pool_config.clone(),
-            final_state_raw.async_pool_messages,
-        );
-
-        // Rebuild Pos State
-        let latest_consistent_cycle_info = final_state_raw
-            .cycle_history
-            .back()
-            .expect("Cycle history should not be empty in snapshot!");
-
-        // attach at the output of the latest initial final slot, that is the last genesis slot
-        let end_slot = Slot::new(last_start_period, config.thread_count.saturating_sub(1));
-
-        let pos_state = PoSFinalState::from_snapshot(
-            config.pos_config.clone(),
-            final_state_raw.cycle_history.clone(),
-            final_state_raw.deferred_credits,
-            &config.initial_seed_string,
-            latest_consistent_cycle_info.roll_counts.clone(),
-            selector,
-            ledger.get_ledger_hash(),
-            end_slot,
-        )
-        .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
-
-        let executed_ops = ExecutedOps::new_with_hash(
-            config.executed_ops_config.clone(),
-            final_state_raw.sorted_ops,
-        );
-
-        // Rebuild final state
-        let mut final_state = FinalState {
-            slot: final_state_raw.latest_consistent_slot,
-            ledger,
-            async_pool,
-            pos_state,
-            config,
-            executed_ops,
-            changes_history: Default::default(), // no changes in history
-            final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
-            last_start_period,
-        };
-
-        final_state.compute_state_hash_at_slot(final_state_raw.latest_consistent_slot);
+        final_state.compute_state_hash_at_slot(final_state.slot);
 
         // Check the hash to see if we correctly recovered the snapshot
-        match final_state.final_state_hash == final_state_raw.final_state_hash_from_snapshot {
+        match final_state.final_state_hash == final_state_hash_from_snapshot {
             true => {
-                final_state.handle_downtime()?;
+                // Then, interpolate the downtime, to attach at end_slot;
+                final_state.last_start_period = last_start_period;
+                final_state.interpolate_downtime()?;
 
                 Ok(final_state)
             }
@@ -217,11 +162,15 @@ impl FinalState {
     }
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime
-    fn handle_downtime(&mut self) -> Result<(), FinalStateError> {
+    fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
+        let current_slot = self.slot;
+        let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
+
         let end_slot = Slot::new(
             self.last_start_period,
             self.config.thread_count.saturating_sub(1),
         );
+        let end_slot_cycle = end_slot.get_cycle(self.config.periods_per_cycle);
 
         let latest_consistent_cycle_info = self
             .pos_state
@@ -230,10 +179,64 @@ impl FinalState {
             .expect("Cycle history should not be empty in snapshot!")
             .clone();
 
-        // Reset the cycle_history and populate it with new cycle
-        self.pos_state.cycle_history = Vec::new().into();
-        self.pos_state
-            .create_new_cycle_for_snapshot(&latest_consistent_cycle_info, end_slot);
+        if current_slot_cycle == end_slot_cycle {
+            // In that case, we just complete the gap in the same cycle
+            let latest_cycle_info =
+                self.pos_state
+                    .cycle_history
+                    .back_mut()
+                    .ok_or(FinalStateError::SnapshotError(String::from(
+                        "Invalid cycle_history",
+                    )))?;
+
+            for _ in current_slot.period..end_slot.period {
+                latest_cycle_info.rng_seed.push(false);
+            }
+        } else {
+            // Here, we we also complete the cycle_infos in between
+
+            // Firstly, complete the first cycle
+            let latest_cycle_info =
+                self.pos_state
+                    .cycle_history
+                    .back_mut()
+                    .ok_or(FinalStateError::SnapshotError(String::from(
+                        "Invalid cycle_history",
+                    )))?;
+
+            for _ in current_slot.period..self.config.periods_per_cycle {
+                latest_cycle_info.rng_seed.push(false);
+            }
+            latest_cycle_info.complete = true;
+
+            // Then, build all the already completed cycles
+            for cycle in current_slot_cycle + 1..end_slot_cycle {
+                // TODO: build a new cycle by repeating the one before. How do we handle this if latest cycle info is not complete?
+                let last_slot = Slot::new_last_of_cycle(
+                    cycle,
+                    self.config.periods_per_cycle,
+                    self.config.thread_count,
+                )
+                .map_err(|err| {
+                    FinalStateError::InvalidSlot(format!(
+                        "Cannot create slot for interpolating downtime: {}}",
+                        err.to_string()
+                    ))
+                })?;
+
+                self.pos_state
+                    .create_new_cycle_from_last(&latest_consistent_cycle_info, last_slot);
+            }
+
+            // Then, build the last cycle
+            // TODO: build a new cycle by repeating the one before. How do we handle this if latest cycle info is not complete??
+            self.pos_state
+                .create_new_cycle_from_last(&latest_consistent_cycle_info, end_slot);
+        }
+
+        // TODO: remove this
+        /*self.pos_state
+        .create_new_cycle_for_snapshot(&latest_consistent_cycle_info, end_slot);*/
 
         // The deferred credits that happen during the downtime have to be set to the next slot to be executed
         self.pos_state
