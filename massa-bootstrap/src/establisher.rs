@@ -15,11 +15,13 @@ pub trait Duplex:
 impl Duplex for tokio::net::TcpStream {}
 
 /// Specifies a common interface that can be used by standard, or mockers
+#[cfg_attr(test, mockall::automock)]
 pub trait BSListener {
     fn accept(&mut self) -> io::Result<(TcpStream, SocketAddr)>;
 }
 
 /// Specifies a common interface that can be used by standard, or mockers
+#[cfg_attr(test, mockall::automock)]
 pub trait BSConnector {
     fn connect(&mut self, addr: SocketAddr) -> io::Result<TcpStream>;
 }

@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::establisher::Duplex;
 use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
@@ -47,7 +46,7 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_network_exports::{BootstrapPeers, NetworkCommand};
+use massa_network_exports::BootstrapPeers;
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
@@ -60,7 +59,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
-use tokio::{sync::mpsc::Receiver, time::sleep};
 
 // Use loop-back address. use port 0 to auto-assign a port
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
@@ -440,39 +438,4 @@ pub fn get_peers() -> BootstrapPeers {
         "82.245.123.77".parse().unwrap(),
         "82.220.123.78".parse().unwrap(),
     ])
-}
-
-pub async fn bridge_mock_streams<D: Duplex>(mut side1: D, mut side2: D) {
-    let mut buf1 = vec![0u8; 1024];
-    let mut buf2 = vec![0u8; 1024];
-    loop {
-        tokio::select! {
-            res1 = side1.read(&mut buf1) => match res1 {
-                Ok(n1) => {
-                    if n1 == 0 {
-                        return;
-                    }
-                    if side2.write_all(&buf1[..n1]).await.is_err() {
-                        return;
-                    }
-                },
-                Err(_err) => {
-                    return;
-                }
-            },
-            res2 = side2.read(&mut buf2) => match res2 {
-                Ok(n2) => {
-                    if n2 == 0 {
-                        return;
-                    }
-                    if side1.write_all(&buf2[..n2]).await.is_err() {
-                        return;
-                    }
-                },
-                Err(_err) => {
-                    return;
-                }
-            },
-        }
-    }
 }
