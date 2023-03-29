@@ -4,21 +4,16 @@ use itertools::izip;
 use massa_models::address::Address;
 use massa_models::slot::Slot;
 use massa_models::timeslots;
-use massa_proto::massa::api::v1::{
-    self as grpc, Block, GetBlocksBySlotRequest, GetBlocksBySlotResponse,
-    GetDatastoreEntriesResponse, GetNextBlockBestParentsRequest, GetNextBlockBestParentsResponse,
-    GetSelectorDrawsResponse, GetTransactionsThroughputRequest, GetTransactionsThroughputResponse,
-    GetVersionResponse, Parents,
-};
+use massa_proto::massa::api::v1 as grpc;
 use std::str::FromStr;
-use tonic::Request;
+use tracing::log::warn;
 
-/// Get version
+// Get the version of the node
 pub(crate) fn get_version(
     grpc: &MassaGrpcService,
-    request: Request<grpc::GetVersionRequest>,
-) -> Result<GetVersionResponse, GrpcError> {
-    Ok(GetVersionResponse {
+    request: tonic::Request<grpc::GetVersionRequest>,
+) -> Result<grpc::GetVersionResponse, GrpcError> {
+    Ok(grpc::GetVersionResponse {
         id: request.into_inner().id,
         version: grpc.version.to_string(),
     })
@@ -27,18 +22,19 @@ pub(crate) fn get_version(
 /// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
     grpc: &MassaGrpcService,
-    request: Request<grpc::GetDatastoreEntriesRequest>,
-) -> Result<GetDatastoreEntriesResponse, GrpcError> {
+    request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
+) -> Result<grpc::GetDatastoreEntriesResponse, GrpcError> {
     let inner_req = request.into_inner();
     let id = inner_req.id;
 
     let filters = inner_req
         .queries
         .into_iter()
-        .map(|query| {
-            //TODO to be handled in the future
-            let filter = query.filter.unwrap();
-            Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
+        .map(|query| match query.filter {
+            Some(filter) => Address::from_str(filter.address.as_str())
+                .map(|address| (address, filter.key))
+                .map_err(|e| e.into()),
+            None => Err(GrpcError::InvalidArgument("filter is missing".to_string())),
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -47,38 +43,45 @@ pub(crate) fn get_datastore_entries(
         .get_final_and_active_data_entry(filters)
         .into_iter()
         .map(|output| grpc::BytesMapFieldEntry {
-            //TODO this behaviour should be confirmed
+            //TODO should be replaced by a dedicated struct
             key: output.0.unwrap_or_default(),
             value: output.1.unwrap_or_default(),
         })
         .collect();
 
-    Ok(GetDatastoreEntriesResponse { id, entries })
+    Ok(grpc::GetDatastoreEntriesResponse { id, entries })
 }
 
 pub(crate) fn get_selector_draws(
     grpc: &MassaGrpcService,
-    request: Request<grpc::GetSelectorDrawsRequest>,
-) -> Result<GetSelectorDrawsResponse, GrpcError> {
+    request: tonic::Request<grpc::GetSelectorDrawsRequest>,
+) -> Result<grpc::GetSelectorDrawsResponse, GrpcError> {
     let inner_req = request.into_inner();
     let id = inner_req.id;
-    //TODO to be unwrap in the future
+
     let addresses = inner_req
         .queries
         .into_iter()
-        .map(|query| Address::from_str(query.filter.unwrap().address.as_str()))
+        .map(|query| match query.filter {
+            Some(filter) => Address::from_str(filter.address.as_str()).map_err(|e| e.into()),
+            None => Err(GrpcError::InvalidArgument("filter is missing".to_string())),
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     // get future draws from selector
-    //TODO remove expect
     let selection_draws = {
-        let cur_slot = timeslots::get_current_latest_block_slot(
+        let cur_slot = match timeslots::get_current_latest_block_slot(
             grpc.grpc_config.thread_count,
             grpc.grpc_config.t0,
             grpc.grpc_config.genesis_timestamp,
-        )
-        .expect("could not get latest current slot")
-        .unwrap_or_else(|| Slot::new(0, 0));
+        ) {
+            Ok(slot) => slot.unwrap_or_else(Slot::min),
+            Err(e) => {
+                warn!("failed to get current slot with error: {}", e);
+                Slot::min()
+            }
+        };
+
         let slot_end = Slot::new(
             cur_slot
                 .period
@@ -117,7 +120,7 @@ pub(crate) fn get_selector_draws(
         });
     }
 
-    Ok(GetSelectorDrawsResponse {
+    Ok(grpc::GetSelectorDrawsResponse {
         id,
         selector_draws: res,
     })
@@ -126,19 +129,19 @@ pub(crate) fn get_selector_draws(
 /// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
     grpc: &MassaGrpcService,
-    request: Request<GetNextBlockBestParentsRequest>,
-) -> Result<GetNextBlockBestParentsResponse, GrpcError> {
+    request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
+) -> Result<grpc::GetNextBlockBestParentsResponse, GrpcError> {
     let inner_req = request.into_inner();
     let parents = grpc
         .consensus_controller
         .get_best_parents()
         .into_iter()
-        .map(|p| Parents {
+        .map(|p| grpc::BlockParent {
             block_id: p.0.to_string(),
             period: p.1,
         })
         .collect();
-    Ok(GetNextBlockBestParentsResponse {
+    Ok(grpc::GetNextBlockBestParentsResponse {
         id: inner_req.id,
         parents,
     })
@@ -147,8 +150,8 @@ pub(crate) fn get_next_block_best_parents(
 /// get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaGrpcService,
-    request: Request<GetTransactionsThroughputRequest>,
-) -> Result<GetTransactionsThroughputResponse, GrpcError> {
+    request: tonic::Request<grpc::GetTransactionsThroughputRequest>,
+) -> Result<grpc::GetTransactionsThroughputResponse, GrpcError> {
     let stats = grpc.execution_controller.get_stats();
     let nb_sec_range = stats
         .time_window_end
@@ -162,7 +165,7 @@ pub(crate) fn get_transactions_throughput(
         .checked_div(nb_sec_range as usize)
         .unwrap_or_default() as u32;
 
-    Ok(GetTransactionsThroughputResponse {
+    Ok(grpc::GetTransactionsThroughputResponse {
         id: request.into_inner().id,
         throughput,
     })
@@ -171,12 +174,12 @@ pub(crate) fn get_transactions_throughput(
 /// get blocks by slots
 pub(crate) fn get_blocks_by_slots(
     grpc: &MassaGrpcService,
-    request: Request<GetBlocksBySlotRequest>,
-) -> Result<GetBlocksBySlotResponse, GrpcError> {
+    request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
+) -> Result<grpc::GetBlocksBySlotsResponse, GrpcError> {
     let inner_req = request.into_inner();
     let storage = grpc.storage.clone_without_refs();
 
-    let mut blocks = vec![];
+    let mut blocks = Vec::new();
 
     for slot in inner_req.slots.into_iter() {
         let block_id_option = grpc
@@ -194,7 +197,6 @@ pub(crate) fn get_blocks_by_slots(
             // todo rework ?
             let header = b.clone().content.header;
             // transform to grpc struct
-
             let parents = header
                 .content
                 .parents
@@ -242,14 +244,14 @@ pub(crate) fn get_blocks_by_slots(
         });
 
         if let Some(block) = res {
-            blocks.push(Block {
+            blocks.push(grpc::Block {
                 header: Some(block.0),
                 operations: block.1,
             });
         }
     }
 
-    Ok(GetBlocksBySlotResponse {
+    Ok(grpc::GetBlocksBySlotsResponse {
         id: inner_req.id,
         blocks,
     })

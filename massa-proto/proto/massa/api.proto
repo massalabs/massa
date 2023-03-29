@@ -22,8 +22,8 @@ option php_namespace = "Massa\\Api\\V1";
 // Massa gRPC service
 service Grpc {
 
-    // GetBlocksBySlot
-    rpc GetBlocksBySlot (GetBlocksBySlotRequest) returns (GetBlocksBySlotResponse) {
+    // GetBlocksBySlots
+    rpc GetBlocksBySlots (GetBlocksBySlotsRequest) returns (GetBlocksBySlotsResponse) {
         option (google.api.http) = {get: "/v1/get_blocks_by_slots"};
     }
 
@@ -90,16 +90,16 @@ service Grpc {
 
 }
 
-// GetBlocksBySlotRequest holds request for GetBlocksBySlot
-message GetBlocksBySlotRequest {
+// GetBlocksBySlotsRequest holds request for GetBlocksBySlots
+message GetBlocksBySlotsRequest {
     // Request id
     string id = 1;
     // Slots
     repeated Slot slots = 2;
 }
 
-// GetBlocksBySlotResponse holds response from GetBlocksBySlot
-message GetBlocksBySlotResponse {
+// GetBlocksBySlotsResponse holds response from GetBlocksBySlots
+message GetBlocksBySlotsResponse {
     // Request id
     string id = 1;
     // Blocks
@@ -146,11 +146,11 @@ message GetNextBlockBestParentsResponse {
     // Request id
     string id = 1;
     // Best parents
-    repeated Parents parents = 2;
+    repeated BlockParent parents = 2;
 }
 
-// Best Parent Tuple
-message Parents {
+// Block parent tuple
+message BlockParent {
     // Block id
     string blockId = 1;
     // Period

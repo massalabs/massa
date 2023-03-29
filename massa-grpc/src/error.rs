@@ -37,6 +37,8 @@ pub enum GrpcError {
     WalletError(#[from] WalletError),
     /// Internal server error: {0}
     InternalServerError(String),
+    /// Invalid argument error: {0}
+    InvalidArgument(String),
 }
 
 impl From<GrpcError> for tonic::Status {
@@ -52,6 +54,7 @@ impl From<GrpcError> for tonic::Status {
             GrpcError::WalletError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::InternalServerError(e) => tonic::Status::internal(e),
             GrpcError::ReflectionError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::InvalidArgument(e) => tonic::Status::invalid_argument(e),
         }
     }
 }

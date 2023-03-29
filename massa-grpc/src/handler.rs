@@ -1,12 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! gRPC API for a massa-node
 
-use massa_proto::massa::api::v1::{
-    self as grpc, GetBlocksBySlotRequest, GetBlocksBySlotResponse, GetNextBlockBestParentsRequest,
-    GetNextBlockBestParentsResponse, GetTransactionsThroughputRequest,
-    GetTransactionsThroughputResponse, NewBlocksHeadersStreamRequest, NewBlocksStreamRequest,
-    NewFilledBlocksStreamRequest, NewOperationsStreamRequest, TransactionsThroughputStreamRequest,
-};
+use massa_proto::massa::api::v1 as grpc;
 
 use crate::api::{
     get_blocks_by_slots, get_datastore_entries, get_next_block_best_parents, get_selector_draws,
@@ -23,7 +18,6 @@ use crate::stream::{
     send_endorsements::{send_endorsements, SendEndorsementsStream},
     send_operations::{send_operations, SendOperationsStream},
 };
-use tonic::{Request, Response, Status, Streaming};
 
 #[tonic::async_trait]
 impl grpc::grpc_server::Grpc for MassaGrpcService {
@@ -41,8 +35,8 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for get selector draws
     async fn get_selector_draws(
         &self,
-        request: Request<grpc::GetSelectorDrawsRequest>,
-    ) -> Result<Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
+        request: tonic::Request<grpc::GetSelectorDrawsRequest>,
+    ) -> Result<tonic::Response<grpc::GetSelectorDrawsResponse>, tonic::Status> {
         match get_selector_draws(self, request) {
             Ok(response) => Ok(tonic::Response::new(response)),
             Err(e) => Err(e.into()),
@@ -62,10 +56,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
 
     async fn get_transactions_throughput(
         &self,
-        request: Request<GetTransactionsThroughputRequest>,
-    ) -> Result<Response<GetTransactionsThroughputResponse>, Status> {
+        request: tonic::Request<grpc::GetTransactionsThroughputRequest>,
+    ) -> Result<tonic::Response<grpc::GetTransactionsThroughputResponse>, tonic::Status> {
         match get_transactions_throughput(self, request) {
-            Ok(response) => Ok(Response::new(response)),
+            Ok(response) => Ok(tonic::Response::new(response)),
             Err(e) => Err(e.into()),
         }
     }
@@ -73,20 +67,20 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for get_next_block_best_parents
     async fn get_next_block_best_parents(
         &self,
-        request: Request<GetNextBlockBestParentsRequest>,
-    ) -> Result<Response<GetNextBlockBestParentsResponse>, Status> {
+        request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
+    ) -> Result<tonic::Response<grpc::GetNextBlockBestParentsResponse>, tonic::Status> {
         match get_next_block_best_parents(self, request) {
-            Ok(response) => Ok(Response::new(response)),
+            Ok(response) => Ok(tonic::Response::new(response)),
             Err(e) => Err(e.into()),
         }
     }
 
-    async fn get_blocks_by_slot(
+    async fn get_blocks_by_slots(
         &self,
-        request: Request<GetBlocksBySlotRequest>,
-    ) -> Result<Response<GetBlocksBySlotResponse>, Status> {
+        request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
+    ) -> Result<tonic::Response<grpc::GetBlocksBySlotsResponse>, tonic::Status> {
         match get_blocks_by_slots(self, request) {
-            Ok(response) => Ok(Response::new(response)),
+            Ok(response) => Ok(tonic::Response::new(response)),
             Err(e) => Err(e.into()),
         }
     }
@@ -136,10 +130,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for transactions throughput
     async fn transactions_throughput(
         &self,
-        request: Request<Streaming<TransactionsThroughputStreamRequest>>,
-    ) -> Result<Response<Self::TransactionsThroughputStream>, Status> {
+        request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputStreamRequest>>,
+    ) -> Result<tonic::Response<Self::TransactionsThroughputStream>, tonic::Status> {
         match transactions_throughput(self, request).await {
-            Ok(res) => Ok(Response::new(res)),
+            Ok(res) => Ok(tonic::Response::new(res)),
             Err(e) => Err(e.into()),
         }
     }
@@ -149,10 +143,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for subscribe new operations stream
     async fn new_operations(
         &self,
-        request: Request<Streaming<NewOperationsStreamRequest>>,
-    ) -> Result<Response<Self::NewOperationsStream>, Status> {
+        request: tonic::Request<tonic::Streaming<grpc::NewOperationsStreamRequest>>,
+    ) -> Result<tonic::Response<Self::NewOperationsStream>, tonic::Status> {
         match new_operations(self, request).await {
-            Ok(res) => Ok(Response::new(res)),
+            Ok(res) => Ok(tonic::Response::new(res)),
             Err(e) => Err(e.into()),
         }
     }
@@ -162,10 +156,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for subscribe new blocks
     async fn new_blocks(
         &self,
-        request: Request<Streaming<NewBlocksStreamRequest>>,
-    ) -> Result<Response<Self::NewBlocksStream>, Status> {
+        request: tonic::Request<tonic::Streaming<grpc::NewBlocksStreamRequest>>,
+    ) -> Result<tonic::Response<Self::NewBlocksStream>, tonic::Status> {
         match new_blocks(self, request).await {
-            Ok(res) => Ok(Response::new(res)),
+            Ok(res) => Ok(tonic::Response::new(res)),
             Err(e) => Err(e.into()),
         }
     }
@@ -175,10 +169,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for subscribe new blocks headers
     async fn new_blocks_headers(
         &self,
-        request: Request<Streaming<NewBlocksHeadersStreamRequest>>,
-    ) -> Result<Response<Self::NewBlocksHeadersStream>, Status> {
+        request: tonic::Request<tonic::Streaming<grpc::NewBlocksHeadersStreamRequest>>,
+    ) -> Result<tonic::Response<Self::NewBlocksHeadersStream>, tonic::Status> {
         match new_blocks_headers(self, request).await {
-            Ok(res) => Ok(Response::new(res)),
+            Ok(res) => Ok(tonic::Response::new(res)),
             Err(e) => Err(e.into()),
         }
     }
@@ -188,10 +182,10 @@ impl grpc::grpc_server::Grpc for MassaGrpcService {
     /// Handler for subscribe new blocks with operations content
     async fn new_filled_blocks(
         &self,
-        request: Request<Streaming<NewFilledBlocksStreamRequest>>,
-    ) -> Result<Response<Self::NewFilledBlocksStream>, Status> {
+        request: tonic::Request<tonic::Streaming<grpc::NewFilledBlocksStreamRequest>>,
+    ) -> Result<tonic::Response<Self::NewFilledBlocksStream>, tonic::Status> {
         match new_filled_blocks(self, request).await {
-            Ok(res) => Ok(Response::new(res)),
+            Ok(res) => Ok(tonic::Response::new(res)),
             Err(e) => Err(e.into()),
         }
     }

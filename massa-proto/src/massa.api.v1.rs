@@ -308,10 +308,10 @@ pub struct SecureShareBlockHeader {
     #[prost(string, tag = "6")]
     pub id: ::prost::alloc::string::String,
 }
-/// GetBlocksBySlotRequest holds request for GetBlocksBySlot
+/// GetBlocksBySlotsRequest holds request for GetBlocksBySlots
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetBlocksBySlotRequest {
+pub struct GetBlocksBySlotsRequest {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -319,10 +319,10 @@ pub struct GetBlocksBySlotRequest {
     #[prost(message, repeated, tag = "2")]
     pub slots: ::prost::alloc::vec::Vec<Slot>,
 }
-/// GetBlocksBySlotResponse holds response from GetBlocksBySlot
+/// GetBlocksBySlotsResponse holds response from GetBlocksBySlots
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetBlocksBySlotResponse {
+pub struct GetBlocksBySlotsResponse {
     /// Request id
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -387,12 +387,12 @@ pub struct GetNextBlockBestParentsResponse {
     pub id: ::prost::alloc::string::String,
     /// Best parents
     #[prost(message, repeated, tag = "2")]
-    pub parents: ::prost::alloc::vec::Vec<Parents>,
+    pub parents: ::prost::alloc::vec::Vec<BlockParent>,
 }
-/// Best Parent Tuple
+/// Block parent tuple
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Parents {
+pub struct BlockParent {
     /// Block id
     #[prost(string, tag = "1")]
     pub block_id: ::prost::alloc::string::String,
@@ -840,12 +840,12 @@ pub mod grpc_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// GetBlocksBySlot
-        pub async fn get_blocks_by_slot(
+        /// GetBlocksBySlots
+        pub async fn get_blocks_by_slots(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetBlocksBySlotRequest>,
+            request: impl tonic::IntoRequest<super::GetBlocksBySlotsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetBlocksBySlotResponse>,
+            tonic::Response<super::GetBlocksBySlotsResponse>,
             tonic::Status,
         > {
             self.inner
@@ -859,11 +859,11 @@ pub mod grpc_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/massa.api.v1.Grpc/GetBlocksBySlot",
+                "/massa.api.v1.Grpc/GetBlocksBySlots",
             );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetBlocksBySlot"));
+                .insert(GrpcMethod::new("massa.api.v1.Grpc", "GetBlocksBySlots"));
             self.inner.unary(req, path, codec).await
         }
         /// GetDatastoreEntries
@@ -1241,12 +1241,12 @@ pub mod grpc_server {
     /// Generated trait containing gRPC methods that should be implemented for use with GrpcServer.
     #[async_trait]
     pub trait Grpc: Send + Sync + 'static {
-        /// GetBlocksBySlot
-        async fn get_blocks_by_slot(
+        /// GetBlocksBySlots
+        async fn get_blocks_by_slots(
             &self,
-            request: tonic::Request<super::GetBlocksBySlotRequest>,
+            request: tonic::Request<super::GetBlocksBySlotsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetBlocksBySlotResponse>,
+            tonic::Response<super::GetBlocksBySlotsResponse>,
             tonic::Status,
         >;
         /// GetDatastoreEntries
@@ -1501,25 +1501,25 @@ pub mod grpc_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/massa.api.v1.Grpc/GetBlocksBySlot" => {
+                "/massa.api.v1.Grpc/GetBlocksBySlots" => {
                     #[allow(non_camel_case_types)]
-                    struct GetBlocksBySlotSvc<T: Grpc>(pub Arc<T>);
+                    struct GetBlocksBySlotsSvc<T: Grpc>(pub Arc<T>);
                     impl<
                         T: Grpc,
-                    > tonic::server::UnaryService<super::GetBlocksBySlotRequest>
-                    for GetBlocksBySlotSvc<T> {
-                        type Response = super::GetBlocksBySlotResponse;
+                    > tonic::server::UnaryService<super::GetBlocksBySlotsRequest>
+                    for GetBlocksBySlotsSvc<T> {
+                        type Response = super::GetBlocksBySlotsResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetBlocksBySlotRequest>,
+                            request: tonic::Request<super::GetBlocksBySlotsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_blocks_by_slot(request).await
+                                (*inner).get_blocks_by_slots(request).await
                             };
                             Box::pin(fut)
                         }
@@ -1531,7 +1531,7 @@ pub mod grpc_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = GetBlocksBySlotSvc(inner);
+                        let method = GetBlocksBySlotsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
