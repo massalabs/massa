@@ -907,6 +907,10 @@
 <a href="#907" id="907">907</a>
 <a href="#908" id="908">908</a>
 <a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -920,7 +924,9 @@
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_async_pool::AsyncPoolConfig;
-<span class="kw">use </span>massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
+<span class="kw">use </span>massa_bootstrap::{
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultListener,
+};
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
@@ -977,6 +983,7 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
+<span class="kw">use </span>tokio::net::TcpStream;
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::sync::{broadcast, mpsc};
 <span class="kw">use </span>tracing::{error, info, warn};
@@ -989,7 +996,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (
     Receiver&lt;ConsensusEvent&gt;,
-    <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
@@ -1148,7 +1155,7 @@
         res = get_state(
             <span class="kw-2">&amp;</span>bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::DefaultEstablisher::default(),
+            massa_bootstrap::DefaultEstablisher::default().get_connector(bootstrap_config.connect_timeout).unwrap(),
             <span class="kw-2">*</span>VERSION,
             <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             <span class="kw-2">*</span>END_TIMESTAMP,
@@ -1415,17 +1422,18 @@
     <span class="kw">let </span>factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     <span class="comment">// launch bootstrap server
-    </span><span class="kw">let </span>bootstrap_manager = start_bootstrap_server(
+    </span><span class="kw">let </span>addr = <span class="kw-2">&amp;</span>bootstrap_config.listen_addr.unwrap();
+    <span class="comment">// TODO: use std::net::TcpStream
+    </span><span class="kw">let </span>bootstrap_manager = start_bootstrap_server::&lt;TcpStream&gt;(
         consensus_controller.clone(),
         network_command_sender.clone(),
         final_state.clone(),
         bootstrap_config,
-        massa_bootstrap::DefaultEstablisher::new(),
+        DefaultListener::new(addr).unwrap(),
         private_key,
         <span class="kw-2">*</span>VERSION,
     )
-    .<span class="kw">await
-    </span>.unwrap();
+    .unwrap();
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
@@ -1554,7 +1562,7 @@
 }
 
 <span class="kw">struct </span>Managers {
-    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
+    bootstrap_manager: <span class="prelude-ty">Option</span>&lt;BootstrapManager&lt;TcpStream&gt;&gt;,
     consensus_manager: Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     execution_manager: Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
     selector_manager: Box&lt;<span class="kw">dyn </span>SelectorManager&gt;,
