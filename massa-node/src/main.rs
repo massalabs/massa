@@ -506,18 +506,20 @@ async fn launch(
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     // launch bootstrap server
-    let addr = &bootstrap_config.listen_addr.unwrap();
     // TODO: use std::net::TcpStream
-    let bootstrap_manager = start_bootstrap_server::<TcpStream>(
-        consensus_controller.clone(),
-        network_command_sender.clone(),
-        final_state.clone(),
-        bootstrap_config,
-        DefaultListener::new(addr).unwrap(),
-        private_key,
-        *VERSION,
-    )
-    .unwrap();
+    let bootstrap_manager = match bootstrap_config.listen_addr {
+        Some(addr) => start_bootstrap_server::<TcpStream>(
+            consensus_controller.clone(),
+            network_command_sender.clone(),
+            final_state.clone(),
+            bootstrap_config,
+            DefaultListener::new(&addr).unwrap(),
+            private_key,
+            *VERSION,
+        )
+        .unwrap(),
+        None => None,
+    };
 
     let api_config: APIConfig = APIConfig {
         bind_private: SETTINGS.api.bind_private,
