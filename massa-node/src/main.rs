@@ -462,6 +462,7 @@ async fn launch(
         operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         controller_channel_size: PROTOCOL_CONTROLLER_CHANNEL_SIZE,
         event_channel_size: PROTOCOL_EVENT_CHANNEL_SIZE,
         genesis_timestamp: *GENESIS_TIMESTAMP,
@@ -498,6 +499,7 @@ async fn launch(
         initial_delay: SETTINGS.factory.initial_delay,
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
