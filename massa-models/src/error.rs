@@ -30,8 +30,8 @@ pub enum ModelsError {
     PeriodOverflowError,
     /// amount parse error
     AmountParseError(String),
-    /// address parsing error
-    AddressParseError,
+    /// address parsing error: {0}
+    AddressParseError(String),
     /// node id parsing error
     NodeIdParseError,
     /// block id parsing error
