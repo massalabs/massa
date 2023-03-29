@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_models::config::CHANNEL_SIZE;
-use massa_time::MassaTime;
 use socket2 as _;
 use std::io;
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -104,7 +103,7 @@ pub struct MockEstablisher {
 }
 
 impl MockEstablisher {
-    pub fn get_listener(&mut self, _addr: &SocketAddr) -> io::Result<MockListener> {
+    pub(crate) fn get_listener(&mut self, _addr: &SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self
                 .connection_listener_rx
@@ -113,7 +112,7 @@ impl MockEstablisher {
         })
     }
 
-    pub fn get_connector(&mut self) -> MockConnector {
+    pub(crate) fn get_connector(&mut self) -> MockConnector {
         // create connector stream
 
         MockConnector {
