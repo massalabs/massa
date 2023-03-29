@@ -18,7 +18,6 @@ sha2 = "0.10.6"
 # use with features
 criterion = { version = "0.4", optional = true }
 tempfile = { version = "3.3", optional = true }
-hex-literal = { version = "0.3.4", optional = true }
 massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
 massa_pos_worker = { path = "../massa-pos-worker", optional = true }
 # custom modules
@@ -38,9 +37,10 @@ massa_final_state = { path = "../massa-final-state" }
 
 [dev-dependencies]
 massa_pos_worker = { path = "../massa-pos-worker" }
+massa_ledger_worker = { path = "../massa-ledger-worker" }
 serial_test = "0.10"
 tempfile = "3.2"
-massa_ledger_worker = { path = "../massa-ledger-worker" }
+hex-literal = "0.3.4"
 # custom modules with testing enabled
 massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
@@ -68,7 +68,6 @@ testing = [
     "massa_final_state/testing",
     "massa-sc-runtime/testing",
     "tempfile",
-    "hex-literal",
     "massa_pos_worker",
     "massa_ledger_worker",
 ]

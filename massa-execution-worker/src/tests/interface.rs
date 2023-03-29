@@ -2,14 +2,12 @@
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use hex_literal::hex;
     use massa_models::address::Address;
     use massa_sc_runtime::Interface;
     use std::str::FromStr;
 
     use crate::interface_impl::InterfaceImpl;
-
     #[test]
     fn test_hash_sha256() {
         let interface = InterfaceImpl::new_default(

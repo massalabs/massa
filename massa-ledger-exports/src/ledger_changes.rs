@@ -532,7 +532,7 @@ impl LedgerChanges {
         for (_addr, change) in self.0.iter() {
             match change {
                 SetUpdateOrDelete::Set(LedgerEntry { bytecode, .. }) => {
-                    // IMPORTANT TODO: investigate on why the len check is needed
+                    // When creating a new address all fields are filled and bytecode is empty
                     if !bytecode.0.is_empty() {
                         v.push(bytecode.clone())
                     }

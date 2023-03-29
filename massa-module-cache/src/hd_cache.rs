@@ -110,9 +110,7 @@ impl HDCache {
     /// Sets the initialization cost of a given module separately
     ///
     /// # Arguments
-    /// * `hash`: hash associated to the module for which we want to set the cost MUST exist else
-    ///   exit with error: i.e. insert has been called before with the same hash and it has not
-    ///   been removed
+    /// * `hash`: hash associated to the module for which we want to set the cost
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) {
         let mut ser_metadata = Vec::new();
@@ -168,11 +166,11 @@ impl HDCache {
     fn snip(&mut self) {
         let mut iter = self.db.raw_iterator();
         let mut batch = WriteBatch::default();
-        let mut snipped_entries_count: usize = 0;
+        let mut snipped_count: usize = 0;
 
-        while snipped_entries_count < self.snip_amount {
+        while snipped_count < self.snip_amount {
             // generate a random key
-            let mut rbytes = Vec::new();
+            let mut rbytes = [0u8; 16];
             rand::thread_rng().fill_bytes(&mut rbytes);
             let key = *Hash::compute_from(&rbytes).to_bytes();
 
@@ -185,14 +183,20 @@ impl HDCache {
             }
 
             // unwrap justified by above conditional statement
-            let key = iter.key().unwrap();
-            batch.delete(key);
-            snipped_entries_count += 1;
+            // read data key first because of seek_for_prev
+            let data_key = iter.key().unwrap();
+            batch.delete(data_key);
+            iter.prev();
+            let module_key = iter.key().unwrap();
+            batch.delete(module_key);
+
+            // increase snipped_count
+            snipped_count += 1;
         }
 
         // delete the key and reduce entry_count
         self.db.write(batch).expect(CRUD_ERROR);
-        self.entry_count -= snipped_entries_count;
+        self.entry_count -= snipped_count;
     }
 }
 
@@ -286,7 +290,7 @@ mod tests {
         }
 
         for _ in 0..cache.max_entry_count {
-            let mut rbytes = Vec::new();
+            let mut rbytes = [0u8; 16];
             thread_rng().fill_bytes(&mut rbytes);
             let get_key = Hash::compute_from(&rbytes);
             let cached_module = cache.get(get_key, limit, gas_costs.clone());

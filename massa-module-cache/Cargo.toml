@@ -26,4 +26,4 @@ massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", bran
 tempfile = "3.3"
 
 [features]
-testing = []
+testing = ["massa-sc-runtime/testing"]
