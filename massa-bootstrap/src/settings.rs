@@ -53,6 +53,8 @@ pub struct BootstrapConfig {
     pub max_clock_delta: MassaTime,
     /// Cache duration
     pub cache_duration: MassaTime,
+    /// Keep ledger or not if not bootstrap
+    pub keep_ledger: bool,
     /// Max simultaneous bootstraps
     pub max_simultaneous_bootstraps: u32,
     /// Minimum interval between two bootstrap attempts from a given IP

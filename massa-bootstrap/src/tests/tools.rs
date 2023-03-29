@@ -294,6 +294,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
             SocketAddr::new(BASE_BOOTSTRAP_IP, 8069),
             bootstrap_public_key,
         )],
+        keep_ledger: false,
         bootstrap_whitelist_path: PathBuf::from(
             "../massa-node/base_config/bootstrap_whitelist.json",
         ),

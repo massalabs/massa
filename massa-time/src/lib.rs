@@ -444,4 +444,9 @@ impl MassaTime {
         .whole_seconds();
         Ok((days, hours, mins, secs))
     }
+
+    /// Get max MassaTime value
+    pub fn max() -> MassaTime {
+        MassaTime::from_millis(u64::MAX)
+    }
 }
