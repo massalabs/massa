@@ -856,6 +856,76 @@
 <a href="#856" id="856">856</a>
 <a href="#857" id="857">857</a>
 <a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -869,8 +939,8 @@
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::versioning::{
-    Advance, ComponentState, ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStoreRaw,
-    Started,
+    Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo, MipState,
+    MipStoreRaw, Started,
 };
 
 <span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -882,6 +952,7 @@
 <span class="doccomment">/// Ser / Der
 
 </span><span class="kw">const </span>MIP_INFO_NAME_MAX_LEN: u32 = <span class="number">255</span>;
+<span class="kw">const </span>MIP_INFO_COMPONENTS_MAX_ENTRIES: u32 = <span class="number">8</span>;
 <span class="kw">const </span>COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::&lt;ComponentState&gt;() <span class="kw">as </span>u32;
 <span class="kw">const </span>COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::&lt;ComponentStateTypeId&gt;() <span class="kw">as </span>u32;
 <span class="kw">const </span>MIP_STORE_MAX_ENTRIES: u32 = <span class="number">4096</span>;
@@ -922,7 +993,7 @@
         }
         <span class="kw">let </span>name_len = u32::try_from(name_len_).map_err(|<span class="kw">_</span>| {
             SerializeError::GeneralError(<span class="macro">format!</span>(
-                <span class="string">&quot;Cannot convert to name_len: {} to u64&quot;</span>,
+                <span class="string">&quot;Cannot convert to name_len: {} to u32&quot;</span>,
                 name_len_
             ))
         })<span class="question-mark">?</span>;
@@ -930,18 +1001,39 @@
         buffer.extend(value.name.as_bytes());
         <span class="comment">// version
         </span><span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>value.version, buffer)<span class="question-mark">?</span>;
-        <span class="comment">// component
-        </span><span class="kw">let </span>component_ = value.component.clone();
-        <span class="kw">let </span>component: u32 = component_.into();
 
-        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>component, buffer)<span class="question-mark">?</span>;
-        <span class="comment">// component version
-        </span><span class="self">self</span>.u32_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.component_version, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// Components
+        </span><span class="kw">let </span>components_len_ = value.components.len();
+        <span class="kw">if </span>components_len_ &gt; MIP_INFO_COMPONENTS_MAX_ENTRIES <span class="kw">as </span>usize {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::NumberTooBig(<span class="macro">format!</span>(
+                <span class="string">&quot;MIP info cannot have more than {} components, got: {}&quot;</span>,
+                MIP_STORE_MAX_ENTRIES, components_len_
+            )));
+        }
+        <span class="kw">let </span>components_len = u32::try_from(components_len_).map_err(|<span class="kw">_</span>| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(
+                <span class="string">&quot;Cannot convert to component_len: {} to u32&quot;</span>,
+                name_len_
+            ))
+        })<span class="question-mark">?</span>;
+        <span class="comment">// ser hashmap len
+        </span><span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>components_len, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// ser hashmap items
+        </span><span class="kw">for </span>(component, component_version) <span class="kw">in </span>value.components.iter() {
+            <span class="comment">// component
+            </span><span class="self">self</span>.u32_serializer
+                .serialize(<span class="kw-2">&amp;</span>component.clone().into(), buffer)<span class="question-mark">?</span>;
+            <span class="comment">// component version
+            </span><span class="self">self</span>.u32_serializer.serialize(component_version, buffer)<span class="question-mark">?</span>;
+        }
+
         <span class="comment">// start
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.start, buffer)<span class="question-mark">?</span>;
         <span class="comment">// timeout
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.timeout, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// activation delay
+        </span><span class="self">self</span>.time_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.activation_delay, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -1002,35 +1094,49 @@
                 context(<span class="string">&quot;Failed version deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed component deserialization&quot;</span>, |input| {
-                    <span class="kw">let </span>(rem, component_) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>component = MipComponent::try_from(component_).map_err(|<span class="kw">_</span>| {
-                        nom::Err::Error(ParseError::from_error_kind(
-                            input,
-                            nom::error::ErrorKind::Fail,
-                        ))
-                    })<span class="question-mark">?</span>;
-                    IResult::Ok((rem, component))
-                }),
-                context(<span class="string">&quot;Failed component version deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.u32_deserializer.deserialize(input)
-                }),
+                context(
+                    <span class="string">&quot;Failed components deserialization&quot;</span>,
+                    length_count(
+                        context(<span class="string">&quot;Failed components length deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.u32_deserializer.deserialize(input)
+                        }),
+                        tuple((
+                            context(<span class="string">&quot;Failed component deserialization&quot;</span>, |input| {
+                                <span class="kw">let </span>(rem, component_) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                                <span class="kw">let </span>component =
+                                    MipComponent::try_from(component_).map_err(|<span class="kw">_</span>| {
+                                        nom::Err::Error(ParseError::from_error_kind(
+                                            input,
+                                            nom::error::ErrorKind::Fail,
+                                        ))
+                                    })<span class="question-mark">?</span>;
+                                IResult::Ok((rem, component))
+                            }),
+                            context(<span class="string">&quot;Failed component version deserialization&quot;</span>, |input| {
+                                <span class="self">self</span>.u32_deserializer.deserialize(input)
+                            }),
+                        )),
+                    ),
+                ),
                 context(<span class="string">&quot;Failed start deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed timeout deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
+                context(<span class="string">&quot;Failed activation delay deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.time_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(
-            |(name, version, component, component_version, start, timeout)| MipInfo {
+            |(name, version, components, start, timeout, activation_delay)| MipInfo {
                 name,
                 version,
-                component,
-                component_version,
+                components: components.into_iter().collect(),
                 start,
                 timeout,
+                activation_delay,
             },
         )
         .parse(buffer)
@@ -1042,10 +1148,10 @@
 // ComponentState
 
 </span><span class="doccomment">/// Serializer for `ComponentState`
-</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ComponentStateSerializer {
     u32_serializer: U32VarIntSerializer,
     amount_serializer: AmountSerializer,
+    time_serializer: MassaTimeSerializer,
 }
 
 <span class="kw">impl </span>ComponentStateSerializer {
@@ -1054,6 +1160,7 @@
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
             amount_serializer: AmountSerializer::new(),
+            time_serializer: MassaTimeSerializer::new(),
         }
     }
 }
@@ -1070,19 +1177,21 @@
         value: <span class="kw-2">&amp;</span>ComponentState,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="kw">let </span>(state, threshold_): (u32, <span class="prelude-ty">Option</span>&lt;Amount&gt;) = <span class="kw">match </span>value {
-            ComponentState::Error =&gt; (u32::from(ComponentStateTypeId::Error), <span class="prelude-val">None</span>),
-            ComponentState::Defined(<span class="kw">_</span>) =&gt; (u32::from(ComponentStateTypeId::Defined), <span class="prelude-val">None</span>),
+        <span class="kw">match </span>value {
             ComponentState::Started(Started { threshold }) =&gt; {
-                (u32::from(ComponentStateTypeId::Started), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>threshold))
+                <span class="kw">let </span>state_id = u32::from(ComponentStateTypeId::from(value));
+                <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state_id, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.amount_serializer.serialize(threshold, buffer)<span class="question-mark">?</span>;
             }
-            ComponentState::LockedIn(<span class="kw">_</span>) =&gt; (u32::from(ComponentStateTypeId::LockedIn), <span class="prelude-val">None</span>),
-            ComponentState::Active(<span class="kw">_</span>) =&gt; (u32::from(ComponentStateTypeId::Active), <span class="prelude-val">None</span>),
-            ComponentState::Failed(<span class="kw">_</span>) =&gt; (u32::from(ComponentStateTypeId::Failed), <span class="prelude-val">None</span>),
-        };
-        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state, buffer)<span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(threshold) = threshold_ {
-            <span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>threshold, buffer)<span class="question-mark">?</span>;
+            ComponentState::LockedIn(LockedIn { at }) =&gt; {
+                <span class="kw">let </span>state_id = u32::from(ComponentStateTypeId::from(value));
+                <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state_id, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.time_serializer.serialize(at, buffer)<span class="question-mark">?</span>;
+            }
+            <span class="kw">_ </span>=&gt; {
+                <span class="kw">let </span>state_id = u32::from(ComponentStateTypeId::from(value));
+                <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state_id, buffer)<span class="question-mark">?</span>;
+            }
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1092,6 +1201,7 @@
 </span><span class="kw">pub struct </span>ComponentStateDeserializer {
     state_deserializer: U32VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
+    time_deserializer: MassaTimeDeserializer,
 }
 
 <span class="kw">impl </span>ComponentStateDeserializer {
@@ -1106,6 +1216,10 @@
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             ),
+            time_deserializer: MassaTimeDeserializer::new((
+                Included(<span class="number">0</span>.into()),
+                Included(u64::MAX.into()),
+            )),
         }
     }
 }
@@ -1141,7 +1255,13 @@
                 .parse(rem)<span class="question-mark">?</span>;
                 (rem2, ComponentState::started(threshold))
             }
-            ComponentStateTypeId::LockedIn =&gt; (rem, ComponentState::locked_in()),
+            ComponentStateTypeId::LockedIn =&gt; {
+                <span class="kw">let </span>(rem2, at) = context(<span class="string">&quot;Failed delay value der&quot;</span>, |input| {
+                    <span class="self">self</span>.time_deserializer.deserialize(input)
+                })
+                .parse(rem)<span class="question-mark">?</span>;
+                (rem2, ComponentState::locked_in(at))
+            }
             ComponentStateTypeId::Active =&gt; (rem, ComponentState::active()),
             ComponentStateTypeId::Failed =&gt; (rem, ComponentState::failed()),
             <span class="kw">_ </span>=&gt; (rem, ComponentState::Error),
@@ -1179,11 +1299,18 @@
 
 <span class="kw">impl </span>Serializer&lt;Advance&gt; <span class="kw">for </span>AdvanceSerializer {
     <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Advance, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="self">self</span>.time_serializer
+        <span class="comment">// start
+        </span><span class="self">self</span>.time_serializer
             .serialize(<span class="kw-2">&amp;</span>value.start_timestamp, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.timeout, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.threshold, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.now, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// timeout
+        </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.timeout, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// threshold
+        </span><span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.threshold, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// now
+        </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.now, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// activation delay
+        </span><span class="self">self</span>.time_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.activation_delay, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -1236,14 +1363,20 @@
                 context(<span class="string">&quot;Failed now deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
+                context(<span class="string">&quot;Failed activation delay deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.time_deserializer.deserialize(input)
+                }),
             )),
         )
-        .map(|(start_timestamp, timeout, threshold, now)| Advance {
-            start_timestamp,
-            timeout,
-            threshold,
-            now,
-        })
+        .map(
+            |(start_timestamp, timeout, threshold, now, activation_delay)| Advance {
+                start_timestamp,
+                timeout,
+                threshold,
+                now,
+                activation_delay,
+            },
+        )
         .parse(buffer)
     }
 }
@@ -1286,7 +1419,8 @@
             })<span class="question-mark">?</span>,
             buffer,
         )<span class="question-mark">?</span>;
-        <span class="kw">for </span>(advance, state_id) <span class="kw">in </span>value.history.iter() {
+        <span class="comment">// history
+        </span><span class="kw">for </span>(advance, state_id) <span class="kw">in </span>value.history.iter() {
             <span class="self">self</span>.advance_serializer.serialize(advance, buffer)<span class="question-mark">?</span>;
             <span class="self">self</span>.u32_serializer
                 .serialize(<span class="kw-2">&amp;</span>u32::from(state_id.clone()), buffer)<span class="question-mark">?</span>;
@@ -1334,16 +1468,15 @@
             <span class="self">self</span>.state_deserializer.deserialize(input)
         })
         .parse(buffer)<span class="question-mark">?</span>;
-
         <span class="comment">// Der history
         </span><span class="kw">let </span>(rem2, history) = context(
-            <span class="string">&quot;Failed Vec&lt;OperationId&gt; deserialization&quot;</span>,
+            <span class="string">&quot;Failed history deserialization&quot;</span>,
             length_count(
                 context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
                 context(
-                    <span class="string">&quot;Failed deserialization&quot;</span>,
+                    <span class="string">&quot;Failed history items deserialization&quot;</span>,
                     tuple((
                         context(<span class="string">&quot;Failed advance deserialization&quot;</span>, |input| {
                             <span class="self">self</span>.advance_deserializer.deserialize(input)
@@ -1466,7 +1599,7 @@
         context(
             <span class="string">&quot;Failed MipStoreRaw der&quot;</span>,
             length_count(
-                context(<span class="string">&quot;Failed len der&quot;</span>, |input| {
+                context(<span class="string">&quot;Failed entry count der&quot;</span>, |input| {
                     <span class="kw">let </span>(rem, count) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
                     IResult::Ok((rem, count))
                 }),
@@ -1487,13 +1620,16 @@
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">use </span>std::collections::HashMap;
     <span class="kw">use </span>std::mem::{size_of, size_of_val};
+    <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span>chrono::{NaiveDate, NaiveDateTime};
     <span class="kw">use </span>more_asserts::assert_lt;
-    <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
+
     <span class="kw">use </span>massa_serialization::DeserializeError;
     <span class="kw">use </span>massa_time::MassaTime;
 
@@ -1502,10 +1638,10 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
@@ -1568,6 +1704,7 @@
             timeout: MassaTime::from(timeout.timestamp() <span class="kw">as </span>u64),
             threshold: Default::default(),
             now: MassaTime::from(now.timestamp() <span class="kw">as </span>u64),
+            activation_delay: MassaTime::from(<span class="number">20</span>),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
@@ -1601,17 +1738,17 @@
         <span class="kw">let </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
-        <span class="kw">let </span>state_2 = advance_state_until(ComponentState::locked_in(), <span class="kw-2">&amp;</span>mi_1);
+        <span class="kw">let </span>state_2 = advance_state_until(ComponentState::locked_in(MassaTime::from(<span class="number">3</span>)), <span class="kw-2">&amp;</span>mi_1);
         state_ser.serialize(<span class="kw-2">&amp;</span>state_2, <span class="kw-2">&amp;mut </span>buf).unwrap();
-        <span class="kw">let </span>(rem, state_der_res) = state_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
+        <span class="kw">let </span>(rem2, state_der_res) = state_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
 
-        <span class="macro">assert!</span>(rem.is_empty());
+        <span class="macro">assert!</span>(rem2.is_empty());
         <span class="macro">assert_eq!</span>(state_2, state_der_res);
     }
 
@@ -1620,19 +1757,19 @@
         <span class="kw">let </span>mi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>mi_3 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            component: MipComponent::Block,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Block, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">17</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
         <span class="kw">let </span>state_2 = advance_state_until(ComponentState::active(), <span class="kw-2">&amp;</span>mi_2);
@@ -1659,17 +1796,17 @@
         <span class="kw">let </span><span class="kw-2">mut </span>mi_base = MipInfo {
             name: <span class="string">&quot;A&quot;</span>.repeat(<span class="number">254</span>),
             version: <span class="number">0</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">0</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">0</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">2</span>),
+            activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
-        <span class="kw">let </span>mi_base_size = size_of_val(<span class="kw-2">&amp;</span>mi_base.name[..])
+        <span class="comment">// Note: we did not add the name ptr and hashmap ptr, only the data inside
+        </span><span class="kw">let </span>mi_base_size = size_of_val(<span class="kw-2">&amp;</span>mi_base.name[..])
             + size_of_val(<span class="kw-2">&amp;</span>mi_base.version)
-            + size_of_val(<span class="kw-2">&amp;</span>mi_base.component)
-            + size_of_val(<span class="kw-2">&amp;</span>mi_base.component_version)
-            + size_of_val(<span class="kw-2">&amp;</span>mi_base.start)
+            + mi_base.components.len() * size_of::&lt;u32&gt;() * <span class="number">2
+            </span>+ size_of_val(<span class="kw-2">&amp;</span>mi_base.start)
             + size_of_val(<span class="kw-2">&amp;</span>mi_base.timeout);
 
         <span class="kw">let </span><span class="kw-2">mut </span>all_state_size = <span class="number">0</span>;
@@ -1677,7 +1814,10 @@
         <span class="kw">let </span>store_raw_: Vec&lt;(MipInfo, MipState)&gt; = (<span class="number">0</span>..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += <span class="number">1</span>;
-                mi_base.component_version += <span class="number">1</span>;
+                mi_base
+                    .components
+                    .entry(MipComponent::Address)
+                    .and_modify(|e| <span class="kw-2">*</span>e += <span class="number">1</span>);
                 mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(<span class="number">1</span>));
                 mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(<span class="number">2</span>));
 
