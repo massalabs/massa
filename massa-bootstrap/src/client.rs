@@ -424,46 +424,13 @@ pub async fn get_state(
     end_timestamp: Option<MassaTime>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
-    if now < genesis_timestamp {
-        massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        // init final state
-        {
-            let mut final_state_guard = final_state.write();
-            // load ledger from initial ledger file
-            final_state_guard
-                .ledger
-                .load_initial_ledger()
-                .map_err(|err| {
-                    BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
-                })?;
-            // create the initial cycle of PoS cycle_history
-            final_state_guard.pos_state.create_initial_cycle();
-        }
-        return Ok(GlobalBootstrapState::new(final_state));
+    if MassaTime::now()? < genesis_timestamp {
+        return get_genesis_state(final_state);
     }
 
     // we filter the bootstrap list to keep only the ip addresses we are compatible with
-    let mut filtered_bootstrap_list = filter_bootstrap_list(
-        bootstrap_config.bootstrap_list.clone(),
-        bootstrap_config.bootstrap_protocol,
-    );
-
-    // we are after genesis => bootstrap
-    massa_trace!("bootstrap.lib.get_state.init_from_others", {});
-    if filtered_bootstrap_list.is_empty() {
-        return Err(BootstrapError::GeneralError(
-            "no bootstrap nodes found in list".into(),
-        ));
-    }
-
-    // we shuffle the list
-    filtered_bootstrap_list.shuffle(&mut StdRng::from_entropy());
-
-    // we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
-    let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
-    filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
+    let filtered_bootstrap_list = get_bootstrap_list_iter(bootstrap_config)?;
 
     let mut next_bootstrap_message: BootstrapClientMessage =
         BootstrapClientMessage::AskBootstrapPart {
@@ -515,4 +482,49 @@ pub async fn get_state(
             sleep(bootstrap_config.retry_delay.into()).await;
         }
     }
+}
+
+fn get_genesis_state(
+    final_state: Arc<RwLock<FinalState>>,
+) -> Result<GlobalBootstrapState, BootstrapError> {
+    massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
+    // init final state
+    {
+        let mut final_state_guard = final_state.write();
+        // load ledger from initial ledger file
+        final_state_guard
+            .ledger
+            .load_initial_ledger()
+            .map_err(|err| {
+                BootstrapError::GeneralError(format!("could not load initial ledger: {}", err))
+            })?;
+        // create the initial cycle of PoS cycle_history
+        final_state_guard.pos_state.create_initial_cycle();
+    }
+    return Ok(GlobalBootstrapState::new(final_state));
+}
+
+fn get_bootstrap_list_iter(
+    bootstrap_config: &BootstrapConfig,
+) -> Result<Vec<(SocketAddr, NodeId)>, BootstrapError> {
+    let mut filtered_bootstrap_list = filter_bootstrap_list(
+        bootstrap_config.bootstrap_list.clone(),
+        bootstrap_config.bootstrap_protocol,
+    );
+
+    // we are after genesis => bootstrap
+    massa_trace!("bootstrap.lib.get_state.init_from_others", {});
+    if filtered_bootstrap_list.is_empty() {
+        return Err(BootstrapError::GeneralError(
+            "no bootstrap nodes found in list".into(),
+        ));
+    }
+
+    // we shuffle the list
+    filtered_bootstrap_list.shuffle(&mut StdRng::from_entropy());
+
+    // we remove the duplicated node ids (if a bootstrap server appears both with its IPv4 and IPv6 address)
+    let mut unique_node_ids: HashSet<NodeId> = HashSet::new();
+    filtered_bootstrap_list.retain(|e| unique_node_ids.insert(e.1));
+    Ok(filtered_bootstrap_list)
 }
