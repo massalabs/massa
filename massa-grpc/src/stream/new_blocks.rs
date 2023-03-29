@@ -54,7 +54,7 @@ pub(crate) async fn new_blocks(
                         Err(e) => {error!("error on receive new block : {}", e)}
                     }
                 },
-                // Receive a new request from the in_stream
+                // Receive a new message from the in_stream
                 res = in_stream.next() => {
                     match res {
                         Some(res) => {
