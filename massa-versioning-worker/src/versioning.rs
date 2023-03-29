@@ -34,10 +34,19 @@ pub struct MipInfo {
     pub component: MipComponent,
     /// Component version
     pub component_version: u32,
+
     /// a timestamp at which the version gains its meaning (e.g. accepted in block header)
-    pub start: MassaTime,
+    // pub start: MassaTime,
     /// a timestamp at which the deployment is considered active or failed (timeout > start)
+    // pub timeout: MassaTime,
+
+    /// a timestamp at which the version gains its meaning (e.g. announced in block header)
+    pub start: MassaTime,
+    // TODO: rename to start_timeout?
+    /// a timestamp at the which the deployment is considered failed
     pub timeout: MassaTime,
+    /// Once deployment has been locked, wait for this duration before deployment is considered active
+    pub activation_delay: MassaTime,
 }
 
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -61,6 +70,7 @@ impl PartialEq for MipInfo {
             && self.component == other.component
             && self.start == other.start
             && self.timeout == other.timeout
+            && self.activation_delay == other.activation_delay
     }
 }
 
@@ -86,8 +96,8 @@ machine!(
         /// Past start, can only go to LockedIn after the threshold is above a given value
         Started { pub(crate) threshold: Amount },
         /// Wait for some time before going to active (to let user the time to upgrade)
-        LockedIn,
-        /// After LockedIn, deployment is considered successful
+        LockedIn { pub(crate) at: MassaTime },
+        /// After LockedIn, deployment is considered successful (after activation delay)
         Active,
         /// Past the timeout, if LockedIn is not reach
         Failed,
@@ -136,6 +146,8 @@ pub struct Advance {
     pub threshold: Amount,
     /// Current time (timestamp)
     pub now: MassaTime,
+    /// TODO
+    pub activation_delay: MassaTime,
 }
 
 // Need Ord / PartialOrd so it is properly sorted in BTreeMap
@@ -177,8 +189,8 @@ impl Defined {
     /// Update state from state Defined
     pub fn on_advance(self, input: Advance) -> ComponentState {
         match input.now {
-            n if n > input.timeout => ComponentState::failed(),
-            n if n > input.start_timestamp => ComponentState::started(Amount::zero()),
+            n if n >= input.timeout => ComponentState::failed(),
+            n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
             _ => ComponentState::Defined(Defined {}),
         }
     }
@@ -192,7 +204,7 @@ impl Started {
         }
 
         if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
-            ComponentState::locked_in()
+            ComponentState::locked_in(input.now)
         } else {
             ComponentState::started(input.threshold)
         }
@@ -202,10 +214,10 @@ impl Started {
 impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
-        if input.now > input.timeout {
+        if input.now > self.at.saturating_add(input.activation_delay) {
             ComponentState::active()
         } else {
-            ComponentState::locked_in()
+            ComponentState::locked_in(self.at)
         }
     }
 }
@@ -243,6 +255,7 @@ impl MipState {
             timeout: MassaTime::from(0),
             threshold: Default::default(),
             now: defined,
+            activation_delay: MassaTime::from(0),
         };
 
         let history = BTreeMap::from([(advance, state_id)]);
@@ -289,6 +302,8 @@ impl MipState {
     ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
     pub fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
+        // TODO: rename versioning_info -> mip_info
+
         // Always return false for state Error or if history is empty
         if matches!(&self.inner, &ComponentState::Error) || self.history.is_empty() {
             return false;
@@ -309,6 +324,7 @@ impl MipState {
             timeout: versioning_info.timeout,
             threshold: Amount::zero(),
             now: initial_ts.now,
+            activation_delay: versioning_info.activation_delay,
         };
 
         for (adv, _state) in self.history.iter().skip(1) {
@@ -321,6 +337,7 @@ impl MipState {
     }
 
     /// Query state at given timestamp
+    /// TODO: add doc for start & timeout parameter? why do we need them?
     pub fn state_at(
         &self,
         ts: MassaTime,
@@ -383,6 +400,7 @@ impl MipState {
                         timeout,
                         threshold: adv.threshold,
                         now: ts,
+                        activation_delay: adv.activation_delay,
                     };
                     // Return the resulting state after advance
                     let state = self.inner.on_advance(msg);
@@ -595,14 +613,22 @@ mod test {
     use crate::test_helpers::versioning_helpers::advance_state_until;
     use chrono::{Days, NaiveDate, NaiveDateTime};
 
-    // use crate::test_helpers::versioning_helpers::advance_state_until;
-
-    // use massa_serialization::DeserializeError;
-
     // Only for unit tests
     impl PartialEq<ComponentState> for MipState {
         fn eq(&self, other: &ComponentState) -> bool {
             self.inner == *other
+        }
+    }
+
+    impl From<(&MipInfo, &Amount, &MassaTime)> for Advance {
+        fn from((mip_info, threshold, now): (&MipInfo, &Amount, &MassaTime)) -> Self {
+            Self {
+                start_timestamp: mip_info.start,
+                timeout: mip_info.timeout,
+                threshold: *threshold,
+                now: *now,
+                activation_delay: mip_info.activation_delay,
+            }
         }
     }
 
@@ -630,6 +656,7 @@ mod test {
                 component_version: 1,
                 start: MassaTime::from(start.timestamp() as u64),
                 timeout: MassaTime::from(timeout.timestamp() as u64),
+                activation_delay: MassaTime::from(20),
             },
         );
     }
@@ -637,22 +664,17 @@ mod test {
     #[test]
     fn test_state_advance_from_defined() {
         // Test Versioning state transition (from state: Defined)
-        let (_, _, vi) = get_a_version_info();
+        let (_, _, mi) = get_a_version_info();
         let mut state: ComponentState = Default::default();
         assert_eq!(state, ComponentState::defined());
 
-        let now = vi.start;
-        let mut advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        let now = mi.start.saturating_sub(MassaTime::from(1));
+        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::defined());
 
-        let now = vi.start.saturating_add(MassaTime::from(5));
+        let now = mi.start.saturating_add(MassaTime::from(5));
         advance_msg.now = now;
         state = state.on_advance(advance_msg);
 
@@ -668,42 +690,34 @@ mod test {
     #[test]
     fn test_state_advance_from_started() {
         // Test Versioning state transition (from state: Started)
-        let (_, _, vi) = get_a_version_info();
+        let (_, _, mi) = get_a_version_info();
         let mut state: ComponentState = ComponentState::started(Default::default());
 
-        let now = vi.start;
+        let now = mi.start;
         let threshold_too_low = Amount::from_str("74.9").unwrap();
         let threshold_ok = Amount::from_str("82.42").unwrap();
-        let mut advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: threshold_too_low,
-            now,
-        };
+        let mut advance_msg = Advance::from((&mi, &threshold_too_low, &now));
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::started(threshold_too_low));
         advance_msg.threshold = threshold_ok;
         state = state.on_advance(advance_msg);
-        assert_eq!(state, ComponentState::locked_in());
+        assert_eq!(state, ComponentState::locked_in(now));
     }
 
     #[test]
     fn test_state_advance_from_locked_in() {
         // Test Versioning state transition (from state: LockedIn)
-        let (_, _, vi) = get_a_version_info();
-        let mut state: ComponentState = ComponentState::locked_in();
+        let (_, _, mi) = get_a_version_info();
 
-        let now = vi.start;
-        let mut advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        let locked_in_at = mi.start.saturating_add(MassaTime::from(1));
+        let mut state: ComponentState = ComponentState::locked_in(locked_in_at);
+
+        let now = mi.start;
+        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
-        assert_eq!(state, ComponentState::locked_in());
+        assert_eq!(state, ComponentState::locked_in(locked_in_at));
 
         advance_msg.now = advance_msg.timeout.saturating_add(MassaTime::from(1));
         state = state.on_advance(advance_msg);
@@ -713,15 +727,10 @@ mod test {
     #[test]
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
-        let (_, _, vi) = get_a_version_info();
+        let (_, _, mi) = get_a_version_info();
         let mut state = ComponentState::active();
-        let now = vi.start;
-        let advance = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        let now = mi.start;
+        let advance = Advance::from((&mi, &Amount::zero(), &now));
 
         state = state.on_advance(advance);
         assert_eq!(state, ComponentState::active());
@@ -730,16 +739,10 @@ mod test {
     #[test]
     fn test_state_advance_from_failed() {
         // Test Versioning state transition (from state: Failed)
-        let (_, _, vi) = get_a_version_info();
+        let (_, _, mi) = get_a_version_info();
         let mut state = ComponentState::failed();
-        let now = vi.start;
-        let advance = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
-
+        let now = mi.start;
+        let advance = Advance::from((&mi, &Amount::zero(), &now));
         state = state.on_advance(advance);
         assert_eq!(state, ComponentState::failed());
     }
@@ -747,16 +750,11 @@ mod test {
     #[test]
     fn test_state_advance_to_failed() {
         // Test Versioning state transition (to state: Failed)
-        let (_, _, vi) = get_a_version_info();
-        let now = vi.start.saturating_add(MassaTime::from(1));
-        let advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.start,
-            threshold: Amount::zero(),
-            now,
-        };
+        let (_, _, mi) = get_a_version_info();
+        let now = mi.timeout.saturating_add(MassaTime::from(1));
+        let advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
-        let mut state: ComponentState = Default::default();
+        let mut state: ComponentState = Default::default(); // Defined
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::Failed(Failed {}));
 
@@ -769,19 +767,14 @@ mod test {
     fn test_state_with_history() {
         // Test MipStateHistory::state_at() function
 
-        let (start, _, vi) = get_a_version_info();
+        let (start, _, mi) = get_a_version_info();
         let now_0 = MassaTime::from(start.timestamp() as u64);
         let mut state = MipState::new(now_0);
 
         assert_eq!(state, ComponentState::defined());
 
-        let now = vi.start.saturating_add(MassaTime::from(15));
-        let mut advance_msg = Advance {
-            start_timestamp: vi.start,
-            timeout: vi.timeout,
-            threshold: Amount::zero(),
-            now,
-        };
+        let now = mi.start.saturating_add(MassaTime::from(15));
+        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
 
         // Move from Defined -> Started
         state.on_advance(&advance_msg);
@@ -802,30 +795,30 @@ mod test {
 
         // Before Defined
         let state_id_ = state.state_at(
-            vi.start.saturating_sub(MassaTime::from(5)),
-            vi.start,
-            vi.timeout,
+            mi.start.saturating_sub(MassaTime::from(5)),
+            mi.start,
+            mi.timeout,
         );
         assert!(matches!(
             state_id_,
             Err(StateAtError::BeforeInitialState(_, _))
         ));
         // After Defined timestamp
-        let state_id = state.state_at(vi.start, vi.start, vi.timeout).unwrap();
+        let state_id = state.state_at(mi.start, mi.start, mi.timeout).unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Defined);
         // At Started timestamp
-        let state_id = state.state_at(now, vi.start, vi.timeout).unwrap();
+        let state_id = state.state_at(now, mi.start, mi.timeout).unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Started);
 
         // After Started timestamp but before timeout timestamp
         let after_started_ts = now.saturating_add(MassaTime::from(15));
-        let state_id_ = state.state_at(after_started_ts, vi.start, vi.timeout);
+        let state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout);
         assert_eq!(state_id_, Err(StateAtError::Unpredictable));
 
         // After Started timestamp and after timeout timestamp
-        let after_timeout_ts = vi.timeout.saturating_add(MassaTime::from(15));
+        let after_timeout_ts = mi.timeout.saturating_add(MassaTime::from(15));
         let state_id = state
-            .state_at(after_timeout_ts, vi.start, vi.timeout)
+            .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Failed);
 
@@ -834,18 +827,18 @@ mod test {
         advance_msg.threshold = threshold.saturating_add(Amount::from_str("1.0").unwrap());
         advance_msg.now = now.saturating_add(MassaTime::from(1));
         state.on_advance(&advance_msg);
-        assert_eq!(state, ComponentState::locked_in());
+        assert_eq!(state, ComponentState::locked_in(advance_msg.now));
 
         // Query with timestamp
         // After LockedIn timestamp and before timeout timestamp
         let after_locked_in_ts = now.saturating_add(MassaTime::from(10));
         let state_id = state
-            .state_at(after_locked_in_ts, vi.start, vi.timeout)
+            .state_at(after_locked_in_ts, mi.start, mi.timeout)
             .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::LockedIn);
         // After LockedIn timestamp and after timeout timestamp
         let state_id = state
-            .state_at(after_timeout_ts, vi.start, vi.timeout)
+            .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Active);
     }
@@ -854,13 +847,13 @@ mod test {
     fn test_versioning_store_announce_current() {
         // Test VersioningInfo::get_version_to_announce() & ::get_version_current()
 
-        let (_start, timeout, vi) = get_a_version_info();
+        let (_start, timeout, mi) = get_a_version_info();
 
-        let mut vi_2 = vi.clone();
-        vi_2.version += 1;
-        vi_2.start =
+        let mut mi_2 = mi.clone();
+        mi_2.version += 1;
+        mi_2.start =
             MassaTime::from(timeout.checked_add_days(Days::new(2)).unwrap().timestamp() as u64);
-        vi_2.timeout =
+        mi_2.timeout =
             MassaTime::from(timeout.checked_add_days(Days::new(5)).unwrap().timestamp() as u64);
 
         // Can only build such object in test - history is empty :-/
@@ -874,12 +867,12 @@ mod test {
         };
 
         // TODO: Have VersioningStore::from ?
-        let vs_raw = MipStoreRaw(BTreeMap::from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]));
+        let vs_raw = MipStoreRaw(BTreeMap::from([(mi.clone(), vs_1), (mi_2.clone(), vs_2)]));
         // let vs_raw = MipStoreRaw::try_from([(vi.clone(), vs_1), (vi_2.clone(), vs_2)]).unwrap();
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
-        assert_eq!(vs.get_network_version_current(), vi.version);
-        assert_eq!(vs.get_network_version_to_announce(), vi_2.version);
+        assert_eq!(vs.get_network_version_current(), mi.version);
+        assert_eq!(vs.get_network_version_to_announce(), mi_2.version);
 
         // Test also an empty versioning store
         let vs_raw = MipStoreRaw(Default::default());
@@ -904,6 +897,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(2),
         };
         // Another versioning info (from an attacker) for testing
         let vi_2 = MipInfo {
@@ -913,6 +907,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(7),
             timeout: MassaTime::from(10),
+            activation_delay: MassaTime::from(2),
         };
 
         let vsh = MipState {
@@ -937,12 +932,8 @@ mod test {
 
         // Advance to Started
         let now = MassaTime::from(3);
-        vsh.on_advance(&Advance {
-            start_timestamp: vi_1.start,
-            timeout: vi_1.timeout,
-            threshold: Amount::zero(),
-            now,
-        });
+        let adv = Advance::from((&vi_1, &Amount::zero(), &now));
+        vsh.on_advance(&adv);
 
         // At state Started at time now -> true
         assert_eq!(vsh.inner, ComponentState::started(Amount::zero()));
@@ -952,15 +943,11 @@ mod test {
 
         // Advance to LockedIn
         let now = MassaTime::from(4);
-        vsh.on_advance(&Advance {
-            start_timestamp: vi_1.start,
-            timeout: vi_1.timeout,
-            threshold: VERSIONING_THRESHOLD_TRANSITION_ACCEPTED,
-            now,
-        });
+        let adv = Advance::from((&vi_1, &VERSIONING_THRESHOLD_TRANSITION_ACCEPTED, &now));
+        vsh.on_advance(&adv);
 
         // At state LockedIn at time now -> true
-        assert_eq!(vsh.inner, ComponentState::locked_in());
+        assert_eq!(vsh.inner, ComponentState::locked_in(now));
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
         assert_eq!(vsh.is_coherent_with(&vi_1), true);
 
@@ -977,6 +964,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(2),
         };
 
         let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
@@ -989,6 +977,7 @@ mod test {
             component_version: 2,
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = advance_state_until(ComponentState::defined(), &vi_2);
         let mut vs_raw_1 = MipStoreRaw(BTreeMap::from([
@@ -996,8 +985,8 @@ mod test {
             (vi_2.clone(), vs_2.clone()),
         ]));
 
-        let vs_2_2 = advance_state_until(ComponentState::locked_in(), &vi_2);
-        assert_eq!(vs_2_2, ComponentState::locked_in());
+        let vs_2_2 = advance_state_until(ComponentState::active(), &vi_2);
+        assert_eq!(vs_2_2, ComponentState::active());
 
         let vs_raw_2 =
             MipStoreRaw::try_from([(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2_2.clone())])
@@ -1005,7 +994,7 @@ mod test {
 
         vs_raw_1.update_with(&vs_raw_2).unwrap();
 
-        // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "LockedIn"
+        // Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "Active"
         assert_eq!(vs_raw_1.0.get(&vi_1).unwrap().inner, vs_1.inner);
         assert_eq!(vs_raw_1.0.get(&vi_2).unwrap().inner, vs_2_2.inner);
     }
@@ -1023,6 +1012,7 @@ mod test {
             component_version: 1,
             start: MassaTime::from(0),
             timeout: MassaTime::from(5),
+            activation_delay: MassaTime::from(2),
         };
         let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
         assert_eq!(vs_1, ComponentState::active());
@@ -1034,6 +1024,7 @@ mod test {
             component_version: 2,
             start: MassaTime::from(17),
             timeout: MassaTime::from(27),
+            activation_delay: MassaTime::from(2),
         };
         let vs_2 = advance_state_until(ComponentState::defined(), &vi_2);
         assert_eq!(vs_2, ComponentState::defined());
