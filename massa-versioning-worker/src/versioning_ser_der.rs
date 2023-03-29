@@ -24,6 +24,7 @@ use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
 /// Ser / Der
 
 const MIP_INFO_NAME_MAX_LEN: u32 = 255;
+const MIP_INFO_COMPONENTS_MAX_ENTRIES: u32 = 8;
 const COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::<ComponentState>() as u32;
 const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::<ComponentStateTypeId>() as u32;
 const MIP_STORE_MAX_ENTRIES: u32 = 4096;
@@ -64,7 +65,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         }
         let name_len = u32::try_from(name_len_).map_err(|_| {
             SerializeError::GeneralError(format!(
-                "Cannot convert to name_len: {} to u64",
+                "Cannot convert to name_len: {} to u32",
                 name_len_
             ))
         })?;
@@ -72,14 +73,32 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         buffer.extend(value.name.as_bytes());
         // version
         self.u32_serializer.serialize(&value.version, buffer)?;
-        // component
-        let component_ = value.component.clone();
-        let component: u32 = component_.into();
 
-        self.u32_serializer.serialize(&component, buffer)?;
-        // component version
-        self.u32_serializer
-            .serialize(&value.component_version, buffer)?;
+        // Components
+        let components_len_ = value.components.len();
+        if components_len_ > MIP_INFO_COMPONENTS_MAX_ENTRIES as usize {
+            return Err(SerializeError::NumberTooBig(format!(
+                "MIP info cannot have more than {} components, got: {}",
+                MIP_STORE_MAX_ENTRIES, components_len_
+            )));
+        }
+        let components_len = u32::try_from(components_len_).map_err(|_| {
+            SerializeError::GeneralError(format!(
+                "Cannot convert to component_len: {} to u32",
+                name_len_
+            ))
+        })?;
+        // ser hashmap len
+        self.u32_serializer.serialize(&components_len, buffer)?;
+        // ser hashmap items
+        for (component, component_version) in value.components.iter() {
+            // component
+            self.u32_serializer
+                .serialize(&component.clone().into(), buffer)?;
+            // component version
+            self.u32_serializer.serialize(component_version, buffer)?;
+        }
+
         // start
         self.time_serializer.serialize(&value.start, buffer)?;
         // timeout
@@ -147,19 +166,30 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
                 context("Failed version deserialization", |input| {
                     self.u32_deserializer.deserialize(input)
                 }),
-                context("Failed component deserialization", |input| {
-                    let (rem, component_) = self.u32_deserializer.deserialize(input)?;
-                    let component = MipComponent::try_from(component_).map_err(|_| {
-                        nom::Err::Error(ParseError::from_error_kind(
-                            input,
-                            nom::error::ErrorKind::Fail,
-                        ))
-                    })?;
-                    IResult::Ok((rem, component))
-                }),
-                context("Failed component version deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
-                }),
+                context(
+                    "Failed components deserialization",
+                    length_count(
+                        context("Failed components length deserialization", |input| {
+                            self.u32_deserializer.deserialize(input)
+                        }),
+                        tuple((
+                            context("Failed component deserialization", |input| {
+                                let (rem, component_) = self.u32_deserializer.deserialize(input)?;
+                                let component =
+                                    MipComponent::try_from(component_).map_err(|_| {
+                                        nom::Err::Error(ParseError::from_error_kind(
+                                            input,
+                                            nom::error::ErrorKind::Fail,
+                                        ))
+                                    })?;
+                                IResult::Ok((rem, component))
+                            }),
+                            context("Failed component version deserialization", |input| {
+                                self.u32_deserializer.deserialize(input)
+                            }),
+                        )),
+                    ),
+                ),
                 context("Failed start deserialization", |input| {
                     self.time_deserializer.deserialize(input)
                 }),
@@ -172,16 +202,13 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
             )),
         )
         .map(
-            |(name, version, component, component_version, start, timeout, activation_delay)| {
-                MipInfo {
-                    name,
-                    version,
-                    component,
-                    component_version,
-                    start,
-                    timeout,
-                    activation_delay,
-                }
+            |(name, version, components, start, timeout, activation_delay)| MipInfo {
+                name,
+                version,
+                components: components.into_iter().collect(),
+                start,
+                timeout,
+                activation_delay,
             },
         )
         .parse(buffer)
@@ -665,13 +692,16 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use std::collections::HashMap;
     use std::mem::{size_of, size_of_val};
+    use std::str::FromStr;
 
     use chrono::{NaiveDate, NaiveDateTime};
     use more_asserts::assert_lt;
-    use std::str::FromStr;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
+
     use massa_serialization::DeserializeError;
     use massa_time::MassaTime;
 
@@ -680,8 +710,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -781,8 +810,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -801,8 +829,7 @@ mod test {
         let mi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            component: MipComponent::Address,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from(2),
             timeout: MassaTime::from(5),
             activation_delay: MassaTime::from(2),
@@ -811,8 +838,7 @@ mod test {
         let mi_3 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            component: MipComponent::Block,
-            component_version: 1,
+            components: HashMap::from([(MipComponent::Block, 1)]),
             start: MassaTime::from(12),
             timeout: MassaTime::from(17),
             activation_delay: MassaTime::from(2),
@@ -842,17 +868,16 @@ mod test {
         let mut mi_base = MipInfo {
             name: "A".repeat(254),
             version: 0,
-            component: MipComponent::Address,
-            component_version: 0,
+            components: HashMap::from([(MipComponent::Address, 0)]),
             start: MassaTime::from(0),
             timeout: MassaTime::from(2),
             activation_delay: MassaTime::from(2),
         };
 
+        // Note: we did not add the name ptr and hashmap ptr, only the data inside
         let mi_base_size = size_of_val(&mi_base.name[..])
             + size_of_val(&mi_base.version)
-            + size_of_val(&mi_base.component)
-            + size_of_val(&mi_base.component_version)
+            + mi_base.components.len() * size_of::<u32>() * 2
             + size_of_val(&mi_base.start)
             + size_of_val(&mi_base.timeout);
 
@@ -861,7 +886,10 @@ mod test {
         let store_raw_: Vec<(MipInfo, MipState)> = (0..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += 1;
-                mi_base.component_version += 1;
+                mi_base
+                    .components
+                    .entry(MipComponent::Address)
+                    .and_modify(|e| *e += 1);
                 mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(1));
                 mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(2));
 
