@@ -243,7 +243,6 @@ impl ExecutionState {
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
-            // reset the creator spending allowance (because it happens before the snapshot)
             let error = format!("could not spend fees: {}", err);
             let event = context.event_create(error.clone(), true);
             context.event_emit(event);
