@@ -898,6 +898,34 @@
 <a href="#898" id="898">898</a>
 <a href="#899" id="899">899</a>
 <a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -924,6 +952,7 @@
 <span class="doccomment">/// Ser / Der
 
 </span><span class="kw">const </span>MIP_INFO_NAME_MAX_LEN: u32 = <span class="number">255</span>;
+<span class="kw">const </span>MIP_INFO_COMPONENTS_MAX_ENTRIES: u32 = <span class="number">8</span>;
 <span class="kw">const </span>COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::&lt;ComponentState&gt;() <span class="kw">as </span>u32;
 <span class="kw">const </span>COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::&lt;ComponentStateTypeId&gt;() <span class="kw">as </span>u32;
 <span class="kw">const </span>MIP_STORE_MAX_ENTRIES: u32 = <span class="number">4096</span>;
@@ -964,7 +993,7 @@
         }
         <span class="kw">let </span>name_len = u32::try_from(name_len_).map_err(|<span class="kw">_</span>| {
             SerializeError::GeneralError(<span class="macro">format!</span>(
-                <span class="string">&quot;Cannot convert to name_len: {} to u64&quot;</span>,
+                <span class="string">&quot;Cannot convert to name_len: {} to u32&quot;</span>,
                 name_len_
             ))
         })<span class="question-mark">?</span>;
@@ -972,14 +1001,32 @@
         buffer.extend(value.name.as_bytes());
         <span class="comment">// version
         </span><span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>value.version, buffer)<span class="question-mark">?</span>;
-        <span class="comment">// component
-        </span><span class="kw">let </span>component_ = value.component.clone();
-        <span class="kw">let </span>component: u32 = component_.into();
 
-        <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>component, buffer)<span class="question-mark">?</span>;
-        <span class="comment">// component version
-        </span><span class="self">self</span>.u32_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.component_version, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// Components
+        </span><span class="kw">let </span>components_len_ = value.components.len();
+        <span class="kw">if </span>components_len_ &gt; MIP_INFO_COMPONENTS_MAX_ENTRIES <span class="kw">as </span>usize {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::NumberTooBig(<span class="macro">format!</span>(
+                <span class="string">&quot;MIP info cannot have more than {} components, got: {}&quot;</span>,
+                MIP_STORE_MAX_ENTRIES, components_len_
+            )));
+        }
+        <span class="kw">let </span>components_len = u32::try_from(components_len_).map_err(|<span class="kw">_</span>| {
+            SerializeError::GeneralError(<span class="macro">format!</span>(
+                <span class="string">&quot;Cannot convert to component_len: {} to u32&quot;</span>,
+                name_len_
+            ))
+        })<span class="question-mark">?</span>;
+        <span class="comment">// ser hashmap len
+        </span><span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>components_len, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// ser hashmap items
+        </span><span class="kw">for </span>(component, component_version) <span class="kw">in </span>value.components.iter() {
+            <span class="comment">// component
+            </span><span class="self">self</span>.u32_serializer
+                .serialize(<span class="kw-2">&amp;</span>component.clone().into(), buffer)<span class="question-mark">?</span>;
+            <span class="comment">// component version
+            </span><span class="self">self</span>.u32_serializer.serialize(component_version, buffer)<span class="question-mark">?</span>;
+        }
+
         <span class="comment">// start
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.start, buffer)<span class="question-mark">?</span>;
         <span class="comment">// timeout
@@ -1047,19 +1094,30 @@
                 context(<span class="string">&quot;Failed version deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed component deserialization&quot;</span>, |input| {
-                    <span class="kw">let </span>(rem, component_) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>component = MipComponent::try_from(component_).map_err(|<span class="kw">_</span>| {
-                        nom::Err::Error(ParseError::from_error_kind(
-                            input,
-                            nom::error::ErrorKind::Fail,
-                        ))
-                    })<span class="question-mark">?</span>;
-                    IResult::Ok((rem, component))
-                }),
-                context(<span class="string">&quot;Failed component version deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.u32_deserializer.deserialize(input)
-                }),
+                context(
+                    <span class="string">&quot;Failed components deserialization&quot;</span>,
+                    length_count(
+                        context(<span class="string">&quot;Failed components length deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.u32_deserializer.deserialize(input)
+                        }),
+                        tuple((
+                            context(<span class="string">&quot;Failed component deserialization&quot;</span>, |input| {
+                                <span class="kw">let </span>(rem, component_) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                                <span class="kw">let </span>component =
+                                    MipComponent::try_from(component_).map_err(|<span class="kw">_</span>| {
+                                        nom::Err::Error(ParseError::from_error_kind(
+                                            input,
+                                            nom::error::ErrorKind::Fail,
+                                        ))
+                                    })<span class="question-mark">?</span>;
+                                IResult::Ok((rem, component))
+                            }),
+                            context(<span class="string">&quot;Failed component version deserialization&quot;</span>, |input| {
+                                <span class="self">self</span>.u32_deserializer.deserialize(input)
+                            }),
+                        )),
+                    ),
+                ),
                 context(<span class="string">&quot;Failed start deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
@@ -1072,16 +1130,13 @@
             )),
         )
         .map(
-            |(name, version, component, component_version, start, timeout, activation_delay)| {
-                MipInfo {
-                    name,
-                    version,
-                    component,
-                    component_version,
-                    start,
-                    timeout,
-                    activation_delay,
-                }
+            |(name, version, components, start, timeout, activation_delay)| MipInfo {
+                name,
+                version,
+                components: components.into_iter().collect(),
+                start,
+                timeout,
+                activation_delay,
             },
         )
         .parse(buffer)
@@ -1565,13 +1620,16 @@
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">use </span>std::collections::HashMap;
     <span class="kw">use </span>std::mem::{size_of, size_of_val};
+    <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span>chrono::{NaiveDate, NaiveDateTime};
     <span class="kw">use </span>more_asserts::assert_lt;
-    <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
+
     <span class="kw">use </span>massa_serialization::DeserializeError;
     <span class="kw">use </span>massa_time::MassaTime;
 
@@ -1580,8 +1638,7 @@
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -1681,8 +1738,7 @@
         <span class="kw">let </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -1701,8 +1757,7 @@
         <span class="kw">let </span>mi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">2</span>),
             timeout: MassaTime::from(<span class="number">5</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -1711,8 +1766,7 @@
         <span class="kw">let </span>mi_3 = MipInfo {
             name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
             version: <span class="number">3</span>,
-            component: MipComponent::Block,
-            component_version: <span class="number">1</span>,
+            components: HashMap::from([(MipComponent::Block, <span class="number">1</span>)]),
             start: MassaTime::from(<span class="number">12</span>),
             timeout: MassaTime::from(<span class="number">17</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
@@ -1742,18 +1796,17 @@
         <span class="kw">let </span><span class="kw-2">mut </span>mi_base = MipInfo {
             name: <span class="string">&quot;A&quot;</span>.repeat(<span class="number">254</span>),
             version: <span class="number">0</span>,
-            component: MipComponent::Address,
-            component_version: <span class="number">0</span>,
+            components: HashMap::from([(MipComponent::Address, <span class="number">0</span>)]),
             start: MassaTime::from(<span class="number">0</span>),
             timeout: MassaTime::from(<span class="number">2</span>),
             activation_delay: MassaTime::from(<span class="number">2</span>),
         };
 
-        <span class="kw">let </span>mi_base_size = size_of_val(<span class="kw-2">&amp;</span>mi_base.name[..])
+        <span class="comment">// Note: we did not add the name ptr and hashmap ptr, only the data inside
+        </span><span class="kw">let </span>mi_base_size = size_of_val(<span class="kw-2">&amp;</span>mi_base.name[..])
             + size_of_val(<span class="kw-2">&amp;</span>mi_base.version)
-            + size_of_val(<span class="kw-2">&amp;</span>mi_base.component)
-            + size_of_val(<span class="kw-2">&amp;</span>mi_base.component_version)
-            + size_of_val(<span class="kw-2">&amp;</span>mi_base.start)
+            + mi_base.components.len() * size_of::&lt;u32&gt;() * <span class="number">2
+            </span>+ size_of_val(<span class="kw-2">&amp;</span>mi_base.start)
             + size_of_val(<span class="kw-2">&amp;</span>mi_base.timeout);
 
         <span class="kw">let </span><span class="kw-2">mut </span>all_state_size = <span class="number">0</span>;
@@ -1761,7 +1814,10 @@
         <span class="kw">let </span>store_raw_: Vec&lt;(MipInfo, MipState)&gt; = (<span class="number">0</span>..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += <span class="number">1</span>;
-                mi_base.component_version += <span class="number">1</span>;
+                mi_base
+                    .components
+                    .entry(MipComponent::Address)
+                    .and_modify(|e| <span class="kw-2">*</span>e += <span class="number">1</span>);
                 mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(<span class="number">1</span>));
                 mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(<span class="number">2</span>));
 
