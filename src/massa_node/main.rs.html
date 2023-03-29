@@ -1008,6 +1008,11 @@
 <a href="#1008" id="1008">1008</a>
 <a href="#1009" id="1009">1009</a>
 <a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1577,11 +1582,16 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start MASSA API&quot;</span>);
 
+    <span class="macro">info!</span>(
+        <span class="string">&quot;API | EXPERIMENTAL | listening on: {}&quot;</span>,
+        <span class="kw-2">&amp;</span>SETTINGS.api.bind_api
+    );
+
     <span class="comment">// Disable WebSockets for Private and Public API&#39;s
     </span><span class="kw">let </span><span class="kw-2">mut </span>api_config = api_config.clone();
     api_config.enable_ws = <span class="bool-val">false</span>;
 
-    <span class="comment">// Wheter to spawn gRPC API
+    <span class="comment">// Whether to spawn gRPC API
     </span><span class="kw">let </span>grpc_handle = <span class="kw">if </span>SETTINGS.grpc.enabled {
         <span class="kw">let </span>grpc_config = GrpcConfig {
             enabled: SETTINGS.grpc.enabled,
@@ -1639,13 +1649,13 @@
             version: <span class="kw-2">*</span>VERSION,
         };
 
-        <span class="comment">// maybe should remove timeout later
+        <span class="comment">// HACK maybe should remove timeout later
         </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(result) =
             tokio::time::timeout(Duration::from_secs(<span class="number">3</span>), grpc_api.serve(<span class="kw-2">&amp;</span>grpc_config)).<span class="kw">await
         </span>{
             <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(stop) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;API|gRPC| listening on: {}&quot;</span>, grpc_config.bind);
+                    <span class="macro">info!</span>(<span class="string">&quot;API | gRPC | listening on: {}&quot;</span>, grpc_config.bind);
                     <span class="prelude-val">Some</span>(stop)
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; {
@@ -1673,7 +1683,7 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start PRIVATE API&quot;</span>);
     <span class="macro">info!</span>(
-        <span class="string">&quot;API|PRIVATE JsonRPC| listening on: {}&quot;</span>,
+        <span class="string">&quot;API | PRIVATE JsonRPC | listening on: {}&quot;</span>,
         api_config.bind_private
     );
 

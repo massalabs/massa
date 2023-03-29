@@ -267,7 +267,7 @@
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>tonic::Request;
 
-<span class="doccomment">/// get version
+<span class="doccomment">/// Get version
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_version(
     grpc: <span class="kw-2">&amp;</span>MassaGrpcService,
     request: Request&lt;grpc::GetVersionRequest&gt;,
@@ -278,7 +278,7 @@
     })
 }
 
-<span class="doccomment">/// Get multiple datastore entries.
+<span class="doccomment">/// Get multiple datastore entries
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_datastore_entries(
     grpc: <span class="kw-2">&amp;</span>MassaGrpcService,
     request: Request&lt;grpc::GetDatastoreEntriesRequest&gt;,

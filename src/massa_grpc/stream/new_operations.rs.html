@@ -180,6 +180,7 @@
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span><span class="kw">crate</span>::service::MassaGrpcService;
 <span class="kw">use </span>futures_util::StreamExt;
@@ -311,7 +312,8 @@
                             <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e)
                         }
                     },
-                    res = in_stream.next() =&gt; {
+                    <span class="comment">// Receive a new message from the in_stream
+                    </span>res = in_stream.next() =&gt; {
                         <span class="kw">match </span>res {
                             <span class="prelude-val">Some</span>(res) =&gt; {
                                 <span class="kw">match </span>res {

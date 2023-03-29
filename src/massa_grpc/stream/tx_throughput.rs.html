@@ -132,7 +132,7 @@
         <span class="comment">// Continuously loop until the stream ends or an error occurs
         </span><span class="kw">loop </span>{
             <span class="macro">select! </span>{
-                <span class="comment">// Receive the next request from the client
+                <span class="comment">// Receive a new message from the in_stream
                 </span>res = in_stream.next() =&gt; {
                     <span class="kw">match </span>res {
                         <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(req)) =&gt; {
