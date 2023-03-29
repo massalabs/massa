@@ -701,10 +701,12 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     ///    OperationType::ExecuteSC {
     ///      data,
     ///      max_gas,
+    ///      max_coins,
     ///      datastore
     ///   } => {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
+    ///     assert_eq!(max_coins, Amount::from_str("5000000").unwrap());
     ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
     ///   }
     ///   _ => panic!("Unexpected operation type"),
