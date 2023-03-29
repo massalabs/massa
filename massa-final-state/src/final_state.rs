@@ -237,7 +237,7 @@ impl FinalState {
 
                 self.pos_state
                     .create_new_cycle_from_last(&latest_consistent_cycle_info, last_slot);
-                
+
                 self.pos_state
                     .feed_cycle_state_hash(cycle, self.final_state_hash);
             }

@@ -212,7 +212,6 @@ impl PoSFinalState {
             rng_seed,
             last_cycle_info.production_stats.clone(),
         ));
-
     }
 
     /// Create a new empty cycle based off the initial rolls.
