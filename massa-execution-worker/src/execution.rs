@@ -233,11 +233,17 @@ impl ExecutionState {
             ));
         }
 
+        // Set the creator coin spending allowance.
+        // Note that this needs to be initialized before any spending from the creator.
+        context.creator_coin_spending_allowance =
+            Some(operation.get_max_spending(self.config.roll_price));
+
         // debit the fee from the operation sender
         // fail execution if there are not enough coins
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
+            // reset the creator spending allowance (because it happens before the snapshot)
             let error = format!("could not spend fees: {}", err);
             let event = context.event_create(error.clone(), true);
             context.event_emit(event);
@@ -704,6 +710,7 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = None;
+            context.creator_coin_spending_allowance = None;
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,

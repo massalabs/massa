@@ -1773,6 +1773,7 @@ mod tests {
         let op = OperationType::ExecuteSC {
             data: data.to_vec(),
             max_gas: 1_000_000,
+            max_coins: Amount::from_str("5000000").unwrap(),
             datastore,
         };
         let op = Operation::new_verifiable(
