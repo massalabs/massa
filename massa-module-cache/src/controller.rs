@@ -3,7 +3,7 @@
 
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
-use massa_sc_runtime::RuntimeModule;
+use massa_sc_runtime::{Compiler, RuntimeModule};
 use schnellru::{ByLength, LruMap};
 use tracing::warn;
 
@@ -43,12 +43,12 @@ impl ModuleCache {
     }
 
     /// Internal function to compile and build `ModuleInfo`
-    fn compile(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
+    fn compile_cached(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
         match RuntimeModule::new(
             bytecode,
             self.cfg.compilation_gas,
             self.cfg.gas_costs.clone(),
-            true,
+            Compiler::CL,
         ) {
             Ok(module) => {
                 warn!("compilation of module {} succeeded", hash);
@@ -75,7 +75,7 @@ impl ModuleCache {
             self.hd_cache.insert(hash, lru_module_info);
         } else {
             warn!("save_module: {} missing", hash);
-            let module_info = self.compile(bytecode, hash);
+            let module_info = self.compile_cached(bytecode, hash);
             self.hd_cache.insert(hash, module_info.clone());
             self.lru_cache.insert(hash, module_info);
         }
@@ -110,7 +110,7 @@ impl ModuleCache {
             hd_module_info
         } else {
             warn!("load_module: {} missing", hash);
-            let module_info = self.compile(bytecode, hash);
+            let module_info = self.compile_cached(bytecode, hash);
             self.hd_cache.insert(hash, module_info.clone());
             self.lru_cache.insert(hash, module_info.clone());
             module_info
@@ -153,7 +153,7 @@ impl ModuleCache {
             bytecode,
             limit,
             self.cfg.gas_costs.clone(),
-            true,
+            Compiler::SP,
         )?)
     }
 }

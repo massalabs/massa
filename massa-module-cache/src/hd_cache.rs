@@ -200,7 +200,7 @@ impl HDCache {
 mod tests {
     use super::*;
     use massa_hash::Hash;
-    use massa_sc_runtime::{GasCosts, RuntimeModule};
+    use massa_sc_runtime::{Compiler, GasCosts, RuntimeModule};
     use rand::thread_rng;
     use serial_test::serial;
     use tempfile::TempDir;
@@ -214,7 +214,9 @@ mod tests {
             0x61, 0x64, 0x64, 0x5f, 0x6f, 0x6e, 0x65, 0x02, 0x07, 0x01, 0x00, 0x01, 0x00, 0x02,
             0x70, 0x30,
         ];
-        ModuleInfo::Module(RuntimeModule::new(&bytecode, 10, GasCosts::default(), true).unwrap())
+        ModuleInfo::Module(
+            RuntimeModule::new(&bytecode, 10, GasCosts::default(), Compiler::CL).unwrap(),
+        )
     }
 
     fn setup() -> HDCache {
