@@ -36,6 +36,7 @@ pub(crate) fn get_datastore_entries(
         .queries
         .into_iter()
         .map(|query| {
+            //TODO to be handled in the future
             let filter = query.filter.unwrap();
             Address::from_str(filter.address.as_str()).map(|address| (address, filter.key))
         })
@@ -61,7 +62,7 @@ pub(crate) fn get_selector_draws(
 ) -> Result<GetSelectorDrawsResponse, GrpcError> {
     let inner_req = request.into_inner();
     let id = inner_req.id;
-
+    //TODO to be unwrap in the future
     let addresses = inner_req
         .queries
         .into_iter()
@@ -69,6 +70,7 @@ pub(crate) fn get_selector_draws(
         .collect::<Result<Vec<_>, _>>()?;
 
     // get future draws from selector
+    //TODO remove expect
     let selection_draws = {
         let cur_slot = timeslots::get_current_latest_block_slot(
             grpc.grpc_config.thread_count,

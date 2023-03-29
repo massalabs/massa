@@ -3,7 +3,7 @@ use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 use massa_models::secure_share::SecureShareDeserializer;
-use massa_proto::massa::api::v1::{self as grpc};
+use massa_proto::massa::api::v1 as grpc;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::collections::HashMap;
 use std::io::ErrorKind;
@@ -59,7 +59,7 @@ pub(crate) async fn send_endorsements(
                                 req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
-                                "too many endorsements".to_owned(),
+                                "too many endorsements per message".to_owned(),
                             )
                             .await;
                         } else {

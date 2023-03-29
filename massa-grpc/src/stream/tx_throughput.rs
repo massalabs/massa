@@ -1,6 +1,6 @@
 use crate::{error::GrpcError, service::MassaGrpcService};
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1::{self as grpc};
+use massa_proto::massa::api::v1 as grpc;
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::{select, time};

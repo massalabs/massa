@@ -1,7 +1,7 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1::{self as grpc};
+use massa_proto::massa::api::v1 as grpc;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -39,11 +39,11 @@ pub(crate) async fn new_blocks(
                 // Receive a new block from the subscriber
                 event = subscriber.recv() => {
                     match event {
-                        Ok(share_block) => {
+                        Ok(massa_block) => {
                             // Send the new block through the channel
                             if let Err(e) = tx.send(Ok(grpc::NewBlocksStreamResponse {
                                     id: request_id.clone(),
-                                    block: Some(share_block.into())
+                                    block: Some(massa_block.into())
                             })).await {
                                 error!("failed to send new block : {}", e);
                                 break;

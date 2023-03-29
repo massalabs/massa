@@ -691,7 +691,7 @@ async fn launch(
         .await
         .expect("failed to start PUBLIC API");
     info!(
-        "API|PUBLIC JsonRPC| listening on: {}",
+        "API | PUBLIC JsonRPC | listening on: {}",
         api_config.bind_public
     );
 

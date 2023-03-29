@@ -2,7 +2,7 @@ use crate::error::GrpcError;
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;
 use massa_models::operation::OperationType;
-use massa_proto::massa::api::v1::{self as grpc};
+use massa_proto::massa::api::v1 as grpc;
 use std::pin::Pin;
 use tokio::select;
 use tonic::codegen::futures_core;
@@ -36,8 +36,10 @@ pub(crate) async fn new_operations(
             let mut request_id = request.id;
             let mut filter = request.query.and_then(|q| q.filter);
 
+            // Spawn a new task for sending new blocks
             loop {
                 select! {
+                    // Receive a new operation from the subscriber
                      event = subscriber.recv() => {
                         match event {
                             Ok(operation) => {

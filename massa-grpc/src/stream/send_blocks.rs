@@ -5,7 +5,7 @@ use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareB
 use massa_models::error::ModelsError;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto::google::rpc::Status;
-use massa_proto::massa::api::v1::{self as grpc};
+use massa_proto::massa::api::v1 as grpc;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::io::ErrorKind;
 use std::pin::Pin;
