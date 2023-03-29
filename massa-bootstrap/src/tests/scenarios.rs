@@ -299,18 +299,27 @@ fn conn_establishment_mocks() -> (MockBSListener, MockBSConnector) {
     // Setup the server/client connection
     // Bind a TcpListener to localhost on a specific port
     let listener = std::net::TcpListener::bind("127.0.0.1:8069").unwrap();
+
+    // Due to the limitations of the mocking system, the listener must loop-accept in a dedicated
+    // thread. We use a channel to make the connection available in the mocked `accept` method
     let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
     let conn = std::thread::spawn(|| std::net::TcpStream::connect("127.0.0.1:8069").unwrap());
-    std::thread::spawn(move || loop {
-        conn_tx.send(listener.accept().unwrap()).unwrap()
-    });
+    std::thread::Builder::new()
+        .name("mock-listen-loop".to_string())
+        .spawn(move || loop {
+            conn_tx.send(listener.accept().unwrap()).unwrap()
+        })
+        .unwrap();
 
     // Mock the connection setups
+    // TODO: Why is it twice, and not just once?
     let mut mock_bs_listener = MockBSListener::new();
     mock_bs_listener
         .expect_accept()
         .times(2)
+        // Mock the `accept` method here by receiving from the listen-loop thread
         .returning(move || Ok(conn_rx.recv().unwrap()));
+
     let mut mock_remote_connector = MockBSConnector::new();
     mock_remote_connector
         .expect_connect()
