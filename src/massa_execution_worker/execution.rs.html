@@ -1428,7 +1428,6 @@
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
 <a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1679,8 +1678,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
             context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
         {
-            <span class="comment">// reset the creator spending allowance (because it happens before the snapshot)
-            </span><span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">&quot;could not spend fees: {}&quot;</span>, err);
+            <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">&quot;could not spend fees: {}&quot;</span>, err);
             <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
             context.event_emit(event);
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));

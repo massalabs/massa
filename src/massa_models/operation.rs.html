@@ -1525,6 +1525,8 @@
 <a href="#1525" id="1525">1525</a>
 <a href="#1526" id="1526">1526</a>
 <a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -2228,10 +2230,12 @@
     ///    OperationType::ExecuteSC {
     ///      data,
     ///      max_gas,
+    ///      max_coins,
     ///      datastore
     ///   } =&gt; {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
+    ///     assert_eq!(max_coins, Amount::from_str(&quot;5000000&quot;).unwrap());
     ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
     ///   }
     ///   _ =&gt; panic!(&quot;Unexpected operation type&quot;),
