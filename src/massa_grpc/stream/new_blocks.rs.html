@@ -153,7 +153,7 @@
                         <span class="prelude-val">Err</span>(e) =&gt; {<span class="macro">error!</span>(<span class="string">&quot;error on receive new block : {}&quot;</span>, e)}
                     }
                 },
-                <span class="comment">// Receive a new request from the in_stream
+                <span class="comment">// Receive a new message from the in_stream
                 </span>res = in_stream.next() =&gt; {
                     <span class="kw">match </span>res {
                         <span class="prelude-val">Some</span>(res) =&gt; {
