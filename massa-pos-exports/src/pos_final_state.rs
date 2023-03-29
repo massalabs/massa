@@ -178,7 +178,11 @@ impl PoSFinalState {
     /// Create the initial cycle based off the initial rolls.
     ///
     /// This should be called only if bootstrap did not happen.
-    pub fn create_new_cycle_from_last(&mut self, last_cycle_info: &CycleInfo, last_slot: Slot) {
+    pub fn create_new_cycle_from_last(
+        &mut self,
+        last_cycle_info: &CycleInfo,
+        last_slot: Slot,
+    ) -> Result<(), PosError> {
         let mut rng_seed = BitVec::with_capacity(
             self.config
                 .periods_per_cycle
@@ -205,6 +209,12 @@ impl PoSFinalState {
         let complete =
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
 
+        if complete {
+            self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
+                PosError::OverflowError("cycle overflow when feeding selector".into())
+            })?)?;
+        }
+
         self.cycle_history.push_back(CycleInfo::new_with_hash(
             cycle,
             complete,
@@ -212,6 +222,8 @@ impl PoSFinalState {
             rng_seed,
             last_cycle_info.production_stats.clone(),
         ));
+
+        Ok(())
     }
 
     /// Create a new empty cycle based off the initial rolls.

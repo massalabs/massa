@@ -236,7 +236,8 @@ impl FinalState {
                 })?;
 
                 self.pos_state
-                    .create_new_cycle_from_last(&latest_consistent_cycle_info, last_slot);
+                    .create_new_cycle_from_last(&latest_consistent_cycle_info, last_slot)
+                    .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
                 self.pos_state
                     .feed_cycle_state_hash(cycle, self.final_state_hash);
@@ -245,7 +246,12 @@ impl FinalState {
             // Then, build the last cycle
             // TODO: build a new cycle by repeating the one before. How do we handle this if latest cycle info is not complete??
             self.pos_state
-                .create_new_cycle_from_last(&latest_consistent_cycle_info, end_slot);
+                .create_new_cycle_from_last(&latest_consistent_cycle_info, end_slot)
+                .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+            while self.pos_state.cycle_history.len() > self.pos_state.config.cycle_history_length {
+                self.pos_state.cycle_history.pop_front();
+            }
         }
 
         // TODO: remove this
