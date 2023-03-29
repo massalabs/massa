@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashSet, io::ErrorKind, net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
@@ -33,31 +33,30 @@ async fn stream_final_state_and_consensus<D: Duplex>(
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
-        match tokio::time::timeout(
-            cfg.write_timeout.into(),
-            client.send(next_bootstrap_message),
-        )
-        .await
+        match // tokio::time::timeout(
+            // cfg.write_timeout.into(),
+            client.send(next_bootstrap_message)
         {
-            Err(_) => Err(std::io::Error::new(
+            Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 "bootstrap ask ledger part send timed out",
             )
             .into()),
-            Ok(Err(e)) => Err(e),
-            Ok(Ok(_)) => Ok(()),
+            Err(e) => Err(e),
+            Ok(_) => Ok(()),
         }?;
         loop {
-            let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
-                Err(_) => {
+            let msg = match // tokio::time::timeout(cfg.read_timeout.into(),
+                                                 client.next() {
+                                                     Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
                         "final state bootstrap read timed out",
                     )
                     .into());
                 }
-                Ok(Err(e)) => return Err(e),
-                Ok(Ok(msg)) => msg,
+                Err(e) => return Err(e),
+                Ok(msg) => msg,
             };
             match msg {
                 BootstrapServerMessage::BootstrapPart {
@@ -205,33 +204,35 @@ async fn bootstrap_from_server<D: Duplex>(
 
     // read error (if sent by the server)
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match tokio::time::timeout(cfg.read_error_timeout.into(), client.next()).await {
-        Err(_) => {
+    match // tokio::time::timeout(cfg.read_error_timeout.into(),
+                               client.next() {
+                                   Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             massa_trace!(
                 "bootstrap.lib.bootstrap_from_server: No error sent at connection",
                 {}
             );
         }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapServerMessage::BootstrapError { error: err })) => {
+        Err(e) => return Err(e),
+        Ok(BootstrapServerMessage::BootstrapError { error: err }) => {
             return Err(BootstrapError::ReceivedError(err))
         }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
-        Err(_) => {
+    match // tokio::time::timeout(cfg.write_timeout.into(),
+    client.handshake(our_version) {
+        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 "bootstrap handshake timed out",
             )
-            .into())
+            .into());
         }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => {}
+        Err(e) => return Err(e),
+        Ok(_) => {}
     }
 
     // compute ping
@@ -244,19 +245,20 @@ async fn bootstrap_from_server<D: Duplex>(
 
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let server_time = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
-        Err(_) => {
+    let server_time = match // tokio::time::timeout(cfg.read_timeout.into(),
+                                                 client.next() {
+        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 "bootstrap clock sync read timed out",
             )
             .into())
         }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapServerMessage::BootstrapTime {
+        Err(e) => return Err(e),
+        Ok(BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
-        })) => {
+        }) => {
             if !our_version.is_compatible(&version) {
                 return Err(BootstrapError::IncompatibleVersionError(format!(
                     "remote is running incompatible version: {} (local node version: {})",
@@ -265,10 +267,10 @@ async fn bootstrap_from_server<D: Duplex>(
             }
             server_time
         }
-        Ok(Ok(BootstrapServerMessage::BootstrapError { error })) => {
+        Ok(BootstrapServerMessage::BootstrapError { error }) => {
             return Err(BootstrapError::ReceivedError(error))
         }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
     };
 
     // get the time of reception
@@ -331,15 +333,16 @@ async fn bootstrap_from_server<D: Duplex>(
                 *next_bootstrap_message = BootstrapClientMessage::BootstrapSuccess;
             }
             BootstrapClientMessage::BootstrapSuccess => {
-                match tokio::time::timeout(write_timeout, client.send(next_bootstrap_message)).await
+                match // tokio::time::timeout(write_timeout,
+                                           client.send(next_bootstrap_message)
                 {
-                    Err(_) => Err(std::io::Error::new(
+                    Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
                         "send bootstrap success timed out",
                     )
                     .into()),
-                    Ok(Err(e)) => Err(e),
-                    Ok(Ok(_)) => Ok(()),
+                    Err(e) => Err(e),
+                    Ok(_)=> Ok(()),
                 }?;
                 break;
             }
@@ -359,15 +362,17 @@ async fn send_client_message<D: Duplex>(
     read_timeout: Duration,
     error: &str,
 ) -> Result<BootstrapServerMessage, BootstrapError> {
-    match tokio::time::timeout(write_timeout, client.send(message_to_send)).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
+    match // tokio::time::timeout(write_timeout,
+                               client.send(message_to_send) {
+                                   Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
+        Err(e) => Err(e),
+        Ok(_) => Ok(()),
     }?;
-    match tokio::time::timeout(read_timeout, client.next()).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(msg)) => Ok(msg),
+    match // tokio::time::timeout(read_timeout,
+                               client.next() {
+                                   Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
+        Err(e) => Err(e),
+        Ok(msg) => Ok(msg),
     }
 }
 
@@ -466,7 +471,8 @@ pub async fn get_state(
                         Err(e) => {
                             warn!("Error while bootstrapping: {}", e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
+                            let _ = // tokio::time::timeout(bootstrap_config.write_error_timeout.into(),
+                                                         client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() });
                         }
                         Ok(()) => {
                             return Ok(global_bootstrap_state)

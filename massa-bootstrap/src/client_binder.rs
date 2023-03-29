@@ -46,7 +46,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
 
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
-    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    pub fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // send version and randomn bytes
         let msg_hash = {
             let mut version_ser = Vec::new();
@@ -66,7 +66,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
     }
 
     /// Reads the next message. NOT cancel-safe
-    pub async fn next(&mut self) -> Result<BootstrapServerMessage, BootstrapError> {
+    pub fn next(&mut self) -> Result<BootstrapServerMessage, BootstrapError> {
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
@@ -113,7 +113,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
 
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
-    pub async fn send(&mut self, msg: &BootstrapClientMessage) -> Result<(), BootstrapError> {
+    pub fn send(&mut self, msg: &BootstrapClientMessage) -> Result<(), BootstrapError> {
         let mut msg_bytes = Vec::new();
         let message_serializer = BootstrapClientMessageSerializer::new();
         message_serializer.serialize(msg, &mut msg_bytes)?;
