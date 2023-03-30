@@ -264,7 +264,7 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
-        // if cycle_history starts at a cycle that is strictly higher than initial_cycle, do not feed cycles initial_cycle, initial_cycle+1 to selector
+        // if cycle_history starts at a cycle that is strictly higher than initial_cycle, do not feed cycles 0, 1 to selector
         let history_starts_late = self
             .cycle_history
             .front()
@@ -273,9 +273,9 @@ impl PoSFinalState {
 
         let mut max_cycle = None;
 
-        // feed cycles initial_cycle, initial_cycle+1 to selector if necessary
+        // feed cycles 0, 1 to selector if necessary
         if !history_starts_late {
-            for draw_cycle in 0..=1 {
+            for draw_cycle in 0u64..=1 {
                 self.feed_selector(draw_cycle)?;
                 max_cycle = Some(draw_cycle);
             }
@@ -434,7 +434,7 @@ impl PoSFinalState {
                 (cycle_info.roll_counts.clone(), state_hash)
             }
             // looking back to negative cycles
-            _ => (self.initial_rolls.clone(), self.initial_ledger_hash),
+            None => (self.initial_rolls.clone(), self.initial_ledger_hash),
         };
 
         // get seed lookback
@@ -456,7 +456,7 @@ impl PoSFinalState {
                 Hash::compute_from(&seed)
             }
             // looking back to negative cycles
-            _ => self.initial_seeds[draw_cycle as usize],
+            None => self.initial_seeds[draw_cycle as usize],
         };
 
         // feed selector
@@ -497,7 +497,7 @@ impl PoSFinalState {
                     .get(addr)
                     .cloned()
             }
-            _ => self.initial_rolls.get(addr).cloned(),
+            None => self.initial_rolls.get(addr).cloned(),
         }
     }
 
