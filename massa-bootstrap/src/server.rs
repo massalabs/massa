@@ -118,17 +118,6 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
     };
 
-    // We use a runtime dedicated to the bootstrap part of the system
-    // This should help keep it isolated from the rest of the overall binary
-    let Ok(bs_server_runtime) = runtime::Builder::new_multi_thread()
-        .enable_io()
-        .enable_time()
-        .thread_name("bootstrap-global-runtime-worker")
-        .thread_keep_alive(Duration::from_millis(u64::MAX))
-        .build() else {
-        return Err(Box::new(BootstrapError::GeneralError("Failed to creato bootstrap async runtime".to_string())));
-    };
-
     // This is the primary interface between the async-listener, and the "sync" worker
     let (listener_tx, listener_rx) =
         crossbeam::channel::bounded::<BsConn<TcpStream>>(max_bootstraps * 2);
@@ -156,16 +145,11 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
         // the non-builder spawn doesn't return a Result, and documentation states that
         // it's an error at the OS level.
         .unwrap();
-    let listen_rt_handle = bs_server_runtime.handle().clone();
     let listen_handle = thread::Builder::new()
         .name("bs_listener".to_string())
         // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
         // GAT lifetime is likely to remedy this, however.
-        .spawn(move || {
-            let res = listen_rt_handle
-                .block_on(BootstrapServer::<D, C>::run_listener(listener, listener_tx));
-            res
-        })
+        .spawn(move || BootstrapServer::<D, C>::run_listener(listener, listener_tx))
         // the non-builder spawn doesn't return a Result, and documentation states that
         // it's an error at the OS level.
         .unwrap();
@@ -184,7 +168,6 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
-                bs_server_runtime,
             }
             .run_loop(max_bootstraps)
         })
@@ -213,7 +196,6 @@ struct BootstrapServer<'a, D: Duplex, C: NetworkCommandSenderTrait> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
-    bs_server_runtime: Runtime,
 }
 
 impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> {
@@ -244,7 +226,7 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
     /// Ok(Err((dplx, address))) listener accepted a connection then tried sending on a disconnected channel
     /// Err(..) Error accepting a connection
     /// TODO: Integrate the listener into the bootstrap-main-loop
-    async fn run_listener(
+    fn run_listener(
         mut listener: impl BSListener,
         listener_tx: crossbeam::channel::Sender<BsConn<TcpStream>>,
     ) -> Result<Result<(), BsConn<TcpStream>>, Box<BootstrapError>> {
@@ -294,12 +276,12 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
 
             // check whether incoming peer IP is allowed.
             if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                server_binding.close_and_send_error(
-                    self.bs_server_runtime.handle().clone(),
-                    error_msg.to_string(),
-                    remote_addr,
-                    move || {},
-                );
+                //     server_binding.close_and_send_error(
+                //         self.bs_server_runtime.handle().clone(),
+                //         error_msg.to_string(),
+                //         remote_addr,
+                //         move || {},
+                //     );
                 continue;
             };
 
@@ -344,12 +326,12 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
                             "remote_addr": remote_addr
                         })
                     };
-                    server_binding.close_and_send_error(
-                        self.bs_server_runtime.handle().clone(),
-                        msg,
-                        remote_addr,
-                        tracer,
-                    );
+                    // server_binding.close_and_send_error(
+                    //     self.bs_server_runtime.handle().clone(),
+                    //     msg,
+                    //     remote_addr,
+                    //     tracer,
+                    // );
                     continue;
                 }; // Clients Option<last-attempt> is good, and has been updated
 
@@ -385,12 +367,12 @@ impl<D: Duplex, C: NetworkCommandSenderTrait + Clone> BootstrapServer<'_, D, C> 
                     "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
                 });
             } else {
-                server_binding.close_and_send_error(
-                    self.bs_server_runtime.handle().clone(),
-                    "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
-                    remote_addr,
-                    move || debug!("did not bootstrap {}: no available slots", remote_addr),
-                );
+                // server_binding.close_and_send_error(
+                //     self.bs_server_runtime.handle().clone(),
+                //     "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
+                //     remote_addr,
+                //     move || debug!("did not bootstrap {}: no available slots", remote_addr),
+                // );
             }
         }
 

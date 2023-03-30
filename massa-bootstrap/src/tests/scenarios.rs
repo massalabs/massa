@@ -133,9 +133,10 @@ fn test_bootstrap_server() {
         final_state_local_config,
     )));
     let final_state_client_clone = final_state_client.clone();
-    let final_state_server_clone = final_state_server.clone();
+    let final_state_server_clone1 = final_state_server.clone();
+    let final_state_server_clone2 = final_state_server.clone();
 
-    let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
+    let (mock_bs_listener, mut mock_remote_connector) = conn_establishment_mocks();
 
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
     let mut mocked1 = MockNetworkCommandSender::new();
@@ -180,30 +181,20 @@ fn test_bootstrap_server() {
     stream_mock1
         .expect_clone_box()
         .return_once(move || stream_mock2);
-    let bootstrap_manager = start_bootstrap_server::<TcpStream, MockNetworkCommandSender>(
-        stream_mock1,
-        mocked1,
-        final_state_server.clone(),
-        bootstrap_config.clone(),
-        mock_bs_listener,
-        keypair.clone(),
-        Version::from_str("TEST.1.10").unwrap(),
-    )
-    .unwrap()
-    .unwrap();
 
-    // launch the get_state process
-    let get_state_h = std::thread::Builder::new()
-        .name("state-getter".to_string())
+    let bootstrap_manager_thread = std::thread::Builder::new()
+        .name("bootstrap_thread".to_string())
         .spawn(move || {
-            get_state(
-                bootstrap_config,
-                final_state_client_clone,
-                mock_remote_connector,
+            start_bootstrap_server::<TcpStream, MockNetworkCommandSender>(
+                stream_mock1,
+                mocked1,
+                final_state_server_clone1,
+                bootstrap_config.clone(),
+                mock_bs_listener,
+                keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
-                MassaTime::now().unwrap().saturating_sub(1000.into()),
-                None,
             )
+            .unwrap()
             .unwrap()
         })
         .unwrap();
@@ -211,12 +202,12 @@ fn test_bootstrap_server() {
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
     let list_changes_clone = list_changes.clone();
-    std::thread::Builder::new()
+    let mod_thread = std::thread::Builder::new()
         .name("modifier thread".to_string())
         .spawn(move || {
             for _ in 0..10 {
                 std::thread::sleep(Duration::from_millis(500));
-                let mut final_write = final_state_server_clone.write();
+                let mut final_write = final_state_server_clone2.write();
                 let next = final_write.slot.get_next_slot(thread_count).unwrap();
                 final_write.slot = next;
                 let changes = StateChanges {
@@ -234,10 +225,20 @@ fn test_bootstrap_server() {
         })
         .unwrap();
 
-    // wait for get_state
-    let bootstrap_res = get_state_h
-        .join()
-        .expect("error while waiting for get_state to finish");
+    // mock_remote_connector
+    //     .expect_connect_timeout()
+    //     .times(1)
+    //     .returning(|_, _| todo!());
+    // launch the get_state process
+    let bootstrap_res = get_state(
+        bootstrap_config,
+        final_state_client_clone,
+        mock_remote_connector,
+        Version::from_str("TEST.1.10").unwrap(),
+        MassaTime::now().unwrap().saturating_sub(1000.into()),
+        None,
+    )
+    .unwrap();
 
     // apply the changes to the server state before matching with the client
     {
@@ -284,8 +285,11 @@ fn test_bootstrap_server() {
     // check graphs
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
+    dbg!("now stop! (hammer time)");
     // stop bootstrap server
-    bootstrap_manager
+    bootstrap_manager_thread
+        .join()
+        .unwrap()
         .stop()
         .expect("could not stop bootstrap server");
 
