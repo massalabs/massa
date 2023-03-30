@@ -240,15 +240,6 @@ impl FinalState {
         self.pos_state
             .create_new_cycle_for_snapshot(&latest_consistent_cycle_info, end_slot);
 
-        // The deferred credits that happen during the downtime have to be set to the next slot to be executed
-        self.pos_state
-            .update_deferred_credits_after_restart(self.slot, end_slot)
-            .map_err(|_| {
-                FinalStateError::SnapshotError(String::from(
-                    "Could not update the deferred credits for snapshot",
-                ))
-            })?;
-
         self.slot = end_slot;
 
         // Recompute the hash with the updated data and feed it to POS_state.
@@ -663,6 +654,7 @@ impl FinalStateRawDeserializer {
             deferred_credits_deser: DeferredCreditsDeserializer::new(
                 config.thread_count,
                 max_credit_length,
+                true,
             ),
             executed_ops_deser: ExecutedOpsDeserializer::new(
                 config.thread_count,

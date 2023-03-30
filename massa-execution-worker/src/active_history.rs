@@ -6,6 +6,7 @@ use massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId,
     prehash::PreHashMap, slot::Slot,
 };
+use massa_pos_exports::DeferredCredits;
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Default)]
@@ -144,21 +145,18 @@ impl ActiveHistory {
         })
     }
 
-    /// Gets all the deferred credits that will be credited at a given slot
-    pub fn get_all_deferred_credits_for(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
+    /// Gets all the deferred credits that will be credited until a given slot (included)
+    pub fn get_all_deferred_credits_until(&self, slot: &Slot) -> DeferredCredits {
         self.0
             .iter()
-            .filter_map(|output| {
-                output
-                    .state_changes
-                    .pos_changes
-                    .deferred_credits
-                    .credits
-                    .get(slot)
-                    .cloned()
+            .fold(DeferredCredits::new_without_hash(), |acc, e| {
+                acc.extend(
+                    e.state_changes
+                        .pos_changes
+                        .deferred_credits
+                        .get_deferred_credits_range(..=slot),
+                )
             })
-            .flatten()
-            .collect()
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
@@ -172,7 +170,7 @@ impl ActiveHistory {
                 .state_changes
                 .pos_changes
                 .deferred_credits
-                .get_address_deferred_credit_for_slot(addr, slot)
+                .get_address_credits_for_slot(addr, slot)
             {
                 return Some(v);
             }

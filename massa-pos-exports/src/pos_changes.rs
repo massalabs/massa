@@ -39,7 +39,7 @@ impl PoSChanges {
         self.seed_bits.is_empty()
             && self.roll_changes.is_empty()
             && self.production_stats.is_empty()
-            && self.deferred_credits.credits.is_empty()
+            && self.deferred_credits.is_empty()
     }
 
     /// Extends the current `PosChanges` with another one
@@ -59,7 +59,7 @@ impl PoSChanges {
         }
 
         // extend deferred credits
-        self.deferred_credits.nested_extend(other.deferred_credits);
+        self.deferred_credits.extend(other.deferred_credits);
     }
 }
 
@@ -142,6 +142,7 @@ impl PoSChangesDeserializer {
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(
                 thread_count,
                 max_credits_length,
+                false,
             ),
         }
     }

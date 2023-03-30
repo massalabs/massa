@@ -9,6 +9,7 @@ use massa_models::streaming_step::StreamingStep;
 use massa_models::{address::Address, amount::Amount, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{Serializer, U64VarIntSerializer};
 use std::collections::VecDeque;
+use std::ops::RangeBounds;
 use std::{
     collections::BTreeMap,
     ops::Bound::{Excluded, Included, Unbounded},
@@ -65,7 +66,7 @@ impl PoSFinalState {
         Ok(Self {
             config,
             cycle_history: Default::default(),
-            deferred_credits: DeferredCredits::default(),
+            deferred_credits: DeferredCredits::new_with_hash(),
             selector,
             initial_state,
         })
@@ -104,52 +105,12 @@ impl PoSFinalState {
         })
     }
 
-    /// Handles the deferred credits that were due during a downtime
-    pub fn update_deferred_credits_after_restart(
-        &mut self,
-        from_slot: Slot,
-        end_slot: Slot,
-    ) -> Result<(), PosError> {
-        let mut deferred_credits = self.deferred_credits.clone();
-        let mut updated_deferred_credits = DeferredCredits::default();
-        let next_slot = end_slot
-            .get_next_slot(self.config.thread_count)
-            .map_err(|_| {
-                PosError::OverflowError(String::from("Cannot get next slot after genesis"))
-            })?;
-
-        let credits_clone = deferred_credits.credits.clone();
-        let credits_iter = credits_clone.range((Excluded(from_slot), Included(end_slot)));
-
-        for (&slot, map) in credits_iter {
-            for (&addr, &amount) in map.iter() {
-                let prev_amount_at_next_slot = deferred_credits
-                    .get_address_deferred_credit_for_slot(&addr, &next_slot)
-                    .unwrap_or(Amount::zero());
-                deferred_credits.insert(addr, slot, Amount::zero());
-                deferred_credits.insert(
-                    addr,
-                    next_slot,
-                    prev_amount_at_next_slot.saturating_add(amount),
-                );
-            }
-        }
-
-        deferred_credits.remove_zeros();
-
-        updated_deferred_credits.final_nested_extend(deferred_credits);
-
-        self.deferred_credits = updated_deferred_credits;
-
-        Ok(())
-    }
-
     /// Reset the state of the PoS final state
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
         self.cycle_history.clear();
-        self.deferred_credits = DeferredCredits::default();
+        self.deferred_credits = DeferredCredits::new_with_hash();
     }
 
     /// Create the initial cycle based off the initial rolls.
@@ -343,8 +304,7 @@ impl PoSFinalState {
 
         // extent deferred_credits with changes.deferred_credits
         // remove zero-valued credits
-        self.deferred_credits
-            .final_nested_extend(changes.deferred_credits);
+        self.deferred_credits.extend(changes.deferred_credits);
         self.deferred_credits.remove_zeros();
 
         // feed the cycle if it is complete
@@ -466,13 +426,12 @@ impl PoSFinalState {
         }
     }
 
-    /// Retrieves every deferred credit of the given slot
-    pub fn get_deferred_credits_at(&self, slot: &Slot) -> PreHashMap<Address, Amount> {
-        self.deferred_credits
-            .credits
-            .get(slot)
-            .cloned()
-            .unwrap_or_default()
+    /// Retrieves every deferred credit in a slot range
+    pub fn get_deferred_credits_range<R>(&self, range: R) -> DeferredCredits
+    where
+        R: RangeBounds<Slot>,
+    {
+        self.deferred_credits.get_slot_range(range, false)
     }
 
     /// Retrieves the productions statistics for all addresses on a given cycle
@@ -551,12 +510,13 @@ impl PoSFinalState {
         &self,
         cursor: StreamingStep<Slot>,
     ) -> (DeferredCredits, StreamingStep<Slot>) {
-        let mut credits_part = DeferredCredits::default();
+        let mut credits_part = DeferredCredits::new_without_hash();
         let left_bound = match cursor {
             StreamingStep::Started => Unbounded,
             StreamingStep::Ongoing(last_slot) => Excluded(last_slot),
             StreamingStep::Finished(_) => return (credits_part, cursor),
         };
+
         let mut credit_part_last_slot: Option<Slot> = None;
         for (slot, credits) in self.deferred_credits.credits.range((left_bound, Unbounded)) {
             if credits_part.credits.len() < self.config.credits_bootstrap_part_size as usize {
@@ -566,6 +526,7 @@ impl PoSFinalState {
                 break;
             }
         }
+
         if let Some(last_slot) = credit_part_last_slot {
             (credits_part, StreamingStep::Ongoing(last_slot))
         } else {
@@ -602,7 +563,7 @@ impl PoSFinalState {
     /// # Arguments
     /// `part`: `DeferredCredits` from `get_pos_state_part` and used to update PoS final state
     pub fn set_deferred_credits_part(&mut self, part: DeferredCredits) -> StreamingStep<Slot> {
-        self.deferred_credits.final_nested_extend(part);
+        self.deferred_credits.extend(part);
         if let Some(slot) = self
             .deferred_credits
             .credits
@@ -676,16 +637,16 @@ mod tests {
 
         assert!(pos_final_state
             .deferred_credits
-            .get_address_deferred_credit_for_slot(&addr, &slot1)
+            .get_address_credits_for_slot(&addr, &slot1)
             .is_none());
         assert!(pos_final_state
             .deferred_credits
-            .get_address_deferred_credit_for_slot(&addr, &slot2)
+            .get_address_credits_for_slot(&addr, &slot2)
             .is_none());
         assert_eq!(
             pos_final_state
                 .deferred_credits
-                .get_address_deferred_credit_for_slot(
+                .get_address_credits_for_slot(
                     &addr,
                     &end_slot
                         .get_next_slot(pos_config.thread_count)
@@ -697,7 +658,7 @@ mod tests {
         assert_eq!(
             pos_final_state
                 .deferred_credits
-                .get_address_deferred_credit_for_slot(&addr, &slot3)
+                .get_address_credits_for_slot(&addr, &slot3)
                 .expect("Should have deferred credits"),
             amount3
         );

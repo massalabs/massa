@@ -1352,7 +1352,7 @@ mod tests {
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(7, 1)),
+                .get_deferred_credits_range(..=Slot::new(7, 1)),
             credits
         );
 
@@ -1361,7 +1361,7 @@ mod tests {
         assert_eq!(
             sample_read
                 .pos_state
-                .get_deferred_credits_at(&Slot::new(8, 1)),
+                .get_deferred_credits_range(..=Slot::new(8, 1)),
             credits
         );
 

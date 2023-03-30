@@ -63,7 +63,7 @@ mod tests {
             Some(amount_a1_s2)
         );
 
-        let deferred_credit_for_slot1 = active_history.get_all_deferred_credits_for(&slot1);
+        let deferred_credit_for_slot1 = active_history.get_all_deferred_credits_until(&slot1);
         assert_eq!(deferred_credit_for_slot1.get(&addr1), Some(&amount_a1_s1));
         assert_eq!(deferred_credit_for_slot1.get(&addr2), Some(&amount_a2_s1));
     }
