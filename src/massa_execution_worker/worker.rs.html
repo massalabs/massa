@@ -273,6 +273,9 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -294,6 +297,7 @@
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning_worker::versioning::MipStore;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread;
@@ -512,11 +516,13 @@
     config: ExecutionConfig,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+    mip_store: MipStore,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
     <span class="comment">// create an execution state
     </span><span class="kw">let </span>execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
+        mip_store,
     )));
 
     <span class="comment">// define the input data interface
