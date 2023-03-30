@@ -157,8 +157,6 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
@@ -180,24 +178,24 @@
 <span class="kw">use </span>tokio::io::AsyncWriteExt;
 
 <span class="doccomment">/// Bootstrap client binder
-</span><span class="kw">pub struct </span>BootstrapClientBinder {
+</span><span class="kw">pub struct </span>BootstrapClientBinder&lt;D: Duplex&gt; {
     <span class="comment">// max_bootstrap_message_size: u32,
     </span>size_field_len: usize,
     remote_pubkey: PublicKey,
-    duplex: Resource&lt;Duplex, StandardClock&gt;,
+    duplex: Resource&lt;D, StandardClock&gt;,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
 }
 
-<span class="kw">impl </span>BootstrapClientBinder {
+<span class="kw">impl</span>&lt;D: Duplex&gt; BootstrapClientBinder&lt;D&gt; {
     <span class="doccomment">/// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(duplex: Duplex, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(duplex: D, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>size_field_len = u32::be_bytes_min_length(cfg.max_bootstrap_message_size);
         BootstrapClientBinder {
             size_field_len,
@@ -208,9 +206,7 @@
             cfg,
         }
     }
-}
 
-<span class="kw">impl </span>BootstrapClientBinder {
     <span class="doccomment">/// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     </span><span class="kw">pub async fn </span>handshake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, version: Version) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
