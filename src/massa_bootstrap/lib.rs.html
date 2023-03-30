@@ -62,6 +62,8 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Bootstrap crate
 //!
@@ -76,6 +78,8 @@
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
 #![feature(let_chains)]
+</span><span class="comment">// TODO: Box large variants of BootstrapError
+</span><span class="attr">#![allow(clippy::result_large_err)]
 
 </span><span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 <span class="kw">use </span>massa_final_state::FinalState;
@@ -93,7 +97,7 @@
 <span class="kw">mod </span>settings;
 <span class="kw">mod </span>tools;
 <span class="kw">pub use </span>client::get_state;
-<span class="kw">pub use </span>establisher::DefaultEstablisher;
+<span class="kw">pub use </span>establisher::{DefaultConnector, DefaultListener};
 <span class="kw">pub use </span>messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,

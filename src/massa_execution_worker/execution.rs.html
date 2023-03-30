@@ -1416,6 +1416,12 @@
 <a href="#1416" id="1416">1416</a>
 <a href="#1417" id="1417">1417</a>
 <a href="#1418" id="1418">1418</a>
+<a href="#1419" id="1419">1419</a>
+<a href="#1420" id="1420">1420</a>
+<a href="#1421" id="1421">1421</a>
+<a href="#1422" id="1422">1422</a>
+<a href="#1423" id="1423">1423</a>
+<a href="#1424" id="1424">1424</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1429,6 +1435,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
 <span class="kw">use </span><span class="kw">crate</span>::context::{ExecutionContext, ExecutionContextSnapshot};
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
+<span class="kw">use </span><span class="kw">crate</span>::module_cache::ModuleCache;
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
@@ -1450,10 +1457,8 @@
     operation::{OperationId, OperationType, SecureShareOperation},
 };
 <span class="kw">use </span>massa_models::{amount::Amount, slot::Slot};
-<span class="kw">use </span>massa_module_cache::config::ModuleCacheConfig;
-<span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
+<span class="kw">use </span>massa_sc_runtime::{Interface, Response, RuntimeModule};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -1530,14 +1535,10 @@
         };
 
         <span class="comment">// Initialize the SC module cache
-        </span><span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
-            hd_cache_path: config.hd_cache_path.clone(),
-            gas_costs: config.gas_costs.clone(),
-            compilation_gas: config.max_gas_per_block,
-            lru_cache_size: config.lru_cache_size,
-            hd_cache_size: config.hd_cache_size,
-            snip_amount: config.snip_amount,
-        })));
+        </span><span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(
+            config.gas_costs.clone(),
+            config.max_module_cache_size,
+        )));
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
         </span><span class="kw">let </span>execution_context = Arc::new(Mutex::new(ExecutionContext::new(
@@ -1986,24 +1987,28 @@
             }];
         };
 
-        <span class="comment">// load the tmp module
-        </span><span class="kw">let </span>module = <span class="self">self
-            </span>.module_cache
-            .read()
-            .load_tmp_module(bytecode, <span class="kw-2">*</span>max_gas)<span class="question-mark">?</span>;
-        <span class="comment">// sub tmp module compilation cost
-        </span><span class="kw">let </span>remaining_gas = max_gas
-            .checked_sub(<span class="self">self</span>.config.gas_costs.sp_compilation_cost)
-            .ok_or(ExecutionError::RuntimeError(
-                <span class="string">&quot;not enough gas to pay for singlepass compilation&quot;</span>.to_string(),
-            ))<span class="question-mark">?</span>;
-        <span class="comment">// run the VM
-        </span>massa_sc_runtime::run_main(
+        <span class="comment">// run the VM on the bytecode contained in the operation
+        </span><span class="kw">let </span>module = RuntimeModule::new(bytecode, <span class="kw-2">*</span>max_gas, <span class="self">self</span>.config.gas_costs.clone())
+            .map_err(|err| {
+                ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;compilation error in execute_executesc_op: {}&quot;</span>,
+                    err
+                ))
+            })<span class="question-mark">?</span>;
+        <span class="kw">match </span>massa_sc_runtime::run_main(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
-            remaining_gas,
+            <span class="kw-2">*</span>max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-        )<span class="question-mark">?</span>;
+        ) {
+            <span class="prelude-val">Ok</span>(_response) =&gt; {}
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;module execution error in execute_executesc_op: {}&quot;</span>,
+                    err
+                )));
+            }
+        }
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -2082,27 +2087,28 @@
             </span>bytecode = context.get_bytecode(<span class="kw-2">&amp;</span>target_addr).unwrap_or_default().<span class="number">0</span>;
         }
 
-        <span class="comment">// load and execute the compiled module
+        <span class="comment">// Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().load_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
-        <span class="kw">let </span>response = massa_sc_runtime::run_function(
+        </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().get_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
+        <span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module,
+            module.clone(),
             target_func,
             param,
             max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-        );
-        <span class="kw">match </span>response {
-            <span class="prelude-val">Ok</span>(Response { init_cost, .. }) | <span class="prelude-val">Err</span>(VMError::ExecutionError { init_cost, .. }) =&gt; {
+        ) {
+            <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
+                    .save_module(<span class="kw-2">&amp;</span>bytecode, module, init_cost);
+                <span class="prelude-val">Ok</span>(())
             }
-            <span class="kw">_ </span>=&gt; (),
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                <span class="string">&quot;module execution error in execute_callsc_op: {}&quot;</span>,
+                err
+            ))),
         }
-        response<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Tries to execute an asynchronous message
@@ -2118,7 +2124,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// prepare execution context
         </span><span class="kw">let </span>context_snapshot;
-        <span class="kw">let </span>bytecode = {
+        <span class="kw">let </span>bytecode: Bytecode = {
             <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -2170,38 +2176,35 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(err);
             }
 
-            bytecode.<span class="number">0
-        </span>};
+            bytecode
+        };
 
-        <span class="comment">// load and execute the compiled module
+        <span class="comment">// Execute bytecode
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .write()
-            .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
-        <span class="kw">let </span>response = massa_sc_runtime::run_function(
+            .get_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, message.max_gas)<span class="question-mark">?</span>;
+        <span class="kw">match </span>massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module,
+            module.clone(),
             <span class="kw-2">&amp;</span>message.handler,
             <span class="kw-2">&amp;</span>message.data,
             message.max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-        );
-        <span class="kw">match </span>response {
+        ) {
             <span class="prelude-val">Ok</span>(Response { init_cost, .. }) =&gt; {
                 <span class="self">self</span>.module_cache
                     .write()
-                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
+                    .save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, module, init_cost);
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="kw">if let </span>VMError::ExecutionError { init_cost, .. } = err {
-                    <span class="self">self</span>.module_cache
-                        .write()
-                        .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
-                }
                 <span class="comment">// execution failed: reset context to snapshot and reimburse sender
-                </span><span class="kw">let </span>err = ExecutionError::from(err);
+                </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;module execution error in execute_async_message: {}&quot;</span>,
+                    err
+                ));
                 <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(<span class="kw-2">&amp;</span>message);
@@ -2553,21 +2556,30 @@
         <span class="comment">// run the interpreter according to the target type
         </span><span class="kw">let </span>exec_response = <span class="kw">match </span>req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) =&gt; {
-                <span class="comment">// set the execution context
+                <span class="comment">// set the execution context for execution
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
-                <span class="comment">// load the tmp module
-                </span><span class="kw">let </span>module = <span class="self">self
-                    </span>.module_cache
-                    .read()
-                    .load_tmp_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
-                <span class="comment">// run the VM
-                </span>massa_sc_runtime::run_main(
+                <span class="comment">// run the bytecode&#39;s main function
+                </span><span class="kw">let </span>module =
+                    RuntimeModule::new(<span class="kw-2">&amp;</span>bytecode, req.max_gas, <span class="self">self</span>.config.gas_costs.clone())
+                        .map_err(|err| {
+                            ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                                <span class="string">&quot;compilation error in execute_readonly_request: {}&quot;</span>,
+                                err
+                            ))
+                        })<span class="question-mark">?</span>;
+                massa_sc_runtime::run_main(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     module,
                     req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
-                )<span class="question-mark">?
+                )
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;module execution error in execute_readonly_request BytecodeExecution: {}&quot;</span>,
+                        err,
+                    ))
+                })<span class="question-mark">?
             </span>}
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
@@ -2580,34 +2592,34 @@
                     .unwrap_or_default()
                     .<span class="number">0</span>;
 
-                <span class="comment">// set the execution context
+                <span class="comment">// set the execution context for execution
                 </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
-                <span class="comment">// load and execute the compiled module
+                <span class="comment">// Execute bytecode
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
                 </span><span class="kw">let </span>module = <span class="self">self
                     </span>.module_cache
                     .write()
-                    .load_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
+                    .get_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
                 <span class="kw">let </span>response = massa_sc_runtime::run_function(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-                    module,
+                    module.clone(),
                     <span class="kw-2">&amp;</span>target_func,
                     <span class="kw-2">&amp;</span>parameter,
                     req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
-                );
-                <span class="kw">match </span>response {
-                    <span class="prelude-val">Ok</span>(Response { init_cost, .. })
-                    | <span class="prelude-val">Err</span>(VMError::ExecutionError { init_cost, .. }) =&gt; {
-                        <span class="self">self</span>.module_cache
-                            .write()
-                            .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_cost);
-                    }
-                    <span class="kw">_ </span>=&gt; (),
-                }
-                response<span class="question-mark">?
-            </span>}
+                )
+                .map_err(|err| {
+                    ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;module execution error in execute_readonly_request BytecodeExecution: {}&quot;</span>,
+                        err,
+                    ))
+                })<span class="question-mark">?</span>;
+                <span class="self">self</span>.module_cache
+                    .write()
+                    .save_module(<span class="kw-2">&amp;</span>bytecode, module, response.init_cost);
+                response
+            }
         };
 
         <span class="comment">// return the execution output
