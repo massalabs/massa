@@ -828,6 +828,8 @@
 <a href="#828" id="828">828</a>
 <a href="#829" id="829">829</a>
 <a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -841,7 +843,7 @@
     AsyncPoolSerializer, Change,
 };
 <span class="kw">use </span>massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_ledger_exports::{Key <span class="kw">as </span>LedgerKey, LedgerChanges, LedgerController};
 <span class="kw">use </span>massa_models::{
     <span class="comment">/*config::{
@@ -1108,6 +1110,7 @@
         .create_new_cycle_for_snapshot(&amp;latest_consistent_cycle_info, end_slot);*/
 
         // The deferred credits that happen during the downtime have to be set to the next slot to be executed
+        // TODO: Make the deferred credits robust so that we don&#39;t have to interpolate them
         </span><span class="self">self</span>.pos_state
             .update_deferred_credits_after_restart(<span class="self">self</span>.slot, end_slot)
             .map_err(|<span class="kw">_</span>| {
@@ -1212,27 +1215,27 @@
         <span class="kw">let </span><span class="kw-2">mut </span>final_state_data = <span class="prelude-val">None</span>;
 
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>) {
-            <span class="kw">let </span><span class="kw-2">mut </span>final_state_buffer = Vec::new();
+            <span class="kw">let </span><span class="comment">/*mut*/ </span>final_state_buffer = Vec::new();
 
-            <span class="kw">let </span>final_state_raw_serializer = FinalStateRawSerializer::new();
+            <span class="comment">/*let final_state_raw_serializer = FinalStateRawSerializer::new();
 
-            <span class="kw">let </span>final_state_raw = FinalStateRaw {
-                async_pool_messages: <span class="self">self</span>.async_pool.messages.clone(),
-                cycle_history: <span class="self">self</span>.pos_state.cycle_history.clone(),
-                deferred_credits: <span class="self">self</span>.pos_state.deferred_credits.clone(),
-                sorted_ops: <span class="self">self</span>.executed_ops.sorted_ops.clone(),
-                latest_consistent_slot: <span class="self">self</span>.slot,
-                final_state_hash_from_snapshot: <span class="self">self</span>.final_state_hash,
+            let final_state_raw = FinalStateRaw {
+                async_pool_messages: self.async_pool.messages.clone(),
+                cycle_history: self.pos_state.cycle_history.clone(),
+                deferred_credits: self.pos_state.deferred_credits.clone(),
+                sorted_ops: self.executed_ops.sorted_ops.clone(),
+                latest_consistent_slot: self.slot,
+                final_state_hash_from_snapshot: self.final_state_hash,
             };
 
-            <span class="kw">if </span>final_state_raw_serializer
-                .serialize(<span class="kw-2">&amp;</span>final_state_raw, <span class="kw-2">&amp;mut </span>final_state_buffer)
+            if final_state_raw_serializer
+                .serialize(&amp;final_state_raw, &amp;mut final_state_buffer)
                 .is_err()
             {
-                <span class="macro">debug!</span>(<span class="string">&quot;Error while trying to serialize final_state&quot;</span>);
-            }
+                debug!(&quot;Error while trying to serialize final_state&quot;);
+            }*/
 
-            final_state_data = <span class="prelude-val">Some</span>(final_state_buffer)
+            </span>final_state_data = <span class="prelude-val">Some</span>(final_state_buffer)
         }
 
         <span class="self">self</span>.ledger
@@ -1250,18 +1253,19 @@
         </span><span class="self">self</span>.compute_state_hash_at_slot(slot);
 
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;create_snapshot&quot;</span>) {
-            <span class="kw">let </span><span class="kw-2">mut </span>hash_buffer = Vec::new();
+            <span class="kw">let </span><span class="comment">/*mut*/ </span>hash_buffer = Vec::new();
 
-            <span class="kw">let </span>hash_serializer = HashSerializer::new();
+            <span class="comment">/*
+            let hash_serializer = HashSerializer::new();
 
-            <span class="kw">if </span>hash_serializer
-                .serialize(<span class="kw-2">&amp;</span><span class="self">self</span>.final_state_hash, <span class="kw-2">&amp;mut </span>hash_buffer)
+            if hash_serializer
+                .serialize(&amp;self.final_state_hash, &amp;mut hash_buffer)
                 .is_err()
             {
-                <span class="macro">debug!</span>(<span class="string">&quot;Error while trying to serialize final_state_hash&quot;</span>);
-            }
+                debug!(&quot;Error while trying to serialize final_state_hash&quot;);
+            }*/
 
-            <span class="self">self</span>.ledger.set_final_state_hash(hash_buffer);
+            </span><span class="self">self</span>.ledger.set_final_state_hash(hash_buffer);
         }
 
         <span class="comment">// feed final_state_hash to the last cycle
