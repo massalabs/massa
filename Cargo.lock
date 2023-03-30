@@ -2479,7 +2479,6 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "serial_test 1.0.0",
  "socket2",
  "substruct",
  "tempfile",
