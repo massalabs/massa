@@ -1,3 +1,5 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
 /// stream new blocks
 pub mod new_blocks;
 /// stream new blocks with operations content

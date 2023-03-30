@@ -1,3 +1,5 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
 use crate::config::GrpcConfig;
 use crate::service::MassaGrpcService;
 use massa_consensus_exports::test_exports::MockConsensusController;

@@ -1,3 +1,5 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
 use crate::error::{match_for_io_error, GrpcError};
 use crate::service::MassaGrpcService;
 use futures_util::StreamExt;

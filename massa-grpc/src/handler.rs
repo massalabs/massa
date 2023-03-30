@@ -1,5 +1,4 @@
-//! Copyright (c) 2022 MASSA LABS <info@massa.net>
-//! gRPC API for a massa-node
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use massa_proto::massa::api::v1 as grpc;
 

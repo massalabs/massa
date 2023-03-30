@@ -1,3 +1,5 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
 use crate::config::GrpcConfig;
 use crate::error::GrpcError;
 use futures_util::FutureExt;

@@ -1,3 +1,5 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
+
 use glob::glob;
 use std::path::PathBuf;
 

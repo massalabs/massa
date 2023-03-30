@@ -1,3 +1,5 @@
+<!-- Copyright (c) 2023 MASSA LABS <info@massa.net> -->
+
 ### Massa gRPC
 
 In order to compile proto files, you must have the `protoc` compiler installed on your system. `protoc` is a protocol buffer compiler that can generate code in a variety of programming languages.
