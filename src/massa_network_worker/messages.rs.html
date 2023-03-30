@@ -603,6 +603,19 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_hash::HashDeserializer;
@@ -860,6 +873,7 @@
     id_deserializer: U32VarIntDeserializer,
     ask_block_number_deserializer: U32VarIntDeserializer,
     peer_list_length_deserializer: U32VarIntDeserializer,
+    operation_replies_deserializer: OperationsDeserializer,
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
     block_header_deserializer: SecureShareDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
@@ -887,6 +901,7 @@
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="self">Self </span>{
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -901,8 +916,17 @@
                 Included(<span class="number">0</span>),
                 Included(max_advertise_length),
             ),
-            operations_deserializer: OperationsDeserializer::new(
+            operation_replies_deserializer: OperationsDeserializer::new(
                 max_operations_per_block,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+                max_op_datastore_entry_count,
+                max_op_datastore_key_length,
+                max_op_datastore_value_length,
+            ),
+            operations_deserializer: OperationsDeserializer::new(
+                max_operations_per_message,
                 max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
@@ -914,6 +938,7 @@
             block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
+                last_start_period,
             )),
             endorsements_length_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
@@ -1069,7 +1094,7 @@
                                                 (rest, BlockInfoReply::Info(operation_ids))
                                             }),
                                         BlockInfoType::Operations =&gt; <span class="self">self
-                                            </span>.operations_deserializer
+                                            </span>.operation_replies_deserializer
                                             .deserialize(rest)
                                             .map(|(rest, operations)| {
                                                 (rest, BlockInfoReply::Operations(operations))
@@ -1173,6 +1198,7 @@
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="prelude-val">Some</span>(<span class="number">0</span>),
         );
         <span class="kw">let </span><span class="kw-2">mut </span>random_bytes = [<span class="number">0u8</span>; <span class="number">32</span>];
         StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>random_bytes);

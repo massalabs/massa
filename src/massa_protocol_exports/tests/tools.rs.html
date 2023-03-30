@@ -286,6 +286,8 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">super</span>::mock_network_controller::MockNetworkController;
@@ -508,12 +510,14 @@
         max_operations_per_message: <span class="number">1024</span>,
         thread_count: <span class="number">32</span>,
         max_serialized_operations_size_per_block: <span class="number">1024</span>,
+        max_operations_per_block: <span class="number">5000</span>,
         controller_channel_size: <span class="number">1024</span>,
         event_channel_size: <span class="number">1024</span>,
         genesis_timestamp: MassaTime::now().unwrap(),
         t0: MassaTime::from_millis(<span class="number">16000</span>),
         max_operations_propagation_time: MassaTime::from_millis(<span class="number">30000</span>),
         max_endorsements_propagation_time: MassaTime::from_millis(<span class="number">60000</span>),
+        last_start_period: <span class="number">0</span>,
     }
 }
 
