@@ -162,7 +162,7 @@ impl HDCache {
         }
     }
 
-    /// Try to remove as much as self.amount_to_snip entries from the db
+    /// Try to remove as much as `self.amount_to_snip` entries from the db
     fn snip(&mut self) {
         let mut iter = self.db.raw_iterator();
         let mut batch = WriteBatch::default();
@@ -182,10 +182,11 @@ impl HDCache {
                 continue;
             }
 
-            // unwrap justified by above conditional statement
-            // read data key first because of seek_for_prev
-            let data_key = iter.key().unwrap();
-            batch.delete(data_key);
+            // unwrap justified by above conditional statement.
+            // seeking the previous key of a randombly generated one
+            // will always end up on a metadata key.
+            let metadata_key = iter.key().unwrap();
+            batch.delete(metadata_key);
             iter.prev();
             let module_key = iter.key().unwrap();
             batch.delete(module_key);
