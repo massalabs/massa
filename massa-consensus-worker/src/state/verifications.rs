@@ -49,7 +49,7 @@ impl ConsensusState {
     // Verify that we haven't already received 2 blocks for this slot
     // If the block isn't already present two times we save it and return false
     // If the block is already present two times we return true
-    pub(crate) fn is_multistake(&mut self, header: &SecuredHeader) -> bool {
+    pub(crate) fn detect_multistake(&mut self, header: &SecuredHeader) -> bool {
         let entry = self
             .nonfinal_active_blocks_per_slot
             .entry(header.content.slot)
@@ -81,8 +81,8 @@ impl ConsensusState {
         current_slot: Option<Slot>,
     ) -> Result<Option<BlockInfos>, ConsensusError> {
         let header_outcome =
-            self.check_header(&block_id, &stored_block.content.header, current_slot, self)?;
-        if self.is_multistake(&stored_block.content.header) {
+            self.check_header(&block_id, &stored_block.content.header, current_slot)?;
+        if self.detect_multistake(&stored_block.content.header) {
             return Ok(None);
         }
         match header_outcome {
@@ -141,8 +141,8 @@ impl ConsensusState {
         header: SecuredHeader,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
-        let header_outcome = self.check_header(&block_id, &header, current_slot, self)?;
-        if self.is_multistake(&header) {
+        let header_outcome = self.check_header(&block_id, &header, current_slot)?;
+        if self.detect_multistake(&header) {
             return Ok(());
         }
         match header_outcome {
@@ -296,7 +296,6 @@ impl ConsensusState {
         block_id: &BlockId,
         header: &SecuredHeader,
         current_slot: Option<Slot>,
-        read_shared_state: &ConsensusState,
     ) -> Result<HeaderCheckOutcome, ConsensusError> {
         massa_trace!("consensus.block_graph.check_header", {
             "block_id": block_id
@@ -310,7 +309,7 @@ impl ConsensusState {
         // check that is older than the latest final block in that thread
         // Note: this excludes genesis blocks
         if header.content.slot.period
-            <= read_shared_state.latest_final_blocks_periods[header.content.slot.thread as usize].1
+            <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
         }
@@ -357,7 +356,7 @@ impl ConsensusState {
         let parent_set: PreHashSet<BlockId> = header.content.parents.iter().copied().collect();
         for parent_thread in 0u8..self.config.thread_count {
             let parent_hash = header.content.parents[parent_thread as usize];
-            match read_shared_state.block_statuses.get(&parent_hash) {
+            match self.block_statuses.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
                     return Ok(HeaderCheckOutcome::Discard(match reason {
@@ -385,7 +384,7 @@ impl ConsensusState {
 
                     // inherit parent incompatibilities
                     // and ensure parents are mutually compatible
-                    if let Some(p_incomp) = read_shared_state.gi_head.get(&parent_hash) {
+                    if let Some(p_incomp) = self.gi_head.get(&parent_hash) {
                         if !p_incomp.is_disjoint(&parent_set) {
                             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                                 "Parent not mutually compatible".to_string(),
@@ -398,7 +397,7 @@ impl ConsensusState {
                 }
                 _ => {
                     // parent is missing or queued
-                    if read_shared_state.genesis_hashes.contains(&parent_hash) {
+                    if self.genesis_hashes.contains(&parent_hash) {
                         // forbid depending on discarded genesis block
                         return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
                     }
@@ -416,7 +415,7 @@ impl ConsensusState {
             let mut gp_max_slots = vec![0u64; self.config.thread_count as usize];
             for parent_i in 0..self.config.thread_count {
                 let (parent_h, parent_period) = parents[parent_i as usize];
-                let parent = match read_shared_state.block_statuses.get(&parent_h) {
+                let parent = match self.block_statuses.get(&parent_h) {
                     Some(BlockStatus::Active {
                         a_block,
                         storage: _,
@@ -445,7 +444,7 @@ impl ConsensusState {
                         continue;
                     }
                     let gp_h = parent.parents[gp_i as usize].0;
-                    match read_shared_state.block_statuses.get(&gp_h) {
+                    match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
                             return Ok(HeaderCheckOutcome::Discard(reason.clone()));
@@ -471,7 +470,7 @@ impl ConsensusState {
         }
 
         // get parent in own thread
-        let parent_in_own_thread = match read_shared_state
+        let parent_in_own_thread = match self
             .block_statuses
             .get(&parents[header.content.slot.thread as usize].0)
         {
@@ -512,7 +511,7 @@ impl ConsensusState {
             // traverse parent's descendants in tau
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
-                let cur_b = match read_shared_state.block_statuses.get(&cur_h) {
+                let cur_b = match self.block_statuses.get(&cur_h) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
                 }.ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_h,  block_id)))?;
@@ -545,7 +544,7 @@ impl ConsensusState {
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
                 // note: cur_b cannot be genesis at gen > 1
-                let parent_period = match read_shared_state.block_statuses.get(&parent_id) {
+                let parent_period = match self.block_statuses.get(&parent_id) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
                 }.ok_or_else(||
@@ -570,12 +569,11 @@ impl ConsensusState {
 
         // check if the block is incompatible with a final block
         if !incomp.is_disjoint(
-            &read_shared_state
+            &self
                 .active_index
                 .iter()
                 .filter_map(|h| {
-                    if let Some(BlockStatus::Active { a_block: a, .. }) =
-                        read_shared_state.block_statuses.get(h)
+                    if let Some(BlockStatus::Active { a_block: a, .. }) = self.block_statuses.get(h)
                     {
                         if a.is_final {
                             return Some(*h);
