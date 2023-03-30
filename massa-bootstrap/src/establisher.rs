@@ -63,7 +63,7 @@ impl BSListener for DefaultListener {
 }
 /// Initiates a connection with given timeout in milliseconds
 #[derive(Debug)]
-pub struct DefaultConnector(MassaTime);
+pub struct DefaultConnector(pub MassaTime);
 
 impl BSConnector for DefaultConnector {
     /// Tries to connect to address
