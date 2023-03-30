@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::mock_establisher::Duplex;
+use crate::establisher::Duplex;
 use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
@@ -50,7 +50,7 @@ use massa_models::{
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{KeyPair, PublicKey, Signature};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
@@ -64,7 +64,8 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
-pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
+// Use loop-back address. use port 0 to auto-assign a port
+pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
 /// generates a small random number of bytes
 fn get_some_random_bytes() -> Vec<u8> {
@@ -274,19 +275,9 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
 }
 
-pub fn get_random_public_key() -> PublicKey {
-    let priv_key = KeyPair::generate();
-    priv_key.get_public_key()
-}
-
 pub fn get_random_address() -> Address {
     let priv_key = KeyPair::generate();
     Address::from_public_key(&priv_key.get_public_key())
-}
-
-pub fn get_dummy_signature(s: &str) -> Signature {
-    let priv_key = KeyPair::generate();
-    priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
@@ -301,7 +292,11 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         write_timeout: 1000.into(),
         read_error_timeout: 200.into(),
         write_error_timeout: 200.into(),
-        bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
+        bootstrap_list: vec![(
+            SocketAddr::new(BASE_BOOTSTRAP_IP, 8069),
+            bootstrap_public_key,
+        )],
+        keep_ledger: false,
         bootstrap_whitelist_path: PathBuf::from(
             "../massa-node/base_config/bootstrap_whitelist.json",
         ),

@@ -45,7 +45,7 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from_millis(1000 * 10))
         )
     } else {
-        1677682800000.into()  // Wednesday, March 1, 2023 03:00:00 PM UTC
+        1679481900000.into()  // Wednesday, March 22, 2023 10:45:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -92,7 +92,7 @@ pub const ENDORSEMENT_COUNT: u32 = 16;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 10000;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
 /// Maximum capacity of the asynchronous messages pool
@@ -219,6 +219,12 @@ pub const NETWORK_EVENT_CHANNEL_SIZE: usize = 10_000;
 pub const NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = 10_000;
 /// network node event channel size
 pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
+
+//
+// Constants used in versioning
+//
+/// Threshold to accept a new versioning
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

@@ -24,4 +24,7 @@ pub struct FactoryConfig {
 
     /// maximal block gas
     pub max_block_gas: u64,
+
+    /// maximum number of operation ids in block
+    pub max_operations_per_block: u32,
 }

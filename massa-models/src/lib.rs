@@ -6,6 +6,7 @@
 #![feature(bound_map)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
+#![feature(variant_count)]
 
 extern crate lazy_static;
 
@@ -31,6 +32,8 @@ pub mod composite;
 pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
+/// denunciation
+pub mod denunciation;
 /// endorsements
 pub mod endorsement;
 /// models error
@@ -63,8 +66,6 @@ pub mod streaming_step;
 pub mod timeslots;
 /// versions
 pub mod version;
-/// vesting range
-pub mod vesting_range;
 
 /// Test utils
 #[cfg(feature = "testing")]
