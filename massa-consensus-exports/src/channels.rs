@@ -1,5 +1,5 @@
 use massa_execution_exports::ExecutionController;
-use massa_models::block::{Block, FilledBlock, SecureShareBlock};
+use massa_models::block::{FilledBlock, SecureShareBlock};
 use massa_models::block_header::BlockHeader;
 use massa_models::block_id::BlockId;
 use massa_models::secure_share::SecureShare;
