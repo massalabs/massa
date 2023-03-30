@@ -41,6 +41,9 @@ pub trait PoolController: Send + Sync {
     /// Add denunciations to pool. Simply print a warning on failure.
     fn add_denunciations(&mut self, denunciations: Storage);
 
+    /// Get the number of denunciations in the pool
+    fn get_denunciation_count(&self) -> usize;
+
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.
     fn clone_box(&self) -> Box<dyn PoolController>;

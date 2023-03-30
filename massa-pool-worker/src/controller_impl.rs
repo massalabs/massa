@@ -83,7 +83,7 @@ impl PoolController for PoolControllerImpl {
 
     /// Asynchronously notify of new final consensus periods. Simply print a warning on failure.
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
-        self.last_cs_final_periods = final_cs_periods.to_vec().clone();
+        self.last_cs_final_periods = final_cs_periods.to_vec();
 
         match self
             .operations_input_sender
@@ -195,6 +195,11 @@ impl PoolController for PoolControllerImpl {
         }
     }
 
+    /// Get the number of denunciations in the pool
+    fn get_denunciation_count(&self) -> usize {
+        self.denunciation_pool.read().len()
+    }
+
     /// Get final consensus periods
     fn get_final_cs_periods(&self) -> &Vec<u64> {
         &self.last_cs_final_periods
@@ -225,6 +230,7 @@ impl PoolManager for PoolManagerImpl {
         info!("stopping pool workers...");
         let _ = self.operations_input_sender.send(Command::Stop);
         let _ = self.endorsements_input_sender.send(Command::Stop);
+        let _ = self.denunciations_input_sender.send(Command::Stop);
         if let Some(join_handle) = self.operations_thread_handle.take() {
             join_handle
                 .join()
@@ -234,6 +240,11 @@ impl PoolManager for PoolManagerImpl {
             join_handle
                 .join()
                 .expect("endorsements pool thread panicked on try to join");
+        }
+        if let Some(join_handle) = self.denunciations_thread_handle.take() {
+            join_handle
+                .join()
+                .expect("denunciations pool thread panicked on try to join");
         }
         info!("pool workers stopped");
     }

@@ -28,13 +28,13 @@ impl DenunciationPool {
         }
     }
 
-    // Not used yet
-    /*
     /// Get the number of stored elements
     pub fn len(&self) -> usize {
         self.storage.get_denunciation_refs().len()
     }
 
+    // Not used yet
+    /*
     /// Checks whether an element is stored in the pool
     pub fn contains(&self, id: &DenunciationId) -> bool {
         self.storage.get_denunciation_refs().contains(id)
@@ -77,8 +77,7 @@ impl DenunciationPool {
                     continue;
                 }
 
-                self.denunciations_cache
-                    .insert(de_id, de.get_slot().clone());
+                self.denunciations_cache.insert(de_id, *de.get_slot());
                 added.insert(de_id);
             }
         }
@@ -127,7 +126,7 @@ impl DenunciationPool {
                 self.config.periods_per_cycle,
                 self.config.denunciation_expire_cycle_delta,
             ) {
-                removed.insert(de_id.clone());
+                removed.insert(*de_id);
             }
         }
 
