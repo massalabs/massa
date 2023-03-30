@@ -459,7 +459,7 @@ pub async fn get_state(
             last_ops_step: StreamingStep::Started,
             last_consensus_step: StreamingStep::Started,
         };
-    let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
+    let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
     loop {
         for (addr, node_id) in filtered_bootstrap_list.iter() {
@@ -519,7 +519,7 @@ fn get_genesis_state(
         // create the initial cycle of PoS cycle_history
         final_state_guard.pos_state.create_initial_cycle();
     }
-    return Ok(GlobalBootstrapState::new(final_state));
+    Ok(GlobalBootstrapState::new(final_state))
 }
 
 fn get_bootstrap_list_iter(

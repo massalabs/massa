@@ -737,10 +737,7 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
 
     match dbg!(server.next_timeout(Some(read_error_timeout))) {
         Err(BootstrapError::IoError(e))
-            if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
-        {
-            ()
-        }
+            if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock => {}
         Err(e) => return Err(e),
         Ok(BootstrapClientMessage::BootstrapError { error }) => {
             return Err(BootstrapError::GeneralError(error));

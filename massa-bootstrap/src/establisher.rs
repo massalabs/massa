@@ -18,15 +18,15 @@ pub trait Duplex:
 
 impl Duplex for std::net::TcpStream {
     fn set_read_timeout(&mut self, duration: Option<Duration>) -> io::Result<()> {
-        Self::set_read_timeout(&self, duration)
+        Self::set_read_timeout(self, duration)
     }
 
     fn set_write_timeout(&mut self, duration: Option<Duration>) -> io::Result<()> {
-        Self::set_write_timeout(&self, duration)
+        Self::set_write_timeout(self, duration)
     }
 
     fn set_nonblocking(&mut self, setting: bool) -> io::Result<()> {
-        Self::set_nonblocking(&self, setting)
+        Self::set_nonblocking(self, setting)
     }
 }
 
@@ -99,7 +99,7 @@ impl BSConnector for DefaultConnector {
         duration: Option<MassaTime>,
     ) -> io::Result<TcpStream> {
         let Some(duration) = duration else {
-            return TcpStream::connect(&addr);
+            return TcpStream::connect(addr);
         };
         TcpStream::connect_timeout(&addr, duration.to_duration())
     }
