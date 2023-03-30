@@ -11,7 +11,6 @@ use rand::{
     prelude::{SliceRandom, StdRng},
     SeedableRng,
 };
-use tokio::time::sleep;
 use tracing::{debug, info, warn};
 
 use crate::{

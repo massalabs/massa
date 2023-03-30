@@ -41,7 +41,6 @@ use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
-use serial_test::serial;
 use std::{net::TcpStream, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
@@ -52,9 +51,8 @@ lazy_static::lazy_static! {
     };
 }
 
-#[tokio::test]
-#[serial]
-async fn test_bootstrap_server() {
+#[test]
+fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
@@ -289,7 +287,6 @@ async fn test_bootstrap_server() {
     // stop bootstrap server
     bootstrap_manager
         .stop()
-        .await
         .expect("could not stop bootstrap server");
 
     // stop selector controllers
