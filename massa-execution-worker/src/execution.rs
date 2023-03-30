@@ -27,6 +27,7 @@ use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -36,10 +37,11 @@ use massa_models::{amount::Amount, slot::Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, RuntimeModule};
 use massa_storage::Storage;
+use massa_versioning_worker::versioning::MipStore;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -77,6 +79,8 @@ pub(crate) struct ExecutionState {
     module_cache: Arc<RwLock<ModuleCache>>,
     // Vesting manager
     vesting_manager: Arc<VestingManager>,
+    // MipStore (Versioning)
+    mip_store: MipStore,
 }
 
 impl ExecutionState {
@@ -88,7 +92,11 @@ impl ExecutionState {
     ///
     /// # returns
     /// A new `ExecutionState`
-    pub fn new(config: ExecutionConfig, final_state: Arc<RwLock<FinalState>>) -> ExecutionState {
+    pub fn new(
+        config: ExecutionConfig,
+        final_state: Arc<RwLock<FinalState>>,
+        mip_store: MipStore,
+    ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
@@ -147,6 +155,7 @@ impl ExecutionState {
             module_cache,
             config,
             vesting_manager,
+            mip_store,
         }
     }
 
@@ -1079,6 +1088,31 @@ impl ExecutionState {
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
         debug!("execute_final_slot: execution finished & result applied");
+
+        // update versioning statistics
+        if let Some((block_id, storage)) = exec_target {
+            if let Some(_block) = storage.read_blocks().get(block_id) {
+                let slot_ts_ = get_block_slot_timestamp(
+                    self.config.thread_count,
+                    self.config.t0,
+                    self.config.genesis_timestamp,
+                    *slot,
+                );
+
+                if let Ok(slot_ts) = slot_ts_ {
+                    // TODO - Next PR: use block header network versions - default to 0 for now
+                    self.mip_store
+                        .update_network_version_stats(slot_ts, Some((0, 0)));
+                } else {
+                    warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);
+                }
+            } else {
+                warn!(
+                    "Could not find block id: {} in storage in order to update mip_store stats",
+                    block_id
+                );
+            }
+        }
     }
 
     /// Runs a read-only execution request.

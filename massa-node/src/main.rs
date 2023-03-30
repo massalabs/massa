@@ -44,6 +44,7 @@ use massa_models::config::constants::{
     NETWORK_NODE_COMMAND_CHANNEL_SIZE, NETWORK_NODE_EVENT_CHANNEL_SIZE, OPERATION_VALIDITY_PERIODS,
     PERIODS_PER_CYCLE, POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
     POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_PRICE,
+    MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
     T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::CONSENSUS_BOOTSTRAP_PART_SIZE;
@@ -60,6 +61,7 @@ use massa_protocol_exports::{
 use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::path::PathBuf;
@@ -319,6 +321,14 @@ async fn launch(
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
+
+    // Creates an empty default store
+    let mip_stats_config = MipStatsConfig { 
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED, 
+        counters_max:  MIP_STORE_STATS_COUNTERS_MAX
+    };
+    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -353,6 +363,7 @@ async fn launch(
         execution_config,
         final_state.clone(),
         selector_controller.clone(),
+        mip_store.clone(),
     );
 
     // launch pool controller

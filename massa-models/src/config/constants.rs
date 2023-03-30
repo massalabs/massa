@@ -225,6 +225,10 @@ pub const NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = 10_000;
 //
 /// Threshold to accept a new versioning
 pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
+/// Block count to process in MipStoreStats (for state change threshold)
+pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
+/// Max number of stats counters
+pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
