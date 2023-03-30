@@ -16,13 +16,14 @@ env:
   RUST_BACKTRACE: full
   RUSTFLAGS: "--deny warnings"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+    
 jobs:
   # Quick tests on each commit/PR
   sanity:
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -47,9 +48,6 @@ jobs:
     needs: sanity
     runs-on: ubuntu-latest
     continue-on-error: true
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -75,9 +73,6 @@ jobs:
     needs: sanity
     runs-on: ubuntu-latest
     continue-on-error: true
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -113,9 +108,6 @@ jobs:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -149,9 +141,6 @@ jobs:
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - run: exit 0
 
@@ -159,9 +148,6 @@ jobs:
   gas-costs-check:
     if: github.ref != 'refs/heads/staging' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -197,9 +183,6 @@ jobs:
 
   doc:
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -229,9 +212,6 @@ jobs:
 
   unit_tests:
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
         with:
