@@ -73,18 +73,17 @@ impl<D: Duplex> BootstrapClientBinder<D> {
         duration: Option<Duration>,
     ) -> Result<BootstrapServerMessage, BootstrapError> {
         self.duplex.set_read_timeout(duration).unwrap();
-        self.duplex.set_nonblocking(false).unwrap();
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-            self.duplex.read_exact(&mut sig_bytes).unwrap();
-            Signature::from_bytes(&sig_bytes).unwrap()
+            self.duplex.read_exact(&mut sig_bytes)?;
+            Signature::from_bytes(&sig_bytes)?
         };
 
         // read message length
         let msg_len = {
             let mut msg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut msg_len_bytes[..]).unwrap();
+            self.duplex.read_exact(&mut msg_len_bytes[..])?;
             u32::from_be_bytes_min(&msg_len_bytes, self.cfg.max_bootstrap_message_size)?.0
         };
 
@@ -120,7 +119,11 @@ impl<D: Duplex> BootstrapClientBinder<D> {
 
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
-    pub fn send(&mut self, msg: &BootstrapClientMessage) -> Result<(), BootstrapError> {
+    pub fn send_timeout(
+        &mut self,
+        msg: &BootstrapClientMessage,
+        duration: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
         let mut msg_bytes = Vec::new();
         let message_serializer = BootstrapClientMessageSerializer::new();
         message_serializer.serialize(msg, &mut msg_bytes)?;
@@ -150,6 +153,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
 
         // send message length
         {
+            self.duplex.set_write_timeout(duration);
             let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
             self.duplex.write_all(&msg_len_bytes)?;
         }

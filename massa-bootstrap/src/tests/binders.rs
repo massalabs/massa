@@ -137,9 +137,12 @@ async fn test_binders() {
         }
 
         client
-            .send(&BootstrapClientMessage::BootstrapError {
-                error: "test error".to_string(),
-            })
+            .send_timeout(
+                &BootstrapClientMessage::BootstrapError {
+                    error: "test error".to_string(),
+                },
+                None,
+            )
             .unwrap();
 
         // Test message 3
@@ -321,16 +324,22 @@ async fn test_binders_try_double_send_client_works() {
         }
 
         client
-            .send(&BootstrapClientMessage::BootstrapError {
-                error: "test error".to_string(),
-            })
+            .send_timeout(
+                &BootstrapClientMessage::BootstrapError {
+                    error: "test error".to_string(),
+                },
+                None,
+            )
             .unwrap();
 
         // Test message 3
         client
-            .send(&BootstrapClientMessage::BootstrapError {
-                error: "test error".to_string(),
-            })
+            .send_timeout(
+                &BootstrapClientMessage::BootstrapError {
+                    error: "test error".to_string(),
+                },
+                None,
+            )
             .unwrap();
 
         let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
