@@ -19,7 +19,6 @@ use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::thread;
 use std::time::Duration;
-use tokio::runtime::Handle;
 use tracing::error;
 
 /// Bootstrap server binder
@@ -75,13 +74,18 @@ impl<D: Duplex> BootstrapServerBinder<D> {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     /// MUST always be followed by a send of the `BootstrapMessage::BootstrapTime`
-    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    pub fn handshake_timeout(
+        &mut self,
+        version: Version,
+        duration: Option<Duration>,
+    ) -> Result<(), BootstrapError> {
         // read version and random bytes, send signature
         let msg_hash = {
             let mut version_bytes = Vec::new();
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
+            self.duplex.set_read_timeout(duration)?;
             self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer
@@ -179,6 +183,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
         };
 
         // send signature
+        self.duplex.set_write_timeout(duration)?;
         self.duplex.write_all(&sig.to_bytes())?;
 
         // send message length

@@ -19,7 +19,6 @@ use massa_models::node::NodeId;
 use massa_models::version::Version;
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
-use serial_test::serial;
 use std::str::FromStr;
 
 lazy_static::lazy_static! {
@@ -61,9 +60,8 @@ impl<D: Duplex> BootstrapClientBinder<D> {
 }
 
 /// The server and the client will handshake and then send message in both ways in order
-#[tokio::test]
-#[serial]
-async fn test_binders() {
+#[test]
+fn test_binders() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
@@ -88,90 +86,96 @@ async fn test_binders() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let server_thread = tokio::spawn(async move {
-        // Test message 1
-        let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-            peers: BootstrapPeers(vector_peers.clone()),
-        };
+    let server_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn(move || {
+            // Test message 1
+            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let test_peers_message = BootstrapServerMessage::BootstrapPeers {
+                peers: BootstrapPeers(vector_peers.clone()),
+            };
 
-        let version: Version = Version::from_str("TEST.1.10").unwrap();
+            let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        server.handshake(version).await.unwrap();
-        server
-            .send_timeout(test_peers_message.clone(), None)
-            .unwrap();
+            server.handshake_timeout(version, None).unwrap();
 
-        let message = server.next_timeout(None).unwrap();
-        match message {
-            BootstrapClientMessage::BootstrapError { error } => {
-                assert_eq!(error, "test error");
+            server
+                .send_timeout(test_peers_message.clone(), None)
+                .unwrap();
+
+            let message = server.next_timeout(None).unwrap();
+            match message {
+                BootstrapClientMessage::BootstrapError { error } => {
+                    assert_eq!(error, "test error");
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
 
-        // Test message 3
-        let vector_peers = vec![
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-        ];
-        let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-            peers: BootstrapPeers(vector_peers.clone()),
-        };
+            // Test message 3
+            let vector_peers = vec![
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+            ];
+            let test_peers_message = BootstrapServerMessage::BootstrapPeers {
+                peers: BootstrapPeers(vector_peers.clone()),
+            };
 
-        server
-            .send_timeout(test_peers_message.clone(), None)
-            .unwrap();
-    });
+            server
+                .send_timeout(test_peers_message.clone(), None)
+                .unwrap();
+        })
+        .unwrap();
 
-    let client_thread = tokio::spawn(async move {
-        // Test message 1
-        let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+    let client_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn(move || {
+            // Test message 1
+            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
 
-        let version: Version = Version::from_str("TEST.1.10").unwrap();
+            let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        client.handshake(version).unwrap();
-        let message = client.next_timeout(None).unwrap();
-        match message {
-            BootstrapServerMessage::BootstrapPeers { peers } => {
-                assert_eq!(vector_peers, peers.0);
+            client.handshake(version).unwrap();
+            let message = client.next_timeout(None).unwrap();
+            match message {
+                BootstrapServerMessage::BootstrapPeers { peers } => {
+                    assert_eq!(vector_peers, peers.0);
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
 
-        client
-            .send_timeout(
-                &BootstrapClientMessage::BootstrapError {
-                    error: "test error".to_string(),
-                },
-                None,
-            )
-            .unwrap();
+            client
+                .send_timeout(
+                    &BootstrapClientMessage::BootstrapError {
+                        error: "test error".to_string(),
+                    },
+                    None,
+                )
+                .unwrap();
 
-        // Test message 3
-        let vector_peers = vec![
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-        ];
-        let message = client.next_timeout(None).unwrap();
-        match message {
-            BootstrapServerMessage::BootstrapPeers { peers } => {
-                assert_eq!(vector_peers, peers.0);
+            // Test message 3
+            let vector_peers = vec![
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+            ];
+            let message = client.next_timeout(None).unwrap();
+            match message {
+                BootstrapServerMessage::BootstrapPeers { peers } => {
+                    assert_eq!(vector_peers, peers.0);
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
-    });
+        })
+        .unwrap();
 
-    server_thread.await.unwrap();
-    client_thread.await.unwrap();
+    server_thread.join().unwrap();
+    client_thread.join().unwrap();
 }
 
 /// The server and the client will handshake and then send message only from server to client
-#[tokio::test]
-#[serial]
-async fn test_binders_double_send_server_works() {
+#[test]
+fn test_binders_double_send_server_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
@@ -196,73 +200,78 @@ async fn test_binders_double_send_server_works() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let server_thread = tokio::spawn(async move {
-        // Test message 1
-        let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-            peers: BootstrapPeers(vector_peers.clone()),
-        };
+    let server_thread = std::thread::Builder::new()
+        .name("test_buinders_double_send_server_works::server_thread".to_string())
+        .spawn(move || {
+            // Test message 1
+            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let test_peers_message = BootstrapServerMessage::BootstrapPeers {
+                peers: BootstrapPeers(vector_peers.clone()),
+            };
 
-        let version: Version = Version::from_str("TEST.1.10").unwrap();
+            let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        server.handshake(version).await.unwrap();
-        server
-            .send_timeout(test_peers_message.clone(), None)
-            .unwrap();
+            server.handshake_timeout(version, None).unwrap();
+            server
+                .send_timeout(test_peers_message.clone(), None)
+                .unwrap();
 
-        // Test message 2
-        let vector_peers = vec![
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-        ];
-        let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-            peers: BootstrapPeers(vector_peers.clone()),
-        };
+            // Test message 2
+            let vector_peers = vec![
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+            ];
+            let test_peers_message = BootstrapServerMessage::BootstrapPeers {
+                peers: BootstrapPeers(vector_peers.clone()),
+            };
 
-        server
-            .send_timeout(test_peers_message.clone(), None)
-            .unwrap();
-    });
+            server
+                .send_timeout(test_peers_message.clone(), None)
+                .unwrap();
+        })
+        .unwrap();
 
-    let client_thread = tokio::spawn(async move {
-        // Test message 1
-        let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+    let client_thread = std::thread::Builder::new()
+        .name("test_buinders_double_send_server_works::client_thread".to_string())
+        .spawn(move || {
+            // Test message 1
+            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
 
-        let version: Version = Version::from_str("TEST.1.10").unwrap();
+            let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        client.handshake(version).unwrap();
-        let message = client.next_timeout(None).unwrap();
-        match message {
-            BootstrapServerMessage::BootstrapPeers { peers } => {
-                assert_eq!(vector_peers, peers.0);
+            client.handshake(version).unwrap();
+            let message = client.next_timeout(None).unwrap();
+            match message {
+                BootstrapServerMessage::BootstrapPeers { peers } => {
+                    assert_eq!(vector_peers, peers.0);
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
 
-        // Test message 2
-        let vector_peers = vec![
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-            bootstrap_config.bootstrap_list[0].0.ip(),
-        ];
-        let message = client.next_timeout(None).unwrap();
-        match message {
-            BootstrapServerMessage::BootstrapPeers { peers } => {
-                assert_eq!(vector_peers, peers.0);
+            // Test message 2
+            let vector_peers = vec![
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+                bootstrap_config.bootstrap_list[0].0.ip(),
+            ];
+            let message = client.next_timeout(None).unwrap();
+            match message {
+                BootstrapServerMessage::BootstrapPeers { peers } => {
+                    assert_eq!(vector_peers, peers.0);
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
-    });
+        })
+        .unwrap();
 
-    server_thread.await.unwrap();
-    client_thread.await.unwrap();
+    server_thread.join().unwrap();
+    client_thread.join().unwrap();
 }
 
 /// The server and the client will handshake and then send message in both ways but the client will try to send two messages without answer
-#[tokio::test]
-#[serial]
-async fn test_binders_try_double_send_client_works() {
+#[test]
+fn test_binders_try_double_send_client_works() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
@@ -287,83 +296,89 @@ async fn test_binders_try_double_send_client_works() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let server_thread = tokio::spawn(async move {
-        // Test message 1
-        let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-            peers: BootstrapPeers(vector_peers.clone()),
-        };
-        let version: Version = Version::from_str("TEST.1.10").unwrap();
+    let server_thread = std::thread::Builder::new()
+        .name("test_buinders_double_send_client_works::server_thread".to_string())
+        .spawn(move || {
+            // Test message 1
+            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let test_peers_message = BootstrapServerMessage::BootstrapPeers {
+                peers: BootstrapPeers(vector_peers.clone()),
+            };
+            let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        server.handshake(version).await.unwrap();
-        server
-            .send_timeout(test_peers_message.clone(), None)
-            .unwrap();
+            server.handshake_timeout(version, None).unwrap();
+            server
+                .send_timeout(test_peers_message.clone(), None)
+                .unwrap();
 
-        let message = server.next_timeout(None).unwrap();
-        match message {
-            BootstrapClientMessage::BootstrapError { error } => {
-                assert_eq!(error, "test error");
+            let message = server.next_timeout(None).unwrap();
+            match message {
+                BootstrapClientMessage::BootstrapError { error } => {
+                    assert_eq!(error, "test error");
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
 
-        let message = server.next_timeout(None).unwrap();
-        match message {
-            BootstrapClientMessage::BootstrapError { error } => {
-                assert_eq!(error, "test error");
+            let message = server.next_timeout(None).unwrap();
+            match message {
+                BootstrapClientMessage::BootstrapError { error } => {
+                    assert_eq!(error, "test error");
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
 
-        server
-            .send_timeout(test_peers_message.clone(), None)
-            .unwrap();
-    });
+            server
+                .send_timeout(test_peers_message.clone(), None)
+                .unwrap();
+        })
+        .unwrap();
 
-    let client_thread = tokio::spawn(async move {
-        // Test message 1
-        let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let version: Version = Version::from_str("TEST.1.10").unwrap();
+    let client_thread = std::thread::Builder::new()
+        .name("test_buinders_double_send_client_works::client_thread".to_string())
+        .spawn(move || {
+            // Test message 1
+            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-        client.handshake(version).unwrap();
-        let message = client.next_timeout(None).unwrap();
-        match message {
-            BootstrapServerMessage::BootstrapPeers { peers } => {
-                assert_eq!(vector_peers, peers.0);
+            client.handshake(version).unwrap();
+            let message = client.next_timeout(None).unwrap();
+            match message {
+                BootstrapServerMessage::BootstrapPeers { peers } => {
+                    assert_eq!(vector_peers, peers.0);
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
 
-        client
-            .send_timeout(
-                &BootstrapClientMessage::BootstrapError {
-                    error: "test error".to_string(),
-                },
-                None,
-            )
-            .unwrap();
+            client
+                .send_timeout(
+                    &BootstrapClientMessage::BootstrapError {
+                        error: "test error".to_string(),
+                    },
+                    None,
+                )
+                .unwrap();
 
-        // Test message 3
-        client
-            .send_timeout(
-                &BootstrapClientMessage::BootstrapError {
-                    error: "test error".to_string(),
-                },
-                None,
-            )
-            .unwrap();
+            // Test message 3
+            client
+                .send_timeout(
+                    &BootstrapClientMessage::BootstrapError {
+                        error: "test error".to_string(),
+                    },
+                    None,
+                )
+                .unwrap();
 
-        let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
-        let message = client.next_timeout(None).unwrap();
-        match message {
-            BootstrapServerMessage::BootstrapPeers { peers } => {
-                assert_eq!(vector_peers, peers.0);
+            let vector_peers = vec![bootstrap_config.bootstrap_list[0].0.ip()];
+            let message = client.next_timeout(None).unwrap();
+            match message {
+                BootstrapServerMessage::BootstrapPeers { peers } => {
+                    assert_eq!(vector_peers, peers.0);
+                }
+                _ => panic!("Bad message receive: Expected a peers list message"),
             }
-            _ => panic!("Bad message receive: Expected a peers list message"),
-        }
-    });
+        })
+        .unwrap();
 
-    server_thread.await.unwrap();
-    client_thread.await.unwrap();
+    server_thread.join().unwrap();
+    client_thread.join().unwrap();
 }

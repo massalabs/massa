@@ -727,22 +727,16 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    match dbg!(
-        tokio::time::timeout(
-            bootstrap_config.read_timeout.into(),
-            server.handshake(version),
-        )
-        .await
-    ) {
-        Err(_) => {
+    match dbg!(server.handshake_timeout(version, Some(bootstrap_config.read_timeout.into()))) {
+        Err(BootstrapError::IoError(e)) if e.kind() == ErrorKind::TimedOut => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 "bootstrap handshake send timed out",
             )
             .into());
         }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => (),
+        Err(e) => return Err(e),
+        Ok(_) => (),
     };
 
     match dbg!(server.next_timeout(Some(read_error_timeout))) {
