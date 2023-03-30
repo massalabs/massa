@@ -91,11 +91,13 @@ impl<D: Duplex> BootstrapManager<D> {
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
-        // unwrap() effectively passes up a panic from the thread being handled
-        self.update_handle.join().unwrap()?;
+        self.update_handle
+            .join()
+            .expect("in BootstrapManager::stop() joining on updater thread")?;
 
-        // unwrap() effectively passes up a panic from the thread being handled
-        self.main_handle.join().unwrap()
+        self.main_handle
+            .join()
+            .expect("in BootstrapManager::stop() joining on bootstrap main-loop thread")
     }
 }
 
@@ -143,17 +145,13 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
             };
             res
         })
-        // the non-builder spawn doesn't return a Result, and documentation states that
-        // it's an error at the OS level.
-        .unwrap();
+        .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
     let listen_handle = thread::Builder::new()
         .name("bs_listener".to_string())
         // FIXME: The interface being used shouldn't have `: Send + 'static` as a constraint on the listener assosciated type.
         // GAT lifetime is likely to remedy this, however.
         .spawn(move || BootstrapServer::<D, C>::run_listener(listener, listener_tx))
-        // the non-builder spawn doesn't return a Result, and documentation states that
-        // it's an error at the OS level.
-        .unwrap();
+        .expect("in `start_bootstrap_server`, OS failed to spawn listener thread");
 
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
@@ -172,9 +170,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
             }
             .run_loop(max_bootstraps)
         })
-        // the non-builder spawn doesn't return a Result, and documentation states that
-        // it's an error at the OS level.
-        .unwrap();
+        .expect("in `start_bootstrap_server`, OS failed to spawn main-loop thread");
     // Give the runtime to the bootstrap manager, otherwise it will be dropped, forcibly aborting the spawned tasks.
     // TODO: make the tasks sync, so the runtime is redundant
     Ok(Some(BootstrapManager {
