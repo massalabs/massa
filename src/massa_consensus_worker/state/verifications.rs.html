@@ -636,8 +636,6 @@
 <a href="#636" id="636">636</a>
 <a href="#637" id="637">637</a>
 <a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{process::BlockInfos, ConsensusState};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -689,7 +687,7 @@
     <span class="comment">// Verify that we haven&#39;t already received 2 blocks for this slot
     // If the block isn&#39;t already present two times we save it and return false
     // If the block is already present two times we return true
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_multistake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, header: <span class="kw-2">&amp;</span>SecuredHeader) -&gt; bool {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>detect_multistake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, header: <span class="kw-2">&amp;</span>SecuredHeader) -&gt; bool {
         <span class="kw">let </span>entry = <span class="self">self
             </span>.nonfinal_active_blocks_per_slot
             .entry(header.content.slot)
@@ -721,8 +719,8 @@
         current_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BlockInfos&gt;, ConsensusError&gt; {
         <span class="kw">let </span>header_outcome =
-            <span class="self">self</span>.check_header(<span class="kw-2">&amp;</span>block_id, <span class="kw-2">&amp;</span>stored_block.content.header, current_slot, <span class="self">self</span>)<span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="self">self</span>.is_multistake(<span class="kw-2">&amp;</span>stored_block.content.header) {
+            <span class="self">self</span>.check_header(<span class="kw-2">&amp;</span>block_id, <span class="kw-2">&amp;</span>stored_block.content.header, current_slot)<span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>stored_block.content.header) {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         }
         <span class="kw">match </span>header_outcome {
@@ -781,8 +779,8 @@
         header: SecuredHeader,
         current_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
-        <span class="kw">let </span>header_outcome = <span class="self">self</span>.check_header(<span class="kw-2">&amp;</span>block_id, <span class="kw-2">&amp;</span>header, current_slot, <span class="self">self</span>)<span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="self">self</span>.is_multistake(<span class="kw-2">&amp;</span>header) {
+        <span class="kw">let </span>header_outcome = <span class="self">self</span>.check_header(<span class="kw-2">&amp;</span>block_id, <span class="kw-2">&amp;</span>header, current_slot)<span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>header) {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
         <span class="kw">match </span>header_outcome {
@@ -936,7 +934,6 @@
         block_id: <span class="kw-2">&amp;</span>BlockId,
         header: <span class="kw-2">&amp;</span>SecuredHeader,
         current_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-        read_shared_state: <span class="kw-2">&amp;</span>ConsensusState,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;HeaderCheckOutcome, ConsensusError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.check_header&quot;</span>, {
             <span class="string">&quot;block_id&quot;</span>: block_id
@@ -950,7 +947,7 @@
         <span class="comment">// check that is older than the latest final block in that thread
         // Note: this excludes genesis blocks
         </span><span class="kw">if </span>header.content.slot.period
-            &lt;= read_shared_state.latest_final_blocks_periods[header.content.slot.thread <span class="kw">as </span>usize].<span class="number">1
+            &lt;= <span class="self">self</span>.latest_final_blocks_periods[header.content.slot.thread <span class="kw">as </span>usize].<span class="number">1
         </span>{
             <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::Discard(DiscardReason::Stale));
         }
@@ -997,7 +994,7 @@
         </span><span class="kw">let </span>parent_set: PreHashSet&lt;BlockId&gt; = header.content.parents.iter().copied().collect();
         <span class="kw">for </span>parent_thread <span class="kw">in </span><span class="number">0u8</span>..<span class="self">self</span>.config.thread_count {
             <span class="kw">let </span>parent_hash = header.content.parents[parent_thread <span class="kw">as </span>usize];
-            <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>parent_hash) {
+            <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>parent_hash) {
                 <span class="prelude-val">Some</span>(BlockStatus::Discarded { reason, .. }) =&gt; {
                     <span class="comment">// parent is discarded
                     </span><span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::Discard(<span class="kw">match </span>reason {
@@ -1025,7 +1022,7 @@
 
                     <span class="comment">// inherit parent incompatibilities
                     // and ensure parents are mutually compatible
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(p_incomp) = read_shared_state.gi_head.get(<span class="kw-2">&amp;</span>parent_hash) {
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(p_incomp) = <span class="self">self</span>.gi_head.get(<span class="kw-2">&amp;</span>parent_hash) {
                         <span class="kw">if </span>!p_incomp.is_disjoint(<span class="kw-2">&amp;</span>parent_set) {
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                                 <span class="string">&quot;Parent not mutually compatible&quot;</span>.to_string(),
@@ -1038,7 +1035,7 @@
                 }
                 <span class="kw">_ </span>=&gt; {
                     <span class="comment">// parent is missing or queued
-                    </span><span class="kw">if </span>read_shared_state.genesis_hashes.contains(<span class="kw-2">&amp;</span>parent_hash) {
+                    </span><span class="kw">if </span><span class="self">self</span>.genesis_hashes.contains(<span class="kw-2">&amp;</span>parent_hash) {
                         <span class="comment">// forbid depending on discarded genesis block
                         </span><span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::Discard(DiscardReason::Stale));
                     }
@@ -1056,7 +1053,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>gp_max_slots = <span class="macro">vec!</span>[<span class="number">0u64</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
             <span class="kw">for </span>parent_i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
                 <span class="kw">let </span>(parent_h, parent_period) = parents[parent_i <span class="kw">as </span>usize];
-                <span class="kw">let </span>parent = <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>parent_h) {
+                <span class="kw">let </span>parent = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>parent_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active {
                         a_block,
                         storage: <span class="kw">_</span>,
@@ -1085,7 +1082,7 @@
                         <span class="kw">continue</span>;
                     }
                     <span class="kw">let </span>gp_h = parent.parents[gp_i <span class="kw">as </span>usize].<span class="number">0</span>;
-                    <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>gp_h) {
+                    <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>gp_h) {
                         <span class="comment">// this grandpa is discarded
                         </span><span class="prelude-val">Some</span>(BlockStatus::Discarded { reason, .. }) =&gt; {
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(HeaderCheckOutcome::Discard(reason.clone()));
@@ -1111,8 +1108,8 @@
         }
 
         <span class="comment">// get parent in own thread
-        </span><span class="kw">let </span>parent_in_own_thread = <span class="kw">match </span>read_shared_state
-            .block_statuses
+        </span><span class="kw">let </span>parent_in_own_thread = <span class="kw">match </span><span class="self">self
+            </span>.block_statuses
             .get(<span class="kw-2">&amp;</span>parents[header.content.slot.thread <span class="kw">as </span>usize].<span class="number">0</span>)
         {
             <span class="prelude-val">Some</span>(BlockStatus::Active {
@@ -1152,7 +1149,7 @@
             // traverse parent&#39;s descendants in tau
             </span><span class="kw">let </span><span class="kw-2">mut </span>to_explore = <span class="macro">vec!</span>[(<span class="number">0usize</span>, header.content.parents[tau <span class="kw">as </span>usize])];
             <span class="kw">while let </span><span class="prelude-val">Some</span>((cur_gen, cur_h)) = to_explore.pop() {
-                <span class="kw">let </span>cur_b = <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>cur_h) {
+                <span class="kw">let </span>cur_b = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>cur_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; <span class="prelude-val">Some</span>(a_block),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                 }.ok_or_else(|| ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}&quot;</span>,cur_h,  block_id)))<span class="question-mark">?</span>;
@@ -1185,7 +1182,7 @@
 
                 <span class="comment">// check if the parent in tauB has a strictly lower period number than B&#39;s parent in tauB
                 // note: cur_b cannot be genesis at gen &gt; 1
-                </span><span class="kw">let </span>parent_period = <span class="kw">match </span>read_shared_state.block_statuses.get(<span class="kw-2">&amp;</span>parent_id) {
+                </span><span class="kw">let </span>parent_period = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>parent_id) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; <span class="prelude-val">Some</span>(a_block),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                 }.ok_or_else(||
@@ -1210,12 +1207,11 @@
 
         <span class="comment">// check if the block is incompatible with a final block
         </span><span class="kw">if </span>!incomp.is_disjoint(
-            <span class="kw-2">&amp;</span>read_shared_state
-                .active_index
+            <span class="kw-2">&amp;</span><span class="self">self
+                </span>.active_index
                 .iter()
                 .filter_map(|h| {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block: a, .. }) =
-                        read_shared_state.block_statuses.get(h)
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block: a, .. }) = <span class="self">self</span>.block_statuses.get(h)
                     {
                         <span class="kw">if </span>a.is_final {
                             <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="kw-2">*</span>h);
