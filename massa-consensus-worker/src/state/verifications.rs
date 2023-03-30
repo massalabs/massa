@@ -10,6 +10,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_storage::Storage;
+use tracing::warn;
 
 /// Possible output of a header check
 #[derive(Debug)]
@@ -45,6 +46,28 @@ pub enum EndorsementsCheckOutcome {
 }
 
 impl ConsensusState {
+    // Verify that we haven't already received 2 blocks for this slot
+    // If the block isn't already present two times we save it and return false
+    // If the block is already present two times we return true
+    pub(crate) fn is_multistake(&mut self, header: &SecuredHeader) -> bool {
+        let entry = self
+            .nonfinal_active_blocks_per_slot
+            .entry(header.content.slot)
+            .or_default();
+        if !entry.contains(&header.id) {
+            if entry.len() > 1 && !self.wishlist.contains_key(&header.id) {
+                warn!(
+                    "received more than 2 blocks for slot {}",
+                    header.content.slot
+                );
+                return true;
+            } else {
+                entry.insert(header.id);
+            }
+        }
+        false
+    }
+
     /// Check if the header of the block is valid and if it could be processed
     ///
     /// # Returns:
@@ -57,7 +80,12 @@ impl ConsensusState {
         stored_block: SecureShareBlock,
         current_slot: Option<Slot>,
     ) -> Result<Option<BlockInfos>, ConsensusError> {
-        match self.check_header(&block_id, &stored_block.content.header, current_slot, self)? {
+        let header_outcome =
+            self.check_header(&block_id, &stored_block.content.header, current_slot, self)?;
+        if self.is_multistake(&stored_block.content.header) {
+            return Ok(None);
+        }
+        match header_outcome {
             HeaderCheckOutcome::Proceed {
                 parents_hash_period,
                 incompatibilities,
@@ -113,7 +141,11 @@ impl ConsensusState {
         header: SecuredHeader,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
-        match self.check_header(&block_id, &header, current_slot, self)? {
+        let header_outcome = self.check_header(&block_id, &header, current_slot, self)?;
+        if self.is_multistake(&header) {
+            return Ok(());
+        }
+        match header_outcome {
             HeaderCheckOutcome::Proceed { .. } => {
                 // set as waiting dependencies
                 let mut dependencies = PreHashSet::<BlockId>::default();
