@@ -136,7 +136,7 @@ fn test_bootstrap_server() {
     let final_state_server_clone1 = final_state_server.clone();
     let final_state_server_clone2 = final_state_server.clone();
 
-    let (mock_bs_listener, mut mock_remote_connector) = conn_establishment_mocks();
+    let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
 
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
     let mut mocked1 = MockNetworkCommandSender::new();
@@ -261,6 +261,8 @@ fn test_bootstrap_server() {
                 .apply_changes(change.executed_ops_changes.clone(), *slot);
         }
     }
+    // Make sure the modifier thread has done its job
+    mod_thread.join().unwrap();
 
     // check final states
     assert_eq_final_state(&final_state_server.read(), &final_state_client.read());

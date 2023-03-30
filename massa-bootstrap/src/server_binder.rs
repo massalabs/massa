@@ -114,7 +114,7 @@ impl<D: Duplex> BootstrapServerBinder<D> {
     /// 5. runs the passed in closure (typically a custom logging msg)
     ///
     /// consumes the binding in the process
-    pub(crate) fn close_and_send_error<F>(
+    pub(crate) fn _close_and_send_error<F>(
         mut self,
         server_outer_rt_hnd: Handle,
         msg: String,
@@ -198,7 +198,11 @@ impl<D: Duplex> BootstrapServerBinder<D> {
 
     #[allow(dead_code)]
     /// Read a message sent from the client (not signed). NOT cancel-safe
-    pub async fn next(&mut self) -> Result<BootstrapClientMessage, BootstrapError> {
+    pub fn next_timeout(
+        &mut self,
+        duration: Option<Duration>,
+    ) -> Result<BootstrapClientMessage, BootstrapError> {
+        self.duplex.set_read_timeout(duration)?;
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {

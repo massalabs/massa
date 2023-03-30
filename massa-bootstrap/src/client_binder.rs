@@ -153,7 +153,7 @@ impl<D: Duplex> BootstrapClientBinder<D> {
 
         // send message length
         {
-            self.duplex.set_write_timeout(duration);
+            self.duplex.set_write_timeout(duration)?;
             let msg_len_bytes = msg_len.to_be_bytes_min(self.cfg.max_bootstrap_message_size)?;
             self.duplex.write_all(&msg_len_bytes)?;
         }

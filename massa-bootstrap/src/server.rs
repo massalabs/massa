@@ -45,12 +45,13 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::HashMap,
+    io::ErrorKind,
     net::{IpAddr, SocketAddr, TcpStream},
     sync::Arc,
     thread,
     time::{Duration, Instant},
 };
-use tokio::runtime::{self, Handle, Runtime};
+use tokio::runtime::{self, Handle};
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -118,7 +119,7 @@ pub fn start_bootstrap_server<D: Duplex, C: NetworkCommandSenderTrait + Clone>(
         return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()).into());
     };
 
-    // This is the primary interface between the async-listener, and the "sync" worker
+    // This is needed for now, as there is no ergonomic to "select!" on both a channel and a blocking std::net::TcpStream
     let (listener_tx, listener_rx) =
         crossbeam::channel::bounded::<BsConn<TcpStream>>(max_bootstraps * 2);
 
@@ -741,12 +742,13 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    match tokio::time::timeout(
-        bootstrap_config.read_timeout.into(),
-        server.handshake(version),
-    )
-    .await
-    {
+    match dbg!(
+        tokio::time::timeout(
+            bootstrap_config.read_timeout.into(),
+            server.handshake(version),
+        )
+        .await
+    ) {
         Err(_) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -758,13 +760,17 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
         Ok(Ok(_)) => (),
     };
 
-    match tokio::time::timeout(read_error_timeout, server.next()).await {
-        Err(_) => (),
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapClientMessage::BootstrapError { error })) => {
+    match dbg!(server.next_timeout(Some(read_error_timeout))) {
+        Err(BootstrapError::IoError(e))
+            if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
+        {
+            ()
+        }
+        Err(e) => return Err(e),
+        Ok(BootstrapClientMessage::BootstrapError { error }) => {
             return Err(BootstrapError::GeneralError(error));
         }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
+        Ok(msg) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
     };
 
     let write_timeout: Duration = bootstrap_config.write_timeout.into();
@@ -772,16 +778,17 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     // Sync clocks.
     let server_time = MassaTime::now()?;
 
-    match server
-        .send_msg(
-            write_timeout,
-            BootstrapServerMessage::BootstrapTime {
-                server_time,
-                version,
-            },
-        )
-        .await
-    {
+    match dbg!(
+        server
+            .send_msg(
+                write_timeout,
+                BootstrapServerMessage::BootstrapTime {
+                    server_time,
+                    version,
+                },
+            )
+            .await
+    ) {
         Err(_) => Err(std::io::Error::new(
             std::io::ErrorKind::TimedOut,
             "bootstrap clock send timed out",
@@ -792,10 +799,14 @@ async fn manage_bootstrap<D: Duplex, C: NetworkCommandSenderTrait>(
     }?;
 
     loop {
-        match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.next()).await {
-            Err(_) => break Ok(()),
-            Ok(Err(e)) => break Err(e),
-            Ok(Ok(msg)) => match msg {
+        match dbg!(server.next_timeout(Some(bootstrap_config.read_timeout.into()))) {
+            Err(BootstrapError::IoError(e))
+                if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock =>
+            {
+                break Ok(())
+            }
+            Err(e) => break Err(e),
+            Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
                     match server
                         .send_msg(

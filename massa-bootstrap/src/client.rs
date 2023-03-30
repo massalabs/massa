@@ -398,7 +398,6 @@ fn connect_to_server(
         .set_nonblocking(false)
         .map_err(|e| Box::new(e.into()))?;
     Ok(BootstrapClientBinder::new(
-        // this from_std will panic if this method doesn't exist within an async runtime...
         socket,
         *pub_key,
         bootstrap_config.into(),

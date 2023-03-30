@@ -69,7 +69,7 @@ impl DefaultListener {
 
         // Number of connections to queue, set to the hardcoded value used by tokio
         socket.listen(1024)?;
-        socket.set_nonblocking(false);
+        socket.set_nonblocking(false)?;
         Ok(DefaultListener(socket.into()))
     }
 }

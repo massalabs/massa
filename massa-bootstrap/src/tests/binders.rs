@@ -100,7 +100,7 @@ async fn test_binders() {
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
 
-        let message = server.next().await.unwrap();
+        let message = server.next_timeout(None).unwrap();
         match message {
             BootstrapClientMessage::BootstrapError { error } => {
                 assert_eq!(error, "test error");
@@ -290,7 +290,7 @@ async fn test_binders_try_double_send_client_works() {
         server.handshake(version).await.unwrap();
         server.send(test_peers_message.clone()).await.unwrap();
 
-        let message = server.next().await.unwrap();
+        let message = server.next_timeout(None).unwrap();
         match message {
             BootstrapClientMessage::BootstrapError { error } => {
                 assert_eq!(error, "test error");
@@ -298,7 +298,7 @@ async fn test_binders_try_double_send_client_works() {
             _ => panic!("Bad message receive: Expected a peers list message"),
         }
 
-        let message = server.next().await.unwrap();
+        let message = server.next_timeout(None).unwrap();
         match message {
             BootstrapClientMessage::BootstrapError { error } => {
                 assert_eq!(error, "test error");
