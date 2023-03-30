@@ -69,6 +69,12 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -129,16 +135,22 @@
     </span><span class="kw">pub </span>max_bytecode_size: u64,
     <span class="doccomment">/// Max datastore value size
     </span><span class="kw">pub </span>max_datastore_value_size: u64,
-    <span class="doccomment">/// Max number of compiled modules in the cache
-    </span><span class="kw">pub </span>max_module_cache_size: u32,
     <span class="doccomment">/// Storage cost constants
     </span><span class="kw">pub </span>storage_costs_constants: StorageCostsConstants,
     <span class="doccomment">/// Max gas for read only executions
     </span><span class="kw">pub </span>max_read_only_gas: u64,
     <span class="doccomment">/// Gas costs
     </span><span class="kw">pub </span>gas_costs: GasCosts,
-    <span class="doccomment">/// path of the initial vesting file
+    <span class="doccomment">/// Path to the initial vesting file
     </span><span class="kw">pub </span>initial_vesting_path: PathBuf,
+    <span class="doccomment">/// Path to the hard drive cache storage
+    </span><span class="kw">pub </span>hd_cache_path: PathBuf,
+    <span class="doccomment">/// Maximum number of entries we want to keep in the LRU cache
+    </span><span class="kw">pub </span>lru_cache_size: u32,
+    <span class="doccomment">/// Maximum number of entries we want to keep in the HD cache
+    </span><span class="kw">pub </span>hd_cache_size: usize,
+    <span class="doccomment">/// Amount of entries removed when `hd_cache_size` is reached
+    </span><span class="kw">pub </span>snip_amount: usize,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
