@@ -27,9 +27,10 @@
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
 </pre><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::block::{Block, FilledBlock};
-<span class="kw">use </span>massa_models::block_header::BlockHeader;
+<span class="kw">use </span>massa_models::block_header::{BlockHeader, SecuredHeader};
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolCommandSender;
@@ -55,6 +56,7 @@
     </span><span class="kw">pub </span>block_header_sender: tokio::sync::broadcast::Sender&lt;BlockHeader&gt;,
     <span class="doccomment">/// Channel use by Websocket (if they are enable) to broadcast a new block integrated
     </span><span class="kw">pub </span>filled_block_sender: tokio::sync::broadcast::Sender&lt;FilledBlock&gt;,
+    <span class="kw">pub </span>denunciation_factory_sender: crossbeam_channel::Sender&lt;SecuredHeader&gt;,
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_consensus_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (d962ea578 2023-02-26)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

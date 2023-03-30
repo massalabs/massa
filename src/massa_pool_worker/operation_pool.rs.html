@@ -290,6 +290,7 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -470,6 +471,7 @@
         </span><span class="self">self</span>.storage.extend(ops_storage.split_off(
             <span class="kw-2">&amp;</span>Default::default(),
             <span class="kw-2">&amp;</span>added,
+            <span class="kw-2">&amp;</span>Default::default(),
             <span class="kw-2">&amp;</span>Default::default(),
         ));
 
