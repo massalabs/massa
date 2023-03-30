@@ -795,24 +795,6 @@
 <a href="#795" id="795">795</a>
 <a href="#796" id="796">796</a>
 <a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -1074,20 +1056,11 @@
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    </span><span class="kw">fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+    </span><span class="kw">fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        <span class="kw">match </span>(context.get_keys(<span class="kw-2">&amp;</span>addr), prefix_opt) {
-            (<span class="prelude-val">Some</span>(value), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Ok</span>(value),
-            (<span class="prelude-val">Some</span>(<span class="kw-2">mut </span>value), <span class="prelude-val">Some</span>(prefix)) =&gt; {
-                value.retain(|key| {
-                    prefix.iter().enumerate().all(|(n, b)| <span class="kw">match </span>key.get(n) {
-                        <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
-                        <span class="prelude-val">Some</span>(v) =&gt; <span class="kw-2">*</span>v == <span class="kw-2">*</span>b,
-                    })
-                });
-                <span class="prelude-val">Ok</span>(value)
-            }
+        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>addr) {
+            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
         }
     }
@@ -1096,20 +1069,11 @@
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    </span><span class="kw">fn </span>get_keys_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+    </span><span class="kw">fn </span>get_keys_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">match </span>(context.get_keys(addr), prefix_opt) {
-            (<span class="prelude-val">Some</span>(value), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Ok</span>(value),
-            (<span class="prelude-val">Some</span>(<span class="kw-2">mut </span>value), <span class="prelude-val">Some</span>(prefix)) =&gt; {
-                value.retain(|key| {
-                    prefix.iter().enumerate().all(|(n, b)| <span class="kw">match </span>key.get(n) {
-                        <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
-                        <span class="prelude-val">Some</span>(v) =&gt; <span class="kw-2">*</span>v == <span class="kw-2">*</span>b,
-                    })
-                });
-                <span class="prelude-val">Ok</span>(value)
-            }
+        <span class="kw">match </span>context.get_keys(addr) {
+            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
         }
     }

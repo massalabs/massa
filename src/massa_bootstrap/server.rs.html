@@ -892,6 +892,18 @@
 <a href="#892" id="892">892</a>
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
 </pre><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -920,8 +932,6 @@
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
 </span><span class="kw">mod </span>white_black_list;
 
-<span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
-
 <span class="kw">use </span>crossbeam::channel::{tick, Select, SendError};
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
@@ -946,6 +956,7 @@
 };
 <span class="kw">use </span>tokio::runtime::{<span class="self">self</span>, Handle, Runtime};
 <span class="kw">use </span>tracing::{debug, error, info, warn};
+<span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
     error::BootstrapError,
@@ -1453,6 +1464,7 @@
     <span class="kw-2">mut </span>last_credits_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_ops_step: StreamingStep&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_consensus_step: StreamingStep&lt;PreHashSet&lt;BlockId&gt;&gt;,
+    <span class="kw-2">mut </span>send_last_start_period: bool,
     write_timeout: Duration,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
     <span class="kw">loop </span>{
@@ -1469,12 +1481,20 @@
         <span class="kw">let </span>pos_credits_part;
         <span class="kw">let </span>exec_ops_part;
         <span class="kw">let </span>final_state_changes;
+        <span class="kw">let </span>last_start_period;
 
         <span class="kw">let </span><span class="kw-2">mut </span>slot_too_old = <span class="bool-val">false</span>;
 
         <span class="comment">// Scope of the final state read
         </span>{
             <span class="kw">let </span>final_state_read = final_state.read();
+
+            last_start_period = <span class="kw">if </span>send_last_start_period {
+                <span class="prelude-val">Some</span>(final_state_read.last_start_period)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>};
+
             <span class="kw">let </span>(data, new_ledger_step) = final_state_read
                 .ledger
                 .get_ledger_part(last_ledger_step.clone())<span class="question-mark">?</span>;
@@ -1532,6 +1552,7 @@
             last_ops_step = new_ops_step;
             last_slot = <span class="prelude-val">Some</span>(final_state_read.slot);
             current_slot = final_state_read.slot;
+            send_last_start_period = <span class="bool-val">false</span>;
         }
 
         <span class="kw">if </span>slot_too_old {
@@ -1629,6 +1650,7 @@
                     final_state_changes,
                     consensus_part,
                     consensus_outdated_ids,
+                    last_start_period,
                 },
             )
             .<span class="kw">await
@@ -1739,6 +1761,7 @@
                     last_credits_step,
                     last_ops_step,
                     last_consensus_step,
+                    send_last_start_period,
                 } =&gt; {
                     stream_bootstrap_information(
                         server,
@@ -1751,6 +1774,7 @@
                         last_credits_step,
                         last_ops_step,
                         last_consensus_step,
+                        send_last_start_period,
                         write_timeout,
                     )
                     .<span class="kw">await</span><span class="question-mark">?</span>;
