@@ -12,7 +12,8 @@ use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{
-    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, DefaultConnector,
+    DefaultListener,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
@@ -242,7 +243,7 @@ async fn launch(
         res = get_state(
             &bootstrap_config,
             final_state.clone(),
-            massa_bootstrap::DefaultEstablisher::default().get_connector(bootstrap_config.connect_timeout).unwrap(),
+            DefaultConnector(bootstrap_config.connect_timeout),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
