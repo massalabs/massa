@@ -63,6 +63,11 @@ pub enum MockPoolControllerMessage {
         /// Response channel
         response_tx: mpsc::Sender<usize>,
     },
+    /// Get denunciation count
+    GetDenunciationCount {
+        /// Response channel
+        response_tx: mpsc::Sender<usize>,
+    },
     /// Contains endorsements
     ContainsEndorsements {
         /// ids to search
@@ -254,5 +259,15 @@ impl PoolController for MockPoolController {
 
     fn get_final_cs_periods(&self) -> &Vec<u64> {
         &self.last_final_cs_periods
+    }
+
+    fn get_denunciation_count(&self) -> usize {
+        let (response_tx, response_rx) = mpsc::channel();
+        self.q
+            .lock()
+            .unwrap()
+            .send(MockPoolControllerMessage::GetDenunciationCount { response_tx })
+            .unwrap();
+        response_rx.recv().unwrap()
     }
 }
