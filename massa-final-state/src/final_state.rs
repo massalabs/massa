@@ -11,7 +11,7 @@ use massa_async_pool::{
     AsyncPoolSerializer, Change,
 };
 use massa_executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
-use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
 use massa_models::{
     /*config::{
@@ -278,6 +278,7 @@ impl FinalState {
         .create_new_cycle_for_snapshot(&latest_consistent_cycle_info, end_slot);*/
 
         // The deferred credits that happen during the downtime have to be set to the next slot to be executed
+        // TODO: Make the deferred credits robust so that we don't have to interpolate them
         self.pos_state
             .update_deferred_credits_after_restart(self.slot, end_slot)
             .map_err(|_| {
@@ -382,9 +383,9 @@ impl FinalState {
         let mut final_state_data = None;
 
         if cfg!(feature = "create_snapshot") {
-            let mut final_state_buffer = Vec::new();
+            let /*mut*/ final_state_buffer = Vec::new();
 
-            let final_state_raw_serializer = FinalStateRawSerializer::new();
+            /*let final_state_raw_serializer = FinalStateRawSerializer::new();
 
             let final_state_raw = FinalStateRaw {
                 async_pool_messages: self.async_pool.messages.clone(),
@@ -400,7 +401,7 @@ impl FinalState {
                 .is_err()
             {
                 debug!("Error while trying to serialize final_state");
-            }
+            }*/
 
             final_state_data = Some(final_state_buffer)
         }
@@ -420,8 +421,9 @@ impl FinalState {
         self.compute_state_hash_at_slot(slot);
 
         if cfg!(feature = "create_snapshot") {
-            let mut hash_buffer = Vec::new();
+            let /*mut*/ hash_buffer = Vec::new();
 
+            /*
             let hash_serializer = HashSerializer::new();
 
             if hash_serializer
@@ -429,7 +431,7 @@ impl FinalState {
                 .is_err()
             {
                 debug!("Error while trying to serialize final_state_hash");
-            }
+            }*/
 
             self.ledger.set_final_state_hash(hash_buffer);
         }
