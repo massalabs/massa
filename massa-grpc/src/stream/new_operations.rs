@@ -45,7 +45,7 @@ pub(crate) async fn new_operations(
                             Ok(operation) => {
                                 match operation.clone().content.op {
                                     OperationType::Transaction{recipient_address,amount} => {
-                                        if is_filtered(&filter, grpc::OperationTypeEnum::Transaction) {
+                                        if !should_send(&filter, grpc::OperationTypeEnum::Transaction) {
                                             continue
                                         }
                                         grpc::OperationType{
@@ -54,7 +54,7 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::RollBuy { roll_count } => {
-                                        if is_filtered(&filter, grpc::OperationTypeEnum::RollBuy) {
+                                        if !should_send(&filter, grpc::OperationTypeEnum::RollBuy) {
                                             continue
                                         }
                                         grpc::OperationType {
@@ -63,7 +63,7 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::RollSell { roll_count } => {
-                                        if is_filtered(&filter, grpc::OperationTypeEnum::RollSell) {
+                                        if !should_send(&filter, grpc::OperationTypeEnum::RollSell) {
                                             continue
                                         }
                                         grpc::OperationType {
@@ -72,7 +72,7 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::ExecuteSC { data, max_gas, datastore } => {
-                                        if is_filtered(&filter, grpc::OperationTypeEnum::ExecuteSc) {
+                                        if !should_send(&filter, grpc::OperationTypeEnum::ExecuteSc) {
                                             continue
                                         }
 
@@ -92,7 +92,7 @@ pub(crate) async fn new_operations(
                                         }
                                     },
                                     OperationType::CallSC { target_addr, target_func,  max_gas, param, coins} => {
-                                        if is_filtered(&filter, grpc::OperationTypeEnum::CallSc) {
+                                        if !should_send(&filter, grpc::OperationTypeEnum::CallSc) {
                                             continue
                                         }
                                         grpc::OperationType {
@@ -161,21 +161,20 @@ pub(crate) async fn new_operations(
     Ok(Box::pin(out_stream) as NewOperationsStream)
 }
 
-/// Return if the type of operation is filtered
-///
-/// if return true the operation is not sent
-fn is_filtered(
+/// Return if the type of operation should be send to client
+fn should_send(
     filter_opt: &Option<grpc::NewOperationsStreamFilter>,
     ope_type: grpc::OperationTypeEnum,
 ) -> bool {
     if let Some(filter) = filter_opt {
         let filtered_ope_ids = &filter.types;
         if filtered_ope_ids.is_empty() {
-            return false;
+            return true;
         }
         let id: i32 = ope_type as i32;
-        !filtered_ope_ids.contains(&id)
+        filtered_ope_ids.contains(&id)
     } else {
-        false
+        // if user has no filter = All operations type is send
+        true
     }
 }
