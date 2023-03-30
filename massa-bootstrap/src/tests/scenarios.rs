@@ -230,15 +230,17 @@ fn test_bootstrap_server() {
     //     .times(1)
     //     .returning(|_, _| todo!());
     // launch the get_state process
-    let bootstrap_res = get_state(
-        bootstrap_config,
-        final_state_client_clone,
-        mock_remote_connector,
-        Version::from_str("TEST.1.10").unwrap(),
-        MassaTime::now().unwrap().saturating_sub(1000.into()),
-        None,
-    )
-    .unwrap();
+    let bootstrap_res = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(get_state(
+            bootstrap_config,
+            final_state_client_clone,
+            mock_remote_connector,
+            Version::from_str("TEST.1.10").unwrap(),
+            MassaTime::now().unwrap().saturating_sub(1000.into()),
+            None,
+        ))
+        .unwrap();
 
     // apply the changes to the server state before matching with the client
     {
